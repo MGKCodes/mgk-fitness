@@ -143,13 +143,18 @@ a [DCO](https://developercertificate.org/) sign-off (`git commit -s`).
 
 ## Licence
 
-[AGPL-3.0](LICENSE). If you run a modified version as a network service, you
-have to publish your changes.
+The **code** is [AGPL-3.0](LICENSE). If you run a modified version as a network
+service, you have to publish your changes.
 
 That's deliberate: this is a portfolio project meant to be read, and the licence
 keeps it that way. It follows the Signal precedent for App Store distribution —
 sole copyright holder, so the binaries on the store and the source here can
 coexist.
+
+Assets are covered separately in [NOTICE.md](NOTICE.md), and one of them —
+the exercise illustrations — has an **open licensing question that has to be
+settled before this repository is made public**. The reasoning above is about
+copyright in the code and does not automatically carry over to it.
 
 ## Attribution
 
