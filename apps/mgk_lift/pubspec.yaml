@@ -22,16 +22,45 @@ dependencies:
   mgk_ui:
     path: ../../packages/mgk_ui
 
+  # Measurement types, shared so both apps agree what "imperial" means.
+  # Pure Dart: storage is canonical metric, conversion happens at display.
+  mgk_units:
+    path: ../../packages/mgk_units
+
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.16.0
+
+  # Explicit rather than leaning on Flutter's re-export, so `lib/src/features/
+  # */domain/` stays pure Dart — no widget binding needed to test the rules.
+  meta: ^1.17.0
+
+  # The on-device database. Offline-first is not a nice-to-have here: a set is
+  # logged standing at a rack, and a gym basement with no signal is the normal
+  # case rather than the edge case.
+  drift: ^2.34.2
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
 
 flutter:
   uses-material-design: true
+
+  # Gym photography, greyscale. The PhotoBackdrop treatment is shared by the
+  # suite (mgk_ui), but the images belong to the app — Run shows running, Lift
+  # shows lifting, and the treatment over them stays identical.
+  assets:
+    - assets/images/backgrounds/
+    # 266 movements, start/end form frames. Ported from Liftio rather than
+    # rebuilt \u2014 recreating this library would be months of work for a worse one.
+    - assets/exercises/
+    - assets/images/splits/
 
   # No `fonts:` block, deliberately. Inter is declared by mgk_ui, so the family
   # is addressed as `packages/mgk_ui/Inter` and reaches this app through
