@@ -69,7 +69,15 @@ abstract final class AppTheme {
           foregroundColor: AppColors.onPrimary,
           disabledBackgroundColor: AppColors.elevated,
           disabledForegroundColor: AppColors.textTertiary,
-          minimumSize: const Size.fromHeight(52),
+          // Height only. `Size.fromHeight` is `Size(double.infinity, 52)`,
+          // which forced **every** FilledButton to full width — so one could
+          // only ever be the page's primary action, and an inline or compact
+          // use threw "BoxConstraints forces an infinite width" at layout.
+          //
+          // Full width belongs to [PrimaryButton], which already wraps itself
+          // in a `SizedBox(width: double.infinity)`; putting it in the theme as
+          // well made the constraint global for no gain.
+          minimumSize: const Size(0, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
