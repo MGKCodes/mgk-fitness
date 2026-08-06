@@ -73,3 +73,7 @@ handoff.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Screen-review captures. Regenerate with apps/mgk_lift/tool/capture_screens.ps1 —
+# these are dated working artifacts and accumulate one folder per review.
+apps/*/screenshots/
