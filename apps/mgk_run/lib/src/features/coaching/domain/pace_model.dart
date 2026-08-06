@@ -1,8 +1,6 @@
 import 'dart:math' as math;
 
-import '../../../core/units/distance.dart';
-import '../../../core/units/pace.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 /// Deterministic pace derivation — done in **Dart, never the LLM** (see
 /// docs/architecture/plan-generation.md). One input, a recent race or time

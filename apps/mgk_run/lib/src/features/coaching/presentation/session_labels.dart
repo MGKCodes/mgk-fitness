@@ -1,4 +1,4 @@
-import '../../../core/units/pace.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/pace_model.dart';
 import '../domain/training_plan.dart';
 

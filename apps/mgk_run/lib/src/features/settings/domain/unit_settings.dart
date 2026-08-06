@@ -1,4 +1,4 @@
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 /// Where the runner's chosen display unit is read and written.
 ///

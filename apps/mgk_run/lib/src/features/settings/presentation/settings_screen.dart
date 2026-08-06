@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../legal/data/account_deletion_service.dart';
 import '../../legal/domain/account_deleter.dart';

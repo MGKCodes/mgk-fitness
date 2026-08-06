@@ -1,5 +1,4 @@
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../recording/domain/run_summary.dart';
 import '../presentation/session_labels.dart';
 import 'plan_shape.dart';

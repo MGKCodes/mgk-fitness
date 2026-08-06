@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/duration_format.dart';
-import '../../../core/units/pace.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart' show CoachLetter;

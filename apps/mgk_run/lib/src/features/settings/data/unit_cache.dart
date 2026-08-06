@@ -1,4 +1,4 @@
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 /// A local copy of the runner's unit choice, so a cold launch with no network
 /// shows the units they picked instead of defaulting to kilometres.

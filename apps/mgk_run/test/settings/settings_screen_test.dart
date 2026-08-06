@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:mgk_run/src/core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 

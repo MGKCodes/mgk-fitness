@@ -1,8 +1,6 @@
 import 'dart:math' as math;
 
-import '../../../core/units/distance.dart';
-import '../../../core/units/pace.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../recording/domain/run_split.dart';
 import '../../recording/domain/run_summary.dart';
 import 'training_plan.dart';

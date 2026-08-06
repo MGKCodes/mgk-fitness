@@ -1,4 +1,4 @@
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 /// Translation between [UnitSystem] and the text stored in the **shared**
 /// `public.user_settings.distance_unit` column.

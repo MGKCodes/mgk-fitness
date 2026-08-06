@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../coaching/data/adaptation_service.dart';
 import '../../coaching/data/coach_client.dart';
@@ -29,7 +29,6 @@ import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/domain/training_standing.dart';
-import '../../../core/units/unit_system.dart';
 import '../../profile/domain/runner_stats.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../settings/domain/unit_settings.dart';

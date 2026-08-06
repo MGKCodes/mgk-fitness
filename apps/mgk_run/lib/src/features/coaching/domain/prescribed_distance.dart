@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'training_plan.dart';
 
 /// A prescribed distance is a **round number**, and a run near it counts.

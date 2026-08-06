@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:mgk_run/src/core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';

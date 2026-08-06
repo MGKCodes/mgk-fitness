@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/core/units/distance.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
 
 void main() {

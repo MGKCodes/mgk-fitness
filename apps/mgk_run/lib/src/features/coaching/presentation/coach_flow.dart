@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../legal/data/disclaimer_store_factory.dart';
 import '../../legal/domain/disclaimer_store.dart';
 import '../../legal/presentation/medical_disclaimer_screen.dart';

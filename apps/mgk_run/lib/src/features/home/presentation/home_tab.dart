@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_headline.dart';

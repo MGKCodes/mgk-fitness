@@ -20,6 +20,11 @@ dependencies:
   mgk_ui:
     path: ../../packages/mgk_ui
 
+  # Measurement types, shared so both apps agree what "imperial" means.
+  # Pure Dart: storage is canonical metric, conversion happens at display.
+  mgk_units:
+    path: ../../packages/mgk_units
+
   cupertino_icons: ^1.0.8
   drift: ^2.34.2
   sqlite3_flutter_libs: ^0.6.0+eol

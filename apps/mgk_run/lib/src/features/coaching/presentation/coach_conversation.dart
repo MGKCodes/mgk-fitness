@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'chat_controller.dart';
 import 'chat_widgets.dart';
 

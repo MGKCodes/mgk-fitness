@@ -24,7 +24,7 @@ import 'package:mgk_run/src/features/coaching/data/plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/core/config/app_config.dart';
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:mgk_run/src/core/units/distance.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
 import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_brief.dart';
@@ -53,7 +53,6 @@ import 'package:mgk_run/src/features/coaching/presentation/session_brief_sheet.d
 import 'package:mgk_run/src/features/coaching/presentation/profile_confirmation_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/today_card.dart';
 import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.dart';
-import 'package:mgk_run/src/core/units/unit_system.dart';
 import 'package:mgk_run/src/features/profile/domain/runner_stats.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';

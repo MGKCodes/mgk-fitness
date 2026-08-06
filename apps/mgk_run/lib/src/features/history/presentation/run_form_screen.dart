@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/run_writer.dart';
 import '../domain/run_draft.dart';
 

@@ -3,10 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/duration_format.dart';
-import '../../../core/units/pace.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/run_recorder.dart';

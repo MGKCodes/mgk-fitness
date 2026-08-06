@@ -16,6 +16,10 @@ environment:
 # `flutter pub get` for the whole tree. mgk_run landed on 2026-08-06, so it is
 # live now. If apps/ ever empties again, comment this out rather than wondering
 # why the workspace stopped resolving.
+# Single `*`, not `**`. Both directories are exactly one level deep, so `*`
+# says what is true — and `**` breaks `dart test` run from inside a member
+# package, where pub evaluates the glob against the current directory rather
+# than the workspace root and reports "No workspace packages matching apps/**".
 workspace:
-  - packages/**
-  - apps/**
+  - packages/*
+  - apps/*

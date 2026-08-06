@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/unit_preference.dart';
 import '../domain/unit_settings.dart';
 import 'unit_cache.dart';

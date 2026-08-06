@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../data/adaptation_service.dart';
 import '../data/coach_errors.dart';
 import '../domain/runner_profile.dart';

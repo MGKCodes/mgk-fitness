@@ -3,10 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/duration_format.dart';
-import '../../../core/units/pace.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/plan_history.dart';
 import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';

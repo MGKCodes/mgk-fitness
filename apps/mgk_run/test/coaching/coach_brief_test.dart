@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_brief.dart';

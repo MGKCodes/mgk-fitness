@@ -10,8 +10,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/goal_draft.dart';
 import '../domain/plan_shape.dart';
 import '../domain/training_plan.dart';

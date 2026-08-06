@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/core/units/duration_format.dart';
+import 'package:test/test.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 void main() {
   group('DurationFormat.hoursMinutesSeconds', () {

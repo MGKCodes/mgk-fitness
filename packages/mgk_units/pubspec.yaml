@@ -1,0 +1,20 @@
+name: mgk_units
+description: "Measurement types for the MGKCodes fitness suite: canonical metric storage, conversion at display."
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.0
+
+# Joins the workspace defined by the root pubspec.
+resolution: workspace
+
+# Deliberately a **pure Dart package**. Nothing here touches Flutter, and
+# keeping it that way is the point: measurement is a domain concern, the rules
+# are testable without a widget binding, and it can never quietly grow a
+# dependency on the UI it is supposed to stay below.
+dependencies:
+  meta: ^1.17.0
+
+dev_dependencies:
+  test: ^1.26.4

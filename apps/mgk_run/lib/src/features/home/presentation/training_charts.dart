@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../../core/units/distance.dart';
-import '../../../core/units/unit_system.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/training_history.dart';
 
 /// Weekly distance over the last two months, with the week in progress picked
