@@ -1,0 +1,95 @@
+# Codemagic CI/CD — Runio (see docs/decisions/0020-codemagic-is-the-build-path.md).
+#
+# One manual-trigger workflow: iOS → TestFlight. Builds run on a macOS cloud
+# machine, so shipping never depends on having a Mac to hand — which matters
+# here, because this app is developed on Windows against an Android emulator
+# and its actual target has never been built locally.
+#
+# **No Android workflow, deliberately.** Runio is iOS-only (ADR-0001). The
+# Android build exists as a verification harness for design work on Windows and
+# is not a product; a release pipeline for it would imply otherwise.
+#
+# ───────────────────────────────────────────────────────────────────────────
+# ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
+#
+#  1. Connect this repo to Codemagic.
+#  2. App Store Connect API key → Team settings ▸ Integrations ▸ App Store
+#     Connect. Upload the .p8 (App Manager role) + Key ID + Issuer ID, and name
+#     the integration `runio_asc` (matches `app_store_connect:` below).
+#  3. Environment group `runio_env` (Application settings ▸ Environment
+#     variables, mark Secure) with:
+#       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
+#       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
+#     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
+#     and never reaches the client (ADR-0007); a provider key in this group
+#     would be a provider key in the app bundle.
+#  4. App Store Connect → new app, bundle id `com.mgkcodes.runio`. Required
+#     before any TestFlight upload will be accepted.
+# ───────────────────────────────────────────────────────────────────────────
+
+workflows:
+  ios-release:
+    name: iOS — TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: runio_asc
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mgkcodes.runio
+      groups:
+        - runio_env
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Generate config/app_config.json from secure vars
+        # Gitignored, because it carries dev-account credentials locally. The
+        # app reads it via --dart-define-from-file, so a build without it comes
+        # out unable to reach Supabase at all rather than failing loudly.
+        #
+        # **The dev accounts are written empty on purpose.** They are the
+        # quick-sign-in and persona buttons, which are already kDebugMode-only
+        # and tree-shaken out of a release — but a credential that is not in the
+        # binary cannot be extracted from the binary, and this is a health app.
+        script: |
+          mkdir -p "$CM_BUILD_DIR/config"
+          cat > "$CM_BUILD_DIR/config/app_config.json" <<EOF
+          {
+            "SUPABASE_URL": "$SUPABASE_URL",
+            "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
+            "DEV_ACCOUNT_1_LABEL": "",
+            "DEV_ACCOUNT_1_EMAIL": "",
+            "DEV_ACCOUNT_1_PASSWORD": ""
+          }
+          EOF
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        # Drift's generated sources are gitignored, so this is not optional:
+        # without it the local database does not compile.
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Set up code signing
+        # Apple Distribution certificate from Codemagic (Team settings ▸ Code
+        # signing identities) + auto-fetch/create of the provisioning profile.
+        script: xcode-project use-profiles
+      - name: Build IPA
+        # --dart-define-from-file is load-bearing: AppConfig reads every value
+        # from it, so an IPA built without this flag launches and then cannot
+        # sign anybody in.
+        script: |
+          flutter build ipa --release \
+            --build-number=$(($PROJECT_BUILD_NUMBER)) \
+            --dart-define-from-file=config/app_config.json \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false   # flip on when ready for a store release

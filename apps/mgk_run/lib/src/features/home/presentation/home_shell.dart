@@ -1,0 +1,1509 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import 'package:mgk_ui/mgk_ui.dart';
+import '../../../core/units/distance.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../coaching/data/adaptation_service.dart';
+import '../../coaching/data/coach_client.dart';
+import '../../coaching/data/coach_memory_repository.dart';
+import '../../coaching/data/coach_memory_store.dart';
+import '../../coaching/domain/coach_memory.dart';
+import '../../coaching/data/plan_client.dart';
+import '../../coaching/data/plan_repository.dart';
+import '../../coaching/data/plan_service.dart';
+import '../../coaching/data/plan_store.dart';
+import '../../coaching/domain/coach_brief.dart';
+import '../../coaching/domain/coach_note.dart';
+import '../../coaching/domain/plan_headline.dart';
+import '../../coaching/domain/plan_shape.dart';
+import '../../coaching/domain/readiness.dart';
+import '../../coaching/domain/training_history.dart';
+import '../../coaching/domain/week_progress.dart';
+import '../../coaching/domain/goal_draft.dart';
+import '../../coaching/domain/plan_history.dart';
+import 'home_tab.dart';
+import '../../coaching/domain/pace_model.dart';
+import '../../coaching/domain/runner_profile.dart';
+import '../../coaching/domain/stored_plan.dart';
+import '../../coaching/domain/training_plan.dart';
+import '../../coaching/domain/training_standing.dart';
+import '../../../core/units/unit_system.dart';
+import '../../profile/domain/runner_stats.dart';
+import '../../profile/presentation/profile_screen.dart';
+import '../../settings/domain/unit_settings.dart';
+import '../../coaching/presentation/adjust_reasons_sheet.dart';
+import '../../coaching/presentation/chat_controller.dart';
+import '../../coaching/presentation/coach_conversation.dart';
+import '../../coaching/presentation/coach_reveal.dart';
+import '../../coaching/presentation/chat_entry.dart';
+import '../../coaching/presentation/coach_flow.dart';
+import '../../coaching/presentation/plan_screen.dart';
+import '../../coaching/presentation/plan_block_screen.dart';
+import '../../coaching/presentation/plan_calendar_screen.dart';
+import '../../coaching/presentation/week_detail_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
+import '../../recording/domain/run_recorder.dart';
+import '../../recording/domain/run_summary.dart';
+import '../../recording/presentation/recording_screen.dart';
+import '../../history/domain/run_writer.dart';
+import '../../history/domain/run_draft.dart';
+import '../../settings/domain/backup_consent.dart';
+import '../../settings/presentation/backup_consent_prompt.dart';
+import '../../history/presentation/run_form_screen.dart';
+import '../../recording/presentation/run_summary_screen.dart';
+
+/// The authenticated app: Home / Coach / Profile tabs.
+///
+/// The recorder, history data, coach and plan storage are **injected** so the
+/// real Drift + geolocator + Supabase stack lives only in the iOS build (see
+/// lib/main.dart), while the preview and tests pass fakes. A null
+/// [recorderFactory] disables recording; a null [historySource] yields an empty
+/// training log; a null [planStore] keeps the plan in memory for the session.
+class HomeShell extends StatefulWidget {
+  const HomeShell({
+    super.key,
+    this.auth = const AuthRepository(),
+    this.recorderFactory,
+    this.historySource,
+    this.coach,
+    this.chatClient,
+    this.planClient,
+    this.planStore,
+    this.planBackup,
+    this.memoryStore,
+    this.memoryMirror,
+    this.unitSettings,
+    this.runEditor,
+    this.restore,
+    this.consentStore,
+    this.initialTab = 0,
+    this.justSignedUp = false,
+  });
+
+  final AuthRepository auth;
+
+  /// Creates a fresh recorder for a new run.
+  final RunRecorder Function()? recorderFactory;
+
+  /// Loads the runs shown in History.
+  final Future<List<RunSummary>> Function()? historySource;
+
+  /// Adds and corrects runs. Null hides both affordances, which is the right
+  /// behaviour for a build with no on-device database rather than an error —
+  /// the log still reads, it just cannot be written to.
+  final RunWriter? runEditor;
+
+  /// Pulls anything this device is missing before the first load, so a
+  /// reinstalled phone paints its own data rather than an empty log.
+  final DataRestore? restore;
+
+  /// Where the backup answer lives. Null skips the prompt, which is what the
+  /// preview harness and tests want.
+  final BackupConsentStore? consentStore;
+
+  /// The coach for onboarding. Null hides the Plan tab's build-a-plan action
+  /// (e.g. a build with no backend).
+  final CoachClient? coach;
+
+  /// The coach for the open conversation. Defaults to [coach] when the injected
+  /// coach also speaks the chat surface — [CoachService] does, and so does the
+  /// preview's fake, so one injected coach lights up both. Exists as its own
+  /// parameter so a test can drive the conversation without also standing up an
+  /// intake double.
+  final CoachChatClient? chatClient;
+
+  /// The plan client for week adaptation. Null hides the week's "Adjust" action.
+  final PlanClient? planClient;
+
+  /// Where the plan is persisted. The real app injects the on-device database
+  /// ([DriftPlanStore]); null falls back to an in-memory store, which keeps the
+  /// plan for the session but not across launches.
+  final PlanStore? planStore;
+
+  /// Optional off-device mirror of the plan. Best-effort only — the plan is
+  /// owned by [planStore] (CLAUDE.md rule 1).
+  final PlanBackup? planBackup;
+
+  /// Where the coach's memory lives — the transcript and the rolling summary.
+  /// The real app injects the on-device database; null falls back to memory for
+  /// the session, which is what the preview and widget tests want.
+  final CoachMemoryStore? memoryStore;
+
+  /// Optional off-device mirror of that memory. Best-effort only, exactly like
+  /// [planBackup]: the coach's memory is owned by the device.
+  final CoachMemoryMirror? memoryMirror;
+
+  /// Where the display unit is read and written. Null keeps it in memory for
+  /// the session, which is what the preview and widget tests want.
+  final UnitSettings? unitSettings;
+
+  /// Which tab to open on. Exists so the preview harness can address a tab by
+  /// URL — Playwright cannot reliably tap Flutter's canvas to switch tabs.
+  final int initialTab;
+
+  /// True when this shell was reached by **creating an account** rather than by
+  /// signing back into one.
+  ///
+  /// It no longer sends anybody into the plan flow. A new runner lands on Home
+  /// with a working run tracker, and a plan is something they go and ask for
+  /// (ADR-0019). What this still decides is that there is nothing on the server
+  /// worth restoring, because the account was made seconds ago.
+  final bool justSignedUp;
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  late int _index = widget.initialTab;
+
+  /// The Plan tab, by name rather than by literal — a re-order that moved it
+  /// would otherwise silently send a runner to the wrong page. Profile has no
+  /// constant any more: Home stopped linking to the log when its recent-runs
+  /// list went, and the nav bar is the only way there now (ADR-0017).
+  static const int _planTab = 1;
+
+  /// Built once and held here, not in the tab, so switching tabs or rebuilding
+  /// the shell never drops an in-flight write or re-creates the store.
+  late final PlanRepository _plans = PlanRepository(
+    store: widget.planStore ?? InMemoryPlanStore(),
+    backup: widget.planBackup,
+    // The same client the conversation uses. Null in a test or a persona, which
+    // is the deterministic plan — correct, and not what the runner is paying
+    // for (ADR-0003).
+    generator: widget.planClient == null
+        ? null
+        : PlanService(client: widget.planClient!),
+  );
+
+  /// The coach's memory, built once here for the same reason [_plans] is: a
+  /// repository re-created on rebuild would drop an in-flight append.
+  late final CoachMemoryRepository _memory = CoachMemoryRepository(
+    store: widget.memoryStore ?? InMemoryCoachMemoryStore(),
+    mirror: widget.memoryMirror,
+  );
+
+  late final UnitSettings _unitSettings =
+      widget.unitSettings ?? InMemoryUnitSettings();
+
+  /// The unit every screen below displays in. Held here, at the one point above
+  /// all three tabs, so changing it in Settings re-renders the whole app rather
+  /// than only the screen that was open.
+  UnitSystem _unit = UnitSystem.metric;
+
+  /// What Home shows. Held on the shell because Home draws on both the plan and
+  /// the run log, which no single tab owns.
+  TodayView? _todayView;
+
+  /// This week's sessions, for Home's ribbon. Loaded here rather than derived
+  /// in the widget so the ribbon and today's card can never disagree.
+  TrainingWeek? _thisWeek;
+
+  /// What the runner is working on, for the top of Home. The same two lines the
+  /// Plan tab is headed with — a countdown and a week number belong on the page
+  /// opened every morning at least as much as on the one opened to plan.
+  PlanHeadline? _headline;
+
+  /// What became of each prescribed day this week, derived from the run log.
+  /// Held here for the same reason [_thisWeek] is: the ribbon and today's card
+  /// must be describing one load of the store.
+  Map<int, DayOutcome> _outcomes = const <int, DayOutcome>{};
+
+  /// What Home should raise about days that went by without a run, if anything.
+  MissedPrompt? _missed;
+
+  /// The long view: weekly distance, and whether they have been turning up.
+  /// Folded here with everything else Home draws, so the charts and the day
+  /// above them are always one reading of the log.
+  List<WeekVolume> _volumes = const <WeekVolume>[];
+  List<List<RunDay>> _consistency = const <List<RunDay>>[];
+  WeekStanding? _standing;
+  CoachNote? _note;
+
+  /// Whether the runner has opened the coach since the note last changed. The
+  /// dot is the only thing the mark can say, so it should only say it once.
+  bool _coachSeen = false;
+
+  /// Whether this observation has been *announced*. Separate from [_coachSeen]
+  /// on purpose: the line plays once per observation, and the dot stays until
+  /// the runner actually opens the conversation. Playing it again because they
+  /// switched tabs is how a nice touch becomes the thing everyone disables.
+  bool _noteDelivered = false;
+
+  /// The open conversation, held at the shell rather than on a tab.
+  ///
+  /// It used to belong to the Plan tab, which was fine while the way in was a
+  /// dock bolted to that tab. The mark floats over all three now, so the
+  /// conversation cannot be the property of one of them — and the transcript
+  /// was never the screen's anyway.
+  ChatController? _chat;
+
+  /// The whole log, not just the three Home shows. A run's note compares it
+  /// against everything the runner has done, so a cached handful would call
+  /// things records that are not.
+  List<RunSummary> _allRuns = const <RunSummary>[];
+
+  /// The profile behind the current plan, for the goal the Profile tab shows.
+  /// Held here rather than read in the tab so the goal, the log and Home's
+  /// today card are all describing the same load of the store.
+  RunnerProfile? _planProfile;
+
+  /// The plans behind the current one, oldest first and labelled. Held here for
+  /// the same reason as [_planProfile]: one load of the store, so the Profile
+  /// tab and the coach's brief cannot disagree about what the runner has done.
+  List<LabelledPlan> _pastPlans = const <LabelledPlan>[];
+
+  @override
+  void initState() {
+    super.initState();
+    // Best-effort: ensure the shared profile row exists (covers a restored
+    // session, not just a fresh sign-in).
+    unawaited(widget.auth.ensureProfile());
+    unawaited(_loadUnit());
+    unawaited(_restoreThenLoad());
+
+    final client = _chatClient;
+    if (client != null) {
+      _chat = ChatController(
+        client: client,
+        brief: _writeCoachBrief,
+        onAdaptRequest: _proposeFromChat,
+        onApplyRevision: _applyRevision,
+        onLogRunRequest: _proposeRunFromChat,
+        onEditRunRequest: _proposeEditFromChat,
+        onSetGoalRequest: _proposeGoalFromChat,
+        onApplyRun: _applyRun,
+        onApplyGoal: _applyGoal,
+        memory: _memory,
+        summariser: _summariser,
+      );
+      // The transcript is the runner's, not the launch's. Without this the
+      // coach knew *about* them from the summary and they opened a blank
+      // conversation unable to see what they had been told.
+      unawaited(_chat!.restore());
+    }
+  }
+
+  /// The edit-run seam, when the injected coach can do it.
+  CoachEditRunClient? get _editRunClient {
+    final coach = widget.coach;
+    return coach is CoachEditRunClient ? coach as CoachEditRunClient : null;
+  }
+
+  /// The log-run seam, when the injected coach can do it. Null in a build that
+  /// ships chat without it, and the intent is then ignored rather than
+  /// half-honoured — the coach would otherwise acknowledge a run and nothing
+  /// would appear.
+  CoachLogRunClient? get _logRunClient {
+    final coach = widget.coach;
+    return coach is CoachLogRunClient ? coach as CoachLogRunClient : null;
+  }
+
+  /// The set-goal seam, when the injected coach can do it. Null in a build that
+  /// ships chat without it — the safe half to be missing, since honouring the
+  /// intent supersedes a plan.
+  CoachSetGoalClient? get _setGoalClient {
+    final coach = widget.coach;
+    return coach is CoachSetGoalClient ? coach as CoachSetGoalClient : null;
+  }
+
+  /// The chat seam, explicit if one was injected and otherwise the coach itself.
+  CoachChatClient? get _chatClient {
+    final explicit = widget.chatClient;
+    if (explicit != null) return explicit;
+    final coach = widget.coach;
+    // Cast rather than promotion: Dart only promotes to a subtype of the
+    // declared type, and these two seams are siblings rather than parent and
+    // child — which is the whole point of keeping them apart.
+    return coach is CoachChatClient ? coach as CoachChatClient : null;
+  }
+
+  /// Everything the coach knows about this runner, as prose (`CoachBrief`).
+  ///
+  /// Written per turn from storage rather than from this widget's fields: a run
+  /// recorded on the Home tab a minute ago must be in the next answer, and the
+  /// stored plan is the one on disk rather than the one this screen last drew.
+  ///
+  /// Never throws. A brief is context, and losing it should cost the coach some
+  /// detail, not cost the runner their question.
+  Future<String> _writeCoachBrief() async {
+    List<RunSummary> runs;
+    try {
+      runs = <RunSummary>[
+        ...await widget.historySource?.call() ?? const <RunSummary>[],
+      ];
+    } catch (_) {
+      runs = <RunSummary>[];
+    }
+    runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+
+    StoredPlan? plan;
+    try {
+      plan = await _plans.load();
+    } on PlanStoreException {
+      plan = null;
+    }
+
+    // The rolling summary is the tier that is *always* loaded: the things no
+    // schema holds — what they are anxious about, the knee that complains on
+    // hills, the route they will not run in the dark. Read locally, so a brief
+    // never waits on a network.
+    CoachSummary? remembered;
+    try {
+      remembered = await _memory.summary();
+    } catch (_) {
+      remembered = null; // A brief is context, not a precondition.
+    }
+
+    return CoachBrief.write(
+      recentRuns: runs,
+      plan: plan,
+      profile: plan?.profile,
+      // Read off the session every turn rather than cached: it costs nothing,
+      // and a name that arrived on a later device should not wait for a
+      // restart to be used.
+      name: widget.auth.currentName,
+      rollingSummary: remembered?.text,
+      // What they have tried before. Local, cheap, and the thing the coach was
+      // most obviously missing: every plan was still on disk and it read every
+      // runner as a beginner.
+      history: await _plans.history(),
+      unit: _unit,
+    ).text;
+  }
+
+  /// A change the runner asked for in conversation, routed into the **existing**
+  /// adaptation path: propose, validate against the relaxed adaptation rules,
+  /// show the diff, apply only on approval.
+  ///
+  /// The chat's whole job here is to carry the sentence over. Nothing about the
+  /// plan is decided by the model or by this method — the validator disposes
+  /// (CLAUDE.md rule 2), and the runner has the last word after that.
+  /// A change the runner asked for in conversation → a **validated** revision,
+  /// handed back to the dock to offer inside the conversation.
+  ///
+  /// This used to throw a modal sheet over the screen. A runner who asked for a
+  /// change in a sentence had to leave the conversation to agree to it, and the
+  /// transcript kept no record of what they agreed — so next week, when they
+  /// wondered why Sunday moved, there was nothing to look at. It proposes only:
+  /// nothing reaches disk until [_applyRevision].
+  Future<ChatProposal?> _proposeFromChat(String request) async {
+    if (!mounted) return null;
+    final plan = await _loadedPlan();
+    final client = widget.planClient;
+    if (plan == null || client == null) return null;
+
+    final slot = plan.weekOn(DateTime.now());
+    final TrainingWeek week;
+    try {
+      week = await _plans.weekFor(plan, slot);
+    } on PlanStoreException {
+      return null;
+    }
+
+    final proposal = await AdaptationService(
+      client: client,
+    ).propose(week: week, slot: slot, profile: plan.profile, request: request);
+    if (proposal == null) return null;
+    return ChatProposal(week: proposal.week, changes: proposal.changes);
+  }
+
+  /// Bends this week from a situation the runner **picked** rather than typed.
+  ///
+  /// Plans that will not move are the loudest complaint in this category, and
+  /// Runio could already move them — [AdaptationService] proposes, the
+  /// validator disposes, the runner approves. It was only ever reachable by
+  /// writing a paragraph at the coach, which is the last thing someone does
+  /// when they are ill or sore. This is the same path with the sentence
+  /// pre-written; nothing reaches disk until the diff has been approved
+  /// (CLAUDE.md rule 2).
+  Future<void> _adjustThisWeek() async {
+    final request = await AdjustReasonsSheet.show(context);
+    if (request == null || !mounted) return;
+    // Into the **conversation**, not a modal. The first version of this opened
+    // `WeekAdjustSheet` — the sheet the codebase had already moved away from,
+    // because a runner who asked for a change in a sentence had to leave the
+    // conversation to agree to it and the transcript kept no record of what
+    // they agreed. These reasons are pre-written sentences, so they belong in
+    // the same place a typed one does (ADR-0017).
+    _askCoach(request);
+  }
+
+  /// A run the runner mentioned in conversation → a **validated** draft, handed
+  /// back to the dock to confirm inside the conversation.
+  ///
+  /// Proposes only. Nothing reaches the log until [_applyRun], because "I did
+  /// 5k in 26 minutes" is a sentence a model can mishear, and a run nobody
+  /// agreed to is indistinguishable from one they reported once it is stored.
+  ///
+  /// An invalid draft returns null rather than a proposal the runner cannot
+  /// accept. The dock then says it could not make a run out of that, which is
+  /// the honest answer — a card offering to save 5 km in two minutes would ask
+  /// them to approve something the editor is about to refuse anyway.
+  Future<RunProposal?> _proposeRunFromChat(String request) async {
+    final coach = _logRunClient;
+    if (!mounted || coach == null) return null;
+
+    final draft = await coach.logRun(request);
+    if (draft == null || !draft.isValid(DateTime.now())) return null;
+    return RunProposal(draft: draft);
+  }
+
+  /// A correction the runner mentioned → a **validated** run to confirm.
+  ///
+  /// The resolution step is the safety here, and it is deliberately strict.
+  /// The coach identifies a run by the day it happened on, because it is never
+  /// told a run's id. Two runs on one day is ordinary — an easy morning run and
+  /// an evening parkrun — so [soleRunOn] refuses unless exactly one matches. A
+  /// wrong choice would rewrite a run the runner never mentioned, and the log
+  /// would look entirely normal afterwards.
+  Future<RunProposal?> _proposeEditFromChat(String request) async {
+    final coach = _editRunClient;
+    final editor = widget.runEditor;
+    if (!mounted || coach == null || editor == null) return null;
+
+    final correction = await coach.editRun(request);
+    if (correction == null || !correction.isUsable) return null;
+
+    final run = soleRunOn<RunSummary>(
+      _allRuns,
+      correction.on!,
+      startedAt: (r) => r.startedAt,
+    );
+    final id = run?.id;
+    if (id == null) return null;
+
+    final existing = await editor.draftOf(id);
+    if (existing == null) return null;
+
+    final changed = correction.changes.onto(existing);
+    if (!changed.isValid(DateTime.now())) return null;
+    return RunProposal(draft: changed, runId: id);
+  }
+
+  /// A new target the runner named → a **validated** goal to confirm.
+  ///
+  /// Starts from what they already have rather than from nothing, because most
+  /// of these are partial: "move it to 12 April" restates a date and no
+  /// distance, and a draft built from the sentence alone would silently drop
+  /// the marathon it was moving.
+  ///
+  /// Refuses three ways, and all three are the runner being protected from a
+  /// misheard sentence rather than from themselves: nothing usable read, a
+  /// target the validator rejects, or a target identical to the one they have.
+  /// The last matters because accepting it would throw away a block in exchange
+  /// for the same block.
+  Future<GoalProposal?> _proposeGoalFromChat(String request) async {
+    final coach = _setGoalClient;
+    if (!mounted || coach == null) return null;
+
+    final change = await coach.setGoal(request);
+    if (change == null || !change.isSomething) return null;
+
+    // No plan means no profile, and a profile is not something to invent: how
+    // many days they can run and what they are already doing are answers only
+    // they have. A runner with a goal and no plan wants onboarding, which is
+    // the "Build a plan" the Coach tab is already showing them.
+    final plan = await _loadedPlan();
+    if (plan == null) return null;
+
+    final draft = change.onto(GoalDraft.from(plan.profile));
+    if (!draft.isValid(DateTime.now())) return null;
+    // Same target as they already have. Offering it would ask them to approve
+    // throwing away a block in exchange for the block they are already in.
+    if (!draft.changes(plan.profile)) return null;
+
+    return GoalProposal(
+      draft: draft,
+      shape: draft.shape,
+      // Weeks already worked through, not weeks in the block: what they are
+      // losing is the training behind them, and the ones ahead were never
+      // theirs yet.
+      supersedes: plan
+          .weekIndexOn(DateTime.now())
+          .clamp(0, plan.skeleton.weeks.length),
+    );
+  }
+
+  /// Rebuilds the plan around a target the runner confirmed.
+  ///
+  /// Through [PlanRepository.create], the same path onboarding uses, so a plan
+  /// made in conversation is the same object as a plan made on the way in — it
+  /// supersedes the old one, validates its skeleton before storing, and pushes
+  /// to the backup. A second route would be a second set of rules about what a
+  /// legal plan is, and the one that got skipped would be this one.
+  Future<bool> _applyGoal(GoalProposal proposal) async {
+    try {
+      final plan = await _loadedPlan();
+      if (plan == null) return false;
+
+      // Everything about the runner except the target survives: their days,
+      // their volume, their time trial. They changed a race, not themselves.
+      await _plans.create(proposal.draft.onto(plan.profile));
+      if (!mounted) return true;
+      await _refreshHome();
+      return true;
+    } catch (_) {
+      // Returning false rather than swallowing quietly: the card stays on
+      // "that didn't save" and the runner can try again. A goal card that said
+      // "done" over an unchanged plan would leave them training for the wrong
+      // race with nothing on screen disagreeing.
+      return false;
+    }
+  }
+
+  /// Writes a run the runner confirmed in the conversation.
+  ///
+  /// Straight through [RunEditor], the same path the manual form uses, so the
+  /// rules about what a legal run is live in one place and the conversational
+  /// route cannot drift from the typed one (ADR-0016).
+  Future<bool> _applyRun(RunProposal proposal) async {
+    final editor = widget.runEditor;
+    if (editor == null) return false;
+    try {
+      final id = proposal.runId;
+      // The same two paths the manual form uses, chosen by whether there is
+      // already a run to correct.
+      if (id == null) {
+        await editor.add(proposal.draft);
+      } else {
+        await editor.edit(id, proposal.draft);
+      }
+    } on Object {
+      // Includes RunDraftInvalid, which should be unreachable — the draft was
+      // checked before it was offered — but a refusal here must read as "not
+      // saved" rather than as an exception through the dock.
+      return false;
+    }
+    await _refreshHome();
+    return true;
+  }
+
+  /// Writes a revision the runner approved in the conversation.
+  Future<bool> _applyRevision(TrainingWeek week) async {
+    final plan = await _loadedPlan();
+    if (plan == null) return false;
+    try {
+      await _plans.saveRevisedWeek(plan, week);
+    } on PlanStoreException {
+      return false;
+    }
+    await _refreshHome();
+    return true;
+  }
+
+  /// The stored plan, or null when there is not one. Read rather than cached:
+  /// the shell does not draw the plan, so holding a copy would only give it
+  /// something to go stale.
+  Future<StoredPlan?> _loadedPlan() async {
+    try {
+      return await _plans.load();
+    } on PlanStoreException {
+      return null;
+    }
+  }
+
+  /// Opens the conversation on a question already written — the hand-off from
+  /// a session brief.
+  void _askCoach(String opener) {
+    final chat = _chat;
+    if (chat == null) return;
+    unawaited(
+      CoachConversationSheet.show(
+        context,
+        controller: chat,
+        unit: _unit,
+        suggestions: _coachSuggestions,
+      ),
+    );
+    unawaited(chat.ask(opener));
+    setState(() => _coachSeen = true);
+  }
+
+  /// Opens the conversation, wherever the runner is.
+  ///
+  /// At the shell rather than on the Plan tab, which is the whole point of a
+  /// floating mark: the dock it replaces could only ever exist on one screen,
+  /// so the coach was present on a third of the app and absent from the rest.
+  void _openCoach() {
+    final chat = _chat;
+    if (chat == null) return;
+    final note = _note;
+    unawaited(
+      CoachConversationSheet.show(
+        context,
+        controller: chat,
+        unit: _unit,
+        suggestions: _coachSuggestions,
+        // The coach's latest observation becomes its first turn, so the
+        // conversation starts on something rather than on nothing.
+        opener: note == null ? null : '${note.headline} ${note.detail}',
+      ),
+    );
+    setState(() => _coachSeen = true);
+  }
+
+  /// Openers for an empty conversation — the questions a runner has whether or
+  /// not they have a plan.
+  static const List<String> _coachSuggestions = <String>[
+    'How has my training been going?',
+    'What could I run a half marathon in?',
+    'My calf is sore — can we move today’s run?',
+  ];
+
+  /// The summarise seam, found the same way as the chat seam: [CoachService]
+  /// implements all three surfaces, so one injected coach lights up talking,
+  /// planning and remembering.
+  CoachSummariseClient? get _summariser {
+    final chat = _chatClient;
+    if (chat is CoachSummariseClient) return chat as CoachSummariseClient;
+    final coach = widget.coach;
+    return coach is CoachSummariseClient ? coach as CoachSummariseClient : null;
+  }
+
+  /// Metric until the stored choice arrives. [UnitSettings.load] is contractually
+  /// non-throwing and prefers its local cache, so this is a fast no-op on every
+  /// launch after the first.
+  Future<void> _loadUnit() async {
+    final unit = await _unitSettings.load();
+    if (!mounted || unit == _unit) return;
+    setState(() => _unit = unit);
+  }
+
+  /// Restores first, then loads.
+  ///
+  /// Sequential on purpose: loading first would paint an empty log and then
+  /// replace it, which reads as data appearing out of nowhere. The restore is
+  /// a no-op on a phone that already has its data, so this costs nothing after
+  /// the first launch.
+  Future<void> _restoreThenLoad() async {
+    // **A new account takes a different road.** There is nothing on the server
+    // to restore — the account was made seconds ago — so the restore is a
+    // no-op, and the consent question in front of it would be asking permission
+    // to store data that does not exist yet, before the runner had seen Runio
+    // do anything at all (ADR-0012).
+    //
+    // Nothing else happens here any more. This used to push the plan flow the
+    // instant the shell mounted, which made a plan the price of finishing
+    // sign-up; a plan is now something a runner goes and asks for (ADR-0019).
+    //
+    // The consent question is therefore not asked in this session at all. It is
+    // picked up by the ordinary path on the next launch, by which time they
+    // have had a chance to use the app — which is what ADR-0012 wanted in the
+    // first place. Asking it after the first *recorded run* would be better
+    // still, and wants a hook that does not exist yet.
+    if (widget.justSignedUp) {
+      await _refreshHome();
+      return;
+    }
+
+    // Ask before anything moves. The answer decides whether there is a restore
+    // at all, and asking afterwards would mean either uploading first and
+    // apologising, or restoring nothing and never saying why.
+    await _askConsentIfNeeded();
+
+    await widget.restore?.restoreAll();
+    // Then send anything this phone has that the backup does not: runs from
+    // before the mirror existed, or from a spell with backup switched off.
+    // After the restore, so a run that just came down is not pushed back up.
+    unawaited(widget.runEditor?.backfill() ?? Future<void>.value());
+    if (mounted) await _refreshHome();
+  }
+
+  Future<void> _askConsentIfNeeded() async {
+    final store = widget.consentStore;
+    if (store == null) return;
+    if (!(await store.read()).needsAsking) return;
+    if (!mounted) return;
+    final answer = await askBackupConsent(context);
+    // A null answer cannot happen (the dialog is not dismissible), but writing
+    // only a real answer keeps "unknown" meaning "still unasked" if it ever does.
+    if (answer != null) await store.write(answer);
+  }
+
+  /// Reloads everything Home displays. Called on open, and whenever the plan
+  /// changes underneath it, so the front page is never stale.
+  Future<void> _refreshHome() async {
+    // The log and the plan are independent sources, so a failure in one must
+    // not cost the other. This read used to be bare, and a throwing history
+    // source took the whole refresh with it from `initState` — Home kept its
+    // empty state and never got as far as loading the plan, so a runner with a
+    // block on disk was shown "No plan yet" because their *run log* was
+    // offline. Home without its recent runs is still Home.
+    List<RunSummary> runs;
+    try {
+      runs = await widget.historySource?.call() ?? const <RunSummary>[];
+    } catch (_) {
+      runs = const <RunSummary>[];
+    }
+    final sorted = <RunSummary>[...runs]
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+
+    TodayView? today;
+    TrainingWeek? thisWeek;
+    RunnerProfile? planProfile;
+    PlanHeadline? headline;
+    var outcomes = const <int, DayOutcome>{};
+    MissedPrompt? missed;
+    WeekStanding? standing;
+    // One reading of the clock for everything derived from it, the same reason
+    // [PlanRepository.today] takes one: a countdown and a week number that
+    // disagree about the day are worse than either being absent.
+    final now = DateTime.now();
+    try {
+      final plan = await _plans.load();
+      if (plan != null) {
+        planProfile = plan.profile;
+        today = await _plans.today(plan);
+        thisWeek = await _plans.weekFor(plan, today.slot);
+        // Computed here rather than in the widget, like every other line that
+        // depends on the plan's shape (ADR-0011). Home takes two strings.
+        headline = planHeadline(
+          plan,
+          now,
+          unit: _unit,
+          completedThisPlan: turnedUpCount(plan, sorted, now: now),
+          readiness: assessReadiness(plan.profile, sorted, now: now),
+        );
+
+        // What actually became of the week, read off the run log rather than
+        // off anything the runner asserted by tapping (ADR-0017).
+        final weekStart = plan.dateFor(
+          weekIndex: today.slot.index,
+          weekday: 1,
+          on: now,
+        );
+        outcomes = weekOutcomes(
+          week: thisWeek,
+          weekStart: weekStart,
+          now: now,
+          runs: sorted,
+          since: today.slot.index == 1 ? now : plan.startDate,
+        );
+        missed = missedPromptFor(
+          week: thisWeek,
+          weekStart: weekStart,
+          now: now,
+          runs: sorted,
+          unit: _unit,
+          // **A plan cannot be behind on days that predate it**, and in its
+          // first week we cannot tell which those are: `startDate` is the
+          // *Monday week 1 aligns to*, not the day the runner committed, so a
+          // plan built on a Thursday claims Monday and then reports three days
+          // it was never asked about. Nothing is stored that would tell us
+          // which; until a creation timestamp exists, week 1 raises nothing.
+          //
+          // Under-reporting on purpose. A genuine week-1 miss waits until week
+          // 2 to be mentioned, which is a far smaller wrong than a brand-new
+          // plan opening with a list of failures.
+          since: today.slot.index == 1 ? now : plan.startDate,
+        );
+        standing = weekStanding(
+          week: thisWeek,
+          weekStart: weekStart,
+          now: now,
+          runs: sorted,
+        );
+      }
+    } on PlanStoreException {
+      today = null; // Home still stands without a plan.
+      thisWeek = null;
+      planProfile = null; // As does Profile — a goal is optional there.
+      headline = null;
+      outcomes = const <int, DayOutcome>{};
+      missed = null;
+      standing = null;
+    }
+
+    // Off the log alone, so they survive a plan that cannot be read — a runner
+    // whose plan row is corrupt has still been running, and the charts are the
+    // part of Home that can still say so.
+    //
+    // **Except for a plan that does not build.** A rhythm holds the same week
+    // forever by design, so its volume chart is seven identical bars — noise
+    // with a title on it. Resolved here rather than in the widget, like every
+    // other shape question (ADR-0011): Home draws the chart it is given and
+    // asks nothing.
+    final progresses = planProfile == null || shapeOf(planProfile).progresses;
+    final volumes = progresses
+        ? weeklyVolumes(runs: sorted, now: now)
+        : const <WeekVolume>[];
+    final consistency = consistencyGrid(runs: sorted, now: now);
+    // With no plan there is nothing prescribed to measure against, but the
+    // distance is still true.
+    standing ??= weekStanding(
+      week: null,
+      weekStart: mondayOf(now),
+      now: now,
+      runs: sorted,
+    );
+    // Read alongside the plan so the Profile tab and the coach's brief are
+    // describing the same load. `history()` swallows a store failure itself, so
+    // an unreadable old plan cannot take Home down with it.
+    final history = await _plans.history();
+
+    if (!mounted) return;
+    setState(() {
+      _allRuns = sorted;
+      _note = CoachNote.forRuns(runs);
+      _coachSeen = false;
+      _noteDelivered = false;
+      _todayView = today;
+      _thisWeek = thisWeek;
+      _planProfile = planProfile;
+      _headline = headline;
+      _outcomes = outcomes;
+      _missed = missed;
+      _volumes = volumes;
+      _consistency = consistency;
+      _standing = standing;
+      // Only the ones behind them; the active plan is the Coach tab's subject.
+      _pastPlans = history.where((p) => !p.record.isActive).toList();
+    });
+
+    // After the frame, never before it: the coming week's sessions are written
+    // by the model while the runner reads this one. Deliberately not awaited by
+    // anything on screen — if it fails, or they are offline, the week is simply
+    // still unwritten and whoever needs it next builds it in Dart.
+    unawaited(_fillNextWeek());
+  }
+
+  /// Writes the coming week's sessions ahead of the runner reaching it.
+  ///
+  /// Runs on every load and costs nothing after the first: [PlanRepository
+  /// .lookAhead] returns immediately once the week is on disk. That is what
+  /// makes it safe to call from a refresh rather than from a scheduler.
+  Future<void> _fillNextWeek() async {
+    try {
+      final plan = await _plans.load();
+      if (plan == null) return;
+      await _plans.lookAhead(plan);
+    } on PlanStoreException {
+      // Nothing to say: the runner did not ask for this and cannot see it.
+    }
+  }
+
+  // No `_markToday` here any more. Completion is read off the run log, so the
+  // shell has nothing to assert on the runner's behalf — `PlanRepository`
+  // keeps `markToday`/`setStatusOn` for the explicit skip the coach records
+  // for them, which is a thing the runner said rather than a button they
+  // tapped (ADR-0017).
+
+  /// Starts a run from Home. Recording is an action here, not a tab.
+  void _startRun(BuildContext context) {
+    final factory = widget.recorderFactory;
+    if (factory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Recording is unavailable here.')),
+      );
+      return;
+    }
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (routeContext) => RecordingScreen(
+              recorder: factory(),
+              unit: _unit,
+              onFinish: () => Navigator.of(routeContext).pop(),
+              onCancel: () => Navigator.of(routeContext).pop(),
+            ),
+          ),
+        )
+        // A finished run changes the log, the note and possibly today's status.
+        .then((_) => _refreshHome());
+  }
+
+  /// Takes a question from Profile to the coach.
+
+  /// Opens one run's summary. Shared by Home's recent list and the Profile
+  /// tab's log: both hand the whole log along, because the summary's note has
+  /// to compare the run against everything to call it a record.
+  void _openRun(RunSummary run) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RunSummaryScreen(
+          summary: run,
+          unit: _unit,
+          history: _allRuns,
+          // No id means nothing to edit: a summary built from a recording in
+          // progress or from seeded demo data is not a row yet.
+          onEdit: widget.runEditor == null || run.id == null
+              ? null
+              : () => _editRun(run),
+        ),
+      ),
+    );
+  }
+
+  /// A run the runner did somewhere this app was not: a treadmill session, a
+  /// race, anything the phone did not see.
+  Future<void> _addRun() async {
+    final editor = widget.runEditor;
+    if (editor == null) return;
+    final saved = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => RunFormScreen(editor: editor, unit: _unit),
+      ),
+    );
+    // Only reload on a real save. Backing out of the form should not cost a
+    // round trip through the database and a rebuild of every tab.
+    if (saved != null) await _refreshHome();
+  }
+
+  Future<void> _editRun(RunSummary run) async {
+    final editor = widget.runEditor;
+    final id = run.id;
+    if (editor == null || id == null) return;
+    final draft = await editor.draftOf(id);
+    if (!mounted || draft == null) return;
+    final saved = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => RunFormScreen(
+          editor: editor,
+          runId: id,
+          initial: draft,
+          unit: _unit,
+        ),
+      ),
+    );
+    if (saved != null) await _refreshHome();
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          unit: _unit,
+          settings: _unitSettings,
+          auth: widget.auth,
+          // The first run on record: what "since" on the account means here.
+          memberSince: RunnerStats.from(_allRuns).firstRunAt,
+          onUnitChanged: (unit) {
+            if (!mounted) return;
+            setState(() => _unit = unit);
+            // Home's headline is written in the display unit ("Building toward
+            // a marathon" vs a distance), so it is re-derived rather than left
+            // reading in the unit the runner just changed away from.
+            unawaited(_refreshHome());
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: <Widget>[
+          IndexedStack(
+            index: _index,
+            children: <Widget>[
+              HomeTab(
+                onRecord: () => _startRun(context),
+                // Two destinations, not one. These were a single
+                // `onOpenCoach` that switched to the tab — so the coach's own
+                // note opened a plan screen, and the button offering to talk
+                // to a coach did too. Only one of them was ever about the
+                // plan (ADR-0017).
+                onOpenPlan: () => setState(() => _index = _planTab),
+                onOpenCoach: _chat == null ? null : _openCoach,
+                today: _todayView,
+                thisWeek: _thisWeek,
+                headline: _headline,
+                note: _note,
+                outcomes: _outcomes,
+                volumes: _volumes,
+                consistency: _consistency,
+                standing: _standing,
+                hasRuns: _allRuns.isNotEmpty,
+                missed: _missed,
+                onAskCoach: _chat == null ? null : _askCoach,
+                // Only with a plan to bend and a coach to bend it.
+                onAdjustWeek: widget.planClient == null || _todayView == null
+                    ? null
+                    : _adjustThisWeek,
+                unit: _unit,
+              ),
+              _PlanTab(
+                plans: _plans,
+                coach: widget.coach,
+                chat: _chatClient,
+                runs: widget.historySource,
+                planClient: widget.planClient,
+                memory: _memory,
+                summariser: _summariser,
+                unit: _unit,
+                onPlanChanged: _refreshHome,
+                onAskCoach: _askCoach,
+                runnerName: widget.auth.currentName,
+              ),
+              // The runner and their record, on one page: totals, bests, the goal,
+              // then every run. Reads the shell's own log rather than calling the
+              // source again, so the totals and the rows they come from are always
+              // the same load.
+              ProfileScreen(
+                stats: RunnerStats.from(_allRuns),
+                profile: _planProfile,
+                // Derived here rather than cached, exactly like the stats above:
+                // it reads the display unit, and a stored copy stayed in kilometres
+                // after the runner switched to miles. Both are a fold over the log,
+                // which is cheaper than a staleness bug.
+                //
+                // No plan goes in. Where they are in a block is the Plan tab's
+                // subject and today is Home's; this is the long view of the runner.
+                standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
+                // Past plans only — the current one is the Coach tab's subject.
+                pastPlans: _pastPlans,
+                runs: _allRuns,
+                unit: _unit,
+                onOpenRun: _openRun,
+                onAddRun: widget.runEditor == null ? null : _addRun,
+                onAskCoach: _chatClient == null ? null : _askCoach,
+                onOpenSettings: _openSettings,
+              ),
+            ],
+          ),
+          // Floating over every tab, which is the whole point of it: the dock
+          // this replaces could only exist on the Plan tab, so the coach was
+          // present on a third of the app and absent from the rest.
+          // Absent rather than inert when there is no coach behind it. A mark
+          // that cannot open anything is worse than no mark.
+          if (_chat != null)
+            Positioned(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              bottom: AppSpacing.lg,
+              child: CoachReveal(
+                // Only an observation the runner has not been shown. Once it
+                // has played the mark rests, and it does not play again until
+                // the coach notices something new.
+                note: _noteDelivered ? null : _note,
+                hasUnread: _note != null && !_coachSeen,
+                onTap: _openCoach,
+                onFinished: () {
+                  if (mounted) setState(() => _noteDelivered = true);
+                },
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const <NavigationDestination>[
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          // "Plan", not "Coach". The tab was named for a conversation that
+          // moved out of it — the dock it was built around became a mark
+          // floating over all three tabs. What is left under the label is the
+          // headline, this week, the arc and the calendar (ADR-0017).
+          //
+          // Not the sparkle either, for the reason `CoachButton` gives for
+          // avoiding it: `Icons.auto_awesome` is on every AI feature shipped in
+          // the last three years, and this tab is not even the AI one.
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month),
+            label: 'Plan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The Plan tab: an empty state that launches the coach flow, then the plan arc.
+///
+/// The plan is **owned by the repository, not this widget** — it is read from
+/// storage on first build and every change (a new plan, a week filled in, today
+/// marked done) is written through before the UI reflects it. Force-quitting the
+/// app loses nothing. The plan is built deterministically for now; the LLM
+/// refinement lights up once the coach Edge Function is deployed.
+class _PlanTab extends StatefulWidget {
+  const _PlanTab({
+    required this.plans,
+    required this.unit,
+    required this.onPlanChanged,
+    this.coach,
+    this.chat,
+    this.runs,
+    this.planClient,
+    this.memory,
+    this.summariser,
+    this.onAskCoach,
+    this.runnerName,
+  });
+
+  final PlanRepository plans;
+  final UnitSystem unit;
+
+  /// What the coach calls this runner, from the intro. Passed down rather than
+  /// re-read here so this tab keeps knowing nothing about auth; it is used for
+  /// one line of dialogue at the front of the plan flow.
+  final String? runnerName;
+
+  /// Told whenever the plan is created, replaced or marked, so Home can reload.
+  final Future<void> Function() onPlanChanged;
+  final CoachClient? coach;
+
+  /// The open conversation's backend. Null docks the chat as offline.
+  final CoachChatClient? chat;
+
+  /// The run log, read fresh for every brief. Not the shell's cached three:
+  /// the brief counts the last seven days, and a coach that could only see
+  /// three runs would tell a runner they had done less than they had.
+  final Future<List<RunSummary>> Function()? runs;
+
+  final PlanClient? planClient;
+
+  /// Where the conversation and the rolling summary are kept. Null keeps the
+  /// coach's memory to this session.
+  final CoachMemoryRepository? memory;
+
+  /// Rewrites the rolling summary when a conversation ends.
+  final CoachSummariseClient? summariser;
+
+  /// Opens the conversation with an opener already written — the hand-off from
+  /// a session brief. Owned by the shell now that the coach floats over every
+  /// tab rather than being docked to this one.
+  final void Function(String opener)? onAskCoach;
+
+  @override
+  State<_PlanTab> createState() => _PlanTabState();
+}
+
+class _PlanTabState extends State<_PlanTab> {
+  bool _loading = true;
+
+  /// The run log, for the measures a plan cannot supply — how often a rhythm
+  /// runner has actually turned up.
+  List<RunSummary> _runLog = const <RunSummary>[];
+  Map<int, TrainingWeek> _horizonWeeks = const <int, TrainingWeek>{};
+
+  /// Set when the stored plan could not be read. Shown as a problem rather than
+  /// as "no plan yet", which would invite the runner to build a second one over
+  /// the top of a block that is still there.
+  String? _error;
+
+  StoredPlan? _plan;
+  TodayView? _today;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  /// Reads the plan from local storage. No network involved, so this works
+  /// offline (CLAUDE.md rule 1).
+  Future<void> _load() async {
+    // Loaded here rather than only per-brief: a rhythm's headline counts how
+    // many times the runner has turned up, and that has to be on screen rather
+    // than only in the coach's context.
+    //
+    // Guarded rather than bare: this read used to sit outside the try below, so
+    // a failing run log threw straight out of `_load` and left `_loading` true
+    // — the tab span for good because of a number in the headline, with the
+    // plan it exists to show sitting readable on disk the whole time. The log
+    // is context here, so losing it costs a count, not the screen.
+    List<RunSummary> log;
+    try {
+      log = await widget.runs?.call() ?? const <RunSummary>[];
+    } catch (_) {
+      log = const <RunSummary>[];
+    }
+    if (mounted) setState(() => _runLog = log);
+    try {
+      final plan = await widget.plans.load();
+      if (plan == null) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _plan = null;
+          _today = null;
+          _error = null;
+        });
+        return;
+      }
+      await _show(plan);
+    } on PlanStoreException catch (e) {
+      _fail(e.message);
+    }
+  }
+
+  Future<void> _show(StoredPlan plan) async {
+    final today = await widget.plans.today(plan);
+
+    // Only the weeks the calendar actually draws. Materialising the whole block
+    // would generate sessions for weeks that are still going to move.
+    final first = plan.weekIndexOn(DateTime.now());
+    final last = (first + kPlannedWeekHorizon - 1).clamp(
+      1,
+      plan.skeleton.weeks.length,
+    );
+    final loaded = <int, TrainingWeek>{};
+    for (var i = first; i <= last; i++) {
+      loaded[i] = await widget.plans.weekFor(plan, plan.skeleton.weeks[i - 1]);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _plan = plan;
+      _today = today;
+      _horizonWeeks = loaded;
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  void _fail(String message) {
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = message;
+    });
+  }
+
+  Future<void> _retry() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    await _load();
+  }
+
+  Future<void> _startCoaching() async {
+    final coach = widget.coach;
+    if (coach == null) return;
+    // The flow builds the plan itself and hands it back built, so there is no
+    // spinner to own here any more: the wait belongs to the screen that
+    // explains it, and a plan that arrives on this tab unannounced was the
+    // whole reason onboarding had no ending (ADR-0019).
+    //
+    // `create` persists the plan (superseding any earlier one) and its current
+    // week before returning, so nothing handed back here is unsaved.
+    final plan = await Navigator.of(context).push<StoredPlan>(
+      MaterialPageRoute<StoredPlan>(
+        builder: (_) => CoachFlow(
+          coach: coach,
+          name: widget.runnerName,
+          unit: widget.unit,
+          buildPlan: widget.plans.create,
+        ),
+      ),
+    );
+    if (plan == null || !mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    await _show(plan);
+    unawaited(widget.onPlanChanged());
+  }
+
+  /// Starts a fresh plan over the top of the current one. Confirmed first: the
+  /// existing block is superseded and its recorded sessions stop being the plan
+  /// the runner is following, so this is not a tap to make by accident.
+  Future<void> _replacePlan() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Start a new plan?'),
+        content: const Text(
+          'Your current plan is replaced by the one your coach builds next. '
+          'Runs you have already recorded are kept.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Start over'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _startCoaching();
+  }
+
+  /// Opens a week, filling it in from the skeleton and storing it the first time
+  /// it is asked for, focused on the day the runner tapped.
+  Future<void> _openWeek(
+    StoredPlan plan,
+    TrainingPaces paces,
+    SkeletonWeek slot,
+    int weekday,
+  ) async {
+    final TrainingWeek week;
+    try {
+      week = await widget.plans.weekFor(plan, slot);
+    } on PlanStoreException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+    final planClient = widget.planClient;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WeekDetailScreen(
+          unit: widget.unit,
+          week: week,
+          slot: slot,
+          paces: paces,
+          focusedWeekday: weekday,
+          profile: plan.profile,
+          adaptation: planClient == null
+              ? null
+              : AdaptationService(client: planClient),
+          onRevised: (revised) => widget.plans.saveRevisedWeek(plan, revised),
+        ),
+      ),
+    );
+    // Today's card may name a session this week just revised, so re-read it
+    // from the store rather than leaving a stale card behind.
+    if (mounted) unawaited(_show(plan));
+  }
+
+  /// Target paces, derived in Dart from the profile's time trial — never stored,
+  /// never from the model (pace_model.dart).
+  TrainingPaces? _pacesFor(RunnerProfile profile) {
+    final distance = profile.timeTrialDistanceMeters;
+    final time = profile.timeTrialDuration;
+    if (distance == null || time == null) return null;
+    return TrainingPaces.fromRace(Distance.meters(distance), time);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final error = _error;
+    if (error != null) return _PlanUnreadable(onRetry: _retry);
+
+    final plan = _plan;
+    final today = _today;
+
+    // No plan is a normal state, not an error — the coach is still available.
+    if (plan == null) {
+      return PlanScreen(
+        unit: widget.unit,
+        onBuildPlan: widget.coach == null
+            ? null
+            : () => unawaited(_startCoaching()),
+      );
+    }
+
+    final paces = _pacesFor(plan.profile);
+    return PlanScreen(
+      unit: widget.unit,
+      plan: plan,
+      paces: paces,
+      onAskAboutSession: widget.onAskCoach,
+      // Every run, not a cached handful: a rhythm counts how many times the
+      // runner has turned up since the plan began, and a short list would
+      // undercount it.
+      runs: _runLog,
+      weeks: _horizonWeeks,
+      statusFor: (weekday) => today != null && today.session?.weekday == weekday
+          ? today.status
+          : null,
+      onOpenWeek: paces == null
+          ? null
+          : (slot, weekday) => unawaited(_openWeek(plan, paces, slot, weekday)),
+      onReplacePlan: widget.coach == null
+          ? null
+          : () => unawaited(_replacePlan()),
+      onOpenCalendar: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanCalendarScreen(
+            plan: plan,
+            weeks: _horizonWeeks,
+            unit: widget.unit,
+            statusFor: (weekday) =>
+                today != null && today.session?.weekday == weekday
+                ? today.status
+                : null,
+            onOpenWeek: paces == null
+                ? null
+                : (slot, weekday) =>
+                      unawaited(_openWeek(plan, paces, slot, weekday)),
+          ),
+        ),
+      ),
+      onOpenBlock: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanBlockScreen(plan: plan, unit: widget.unit),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when a plan is on disk but could not be read — a schema mismatch or a
+/// corrupt row. Deliberately distinct from [_PlanEmpty]: the runner's block may
+/// still be recoverable, so this must not read as "you have no plan".
+class _PlanUnreadable extends StatelessWidget {
+  const _PlanUnreadable({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Plan')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(
+                Icons.warning_amber_outlined,
+                size: 40,
+                color: AppColors.textTertiary,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Couldn't open your plan",
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Your plan is still saved. Try again, and if it keeps failing '
+                'your coach can rebuild it.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(onPressed: onRetry, child: const Text('Try again')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

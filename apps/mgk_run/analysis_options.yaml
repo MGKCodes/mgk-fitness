@@ -1,0 +1,18 @@
+# Static analysis configuration for Runio.
+# Runs via `flutter analyze` and in CI. No new warnings are allowed (see
+# CONTRIBUTING.md).
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    - prefer_final_locals
+    - prefer_single_quotes
+    - unawaited_futures

@@ -1,0 +1,21 @@
+name: mgk_fitness
+description: "Workspace root for the MGKCodes fitness suite. Not a shippable package."
+publish_to: none
+
+# Native pub workspaces (Dart >=3.6) rather than Melos: one shared lockfile and
+# one `flutter pub get` for the whole tree. Glob members need Dart >=3.11, which
+# is what lets apps/ and packages/ be listed once instead of per package.
+environment:
+  sdk: ^3.11.0
+
+# Every package under these paths joins the workspace automatically, provided it
+# declares `resolution: workspace` in its own pubspec.
+#
+# `apps/**` was held back while apps/ was empty: pub treats a glob that matches
+# no package as an error, not as an empty set, so listing it would have broken
+# `flutter pub get` for the whole tree. mgk_run landed on 2026-08-06, so it is
+# live now. If apps/ ever empties again, comment this out rather than wondering
+# why the workspace stopped resolving.
+workspace:
+  - packages/**
+  - apps/**

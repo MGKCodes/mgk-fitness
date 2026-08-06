@@ -1,0 +1,50 @@
+name: mgk_run
+description: "Running: tracking, plans, and the AI coach. Part of the MGKCodes fitness suite."
+publish_to: none
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+# Joins the workspace defined by the root pubspec: one shared lockfile, one
+# `flutter pub get` for the whole tree.
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The suite's design system. Everything visual comes from here — this app
+  # declares no colours, no motion curves, and no fonts of its own.
+  mgk_ui:
+    path: ../../packages/mgk_ui
+
+  cupertino_icons: ^1.0.8
+  drift: ^2.34.2
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  supabase_flutter: ^2.16.0
+  geolocator: ^14.0.3
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/backgrounds/
+
+  # No `fonts:` block, deliberately. Inter is declared by mgk_ui, so the family
+  # is addressed as `packages/mgk_ui/Inter` and reaches this app through
+  # AppTheme.fontFamily. Re-declaring it here as plain `Inter` would shadow that
+  # with a second family and silently fall back to the platform default — a bug
+  # only catchable by eye.

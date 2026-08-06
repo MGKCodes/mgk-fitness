@@ -1,0 +1,39 @@
+name: mgk_lift
+description: "Lifting: workouts, progress photos, and the AI coach. Part of the MGKCodes fitness suite."
+publish_to: none
+
+# Liftio's App Store build is at 1.4.0. This is a rewrite, not a continuation:
+# it starts at 0.1.0 and only claims a 1.x number when it can replace what is
+# shipped today.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+# Joins the workspace defined by the root pubspec.
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The suite's design system. Everything visual comes from here — this app
+  # declares no colours, no motion curves, and no fonts of its own.
+  mgk_ui:
+    path: ../../packages/mgk_ui
+
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # No `fonts:` block, deliberately. Inter is declared by mgk_ui, so the family
+  # is addressed as `packages/mgk_ui/Inter` and reaches this app through
+  # AppTheme.fontFamily. Re-declaring it here as plain `Inter` would shadow that
+  # and silently fall back to the platform default.

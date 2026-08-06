@@ -1,0 +1,75 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec_overrides.yaml
+
+# In a pub workspace the root lockfile is the only one, and it is committed.
+# Member packages must not carry their own.
+apps/**/pubspec.lock
+packages/**/pubspec.lock
+
+# Generated code
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Symbols and coverage
+*.dSYM/
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Android
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/key.properties
+**/android/app/*.jks
+**/android/app/*.keystore
+**/android/**/GeneratedPluginRegistrant.java
+
+# iOS / macOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+*.mobileprovision
+*.cer
+*.certSigningRequest
+
+# Secrets — nothing here is safe to publish, and this repo is public.
+.env
+.env.*
+!.env.example
+
+# Per-app runtime config: real Supabase keys, map keys, and dev sign-in
+# credentials. Every app gets an `app_config.example.json` with placeholders,
+# committed; the real one never is. Matched here at the root as well as in each
+# app so a new app is protected before anyone remembers to add the rule.
+**/config/app_config.json
+**/supabase/.temp/
+**/*service_role*
+**/*.p8
+
+# Session handoff — a working artifact, not a repo doc. It carries pricing
+# strategy and go-to-market notes, and this repo is going public. Track it
+# deliberately or not at all; don't let `git add -A` decide.
+handoff.md
+
+# OS
+.DS_Store
+Thumbs.db

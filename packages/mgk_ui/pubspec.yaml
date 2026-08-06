@@ -1,0 +1,50 @@
+name: mgk_ui
+description: "Design system for the MGKCodes fitness suite: greyscale tokens, motion and components."
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.41.0"
+
+# Joins the workspace defined by the root pubspec.
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  # Bundled rather than fetched at runtime, so first paint never waits on a
+  # network font. Static weights rather than the variable file: variable
+  # weight-axis mapping is inconsistent across platforms and typography here is
+  # design-critical. SIL Open Font License — assets/fonts/OFL.txt ships with these.
+  #
+  # Declared by the package, so apps get the family for free. Because it comes
+  # from a package the family is addressed as `packages/mgk_ui/Inter` — use
+  # AppTheme.fontFamily rather than writing the string.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Inter-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900

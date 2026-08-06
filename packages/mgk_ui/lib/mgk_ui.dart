@@ -1,0 +1,23 @@
+/// The design system for the MGKCodes fitness suite.
+///
+/// Greyscale tokens, a shared motion vocabulary and the components that
+/// implement them, so every app in the suite reads as one product.
+///
+/// The rules that are not expressible in code — where glass is allowed, how
+/// "today" differs from "focused", why the text greys are cool rather than
+/// neutral — are in this package's README.
+library;
+
+export 'src/motion/app_motion.dart';
+export 'src/motion/count_up.dart';
+export 'src/motion/entrance.dart';
+export 'src/motion/page_transitions.dart';
+export 'src/theme/app_colors.dart';
+export 'src/theme/app_radius.dart';
+export 'src/theme/app_theme.dart';
+export 'src/widgets/app_card.dart';
+export 'src/widgets/glass_surface.dart';
+export 'src/widgets/photo_backdrop.dart';
+export 'src/widgets/primary_button.dart';
+export 'src/widgets/section_label.dart';
+export 'src/widgets/stat_block.dart';
