@@ -17,7 +17,10 @@ import '../src/features/coaching/presentation/coach_screen.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/planning/domain/plan.dart';
 import '../src/features/planning/domain/plan_validator.dart';
+import '../src/features/planning/presentation/adapt_sheet.dart';
+import '../src/features/planning/presentation/plan_intake_screen.dart';
 import '../src/features/planning/presentation/plan_review_screen.dart';
+import '../src/features/planning/presentation/swap_sheet.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
 import '../src/features/photos/domain/progress_photo.dart';
@@ -116,6 +119,32 @@ class PreviewApp extends StatelessWidget {
           // the preview silently reviewed a surface with one of its two
           // actions missing, which is how it went unlooked-at this long.
           onAdapt: () {},
+        ),
+      ),
+      // The three the harness could not reach, which is why nobody had
+      // looked at them. A sheet needs something behind it, so these sit on a
+      // plain scaffold and open themselves.
+      'plan-intake': (_) => PlanIntakeScreen(
+        planner: FakePlanner(),
+        opener:
+            'What are you training for, and which days can you get to the '
+            'gym?',
+      ),
+      'swap-sheet': (_) => _SheetHost(
+        open: (context) => SwapSheet.show(
+          context,
+          planner: FakePlanner(),
+          session: _openSession(),
+          movement: 'Barbell Bench Press',
+          log: sampleLog(previewNow),
+        ),
+      ),
+      'adapt-sheet': (_) => _SheetHost(
+        open: (context) => AdaptSheet.show(
+          context,
+          planner: FakePlanner(),
+          plan: samplePlan(previewNow),
+          weekNumber: 1,
         ),
       ),
       'plan-review': (_) => PlanReviewScreen(
@@ -634,4 +663,29 @@ Plan samplePlan(DateTime now, {bool targeted = true}) {
       ],
     ],
   );
+}
+
+/// Opens a sheet as soon as it is shown, so a modal is reviewable in a harness
+/// that addresses screens by name rather than by tapping.
+class _SheetHost extends StatefulWidget {
+  const _SheetHost({required this.open});
+
+  final Future<void> Function(BuildContext context) open;
+
+  @override
+  State<_SheetHost> createState() => _SheetHostState();
+}
+
+class _SheetHostState extends State<_SheetHost> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.open(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(backgroundColor: AppColors.bg, body: SizedBox.expand());
 }

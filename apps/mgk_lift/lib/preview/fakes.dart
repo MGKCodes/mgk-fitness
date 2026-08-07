@@ -1,4 +1,8 @@
 import '../src/features/stats/domain/session_history.dart';
+import '../src/features/planning/domain/plan.dart';
+import '../src/features/planning/domain/plan_adaptation.dart';
+import '../src/features/planning/domain/plan_generator.dart';
+import '../src/features/planning/domain/plan_proposal.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/domain/session_recorder.dart';
 
@@ -33,18 +37,15 @@ class FakeSessionRecorder implements SessionRecorder {
   @override
   Future<Session> addExercise(String name, {String? cardioMode}) async {
     final s = _require();
-    return _session = _copy(
-      s,
-      <SessionExercise>[
-        ...s.exercises,
-        SessionExercise(
-          id: _nextId,
-          name: name,
-          orderIndex: s.exercises.length,
-          cardioMode: cardioMode,
-        ),
-      ],
-    );
+    return _session = _copy(s, <SessionExercise>[
+      ...s.exercises,
+      SessionExercise(
+        id: _nextId,
+        name: name,
+        orderIndex: s.exercises.length,
+        cardioMode: cardioMode,
+      ),
+    ]);
   }
 
   @override
@@ -243,5 +244,118 @@ class FakeHistory implements SessionHistory {
     final sorted = <Session>[..._log]
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return limit == null ? sorted : sorted.take(limit).toList();
+  }
+}
+
+/// A planner with canned answers, so the coach-backed sheets and the intake
+/// conversation are reviewable without a network or an account.
+///
+/// The harness is the checklist the navigation audit works from, so a screen
+/// missing from it is a screen nobody has looked at — which is exactly what
+/// happened to these three.
+class FakePlanner implements CoachPlanner {
+  FakePlanner({this.failWith});
+
+  final PlanFailure? failWith;
+
+  void _maybeFail() {
+    final f = failWith;
+    if (f != null) throw PlanException(f);
+  }
+
+  @override
+  Future<IntakeTurn> intake({
+    required PlanIntake known,
+    required List<PlannerTurn> history,
+  }) async {
+    _maybeFail();
+    return IntakeTurn(
+      reply:
+          'Four days is plenty. Which days can you get there, and what have '
+          'you got to train with?',
+      extracted: const PlanIntake(
+        goal: 'Get my bench past 100 by Christmas',
+        daysPerWeek: 4,
+        availableWeekdays: <int>[1, 2, 4, 5],
+        equipment: 'Full gym',
+      ),
+    );
+  }
+
+  @override
+  Future<List<PlanWeek>> skeleton({
+    required PlanIntake intake,
+    List<String> violations = const <String>[],
+  }) async => const <PlanWeek>[];
+
+  @override
+  Future<WeekProposal> week({
+    required PlanIntake intake,
+    required PlanWeek slot,
+    List<String> violations = const <String>[],
+  }) async => const WeekProposal(sessions: <ProposedSession>[]);
+
+  @override
+  Future<SwapProposal> swap({
+    required String message,
+    required Session session,
+  }) async {
+    _maybeFail();
+    return SwapProposal.fromJson(<String, Object?>{
+      'reply':
+          'Fair enough. Any of these train the same thing, and the first is '
+          'kindest on the shoulder.',
+      'swap': <String, Object?>{
+        'replaces': 'Barbell Bench Press',
+        'options': <Object?>[
+          <String, Object?>{
+            'name': 'Dumbbell Bench Press',
+            'sets': 3,
+            'reps': 8,
+            'intensity_pct': null,
+            'why': 'Same pattern, kinder on the shoulder',
+          },
+          <String, Object?>{
+            'name': 'Machine Chest Press',
+            'sets': 3,
+            'reps': 10,
+            'intensity_pct': null,
+            'why': 'Fixed path, nothing to stabilise',
+          },
+        ],
+      },
+    });
+  }
+
+  @override
+  Future<AdaptProposal> adapt({
+    required String message,
+    required Plan plan,
+    required int weekNumber,
+  }) async {
+    _maybeFail();
+    return AdaptProposal.fromJson(<String, Object?>{
+      'reply':
+          'I would move Thursday to Friday and go lighter on Monday. That '
+          'gives the shoulder two more days before it takes any load.',
+      'changes': <Object?>[
+        <String, Object?>{
+          'action': 'move',
+          'weekday': 4,
+          'to_weekday': 5,
+          'movement': null,
+          'to': null,
+          'why': 'Two more days before it takes load',
+        },
+        <String, Object?>{
+          'action': 'lighten',
+          'weekday': 1,
+          'to_weekday': null,
+          'movement': null,
+          'to': null,
+          'why': 'A set off everything, ten per cent down',
+        },
+      ],
+    });
   }
 }

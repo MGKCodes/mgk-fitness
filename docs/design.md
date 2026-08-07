@@ -1,0 +1,152 @@
+# Design principles
+
+What holds a screen together in Lift and Run, and why.
+
+Written 2026-08-07, after looking at six screens that had been built without
+anyone seeing them render. Every rule below is here because it was broken, and
+each one names where — a principle with no failure behind it is decoration.
+
+The design language itself (greyscale, Inter, the photography, the motion
+vocabulary) lives in `packages/mgk_ui` and in ADR-0009. This is the layer above:
+how a screen is put together once it has those.
+
+---
+
+## 1. A container sizes to its content
+
+Fixed heights and centred columns produce a void when the content is short and
+a clip when it is long. Neither failure is visible while you are writing the
+widget with one item in it.
+
+**Broken in two places.** Plan's live block put its session list in a centred
+column, which marooned two sessions in the middle of the screen with seven
+hundred pixels of nothing beneath them — and would have pushed a fifth off the
+bottom. The coach sheets fix themselves at 70% of screen height, so two
+suggestions leave the same void above the input.
+
+Centring is right for a fixed lump of copy: the paywall offer, an empty state, a
+message. It is wrong for anything whose length depends on data.
+
+> A list is top-aligned and scrolls. A sheet is as tall as what is in it, up to
+> a ceiling. If you cannot say how tall the content is, do not name a height.
+
+## 2. One slot, one shape
+
+Two states that occupy the same position render at the same width, with the same
+anatomy, in the same order.
+
+**Broken on Track.** `Next up` spanned the full width and `Where you were`
+stopped three-quarters across, because `GlassSurface` sizes to its content and
+one had more text than the other. Same screen, same slot, two shapes — which
+reads as a layout bug even though each card is individually fine.
+
+> If two widgets can appear in one place, they are one component with two
+> states, or they are wrong.
+
+## 3. Say a thing once, at the level that says it best
+
+When two elements carry the same fact, the more specific one wins and the other
+goes.
+
+**Broken on Track, twice.** "Session in progress / You have a session open, pick
+up where you left off" sat directly above a card saying **Push · 2 sets in ·
+started yesterday**. The vague version was larger and on top. In the planned
+state it was worse: the headline said "Start a session and log it set by set",
+which is free-tier copy, above a card naming that day's prescribed session.
+
+The headline now reads the same state the card does, and its supporting line is
+dropped whenever the card already carries it.
+
+> A headline that could be printed on any screen is not a headline.
+
+## 4. The same data renders the same way everywhere
+
+One rendering per kind of thing, defined once.
+
+**Broken across three surfaces.** A planned movement appeared as
+`Name — 3 × 5 @ 85 kg` on the review screen, and as a middle-dot run-on
+(`Name 3 × 5 @ 85 kg · Name 3 × 8 @ 27.5 kg · …`) on Track and Plan, where it
+wrapped into a dense block nobody reads standing up holding a phone. The better
+rendering already existed; it just had not been reused.
+
+`PlannedMovement.render(unit)` is the single definition. If a surface needs a
+different one, that is a signal the data is different, not the presentation.
+
+> Two renderings of one thing is a bug with a delay on it.
+
+## 5. Repetition is a signal to collapse
+
+If a list produces near-identical rows, the unit is wrong.
+
+**Broken on the review screen.** An eight-week block rendered eight week cards,
+six of which carried only a phase and an intent — and therefore read as the same
+card printed six times, each repeating that it would be written closer to the
+time. It made a plan look machine-made on the one screen that has to look
+considered.
+
+They collapsed into a single row: `Weeks 3 to 8 — written a week at a time…
+Weeks 4 and 8 back off`. The information worth having in advance (where the
+deloads fall) survives; the repetition does not.
+
+> Six identical cards is one card with a range in it.
+
+## 6. Absent beats zero
+
+Nothing to show shows nothing, not noughts.
+
+**Held on Track.** The recent strip — sessions this week, week streak, last
+session — is omitted entirely on an empty log rather than rendering `0 / 0 / —`.
+Three noughts on day one reads as a scoreboard somebody is already losing, which
+is the opposite of what the screen is for.
+
+> An empty state is a sentence, not a zeroed instance of the full state.
+
+## 7. Null is a value, not a gap
+
+A missing number is often a real answer and should render as one.
+
+**Held throughout the plan.** A movement the coach could not derive a weight for
+shows `3 × 12`, not `3 × 12 @ 0 kg` and not a blank where a number should be.
+That is how most accessory work is actually programmed, and the plan says so
+plainly — "8 of 12 movements have a weight. The rest are ones your coach has not
+seen you lift, so it is not guessing at a number."
+
+This one matters more than it looks: the whole load rule (see
+[architecture.md](architecture.md#planning)) produces nulls by design, and a UI
+that treated them as missing data would have made the honest behaviour look
+broken.
+
+> If the absence is meaningful, say what it means. Do not draw a hole.
+
+## 8. The photograph is the brand
+
+With no accent colour, the photography carries the identity (ADR-0009). Content
+sits **on** it with a scrim, never in a panel floating above it, and the scrim is
+chosen per screen: light where a headline sits, heavy under a price.
+
+> A flat dark screen where a photograph should be is throwing away the only
+> colour decision this product makes.
+
+---
+
+## How to check
+
+The preview harness enumerates every screen and is the checklist:
+
+    flutter run -d emulator-5554 --dart-define=screen=plan-active \
+      -t lib/preview/main.dart
+    adb exec-out screencap -p > shot.png
+
+**Run it on the device, not the browser.** The web build renders blur, fonts,
+safe areas and scroll physics differently, and the harness only became
+device-addressable on 2026-08-07 — before that `--dart-define` did not exist and
+the screen name came from the URL, so Android always fell back to the index.
+
+**A screen missing from the harness is a screen nobody has looked at.** The two
+coach sheets and the plan intake conversation were absent from it, which is
+exactly why they went unreviewed longest.
+
+And the thing worth saying plainly: `flutter analyze` and widget tests prove a
+tree builds and the right strings are in it. They proved all six of these
+screens "correct" while five of them had layout faults. **They cannot see a
+screen.** Look at it.

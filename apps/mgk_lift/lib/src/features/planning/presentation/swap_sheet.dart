@@ -124,8 +124,13 @@ class _SwapSheetState extends State<SwapSheet> {
     final media = MediaQuery.of(context);
     final verdict = _verdict;
 
-    return SizedBox(
-      height: media.size.height * 0.7,
+    // Sized to its content, capped so a long answer still leaves the
+    // screen behind it visible. Fixed at a fraction of the height, two
+    // suggestions left several hundred pixels of nothing between the last
+    // option and the input — the same fault as a centred list, which is
+    // principle 1 in docs/design.md.
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: media.size.height * 0.7),
       child: GlassSurface(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppRadius.sheet),
@@ -138,6 +143,10 @@ class _SwapSheetState extends State<SwapSheet> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          // min + Flexible, not the default + Expanded. Expanded fills whatever
+          // it is given, so a maxHeight would have been a fixed height wearing
+          // a different name and the void would have survived the change.
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Center(
               child: Container(
@@ -153,8 +162,9 @@ class _SwapSheetState extends State<SwapSheet> {
             SectionLabel('Instead of ${widget.movement}'),
             const SizedBox(height: AppSpacing.md),
 
-            Expanded(
+            Flexible(
               child: ListView(
+                shrinkWrap: true,
                 children: <Widget>[
                   if (_waiting)
                     Text(
