@@ -198,13 +198,6 @@ lifter a fortnight in, which is worth knowing when reading the Plan surface's
 
 ### Mid-session swaps — `lift_swap`
 
-Added on request. Nothing changes until the lifter taps an option, and the plan
-is updated with what they chose — otherwise it would go on claiming they did
-something they swapped out, which is the one question `workout_id` exists to
-answer.
-
-### Mid-session swaps — `lift_swap`
-
 Added 2026-08-07, on request: while training, "I don't like barbell bench
 press, can we swap it out or do something else instead."
 
@@ -221,11 +214,19 @@ invented. It differs from the week validator in one deliberate way — unusable
 options are **dropped and the rest kept**, because the lifter is standing
 between sets. The reply always survives.
 
-**It proposes and does not act.** Applying a choice to the live session is the
-app's job and is not wired yet; that is the remaining half of this feature.
-When it is, a swap made against a planned session should also be recorded
-against `lift.plan_sessions`, or the plan will claim they did something they
-changed.
+**The coach proposes; nothing moves until the lifter taps one.** Both halves of
+applying it are wired, and this section said otherwise until 2026-08-07 — it
+described the state at the time the prompt landed and was not revisited when
+the app side followed an hour later. Check `_swap` and `_recordSwap` rather
+than this paragraph.
+
+`ActiveSessionScreen._swap` removes the old movement and seeds the new one's
+sets the way a planned session's are — reps in, weight in when the coach could
+derive one, blank when it could not. `LiftShell._recordSwap` then writes the
+change back to `lift.plan_sessions`, because a plan that kept the original
+would go on claiming they did something they swapped out. A failure there is
+swallowed on purpose: the session is right either way, only the plan's copy is
+behind, and that is not worth interrupting a workout for.
 
 ### The original plan for the templates, and what happened instead
 
@@ -371,6 +372,18 @@ about their actual training — sessions this week, week streak, when the last o
 was — absent rather than zeroed on an empty log, because three noughts on day
 one reads as a scoreboard somebody is already losing.
 
+**Then it was looked at on a device, which found more.** The rules that came
+out of that pass are in [design.md](design.md); what they cost on this screen
+was a headline that repeated the label of the card beneath it, and a
+`hasOpenSession` bool the screen branched on separately from the session it was
+derived from. Both are gone.
+
+The general lesson is principle 9 and it is the one worth carrying forward:
+`flutter analyze` and widget tests proved every one of these screens correct
+while five of them had layout faults, because **neither can see a screen**. The
+harness is now device-addressable (`--dart-define=screen=`), which is what made
+looking cheap enough to actually do.
+
 ### As originally written
 
 The direction is right and the execution is thin. Today it is an eyebrow, a
@@ -413,10 +426,14 @@ Not part of the five, but real, and each one is small:
   plumbing is right; none of it says the coach answers. That needs a signed-in
   lifter on a build pointed at production.
 
-- **`COACH_MODEL_ALLOWLIST` is set on production**, since 2026-07-29, and it
-  breaks the rule its own documentation sets. Its contents are all seven ids
-  from `dev_coach_model.dart`, recovered by hashing candidates against the
-  digest `secrets list` prints:
+- ~~**`COACH_MODEL_ALLOWLIST` is set on production**~~ **Unset 2026-08-07**, and
+  confirmed absent from `secrets list` afterwards rather than assumed from the
+  command's exit code. Kept here because the reasoning is what matters, not the
+  bullet: it had been set since 2026-07-29 and it broke the rule its own
+  documentation sets. Its contents were all seven ids from
+  `dev_coach_model.dart`, recovered by hashing candidates against the digest
+  `secrets list` prints — which is also the technique to reach for next time a
+  secret's value is needed and only its digest is available:
 
       nex-agi/nex-n2-mini, google/gemini-3.1-flash-lite-20260507,
       minimax/minimax-m3-20260531, qwen/qwen3.7-plus-20260602,
@@ -436,9 +453,10 @@ Not part of the five, but real, and each one is small:
   `data_collection: "deny"` stops training, not geography. `lift_chat` now
   carries the same class of data.
 
-  Neither is currently reachable — no shipped client sends `model`, and Lift's
-  never will — so this is a loosening rather than a live exploit. The fix is one
-  line, and its only cost is the debug model-comparison workflow in `mgk_run`:
+  Neither was ever reachable — no shipped client sends `model`, and Lift's never
+  will — so it was a loosening rather than a live exploit. The fix was one line,
+  and its only cost was the debug model-comparison workflow in `mgk_run`, which
+  now has to set the secret again while it is in use:
 
       npx supabase secrets unset COACH_MODEL_ALLOWLIST
 
@@ -482,3 +500,10 @@ Not part of the five, but real, and each one is small:
 - **Progress photos never sync.** The tables and the storage bucket exist. The
   screen currently promises "nothing is uploaded", and that sentence has to
   change in the same commit as the behaviour.
+- ~~**`packages/mgk_ui` has no tests.**~~ **Started 2026-08-07** — eight, on the
+  two components extracted that day. Deliberately narrow: they pin the layout
+  rules that a screenshot catches and a compiler cannot (a lone conversation
+  turn sits by the composer, a bubble never spans both margins, a destructive
+  button never takes the primary fill). The rest of the package is still
+  untested, and the useful ones to add next are the same kind — [design.md](design.md)
+  says which rules are load-bearing.
