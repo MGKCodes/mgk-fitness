@@ -297,7 +297,16 @@ Not part of the five, but real, and each one is small:
   is now the only place in the repo holding an `ANTHROPIC_API_KEY`. The
   restructure migration says it stays app-local until a coach surface replaces
   it; that surface is worth adding while the surfaces table is fresh.
-- **Nothing is pushed to the remote.** 24 commits sit locally.
+- ~~**Nothing is pushed to the remote.**~~ Stale as written: `origin/main`
+  (`github.com/MGKCodes/mgk-fitness`, **private**) was current as of
+  2026-08-07. Check `git log origin/main..HEAD` rather than trusting a count
+  written into a document.
+
+  Worth knowing while reading the code: several comments justify their design
+  with "the repo is public" — the key never reaching the client, the abuse
+  economics behind the spend cap. That reasoning is inherited from Liftio and
+  Runio and it is sound, but **this** repo is private today. The designs are
+  right either way; the stated premise is what is out of date.
 - **Liftio's ToS still contradicts the licence decision** made this session, in
   three files across `Liftio` and `getliftio.com`, and Liftio has no credits
   screen to point at. `mgk_lift`'s `credits_screen.dart` is a working
