@@ -107,6 +107,76 @@ class ProposedMovement {
       );
 }
 
+/// What the coach said when asked to change a movement mid-session.
+///
+/// The reply and the options are separable on purpose. The reply is the answer
+/// — it might be "just skip it today" — and it reaches the lifter whatever
+/// happens to the options. If every option turns out to be unusable, they still
+/// get a coach who said something sensible rather than an error.
+@immutable
+class SwapProposal {
+  const SwapProposal({required this.reply, this.replaces, this.options});
+
+  final String reply;
+
+  /// The movement being replaced, as the app named it. Null when the coach
+  /// offered no substitution.
+  final String? replaces;
+
+  /// The alternatives, best first. Null when there is no substitution at all;
+  /// empty when the coach proposed one and then had nothing worth suggesting,
+  /// which the prompt explicitly permits.
+  final List<SwapOption>? options;
+
+  static SwapProposal fromJson(Map<String, Object?> json) {
+    final swap = json['swap'];
+    if (swap is! Map<String, Object?>) {
+      return SwapProposal(reply: (json['reply'] as String? ?? '').trim());
+    }
+    final raw = swap['options'];
+    return SwapProposal(
+      reply: (json['reply'] as String? ?? '').trim(),
+      replaces: (swap['replaces'] as String? ?? '').trim(),
+      options: <SwapOption>[
+        if (raw is List)
+          for (final o in raw)
+            if (o is Map<String, Object?>) SwapOption.fromJson(o),
+      ],
+    );
+  }
+}
+
+@immutable
+class SwapOption {
+  const SwapOption({
+    required this.name,
+    required this.sets,
+    required this.reps,
+    required this.why,
+    this.intensityPct,
+  });
+
+  final String name;
+  final int sets;
+  final int reps;
+
+  /// A few words on why this one — shown next to it while they choose.
+  final String why;
+
+  /// As everywhere else: a percentage, never a weight, and usually null here.
+  /// A substitute is often something they have never done, which is exactly
+  /// when a number would have to be invented.
+  final int? intensityPct;
+
+  static SwapOption fromJson(Map<String, Object?> json) => SwapOption(
+    name: (json['name'] as String? ?? '').trim(),
+    sets: _int(json['sets']) ?? 0,
+    reps: _int(json['reps']) ?? 0,
+    why: (json['why'] as String? ?? '').trim(),
+    intensityPct: _int(json['intensity_pct']),
+  );
+}
+
 /// Accepts an int, or a double that is exactly one. Providers occasionally
 /// return `3.0` for an integer field, and rejecting that would fail a week over
 /// a JSON encoder's choice rather than over anything about the training.

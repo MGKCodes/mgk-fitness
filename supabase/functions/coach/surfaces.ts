@@ -1564,6 +1564,176 @@ export function liftWeekMessages(body: Body): Message[] {
   ];
 }
 
+// ---- lift_swap (mid-session substitution) -----------------------------------
+
+/// "I don't like barbell bench press, can we swap it or do something else."
+///
+/// The one surface that takes the session the lifter is IN as input, and the
+/// only place a Lift prompt is handed something by the client rather than
+/// reading it. That is not the exception it looks like: an in-progress session
+/// is not a record yet. The device owns it until it is finished (ADR-0004), so
+/// there is nothing in Postgres to read and nothing the client could be
+/// misrepresenting — it is describing its own present state, not narrating
+/// history.
+///
+/// It proposes and does not act. The lifter gets options and picks one, or
+/// ignores all of them: a coach that silently rewrote the session somebody was
+/// halfway through would be worse than one that could not help at all.
+///
+/// The load rule holds here exactly as it does in `lift_week` — an option
+/// carries an intensity and never a weight, and Dart resolves it against the
+/// lifter's own log. A substitute movement is the case where inventing a number
+/// is MOST tempting and most wrong: they have often never done the thing being
+/// suggested, which is precisely why it is being suggested.
+const LIFT_SWAP_INSTRUCTIONS =
+  `The lifter is mid-session and wants to change a movement. They will say why,
+or they will not: it hurts, the rack is taken, they hate it, it is not working.
+Take the reason at face value and do not interrogate it.
+
+Offer one to three alternatives that train the same thing, in the order you
+would recommend them. Fewer is better — they are standing in a gym holding a
+phone, not reading a menu.
+
+Every option must:
+- work with the equipment they said they have;
+- avoid whatever they have told you hurts;
+- train roughly what the movement it replaces trains, unless they asked for
+  something different on purpose;
+- be a real movement under its usual name. Do not invent variations and do not
+  qualify a name into something specific to one gym.
+
+"why" is a few words, not a sentence. "Same pattern, easier on the shoulder"
+is what a coach says on a gym floor. "This exercise targets the pectoralis
+major while reducing anterior shoulder stress" is not.
+
+Match the sets and reps of the movement being replaced unless the substitution
+makes that wrong — a machine press for a barbell press is the same sets and
+reps; a dumbbell version usually wants a rep or two more.
+
+"intensity_pct" follows the same rule as everywhere else: a percentage of what
+they can do for one rep, and **null whenever you would not put a number on it**
+— accessories, machines, bodyweight, and anything they have not logged before.
+A substitute is usually something they have NOT done, so null is the common
+answer here. You cannot prescribe a weight and must not put one in "why". The
+app works the number out, or leaves it out.
+
+If the honest answer is that they should just skip it, or do the same movement
+lighter, say that in your reply and offer no options. An empty list is a real
+answer.
+
+If they are asking something that is not a substitution, answer it in your
+reply and leave "swap" null.
+
+Keep the reply to a sentence or two. They are between sets.`;
+
+const LIFT_SWAP_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "swap"],
+  properties: {
+    reply: {
+      type: "string",
+      description: "What the coach says. A sentence or two; they are mid-set.",
+    },
+    swap: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      required: ["replaces", "options"],
+      description:
+        "The proposed substitution, or null when the reply is the whole " +
+        "answer.",
+      properties: {
+        replaces: {
+          type: "string",
+          description:
+            "The movement being replaced, named exactly as it was given.",
+        },
+        options: {
+          type: "array",
+          description:
+            "One to three alternatives, best first. May be empty when the " +
+            "honest answer is to skip it or go lighter.",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["name", "sets", "reps", "intensity_pct", "why"],
+            properties: {
+              name: {
+                type: "string",
+                description: "The movement, by its usual name.",
+              },
+              sets: { type: "integer" },
+              reps: { type: "integer" },
+              intensity_pct: nullable(
+                "integer",
+                "Percentage of their one-rep max, 40 to 100. Null for " +
+                  "anything you would not put a number on — which is most " +
+                  "substitutes, since they have usually not done them.",
+              ),
+              why: {
+                type: "string",
+                description: "A few words on why this one. Never a weight.",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+/// Renders the session as it stands, so the coach can see what has already been
+/// done rather than only what was planned.
+///
+/// **What is finished matters as much as what is left.** Swapping the third of
+/// three sets is a different question from swapping before the first, and a
+/// coach that cannot tell will offer to change something the lifter has already
+/// done.
+export function renderSessionInProgress(raw: unknown): string {
+  if (typeof raw !== "object" || raw === null) return "";
+  const session = raw as Record<string, unknown>;
+  const exercises = Array.isArray(session.exercises) ? session.exercises : [];
+
+  const lines: string[] = [];
+  for (const entry of exercises) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const e = entry as Record<string, unknown>;
+    const name = typeof e.name === "string" ? e.name.trim() : "";
+    if (!name) continue;
+
+    const sets = Array.isArray(e.sets) ? e.sets : [];
+    const done = sets.filter((s) =>
+      typeof s === "object" && s !== null &&
+      (s as Record<string, unknown>).is_completed === true
+    ).length;
+    lines.push(
+      `  ${name}: ${done} of ${sets.length} sets done`,
+    );
+  }
+  return lines.join("\n");
+}
+
+export function liftSwapMessages(body: Body): Message[] {
+  const message = text(body.message, MAX_MESSAGE_CHARS);
+  const memory = text(body.memory, MAX_MEMORY_CHARS);
+  const brief = text(body.brief, MAX_BRIEF_CHARS);
+  const session = clamp(renderSessionInProgress(body.session), MAX_BRIEF_CHARS);
+
+  const system = `${LIFT_PERSONA}\n\n${LIFT_SWAP_INSTRUCTIONS}\n\n` +
+    (memory ? `What you know about them:\n${memory}\n\n` : "") +
+    `The session they are in right now:\n${
+      session || "(nothing logged in it yet)"
+    }\n\n` +
+    `Recent training (most recent first):\n${
+      brief || "(no sessions logged yet)"
+    }`;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: message },
+  ];
+}
+
 // ---- provider routing -------------------------------------------------------
 
 /**
@@ -1733,6 +1903,21 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     render: (p) => ({ reply: String(p.reply).trim() }),
     // Straight to a person with no Dart validator in between — the same reason
     // `chat` and `summarise` are marked, and the same routing consequence.
+    humanFacing: true,
+  },
+  lift_swap: {
+    name: "lift_swap",
+    app: "lift",
+    schema: LIFT_SWAP_SCHEMA,
+    // Small on purpose: one or two sentences and up to three options. A bigger
+    // budget here buys a lecture, and they are between sets.
+    maxTokens: 768,
+    messages: liftSwapMessages,
+    validRequest: (b) =>
+      typeof b.message === "string" && b.message.trim() !== "",
+    valid: (p) => typeof p.reply === "string" && p.reply.trim() !== "",
+    // The reply reaches the lifter with no validator in between — only the
+    // OPTIONS are graded in Dart. Same reasoning as `lift_chat`.
     humanFacing: true,
   },
   lift_intake: {

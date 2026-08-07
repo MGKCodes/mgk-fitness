@@ -25,10 +25,12 @@ import {
   liftIntakeMessages,
   liftSkeletonMessages,
   liftSummariseMessages,
+  liftSwapMessages,
   liftWeekMessages,
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
+  renderSessionInProgress,
   RUN_PERSONA,
   setGoalMessages,
   summariseMessages,
@@ -658,6 +660,93 @@ Deno.test("the planning surfaces are validated, so none is human-facing", () => 
   }
 });
 
+// ---- lift_swap --------------------------------------------------------------
+
+const IN_SESSION = {
+  exercises: [
+    {
+      name: "Barbell Bench Press",
+      sets: [
+        { is_completed: true },
+        { is_completed: true },
+        { is_completed: false },
+      ],
+    },
+    { name: "Cable Fly", sets: [{ is_completed: false }] },
+  ],
+};
+
+Deno.test("the swap schema has nowhere to put a weight either", () => {
+  // The same rule as lift_week, and the case where breaking it is most
+  // tempting: a substitute is usually something they have never done, which is
+  // exactly when a model is most inclined to invent a starting number.
+  const keys = schemaKeys(SURFACES.lift_swap.schema);
+  for (const banned of ["target_kg", "weight", "weight_kg", "kg", "load"]) {
+    assert(!keys.has(banned), `lift_swap must not accept "${banned}"`);
+  }
+  assertStringIncludes(
+    systemOf(liftSwapMessages({ message: "hi" })),
+    'You cannot prescribe a weight and must not put one in "why"',
+  );
+});
+
+Deno.test("the coach can see what has already been done, not just what is left", () => {
+  // Swapping the third of three sets is a different question from swapping
+  // before the first, and a coach that cannot tell will offer to change
+  // something the lifter has already finished.
+  const system = systemOf(
+    liftSwapMessages({ message: "swap the bench", session: IN_SESSION }),
+  );
+  assertStringIncludes(system, "Barbell Bench Press: 2 of 3 sets done");
+  assertStringIncludes(system, "Cable Fly: 0 of 1 sets done");
+});
+
+Deno.test("an empty session says so rather than heading nothing", () => {
+  const system = systemOf(liftSwapMessages({ message: "swap the bench" }));
+  assertStringIncludes(system, "(nothing logged in it yet)");
+});
+
+Deno.test("a malformed session degrades to no session, not a crash", () => {
+  // It arrives over the wire from a client mid-workout. The worst outcome here
+  // is the coach answering without knowing what is in the session; the wrong
+  // one is the turn failing while somebody stands waiting between sets.
+  assertEquals(renderSessionInProgress(null), "");
+  assertEquals(renderSessionInProgress("nope"), "");
+  assertEquals(renderSessionInProgress({ exercises: "nope" }), "");
+  assertEquals(
+    renderSessionInProgress({ exercises: [null, { name: "" }, 3] }),
+    "",
+  );
+});
+
+Deno.test("an empty option list is a real answer", () => {
+  // Sometimes the honest answer is "skip it" or "do it lighter", and a schema
+  // that demanded at least one alternative would force the coach to invent a
+  // worse movement rather than say so.
+  // Asserted on a short fragment rather than the whole sentence: the prompt is
+  // hard-wrapped, so a clause that reads as one line in the source can span a
+  // newline in the string, and a test that breaks on re-wrapping tests the
+  // formatting rather than the rule.
+  const system = systemOf(liftSwapMessages({ message: "hi" }));
+  assertStringIncludes(system, "offer no options");
+});
+
+Deno.test("the swap proposes and never acts", () => {
+  // A coach that silently rewrote the session somebody was halfway through
+  // would be worse than one that could not help at all.
+  const swap = SURFACES.lift_swap;
+  // The surface returns options; nothing in its contract applies one.
+  const keys = schemaKeys(swap.schema);
+  assert(keys.has("options"));
+  assert(!keys.has("applied"), "the surface must not report having acted");
+});
+
+Deno.test("a swap turn with nothing said is refused before it costs", () => {
+  assert(!SURFACES.lift_swap.validRequest?.({ session: IN_SESSION }));
+  assert(!SURFACES.lift_swap.validRequest?.({ message: "  " }));
+  assert(SURFACES.lift_swap.validRequest?.({ message: "swap the bench" }));
+});
+
 Deno.test("every surface declares which app pays for it", () => {
   for (const name of SURFACE_NAMES) {
     const app = SURFACES[name].app;
@@ -714,7 +803,7 @@ Deno.test("exactly the unvalidated surfaces are human-facing", () => {
   // than passing.
   assertEquals(
     SURFACE_NAMES.filter((s) => SURFACES[s].humanFacing),
-    ["chat", "summarise", "lift_chat", "lift_summarise"],
+    ["chat", "summarise", "lift_chat", "lift_summarise", "lift_swap"],
   );
 });
 

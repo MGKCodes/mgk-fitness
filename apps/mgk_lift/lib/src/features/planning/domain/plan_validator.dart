@@ -143,6 +143,76 @@ class PlanValidator {
     ]);
   }
 
+  /// Grades a mid-session substitution.
+  ///
+  /// **Unusable options are dropped, not rejected.** A week that breaks a rule
+  /// goes back to the generator, because there is time and the lifter is not
+  /// waiting. A swap is asked for by somebody standing between sets, so the
+  /// trade goes the other way: keep whatever survives, discard the rest, and
+  /// always show the reply. Coming back with an error because the second of
+  /// three suggestions named a movement that does not exist would be the worst
+  /// possible reading of "the validator disposes".
+  ///
+  /// Targets are derived exactly as they are for a planned week — and here they
+  /// are usually null, because a substitute is typically something they have
+  /// not done before.
+  SwapVerdict checkSwap(SwapProposal proposal, {required List<Session> log}) {
+    final options = proposal.options;
+    if (options == null) {
+      return SwapVerdict(reply: proposal.reply, dropped: 0);
+    }
+
+    final lookup = _lookup ?? ExerciseLookup();
+    final kept = <PlannedMovement>[];
+    final why = <String>[];
+    var dropped = 0;
+
+    for (final option in options) {
+      final pct = option.intensityPct;
+      final usable =
+          option.name.isNotEmpty &&
+          lookup.find(option.name) != null &&
+          option.sets >= 1 &&
+          option.sets <= 10 &&
+          option.reps >= 1 &&
+          option.reps <= 20 &&
+          (pct == null ||
+              (pct >= 40 &&
+                  pct <= 100 &&
+                  _intensitySuitsReps(pct, option.reps)));
+
+      if (!usable) {
+        dropped++;
+        continue;
+      }
+      kept.add(
+        PlannedMovement(
+          name: option.name,
+          sets: option.sets,
+          reps: option.reps,
+          target: _target(
+            ProposedMovement(
+              name: option.name,
+              sets: option.sets,
+              reps: option.reps,
+              intensityPct: pct,
+            ),
+            log,
+          ),
+        ),
+      );
+      why.add(option.why);
+    }
+
+    return SwapVerdict(
+      reply: proposal.reply,
+      replaces: proposal.replaces,
+      options: kept,
+      why: why,
+      dropped: dropped,
+    );
+  }
+
   /// Nothing above this in a deload week.
   static const int _deloadCeilingPct = 70;
 
@@ -267,4 +337,37 @@ class PlannedMovement {
   final Mass? target;
 
   final String? note;
+}
+
+/// A graded substitution: what the coach said, and whatever it offered that
+/// survived checking.
+@immutable
+class SwapVerdict {
+  const SwapVerdict({
+    required this.reply,
+    required this.dropped,
+    this.replaces,
+    this.options = const <PlannedMovement>[],
+    this.why = const <String>[],
+  });
+
+  /// Always shown. Even with nothing usable behind it, the coach said
+  /// something, and "just skip it today" is a complete answer.
+  final String reply;
+
+  /// The movement being replaced, or null when nothing was proposed.
+  final String? replaces;
+
+  /// The alternatives that passed, best first, with their targets resolved.
+  final List<PlannedMovement> options;
+
+  /// Why each kept option, index-aligned with [options].
+  final List<String> why;
+
+  /// How many were discarded for naming a movement that does not exist, or
+  /// asking for a set nobody could do. Not shown to the lifter — it is the
+  /// number worth watching if a model starts drifting.
+  final int dropped;
+
+  bool get hasOptions => options.isNotEmpty;
 }
