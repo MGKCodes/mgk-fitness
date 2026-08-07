@@ -9,6 +9,8 @@ import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../sync/data/supabase_sync.dart';
+import '../../sync/domain/sync_status.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
@@ -44,6 +46,9 @@ class LiftShell extends StatefulWidget {
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
+    this.sync,
+    this.isSignedIn = false,
+    this.onSignIn,
     this.initialTab = 0,
   });
 
@@ -77,6 +82,20 @@ class LiftShell extends StatefulWidget {
   /// The camera. Null leaves photos readable but not addable, which is the
   /// honest state in a preview.
   final PhotoSource? photoSource;
+
+  /// Backup. **Null means this build has no server**, which Settings reports as
+  /// "this device only" rather than hiding the section — somebody whose
+  /// training exists in one place should be told so while the phone still
+  /// exists.
+  final SupabaseSync? sync;
+
+  /// Whether there is an account. Stated rather than inferred from whether a
+  /// sync client exists — the two are different things, and Settings tells the
+  /// lifter something load-bearing about where their training lives.
+  final bool isSignedIn;
+
+  /// Opens the sign-in flow. Null until auth lands.
+  final VoidCallback? onSignIn;
 
   /// Which surface to open on. Exists so a preview can address a tab directly —
   /// tapping Flutter's canvas from an automation harness is unreliable.
@@ -115,12 +134,46 @@ class _LiftShellState extends State<LiftShell> {
   /// finishing a session on Track changes it.
   List<Session> _log = const <Session>[];
 
+  /// What is waiting to upload, and how the last attempt went. Held here so
+  /// Settings opens with the count already known rather than flickering.
+  SyncPending? _pending;
+  SyncReport? _lastReport;
+  bool _syncing = false;
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadUnits());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
+    unawaited(_refreshPending());
+  }
+
+  Future<void> _refreshPending() async {
+    final sync = widget.sync;
+    if (sync == null) return;
+    final pending = await sync.pending();
+    if (!mounted) return;
+    setState(() => _pending = pending);
+  }
+
+  /// Runs a sync and reports the outcome.
+  ///
+  /// Nothing about this blocks logging. It is started from Settings, it can
+  /// fail, and failing costs nothing — the local database still has everything
+  /// and the rows stay pending.
+  Future<void> _syncNow() async {
+    final sync = widget.sync;
+    if (sync == null || _syncing) return;
+    setState(() => _syncing = true);
+    final report = await sync.run();
+    if (!mounted) return;
+    setState(() {
+      _syncing = false;
+      _lastReport = report;
+    });
+    await _refreshPending();
+    await _refreshLog();
   }
 
   Future<void> _loadUnits() async {
@@ -244,6 +297,12 @@ class _LiftShellState extends State<LiftShell> {
           initial: _units,
           store: widget.units,
           onChanged: (prefs) => setState(() => _units = prefs),
+          pending: _pending,
+          isSignedIn: widget.isSignedIn,
+          isSyncing: _syncing,
+          lastReport: _lastReport,
+          onSyncNow: widget.sync == null ? null : _syncNow,
+          onSignIn: widget.onSignIn,
         ),
       ),
     );

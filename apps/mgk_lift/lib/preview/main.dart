@@ -13,6 +13,7 @@ import '../src/features/photos/presentation/pose_series_screen.dart';
 import '../src/features/settings/domain/unit_preferences.dart';
 import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
+import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import 'fakes.dart';
@@ -107,6 +108,24 @@ class PreviewApp extends StatelessWidget {
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
+      ),
+      // The two states that matter: signed out with training that exists in
+      // one place, and signed in with everything up to date.
+      'backup-signed-out': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        pending: const SyncPending(workouts: 9, lastSyncedAt: null),
+        onSignIn: () {},
+      ),
+      'backup-synced': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+        pending: SyncPending(
+          workouts: 0,
+          lastSyncedAt: previewNow.subtract(const Duration(minutes: 3)),
+        ),
+        onSyncNow: () {},
       ),
       'credits': (_) => const CreditsScreen(),
       'coach-mark': (_) => LiftShell(

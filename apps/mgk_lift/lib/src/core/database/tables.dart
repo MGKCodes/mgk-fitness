@@ -49,8 +49,31 @@ class Workouts extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// When this row last reached the server.
+  ///
+  /// **Null means never uploaded, and `updatedAt > syncedAt` means changed
+  /// since.** That comparison is the whole dirty-tracking mechanism: no
+  /// separate outbox table to keep in step with the rows it describes, and no
+  /// way for a write to land without also marking the row for upload, because
+  /// the same `updatedAt` bump does both.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Where the last successful pull got to.
+///
+/// One row, keyed by name. A pull asks the server for everything changed since
+/// this timestamp, so losing it means a full re-pull rather than lost data —
+/// which is why it can live in the local database rather than anywhere safer.
+@DataClassName('SyncMetaRow')
+class SyncMeta extends Table {
+  TextColumn get key => text()();
+  DateTimeColumn get value => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
 }
 
 /// Local mirror of `lift.exercises` — one movement within a session.

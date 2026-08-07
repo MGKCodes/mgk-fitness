@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../sync/domain/sync_status.dart';
+import '../../sync/presentation/backup_section.dart';
 import '../domain/unit_preferences.dart';
 import 'credits_screen.dart';
 
@@ -22,6 +24,12 @@ class SettingsScreen extends StatefulWidget {
     required this.initial,
     this.store,
     this.onChanged,
+    this.pending,
+    this.isSignedIn = false,
+    this.isSyncing = false,
+    this.lastReport,
+    this.onSyncNow,
+    this.onSignIn,
     this.version = kAppVersion,
   });
 
@@ -37,6 +45,15 @@ class SettingsScreen extends StatefulWidget {
   /// Reports every change up, so Track logs and Profile reports in the new unit
   /// without waiting for this screen to close.
   final ValueChanged<UnitPreferences>? onChanged;
+
+  /// What is waiting to upload. Null while it is still being counted.
+  final SyncPending? pending;
+
+  final bool isSignedIn;
+  final bool isSyncing;
+  final SyncReport? lastReport;
+  final VoidCallback? onSyncNow;
+  final VoidCallback? onSignIn;
 
   final String version;
 
@@ -131,6 +148,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+
+            const SizedBox(height: AppSpacing.lg),
+            const _Heading('Backup'),
+            BackupSection(
+              pending: widget.pending,
+              isSignedIn: widget.isSignedIn,
+              isSyncing: widget.isSyncing,
+              lastReport: widget.lastReport,
+              onSyncNow: widget.onSyncNow,
+              onSignIn: widget.onSignIn,
+            ),
 
             const SizedBox(height: AppSpacing.lg),
             const _Heading('About'),

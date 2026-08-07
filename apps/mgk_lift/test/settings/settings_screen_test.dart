@@ -3,11 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/credits_screen.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
+import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 Widget wrap(Widget child) => MaterialApp(home: child);
 
+/// Pumps on a viewport tall enough to hold the whole screen.
+///
+/// The default 800x600 is shorter than a phone, so rows near the bottom are
+/// off-screen and `tap()` misses them - it warns rather than failing, and the
+/// assertion afterwards is what breaks.
+Future<void> pumpTall(WidgetTester tester, Widget child) async {
+  tester.view.physicalSize = const Size(1080, 4200);
+  tester.view.devicePixelRatio = 2.625;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(wrap(child));
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  backupSmoke();
   group('units', () {
     testWidgets('distance and weight are two separate controls', (
       WidgetTester tester,
@@ -94,10 +109,7 @@ void main() {
     // Attribution is a licence condition, so it is tested like one.
 
     testWidgets('are reachable from settings', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        wrap(const SettingsScreen(initial: UnitPreferences())),
-      );
-      await tester.pumpAndSettle();
+      await pumpTall(tester, const SettingsScreen(initial: UnitPreferences()));
 
       await tester.tap(find.text('Credits'));
       await tester.pumpAndSettle();
@@ -146,5 +158,24 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+}
+
+// Added after the preview crashed on device with exactly these parameters.
+void backupSmoke() {
+  testWidgets('settings builds with a signed-out backup section', (
+    WidgetTester tester,
+  ) async {
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        pending: const SyncPending(workouts: 9, lastSyncedAt: null),
+        onSignIn: () {},
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('This device only'), findsOneWidget);
   });
 }

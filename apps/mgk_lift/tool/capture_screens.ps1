@@ -126,7 +126,11 @@ $indexSize = (Get-Item $indexPath).Length
 
 function Test-LooksLikeIndex([string]$path) {
   $size = (Get-Item $path).Length
-  return [Math]::Abs($size - $indexSize) -lt ($indexSize * 0.15)
+  # 30%, not 15%. The index itself varies by a few KB between runs (clock
+  # digits, transition dimming), and at 15% a miss slipped through as a
+  # "real" capture. Over-reporting a suspicious file is much cheaper than
+  # shipping a review set with the wrong screen in it.
+  return [Math]::Abs($size - $indexSize) -lt ($indexSize * 0.30)
 }
 
 for ($i = 0; $i -lt $screens.Count; $i++) {
@@ -145,7 +149,10 @@ for ($i = 0; $i -lt $screens.Count; $i++) {
   $x = [int](($col + 0.5) * $columnWidth)
 
   adb -s $Serial shell input tap $x $y
-  Start-Sleep -Milliseconds 900   # entrance animations settle
+  # Long enough for the push transition AND any entrance animation on the
+  # screen underneath. At 900ms captures landed mid-transition, which reads as
+  # a dimmed index - indistinguishable from a missed tap without looking.
+  Start-Sleep -Milliseconds 1600
 
   $name = '{0:d2}-{1}.png' -f ($i + 1), $screens[$i]
   $path = Join-Path $out $name

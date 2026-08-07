@@ -18,7 +18,9 @@ part 'app_database.g.dart';
 ///
 /// The coach is the other half of the app and takes the opposite posture: it
 /// needs a connection and says so. Nothing here depends on it.
-@DriftDatabase(tables: [Workouts, Exercises, ExerciseSets, ProgressPhotos])
+@DriftDatabase(
+  tables: [Workouts, Exercises, ExerciseSets, ProgressPhotos, SyncMeta],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -30,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,6 +48,12 @@ class AppDatabase extends _$AppDatabase {
         // Progress photos. A new table rather than a column, so nothing
         // existing is touched.
         await m.createTable(progressPhotos);
+      }
+      if (from < 4) {
+        // Sync. `syncedAt` stays null on every existing row, which is exactly
+        // right: nothing has ever been uploaded, so everything is pending.
+        await m.addColumn(workouts, workouts.syncedAt);
+        await m.createTable(syncMeta);
       }
       // The slot rule, as an index rather than a table constraint: drift's
       // `customConstraints` replaces the generated ones wholesale, and a
