@@ -98,7 +98,6 @@ class PreviewApp extends StatelessWidget {
       'track-interrupted': (_) => Scaffold(
         body: TrackSurface(
           today: previewNow,
-          hasOpenSession: true,
           log: sampleLog(previewNow),
           openSession: Session(
             id: 'open',

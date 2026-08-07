@@ -23,7 +23,6 @@ class TrackSurface extends StatelessWidget {
     super.key,
     this.onStartSession,
     this.onOpenPlan,
-    this.hasOpenSession = false,
     this.openSession,
     this.log = const <Session>[],
     this.plan,
@@ -38,12 +37,15 @@ class TrackSurface extends StatelessWidget {
 
   final VoidCallback? onOpenPlan;
 
-  /// True when a session is already open — usually because the app was killed
-  /// mid-workout. The button then offers to go back to it, because "Start a
-  /// session" over the top of one already running is a lie about what happens.
-  final bool hasOpenSession;
-
-  /// The open session itself, when there is one.
+  /// The open session — usually because the app was killed mid-workout.
+  ///
+  /// There used to be a `hasOpenSession` bool alongside this, and the two were
+  /// read by different parts of the screen: the headline switched on either,
+  /// the card only on the session. Nothing could ever set them apart — the
+  /// shell assigned `session != null` to one and `session` to the other in the
+  /// same `setState` — but the screen was written as though they could, which
+  /// left a branch where the headline announced an interrupted session above a
+  /// card showing today's planned one.
   ///
   /// **A different button label was not enough.** An interrupted session is the
   /// one state where the lifter has genuinely lost their place, and the screen
@@ -76,8 +78,14 @@ class TrackSurface extends StatelessWidget {
   /// Reads the same state the card below does, so the two cannot disagree —
   /// which they did: "Ready when you are" sat above a card naming today's
   /// prescribed session.
+  ///
+  /// **It names the session rather than describing the state.** "Pick up where
+  /// you were" sat directly above a card labelled `Where you were`, which is
+  /// one thing said twice in the space of a screen — and the vaguer of the two
+  /// was the larger. Every branch here now reads like the planned one does.
   String get _headline {
-    if (openSession != null || hasOpenSession) return 'Pick up where you were';
+    final open = openSession;
+    if (open != null) return '${open.name} is still open';
     final todays = plan?.sessionOn(today ?? DateTime.now());
     if (todays != null && todays.status == PlanSessionStatus.planned) {
       return 'Today is ${todays.title.toLowerCase()}';
@@ -88,7 +96,7 @@ class TrackSurface extends StatelessWidget {
 
   /// The second line, or null when the card below already carries it.
   String? get _support {
-    if (openSession != null || hasOpenSession) return null;
+    if (openSession != null) return null;
     if (plan != null) return null;
     return 'Start a session and log it set by set. It works with no signal '
         'and syncs when you are back.';
@@ -150,7 +158,7 @@ class TrackSurface extends StatelessWidget {
               _StartButton(
                 plan: plan,
                 now: today ?? DateTime.now(),
-                hasOpenSession: hasOpenSession,
+                openSession: openSession,
                 onStartSession: onStartSession,
                 onStartPlanned: onStartPlanned,
               ),
@@ -234,20 +242,25 @@ class _StartButton extends StatelessWidget {
   const _StartButton({
     required this.plan,
     required this.now,
-    required this.hasOpenSession,
+    this.openSession,
     this.onStartSession,
     this.onStartPlanned,
   });
 
   final Plan? plan;
+
+  /// The same session the card above reads, rather than a bool derived from it
+  /// — so "Resume session" and "Where you were" cannot describe different
+  /// states.
+  final Session? openSession;
+
   final DateTime now;
-  final bool hasOpenSession;
   final VoidCallback? onStartSession;
   final ValueChanged<PlanSession>? onStartPlanned;
 
   @override
   Widget build(BuildContext context) {
-    if (hasOpenSession) {
+    if (openSession != null) {
       return PrimaryButton(label: 'Resume session', onPressed: onStartSession);
     }
 

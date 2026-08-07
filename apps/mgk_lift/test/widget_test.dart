@@ -204,7 +204,6 @@ void trackContentTests() {
     await tester.pumpWidget(
       MaterialApp(
         home: TrackSurface(
-          hasOpenSession: true,
           today: now,
           openSession: Session(
             id: 'open',
@@ -230,6 +229,16 @@ void trackContentTests() {
     expect(find.text('Push'), findsOneWidget);
     expect(find.textContaining('1 set in'), findsOneWidget);
     expect(find.textContaining('yesterday'), findsOneWidget);
+
+    // The headline names the session instead of paraphrasing the card's label.
+    // It read "Pick up where you were" directly above a card labelled "Where
+    // you were" — the same phrase twice, the vaguer one larger.
+    expect(find.text('Push is still open'), findsOneWidget);
+    expect(
+      find.textContaining('Pick up where you were'),
+      findsNothing,
+      reason: 'the headline must not restate the label below it',
+    );
   });
 
   testWidgets('it reports recent training rather than nothing', (

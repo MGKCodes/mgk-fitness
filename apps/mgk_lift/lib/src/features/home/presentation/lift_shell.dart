@@ -163,7 +163,6 @@ class _LiftShellState extends State<LiftShell> {
 
   /// Whether a session is already open, so Track can offer to resume rather
   /// than to start. Refreshed whenever a session ends.
-  bool _hasOpenSession = false;
 
   /// The open session itself, so Track can say what they were doing rather
   /// than only that something was open.
@@ -276,11 +275,10 @@ class _LiftShellState extends State<LiftShell> {
     final session = await recorder.current();
     if (!mounted) return;
     // The session itself, not only whether there is one: Track says what they
-    // were doing, and a bare bool cannot.
-    setState(() {
-      _openSessionDetail = session;
-      _hasOpenSession = session != null;
-    });
+    // were doing, and a bare bool cannot. There was briefly both, assigned on
+    // this line from the same value, which let Track branch on two things that
+    // were always equal.
+    setState(() => _openSessionDetail = session);
   }
 
   @override
@@ -304,7 +302,6 @@ class _LiftShellState extends State<LiftShell> {
               children: <Widget>[
                 TrackSurface(
                   onOpenPlan: () => _go(_planTab),
-                  hasOpenSession: _hasOpenSession,
                   openSession: _openSessionDetail,
                   log: _log,
                   onStartSession: widget.recorder == null ? null : _openSession,
