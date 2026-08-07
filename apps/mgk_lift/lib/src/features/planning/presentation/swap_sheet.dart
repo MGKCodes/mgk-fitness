@@ -6,6 +6,7 @@ import '../../tracking/domain/session.dart';
 import '../domain/plan.dart';
 import '../domain/plan_generator.dart';
 import '../domain/plan_validator.dart';
+import 'coach_sheet.dart';
 
 /// "I don't like barbell bench press, can we swap it out."
 ///
@@ -70,8 +71,6 @@ class SwapSheet extends StatefulWidget {
 }
 
 class _SwapSheetState extends State<SwapSheet> {
-  final TextEditingController _input = TextEditingController();
-
   SwapVerdict? _verdict;
   PlanFailure? _failure;
   bool _waiting = false;
@@ -84,12 +83,6 @@ class _SwapSheetState extends State<SwapSheet> {
     // change an exercise is friction for its own sake. The field stays, for
     // when the reason matters ("shoulder hurts").
     _ask('');
-  }
-
-  @override
-  void dispose() {
-    _input.dispose();
-    super.dispose();
   }
 
   Future<void> _ask(String reason) async {
@@ -121,142 +114,78 @@ class _SwapSheetState extends State<SwapSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final media = MediaQuery.of(context);
     final verdict = _verdict;
 
-    // Sized to its content, capped so a long answer still leaves the
-    // screen behind it visible. Fixed at a fraction of the height, two
-    // suggestions left several hundred pixels of nothing between the last
-    // option and the input — the same fault as a centred list, which is
-    // principle 1 in docs/design.md.
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: media.size.height * 0.7),
-      child: GlassSurface(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.md,
-          AppSpacing.lg,
-          0,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          // min + Flexible, not the default + Expanded. Expanded fills whatever
-          // it is given, so a maxHeight would have been a fixed height wearing
-          // a different name and the void would have survived the change.
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textTertiary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return CoachSheet(
+      // Names its subject: you are told what you are changing rather than
+      // asked to remember.
+      title: 'Instead of ${widget.movement}',
+      hint: 'Why? (optional)',
+      busy: _waiting,
+      onAsk: _ask,
+      child: ListView(
+        shrinkWrap: true,
+        children: <Widget>[
+          if (_waiting)
+            Text(
+              'Asking your coach…',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textTertiary,
               ),
+            )
+          else if (_failure != null)
+            Text(
+              _failure!.message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          else if (verdict != null) ...<Widget>[
+            // Always shown, whatever happened to the options.
+            Text(
+              verdict.reply,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
-            const SizedBox(height: AppSpacing.md),
-            SectionLabel('Instead of ${widget.movement}'),
-            const SizedBox(height: AppSpacing.md),
-
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: <Widget>[
-                  if (_waiting)
-                    Text(
-                      'Asking your coach…',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                    )
-                  else if (_failure != null)
-                    Text(
-                      _failure!.message,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    )
-                  else if (verdict != null) ...<Widget>[
-                    // Always shown, whatever happened to the options.
-                    Text(
-                      verdict.reply,
-                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    for (var i = 0; i < verdict.options.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: AppCard(
-                          onTap: () =>
-                              Navigator.of(context).pop(verdict.options[i]),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                verdict.options[i].name,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                verdict.options[i].render(widget.unit),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              if (i < verdict.why.length &&
-                                  verdict.why[i].isNotEmpty) ...<Widget>[
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  verdict.why[i],
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textTertiary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+            const SizedBox(height: AppSpacing.lg),
+            for (var i = 0; i < verdict.options.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(
+                  // Tapping an option IS the confirmation here, which is why
+                  // this sheet passes no footer.
+                  onTap: () => Navigator.of(context).pop(verdict.options[i]),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        verdict.options[i].name,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      enabled: !_waiting,
-                      minLines: 1,
-                      maxLines: 3,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: _ask,
-                      decoration: const InputDecoration(
-                        hintText: 'Why? (optional)',
+                      const SizedBox(height: 2),
+                      Text(
+                        verdict.options[i].render(widget.unit),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
+                      if (i < verdict.why.length &&
+                          verdict.why[i].isNotEmpty) ...<Widget>[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          verdict.why[i],
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  IconButton.filled(
-                    onPressed: _waiting ? null : () => _ask(_input.text),
-                    icon: const Icon(Icons.arrow_upward),
-                    tooltip: 'Ask again',
-                  ),
-                ],
+                ),
               ),
-            ),
           ],
-        ),
+        ],
       ),
     );
   }
