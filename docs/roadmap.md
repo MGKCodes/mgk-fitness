@@ -159,14 +159,20 @@ diff to the upcoming week; the lifter approves it. Needs a proposal
 representation that is not just a regenerated plan, or every small change
 rewrites the block and loses the history of what was actually done.
 
-### Open question
+### What the free tier keeps (decided)
 
-**What happens to the 15 templates in the free tier?** Tracking is free and
-must stay free, and today a free lifter can pick a template to structure their
-session. If the picker goes away entirely, the free app gets worse. Options:
-keep the picker for free users and let the coach replace it for paid ones; or
-keep a much shorter list; or replace it with something else. Worth deciding
-before deleting anything.
+A free lifter can still **build their own workout plans**, and still gets the
+whole picture of their training — sessions, history, stats, photos. What they
+do not get is **help deciding what to do and when to do it**.
+
+So the picker does not simply vanish. It stops being the headline and becomes
+the manual path: free lifters assemble a session themselves, paid lifters have
+one assembled for them and adapted week to week. Removing it outright would
+make the free app worse in order to sell the paid one, which is the opposite
+of the positioning in *Tracking is never gated; the coach is the paid half*.
+
+What changes for a paid lifter is that Track stops asking them to choose. The
+plan already knows what today is.
 
 ---
 
