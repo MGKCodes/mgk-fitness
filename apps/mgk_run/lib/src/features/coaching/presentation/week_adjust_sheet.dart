@@ -124,10 +124,13 @@ class _WeekAdjustSheetState extends State<WeekAdjustSheet> {
         20,
         20 + MediaQuery.of(context).viewInsets.bottom,
       ),
+      // The handle is this sheet's only way out. Its "Back" resets the
+      // proposal and is not a dismiss, and it appears in one state of three.
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          const SheetHandle(),
           Text(
             'Adjust this week',
             style: theme.textTheme.titleLarge?.copyWith(

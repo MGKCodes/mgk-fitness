@@ -52,17 +52,7 @@ class TemplatePickerSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textTertiary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            const SheetHandle(),
             const SectionLabel('Start from a template'),
             const SizedBox(height: AppSpacing.xs),
             Text(

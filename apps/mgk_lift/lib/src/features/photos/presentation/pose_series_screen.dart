@@ -88,9 +88,9 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
                 // The span is the interesting number and it used to vanish at
                 // exactly the moment you opened the sequence.
                 '${_series.photos.length} over ${_series.spanWeeks} weeks',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
               ),
           ],
         ),
@@ -182,6 +182,13 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            // Load-bearing here more than anywhere: the loudest control on this
+            // sheet deletes a photo that cannot be retaken, and it opens on a
+            // tap. Somebody who mistapped needs to see a way out.
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.md),
+              child: SheetHandle(bottomSpacing: 0),
+            ),
             ListTile(
               leading: Icon(
                 photo.isExcluded
@@ -197,10 +204,14 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
               onTap: () => Navigator.of(sheetContext).pop('exclude'),
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline,
-                  color: AppColors.danger),
-              title: const Text('Delete photo',
-                  style: TextStyle(color: AppColors.danger)),
+              leading: const Icon(
+                Icons.delete_outline,
+                color: AppColors.danger,
+              ),
+              title: const Text(
+                'Delete photo',
+                style: TextStyle(color: AppColors.danger),
+              ),
               onTap: () => Navigator.of(sheetContext).pop('delete'),
             ),
           ],
@@ -209,10 +220,7 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
     );
 
     if (action == 'exclude') {
-      await widget.library.setExcluded(
-        photo.id,
-        excluded: !photo.isExcluded,
-      );
+      await widget.library.setExcluded(photo.id, excluded: !photo.isExcluded);
       await _reload();
     } else if (action == 'delete' && mounted) {
       await _confirmDelete(photo);

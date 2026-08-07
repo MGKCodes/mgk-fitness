@@ -79,17 +79,7 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.textTertiary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
+              const SheetHandle(),
               const SectionLabel('Add exercise'),
               const SizedBox(height: AppSpacing.md),
               TextField(
@@ -116,8 +106,7 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                 const SizedBox(height: AppSpacing.sm),
                 _CustomRow(
                   name: _query.text.trim(),
-                  onTap: () =>
-                      Navigator.of(context).pop(_query.text.trim()),
+                  onTap: () => Navigator.of(context).pop(_query.text.trim()),
                 ),
               ],
               const SizedBox(height: AppSpacing.sm),

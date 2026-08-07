@@ -112,6 +112,10 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.md),
+              child: SheetHandle(bottomSpacing: 0),
+            ),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Take a photo'),
@@ -167,13 +171,12 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                             // The nudge does something. "1 of 2 taken" told you
                             // the state and left you to find the missing pose
                             // yourself.
-                            onFinish: widget.source == null || done == series.length
+                            onFinish:
+                                widget.source == null || done == series.length
                                 ? null
                                 : () => _add(
                                     series
-                                        .firstWhere(
-                                          (s) => !s.hasPhotoFor(week),
-                                        )
+                                        .firstWhere((s) => !s.hasPhotoFor(week))
                                         .pose,
                                   ),
                           ),
@@ -365,7 +368,10 @@ class _PoseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Text(series.pose.label, style: theme.textTheme.titleSmall),
+                        Text(
+                          series.pose.label,
+                          style: theme.textTheme.titleSmall,
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           _subtitle(series),
@@ -482,8 +488,10 @@ class _MissingFile extends StatelessWidget {
   Widget build(BuildContext context) => const ColoredBox(
     color: AppColors.elevated,
     child: Center(
-      child: Icon(Icons.image_not_supported_outlined,
-          color: AppColors.textTertiary),
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        color: AppColors.textTertiary,
+      ),
     ),
   );
 }

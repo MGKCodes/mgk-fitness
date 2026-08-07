@@ -87,17 +87,7 @@ class SessionBriefSheet extends StatelessWidget {
             AppSpacing.xxl,
           ),
           children: <Widget>[
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.elevated,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+            const SheetHandle(bottomSpacing: AppSpacing.lg),
 
             SectionLabel(_dateLine()),
             const SizedBox(height: AppSpacing.xs),

@@ -145,7 +145,10 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const _Grabber(),
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.md),
+                  child: SheetHandle(bottomSpacing: 0),
+                ),
                 _header(context),
                 if (controller == null)
                   const _Offline()
@@ -297,25 +300,6 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
           ),
         ],
       ],
-    ),
-  );
-}
-
-class _Grabber extends StatelessWidget {
-  const _Grabber();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: AppSpacing.md),
-    child: Center(
-      child: Container(
-        width: 36,
-        height: 4,
-        decoration: BoxDecoration(
-          color: AppColors.elevated,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
     ),
   );
 }

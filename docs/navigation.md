@@ -48,8 +48,10 @@ inside one tab would make the coach available on a third of the app.
 
 ## Sheets
 
-Sheets dismiss by drag or scrim tap, which is the platform convention and needs
-no affordance of its own.
+Sheets dismiss by drag or scrim tap. **Both gestures are invisible**, so every
+sheet carries a [`SheetHandle`] — the grab bar is the only thing on it that says
+it can be closed. The claim that used to sit here, that the convention "needs no
+affordance of its own", was wrong and is what let three sheets ship without one.
 
 | Sheet | In | Result |
 |---|---|---|
@@ -79,6 +81,45 @@ complete regardless of whether the screen is still there, and both report their
 result into a screen that may have been disposed — sign-in leaves the lifter on
 Track not knowing whether it worked, and an abandoned intake turn is a paid call
 whose answer would have been merged into what the coach knows.
+
+## The exit sweep, 2026-08-08
+
+A second pass, asking one question of every screen and sheet in **both** apps:
+is there something visible that gets you out? Findings, all now fixed:
+
+- **Three sheets had no dismiss affordance at all** — Lift's photo-source picker
+  and progress-photo actions, and Run's week-adjust sheet. Each was a bare
+  `Column` of `ListTile`s: escapable by drag or scrim, with nothing saying so.
+  The progress-photo one was the worst of them, because its most prominent
+  control is a red **Delete photo** and it opens on a tap — a mistap put you in
+  front of an irreversible action with no visible way back.
+- **Six hand-written copies of the same grab bar**, already drifted: Lift drew
+  it in `textTertiary`, Run in `elevated`, which on a `surface` card is nearly
+  invisible. Now one `SheetHandle` in `mgk_ui` (principle 9 in
+  [design.md](design.md), third instance in two days).
+- **Run's week-adjust sheet had a "Back" button that was not an exit** — it
+  clears the proposal and returns to the ask, and only exists in one state of
+  three. Easy to mistake for a dismiss when reading the code.
+
+Checked and correct, no change needed:
+
+- Every pushed route in both apps has a back affordance. Most inherit it from
+  `AppBar`/`SliverAppBar` with no `leading` override; Lift's active session and
+  Run's recording screen draw their own (an arrow and a cross respectively),
+  because neither has an app bar.
+- Tab roots have none, correctly — there is nothing above them.
+- Every confirmation dialog has a cancel: "Keep it" against "Forget", "Keep it"
+  against "Delete".
+- Run's `plan_reveal_screen` sets `canPop: false` with no visible exit, which is
+  right: it blocks only while two model calls are in flight, and both terminal
+  states (failed, revealed) offer a button out.
+- Run's `coach_flow` blocks back at the confirmation step and sends it to the
+  conversation instead, which is a step back rather than a trap.
+
+**One thing worth knowing for next time**: `grep appBar:` misses `SliverAppBar`,
+and a `width: 36` search matches layout columns as readily as grab bars. Both
+produced a false reading during this sweep — one screen looked like a dead end
+and was not, one sheet looked fine and was not. Confirm on the device.
 
 ## Known and accepted
 

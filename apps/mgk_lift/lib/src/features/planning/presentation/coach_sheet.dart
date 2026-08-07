@@ -80,17 +80,7 @@ class CoachSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textTertiary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            const SheetHandle(),
             SectionLabel(title),
             if (subtitle != null) ...<Widget>[
               const SizedBox(height: AppSpacing.xs),

@@ -21,4 +21,5 @@ export 'src/widgets/glass_surface.dart';
 export 'src/widgets/photo_backdrop.dart';
 export 'src/widgets/primary_button.dart';
 export 'src/widgets/section_label.dart';
+export 'src/widgets/sheet_handle.dart';
 export 'src/widgets/stat_block.dart';
