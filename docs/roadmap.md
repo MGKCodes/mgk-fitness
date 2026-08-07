@@ -392,15 +392,23 @@ it. Redesigning it empty means designing it twice.
 
 Not part of the five, but real, and each one is small:
 
-- **Five migrations are committed and not applied, and the coach is not
-  deployed.** The single most important entry here. Production is at
-  `20260806150000`; the repo is five ahead. All five replay cleanly on a local
-  `db reset` and the suite passes 33 pgTAP assertions, but none has been near
-  the real database. In order:
+- **Four migrations are committed and not applied, and the coach is not
+  deployed.** The single most important entry here. Production has 7 applied
+  and is at `20260806150000`; the repo has 11. All four replay cleanly on a
+  local `db reset` and the suite passes 33 pgTAP assertions, but none has been
+  near the real database. Verify the gap rather than trusting this number —
+  `npx supabase migration list` is the answer, and the count written here has
+  already been wrong once.
+
+  In order, and the order matters:
 
       npx supabase db push
-      npx supabase functions deploy coach
       npx supabase secrets set OPENROUTER_API_KEY=... COACH_MODEL=...
+      npx supabase functions deploy coach
+
+  Secrets before the deploy so the function is never live and unconfigured. It
+  fails closed with `coach_not_configured` in that window rather than doing
+  anything unsafe, but a 503 to a paying lifter is still a 503.
 
   Two to watch:
   - `20260807120000_lift_sync_columns.sql` — sync needs it, **and the coach
