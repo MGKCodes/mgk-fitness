@@ -6,6 +6,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
@@ -160,7 +161,9 @@ class _LiftShellState extends State<LiftShell> {
                 const PlanSurface(),
                 ProfileSurface(
                   log: _log,
+                  massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
+                  onOpenSettings: _openSettings,
                 ),
               ],
             ),
@@ -213,6 +216,23 @@ class _LiftShellState extends State<LiftShell> {
   void _go(int index) {
     if (index == _index) return;
     setState(() => _index = index);
+  }
+
+  /// Opens Settings, applying unit changes as they happen rather than on close.
+  ///
+  /// The shell holds the units, so a change here reaches Track and Profile
+  /// without either of them reloading — one source, so the two cannot disagree
+  /// about what a lifter works in.
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          initial: _units,
+          store: widget.units,
+          onChanged: (prefs) => setState(() => _units = prefs),
+        ),
+      ),
+    );
   }
 
   Future<void> _openSession() async {

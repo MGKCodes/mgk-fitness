@@ -21,6 +21,7 @@ class ProfileSurface extends StatelessWidget {
   const ProfileSurface({
     super.key,
     this.log = const <Session>[],
+    this.massUnit = MassUnit.kilograms,
     this.now,
     this.lookup,
     this.onOpenSettings,
@@ -29,6 +30,11 @@ class ProfileSurface extends StatelessWidget {
 
   /// Finished sessions, newest first.
   final List<Session> log;
+
+  /// What the lifter works in. Every figure on this surface honours it, so
+  /// Profile and the session screen cannot report the same training in two
+  /// different units.
+  final MassUnit massUnit;
 
   /// Injected so a test can pin the clock — a streak that reads `DateTime.now()`
   /// internally cannot be tested.
@@ -76,7 +82,7 @@ class ProfileSurface extends StatelessWidget {
             if (log.isEmpty)
               _Empty(onOpenTrack: onOpenTrack)
             else ...<Widget>[
-              _HeadlineStats(stats: stats),
+              _HeadlineStats(stats: stats, massUnit: massUnit),
               const SizedBox(height: AppSpacing.xl),
               _Consistency(stats: stats),
               if (frequent.isNotEmpty) ...<Widget>[
@@ -112,7 +118,11 @@ class ProfileSurface extends StatelessWidget {
               const SectionLabel('Recent sessions'),
               const SizedBox(height: AppSpacing.md),
               for (final session in log.take(5))
-                _SessionRow(session: session, stats: stats),
+                _SessionRow(
+                  session: session,
+                  stats: stats,
+                  massUnit: massUnit,
+                ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 // Says where the numbers come from. Cross-app awareness is the
@@ -131,9 +141,10 @@ class ProfileSurface extends StatelessWidget {
 }
 
 class _HeadlineStats extends StatelessWidget {
-  const _HeadlineStats({required this.stats});
+  const _HeadlineStats({required this.stats, required this.massUnit});
 
   final TrainingStats stats;
+  final MassUnit massUnit;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +162,7 @@ class _HeadlineStats extends StatelessWidget {
               Expanded(
                 child: StatBlock(
                   label: 'Volume',
-                  value: _compactVolume(stats.totalVolume),
+                  value: compactVolume(stats.totalVolume, massUnit),
                 ),
               ),
               Expanded(
@@ -189,10 +200,31 @@ class _HeadlineStats extends StatelessWidget {
 
   /// Tonnes past four figures. `47,500 kg` is a number you read; `47.5 t` is one
   /// you take in.
-  static String _compactVolume(Mass m) {
-    final kg = m.kilograms;
-    if (kg >= 1000) return '${(kg / 1000).toStringAsFixed(1)} t';
-    return '${kg.round()} kg';
+  ///
+  /// Follows the lifter's chosen unit, because Profile reporting kilograms
+  /// while the session screen reports pounds is the same "two screens, two
+  /// answers" fault the warm-up bug was.
+  static String compactVolume(Mass m, MassUnit unit) {
+    final value = m.inDisplayUnit(unit);
+    // A short tonne is 2,000 lb, and nobody means that. Pounds get thousands
+    // separators instead of a unit nobody uses for barbell volume.
+    if (unit == MassUnit.pounds) {
+      return value >= 10000
+          ? '${_thousands(value.round())} ${unit.suffix}'
+          : '${value.round()} ${unit.suffix}';
+    }
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)} t';
+    return '${value.round()} ${unit.suffix}';
+  }
+
+  static String _thousands(int n) {
+    final digits = n.toString();
+    final out = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
+      out.write(digits[i]);
+    }
+    return out.toString();
   }
 
   static String _compactDuration(Duration d) {
@@ -305,10 +337,15 @@ class _FrequencyRow extends StatelessWidget {
 }
 
 class _SessionRow extends StatelessWidget {
-  const _SessionRow({required this.session, required this.stats});
+  const _SessionRow({
+    required this.session,
+    required this.stats,
+    required this.massUnit,
+  });
 
   final Session session;
   final TrainingStats stats;
+  final MassUnit massUnit;
 
   @override
   Widget build(BuildContext context) {
@@ -337,9 +374,7 @@ class _SessionRow extends StatelessWidget {
             ),
           ),
           Text(
-            volume.kilograms == 0
-                ? '—'
-                : volume.label(MassUnit.kilograms),
+            volume.kilograms == 0 ? '—' : volume.label(massUnit),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),

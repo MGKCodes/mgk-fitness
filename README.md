@@ -151,10 +151,11 @@ keeps it that way. It follows the Signal precedent for App Store distribution �
 sole copyright holder, so the binaries on the store and the source here can
 coexist.
 
-Assets are covered separately in [NOTICE.md](NOTICE.md), and one of them —
-the exercise illustrations — has an **open licensing question that has to be
-settled before this repository is made public**. The reasoning above is about
-copyright in the code and does not automatically carry over to it.
+**Assets are licensed separately** — see [NOTICE.md](NOTICE.md). In particular
+the exercise illustrations in `apps/mgk_lift/assets/exercises/` are
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), adapted from
+the [Everkinetic](https://github.com/everkinetic/data) dataset by Greg Priday.
+Reuse them freely, including commercially; keep the notice and share alike.
 
 ## Attribution
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/profile/presentation/profile_surface.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 Session session(
   DateTime day, {
@@ -216,6 +217,64 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
+    });
+  });
+
+  group('units', () {
+    // Profile reporting kilograms while the session screen reports pounds is
+    // the same "two screens, two answers" fault the warm-up bug was.
+
+    testWidgets('volume follows the chosen unit', (WidgetTester tester) async {
+      final log = <Session>[
+        session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+      ];
+
+      await tester.pumpWidget(
+        wrap(ProfileSurface(now: DateTime(2026, 8, 6), log: log)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('500 kg'), findsWidgets);
+
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: log,
+            massUnit: MassUnit.pounds,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('1102 lb'), findsWidgets);
+      expect(find.text('500 kg'), findsNothing);
+    });
+
+    testWidgets('pounds are never reported in tonnes', (
+      WidgetTester tester,
+    ) async {
+      // A short tonne is 2,000 lb and nobody means that, so the headline
+      // switches to thousands separators rather than a unit no lifter uses.
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            massUnit: MassUnit.pounds,
+            log: <Session>[
+              for (var i = 0; i < 12; i++)
+                session(
+                  DateTime(2026, 8, 3),
+                  exercise: 'Movement $i',
+                  sets: <SessionSet>[done(100, 10)],
+                ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining(' t'), findsNothing);
+      expect(find.text('26455 lb'), findsNothing);
+      expect(find.text('26,455 lb'), findsOneWidget);
     });
   });
 
