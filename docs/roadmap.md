@@ -138,7 +138,71 @@ Nothing in this item. Two things it touched are worth carrying forward:
 
 ## 3. Coach-generated plans, and templates as its knowledge base
 
-The biggest of the four, and the one with the most design still open.
+The biggest of the four. **The half where being wrong is expensive and
+invisible is built**; what is left is app wiring.
+
+### Built, 2026-08-07
+
+- `lift.plans` / `plan_weeks` / `plan_sessions` (`20260807150000`), with
+  `supabase/tests/lift_plans.sql` asserting the invariants by trying to break
+  them. `plan_sessions.workout_id` is the join that makes "did they do the
+  plan" answerable, and it is `ON DELETE SET NULL` so tidying the log cannot
+  punch holes in the block.
+- The three generation surfaces: `lift_intake`, `lift_skeleton`, `lift_week`.
+- `PlanValidator`, which grades a proposed week and derives every target.
+- `lift_swap`, below.
+
+**The decision everything else hangs off: `lift_week` has nowhere to put a
+weight.** The rule is that targets come from what the lifter has actually
+lifted, and a prompt asking a model to honour that is a request where a schema
+with no field for a kilogram is a guarantee. The model prescribes an intensity;
+Dart resolves it against their own estimated 1RM, rounds to 2.5 kg, and returns
+nothing when there is no qualifying set behind it. A null target is a real
+prescription — "3×8, leave two in the tank" — and it is the common case for a
+lifter a fortnight in, which is worth knowing when reading the Plan surface's
+"targets come from what you have actually lifted".
+
+### Still to wire
+
+- **Generation orchestration**: intake → skeleton → weeks, retrying a rejected
+  week with its own `violations` as the next attempt's brief. The validator
+  already writes them for that.
+- **Persistence** of a draft, and the accept that makes it `active`.
+- **The intake and Plan screens**, and Track's "Next up".
+- **Adaptation** — "shoulder is sore, can we move Thursday". Still needs a
+  proposal representation that is not a regenerated plan, or every small change
+  rewrites the block and loses what was actually done.
+- **`active_session_screen.dart` still says a template adds movements and no
+  numbers**, because "pre-filling weights would be the app asserting something
+  only the lifter knows". True of a static template, false of a plan derived
+  from their own log. The comment has to change in the same commit as the
+  behaviour rather than leaving two contradictory rules in the code.
+
+### Mid-session swaps — `lift_swap`
+
+Added 2026-08-07, on request: while training, "I don't like barbell bench
+press, can we swap it out or do something else instead."
+
+The only Lift prompt handed something by the client rather than reading it —
+the session in progress, which is not a record yet. The device owns it until it
+is finished (ADR-0004), so there is nothing to read and nothing to
+misrepresent. It is rendered with what has already been done ("2 of 3 sets"),
+because swapping the third set is a different question from swapping before the
+first.
+
+Same load rule, and this is where it matters most: a substitute is usually
+something they have never done, which is exactly when a number would have to be
+invented. It differs from the week validator in one deliberate way — unusable
+options are **dropped and the rest kept**, because the lifter is standing
+between sets. The reply always survives.
+
+**It proposes and does not act.** Applying a choice to the live session is the
+app's job and is not wired yet; that is the remaining half of this feature.
+When it is, a swap made against a planned session should also be recorded
+against `lift.plan_sessions`, or the plan will claim they did something they
+changed.
+
+### The original plan for the templates, and what happened instead
 
 **The template picker goes away as a user-facing feature.** Today
 `template_picker_sheet.dart` offers 15 templates and 8 splits, and the lifter
@@ -147,6 +211,13 @@ what a sensible session looks like — push/pull/legs, upper/lower, full body,
 the movement ordering, the compound-before-accessory rule — and the coach
 composes from those known-good shapes rather than inventing a session from
 nothing.
+
+**Settled differently, 2026-08-07: the picker shrank rather than went.** Six
+templates are offered — push, pull, legs, upper, lower, full body — and all
+fifteen stay as the coach's material. Removing it entirely would have made the
+free app worse at the blank-session problem it exists to solve, and tracking is
+free. `offeredSplits` is derived from `offeredTemplates` rather than listed, so
+the picker can never show a split whose Tuesday opens a hidden session.
 
 This mirrors a decision already in the brain for Frunt: *"Templates: hidden
 grounding layer, never a user-facing library."* Same reasoning, different
