@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 
 import '../../tracking/domain/session.dart';
 import 'plan.dart';
+import 'plan_adaptation.dart';
 import 'plan_proposal.dart';
 import 'plan_validator.dart';
 
@@ -31,6 +32,14 @@ abstract interface class CoachPlanner {
   Future<SwapProposal> swap({
     required String message,
     required Session session,
+  });
+
+  /// Changes to the week ahead. Returns a diff, never a week — see
+  /// [PlanAdapter].
+  Future<AdaptProposal> adapt({
+    required String message,
+    required Plan plan,
+    required int weekNumber,
   });
 }
 

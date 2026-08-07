@@ -1734,6 +1734,130 @@ export function liftSwapMessages(body: Body): Message[] {
   ];
 }
 
+// ---- lift_adapt (changing the week ahead) -----------------------------------
+
+/// "My shoulder is sore, can we move Thursday?"
+///
+/// **It returns a diff, not a plan.** That is the whole design decision: a
+/// surface that regenerated the week would rewrite sessions the lifter had
+/// already trained, lose what actually happened, and make a request to move one
+/// day indistinguishable from starting the block again. A list of targeted
+/// changes leaves everything it does not mention exactly as it was.
+///
+/// Each change is checked in Dart against the plan before anything is applied,
+/// and the lifter approves the set. The coach proposes; nothing here acts.
+const LIFT_ADAPT_INSTRUCTIONS =
+  `The lifter wants this week changed. You are given the week as it stands and
+what they asked for. Propose the smallest set of changes that honours it.
+
+You return CHANGES, not a week. Anything you do not mention stays exactly as it
+is, which is the point: they have already trained some of these days and those
+sessions are a record, not a draft.
+
+The changes you can make:
+- "move" — put a session on a different day. Only onto a day they train and
+  only onto a day that is free.
+- "lighten" — same session, less of it. For soreness, a bad week, a cold.
+- "drop" — remove the session entirely. Use it when they say they cannot train
+  that day at all, not as a first answer to being tired.
+- "swap_movement" — one movement replaced by another in the same session.
+
+Rules:
+- **Never change a session that is already done.** It happened. It is not
+  yours to edit, and rewriting it would make their log a lie.
+- Change as little as possible. Moving one day is a better answer than
+  rebuilding the week, and a lifter who asked to move Thursday has not asked
+  you to reconsider Monday.
+- If what they want cannot be done — every other day is taken, or they are
+  asking for a day they do not train — say so in your reply and return no
+  changes. An empty list is a real answer.
+- If they are describing pain rather than ordinary soreness, say plainly that
+  it is worth getting looked at, and propose the lighter or dropped session
+  anyway. Do not name a condition.
+
+"why" is one short line per change, shown to the lifter next to it. "Gives the
+shoulder another two days" is the register.
+
+"reply" is a sentence or two saying what you are proposing and why. Talk about
+it as something you are suggesting, not something you have done — they approve
+it before anything moves.`;
+
+const LIFT_ADAPT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "changes"],
+  properties: {
+    reply: {
+      type: "string",
+      description:
+        "What the coach is proposing, in a sentence or two. Never phrased as " +
+        "something already done.",
+    },
+    changes: {
+      type: "array",
+      description:
+        "The smallest set of changes that honours the request. May be empty " +
+        "when the honest answer is that it cannot be done.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["action", "weekday", "to_weekday", "movement", "to", "why"],
+        properties: {
+          action: {
+            type: "string",
+            enum: ["move", "lighten", "drop", "swap_movement"],
+          },
+          weekday: {
+            type: "integer",
+            description: "Which session this changes. 1=Monday..7=Sunday.",
+          },
+          to_weekday: nullable(
+            "integer",
+            'Where it moves to. Only for "move"; null otherwise.',
+          ),
+          movement: nullable(
+            "string",
+            'The movement being replaced. Only for "swap_movement".',
+          ),
+          to: nullable(
+            "string",
+            'What replaces it. Only for "swap_movement".',
+          ),
+          why: {
+            type: "string",
+            description: "One short line, shown to the lifter.",
+          },
+        },
+      },
+    },
+  },
+};
+
+export function liftAdaptMessages(body: Body): Message[] {
+  const message = text(body.message, MAX_MESSAGE_CHARS);
+  const week = clamp(String(body.week ?? ""), MAX_BRIEF_CHARS);
+  const memory = text(body.memory, MAX_MEMORY_CHARS);
+
+  const system = `${LIFT_PERSONA}
+
+${LIFT_ADAPT_INSTRUCTIONS}
+
+` +
+    (memory
+      ? `What you know about them:
+${memory}
+
+`
+      : "") +
+    `This week as it stands:
+${week || "(nothing scheduled)"}`;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: message },
+  ];
+}
+
 // ---- provider routing -------------------------------------------------------
 
 /**
@@ -1903,6 +2027,18 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     render: (p) => ({ reply: String(p.reply).trim() }),
     // Straight to a person with no Dart validator in between — the same reason
     // `chat` and `summarise` are marked, and the same routing consequence.
+    humanFacing: true,
+  },
+  lift_adapt: {
+    name: "lift_adapt",
+    app: "lift",
+    schema: LIFT_ADAPT_SCHEMA,
+    maxTokens: 1024,
+    messages: liftAdaptMessages,
+    validRequest: (b) =>
+      typeof b.message === "string" && b.message.trim() !== "",
+    valid: (p) => typeof p.reply === "string" && Array.isArray(p.changes),
+    // The reply reaches the lifter directly; only the CHANGES are graded.
     humanFacing: true,
   },
   lift_swap: {

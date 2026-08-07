@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan.dart';
+import 'package:mgk_lift/src/features/planning/domain/plan_adaptation.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan_generator.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan_proposal.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
@@ -45,6 +46,13 @@ class ScriptedPlanner implements CoachPlanner {
     required String message,
     required Session session,
   }) async => const SwapProposal(reply: '');
+
+  @override
+  Future<AdaptProposal> adapt({
+    required String message,
+    required Plan plan,
+    required int weekNumber,
+  }) async => const AdaptProposal(reply: '');
 }
 
 WeekProposal good({int weekdayA = 1, int weekdayB = 4}) => WeekProposal(

@@ -45,6 +45,7 @@ const TEST_LIMITS: LimitConfig = {
     lift_skeleton: { windowSeconds: 3600, max: 2 },
     lift_week: { windowSeconds: 3600, max: 4 },
     lift_swap: { windowSeconds: 3600, max: 3 },
+    lift_adapt: { windowSeconds: 3600, max: 2 },
   },
   dailyRequests: { windowSeconds: 86_400, max: 10 },
   // One window in the fixture, so the existing single-cap assertions keep

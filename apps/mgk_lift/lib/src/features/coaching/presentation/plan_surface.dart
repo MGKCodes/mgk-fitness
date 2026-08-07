@@ -32,6 +32,7 @@ class PlanSurface extends StatelessWidget {
     this.unit = MassUnit.kilograms,
     this.today,
     this.onOpenSession,
+    this.onAdapt,
   });
 
   /// Starts the coach conversation that produces a plan. Null when the coach is
@@ -59,6 +60,9 @@ class PlanSurface extends StatelessWidget {
 
   /// Opens one session of the plan.
   final ValueChanged<PlanSession>? onOpenSession;
+
+  /// Asks the coach to change the week ahead. Null hides the action.
+  final VoidCallback? onAdapt;
 
   static const EdgeInsets _padding = EdgeInsets.fromLTRB(
     AppSpacing.lg,
@@ -168,6 +172,21 @@ class PlanSurface extends StatelessWidget {
                   : () => onOpenSession!(session),
             ),
           ),
+
+      if (onAdapt != null) ...<Widget>[
+        const SizedBox(height: AppSpacing.md),
+        // Deliberately quiet. Changing the week is a real capability and the
+        // sales copy promises it, but it is not what somebody opens Plan to do
+        // — a second primary button here would compete with starting a session.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onAdapt,
+            icon: const Icon(Icons.edit_calendar_outlined, size: 18),
+            label: const Text('Something changed?'),
+          ),
+        ),
+      ],
     ];
   }
 

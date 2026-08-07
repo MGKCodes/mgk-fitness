@@ -21,6 +21,7 @@ import {
   conversation,
   editRunMessages,
   LIFT_PERSONA,
+  liftAdaptMessages,
   liftChatMessages,
   liftIntakeMessages,
   liftSkeletonMessages,
@@ -747,6 +748,44 @@ Deno.test("a swap turn with nothing said is refused before it costs", () => {
   assert(SURFACES.lift_swap.validRequest?.({ message: "swap the bench" }));
 });
 
+// ---- lift_adapt -------------------------------------------------------------
+
+Deno.test("adapting returns a diff, never a week", () => {
+  // The design decision the whole surface turns on. A surface that regenerated
+  // the week would rewrite sessions already trained, lose what actually
+  // happened, and make "move Thursday" indistinguishable from starting again.
+  const keys = schemaKeys(SURFACES.lift_adapt.schema);
+  assert(keys.has("changes"), "it proposes changes");
+  assert(!keys.has("sessions"), "and never a replacement week");
+  assert(!keys.has("movements"), "nor a replacement session");
+});
+
+Deno.test("a finished session is not the coach's to edit", () => {
+  // It happened. Rewriting it would make the lifter's log a lie, which is a
+  // different and worse failure than a bad suggestion.
+  assertStringIncludes(
+    systemOf(liftAdaptMessages({ message: "move thursday" })),
+    "Never change a session that is already done",
+  );
+});
+
+Deno.test("adapting proposes and says so, rather than reporting a change", () => {
+  // "I have moved it" is false at the moment it is written: the lifter
+  // approves the set before anything moves.
+  const system = systemOf(liftAdaptMessages({ message: "move thursday" }));
+  // Short fragments: the prompt is hard-wrapped, so asserting a whole clause
+  // tests the formatting rather than the rule.
+  assertStringIncludes(system, "not something you have");
+  assertStringIncludes(system, "before anything moves");
+});
+
+Deno.test("an impossible request is refused in words, not forced", () => {
+  assertStringIncludes(
+    systemOf(liftAdaptMessages({ message: "move thursday" })),
+    "An empty list is a real answer",
+  );
+});
+
 Deno.test("every surface declares which app pays for it", () => {
   for (const name of SURFACE_NAMES) {
     const app = SURFACES[name].app;
@@ -803,7 +842,14 @@ Deno.test("exactly the unvalidated surfaces are human-facing", () => {
   // than passing.
   assertEquals(
     SURFACE_NAMES.filter((s) => SURFACES[s].humanFacing),
-    ["chat", "summarise", "lift_chat", "lift_summarise", "lift_swap"],
+    [
+      "chat",
+      "summarise",
+      "lift_chat",
+      "lift_summarise",
+      "lift_swap",
+      "lift_adapt",
+    ],
   );
 });
 

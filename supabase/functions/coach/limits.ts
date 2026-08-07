@@ -39,7 +39,8 @@ export type Surface =
   | "lift_intake"
   | "lift_skeleton"
   | "lift_week"
-  | "lift_swap";
+  | "lift_swap"
+  | "lift_adapt";
 
 export const SURFACE_NAMES: readonly Surface[] = [
   "intake",
@@ -57,6 +58,7 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "lift_skeleton",
   "lift_week",
   "lift_swap",
+  "lift_adapt",
 ];
 
 export function isSurface(value: unknown): value is Surface {
@@ -193,6 +195,12 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // whole session's worth plus retries, and is low enough that a client bug
     // cannot loop on it.
     lift_swap: { windowSeconds: 3600, max: 12 },
+    // Changing the week ahead. Tighter than the rest on purpose, and not for
+    // cost: this is a blast-radius limit. Every accepted change edits a block
+    // somebody is working through, and a lifter who has legitimately
+    // rearranged their week six times in an hour has not rearranged it,
+    // something is looping.
+    lift_adapt: { windowSeconds: 3600, max: 6 },
   },
   dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
   // PROVISIONAL — these three are placeholders, not measured figures. The real
