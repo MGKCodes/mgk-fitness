@@ -212,6 +212,130 @@ void main() {
     expect(find.text('Discard session'), findsOneWidget);
   });
 
+  group('rest between sets', () {
+    /// A session with one exercise and one untouched set, ready to tick.
+    Future<void> oneOpenSet() async {
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet('id-3', reps: 6, weightKg: 85);
+      // A second, so the card stays expanded after the first is ticked.
+      await recorder.addSet('id-2');
+    }
+
+    testWidgets('no rest is running until a set is ticked', (
+      WidgetTester tester,
+    ) async {
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      expect(find.text('RESTING'), findsNothing);
+    });
+
+    testWidgets('ticking a set starts it', (WidgetTester tester) async {
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+
+      // SectionLabel uppercases.
+      expect(find.text('RESTING'), findsOneWidget);
+      expect(find.text('1:30'), findsOneWidget);
+    });
+
+    testWidgets('un-ticking a set does not start it', (
+      WidgetTester tester,
+    ) async {
+      // Un-ticking is a correction to the log, not the end of a set. Starting a
+      // countdown for it would be the app misreading what happened.
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet('id-3', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.addSet('id-2');
+
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.check_circle).first);
+      await tester.pump();
+
+      expect(find.text('RESTING'), findsNothing);
+    });
+
+    testWidgets('it can be skipped', (WidgetTester tester) async {
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+      await tester.tap(find.text('Skip'));
+      await tester.pump();
+
+      expect(find.text('RESTING'), findsNothing);
+    });
+
+    testWidgets('adding time extends it', (WidgetTester tester) async {
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+      await tester.tap(find.text('+30s'));
+      await tester.pump();
+
+      expect(find.text('2:00'), findsOneWidget);
+    });
+
+    testWidgets('the adjusted length carries to the next set', (
+      WidgetTester tester,
+    ) async {
+      // Someone adding thirty seconds between every set means it. Asking again
+      // each time is the app refusing to learn something it has been told.
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+      await tester.tap(find.text('+30s'));
+      await tester.pump();
+
+      // Tick the second set: the new rest starts at the remembered length.
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+
+      expect(find.text('2:00'), findsOneWidget);
+    });
+
+    testWidgets('the log stays reachable while resting', (
+      WidgetTester tester,
+    ) async {
+      // A bar, not a dialog. Resting is exactly when someone notices they typed
+      // 8 instead of 6, and a modal would be in the way.
+      await oneOpenSet();
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      await tester.pump();
+
+      expect(find.text('RESTING'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, '90');
+      await tester.pump();
+
+      final stored = await (db.select(
+        db.exerciseSets,
+      )..where((s) => s.id.equals('id-3'))).getSingle();
+      expect(stored.weightKg, 90);
+    });
+  });
+
   group('warm-ups', () {
     testWidgets('a warm-up is marked, not left looking like a working set', (
       WidgetTester tester,

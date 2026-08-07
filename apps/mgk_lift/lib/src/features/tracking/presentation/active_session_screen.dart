@@ -1,14 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../data/exercise_lookup.dart';
+import '../domain/rest_timer.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
+import 'rest_bar.dart';
 import 'template_picker_sheet.dart';
 
 /// The screen you are looking at while standing at a rack.
@@ -27,6 +30,7 @@ class ActiveSessionScreen extends StatefulWidget {
     this.massUnit = MassUnit.kilograms,
     this.lookup,
     this.onFinished,
+    this.startRestOnOpen = false,
   });
 
   final SessionRecorder recorder;
@@ -45,6 +49,12 @@ class ActiveSessionScreen extends StatefulWidget {
   /// Called after a session is finished or discarded, so the caller can reload.
   final VoidCallback? onFinished;
 
+  /// Opens already resting. **For the preview harness only** — rest is never
+  /// restored from disk, so a screenshot of the bar is otherwise unreachable
+  /// without driving a tap.
+  @visibleForTesting
+  final bool startRestOnOpen;
+
   @override
   State<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
 }
@@ -58,6 +68,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// on screen and nothing in the data.
   Timer? _clock;
   DateTime _now = DateTime.now();
+
+  /// The rest since the last set was ticked. Null when nothing is resting —
+  /// either none has started, or the lifter dismissed it.
+  ///
+  /// Held on the screen rather than in the session, because rest is not part of
+  /// what happened: it is not written to the database, and reopening a recovered
+  /// session should not resume a countdown from an hour ago.
+  RestTimer? _rest;
+
+  /// Whether the buzz for this rest has already gone off, so a timer sitting at
+  /// zero does not vibrate once a second until it is dismissed.
+  bool _restAlerted = false;
+
+  /// How long the next rest runs for. Starts at the default and follows the
+  /// lifter's adjustments — see [_adjustRest].
+  Duration _restLength = RestTimer.defaultRest;
 
   /// Exercises the lifter has opened or closed **by hand**, keyed by id.
   ///
@@ -76,11 +102,66 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   @override
   void initState() {
     super.initState();
-    _clock = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => setState(() => _now = DateTime.now()),
-    );
+    if (widget.startRestOnOpen) _startRest();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _now = DateTime.now());
+      _alertIfRestOver();
+    });
   }
+
+  /// Buzzes once, the moment rest runs out.
+  ///
+  /// Haptics rather than a sound or a notification: a gym is loud, the phone is
+  /// usually face-down on a bench, and a buzz is the one signal that survives
+  /// both without needing a permission prompt.
+  ///
+  /// **This only fires while the app is in the foreground.** A backgrounded
+  /// Flutter app has no ticker, so a lifter who pockets their phone gets the
+  /// right time when they look — see [RestTimer] — but no buzz. Doing that
+  /// properly needs a scheduled local notification, which is a plugin and a
+  /// permission, and is not here yet.
+  void _alertIfRestOver() {
+    final rest = _rest;
+    if (rest == null || _restAlerted || !rest.isDoneAt(_now)) return;
+    _restAlerted = true;
+    unawaited(HapticFeedback.mediumImpact());
+  }
+
+  /// Starts rest, from now.
+  ///
+  /// Called when a set is ticked *complete* — un-ticking one is a correction to
+  /// the log, not the end of a set, and starting a countdown for it would be
+  /// the app misreading what happened.
+  void _startRest() {
+    setState(() {
+      _rest = RestTimer(startedAt: DateTime.now(), duration: _restLength);
+      _restAlerted = false;
+    });
+  }
+
+  /// Adjusts the running rest, and remembers the new length for the next one.
+  ///
+  /// Both, deliberately. Someone adding thirty seconds between every set means
+  /// it, and asking again each time is the app refusing to learn something it
+  /// has been told four times. It is kept for the session only — persisting it,
+  /// and having a different default per movement, both want a settings column
+  /// that does not exist yet.
+  void _adjustRest(Duration by) {
+    final rest = _rest;
+    if (rest == null) return;
+    setState(() {
+      _rest = rest.extendedBy(by, _now);
+      final next = _restLength + by;
+      _restLength = next < _minRest ? _minRest : next;
+      // Lengthening a finished rest makes it unfinished, so the buzz is owed
+      // again.
+      if (!_rest!.isDoneAt(_now)) _restAlerted = false;
+    });
+  }
+
+  /// Below this, rest is not a rest. Stops repeated −30s taps from setting the
+  /// remembered length to zero and silently disabling the feature.
+  static const Duration _minRest = Duration(seconds: 15);
 
   @override
   void dispose() {
@@ -155,12 +236,20 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                                     exercise.id,
                                   ),
                                 ),
-                                onToggle: (set) => _apply(
-                                  () => widget.recorder.updateSet(
-                                    set.id,
-                                    isCompleted: !set.isCompleted,
-                                  ),
-                                ),
+                                onToggle: (set) {
+                                  // Only on completion. Un-ticking is a
+                                  // correction to the log, not the end of a
+                                  // set.
+                                  if (!set.isCompleted) _startRest();
+                                  unawaited(
+                                    _apply(
+                                      () => widget.recorder.updateSet(
+                                        set.id,
+                                        isCompleted: !set.isCompleted,
+                                      ),
+                                    ),
+                                  );
+                                },
                                 onToggleWarmup: (set) => _apply(
                                   () => widget.recorder.updateSet(
                                     set.id,
@@ -201,6 +290,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                         ],
                       ),
               ),
+
+              // Below the list, above the system inset. Takes a strip rather
+              // than covering anything: the log stays reachable while resting,
+              // which is exactly when someone notices they typed 8 instead of 6.
+              if (_rest != null)
+                RestBar(
+                  timer: _rest!,
+                  now: _now,
+                  onAdjust: _adjustRest,
+                  onDismiss: () => setState(() => _rest = null),
+                ),
             ],
           ),
         ),

@@ -80,6 +80,16 @@ class PreviewApp extends StatelessWidget {
           session: s,
         );
       },
+      // Mid-rest, with the bar showing. The fixture ticks a set on open, which
+      // is the only way to reach this state — rest is never restored from disk.
+      'session-resting': (_) {
+        final s = _openSession();
+        return ActiveSessionScreen(
+          recorder: FakeSessionRecorder(s),
+          session: s,
+          startRestOnOpen: true,
+        );
+      },
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
