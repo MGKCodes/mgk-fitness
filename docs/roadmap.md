@@ -15,8 +15,11 @@ and the reasoning is worth more than the plan was:
    which is the difference between asking a model to behave and making
    misbehaviour unrepresentable.
 
-What is left is in [Carried-over debt](#carried-over-debt), and the first entry
-there is the one that matters: **none of this is on production yet.**
+It is all on production as of 2026-08-07 — four migrations applied and the
+coach function deployed. What is left is in
+[Carried-over debt](#carried-over-debt), and the entry that matters most is
+`COACH_MODEL_ALLOWLIST`, which is live and lets a client pick a model eight
+times the price of the default.
 
 For what the app now IS, see [architecture.md](architecture.md),
 [database.md](database.md) and [navigation.md](navigation.md).
@@ -392,51 +395,52 @@ it. Redesigning it empty means designing it twice.
 
 Not part of the five, but real, and each one is small:
 
-- **Four migrations are committed and not applied, and the coach is not
-  deployed.** The single most important entry here. Production has 7 applied
-  and is at `20260806150000`; the repo has 11. All four replay cleanly on a
-  local `db reset` and the suite passes 33 pgTAP assertions, but none has been
-  near the real database. Verify the gap rather than trusting this number —
-  `npx supabase migration list` is the answer, and the count written here has
-  already been wrong once.
+- ~~**Migrations and the coach are not deployed.**~~ **Done 2026-08-07.** All
+  four applied (`db push`) and the function deployed. Verified against
+  production afterwards rather than trusting the exit code: `coach.summaries`
+  is keyed `(user_id, app)`, all 1249 sets backfilled to `set_type = 'working'`,
+  the three `lift.plan*` tables exist with their indexes and three policies, and
+  `core.delete_account` carries the app-scoped sweep. The function answers `401
+  unauthorized` unauthenticated.
 
-  Two steps, not three:
+  One thing worth recording, because it was worried about at length and turned
+  out to be wrong: **`coach.summaries` was empty**, along with `conversations`
+  and `turns`. Runio has never written a memory to production, so the primary
+  key drop and re-add touched nothing. The migration that actually touched real
+  data was `20260807120000`, adding `set_type` across 1249 rows.
 
-      npx supabase db push
-      npx supabase functions deploy coach
+  **Still unproven: a real `lift_chat` turn.** Everything above says the
+  plumbing is right; none of it says the coach answers. That needs a signed-in
+  lifter on a build pointed at production.
 
-  **`OPENROUTER_API_KEY` and `COACH_MODEL` are already set** — Runio set them on
-  2026-07-28, and Edge Function secrets are project-wide rather than per
-  function, so the unified coach reads the ones that are already there. Confirm
-  with `npx supabase secrets list`, which prints digests rather than values.
+- **`COACH_MODEL_ALLOWLIST` is set on production**, since 2026-07-29, and it
+  breaks the rule its own documentation sets. Its contents are all seven ids
+  from `dev_coach_model.dart`, recovered by hashing candidates against the
+  digest `secrets list` prints:
 
-  Worth checking in the dashboard that `COACH_MODEL` is still a current
-  structured-output-capable id, because every Lift planning surface depends on
-  `response_format` being honoured and a model that silently drops it returns
-  prose the parser then rejects — which reads as a model failing to follow its
-  prompt and is not.
+      nex-agi/nex-n2-mini, google/gemini-3.1-flash-lite-20260507,
+      minimax/minimax-m3-20260531, qwen/qwen3.7-plus-20260602,
+      z-ai/glm-5.2-20260616, google/gemini-3.6-flash-20260721,
+      anthropic/claude-sonnet-5-20260630
 
-  Two to watch:
-  - `20260807120000_lift_sync_columns.sql` — sync needs it, **and the coach
-    cannot read a log without it**: it adds `lift.sets.set_type`, which the log
-    select names, so without it the read is a 400 and the coach sees a lifter
-    who has never trained.
-  - `20260807130000_coach_memory_per_app.sql` — drops and re-adds
-    `coach.summaries`'s primary key against live rows in a table Runio also
-    writes. The compatibility was proven against local PostgREST, not against
-    Runio's compiled client.
+  `surfaces.ts` says: *put only models you would let ANY runner use in the list
+  — never the Sharp-tier model*, so that a forged request can sidegrade but
+  never escalate. `anthropic/claude-sonnet-5` is $2.00/$10.00 against
+  `COACH_MODEL`'s $0.25/$1.50, and is described in the dev list as "the quality
+  ceiling". So a client CAN escalate. The spend cap bounds the damage because it
+  is denominated in real OpenRouter cost, but it does not prevent it.
 
-  The function must not be deployed before the migrations land: it would fail
-  closed on the limiter and 400 on the log.
+  Second problem, from the same file: several of those are served outside the
+  UK/EU, and `dev_coach_model.dart` says that is *not acceptable for the `chat`
+  surface in production, which carries a runner's own words about their body*.
+  `data_collection: "deny"` stops training, not geography. `lift_chat` now
+  carries the same class of data.
 
-- **`COACH_MODEL_ALLOWLIST` is set on production**, since 2026-07-29. That is
-  the development escape hatch that lets a client name its own model, and
-  `surfaces.ts` says in capitals to delete it before launch. It is bounded — a
-  client can only pick an id already on the list, so the worst case is a
-  sidegrade rather than an escalation, and Lift's client never sends `model` at
-  all. But it is a live loosening on a project about to carry a second app, and
-  the code that documents it expects it to be gone. Check what is in it, then
-  `npx supabase secrets unset COACH_MODEL_ALLOWLIST`.
+  Neither is currently reachable — no shipped client sends `model`, and Lift's
+  never will — so this is a loosening rather than a live exploit. The fix is one
+  line, and its only cost is the debug model-comparison workflow in `mgk_run`:
+
+      npx supabase secrets unset COACH_MODEL_ALLOWLIST
 
 - **`DAILY_GLOBAL_LIMIT` is set on production** and nothing in this repo reads
   it. Almost certainly a legacy Liftio secret. Harmless, but it is one more
