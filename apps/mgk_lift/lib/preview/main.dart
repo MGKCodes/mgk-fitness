@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../src/features/auth/data/fake_auth.dart';
+import '../src/features/auth/domain/account.dart';
+import '../src/features/auth/presentation/sign_in_screen.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
@@ -111,6 +114,15 @@ class PreviewApp extends StatelessWidget {
       ),
       // The two states that matter: signed out with training that exists in
       // one place, and signed in with everything up to date.
+      'settings-signed-in': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+        email: 'matt@example.com',
+        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        onSignOut: () {},
+        onSyncNow: () {},
+      ),
       'backup-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
@@ -126,6 +138,10 @@ class PreviewApp extends StatelessWidget {
           lastSyncedAt: previewNow.subtract(const Duration(minutes: 3)),
         ),
         onSyncNow: () {},
+      ),
+      'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
+      'sign-in-error': (_) => SignInScreen(
+        auth: FakeAuth(failWith: AuthFailure.wrongCredentials),
       ),
       'credits': (_) => const CreditsScreen(),
       'coach-mark': (_) => LiftShell(

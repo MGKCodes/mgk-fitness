@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../auth/domain/account.dart';
+import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
@@ -47,8 +49,7 @@ class LiftShell extends StatefulWidget {
     this.photos,
     this.photoSource,
     this.sync,
-    this.isSignedIn = false,
-    this.onSignIn,
+    this.auth,
     this.initialTab = 0,
   });
 
@@ -89,13 +90,10 @@ class LiftShell extends StatefulWidget {
   /// exists.
   final SupabaseSync? sync;
 
-  /// Whether there is an account. Stated rather than inferred from whether a
-  /// sync client exists — the two are different things, and Settings tells the
-  /// lifter something load-bearing about where their training lives.
-  final bool isSignedIn;
-
-  /// Opens the sign-in flow. Null until auth lands.
-  final VoidCallback? onSignIn;
+  /// Signing in and out. **Null means this build has no account system**, which
+  /// Settings reports as "this device only". Nothing in the app requires it:
+  /// tracking works signed out and always will.
+  final AuthService? auth;
 
   /// Which surface to open on. Exists so a preview can address a tab directly —
   /// tapping Flutter's canvas from an automation harness is unreliable.
@@ -140,6 +138,11 @@ class _LiftShellState extends State<LiftShell> {
   SyncReport? _lastReport;
   bool _syncing = false;
 
+  /// Who is signed in. Kept in step with the service rather than read on demand,
+  /// so a session restored at launch or expiring mid-use both reach the UI.
+  Account? _account;
+  StreamSubscription<Account?>? _authSub;
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +150,36 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     unawaited(_refreshPending());
+
+    final auth = widget.auth;
+    if (auth != null) {
+      _account = auth.current;
+      _authSub = auth.changes.listen((account) {
+        if (!mounted) return;
+        setState(() => _account = account);
+        // Signing in is the moment there is somewhere to put the backlog.
+        if (account != null) unawaited(_syncNow());
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_authSub?.cancel());
+    super.dispose();
+  }
+
+  Future<void> _openSignIn() async {
+    final auth = widget.auth;
+    if (auth == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => SignInScreen(
+          auth: auth,
+          pendingWorkouts: _pending?.workouts ?? 0,
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshPending() async {
@@ -298,14 +331,23 @@ class _LiftShellState extends State<LiftShell> {
           store: widget.units,
           onChanged: (prefs) => setState(() => _units = prefs),
           pending: _pending,
-          isSignedIn: widget.isSignedIn,
+          isSignedIn: _account != null,
+          email: _account?.email,
           isSyncing: _syncing,
           lastReport: _lastReport,
           onSyncNow: widget.sync == null ? null : _syncNow,
-          onSignIn: widget.onSignIn,
+          onSignIn: widget.auth == null ? null : _openSignIn,
+          onSignOut: _account == null ? null : _signOut,
         ),
       ),
     );
+  }
+
+  Future<void> _signOut() async {
+    // Local data is deliberately left alone. Signing out is "stop syncing",
+    // not "erase my training" - and the rows are already backed up.
+    await widget.auth?.signOut();
+    await _refreshPending();
   }
 
   Future<void> _openPhotos() async {

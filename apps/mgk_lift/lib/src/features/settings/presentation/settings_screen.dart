@@ -26,6 +26,8 @@ class SettingsScreen extends StatefulWidget {
     this.onChanged,
     this.pending,
     this.isSignedIn = false,
+    this.email,
+    this.onSignOut,
     this.isSyncing = false,
     this.lastReport,
     this.onSyncNow,
@@ -50,6 +52,11 @@ class SettingsScreen extends StatefulWidget {
   final SyncPending? pending;
 
   final bool isSignedIn;
+
+  /// Shown in the account row. Null when signed out.
+  final String? email;
+
+  final VoidCallback? onSignOut;
   final bool isSyncing;
   final SyncReport? lastReport;
   final VoidCallback? onSyncNow;
@@ -159,6 +166,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onSyncNow: widget.onSyncNow,
               onSignIn: widget.onSignIn,
             ),
+
+            if (widget.isSignedIn) ...<Widget>[
+              const _Heading('Account'),
+              SettingsTile(
+                icon: Icons.person_outline,
+                title: widget.email ?? 'Signed in',
+                subtitle: 'Sign out',
+                onTap: widget.onSignOut,
+                showChevron: false,
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.lg),
             const _Heading('About'),
