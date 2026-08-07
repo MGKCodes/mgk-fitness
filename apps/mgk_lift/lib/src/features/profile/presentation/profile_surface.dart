@@ -26,6 +26,7 @@ class ProfileSurface extends StatelessWidget {
     this.lookup,
     this.onOpenSettings,
     this.onOpenTrack,
+    this.onOpenPhotos,
   });
 
   /// Finished sessions, newest first.
@@ -45,6 +46,10 @@ class ProfileSurface extends StatelessWidget {
 
   /// Sends someone with an empty log back to the thing that fills it.
   final VoidCallback? onOpenTrack;
+
+  /// Opens progress photos. Null hides the row rather than showing an inert
+  /// one — the same rule the coach mark follows.
+  final VoidCallback? onOpenPhotos;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +118,46 @@ class ProfileSurface extends StatelessWidget {
                     // rather than as data. Nothing to compare, so no bars.
                     showBars: frequent.first.sessions != frequent.last.sessions,
                   ),
+              ],
+              if (onOpenPhotos != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.xl),
+                AppCard(
+                  onTap: onOpenPhotos,
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.photo_camera_outlined,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              'Progress photos',
+                              style: theme.textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'One a week, same spot, same light',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: AppColors.textTertiary,
+                      ),
+                    ],
+                  ),
+                ),
               ],
               const SizedBox(height: AppSpacing.xl),
               const SectionLabel('Recent sessions'),

@@ -6,6 +6,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
+import '../../photos/domain/progress_photo.dart';
+import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
@@ -40,6 +42,8 @@ class LiftShell extends StatefulWidget {
     this.history,
     this.onOpenCoach,
     this.hasCoachNote = false,
+    this.photos,
+    this.photoSource,
     this.initialTab = 0,
   });
 
@@ -64,6 +68,15 @@ class LiftShell extends StatefulWidget {
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
   final bool hasCoachNote;
+
+  /// Where progress photos are stored. **Null hides the entry point** rather
+  /// than opening an empty screen — a build with no on-device database has
+  /// nowhere to put a photo.
+  final PhotoLibrary? photos;
+
+  /// The camera. Null leaves photos readable but not addable, which is the
+  /// honest state in a preview.
+  final PhotoSource? photoSource;
 
   /// Which surface to open on. Exists so a preview can address a tab directly —
   /// tapping Flutter's canvas from an automation harness is unreliable.
@@ -164,6 +177,7 @@ class _LiftShellState extends State<LiftShell> {
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,
+                  onOpenPhotos: widget.photos == null ? null : _openPhotos,
                 ),
               ],
             ),
@@ -230,6 +244,19 @@ class _LiftShellState extends State<LiftShell> {
           initial: _units,
           store: widget.units,
           onChanged: (prefs) => setState(() => _units = prefs),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPhotos() async {
+    final library = widget.photos;
+    if (library == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PhotosSurface(
+          library: library,
+          source: widget.photoSource,
         ),
       ),
     );

@@ -1,8 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/home/presentation/lift_shell.dart';
+import '../src/features/photos/data/in_memory_photo_library.dart';
+import '../src/features/photos/domain/progress_photo.dart';
+import '../src/features/photos/presentation/photos_surface.dart';
+import '../src/features/photos/presentation/pose_series_screen.dart';
 import '../src/features/settings/domain/unit_preferences.dart';
 import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
@@ -90,6 +97,13 @@ class PreviewApp extends StatelessWidget {
           startRestOnOpen: true,
         );
       },
+      'photos': (_) => const _PhotosPreview(),
+      'photo-series': (_) => const _PhotosPreview(openSeries: true),
+      'photos-empty': (_) => PhotosSurface(
+        library: InMemoryPhotoLibrary(),
+        source: FakePhotoSource(null),
+        now: previewNow,
+      ),
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
@@ -251,25 +265,121 @@ Session _longSession() {
   );
 }
 
+/// Photos over **real files**, because the surface renders images from disk.
+///
+/// Pointing the fixture at paths that do not exist made every thumbnail the
+/// missing-file placeholder, which is a state worth having but not the one to
+/// review the screen in. This writes a bundled asset out to the temp directory
+/// first, so the preview exercises the same `Image.file` path production does.
+class _PhotosPreview extends StatefulWidget {
+  const _PhotosPreview({this.openSeries = false});
+
+  /// Opens straight into one pose's grid, which is the screen with the missed
+  /// weeks in it and the harder layout to get right.
+  final bool openSeries;
+
+  @override
+  State<_PhotosPreview> createState() => _PhotosPreviewState();
+}
+
+class _PhotosPreviewState extends State<_PhotosPreview> {
+  String? _path;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  Future<void> _prepare() async {
+    final bytes = await rootBundle.load(
+      'assets/images/backgrounds/hero_profile.webp',
+    );
+    final file = File('${Directory.systemTemp.path}/preview-photo.webp');
+    await file.writeAsBytes(bytes.buffer.asUint8List());
+    if (!mounted) return;
+    setState(() => _path = file.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _path;
+    if (path == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final library = InMemoryPhotoLibrary(_samplePhotos(path));
+    if (!widget.openSeries) {
+      return PhotosSurface(
+        library: library,
+        source: FakePhotoSource(null),
+        now: previewNow,
+      );
+    }
+    final week = ProgressPhoto.weekOf(previewNow);
+    return FutureBuilder<List<ProgressPhoto>>(
+      future: library.all(),
+      builder: (context, snapshot) {
+        final all = snapshot.data;
+        if (all == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return PoseSeriesScreen(
+          series: PoseSeries(
+            pose: Pose.front,
+            photos: all.where((p) => p.pose == Pose.front).toList(),
+          ),
+          thisWeek: week,
+          library: library,
+        );
+      },
+    );
+  }
+}
+
+/// Twelve weeks of front and back shots, with two weeks missed in the middle.
+List<ProgressPhoto> _samplePhotos(String path) {
+  final thisWeek = ProgressPhoto.weekOf(previewNow);
+  final photos = <ProgressPhoto>[];
+  for (var w = 0; w < 12; w++) {
+    if (w == 4 || w == 5) continue; // a fortnight nobody took one
+    final week = thisWeek.subtract(Duration(days: 7 * w));
+    for (final pose in Pose.defaults) {
+      photos.add(
+        ProgressPhoto(
+          id: '\${pose.stored}-\$w',
+          weekStart: week,
+          pose: pose,
+          path: path,
+          takenAt: week,
+        ),
+      );
+    }
+  }
+  return photos;
+}
+
 /// Every screen, tappable.
 ///
-/// Rows are a fixed height with no header above them, so row N always sits at a
-/// predictable y — which is what makes driving this from `adb shell input tap`
-/// reliable rather than a guess.
+/// **A two-column grid, not a list.** The capture script taps by computed
+/// position and cannot reach a row below the fold, so a single column put a
+/// ceiling on how many screens the harness could reach — and every time that
+/// ceiling was hit, the run failed silently by screenshotting this index under
+/// the missing screen's name. Two columns doubles the ceiling and halves how
+/// often the row height has to be argued about.
 class _Index extends StatelessWidget {
   const _Index({required this.screens});
 
   final Map<String, WidgetBuilder> screens;
 
-  /// Height of one row, in logical pixels. **Mirrored in
+  /// Height of one cell, in logical pixels. **Mirrored in
   /// `tool/capture_screens.ps1`; change both or every tap lands on the wrong
-  /// row.**
-  ///
-  /// 56 rather than 72 so the list still fits on one screen as screens are
-  /// added. It has to: the capture script taps by computed position and cannot
-  /// reach a row below the fold, so at 72 the thirteenth screen became
-  /// invisible to the harness while looking perfectly fine by hand.
-  static const double rowHeight = 56;
+  /// cell.**
+  static const double cellHeight = 72;
+
+  /// **Mirrored in the capture script too.**
+  static const int columns = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -278,33 +388,42 @@ class _Index extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: ListView.builder(
+        child: GridView.builder(
           padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: cellHeight,
+          ),
           itemCount: keys.length,
-          itemBuilder: (context, i) => SizedBox(
-            height: rowHeight,
-            child: InkWell(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: screens[keys[i]]!),
+          itemBuilder: (context, i) => InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: screens[keys[i]]!),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xl,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        '${i + 1}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
+              child: Row(
+                children: <Widget>[
+                  SizedBox(
+                    width: 26,
+                    child: Text(
+                      '${i + 1}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textTertiary,
                       ),
                     ),
-                    Text(keys[i], style: theme.textTheme.bodyLarge),
-                  ],
-                ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      keys[i],
+                      style: theme.textTheme.bodyMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -313,3 +432,4 @@ class _Index extends StatelessWidget {
     );
   }
 }
+

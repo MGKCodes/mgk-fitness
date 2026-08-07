@@ -3,6 +3,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import 'src/core/database/app_database.dart';
 import 'src/features/home/presentation/lift_shell.dart';
+import 'src/features/photos/data/camera_photo_source.dart';
+import 'src/features/photos/data/drift_photo_library.dart';
 import 'src/features/settings/domain/unit_preferences.dart';
 import 'src/features/stats/data/drift_session_history.dart';
 import 'src/features/tracking/data/drift_session_recorder.dart';
@@ -43,6 +45,11 @@ class MgkLiftApp extends StatelessWidget {
         // their defaults. Swapping in SupabaseUnitPreferences is the only
         // change needed once auth lands.
         units: InMemoryUnitPreferences(),
+        // Photos live on the same on-device database, so they come and go with
+        // it: no database, no camera entry point rather than a screen that
+        // cannot save what it takes.
+        photos: db == null ? null : DriftPhotoLibrary(db),
+        photoSource: db == null ? null : CameraPhotoSource(),
         // No coach passed in: the mark stays absent rather than inert. A mark
         // that cannot open anything is worse than no mark.
       ),

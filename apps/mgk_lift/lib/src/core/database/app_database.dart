@@ -18,7 +18,7 @@ part 'app_database.g.dart';
 ///
 /// The coach is the other half of the app and takes the opposite posture: it
 /// needs a connection and says so. Nothing here depends on it.
-@DriftDatabase(tables: [Workouts, Exercises, ExerciseSets])
+@DriftDatabase(tables: [Workouts, Exercises, ExerciseSets, ProgressPhotos])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -30,7 +30,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +42,19 @@ class AppDatabase extends _$AppDatabase {
         // concept did not exist, so nothing was a warm-up.
         await m.addColumn(exerciseSets, exerciseSets.setType);
       }
+      if (from < 3) {
+        // Progress photos. A new table rather than a column, so nothing
+        // existing is touched.
+        await m.createTable(progressPhotos);
+      }
+      // The slot rule, as an index rather than a table constraint: drift's
+      // `customConstraints` replaces the generated ones wholesale, and a
+      // partial unique index is the only way to say "one live photo per week
+      // per pose" while still keeping soft-deleted rows around.
+      await customStatement(
+        'create unique index if not exists progress_photos_slot '
+        'on progress_photos (week_start, pose_type) where deleted_at is null',
+      );
     },
     beforeOpen: (details) async {
       // Off by default in SQLite, and the cascade from Workouts through

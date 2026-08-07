@@ -26,25 +26,31 @@ param(
   [string]$Package = 'com.mgkcodes.fitness.lift'
 )
 
-# Must match the order of the `screens` map in lib/preview/main.dart.
-$screens = @(
-  'track',
-  'track-open',
-  'plan',
-  'plan-entitled',
-  'profile',
-  'profile-empty',
-  'session-empty',
-  'session',
-  'session-long',
-  'session-resting',
-  'settings',
-  'credits',
-  'coach-mark'
-)
+# The screen names, read from the source rather than duplicated here.
+#
+# This list used to be maintained by hand and drifted out of order, so captures
+# were written under the wrong names - `photo-series` was really `photos-empty`,
+# and nothing said so. Parsing the map keys out of the preview keeps one source
+# of truth; if the regex ever stops matching, the run fails loudly below rather
+# than captioning the wrong screen.
+$previewSource = Join-Path $PSScriptRoot '../lib/preview/main.dart'
+$screens = Select-String -Path $previewSource -Pattern "^\s+'([a-z0-9-]+)':\s+\(_\)" |
+  ForEach-Object { $_.Matches[0].Groups[1].Value }
 
-# _Index.rowHeight, in logical pixels. **Mirrored from lib/preview/main.dart.**
-$rowHeight = 56
+if (-not $screens -or $screens.Count -lt 2) {
+  throw "Could not read screen names from $previewSource - has the map format changed?"
+}
+Write-Host "$($screens.Count) screens: $($screens -join ', ')"
+
+
+# _Index.cellHeight and _Index.columns. **Mirrored from lib/preview/main.dart.**
+#
+# The index is a two-column grid because this script taps by computed position
+# and cannot reach a cell below the fold. One column put a ceiling on how many
+# screens were reachable, and hitting it failed silently - the run screenshotted
+# the index under the missing screen's name.
+$cellHeight = 72
+$columns = 2
 
 $out = Join-Path $PSScriptRoot "../screenshots/$Date-lift-review"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
@@ -102,7 +108,11 @@ function Reset-ToIndex {
   return $false
 }
 
-Write-Host "density=$density statusBar=$statusBar rowHeight=$rowHeight -> $out"
+# Logical width of one column, for the tap x.
+$screenWidth = [int](((adb -s $Serial shell wm size) -replace '.*:\s*', '') -split 'x')[0]
+$columnWidth = $screenWidth / $columns
+
+Write-Host "density=$density statusBar=$statusBar cell=$cellHeight -> $out"
 
 $indexPath = Join-Path $out '00-index.png'
 Reset-ToIndex | Out-Null
@@ -129,8 +139,10 @@ for ($i = 0; $i -lt $screens.Count; $i++) {
   # capture independent of the one before it.
   if (-not (Reset-ToIndex)) { continue }
 
-  $y = $statusBar + [int](($i * $rowHeight + $rowHeight / 2) * $density)
-  $x = [int](200 * $density)
+  $row = [Math]::Floor($i / $columns)
+  $col = $i % $columns
+  $y = $statusBar + [int](($row * $cellHeight + $cellHeight / 2) * $density)
+  $x = [int](($col + 0.5) * $columnWidth)
 
   adb -s $Serial shell input tap $x $y
   Start-Sleep -Milliseconds 900   # entrance animations settle
@@ -153,7 +165,7 @@ for ($i = 0; $i -lt $screens.Count; $i++) {
   # the launcher. Both produce a file of exactly the right name and neither is
   # visible without opening it.
   $kb = [int]((Get-Item $path).Length / 1KB)
-  if ($kb -gt 700) {
+  if ($kb -gt 1150) {
     Write-Warning "  $name is ${kb}KB, probably the launcher rather than the app"
   } elseif (Test-LooksLikeIndex $path) {
     Write-Warning "  $name still looks like the index, the tap did not land"

@@ -81,6 +81,52 @@ class Exercises extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Local mirror of `core.progress_photos`.
+///
+/// **The row points at a file; it does not hold one.** Photos live as JPEGs in
+/// the app's documents directory and this table stores the path. Putting image
+/// bytes in SQLite would bloat the database that every set write goes through,
+/// for data that is only ever read whole.
+///
+/// In `core` rather than `lift` remotely, because a body is not a lift-specific
+/// concept — Run will want the same photos rather than a second set of them.
+@DataClassName('PhotoRow')
+class ProgressPhotos extends Table {
+  TextColumn get id => text()();
+
+  /// Monday midnight of the week this belongs to. One slot per (week, pose) —
+  /// see the unique index below.
+  DateTimeColumn get weekStart => dateTime()();
+
+  /// `front` | `right_side` | `back` | `left_side`.
+  TextColumn get poseType => text()();
+
+  /// Absolute path on this device. **Not portable between installs** — the
+  /// documents directory moves, so a restore has to rewrite these rather than
+  /// trust them.
+  TextColumn get path => text()();
+
+  DateTimeColumn get takenAt => dateTime()();
+
+  TextColumn get note => text().nullable()();
+
+  /// Kept on disk, skipped during playback.
+  BoolColumn get isExcluded => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+
+  /// One live photo per week per pose. The slot *is* the model: retaking
+  /// replaces rather than appends, so a week cannot end up with four front
+  /// shots and no way to choose between them.
+  @override
+  List<String> get customConstraints => const <String>[];
+}
+
 /// Local mirror of `lift.sets` — one working set.
 ///
 /// Named `ExerciseSets` rather than `Sets` because `sets` collides with the
