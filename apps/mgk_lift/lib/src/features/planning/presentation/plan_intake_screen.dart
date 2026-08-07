@@ -104,87 +104,93 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Build a plan')),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: ListView(
-                controller: _scroll,
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                children: <Widget>[
-                  for (final turn in _turns) _Bubble(turn: turn),
-                  if (_waiting) const _Thinking(),
-                  if (_failure != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
-                      ),
-                      child: Text(
-                        _failure!.message,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+    // Backing out mid-turn abandons a call that has already been paid for, and
+    // whose answer would have been merged into what the coach knows. The arrow
+    // comes back the moment it lands.
+    return PopScope(
+      canPop: !_waiting,
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        appBar: AppBar(title: const Text('Build a plan')),
+        body: SafeArea(
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: <Widget>[
+                    for (final turn in _turns) _Bubble(turn: turn),
+                    if (_waiting) const _Thinking(),
+                    if (_failure != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Text(
+                          _failure!.message,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // Appears the moment a block could be built, rather than waiting
-            // for the coach to decide the conversation is over. Somebody who
-            // has answered enough should not have to keep chatting to get out.
-            if (_known.isComplete)
+              // Appears the moment a block could be built, rather than waiting
+              // for the coach to decide the conversation is over. Somebody who
+              // has answered enough should not have to keep chatting to get out.
+              if (_known.isComplete)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                  ),
+                  child: PrimaryButton(
+                    label: 'Build my plan',
+                    onPressed: _waiting
+                        ? null
+                        : () => Navigator.of(context).pop(_known),
+                  ),
+                ),
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg,
                   0,
                   AppSpacing.lg,
-                  AppSpacing.sm,
+                  AppSpacing.md,
                 ),
-                child: PrimaryButton(
-                  label: 'Build my plan',
-                  onPressed: _waiting
-                      ? null
-                      : () => Navigator.of(context).pop(_known),
-                ),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      enabled: !_waiting,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: const InputDecoration(
-                        hintText: 'Tell your coach',
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        controller: _input,
+                        enabled: !_waiting,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
+                        decoration: const InputDecoration(
+                          hintText: 'Tell your coach',
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  IconButton.filled(
-                    onPressed: _waiting ? null : _send,
-                    icon: const Icon(Icons.arrow_upward),
-                    tooltip: 'Send',
-                  ),
-                ],
+                    const SizedBox(width: AppSpacing.sm),
+                    IconButton.filled(
+                      onPressed: _waiting ? null : _send,
+                      icon: const Icon(Icons.arrow_upward),
+                      tooltip: 'Send',
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

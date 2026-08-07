@@ -11,6 +11,7 @@ import 'package:mgk_lift/src/features/tracking/presentation/exercise_card.dart'
 import 'package:mgk_units/mgk_units.dart';
 
 void main() {
+  navigationTests();
   late AppDatabase db;
   late DriftSessionRecorder recorder;
   var counter = 0;
@@ -254,7 +255,12 @@ void main() {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-3', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-3',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
       await recorder.addSet('id-2');
 
       await tester.pumpWidget(await screen());
@@ -355,7 +361,12 @@ void main() {
         setType: SetType.warmup,
       );
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-4', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-4',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
       // A set still open, so the card stays expanded and the rows are visible.
       await recorder.addSet('id-2');
 
@@ -374,7 +385,12 @@ void main() {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-3', reps: 10, weightKg: 60, isCompleted: true);
+      await recorder.updateSet(
+        'id-3',
+        reps: 10,
+        weightKg: 60,
+        isCompleted: true,
+      );
       await recorder.addSet('id-2');
 
       await tester.pumpWidget(await screen());
@@ -455,7 +471,12 @@ void main() {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-3', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-3',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
       await recorder.addSet('id-2');
 
       await tester.pumpWidget(await screen());
@@ -472,7 +493,12 @@ void main() {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-3', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-3',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
 
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
@@ -492,7 +518,12 @@ void main() {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-3', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-3',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
 
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
@@ -525,7 +556,12 @@ void main() {
         setType: SetType.warmup,
       );
       await recorder.addSet('id-2');
-      await recorder.updateSet('id-4', reps: 6, weightKg: 85, isCompleted: true);
+      await recorder.updateSet(
+        'id-4',
+        reps: 6,
+        weightKg: 85,
+        isCompleted: true,
+      );
 
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
@@ -550,5 +586,29 @@ void main() {
     await tester.pumpAndSettle();
     // 500 kg is 1102.31 lb, snapped to the pound.
     expect(find.text('1102 lb'), findsOneWidget);
+  });
+}
+
+/// Item 4's finding: the screen had no way out but Finish (disabled until a set
+/// is ticked) and Discard, at the foot of a list.
+void navigationTests() {
+  testWidgets('there is a way back that is not Finish or Discard', (
+    WidgetTester tester,
+  ) async {
+    final db = AppDatabase.memory();
+    addTearDown(db.close);
+    final recorder = DriftSessionRecorder(db);
+    final session = await recorder.start(name: 'Push');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ActiveSessionScreen(recorder: recorder, session: session),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Finish is disabled with nothing ticked, which is correct and is exactly
+    // why a back affordance has to exist independently of it.
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
   });
 }

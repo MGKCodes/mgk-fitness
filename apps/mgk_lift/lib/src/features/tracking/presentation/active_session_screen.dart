@@ -206,6 +206,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           child: Column(
             children: <Widget>[
               _Header(
+                onBack: () => Navigator.of(context).maybePop(),
                 name: _session.name,
                 elapsed: _session.elapsedAt(_now),
                 volumeKg: _session.volumeKg,
@@ -442,6 +443,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 /// with a thumb, and clearly a session-level action rather than a set-level one.
 class _Header extends StatelessWidget {
   const _Header({
+    required this.onBack,
     required this.name,
     required this.elapsed,
     required this.volumeKg,
@@ -450,6 +452,19 @@ class _Header extends StatelessWidget {
     required this.canFinish,
     required this.onFinish,
   });
+
+  /// Leaves the session running and goes back.
+  ///
+  /// **The only way off this screen used to be Finish or Discard**, and Finish
+  /// is disabled until a set is ticked — so a lifter who opened a session by
+  /// accident had to find "Discard session" at the foot of a list to escape.
+  /// The Android system back gesture worked and nothing on screen said so.
+  ///
+  /// Backing out is safe and non-destructive: every change is already
+  /// persisted, the session stays open, and Track offers to resume it. That is
+  /// why this needs no confirmation, and why it is an arrow rather than a
+  /// dialog.
+  final VoidCallback onBack;
 
   final String name;
   final Duration elapsed;
@@ -478,6 +493,16 @@ class _Header extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
+              IconButton(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back),
+                color: AppColors.textSecondary,
+                tooltip: 'Back — the session stays open',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              ),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
