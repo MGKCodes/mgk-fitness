@@ -50,9 +50,7 @@ evening; one that falls back to a provider training on injury notes is worse.
 
 ---
 
-## 2. Persistent coach memory
-
-**The server half is built.** What is left is the app.
+## 2. Persistent coach memory — **done, 2026-08-07**
 
 The point was never transcript storage. It is that **the coach should know a
 lifter after three months** — that they train four days, that their left
@@ -74,10 +72,10 @@ and adds the same column to `coach.conversations`. `coach.turns` deliberately
 does not get one: it reaches its app through its conversation FK, and a second
 copy of that fact could disagree with the first.
 
-Verified locally: `supabase db reset` replays all nine migrations onto a clean
-database, `supabase test db` passes 13/13, and Runio's app-less upsert was
+Verified locally: `supabase db reset` replays every migration onto a clean
+database, `supabase test db` passes 27/27, and Runio's app-less upsert was
 POSTed at local PostgREST twice to prove it still updates its own row rather
-than 409ing on the widened key. Not yet applied to production.
+than 409ing on the widened key. **Not yet applied to production.**
 
 **`supabase/config.toml` was exposing only `public` and `graphql_public`**,
 which is why none of this could be tested locally before today: every request
@@ -98,21 +96,43 @@ Settings → API → Exposed schemas.
 3. **Each request sends** the memory plus the last 20 turns, read alongside the
    log in one parallel round trip.
 
+### The three decisions, as settled
+
+- **Retention and deletion.** Settings → Coach shows the memory in full with
+  when it was last written, and offers to forget it — conversations and memory
+  together, confirmed first, with the dialog saying plainly that the training
+  log is untouched and the account stays. `20260807140000` also scopes
+  `core.delete_account` to the new column, so deleting one app's data now takes
+  that app's coach data with it. That was the GDPR gap
+  `20260806130300_account_deletion.sql` named and could not close, and
+  `supabase/tests/delete_account.sql` asserts both directions — the departing
+  app's memory gone, the remaining app's kept — plus a bystander account left
+  alone. Confirmed failing against the pre-change function before it was fixed.
+- **What the memory may contain.** Constrained in `lift_summarise`'s prompt to
+  what the lifter said rather than what the model concluded. No inference about
+  their state of mind, nothing about their body or how they look, and nothing
+  the database already holds. The reason it is constrained that hard is the next
+  decision.
+- **Editable: no.** The memory is rewritten from the transcript when it falls
+  behind, so an edit would be reverted within a few conversations — a text field
+  would be a promise the coach does not keep. Since the only control is erasure,
+  the prompt carries the whole burden of being fair, and the screen says so
+  rather than leaving the missing control looking like an oversight.
+
+`coach.usage` deliberately survives a partial deletion: it holds no content,
+self-prunes at 31 days, and erasing it would make deleting one app double as a
+spend-cap reset.
+
 ### What is left
 
-- **See it and clear it.** Decided: the lifter can read the memory in settings
-  and delete it, and cannot edit it — an edit would be silently reverted by the
-  next regeneration unless regeneration learns to treat lifter-written text as
-  fixed, which is real work rather than a text field. Clearing needs no new SQL:
-  `authenticated` already holds DELETE on `coach.conversations` (turns cascade)
-  and `coach.summaries`, so it is two calls scoped by RLS.
-- **Say that it remembers**, in the app rather than only here. The coach
-  screen's own comment is now the only place it is written down.
-- **Scope account deletion.** `20260806130300_account_deletion.sql` says in as
-  many words that coach data can only be erased when the LAST app goes, because
-  there was no way to tell which half belonged to which app. There is now. This
-  is the GDPR gap the column existed to close, and it is the natural next
-  migration.
+Nothing in this item. Two things it touched are worth carrying forward:
+
+- The memory is **session-visible but not yet resumable** — reopening the app
+  gives an empty screen and a coach that still knows you. That is defensible and
+  documented in `coach_screen.dart`, but showing the stored transcript on open
+  is a small job now that it exists.
+- The regeneration is **inline**, so about one turn in twenty pays for a second
+  short call. `EdgeRuntime.waitUntil` is the upgrade if that is ever felt.
 
 ---
 
@@ -256,18 +276,28 @@ it. Redesigning it empty means designing it twice.
 
 Not part of the five, but real, and each one is small:
 
-- **Two migrations are committed and not pushed** —
-  `20260807120000_lift_sync_columns.sql` must be applied before sync works
-  against production, **and before the coach can read a log at all**: it adds
-  `lift.sets.set_type`, which the log select names, so without it the read is a
-  400 and the coach sees a lifter who has never trained. The `coach` edge
-  function is not deployed.
+- **Three migrations are committed and not applied.** Production is at
+  `20260806150000`; the repo is three ahead. All three replay cleanly on a local
+  `db reset` and pass `supabase test db`, but none has been near the real
+  database:
+  - `20260807120000_lift_sync_columns.sql` — sync needs it, **and the coach
+    cannot read a log without it**: it adds `lift.sets.set_type`, which the log
+    select names, so without it the read is a 400 and the coach sees a lifter
+    who has never trained.
+  - `20260807130000_coach_memory_per_app.sql` — the one to watch. It drops and
+    re-adds `coach.summaries`'s primary key against live rows, and Runio writes
+    that table.
+  - `20260807140000_delete_account_scopes_the_coach.sql` — function only.
+
+  The `coach` edge function is not deployed either, and it must not be deployed
+  before these are applied: it would fail closed on the limiter and 400 on the
+  log.
 - **`daily-ai-summary` still calls `api.anthropic.com` directly.** Out of scope
   for item 1 — it predates the coach and is Liftio's, not the coach's — but it
   is now the only place in the repo holding an `ANTHROPIC_API_KEY`. The
   restructure migration says it stays app-local until a coach surface replaces
   it; that surface is worth adding while the surfaces table is fresh.
-- **Nothing is pushed to the remote.** 18 commits sit locally.
+- **Nothing is pushed to the remote.** 24 commits sit locally.
 - **Liftio's ToS still contradicts the licence decision** made this session, in
   three files across `Liftio` and `getliftio.com`, and Liftio has no credits
   screen to point at. `mgk_lift`'s `credits_screen.dart` is a working
