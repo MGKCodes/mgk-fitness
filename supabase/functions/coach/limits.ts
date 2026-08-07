@@ -35,7 +35,10 @@ export type Surface =
   | "edit_run"
   | "set_goal"
   | "lift_chat"
-  | "lift_summarise";
+  | "lift_summarise"
+  | "lift_intake"
+  | "lift_skeleton"
+  | "lift_week";
 
 export const SURFACE_NAMES: readonly Surface[] = [
   "intake",
@@ -49,6 +52,9 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "set_goal",
   "lift_chat",
   "lift_summarise",
+  "lift_intake",
+  "lift_skeleton",
+  "lift_week",
 ];
 
 export function isSurface(value: unknown): value is Surface {
@@ -169,6 +175,16 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // deliberately too low to rewrite the memory after every turn — that is a
     // re-encode loop, and it is the design the two-tier memory exists to avoid.
     lift_summarise: { windowSeconds: 3600, max: 6 },
+    // Onboarding, four to six turns, and a lifter may restart it. Generous and
+    // short like Run's `intake`: it must feel instant.
+    lift_intake: { windowSeconds: 300, max: 12 },
+    // The block's arc, laid out once per block (every 8 to 16 weeks) with up to
+    // two validator-driven attempts. The tightest allowance of the three —
+    // enough to re-plan a few times while onboarding, and no more.
+    lift_skeleton: { windowSeconds: 3600, max: 6 },
+    // One call per week of the block, generated a week ahead, up to two
+    // attempts. 12/h covers backfilling several weeks at once plus retries.
+    lift_week: { windowSeconds: 3600, max: 12 },
   },
   dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
   // PROVISIONAL — these three are placeholders, not measured figures. The real

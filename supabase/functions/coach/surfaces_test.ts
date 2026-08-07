@@ -22,7 +22,10 @@ import {
   editRunMessages,
   LIFT_PERSONA,
   liftChatMessages,
+  liftIntakeMessages,
+  liftSkeletonMessages,
   liftSummariseMessages,
+  liftWeekMessages,
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
@@ -564,6 +567,95 @@ Deno.test("an empty memory is a legitimate answer, an absent one is not", () => 
       transcript: [{ role: "user", text: "hi" }],
     }),
   );
+});
+
+// ---- planning ---------------------------------------------------------------
+
+/** Every property name anywhere in a JSON Schema, however deeply nested. */
+function schemaKeys(
+  node: unknown,
+  found: Set<string> = new Set(),
+): Set<string> {
+  if (Array.isArray(node)) {
+    for (const item of node) schemaKeys(item, found);
+    return found;
+  }
+  if (typeof node !== "object" || node === null) return found;
+  const obj = node as Record<string, unknown>;
+  const props = obj.properties;
+  if (typeof props === "object" && props !== null) {
+    for (const key of Object.keys(props)) found.add(key);
+  }
+  for (const value of Object.values(obj)) schemaKeys(value, found);
+  return found;
+}
+
+Deno.test("the week schema has nowhere to put a weight", () => {
+  // The load-bearing assertion of the whole planning design. The rule is that a
+  // target comes from what the lifter has actually lifted; a prompt asking a
+  // model to honour that is a request, and a schema with no field for a
+  // kilogram is a guarantee. Dart derives the number from their own log.
+  //
+  // Written against a real regression path: adding `target_kg` here "so the
+  // model can be helpful" would compile, pass every other test, and quietly
+  // put invented weights in front of somebody under a loaded bar.
+  const keys = schemaKeys(SURFACES.lift_week.schema);
+  for (const banned of ["target_kg", "weight", "weight_kg", "kg", "load"]) {
+    assert(!keys.has(banned), `lift_week must not accept "${banned}"`);
+  }
+  assert(keys.has("intensity_pct"), "it prescribes intensity instead");
+});
+
+Deno.test("the week prompt says a weight cannot be smuggled into a note", () => {
+  // `note` is free text, so the schema alone cannot stop it. The prompt is the
+  // only control on that one, which is why it is asserted separately rather
+  // than assumed to be covered by the test above.
+  const system = systemOf(liftWeekMessages({}));
+  assertStringIncludes(system, "You cannot prescribe a weight");
+  assertStringIncludes(system, "must not try to put one in a note");
+});
+
+Deno.test("null intensity is the right answer, not a gap to fill", () => {
+  // A percentage on a movement they have never done resolves to nothing, so a
+  // model that fills every slot produces a plan that looks complete and is
+  // mostly empty. The prompt has to make null the expected case.
+  const system = systemOf(liftWeekMessages({}));
+  assertStringIncludes(system, 'Leave "intensity_pct" null');
+  assertStringIncludes(system, "Null is a real answer");
+});
+
+Deno.test("the skeleton decides shape and refuses to decide content", () => {
+  // Shape and content in one call means neither is done carefully, and a
+  // skeleton that names movements gives the week generator something wrong to
+  // work around rather than a brief to work from.
+  const system = systemOf(liftSkeletonMessages({}));
+  assertStringIncludes(system, "Do not name movements, sets, reps or weights");
+  const keys = schemaKeys(SURFACES.lift_skeleton.schema);
+  assert(!keys.has("movements"), "the skeleton carries no movements");
+  assert(keys.has("intent"), "what it carries is the intent");
+});
+
+Deno.test("intake asks which weekdays, not only how many", () => {
+  // A block is laid out on named days, so "four days" alone cannot be turned
+  // into a week — the plan would have nowhere to put its sessions.
+  const system = systemOf(liftIntakeMessages({}));
+  assertStringIncludes(system, "Ask which weekdays, not just how many");
+  assert(schemaKeys(SURFACES.lift_intake.schema).has("available_weekdays"));
+});
+
+Deno.test("intake does not promise what will be in the sessions", () => {
+  // It is finding out what they can do, not deciding what they will do. A
+  // specific promise here is a plan disappointing before it exists.
+  const system = systemOf(liftIntakeMessages({}));
+  assertStringIncludes(system, "Do not discuss what will be in the sessions");
+});
+
+Deno.test("the planning surfaces are validated, so none is human-facing", () => {
+  // All three are graded by the Dart validator before anything is shown, which
+  // is what lets them run on the cheap model.
+  for (const s of ["lift_intake", "lift_skeleton", "lift_week"] as const) {
+    assert(!SURFACES[s].humanFacing, `${s} is validated, not human-facing`);
+  }
 });
 
 Deno.test("every surface declares which app pays for it", () => {

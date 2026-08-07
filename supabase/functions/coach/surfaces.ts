@@ -1249,6 +1249,321 @@ export function liftSummariseMessages(body: Body): Message[] {
   ];
 }
 
+// ---- planning: intake, skeleton, week ---------------------------------------
+//
+// Three calls, in order, and the split is the same one Run makes: a block's arc
+// is laid out once, then each week's sessions are filled in a week ahead. One
+// call producing every session of a twelve-week block would be the most
+// expensive request in the product, would fail entirely on one bad number, and
+// would have to be regenerated wholesale every time somebody's shoulder hurt on
+// a Tuesday.
+//
+// ## The load is not in the schema
+//
+// **`lift_week` has nowhere to put a weight, and that is the design.** The rule
+// is that a target comes from what the lifter has actually lifted, and a prompt
+// asking a model to honour that is a request; a schema with no field for a
+// kilogram is a guarantee. So the model prescribes an INTENSITY — a percentage
+// of what it is told they can do — and Dart turns that into a number using the
+// estimated 1RM from their own log, or into nothing at all when there is no
+// qualifying set to derive one from.
+//
+// That is ADR-0003 at its strongest: the model cannot propose a weight, so no
+// validator has to catch one.
+
+const LIFT_INTAKE_INSTRUCTIONS =
+  `You are running the conversation that sets up a lifter's training block. Your
+job is to gather what a plan needs, in as few exchanges as possible. Aim for
+three or four turns.
+
+What a plan needs:
+- what they are training for, in their own words
+- how many days a week they can train, and WHICH days
+- what they have to train with: a full gym, a rack and a barbell, dumbbells at
+  home, machines only
+- anything that hurts, or that they have been told to avoid
+- roughly how long they want the block to be, if they have a view
+
+Ask which weekdays, not just how many. A block is laid out on named days, so
+"four days" alone cannot be turned into a week. If they do not mind which, say
+so by listing the days you propose.
+
+Rules:
+- Batch two or three questions per turn. Acknowledge what they just told you
+  before asking for what is still missing.
+- If they answer several things at once, capture all of them and skip ahead.
+  Never re-ask for something you already have.
+- Do NOT judge whether an answer is plausible, and do not talk them out of a
+  goal. Extract what they said; a separate step checks the numbers.
+- Weekdays are 1=Monday through 7=Sunday.
+- In "extracted", return every field on every turn. Use null for anything not
+  yet known.
+- Do not discuss what will be in the sessions. You are finding out what they can
+  do, not deciding what they will do — that comes next, and promising specifics
+  here is how a plan disappoints before it exists.
+- When you have what you need, say so and tell them the next screen shows the
+  block for them to look over.`;
+
+const LIFT_INTAKE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "extracted"],
+  properties: {
+    reply: {
+      type: "string",
+      description: "The coach's conversational reply to the lifter.",
+    },
+    extracted: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "goal",
+        "weeks",
+        "days_per_week",
+        "available_weekdays",
+        "equipment",
+        "injury_notes",
+      ],
+      properties: {
+        goal: nullable(
+          "string",
+          "What they are training for, in their own words.",
+        ),
+        weeks: nullable(
+          "integer",
+          "How many weeks the block should run, if they said or implied one.",
+        ),
+        days_per_week: nullable("integer", "Training days per week, 1 to 7."),
+        available_weekdays: nullable(
+          "array",
+          "Which weekdays they can train, 1=Monday through 7=Sunday.",
+          { items: { type: "integer" } },
+        ),
+        equipment: nullable(
+          "string",
+          "What they have to train with, in their words.",
+        ),
+        injury_notes: nullable(
+          "string",
+          "Anything that hurts or that they avoid, in their words.",
+        ),
+      },
+    },
+  },
+};
+
+export function liftIntakeMessages(body: Body): Message[] {
+  const slots = (body.slots as Record<string, unknown>) ?? {};
+  const missing = (body.missing as string[]) ?? [];
+
+  const system = `${LIFT_PERSONA}\n\nToday is ${today()}.\n\n` +
+    `${LIFT_INTAKE_INSTRUCTIONS}\n\n` +
+    `Already known, do not re-ask: ${JSON.stringify(slots)}\n` +
+    `Still missing: ${missing.length ? missing.join(", ") : "nothing"}`;
+
+  const turns = conversation(body.history, MAX_LIFT_HISTORY_TURNS);
+  return [
+    { role: "system", content: system },
+    ...(turns.length
+      ? turns
+      : [{ role: "user", content: "Let's get started." }]),
+  ];
+}
+
+// ---- lift_skeleton ----------------------------------------------------------
+
+/// The block's arc: what each week is for, before any session exists.
+///
+/// It carries no movements and no numbers on purpose. This call decides shape —
+/// where the hard weeks are and where the easy one is — and a model asked to
+/// decide shape and content at once does neither carefully.
+const LIFT_SKELETON_INSTRUCTIONS =
+  `You are laying out a training block week by week, before any session exists.
+Produce one entry per week.
+
+Rules a block MUST follow (a validator rejects violations):
+- Phases progress base -> build -> peak. Not every block needs all three, but
+  they never go backwards.
+- A deload every third or fourth week, and the last week of the block is a
+  deload unless the block is shorter than four weeks. Mark those "deload".
+- The first week is "base" unless the lifter is clearly mid-training already.
+
+Each week gets an "intent": one sentence saying what that week is FOR, written
+for whoever fills in the sessions rather than for the lifter. "Build back
+volume after the deload, keep the top sets heavy" is an intent. "Week 4" is
+not. It is the only thing carrying the shape of the block from this call to the
+next, so a vague one produces a vague week.
+
+Do not name movements, sets, reps or weights. That is the next call's job, and
+guessing at it here just gives it something wrong to work around.`;
+
+const LIFT_SKELETON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["weeks"],
+  properties: {
+    weeks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["index", "phase", "intent"],
+        properties: {
+          index: { type: "integer", description: "1-based week number." },
+          phase: {
+            type: "string",
+            enum: ["base", "build", "peak", "deload"],
+          },
+          intent: {
+            type: "string",
+            description:
+              "One sentence on what this week is for, written for whoever " +
+              "fills in its sessions.",
+          },
+        },
+      },
+    },
+  },
+};
+
+export function liftSkeletonMessages(body: Body): Message[] {
+  const profile = (body.profile as Record<string, unknown>) ?? {};
+  const brief = text(body.brief, MAX_BRIEF_CHARS);
+  const system = `${LIFT_PERSONA}\n\nToday is ${today()}.\n\n` +
+    LIFT_SKELETON_INSTRUCTIONS + violationNote(body.violations);
+  return [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: `The lifter:\n${JSON.stringify(profile)}\n\n` +
+        `Recent training (most recent first):\n${
+          brief || "(no sessions logged yet)"
+        }`,
+    },
+  ];
+}
+
+// ---- lift_week --------------------------------------------------------------
+
+/// One week's sessions: which days, which movements, how hard.
+///
+/// See the section header for why there is no weight in the schema. The
+/// `intensity_pct` a model returns is a proportion of what the lifter can
+/// already do; Dart resolves it against their own estimated 1RM, and resolves
+/// it to nothing when there is no qualifying set behind it.
+const LIFT_WEEK_INSTRUCTIONS =
+  `You are filling in one week of a lifter's block. The week's phase and intent
+are given; honour them.
+
+Rules a week MUST follow (a validator rejects violations):
+- Exactly days_per_week sessions, each on one of the lifter's available
+  weekdays, one session per day.
+- Every movement must be one they can actually do with the equipment they said
+  they have, and must avoid what they said hurts.
+- Compounds before accessories, within every session.
+- Never two heavy sessions for the same movement pattern on consecutive days.
+- A deload week is lighter across the board: fewer sets, and nothing above 70
+  percent.
+- Sets between 1 and 10, reps between 1 and 20.
+
+"intensity_pct" is how hard a movement is, as a percentage of the most that
+lifter could do for one rep. Roughly: 85 and above is heavy triples and
+singles, 75 to 85 is working sets of 3 to 6, 65 to 75 is sets of 8 to 12, below
+65 is light work. It must agree with the reps you prescribe — 12 reps at 90
+percent is not a set, it is a typo.
+
+**Leave "intensity_pct" null for anything you would not put a percentage on**:
+accessory and isolation work, machines, anything bodyweight, and any movement
+you have not seen in their log. Null is a real answer and it is the right one
+more often than not. The app turns a percentage into a weight using what they
+have actually lifted, so a percentage on a movement they have never done
+produces nothing useful.
+
+You cannot prescribe a weight, and you must not try to put one in a note. If
+you want to say something about load, say it in terms of effort — "leave two in
+the tank" — and let the app supply the number.
+
+"rationale" is one or two sentences to the LIFTER about why this session looks
+like this. Plain, specific to them, no filler. It is shown to them.`;
+
+const LIFT_WEEK_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["sessions"],
+  properties: {
+    sessions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["weekday", "kind", "movements", "rationale"],
+        properties: {
+          weekday: { type: "integer", description: "1=Monday..7=Sunday." },
+          kind: {
+            type: "string",
+            description:
+              'What sort of session it is: "push", "pull", "legs", "upper", ' +
+              '"lower", "full-body".',
+          },
+          movements: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["name", "sets", "reps", "intensity_pct", "note"],
+              properties: {
+                name: {
+                  type: "string",
+                  description: "The movement, by its usual name.",
+                },
+                sets: { type: "integer" },
+                reps: { type: "integer" },
+                // Deliberately a percentage and never a weight. See the
+                // section header: the schema is what makes the rule hold.
+                intensity_pct: nullable(
+                  "integer",
+                  "Percentage of their one-rep max, 40 to 100. Null for " +
+                    "accessory work, bodyweight, machines, or any movement " +
+                    "not in their log.",
+                ),
+                note: nullable(
+                  "string",
+                  "A short cue or an effort instruction. Never a weight.",
+                ),
+              },
+            },
+          },
+          rationale: {
+            type: "string",
+            description:
+              "One or two sentences to the lifter on why this session looks " +
+              "like this.",
+          },
+        },
+      },
+    },
+  },
+};
+
+export function liftWeekMessages(body: Body): Message[] {
+  const profile = (body.profile as Record<string, unknown>) ?? {};
+  const slot = (body.slot as Record<string, unknown>) ?? {};
+  const brief = text(body.brief, MAX_BRIEF_CHARS);
+  const system = `${LIFT_PERSONA}\n\n${LIFT_WEEK_INSTRUCTIONS}` +
+    violationNote(body.violations);
+  return [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: `This week:\n${JSON.stringify(slot)}\n\n` +
+        `The lifter:\n${JSON.stringify(profile)}\n\n` +
+        `Recent training (most recent first):\n${
+          brief || "(no sessions logged yet)"
+        }`,
+    },
+  ];
+}
+
 // ---- provider routing -------------------------------------------------------
 
 /**
@@ -1419,6 +1734,32 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     // Straight to a person with no Dart validator in between — the same reason
     // `chat` and `summarise` are marked, and the same routing consequence.
     humanFacing: true,
+  },
+  lift_intake: {
+    name: "lift_intake",
+    app: "lift",
+    schema: LIFT_INTAKE_SCHEMA,
+    maxTokens: 1024,
+    messages: liftIntakeMessages,
+    valid: (p) =>
+      typeof p.reply === "string" && typeof p.extracted === "object" &&
+      p.extracted !== null,
+  },
+  lift_skeleton: {
+    name: "lift_skeleton",
+    app: "lift",
+    schema: LIFT_SKELETON_SCHEMA,
+    maxTokens: 2048,
+    messages: liftSkeletonMessages,
+    valid: (p) => Array.isArray(p.weeks) && p.weeks.length > 0,
+  },
+  lift_week: {
+    name: "lift_week",
+    app: "lift",
+    schema: LIFT_WEEK_SCHEMA,
+    maxTokens: 2048,
+    messages: liftWeekMessages,
+    valid: (p) => Array.isArray(p.sessions) && p.sessions.length > 0,
   },
   lift_summarise: {
     name: "lift_summarise",
