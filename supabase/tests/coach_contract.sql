@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(13);
 
 
 -- 1 ------------------------------------------------------------------------
@@ -176,13 +176,20 @@ select set_eq(
 -- 12 -----------------------------------------------------------------------
 -- A conversation must say which app it belongs to, or account deletion cannot
 -- erase one app's coach data without taking the other's — the gap named in
--- 20260806130300_account_deletion.sql. `coach.turns` deliberately has no such
--- column: it reaches its app through its conversation FK, and a second copy
--- could disagree with the first.
-select ok(
-  has_column('coach', 'conversations', 'app')
-  and not has_column('coach', 'turns', 'app'),
-  'conversations carry an app; turns inherit it through their conversation'
+-- 20260806130300_account_deletion.sql.
+select has_column(
+  'coach', 'conversations', 'app',
+  'a conversation says which app it belongs to, so deletion can be scoped to one'
+);
+
+
+-- 13 -----------------------------------------------------------------------
+-- `coach.turns` deliberately has NO app column: it reaches its app through its
+-- NOT NULL conversation FK. A second copy of that fact could disagree with the
+-- first, and nothing would say which was right.
+select hasnt_column(
+  'coach', 'turns', 'app',
+  'a turn inherits its app from its conversation rather than copying it'
 );
 
 

@@ -37,9 +37,14 @@
 -- resolves it against the primary key — which this migration widens. The insert
 -- omits `app`, the column default supplies it, and `ON CONFLICT (user_id, app)`
 -- is evaluated against the row as defaulted, so the write still lands on the
--- runner's own row. Worth re-checking against a live Runio build the next time
--- one is deployed; it is asserted in the schema contract, but a contract test
--- cannot see what a client sends.
+-- runner's own row.
+--
+-- Verified against local PostgREST rather than reasoned about, because the
+-- failure would have been Runio's memory writes starting to 409 in production:
+-- Runio's exact payload POSTed twice returns 201 then 200 (an update, not a
+-- duplicate), and a Lift write naming its own app creates a second row instead
+-- of colliding. What that does NOT cover is Runio's compiled client itself, so
+-- run its memory tests the next time that repo is opened.
 
 
 -- ---------------------------------------------------------------------------

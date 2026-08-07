@@ -192,6 +192,12 @@ Two things live outside SQL and will bite you:
 1. **Exposed schemas.** PostgREST only serves schemas listed in the dashboard
    (Settings → API). `core`, `coach`, `lift` and `run` must all be there or
    every client gets a 404.
+
+   **There are two of these lists and they drift.** The dashboard governs
+   production; `supabase/config.toml` governs the local stack, and it sat at the
+   default (`public`, `graphql_public`) until 2026-08-07 — so every local
+   request to the four real schemas returned `PGRST106`, and nothing that talks
+   to PostgREST could be tested locally at all. Change one, change the other.
 2. **Clients must name the schema.** supabase-js and supabase-flutter default to
    `public`, which is now empty. Reads are
    `.schema('lift').from('workouts')`, and RPC calls need a `Content-Profile`

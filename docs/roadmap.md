@@ -74,9 +74,17 @@ and adds the same column to `coach.conversations`. `coach.turns` deliberately
 does not get one: it reaches its app through its conversation FK, and a second
 copy of that fact could disagree with the first.
 
-⚠️ **The migration has not been run.** Neither Docker nor a local Postgres is
-available here, so `supabase db reset && supabase test db` could not be run, and
-the two new pgTAP assertions are written but unverified. Do that before pushing.
+Verified locally: `supabase db reset` replays all nine migrations onto a clean
+database, `supabase test db` passes 13/13, and Runio's app-less upsert was
+POSTed at local PostgREST twice to prove it still updates its own row rather
+than 409ing on the widened key. Not yet applied to production.
+
+**`supabase/config.toml` was exposing only `public` and `graphql_public`**,
+which is why none of this could be tested locally before today: every request
+to `core`, `coach`, `lift` or `run` came back `PGRST106 Invalid schema`, which
+`classifyFailure` reads as "the limiter is not installed" and the coach fails
+closed on. Fixed in the same commit. It has to stay in step with the dashboard's
+Settings → API → Exposed schemas.
 
 ### What is built
 
