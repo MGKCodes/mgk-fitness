@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_units/mgk_units.dart';
 
-import '../../planning/domain/plan.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+
+import '../../planning/domain/plan.dart';
+import '../../stats/domain/training_stats.dart';
+import '../domain/session.dart';
 
 /// **Track** — the front page, and the part that has to work in a basement.
 ///
@@ -21,6 +24,8 @@ class TrackSurface extends StatelessWidget {
     this.onStartSession,
     this.onOpenPlan,
     this.hasOpenSession = false,
+    this.openSession,
+    this.log = const <Session>[],
     this.plan,
     this.unit = MassUnit.kilograms,
     this.today,
@@ -37,6 +42,21 @@ class TrackSurface extends StatelessWidget {
   /// mid-workout. The button then offers to go back to it, because "Start a
   /// session" over the top of one already running is a lie about what happens.
   final bool hasOpenSession;
+
+  /// The open session itself, when there is one.
+  ///
+  /// **A different button label was not enough.** An interrupted session is the
+  /// one state where the lifter has genuinely lost their place, and the screen
+  /// has to say what they were doing rather than only that they were doing
+  /// something.
+  final Session? openSession;
+
+  /// Finished sessions, for the strip at the foot.
+  ///
+  /// Track is the screen people open most and it used to tell them nothing they
+  /// did not already know. This is the fix, and it is deliberately small: three
+  /// figures, not a dashboard.
+  final List<Session> log;
 
   /// The live block, when there is one. Null keeps the free-tier copy, which is
   /// the honest state for most of the app's users and not a degraded one.
@@ -85,7 +105,23 @@ class TrackSurface extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _NextUp(plan: plan, unit: unit, now: today ?? DateTime.now()),
+
+              // The interrupted session takes the card when there is one: it is
+              // the most urgent thing on the screen, and what the plan wanted
+              // today is beside the point once you are already mid-workout.
+              if (openSession != null)
+                _Interrupted(
+                  session: openSession!,
+                  now: today ?? DateTime.now(),
+                )
+              else
+                _NextUp(plan: plan, unit: unit, now: today ?? DateTime.now()),
+
+              if (log.isNotEmpty) ...<Widget>[
+                const SizedBox(height: AppSpacing.md),
+                _RecentStrip(log: log, now: today ?? DateTime.now()),
+              ],
+
               const SizedBox(height: AppSpacing.lg),
               _StartButton(
                 plan: plan,
@@ -212,3 +248,122 @@ String _weekdayName(int weekday) => switch (weekday) {
   7 => 'Sunday',
   _ => 'another day',
 };
+
+/// The session they were in the middle of.
+///
+/// Says what it was and how far in, because "Session in progress" plus a button
+/// is the app knowing something the lifter has forgotten and not telling them.
+class _Interrupted extends StatelessWidget {
+  const _Interrupted({required this.session, required this.now});
+
+  final Session session;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sets = session.completedSets;
+    final movements = session.exercises.length;
+
+    return GlassSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SectionLabel('Where you were', emphasis: LabelEmphasis.stat),
+          const SizedBox(height: AppSpacing.sm),
+          Text(session.name, style: theme.textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            <String>[
+              if (sets > 0) '$sets ${sets == 1 ? 'set' : 'sets'} in',
+              if (movements > 0)
+                '$movements ${movements == 1 ? 'movement' : 'movements'}',
+              'started ${_ago(session.startedAt, now)}',
+            ].join(' · '),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Three figures about their actual training.
+///
+/// Not a dashboard — Profile is where the log lives. This is the one line that
+/// makes opening Track worth something on a rest day, and the streak in
+/// particular is the figure people open an app to check.
+class _RecentStrip extends StatelessWidget {
+  const _RecentStrip({required this.log, required this.now});
+
+  final List<Session> log;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = TrainingStats.from(log, now: now);
+    final finished = log.where((Session s) => !s.isInProgress).toList()
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    final thisWeek = finished
+        .where(
+          (Session s) => !TrainingStats.startOfWeek(
+            s.startedAt,
+          ).isBefore(TrainingStats.startOfWeek(now)),
+        )
+        .length;
+
+    return Row(
+      children: <Widget>[
+        _Figure(value: '$thisWeek', label: 'this week'),
+        _Figure(value: '${stats.currentWeekStreak}', label: 'week streak'),
+        if (finished.isNotEmpty)
+          _Figure(
+            value: _ago(finished.first.startedAt, now),
+            label: 'last session',
+          ),
+      ],
+    );
+  }
+}
+
+class _Figure extends StatelessWidget {
+  const _Figure({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(value, style: theme.textTheme.titleMedium),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A gap a person would say out loud.
+String _ago(DateTime at, DateTime now) {
+  final days = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).difference(DateTime(at.year, at.month, at.day)).inDays;
+  if (days <= 0) return 'today';
+  if (days == 1) return 'yesterday';
+  if (days < 7) return '$days days ago';
+  if (days < 14) return 'last week';
+  return '${days ~/ 7} weeks ago';
+}

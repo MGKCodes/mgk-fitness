@@ -165,6 +165,10 @@ class _LiftShellState extends State<LiftShell> {
   /// than to start. Refreshed whenever a session ends.
   bool _hasOpenSession = false;
 
+  /// The open session itself, so Track can say what they were doing rather
+  /// than only that something was open.
+  Session? _openSessionDetail;
+
   /// The finished log, held at the shell because Profile reports on it and
   /// finishing a session on Track changes it.
   List<Session> _log = const <Session>[];
@@ -269,9 +273,14 @@ class _LiftShellState extends State<LiftShell> {
   Future<void> _refreshSession() async {
     final recorder = widget.recorder;
     if (recorder == null) return;
-    final open = await recorder.current() != null;
-    if (!mounted || open == _hasOpenSession) return;
-    setState(() => _hasOpenSession = open);
+    final session = await recorder.current();
+    if (!mounted) return;
+    // The session itself, not only whether there is one: Track says what they
+    // were doing, and a bare bool cannot.
+    setState(() {
+      _openSessionDetail = session;
+      _hasOpenSession = session != null;
+    });
   }
 
   @override
@@ -296,6 +305,8 @@ class _LiftShellState extends State<LiftShell> {
                 TrackSurface(
                   onOpenPlan: () => _go(_planTab),
                   hasOpenSession: _hasOpenSession,
+                  openSession: _openSessionDetail,
+                  log: _log,
                   onStartSession: widget.recorder == null ? null : _openSession,
                   plan: _plan,
                   unit: _units.mass,

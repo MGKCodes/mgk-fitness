@@ -28,6 +28,7 @@ import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/tracking/domain/session.dart';
+import '../src/features/tracking/presentation/track_surface.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import 'fakes.dart';
 
@@ -70,6 +71,41 @@ class PreviewApp extends StatelessWidget {
       'plan-entitled': (_) =>
           const Scaffold(body: PlanSurface(isEntitled: true)),
       // A live block, mid-week, with today's session on it.
+      // Item 5's three states: a plan for today, a rest day, and a session
+      // somebody walked away from.
+      'track-planned': (_) => Scaffold(
+        body: TrackSurface(
+          plan: samplePlan(previewNow),
+          today: previewNow,
+          log: sampleLog(previewNow),
+          onStartPlanned: (_) {},
+        ),
+      ),
+      'track-interrupted': (_) => Scaffold(
+        body: TrackSurface(
+          today: previewNow,
+          hasOpenSession: true,
+          log: sampleLog(previewNow),
+          openSession: Session(
+            id: 'open',
+            name: 'Push',
+            startedAt: previewNow.subtract(const Duration(days: 1)),
+            exercises: <SessionExercise>[
+              SessionExercise(
+                id: 'e',
+                name: 'Barbell Bench Press',
+                orderIndex: 0,
+                sets: <SessionSet>[
+                  SessionSet(id: 's1', setNumber: 1, isCompleted: true),
+                  SessionSet(id: 's2', setNumber: 2, isCompleted: true),
+                  SessionSet(id: 's3', setNumber: 3),
+                ],
+              ),
+            ],
+          ),
+          onStartSession: () {},
+        ),
+      ),
       'plan-active': (_) => Scaffold(
         body: PlanSurface(
           isEntitled: true,
