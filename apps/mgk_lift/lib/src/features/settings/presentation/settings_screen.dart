@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../coaching/domain/coach_memory.dart';
+import '../../coaching/presentation/coach_memory_screen.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_section.dart';
 import '../domain/unit_preferences.dart';
@@ -32,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
     this.lastReport,
     this.onSyncNow,
     this.onSignIn,
+    this.coachMemory,
     this.version = kAppVersion,
   });
 
@@ -61,6 +64,11 @@ class SettingsScreen extends StatefulWidget {
   final SyncReport? lastReport;
   final VoidCallback? onSyncNow;
   final VoidCallback? onSignIn;
+
+  /// Where what the coach remembers is read and erased. Null hides the row
+  /// entirely rather than showing one that opens an empty screen — there is
+  /// nothing to remember without an account.
+  final CoachMemoryStore? coachMemory;
 
   final String version;
 
@@ -167,6 +175,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onSignIn: widget.onSignIn,
             ),
 
+            if (widget.isSignedIn && widget.coachMemory != null) ...<Widget>[
+              const _Heading('Coach'),
+              SettingsTile(
+                icon: Icons.psychology_outlined,
+                title: 'What your coach remembers',
+                // The subtitle is where the app says the coach remembers at
+                // all. A lifter who never opens the screen should still learn
+                // it from the row.
+                subtitle: 'Read it, or clear it',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        CoachMemoryScreen(store: widget.coachMemory!),
+                  ),
+                ),
+              ),
+            ],
+
             if (widget.isSignedIn) ...<Widget>[
               const _Heading('Account'),
               SettingsTile(
@@ -186,9 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Credits',
               subtitle: 'Exercise illustrations, typeface, licences',
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const CreditsScreen(),
-                ),
+                MaterialPageRoute<void>(builder: (_) => const CreditsScreen()),
               ),
             ),
             SettingsTile(

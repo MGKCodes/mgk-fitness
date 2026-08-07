@@ -8,7 +8,10 @@ import '../src/features/auth/data/fake_auth.dart';
 import '../src/features/auth/domain/account.dart';
 import '../src/features/auth/presentation/sign_in_screen.dart';
 import '../src/features/coaching/data/supabase_coach.dart';
+import '../src/features/coaching/data/supabase_coach_memory.dart';
 import '../src/features/coaching/domain/coach.dart';
+import '../src/features/coaching/domain/coach_memory.dart';
+import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_screen.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/home/presentation/lift_shell.dart';
@@ -60,9 +63,8 @@ class PreviewApp extends StatelessWidget {
         history: FakeHistory(sampleLog(previewNow)),
         initialTab: 1,
       ),
-      'plan-entitled': (_) => const Scaffold(
-        body: PlanSurface(isEntitled: true),
-      ),
+      'plan-entitled': (_) =>
+          const Scaffold(body: PlanSurface(isEntitled: true)),
       'profile': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
@@ -125,6 +127,7 @@ class PreviewApp extends StatelessWidget {
         pending: const SyncPending(workouts: 0, lastSyncedAt: null),
         onSignOut: () {},
         onSyncNow: () {},
+        coachMemory: FakeCoachMemory(),
       ),
       'backup-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
@@ -147,14 +150,31 @@ class PreviewApp extends StatelessWidget {
         opener: 'Your bench has not moved in three weeks. Want to look at it?',
       ),
       'coach-empty': (_) => CoachScreen(coach: FakeCoach()),
+      // The three states of the memory: one that has been formed, one that has
+      // not yet, and one that will not load.
+      'coach-memory': (_) => CoachMemoryScreen(
+        store: FakeCoachMemory(
+          memory: CoachMemory(
+            summary:
+                'Trains four days a week, usually evenings. Left shoulder '
+                'complains on overhead work, so presses go to a neutral grip. '
+                'Has tried and given up on early mornings. Calls the leg day '
+                '"the bad one".',
+            updatedAt: previewNow.subtract(const Duration(days: 2)),
+          ),
+        ),
+      ),
+      'coach-memory-empty': (_) => CoachMemoryScreen(store: FakeCoachMemory()),
+      'coach-memory-error': (_) => CoachMemoryScreen(
+        store: FakeCoachMemory(failWith: CoachMemoryFailure.unavailable),
+      ),
       'coach-limit': (_) => CoachScreen(
         coach: FakeCoach(failWith: CoachFailure.limitReached),
         opener: 'Ask me anything about this week.',
       ),
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
-      'sign-in-error': (_) => SignInScreen(
-        auth: FakeAuth(failWith: AuthFailure.wrongCredentials),
-      ),
+      'sign-in-error': (_) =>
+          SignInScreen(auth: FakeAuth(failWith: AuthFailure.wrongCredentials)),
       'credits': (_) => const CreditsScreen(),
       'coach-mark': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
@@ -444,13 +464,11 @@ class _Index extends StatelessWidget {
           ),
           itemCount: keys.length,
           itemBuilder: (context, i) => InkWell(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: screens[keys[i]]!),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: screens[keys[i]]!)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               child: Row(
                 children: <Widget>[
                   SizedBox(
@@ -479,4 +497,3 @@ class _Index extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_lift/src/features/coaching/data/supabase_coach_memory.dart';
+import 'package:mgk_lift/src/features/coaching/presentation/coach_memory_screen.dart';
 import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/credits_screen.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
@@ -23,6 +25,7 @@ Future<void> pumpTall(WidgetTester tester, Widget child) async {
 
 void main() {
   backupSmoke();
+  coachMemoryRow();
   group('units', () {
     testWidgets('distance and weight are two separate controls', (
       WidgetTester tester,
@@ -158,6 +161,60 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+}
+
+void coachMemoryRow() {
+  testWidgets('the coach row says the coach remembers, and opens it', (
+    WidgetTester tester,
+  ) async {
+    // The subtitle is doing real work: a lifter who never opens the screen
+    // should still learn from this row that a memory exists at all.
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+        coachMemory: FakeCoachMemory(),
+      ),
+    );
+
+    expect(find.text('What your coach remembers'), findsOneWidget);
+
+    await tester.tap(find.text('What your coach remembers'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoachMemoryScreen), findsOneWidget);
+  });
+
+  testWidgets('signed out, there is no memory row to open', (
+    WidgetTester tester,
+  ) async {
+    // Nothing is stored without an account, so a row here would open a screen
+    // that can only say so.
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        coachMemory: FakeCoachMemory(),
+      ),
+    );
+    expect(find.text('What your coach remembers'), findsNothing);
+  });
+
+  testWidgets('a build with no server shows no memory row', (
+    WidgetTester tester,
+  ) async {
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+      ),
+    );
+    expect(find.text('What your coach remembers'), findsNothing);
   });
 }
 

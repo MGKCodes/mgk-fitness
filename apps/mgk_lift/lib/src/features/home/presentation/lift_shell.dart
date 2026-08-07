@@ -6,6 +6,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
+import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_screen.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../profile/presentation/profile_surface.dart';
@@ -47,6 +48,7 @@ class LiftShell extends StatefulWidget {
     this.units,
     this.history,
     this.coach,
+    this.coachMemory,
     this.isEntitled = false,
     this.hasCoachNote = false,
     this.photos,
@@ -72,6 +74,12 @@ class LiftShell extends StatefulWidget {
   /// The conversation. **Null hides the mark entirely** rather than showing an
   /// inert one — a mark that cannot open anything is worse than no mark.
   final CoachService? coach;
+
+  /// What the coach remembers, for Settings to show and clear. Separate from
+  /// [coach] because it needs neither the Edge Function nor an entitlement:
+  /// somebody who has stopped paying should still be able to read what was
+  /// stored about them and delete it.
+  final CoachMemoryStore? coachMemory;
 
   /// Whether this account has the paid tier for Lift.
   ///
@@ -184,10 +192,8 @@ class _LiftShellState extends State<LiftShell> {
     if (auth == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<bool>(
-        builder: (_) => SignInScreen(
-          auth: auth,
-          pendingWorkouts: _pending?.workouts ?? 0,
-        ),
+        builder: (_) =>
+            SignInScreen(auth: auth, pendingWorkouts: _pending?.workouts ?? 0),
       ),
     );
   }
@@ -255,9 +261,9 @@ class _LiftShellState extends State<LiftShell> {
           // three places to remember to keep in step.
           MediaQuery(
             data: MediaQuery.of(context).copyWith(
-              padding: MediaQuery.of(context).padding.copyWith(
-                bottom: coach == null ? 0 : _coachMarkReserve,
-              ),
+              padding: MediaQuery.of(
+                context,
+              ).padding.copyWith(bottom: coach == null ? 0 : _coachMarkReserve),
             ),
             child: IndexedStack(
               index: _index,
@@ -348,6 +354,7 @@ class _LiftShellState extends State<LiftShell> {
           onSyncNow: widget.sync == null ? null : _syncNow,
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,
+          coachMemory: widget.coachMemory,
         ),
       ),
     );
@@ -371,9 +378,9 @@ class _LiftShellState extends State<LiftShell> {
       _go(_planTab);
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => CoachScreen(coach: coach)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => CoachScreen(coach: coach)));
   }
 
   Future<void> _signOut() async {
@@ -388,10 +395,8 @@ class _LiftShellState extends State<LiftShell> {
     if (library == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PhotosSurface(
-          library: library,
-          source: widget.photoSource,
-        ),
+        builder: (_) =>
+            PhotosSurface(library: library, source: widget.photoSource),
       ),
     );
   }

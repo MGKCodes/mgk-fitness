@@ -229,6 +229,20 @@ class _Empty extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              // Said before the first message rather than discovered later.
+              // The coach keeps notes about somebody's training and their
+              // body; a lifter who has not been told that cannot decide what
+              // to tell it. Settings is where they can read and clear it.
+              'It also remembers you between conversations. Settings shows '
+              'exactly what it has kept, and clears it.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
