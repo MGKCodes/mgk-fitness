@@ -53,10 +53,19 @@ import {
   modelFor,
   PROVIDER_ROUTING,
   SURFACES,
+  type SurfaceSpec,
+  type Tier,
 } from "./surfaces.ts";
 import { UsageStore } from "./usage_store.ts";
 import { EntitlementStore, tierFor } from "./entitlements.ts";
 import { LiftLog } from "./lift_log.ts";
+import {
+  CoachMemory,
+  EMPTY_MEMORY,
+  type Memory,
+  shouldRegenerate,
+  type StoredTurn,
+} from "./coach_memory.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -107,6 +116,186 @@ function limited(decision: Decision & { allowed: false }): Response {
     429,
     { "Retry-After": String(decision.retryAfterSeconds) },
   );
+}
+
+// ---- the provider call ------------------------------------------------------
+
+/**
+ * One model call, its usage, and what to call the attempt in the ledger.
+ *
+ * A discriminated result rather than a thrown error or a `Response`, because
+ * this is called from two places that want opposite things from a failure: the
+ * request path turns it into a status code, and the memory rewrite that follows
+ * a reply swallows it. Both still have to ACCOUNT for it — a failed call spends
+ * tokens or spends rate budget, and neither may be free.
+ */
+type ProviderOutcome =
+  | { ok: true; parsed: Record<string, unknown>; usage: RecordedUsage }
+  | {
+    ok: false;
+    status: number;
+    error: string;
+    usage: RecordedUsage;
+    outcome: string;
+  };
+
+async function callProvider(opts: {
+  apiKey: string;
+  model: string;
+  surface: SurfaceSpec;
+  body: Body;
+  attribution: { referer: string; title: string };
+  fallbackCreditsPerMillionTokens: number;
+}): Promise<ProviderOutcome> {
+  const { surface, fallbackCreditsPerMillionTokens: rate } = opts;
+  const estimate = (usage: unknown) =>
+    usageFromResponse(usage, {
+      creditsPerMillionTokens: rate,
+      assumedTokensWhenUnknown: surface.maxTokens,
+    });
+
+  let res: Response;
+  try {
+    res = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Authorization": `Bearer ${opts.apiKey}`,
+        "HTTP-Referer": opts.attribution.referer,
+        "X-Title": opts.attribution.title,
+      },
+      body: JSON.stringify({
+        model: opts.model,
+        max_tokens: surface.maxTokens,
+        messages: surface.messages(opts.body),
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: surface.name,
+            strict: true,
+            schema: surface.schema,
+          },
+        },
+        // Schema enforcement, the no-training rule, and fallback across
+        // providers. Defined in surfaces.ts so a test can assert it — see
+        // PROVIDER_ROUTING.
+        provider: PROVIDER_ROUTING,
+      }),
+    });
+  } catch (e) {
+    // A throw here spends nothing, but it must still cost rate budget —
+    // otherwise a provider outage becomes a free retry loop.
+    console.error("openrouter unreachable", String(e));
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_upstream",
+      usage: ZERO_USAGE,
+      outcome: "unreachable",
+    };
+  }
+
+  if (!res.ok) {
+    // Capped: an upstream error message is a diagnostic, but it is also the one
+    // place a provider might echo part of what we sent, and we do not put user
+    // content in logs. It can also carry OUR billing details, which are not the
+    // caller's business — which is why it is never forwarded to the client.
+    console.error(
+      "openrouter error",
+      res.status,
+      (await res.text()).slice(0, 300),
+    );
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_upstream",
+      usage: ZERO_USAGE,
+      outcome: "upstream_error",
+    };
+  }
+
+  let payload: Record<string, unknown> & {
+    usage?: unknown;
+    error?: unknown;
+    choices?: { finish_reason?: string; message?: { content?: unknown } }[];
+  };
+  try {
+    payload = await res.json();
+  } catch {
+    // A 200 whose body is not JSON: tokens were almost certainly spent, so the
+    // attempt is charged at the surface's budget rather than going free.
+    console.error("openrouter non-json body", res.status);
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_malformed",
+      usage: estimate(null),
+      outcome: "non_json",
+    };
+  }
+
+  // OpenRouter reports `usage` (native token counts and the credits charged) on
+  // every completion. That is what the cap is denominated in, so it stays
+  // correct across model swaps without this function knowing a price list.
+  const usage = estimate(payload?.usage);
+
+  if (payload.error) {
+    console.error("openrouter body error", JSON.stringify(payload.error));
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_upstream",
+      usage,
+      outcome: "upstream_error",
+    };
+  }
+  const choice = payload.choices?.[0];
+  if (choice?.finish_reason === "content_filter") {
+    return {
+      ok: false,
+      status: 422,
+      error: "refused",
+      usage,
+      outcome: "refused",
+    };
+  }
+
+  const text = choice?.message?.content;
+  if (typeof text !== "string") {
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_empty",
+      usage,
+      outcome: "empty",
+    };
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_malformed",
+      usage,
+      outcome: "malformed",
+    };
+  }
+
+  // Boundary validation: shape only. Dart re-validates the values.
+  if (typeof parsed !== "object" || parsed === null || !surface.valid(parsed)) {
+    return {
+      ok: false,
+      status: 502,
+      error: "coach_malformed",
+      usage,
+      outcome: "malformed",
+    };
+  }
+
+  return { ok: true, parsed, usage };
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -237,13 +426,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // 4. Past the gate, so it is worth loading what the prompt needs.
   //
-  //    Lift's brief is the training log, read AS THE CALLER so RLS decides what
-  //    the coach can see, and OVERWRITTEN rather than merged: whatever a client
-  //    sent under `brief` is discarded, because a log the client narrates is a
-  //    log the client can invent. Run's brief is genuinely the app's to write
-  //    (it carries numbers computed client-side) and is left alone.
-  if (surfaceName === "lift_chat") {
-    body.brief = await new LiftLog(supabaseUrl, anonKey).recent(authHeader);
+  //    Both of Lift's inputs are read HERE rather than sent by the client, and
+  //    both are OVERWRITTEN rather than merged: whatever arrived under `brief`,
+  //    `memory` or `history` is discarded.
+  //
+  //      * the training log — read as the caller, so RLS decides what the coach
+  //        can see, and a log the client narrates is a log it can invent;
+  //      * the memory and the transcript — the coach's own record of what was
+  //        said, which is the thing item 2 exists to make durable. A client that
+  //        supplied its own history could put words in the coach's mouth and
+  //        then ask it to act on them.
+  //
+  //    Run's brief is genuinely the app's to write (it carries numbers computed
+  //    client-side) and is left alone.
+  const memoryStore = surface.app === "lift"
+    ? new CoachMemory(supabaseUrl, anonKey, authHeader)
+    : null;
+  let memory: Memory = EMPTY_MEMORY;
+
+  if (surfaceName === "lift_chat" && memoryStore) {
+    // In parallel: the log and the memory are independent reads, and this is on
+    // the path of every turn.
+    const [brief, loaded] = await Promise.all([
+      new LiftLog(supabaseUrl, anonKey).recent(authHeader),
+      memoryStore.read("lift", userId),
+    ]);
+    memory = loaded;
+    body.brief = brief;
+    body.memory = memory.summary;
+    body.history = memory.turns;
   }
 
   // 5. Spend tokens, then record what they cost. `record` runs for every
@@ -253,91 +464,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const attribution = ATTRIBUTION[surface.app];
 
-  let res: Response;
-  try {
-    res = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": attribution.referer,
-        "X-Title": attribution.title,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: surface.maxTokens,
-        messages: surface.messages(body),
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: surface.name,
-            strict: true,
-            schema: surface.schema,
-          },
-        },
-        // Schema enforcement and the no-training rule. Defined in surfaces.ts
-        // so a test can assert it — see PROVIDER_ROUTING.
-        provider: PROVIDER_ROUTING,
-      }),
-    });
-  } catch (e) {
-    // A throw here spends nothing, but it must still cost rate budget —
-    // otherwise a provider outage becomes a free retry loop.
-    console.error("openrouter unreachable", String(e));
-    await accountFor(ZERO_USAGE, "unreachable");
-    return json({ error: "coach_upstream" }, 502);
-  }
-
-  if (!res.ok) {
-    // Capped: an upstream error message is a diagnostic, but it is also the one
-    // place a provider might echo part of what we sent, and we do not put user
-    // content in logs. It can also carry OUR billing details, which are not the
-    // caller's business — which is why it is never forwarded to the client.
-    console.error(
-      "openrouter error",
-      res.status,
-      (await res.text()).slice(0, 300),
-    );
-    // No usage to read, but the attempt still consumes rate budget so a broken
-    // upstream cannot be hammered for free.
-    await accountFor(ZERO_USAGE, "upstream_error");
-    return json({ error: "coach_upstream" }, 502);
-  }
-
-  let payload: Record<string, unknown> & {
-    usage?: unknown;
-    error?: unknown;
-    choices?: { finish_reason?: string; message?: { content?: unknown } }[];
-  };
-  try {
-    payload = await res.json();
-  } catch {
-    // A 200 whose body is not JSON: tokens were almost certainly spent, so the
-    // attempt is charged at the surface's budget rather than going free.
-    console.error("openrouter non-json body", res.status);
-    await accountFor(
-      usageFromResponse(null, {
-        creditsPerMillionTokens: limits.fallbackCreditsPerMillionTokens,
-        assumedTokensWhenUnknown: surface.maxTokens,
-      }),
-      "non_json",
-    );
-    return json({ error: "coach_malformed" }, 502);
-  }
-
-  // OpenRouter reports `usage` (native token counts and the credits charged) on
-  // every completion. That is what the cap is denominated in, so it stays
-  // correct across model swaps without this function knowing a price list.
-  const usage = usageFromResponse(payload?.usage, {
-    creditsPerMillionTokens: limits.fallbackCreditsPerMillionTokens,
-    assumedTokensWhenUnknown: surface.maxTokens,
+  const result = await callProvider({
+    apiKey,
+    model,
+    surface,
+    body,
+    attribution,
+    fallbackCreditsPerMillionTokens: limits.fallbackCreditsPerMillionTokens,
   });
 
-  // Records the call, then returns the response. Every exit below goes through
-  // here so that tokens spent are always tokens counted — including on a
-  // refusal or a malformed reply, which cost exactly as much as a good one.
+  // Records the call, then returns the response. Every exit goes through here
+  // so that tokens spent are always tokens counted — including on a refusal or
+  // a malformed reply, which cost exactly as much as a good one.
   const settle = async (
     response: Response,
+    usage: RecordedUsage,
     outcome: string,
   ): Promise<Response> => {
     await accountFor(usage, outcome);
@@ -356,36 +497,125 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return response;
   };
 
-  if (payload.error) {
-    console.error("openrouter body error", JSON.stringify(payload.error));
-    return settle(json({ error: "coach_upstream" }, 502), "upstream_error");
-  }
-  const choice = payload.choices?.[0];
-  if (choice?.finish_reason === "content_filter") {
-    return settle(json({ error: "refused" }, 422), "refused");
-  }
-
-  const text = choice?.message?.content;
-  if (typeof text !== "string") {
-    return settle(json({ error: "coach_empty" }, 502), "empty");
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return settle(json({ error: "coach_malformed" }, 502), "malformed");
-  }
-
-  // Boundary validation: shape only. Dart re-validates the values.
-  if (typeof parsed !== "object" || parsed === null || !surface.valid(parsed)) {
-    return settle(json({ error: "coach_malformed" }, 502), "malformed");
+  if (!result.ok) {
+    return settle(
+      json({ error: result.error }, result.status),
+      result.usage,
+      result.outcome,
+    );
   }
 
   // The client maps the surface's own shape (intake -> {reply, extracted};
   // skeleton -> {weeks}; week -> {sessions}; chat -> {reply, intent};
   // summarise -> {summary}; lift_chat -> {reply}). `render` exists for the
   // surfaces whose prompt shape and app shape differ.
-  const shaped = surface.render ? surface.render(parsed) : parsed;
-  return settle(json(shaped), "ok");
+  const shaped = surface.render ? surface.render(result.parsed) : result.parsed;
+
+  // 6. Remember it.
+  //
+  //    After the reply exists, and never allowed to fail the request: the
+  //    lifter has already been answered, and throwing that away because a
+  //    transcript row would not write is the worse outcome. The same trade the
+  //    usage ledger makes.
+  if (surfaceName === "lift_chat" && memoryStore) {
+    const exchange: StoredTurn[] = [
+      { role: "user", text: String(body.message ?? "").trim() },
+      { role: "assistant", text: String(result.parsed.reply ?? "").trim() },
+    ];
+    await memoryStore.appendTurns("lift", userId, memory.total, exchange);
+
+    const total = memory.total + exchange.length;
+    if (shouldRegenerate(total, memory.turnsCovered)) {
+      // Synchronously, and only about one turn in REGENERATE_AFTER. That turn
+      // pays for a second short call, which is the honest cost of a memory that
+      // is actually up to date. Moving it into the background needs the
+      // platform's `waitUntil`, and is worth doing if that latency is ever felt
+      // — it is not worth an untested code path today.
+      //
+      // The transcript handed over is the turns we already loaded plus this
+      // exchange, which covers the drift precisely because MEMORY_TURNS is not
+      // smaller than REGENERATE_AFTER. Break that and the memory would be
+      // rewritten from less than it fell behind by.
+      await regenerate({
+        apiKey,
+        userId,
+        tier,
+        previous: memory.summary,
+        transcript: [...memory.turns, ...exchange],
+        total,
+        memoryStore,
+        accountFor: (usage, outcome) =>
+          store.record(userId, "lift_summarise", usage, outcome),
+        fallbackCreditsPerMillionTokens: limits.fallbackCreditsPerMillionTokens,
+      });
+    }
+  }
+
+  return settle(json(shaped), result.usage, "ok");
 });
+
+/**
+ * Rewrites the coach's memory from the conversation that has happened since.
+ *
+ * Never throws and never reports: it runs after a reply the lifter already has,
+ * so every failure here degrades to "the memory is rewritten on a later turn"
+ * rather than to an error they can see. It still ACCOUNTS for what it spends —
+ * a call outside the ledger is a hole in the spend cap, and this one is not
+ * triggered by anything the lifter did on purpose.
+ *
+ * It deliberately does NOT consult the rate limiter first. The gate has already
+ * been passed for this turn, and the surface's own ceiling exists to catch the
+ * pathological case rather than to bind here: at one rewrite per
+ * REGENERATE_AFTER turns it cannot be reached by talking.
+ */
+async function regenerate(opts: {
+  apiKey: string;
+  userId: string;
+  tier: Tier;
+  previous: string;
+  transcript: readonly StoredTurn[];
+  total: number;
+  memoryStore: CoachMemory;
+  accountFor: (usage: RecordedUsage, outcome: string) => Promise<unknown>;
+  fallbackCreditsPerMillionTokens: number;
+}): Promise<void> {
+  const surface = SURFACES.lift_summarise;
+  const model = modelFor(
+    "lift_summarise",
+    (k) => Deno.env.get(k),
+    opts.tier,
+  );
+  if (!model) return;
+
+  const result = await callProvider({
+    apiKey: opts.apiKey,
+    model,
+    surface,
+    body: {
+      previous: opts.previous,
+      transcript: opts.transcript.map((t) => ({ role: t.role, text: t.text })),
+    },
+    attribution: ATTRIBUTION.lift,
+    fallbackCreditsPerMillionTokens: opts.fallbackCreditsPerMillionTokens,
+  });
+
+  await opts.accountFor(
+    result.usage,
+    result.ok ? "ok" : result.outcome,
+  );
+  if (!result.ok) return;
+
+  const summary = String(result.parsed.summary ?? "").trim();
+
+  // `turns_covered` moves even when the memory comes back empty or unchanged.
+  // It records how far the coach has READ, not how much it chose to keep — tie
+  // it to the text and a lifter whose conversations are all small talk would
+  // trigger a rewrite on every single turn thereafter.
+  await opts.memoryStore.writeSummary(
+    "lift",
+    opts.userId,
+    summary,
+    opts.total,
+    model,
+  );
+}

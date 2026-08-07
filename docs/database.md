@@ -132,8 +132,13 @@ new user-owned table a `user_id` or it silently escapes erasure — a GDPR probl
 that no application test would catch.
 
 One known gap, stated rather than hidden: coach data is erased only when the
-last app goes, because `coach.conversations` has no `app` column and there is no
-honest way to erase "the running half" of a conversation.
+last app goes. That was because `coach.conversations` had no `app` column, so
+there was no honest way to erase "the running half" of a conversation.
+
+**The column now exists** (`20260807130000_coach_memory_per_app.sql`, which also
+re-keys `coach.summaries` on `(user_id, app)` so two apps cannot overwrite each
+other's memory). Scoping the sweep to it is the outstanding half, and it is the
+last thing standing between this and honest per-app erasure.
 
 ### The bug this replaced
 

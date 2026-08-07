@@ -34,7 +34,8 @@ export type Surface =
   | "log_run"
   | "edit_run"
   | "set_goal"
-  | "lift_chat";
+  | "lift_chat"
+  | "lift_summarise";
 
 export const SURFACE_NAMES: readonly Surface[] = [
   "intake",
@@ -47,6 +48,7 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "edit_run",
   "set_goal",
   "lift_chat",
+  "lift_summarise",
 ];
 
 export function isSurface(value: unknown): value is Surface {
@@ -161,6 +163,12 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // conversation. Its own window rather than a shared one, because a lifter
     // who also runs would otherwise spend one allowance on two coaches.
     lift_chat: { windowSeconds: 300, max: 15 },
+    // Not a lifter action: the coach rewrites its own memory when the
+    // transcript has run ahead of it, roughly once every REGENERATE_AFTER
+    // turns. Six an hour is far more headroom than that needs, and it is
+    // deliberately too low to rewrite the memory after every turn — that is a
+    // re-encode loop, and it is the design the two-tier memory exists to avoid.
+    lift_summarise: { windowSeconds: 3600, max: 6 },
   },
   dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
   // PROVISIONAL — these three are placeholders, not measured figures. The real

@@ -133,6 +133,10 @@ const MAX_TURN_CHARS = 2000;
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_BRIEF_CHARS = 8000;
 const MAX_PREVIOUS_SUMMARY_CHARS = 4000;
+/// The stored memory, going out on every turn and coming back to be rewritten.
+/// Tighter than a brief on purpose: this one is re-read forever, so its ceiling
+/// is the ceiling on what a six-month-old conversation costs.
+const MAX_MEMORY_CHARS = 4000;
 
 /** The last `maxTurns` usable turns of a conversation, roles normalised. */
 export function conversation(raw: unknown, maxTurns: number): Message[] {
@@ -1122,12 +1126,26 @@ const LIFT_CHAT_SCHEMA = {
 
 const MAX_LIFT_HISTORY_TURNS = 20;
 
+/// What the coach is told about the memory it is carrying.
+///
+/// Separate from the instructions above because it is only true when there IS
+/// a memory, and a coach told "here is what you remember" above an empty
+/// heading will fill it in.
+const LIFT_MEMORY_INSTRUCTIONS =
+  `Below is what you have learned about this lifter in earlier conversations.
+Treat it the way a coach treats what they remember: it is context, not a script,
+and you use it only where it changes your answer. Never read it back to them.
+
+It is not evidence. If it disagrees with the log, the log is what happened.`;
+
 export function liftChatMessages(body: Body): Message[] {
   const brief = text(body.brief, MAX_BRIEF_CHARS);
+  const memory = text(body.memory, MAX_MEMORY_CHARS);
   const message = text(body.message, MAX_MESSAGE_CHARS);
 
   const system = `${LIFT_PERSONA}\n\n${LIFT_CHAT_INSTRUCTIONS}\n\n` +
     `Today is ${weekdayName()}.\n\n` +
+    (memory ? `${LIFT_MEMORY_INSTRUCTIONS}\n\n${memory}\n\n` : "") +
     `Recent training (most recent first):\n${
       brief || "(no sessions logged yet)"
     }`;
@@ -1136,6 +1154,98 @@ export function liftChatMessages(body: Body): Message[] {
     { role: "system", content: system },
     ...conversation(body.history, MAX_LIFT_HISTORY_TURNS),
     { role: "user", content: message },
+  ];
+}
+
+// ---- lift_summarise (the lifting coach's memory) -----------------------------
+
+/// Rewrites what the coach remembers about a lifter.
+///
+/// Regenerated, never appended to — the same rule as Run's `summarise`, for the
+/// same reason: appending a line per conversation is a re-encode of a re-encode
+/// that grows without bound and drifts away from what was said.
+///
+/// **This one is shown to the lifter.** They can read it in settings and they
+/// can delete it, but they cannot edit it, which puts the whole burden of being
+/// fair on this prompt. So it is constrained harder than Run's: no reading
+/// between the lines, no inferring how somebody feels about their body, and
+/// nothing about their appearance. The failure this is written against is a
+/// stored paragraph that says something true-ish and unkind, discovered by the
+/// person it is about.
+const LIFT_SUMMARISE_INSTRUCTIONS =
+  `You are keeping the coach's memory of one lifter. You are given the memory as
+it stands and a conversation that has happened since. Return the memory as it
+should now stand.
+
+Write it again from scratch. Do not append to it, do not add a line for the
+latest conversation, and do not mark what changed. If the conversation added
+nothing worth keeping, return the previous memory word for word.
+
+Keep only what a database cannot hold, and only where they said it plainly:
+- how they train and what they are working toward, in their words
+- constraints: equipment they have or lack, days they cannot train, a shoulder
+  that complains on overhead work, an injury they are coming back from
+- what they have tried and dropped, and what they will not do
+- what they call things
+
+Leave out everything the app already stores: what they lifted, for how many,
+when, how often, and every number in their log. All of it is read from the
+database on every turn. A second copy here will eventually disagree with it and
+nothing will say which is wrong.
+
+Record what they SAID, never what you concluded. "Says their shoulder hurts on
+overhead press" is memory. "Seems anxious about their weight", "is
+discouraged", "may be under-eating" are not: they are guesses about a person
+from a chat window, and they are the kind of thing that is quietly wrong for
+months. Do not write about their body, their weight, or how they look. Do not
+diagnose, predict, or interpret. If you are not sure whether they meant it,
+leave it out.
+
+**They can read this.** Write it as something you would be content to hand
+them: plain, factual, and free of anything you would not say to their face.
+
+Summarise the lifter, not yourself. What you said to them is not memory.
+
+Three to five plain sentences, in this order every time: how they train, then
+their constraints, then their preferences. Write about them in the third
+person. Prefer their words to yours. Drop anything the conversation has settled
+or overtaken. If there is nothing worth remembering, return an empty string.`;
+
+const LIFT_SUMMARISE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary"],
+  properties: {
+    summary: {
+      type: "string",
+      description:
+        "The lifter's memory as it should now stand: a few sentences of prose, " +
+        "or an empty string if there is nothing worth keeping.",
+    },
+  },
+};
+
+export function liftSummariseMessages(body: Body): Message[] {
+  const previous = text(body.previous, MAX_MEMORY_CHARS);
+  const turns = conversation(body.transcript, MAX_TRANSCRIPT_TURNS);
+
+  // The transcript is handed over as a labelled block inside ONE user message,
+  // not as chat turns. Given turns, the model tries to continue the
+  // conversation; given a transcript, it works on it.
+  const rendered = turns
+    .map((t) => `${t.role === "assistant" ? "Coach" : "Lifter"}: ${t.content}`)
+    .join("\n");
+
+  return [
+    {
+      role: "system",
+      content: `${LIFT_PERSONA}\n\n${LIFT_SUMMARISE_INSTRUCTIONS}`,
+    },
+    {
+      role: "user",
+      content: `The memory as it stands:\n${previous || "(nothing yet)"}\n\n` +
+        `The conversation since:\n${rendered}`,
+    },
   ];
 }
 
@@ -1308,6 +1418,23 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     render: (p) => ({ reply: String(p.reply).trim() }),
     // Straight to a person with no Dart validator in between — the same reason
     // `chat` and `summarise` are marked, and the same routing consequence.
+    humanFacing: true,
+  },
+  lift_summarise: {
+    name: "lift_summarise",
+    app: "lift",
+    schema: LIFT_SUMMARISE_SCHEMA,
+    // The hard ceiling on a memory that is re-read on every future turn.
+    maxTokens: 512,
+    messages: liftSummariseMessages,
+    // Summarising nothing can only return the memory we already hold.
+    validRequest: (b) => conversation(b.transcript, 1).length > 0,
+    // An empty memory is a legitimate answer: there was nothing worth keeping.
+    valid: (p) => typeof p.summary === "string",
+    render: (p) => ({ summary: String(p.summary).trim() }),
+    // Not read by the lifter in the moment, but STORED and shown to them in
+    // settings, and reloaded into every later prompt. An error here does not
+    // pass, it compounds — which is the stronger form of the same argument.
     humanFacing: true,
   },
 };

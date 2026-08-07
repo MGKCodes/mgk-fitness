@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(12);
 
 
 -- 1 ------------------------------------------------------------------------
@@ -152,6 +152,37 @@ select is(
    ) x),
   '',
   'derived and server-owned tables grant authenticated SELECT and nothing else'
+);
+
+
+-- 11 -----------------------------------------------------------------------
+-- The coach's memory is keyed per (person, app), not per person.
+--
+-- This is a data-loss assertion, not a tidiness one. With `user_id` alone as
+-- the key, an account that uses both apps has ONE memory row, and each app's
+-- regeneration overwrites the other's — silently, on special-category data,
+-- with no earlier version left to restore. The column existing is not enough;
+-- the KEY is what makes two memories possible, so that is what is asserted.
+select set_eq(
+  $$select a.attname::text
+      from pg_index i
+      join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+     where i.indrelid = 'coach.summaries'::regclass and i.indisprimary$$,
+  array['user_id', 'app'],
+  'coach.summaries is keyed by (user_id, app): one memory per app, never one per account'
+);
+
+
+-- 12 -----------------------------------------------------------------------
+-- A conversation must say which app it belongs to, or account deletion cannot
+-- erase one app's coach data without taking the other's — the gap named in
+-- 20260806130300_account_deletion.sql. `coach.turns` deliberately has no such
+-- column: it reaches its app through its conversation FK, and a second copy
+-- could disagree with the first.
+select ok(
+  has_column('coach', 'conversations', 'app')
+  and not has_column('coach', 'turns', 'app'),
+  'conversations carry an app; turns inherit it through their conversation'
 );
 
 

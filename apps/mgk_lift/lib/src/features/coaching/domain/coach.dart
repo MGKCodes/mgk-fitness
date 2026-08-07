@@ -58,9 +58,9 @@ class CoachException implements Exception {
 abstract interface class CoachService {
   /// Sends a message and returns the reply. Throws [CoachException].
   ///
-  /// [history] is everything said so far, oldest first, NOT including
-  /// [message]. Without it every turn arrives at the model alone, and a coach
-  /// that cannot remember the sentence before is not having a conversation —
-  /// "why?" would be answered as if it were the first thing anyone had said.
-  Future<String> ask(String message, {List<CoachTurn> history});
+  /// **The conversation is not passed in.** The server keeps the transcript and
+  /// replays it, so what the coach remembers is the same on any device and
+  /// survives closing the app. It also means this app cannot put words in the
+  /// coach's mouth and then ask it to act on them.
+  Future<String> ask(String message);
 }

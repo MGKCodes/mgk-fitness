@@ -36,18 +36,20 @@ see [database.md](../../../docs/database.md#the-bug-this-replaced).
 2. Reads `core.entitlements` for the surface's app and resolves a **tier**, or
    refuses with `402` where that app sells coaching.
 3. **Enforces a per-user rate limit and spend cap before spending any tokens.**
-4. Loads whatever the prompt needs that the client is not trusted to supply (for
-   `lift_chat`, the training log — read as the caller, so RLS scopes it).
+4. Loads whatever the prompt needs that the client is not trusted to supply —
+   for `lift_chat`, the training log, the transcript and the memory, all read as
+   the caller so RLS scopes them.
 5. Builds the prompt for the requested `surface` and calls OpenRouter with a
    JSON-schema-constrained response (`response_format`).
 6. Validates the response **shape** and returns it. The app re-validates the
    **values** before using them.
 7. Records what the call cost, so step 3 has something to work from.
+8. Stores the exchange, and rewrites the memory if it has fallen behind.
 
 Surfaces wired up: `intake`, `skeleton`, `week`, `adapt`, `chat`, `summarise`,
-`log_run`, `edit_run`, `set_goal` (Run) and `lift_chat` (Lift). A new one adds a
-message builder, a schema, an `app` and a rate rule, and slots into the same
-`SURFACES` table.
+`log_run`, `edit_run`, `set_goal` (Run) and `lift_chat`, `lift_summarise`
+(Lift). A new one adds a message builder, a schema, an `app` and a rate rule,
+and slots into the same `SURFACES` table.
 
 ## Layout
 
@@ -58,6 +60,7 @@ message builder, a schema, an `app` and a rate rule, and slots into the same
 | `limits.ts`       | **Pure** limit decisions: thresholds, windows, usage accounting. Also unit-tested.      |
 | `entitlements.ts` | The tier policy (pure) and the `core.entitlements` read, behind an injectable `fetch`.  |
 | `lift_log.ts`     | Lift's training log: the read (as the caller) and its rendering (pure).                 |
+| `coach_memory.ts` | The rolling memory and the transcript: read, appended and replaced as the caller.       |
 | `usage_store.ts`  | The durable counters in Postgres, behind an injectable `fetch`.                         |
 | `*_test.ts`       | Deno tests for every pure module and every failure mapping.                             |
 
@@ -103,7 +106,6 @@ Lift's conversation. Request:
 ```jsonc
 {
   "surface": "lift_chat",
-  "history": [{ "role": "user" | "coach", "text": "..." }],
   "message": "<what the lifter just said>"
 }
 ```
@@ -112,12 +114,12 @@ Lift's conversation. Request:
 { "reply": "<what the coach says>" }
 ```
 
-**Note what is not in the request: the log.** The function reads `lift.workouts`
-(with its exercises and sets) under the CALLER's JWT, so RLS decides what the
-coach can see, and renders it into the prompt itself. Run's `chat` takes its
-brief from the app because the numbers a runner cares about are computed
-client-side; Lift's is the log, and a log the client narrates is a log the
-client can invent. Anything sent as `brief` here is discarded.
+**The request is one line, and everything else is read here.** The log, the
+conversation and the memory all come from Postgres under the CALLER's JWT, so
+RLS decides what the coach can see. Anything sent as `brief`, `memory` or
+`history` is discarded. Run's `chat` takes its brief from the app because the
+numbers a runner cares about are computed client-side; Lift's inputs are all
+records, and a record the client narrates is a record it can invent.
 
 Working sets only — completed, and not warm-ups. A session with nothing that
 counts is dropped rather than listed empty. A coach that reads a warm-up as a
@@ -126,6 +128,12 @@ top set will prescribe from it.
 There is no `intent` yet: Lift has no validated path for the coach to act
 through, so it can only talk. When plans land, that is the surface to add rather
 than a field to loosen here.
+
+### `lift_summarise`
+
+Not called by the app. The function calls it itself, after a reply, when the
+memory has fallen `REGENERATE_AFTER` turns behind the transcript — see
+[What the coach remembers](#what-the-coach-remembers).
 
 ### `chat`
 
@@ -204,19 +212,75 @@ it should not assume a 400-turn history arrives intact:
 
 | Input                                | Kept              |
 | ------------------------------------ | ----------------- |
-| `chat.history` / `lift_chat.history` | the last 20 turns |
+| `chat.history`                       | the last 20 turns |
 | `summarise.transcript`               | the last 60 turns |
 | any single turn                      | 2000 characters   |
 | `chat.message` / `lift_chat.message` | 4000 characters   |
 | `chat.brief`                         | 8000 characters   |
 | `summarise.previous`                 | 4000 characters   |
+| a stored memory, in or out           | 4000 characters   |
 
-The same ceiling bounds `lift_chat`'s log, which the function renders itself —
-so a lifter with years of history cannot grow the prompt without limit either.
+The memory's ceiling is the tightest of the prose ones on purpose: it is re-read
+on every future turn, so it is also the ceiling on what a six-month-old
+conversation costs.
+
+`lift_chat` takes no `history` — the server replays its own. The same ceiling
+bounds `lift_chat`'s log, which the function renders itself — so a lifter with
+years of history cannot grow the prompt without limit either.
 
 Anything clipped ends in `…` so the model can see it was cut. Blank turns are
 dropped; a `role` that is not `coach` (or `assistant`) is sent as `user`, so a
 client cannot inject a system message.
+
+## What the coach remembers
+
+Two tiers with opposite lifecycles, and the split is the whole design:
+
+| Tier           | Table             | Sent        | Lifecycle                    |
+| -------------- | ----------------- | ----------- | ---------------------------- |
+| the memory     | `coach.summaries` | every turn  | regenerated and replaced     |
+| the transcript | `coach.turns`     | the last 20 | append-only, never rewritten |
+
+Sending the whole history instead works for a fortnight and then does not.
+Appending to the memory instead makes each version a re-encode of a re-encode,
+drifting with nothing to say which copy was right.
+
+**Keyed per (person, app).** `coach.summaries` was keyed on `user_id` alone,
+which was right while the coach served one app and is a data-loss bug now: on an
+account that uses both, each app's regeneration would silently overwrite the
+other's memory, on special-category data, with no earlier version to restore.
+`20260807130000_coach_memory_per_app.sql` widens the key and adds the same
+column to `coach.conversations`; `coach.turns` reaches its app through its
+conversation FK rather than carrying a second copy of the fact.
+
+Lift keeps **one conversation per person**, addressed as `lift:<user_id>` so it
+needs no lookup. Nothing in the design asks for a boundary between visits: the
+memory is what survives and the last 20 turns are what get replayed, and neither
+is improved by knowing which evening a turn came from. Runio keeps many, from
+its own client — that difference is in the clients, not the schema.
+
+The memory is rewritten when the transcript has run 20 turns ahead of it, not on
+a timer and not on every turn. Every-turn regeneration is a re-encode loop and
+the most expensive way to run a coach. The rewrite happens inline, on the turn
+that triggers it, so about one turn in twenty pays for a second short call —
+moving it into the background needs the platform's `waitUntil` and is worth
+doing only if that latency is ever felt.
+
+Writes are per app and per caller. `MEMORY_TURNS` must not be smaller than
+`REGENERATE_AFTER`, or a rewrite would be made from less of the conversation
+than it had fallen behind by, and the turns in the gap would be lost from the
+memory permanently — there is a test for exactly that.
+
+### What it is allowed to say
+
+`lift_summarise`'s prompt is constrained harder than Run's, for a reason that is
+about the product rather than the model: **the lifter can read this and cannot
+edit it.** So it records what they said and never what the model concluded —
+"says their shoulder hurts on overhead press" is memory, "seems anxious about
+their weight" is a guess about a person from a chat window, and it is the kind
+that is quietly wrong for months. Nothing about their body, their weight, or how
+they look. Nothing the database already holds, because two copies of a number
+eventually disagree and nothing says which is wrong.
 
 ## Rate limits
 
@@ -224,16 +288,17 @@ Per authenticated user, evaluated against actual call timestamps — the windows
 **slide**, so there is no calendar boundary at which a user gets double their
 allowance.
 
-| Surface          | Limit              | Why                                                                                                                                                                         |
-| ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `intake`         | 12 / 5 min         | One cheap chat turn. Onboarding is four to six turns and a runner may restart it, so this has to be generous and feel instant.                                              |
-| `skeleton`       | 6 / hour           | The most expensive single call, but generated once per training block (every 8–20 weeks) with up to two validator attempts. Enough to re-plan a few times while onboarding. |
-| `week`           | 12 / hour          | One call per week of the block, generated a week ahead, up to two attempts. Covers backfilling several weeks at once.                                                       |
-| `adapt`          | 10 / hour          | A runner typing a request. A handful a week is real use.                                                                                                                    |
-| `chat`           | 15 / 5 min         | The cheapest call and the most frequent. A message every twenty seconds sustained is faster than anyone converses, so it never binds in real use.                           |
-| `summarise`      | 6 / hour           | Not a runner action: the app condenses a conversation when one ends. Six an hour is six conversations plus a retry.                                                         |
-| `lift_chat`      | 15 / 5 min         | A lifter talking. Sized like `chat`, and given its own window rather than a shared one — a lifter who also runs would otherwise spend one allowance on two coaches.         |
-| **all surfaces** | 120 / rolling 24 h | Backstop for a client bug that loops slowly enough to stay under every window above.                                                                                        |
+| Surface          | Limit              | Why                                                                                                                                                                                             |
+| ---------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `intake`         | 12 / 5 min         | One cheap chat turn. Onboarding is four to six turns and a runner may restart it, so this has to be generous and feel instant.                                                                  |
+| `skeleton`       | 6 / hour           | The most expensive single call, but generated once per training block (every 8–20 weeks) with up to two validator attempts. Enough to re-plan a few times while onboarding.                     |
+| `week`           | 12 / hour          | One call per week of the block, generated a week ahead, up to two attempts. Covers backfilling several weeks at once.                                                                           |
+| `adapt`          | 10 / hour          | A runner typing a request. A handful a week is real use.                                                                                                                                        |
+| `chat`           | 15 / 5 min         | The cheapest call and the most frequent. A message every twenty seconds sustained is faster than anyone converses, so it never binds in real use.                                               |
+| `summarise`      | 6 / hour           | Not a runner action: the app condenses a conversation when one ends. Six an hour is six conversations plus a retry.                                                                             |
+| `lift_chat`      | 15 / 5 min         | A lifter talking. Sized like `chat`, and given its own window rather than a shared one — a lifter who also runs would otherwise spend one allowance on two coaches.                             |
+| `lift_summarise` | 6 / hour           | Not a lifter action: the coach rewrites its own memory once every ~20 turns. Deliberately too low to rewrite after every turn, which is the re-encode loop the two-tier memory exists to avoid. |
+| **all surfaces** | 120 / rolling 24 h | Backstop for a client bug that loops slowly enough to stay under every window above.                                                                                                            |
 
 `summarise` is deliberately **too low to summarise after every chat turn**. That
 usage is a re-encode of a re-encode, which is the failure the surface exists to
@@ -451,17 +516,18 @@ The prompts, the limiter's decision logic and the entitlement policy are pure
 and covered by Deno tests. From this directory:
 
 ```sh
-deno test          # 149 tests: thresholds, window boundaries, retry-after,
-                   # usage accounting, the entitlement policy, the three stores'
-                   # failure mappings, and what each surface sends and will
-                   # accept back
-deno check index.ts surfaces.ts limits.ts usage_store.ts entitlements.ts lift_log.ts
+deno test          # 170 tests: thresholds, window boundaries, retry-after,
+                   # usage accounting, the entitlement policy, when the memory
+                   # is rewritten, the four stores' failure mappings, and what
+                   # each surface sends and will accept back
+deno check index.ts surfaces.ts limits.ts usage_store.ts entitlements.ts \
+           lift_log.ts coach_memory.ts
 deno lint
 deno fmt .         # --check in CI
 ```
 
 No permissions flags and no network are needed — `surfaces.ts` and `limits.ts`
-do no I/O, and the three stores each take `fetch` as a constructor argument so
+do no I/O, and the four stores each take `fetch` as a constructor argument so
 the tests stub it. There is deliberately **no `deno.json`** in this directory:
 `supabase functions
 deploy` reads one if it is present, and Deno's defaults are

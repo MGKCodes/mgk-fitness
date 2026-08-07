@@ -13,9 +13,11 @@ import '../domain/coach.dart';
 /// for. `lift_chat` is the only one this app calls, and the function reads which
 /// app pays for it from that name rather than from anything sent here.
 ///
-/// Note what is deliberately NOT sent: the training log. The function reads it
-/// under this caller's own JWT, so RLS decides what the coach sees and this app
-/// cannot describe a session that did not happen.
+/// Note what is deliberately NOT sent: the training log, the conversation, or
+/// what the coach remembers. The function reads all three under this caller's
+/// own JWT, so RLS decides what the coach sees, and this app cannot describe a
+/// session that did not happen or a sentence nobody said. That is why the
+/// request is one line long.
 class SupabaseCoach implements CoachService {
   SupabaseCoach(this._client);
 
@@ -24,10 +26,7 @@ class SupabaseCoach implements CoachService {
   static const _surface = 'lift_chat';
 
   @override
-  Future<String> ask(
-    String message, {
-    List<CoachTurn> history = const <CoachTurn>[],
-  }) async {
+  Future<String> ask(String message) async {
     if (_client.auth.currentUser == null) {
       throw const CoachException(CoachFailure.signedOut);
     }
@@ -35,19 +34,7 @@ class SupabaseCoach implements CoachService {
     try {
       final res = await _client.functions.invoke(
         'coach',
-        body: <String, Object?>{
-          'surface': _surface,
-          'message': message,
-          // `coach` is the app's word for it; the function maps it to the
-          // provider's `assistant`.
-          'history': <Map<String, Object?>>[
-            for (final turn in history)
-              <String, Object?>{
-                'role': turn.fromCoach ? 'coach' : 'user',
-                'text': turn.body,
-              },
-          ],
-        },
+        body: <String, Object?>{'surface': _surface, 'message': message},
       );
 
       final data = res.data;
@@ -97,16 +84,12 @@ class FakeCoach implements CoachService {
   final String reply;
   final CoachFailure? failWith;
 
-  /// What the last call was given, so a test can assert the conversation is
-  /// actually being carried.
-  List<CoachTurn> lastHistory = const <CoachTurn>[];
+  /// Everything asked of it, in order, so a test can assert what was sent.
+  final List<String> asked = <String>[];
 
   @override
-  Future<String> ask(
-    String message, {
-    List<CoachTurn> history = const <CoachTurn>[],
-  }) async {
-    lastHistory = history;
+  Future<String> ask(String message) async {
+    asked.add(message);
     final failure = failWith;
     if (failure != null) throw CoachException(failure);
     return reply;

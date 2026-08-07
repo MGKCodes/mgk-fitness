@@ -22,6 +22,7 @@ import {
   editRunMessages,
   LIFT_PERSONA,
   liftChatMessages,
+  liftSummariseMessages,
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
@@ -491,6 +492,80 @@ Deno.test("the lift reply is handed over trimmed", () => {
   );
 });
 
+Deno.test("what the coach remembers goes in, and is never read back", () => {
+  const system = systemOf(
+    liftChatMessages({
+      memory: "Trains four days. Left shoulder complains on overhead work.",
+      brief: LIFT_LOG,
+      message: "hi",
+    }),
+  );
+  assertStringIncludes(system, "Left shoulder complains on overhead work.");
+  // The memory is context, not evidence. A coach that recites it is not
+  // listening, and a memory that outranks the log is a coach arguing with what
+  // actually happened.
+  assertStringIncludes(system, "Never read it back to them");
+  assertStringIncludes(system, "the log is what happened");
+});
+
+Deno.test("no memory means no heading for one", () => {
+  // A coach told "here is what you remember" above an empty space fills it in.
+  const system = systemOf(liftChatMessages({ brief: LIFT_LOG, message: "hi" }));
+  assert(
+    !system.includes("earlier conversations"),
+    "an absent memory must not be announced",
+  );
+});
+
+Deno.test("the memory prompt refuses guesses about a person", () => {
+  // The lifter can read this and cannot edit it, so the whole burden of being
+  // fair sits on the prompt. The failure it is written against is a stored
+  // paragraph that is true-ish and unkind, found by the person it is about.
+  const system = systemOf(
+    liftSummariseMessages({
+      previous: "",
+      transcript: [{ role: "user", text: "shoulder is sore" }],
+    }),
+  );
+  assertStringIncludes(
+    system,
+    "Record what they SAID, never what you concluded",
+  );
+  assertStringIncludes(system, "**They can read this.**");
+  assertStringIncludes(system, "Do not write about their body");
+  assertStringIncludes(system, LIFT_PERSONA);
+});
+
+Deno.test("the transcript is worked on, not continued", () => {
+  // Given turns, a model tries to answer them. Given a labelled block, it
+  // summarises them.
+  const messages = liftSummariseMessages({
+    previous: "Trains four days.",
+    transcript: [
+      { role: "user", text: "shoulder is sore" },
+      { role: "coach", text: "swap to a neutral grip" },
+    ],
+  });
+  assertEquals(messages.length, 2);
+  assertEquals(messages[1].role, "user");
+  assertStringIncludes(messages[1].content, "Lifter: shoulder is sore");
+  assertStringIncludes(messages[1].content, "Coach: swap to a neutral grip");
+  assertStringIncludes(messages[1].content, "Trains four days.");
+});
+
+Deno.test("an empty memory is a legitimate answer, an absent one is not", () => {
+  const summarise = SURFACES.lift_summarise;
+  assert(summarise.valid({ summary: "" }));
+  assert(!summarise.valid({}));
+  // Nothing to read means nothing to summarise, and it would still cost a call.
+  assert(!summarise.validRequest?.({ transcript: [] }));
+  assert(
+    summarise.validRequest?.({
+      transcript: [{ role: "user", text: "hi" }],
+    }),
+  );
+});
+
 Deno.test("every surface declares which app pays for it", () => {
   for (const name of SURFACE_NAMES) {
     const app = SURFACES[name].app;
@@ -538,13 +613,16 @@ Deno.test("with COACH_CHAT_MODEL unset every surface runs on COACH_MODEL", () =>
   for (const s of SURFACE_NAMES) assertEquals(modelFor(s, get), "cheap");
 });
 
-Deno.test("exactly the three conversational surfaces are human-facing", () => {
+Deno.test("exactly the unvalidated surfaces are human-facing", () => {
   // The property is "no Dart validator between this output and a person", not
   // "it is a chat". Adding a surface without deciding which side it falls on is
-  // how a cheap model's mistake reaches a lifter as prose.
+  // how a cheap model's mistake reaches a lifter as prose. The two memory
+  // surfaces qualify for the stronger version of the reason: their output is
+  // stored and reloaded into every later prompt, so an error compounds rather
+  // than passing.
   assertEquals(
     SURFACE_NAMES.filter((s) => SURFACES[s].humanFacing),
-    ["chat", "summarise", "lift_chat"],
+    ["chat", "summarise", "lift_chat", "lift_summarise"],
   );
 });
 

@@ -11,9 +11,11 @@ import '../domain/coach.dart';
 /// body and their injuries, and it should not start being kept as a side effect
 /// of a chat screen shipping. Wiring it is a deliberate follow-up.
 ///
-/// Session-only is not the same as turn-only, though: what is on screen is sent
-/// with each message, so the coach follows the thread within a visit. What it
-/// does not do is remember the last one.
+/// **What is on screen is not what the coach remembers.** The server keeps the
+/// transcript and replays it, so the coach follows the thread across visits and
+/// across devices; this list is only what this screen has drawn since it
+/// opened. The two are allowed to differ — reopening the app gives you an empty
+/// screen and a coach that still knows you.
 class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key, required this.coach, this.opener});
 
@@ -63,11 +65,6 @@ class _CoachScreenState extends State<CoachScreen> {
     final text = _input.text.trim();
     if (text.isEmpty || _waiting) return;
 
-    // Taken before the new turn is added, because the coach is sent the
-    // conversation SO FAR plus the message — sending it twice would have the
-    // lifter appear to say the same thing to itself.
-    final history = List<CoachTurn>.unmodifiable(_turns);
-
     setState(() {
       _turns.add(
         CoachTurn(
@@ -84,7 +81,7 @@ class _CoachScreenState extends State<CoachScreen> {
     _toBottom();
 
     try {
-      final reply = await widget.coach.ask(text, history: history);
+      final reply = await widget.coach.ask(text);
       if (!mounted) return;
       setState(() {
         _turns.add(
