@@ -16,6 +16,7 @@ export 'src/theme/app_colors.dart';
 export 'src/theme/app_radius.dart';
 export 'src/theme/app_theme.dart';
 export 'src/widgets/app_card.dart';
+export 'src/widgets/conversation_bubble.dart';
 export 'src/widgets/glass_surface.dart';
 export 'src/widgets/photo_backdrop.dart';
 export 'src/widgets/primary_button.dart';

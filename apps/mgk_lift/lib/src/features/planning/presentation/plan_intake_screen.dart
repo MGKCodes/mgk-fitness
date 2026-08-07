@@ -120,8 +120,12 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
                   controller: _scroll,
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   children: <Widget>[
-                    for (final turn in _turns) _Bubble(turn: turn),
-                    if (_waiting) const _Thinking(),
+                    for (final turn in _turns)
+                      ConversationBubble(
+                        text: turn.text,
+                        fromCoach: turn.fromCoach,
+                      ),
+                    if (_waiting) const ThinkingIndicator(),
                     if (_failure != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(
@@ -195,67 +199,4 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
       ),
     );
   }
-}
-
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.turn});
-
-  final PlannerTurn turn;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Align(
-        alignment: turn.fromCoach
-            ? Alignment.centerLeft
-            : Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.8,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: turn.fromCoach ? AppColors.elevated : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: SelectableText(
-                turn.text,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: turn.fromCoach
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Thinking extends StatelessWidget {
-  const _Thinking();
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Text(
-        'Thinking…',
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
-      ),
-    ),
-  );
 }

@@ -147,8 +147,12 @@ class _CoachScreenState extends State<CoachScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              for (final turn in _turns) _Bubble(turn: turn),
-                              if (_waiting) const _Thinking(),
+                              for (final turn in _turns)
+                                ConversationBubble(
+                                  text: turn.body,
+                                  fromCoach: turn.fromCoach,
+                                ),
+                              if (_waiting) const ThinkingIndicator(),
                               // Attached to the message it refers to, not
                               // stranded at the bottom of the screen with the
                               // question at the top.
@@ -250,53 +254,6 @@ class _Empty extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.turn});
-
-  final CoachTurn turn;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Align(
-        alignment: turn.fromCoach
-            ? Alignment.centerLeft
-            : Alignment.centerRight,
-        child: ConstrainedBox(
-          // Never full width. A bubble that reaches both margins stops reading
-          // as one side of a conversation.
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.8,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: turn.fromCoach ? AppColors.elevated : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: SelectableText(
-                turn.body,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: turn.fromCoach
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Why the last message got no answer, next to the message.
 class _Failure extends StatelessWidget {
   const _Failure({required this.failure});
@@ -311,24 +268,6 @@ class _Failure extends StatelessWidget {
       style: Theme.of(
         context,
       ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-    ),
-  );
-}
-
-class _Thinking extends StatelessWidget {
-  const _Thinking();
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Text(
-        'Thinking…',
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
-      ),
     ),
   );
 }
