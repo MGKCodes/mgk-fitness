@@ -36,8 +36,7 @@ enum CoachFailure {
     notEntitled => 'Coaching is part of the paid plan.',
     limitReached =>
       'That is all the coaching for today. It resets in the morning.',
-    unavailable =>
-      'Could not reach your coach. Tracking works without one.',
+    unavailable => 'Could not reach your coach. Tracking works without one.',
   };
 }
 
@@ -58,5 +57,10 @@ class CoachException implements Exception {
 /// interface exists so the screen can be driven by a fake.
 abstract interface class CoachService {
   /// Sends a message and returns the reply. Throws [CoachException].
-  Future<String> ask(String message);
+  ///
+  /// [history] is everything said so far, oldest first, NOT including
+  /// [message]. Without it every turn arrives at the model alone, and a coach
+  /// that cannot remember the sentence before is not having a conversation —
+  /// "why?" would be answered as if it were the first thing anyone had said.
+  Future<String> ask(String message, {List<CoachTurn> history});
 }

@@ -43,9 +43,7 @@ void main() {
       // Removing it would lose what they typed, and the failure is nearly
       // always transient - the obvious next action is to send it again.
       await tester.pumpWidget(
-        wrap(
-          CoachScreen(coach: FakeCoach(failWith: CoachFailure.unavailable)),
-        ),
+        wrap(CoachScreen(coach: FakeCoach(failWith: CoachFailure.unavailable))),
       );
       await tester.pumpAndSettle();
 
@@ -59,9 +57,7 @@ void main() {
     ) async {
       // The normal case in a gym basement, and not the lifter's fault.
       await tester.pumpWidget(
-        wrap(
-          CoachScreen(coach: FakeCoach(failWith: CoachFailure.unavailable)),
-        ),
+        wrap(CoachScreen(coach: FakeCoach(failWith: CoachFailure.unavailable))),
       );
       await tester.pumpAndSettle();
       await ask(tester, 'anything');
@@ -87,9 +83,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        wrap(
-          CoachScreen(coach: FakeCoach(failWith: CoachFailure.notEntitled)),
-        ),
+        wrap(CoachScreen(coach: FakeCoach(failWith: CoachFailure.notEntitled))),
       );
       await tester.pumpAndSettle();
       await ask(tester, 'anything');
@@ -118,5 +112,45 @@ void main() {
 
     expect(find.text('Bench has not moved.'), findsOneWidget);
     expect(find.text('It has read your log'), findsNothing);
+  });
+
+  group('the conversation is carried', () {
+    testWidgets('the first message has nothing behind it', (
+      WidgetTester tester,
+    ) async {
+      final coach = FakeCoach();
+      await tester.pumpWidget(wrap(CoachScreen(coach: coach)));
+      await tester.pumpAndSettle();
+
+      await ask(tester, 'Why has my bench stalled?');
+
+      expect(coach.lastHistory, isEmpty);
+    });
+
+    testWidgets('later messages carry what was said before them', (
+      WidgetTester tester,
+    ) async {
+      // Without this the coach answers "so what do I do?" as if it were the
+      // first thing anyone had said to it.
+      final coach = FakeCoach(reply: 'You have not added weight in a month.');
+      await tester.pumpWidget(
+        wrap(CoachScreen(coach: coach, opener: 'Bench has not moved.')),
+      );
+      await tester.pumpAndSettle();
+
+      await ask(tester, 'Why has my bench stalled?');
+      await ask(tester, 'So what do I do?');
+
+      expect(coach.lastHistory.map((CoachTurn t) => t.body).toList(), <String>[
+        'Bench has not moved.',
+        'Why has my bench stalled?',
+        'You have not added weight in a month.',
+      ]);
+      // The message being sent must not also appear in its own history.
+      expect(
+        coach.lastHistory.map((CoachTurn t) => t.body),
+        isNot(contains('So what do I do?')),
+      );
+    });
   });
 }

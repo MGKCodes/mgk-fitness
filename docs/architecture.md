@@ -94,18 +94,36 @@ happened.
 
 ## The coach
 
-App-agnostic by design. One conversation store, one rate limiter, one spend cap,
-serving every app.
+App-agnostic by design, and app-agnostic in fact: **one Edge Function serves
+both apps**, with one conversation store, one rate limiter and one spend cap.
+Lift and Run each contribute surfaces to the same `SURFACES` table.
+
+A request names a `surface`, never an app. `SURFACES[name].app` is what
+`core.entitlements` is keyed on, so a caller cannot ask for its Run subscription
+to pay for a Lift turn — and a surface added without an app does not compile.
 
 The rule that keeps it honest: **the model proposes, the validator disposes.**
 Every LLM output — a plan, a session, a profile extraction — is a structured
 proposal that passes through deterministic Dart-side validation before anything
 uses it. The model never writes a number straight into a plan.
 
-Tiers differ by **volume and planning model, not by chat model**, and are framed
-to users as a 1/3, 2/3, 3/3 star coach rather than by model name — so the
-underlying model can change silently. Users are warned as they approach limits
-and degraded to a cheaper model near the ceiling rather than hitting a wall.
+That rule also decides which model runs where. The surfaces with a validator
+behind them can afford a cheap one, because a mistake comes back as a rejected
+plan; the three that reach a person directly (`chat`, `summarise`, `lift_chat`)
+cannot, because a mistake arrives as prose. So **tiers move the conversational
+model and never the planning one** — there is nothing to sell on a surface whose
+safety comes from the validator rather than from the price of the model.
+
+Tiers are framed to users as a 1/3, 2/3, 3/3 star coach rather than by model
+name, so the underlying model can change silently. Users are warned as they
+approach limits and degraded to a cheaper model near the ceiling rather than
+hitting a wall.
+
+**Where each app's context comes from differs, on purpose.** Run's app renders
+its own typed state into a prose brief and sends it, because the numbers a
+runner cares about (paces, race predictions) are computed client-side. Lift's
+log is read by the function under the caller's own JWT, so RLS scopes it and the
+client cannot describe a session that did not happen.
 
 ## Cross-app awareness
 

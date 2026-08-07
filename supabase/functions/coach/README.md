@@ -1,54 +1,135 @@
 # `coach` Edge Function
 
-The single server-side path from the app to the LLM provider. The app never
+The single server-side path from **either app** to the LLM provider. No app
 holds the provider key — see
-[ADR-0007](../../../docs/decisions/0007-secrets-via-backend-proxy.md) and
-[llm-and-secrets.md](../../../docs/architecture/llm-and-secrets.md).
+[ADR-0007](../../../apps/mgk_run/docs/decisions/0007-secrets-via-backend-proxy.md)
+and
+[llm-and-secrets.md](../../../apps/mgk_run/docs/architecture/llm-and-secrets.md).
 
 ```
-app (user JWT)  ─▶  coach (auth + limits + key + prompt)  ─▶  OpenRouter  ─▶  a model
+app (user JWT)  ─▶  coach (auth + entitlement + limits + key + prompt)  ─▶  OpenRouter  ─▶  a model
 ```
 
 The provider is a **server-side choice**. OpenRouter is a gateway: you pick the
 model with the `COACH_MODEL` secret and can swap it for any structured-output
-model without touching the app.
+model without touching either app.
+
+## One function, both apps
+
+`comment on schema coach` says the coach is app-agnostic, and this is where that
+is either true or a claim. Lift and Run share this function, its limiter, its
+spend cap and its counters.
+
+**Which app a request belongs to is read from the surface, never from the
+body.** `SURFACES[name].app` decides which `core.entitlements` row is consulted,
+so a caller cannot ask for its Run subscription to pay for a Lift turn. A
+surface added without an `app` does not compile.
+
+There is exactly one function per slug per Supabase project, so this directory
+is the only place a `coach` function may be defined. Two repos deploying the
+same slug against the same project is how the account-deletion bug happened —
+see [database.md](../../../docs/database.md#the-bug-this-replaced).
 
 ## What it does
 
 1. Verifies the caller is a signed-in Supabase user (rejects otherwise).
-2. **Enforces a per-user rate limit and spend cap before spending any tokens.**
-3. Builds the prompt for the requested `surface` and calls OpenRouter with a
+2. Reads `core.entitlements` for the surface's app and resolves a **tier**, or
+   refuses with `402` where that app sells coaching.
+3. **Enforces a per-user rate limit and spend cap before spending any tokens.**
+4. Loads whatever the prompt needs that the client is not trusted to supply (for
+   `lift_chat`, the training log — read as the caller, so RLS scopes it).
+5. Builds the prompt for the requested `surface` and calls OpenRouter with a
    JSON-schema-constrained response (`response_format`).
-4. Validates the response **shape** and returns it. The app re-validates the
+6. Validates the response **shape** and returns it. The app re-validates the
    **values** before using them.
-5. Records what the call cost, so step 2 has something to work from.
+7. Records what the call cost, so step 3 has something to work from.
 
-Surfaces wired up: `intake`, `skeleton`, `week`, `adapt`, `chat`, `summarise`.
-The rest (`rationale`, `checkin`) each add a message builder + schema and slot
-into the same `SURFACES` table.
+Surfaces wired up: `intake`, `skeleton`, `week`, `adapt`, `chat`, `summarise`,
+`log_run`, `edit_run`, `set_goal` (Run) and `lift_chat` (Lift). A new one adds a
+message builder, a schema, an `app` and a rate rule, and slots into the same
+`SURFACES` table.
 
 ## Layout
 
-| File             | Role                                                                                     |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| `index.ts`       | The HTTP handler. Auth, limits, the provider call, and nothing else.                     |
-| `surfaces.ts`    | **Pure** prompts, schemas, and the shape checks. No I/O, so every prompt is unit-tested. |
-| `limits.ts`      | **Pure** limit decisions: thresholds, windows, usage accounting. Also unit-tested.       |
-| `usage_store.ts` | The durable counters in Postgres, behind an injectable `fetch`.                          |
-| `*_test.ts`      | Deno tests for the three pure modules.                                                   |
+| File              | Role                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `index.ts`        | The HTTP handler. Auth, entitlement, limits, the provider call, and nothing else.       |
+| `surfaces.ts`     | **Pure** prompts, schemas, personas, and the shape checks. Every prompt is unit-tested. |
+| `limits.ts`       | **Pure** limit decisions: thresholds, windows, usage accounting. Also unit-tested.      |
+| `entitlements.ts` | The tier policy (pure) and the `core.entitlements` read, behind an injectable `fetch`.  |
+| `lift_log.ts`     | Lift's training log: the read (as the caller) and its rendering (pure).                 |
+| `usage_store.ts`  | The durable counters in Postgres, behind an injectable `fetch`.                         |
+| `*_test.ts`       | Deno tests for every pure module and every failure mapping.                             |
 
 The prompts live in `surfaces.ts` rather than in `index.ts` because `index.ts`
 calls `Deno.serve` at load: anything defined there could only be tested through
 a socket.
 
+## Who may spend
+
+`core.entitlements` holds one row per `(user, app)`. `tierFor` turns it into a
+tier or a refusal, and every way it can be wrong is a way that costs nothing:
+
+| Row                      | Lift                 | Run        |
+| ------------------------ | -------------------- | ---------- |
+| `premium` / `active`     | `sharp`              | `sharp`    |
+| `paid` / `active`        | `standard`           | `standard` |
+| `free` / `active`        | **402 not_entitled** | `free`     |
+| any other `status`       | **402 not_entitled** | `free`     |
+| no row, or a failed read | **402 not_entitled** | `free`     |
+
+Three properties are deliberate:
+
+- **Only `active` grants anything.** `core.entitlements.status` has five values
+  and the column comment says to treat every other one as no entitlement.
+  `grace` is the tempting mistake — it reads like "still fine" and means "the
+  store has not been paid".
+- **An unknown product is the cheapest tier, never the dearest.** A typo or a
+  future SKU must not be able to bill at the Sharp model's rate.
+- **The two apps differ because their products do.** Lift sells coaching as its
+  paid half; Run gives everyone a coach on the cheapest model. It also means a
+  failed entitlement read fails closed on the app that charges for it and
+  changes nothing on the app that does not.
+
 ## Surfaces
 
 Every request is `POST` with `{"surface": "<name>", ...}` and a user JWT. The
-two conversational surfaces are the ones the app talks to most:
+conversational surfaces are the ones the apps talk to most:
+
+### `lift_chat`
+
+Lift's conversation. Request:
+
+```jsonc
+{
+  "surface": "lift_chat",
+  "history": [{ "role": "user" | "coach", "text": "..." }],
+  "message": "<what the lifter just said>"
+}
+```
+
+```json
+{ "reply": "<what the coach says>" }
+```
+
+**Note what is not in the request: the log.** The function reads `lift.workouts`
+(with its exercises and sets) under the CALLER's JWT, so RLS decides what the
+coach can see, and renders it into the prompt itself. Run's `chat` takes its
+brief from the app because the numbers a runner cares about are computed
+client-side; Lift's is the log, and a log the client narrates is a log the
+client can invent. Anything sent as `brief` here is discarded.
+
+Working sets only — completed, and not warm-ups. A session with nothing that
+counts is dropped rather than listed empty. A coach that reads a warm-up as a
+top set will prescribe from it.
+
+There is no `intent` yet: Lift has no validated path for the coach to act
+through, so it can only talk. When plans land, that is the surface to add rather
+than a field to loosen here.
 
 ### `chat`
 
-Open-ended conversation. Request:
+Run's open-ended conversation. Request:
 
 ```jsonc
 {
@@ -76,7 +157,7 @@ reformats it.
 `adapt_week` is the only kind, and the app routes its `request` into the
 existing `adapt` surface, which is still validated in Dart. **The chat surface
 never emits a plan, a session, or any structured training data** — that is
-[ADR-0003](../../../docs/decisions/0003-llm-generates-validator-enforces.md),
+[ADR-0003](../../../apps/mgk_run/docs/decisions/0003-llm-generates-validator-enforces.md),
 and the prompt is written against exactly that failure. Anything that is not a
 well-formed, actionable `adapt_week` comes back as `null`, so the app gets
 either a real request or nothing.
@@ -121,14 +202,17 @@ controlled, so client text is bounded server-side before it becomes tokens. The
 limits are far above real use and the Dart side does not need to pre-trim, but
 it should not assume a 400-turn history arrives intact:
 
-| Input                  | Kept              |
-| ---------------------- | ----------------- |
-| `chat.history`         | the last 20 turns |
-| `summarise.transcript` | the last 60 turns |
-| any single turn        | 2000 characters   |
-| `chat.message`         | 4000 characters   |
-| `chat.brief`           | 8000 characters   |
-| `summarise.previous`   | 4000 characters   |
+| Input                                | Kept              |
+| ------------------------------------ | ----------------- |
+| `chat.history` / `lift_chat.history` | the last 20 turns |
+| `summarise.transcript`               | the last 60 turns |
+| any single turn                      | 2000 characters   |
+| `chat.message` / `lift_chat.message` | 4000 characters   |
+| `chat.brief`                         | 8000 characters   |
+| `summarise.previous`                 | 4000 characters   |
+
+The same ceiling bounds `lift_chat`'s log, which the function renders itself —
+so a lifter with years of history cannot grow the prompt without limit either.
 
 Anything clipped ends in `…` so the model can see it was cut. Blank turns are
 dropped; a `role` that is not `coach` (or `assistant`) is sent as `user`, so a
@@ -148,6 +232,7 @@ allowance.
 | `adapt`          | 10 / hour          | A runner typing a request. A handful a week is real use.                                                                                                                    |
 | `chat`           | 15 / 5 min         | The cheapest call and the most frequent. A message every twenty seconds sustained is faster than anyone converses, so it never binds in real use.                           |
 | `summarise`      | 6 / hour           | Not a runner action: the app condenses a conversation when one ends. Six an hour is six conversations plus a retry.                                                         |
+| `lift_chat`      | 15 / 5 min         | A lifter talking. Sized like `chat`, and given its own window rather than a shared one — a lifter who also runs would otherwise spend one allowance on two coaches.         |
 | **all surfaces** | 120 / rolling 24 h | Backstop for a client bug that loops slowly enough to stay under every window above.                                                                                        |
 
 `summarise` is deliberately **too low to summarise after every chat turn**. That
@@ -163,8 +248,8 @@ though each turn is cheap.
 The limits are **per surface on purpose**. A single flat number either strangles
 plan generation (which legitimately bursts: one skeleton plus several weeks,
 each retried once) or leaves chat wide open. See
-[plan-generation.md](../../../docs/architecture/plan-generation.md) for the call
-profile these are sized against.
+[plan-generation.md](../../../apps/mgk_run/docs/architecture/plan-generation.md)
+for the call profile these are sized against.
 
 ## Spend cap
 
@@ -204,14 +289,16 @@ Everything is `{ "error": "<code>", ... }` with a matching status.
 | 429    | `spend_cap_reached`                                  | The rolling 24 h credit cap bound. `scope` is `daily_spend`; same `retry_after_seconds` / `Retry-After`.                                                                                                        |
 | 503    | `coach_not_configured`                               | A secret is missing. With `"reason": "limiter_unavailable"` it means the SQL below has not been applied (or the service key is wrong) — **the coach refuses rather than spending money it cannot account for**. |
 | 503    | `coach_unavailable`                                  | The counter store had a transient failure, so the limit could not be checked. Same fail-closed reasoning.                                                                                                       |
+| 402    | `not_entitled`                                       | The caller has not bought coaching on the app this surface belongs to. Lift only — Run's bottom tier is free, so it never returns this.                                                                         |
 | 401    | `unauthorized`                                       | No or bad JWT.                                                                                                                                                                                                  |
 | 400    | `bad_request` / `unsupported_surface`                | Malformed body, a request a surface cannot answer (a `chat` with no `message`, a `summarise` with no `transcript`), or a `surface` this function does not serve.                                                |
 | 422    | `refused`                                            | The model's content filter tripped.                                                                                                                                                                             |
 | 502    | `coach_upstream` / `coach_empty` / `coach_malformed` | The provider failed, returned nothing, or returned something that is not the schema.                                                                                                                            |
 
 The spend cap is a **429, not a 402**: it is a rolling window that clears on its
-own, so "come back later" is the honest semantics. The distinct `error` code is
-what lets the app word it differently.
+own, so "come back later" is the honest semantics. A 402 means something else
+entirely — you have not bought this — and it does not clear by waiting. Keeping
+them apart is what lets the app say the right one.
 
 **Fail closed is deliberate.** If the limiter cannot be consulted, the request
 is refused. Spending money we cannot account for is the exact failure ADR-0007
@@ -222,28 +309,30 @@ deterministic builder, so the runner still gets a structurally sound
 
 ## Counter storage
 
-Edge Function instances are ephemeral, so the counters live in Postgres. The
-table is **service-role only** — a runner must not be able to delete their own
-usage rows and reset their own cap — and is reached through two functions in
-`public`, the only schema PostgREST exposes by default, so installing this needs
-**no project-level API config change**.
+Edge Function instances are ephemeral, so the counters live in Postgres, in
+`coach.usage`. The table is **service-role only** — a user must not be able to
+delete their own usage rows and reset their own cap — so it has RLS on with no
+policy at all, and is reached through two `SECURITY DEFINER` functions,
+`coach.record_usage` and `coach.usage_window`.
 
-> **Apply this before (or with) `supabase functions deploy coach`.** Until it
-> exists the function returns
+> **Apply the migrations before (or with) `supabase functions deploy coach`.**
+> Until they exist the function returns
 > `503 {"error":"coach_not_configured","reason":"limiter_unavailable"}` for
 > every request. That is intentional, not a bug.
 
-The DDL is
-**[`supabase/migrations/20260726180000_coach_usage_limits.sql`](../../migrations/20260726180000_coach_usage_limits.sql)**
-— `runio.coach_usage` plus the two `public` SECURITY DEFINER functions
-`runio_coach_usage_window` and `runio_coach_record_usage`, with EXECUTE granted
-to `service_role` only. It applies with the rest of the set via
-`supabase db push`.
+The DDL is in
+**[`20260806130000_restructure_schemas.sql`](../../migrations/20260806130000_restructure_schemas.sql)**,
+which promoted the whole subsystem out of `runio` into the app-agnostic `coach`
+schema. It applies with the rest of the set via `supabase db push`.
 
-It lives in the migration set rather than in this file on purpose: it was
-previously a code block here, which meant the table the limiter depends on was
-not something `db push` could install, and the function's fail-closed 503 was
-the only symptom.
+Two things follow from `coach` not being PostgREST's default schema, and both
+have already caused a fail-closed 503 once:
+
+- RPCs need a **`Content-Profile: coach`** header (`usage_store.ts` sets it).
+  Without it PostgREST resolves the name against the first exposed schema, 404s,
+  and `classifyFailure` reads that as "the limiter is missing".
+- `core` and `lift` need **`Accept-Profile`** on their reads for the same reason
+  — see `entitlements.ts` and `lift_log.ts`.
 
 Adding a surface needs **no SQL**. `surface` is a free-text column with no check
 constraint, precisely so a new prompt is a code change and not a migration.
@@ -280,21 +369,35 @@ supabase db push
 supabase functions deploy coach
 ```
 
-Optional, and recommended once the coach is talking to real runners:
+`lift_chat` additionally needs
+[`20260807120000_lift_sync_columns.sql`](../../migrations/20260807120000_lift_sync_columns.sql),
+which adds `lift.sets.set_type`. Without it the log read is a 400 and the coach
+sees an empty log — which looks exactly like a lifter who has never trained, so
+it is worth knowing rather than debugging.
+
+Optional, and recommended once the coach is talking to real people:
 
 ```sh
-# The model for `chat` and `summarise` only. Those two reach the runner with no
-# Dart validator in between, so a cheap model's mistake arrives as prose rather
-# than as a rejected plan. They are also the two SMALLEST token budgets of the
-# six (1024 and 512), so upgrading them is the cheap half of the bill — the
-# 4096-token `skeleton` stays on COACH_MODEL and stays validated.
+# The model for the human-facing surfaces only: `chat`, `summarise` and
+# `lift_chat`. Those three reach a person with no Dart validator in between, so
+# a cheap model's mistake arrives as prose rather than as a rejected plan. They
+# are also the SMALLEST token budgets (1024, 512, 1024), so upgrading them is
+# the cheap half of the bill — the 4096-token `skeleton` stays on COACH_MODEL
+# and stays validated.
 supabase secrets set COACH_CHAT_MODEL='google/gemini-3.6-flash'
 ```
 
 Unset, every surface runs on `COACH_MODEL` exactly as before — see `modelFor` in
-`surfaces.ts`. Note the split makes `runio.coach_summaries.model` genuinely
-ambiguous: the app passes `null` today, so a stored summary does not record
-which of the two models wrote it.
+`surfaces.ts`. Note the split makes `coach.summaries.model` genuinely ambiguous:
+the app passes `null` today, so a stored summary does not record which of the
+two models wrote it.
+
+**The model is configuration, not a code path.** That is the whole reason this
+goes through a gateway: making `chat` cheaper, or plan generation bigger, is a
+`secrets set` and a function restart rather than a release. A `coach.models`
+table keyed by surface was considered and dropped — `modelFor` already routes by
+surface and by tier, so the table would buy a per-request read and a second
+place for the configuration to be wrong.
 
 Optional, for tuning the ceilings without a code change. Each falls back to its
 default if unset, unparseable, zero or negative — a typo can never become "no
@@ -324,7 +427,7 @@ select surface,
        count(*)                                  as calls,
        sum(cost_credits)                         as spent,
        sum(cost_credits) filter (where cost_estimated) as estimated
-  from runio.coach_usage
+  from coach.usage
  where created_at > now() - interval '7 days'
  group by surface order by spent desc;
 ```
@@ -344,21 +447,22 @@ tested file.
 
 ## Tests
 
-The prompts and the limiter's decision logic are pure and covered by Deno tests.
-From this directory:
+The prompts, the limiter's decision logic and the entitlement policy are pure
+and covered by Deno tests. From this directory:
 
 ```sh
-deno test          # 76 tests: thresholds, window boundaries, retry-after,
-                   # usage accounting, the store's failure mapping, and what
-                   # each surface sends and will accept back
-deno check index.ts surfaces.ts limits.ts usage_store.ts
+deno test          # 149 tests: thresholds, window boundaries, retry-after,
+                   # usage accounting, the entitlement policy, the three stores'
+                   # failure mappings, and what each surface sends and will
+                   # accept back
+deno check index.ts surfaces.ts limits.ts usage_store.ts entitlements.ts lift_log.ts
 deno lint
 deno fmt .         # --check in CI
 ```
 
 No permissions flags and no network are needed — `surfaces.ts` and `limits.ts`
-do no I/O, and `usage_store.ts` takes `fetch` as a constructor argument so the
-tests stub it. There is deliberately **no `deno.json`** in this directory:
+do no I/O, and the three stores each take `fetch` as a constructor argument so
+the tests stub it. There is deliberately **no `deno.json`** in this directory:
 `supabase functions
 deploy` reads one if it is present, and Deno's defaults are
 already what we want.
@@ -387,8 +491,21 @@ at the runner, or quotes a distance the brief never mentioned, is the prompt
 regressing — both are what the instructions in `surfaces.ts` are written
 against.
 
+```sh
+curl -i "$SUPABASE_URL/functions/v1/coach" \
+  -H "Authorization: Bearer <a user access token>" \
+  -H "content-type: application/json" \
+  -d '{"surface":"lift_chat","history":[],"message":"why has my bench stalled?"}'
+```
+
+No brief is sent and none should be: the answer should quote sessions from that
+account's own log. A reply that recites the log back, or names a weight that is
+not in it, is the prompt regressing.
+
+- `not_entitled` — the account has no `active` Lift entitlement. Expected on a
+  free account; it is what the paywall is.
 - `coach_not_configured` — one of the two required secrets is unset.
-- `coach_not_configured` with `"reason":"limiter_unavailable"` — the SQL above
-  has not been applied.
-- Repeat the call 13 times inside five minutes to see a `429 rate_limited` with
+- `coach_not_configured` with `"reason":"limiter_unavailable"` — the migrations
+  have not been applied.
+- Repeat the call 16 times inside five minutes to see a `429 rate_limited` with
   a `Retry-After`.

@@ -20,10 +20,12 @@ import {
   clamp,
   conversation,
   editRunMessages,
+  LIFT_PERSONA,
+  liftChatMessages,
   logRunMessages,
   modelFor,
-  PERSONA,
   PROVIDER_ROUTING,
+  RUN_PERSONA,
   setGoalMessages,
   summariseMessages,
   SURFACES,
@@ -33,6 +35,7 @@ import { SURFACE_NAMES } from "./limits.ts";
 
 const chat = SURFACES.chat;
 const summarise = SURFACES.summarise;
+const liftChat = SURFACES.lift_chat;
 
 function systemOf(messages: { role: string; content: string }[]): string {
   assertEquals(messages[0].role, "system");
@@ -69,7 +72,7 @@ Deno.test("the brief goes into the system prompt exactly as written", () => {
   const system = systemOf(chatMessages({ brief: BRIEF, message: "hi" }));
   assertStringIncludes(system, BRIEF);
   assert(!system.includes('\\"'), "the brief must not be JSON-encoded");
-  assertStringIncludes(system, PERSONA);
+  assertStringIncludes(system, RUN_PERSONA);
 });
 
 Deno.test("no brief says so rather than leaving an empty heading", () => {
@@ -396,6 +399,112 @@ Deno.test("conversation normalises roles the app uses and the provider does not"
   );
 });
 
+// ---- lift_chat --------------------------------------------------------------
+//
+// Lift's coach is a separate surface rather than a flag on `chat`, and these
+// assert the two things that makes true: its own voice, and a log it is handed
+// rather than one the client narrates.
+
+const LIFT_LOG = `2026-08-05 Push
+  Bench press: 80kg x5, 80kg x5, 82.5kg x3
+2026-08-02 Pull
+  Deadlift: 140kg x5`;
+
+Deno.test("the lifting coach speaks in Lift's voice, not Runio's", () => {
+  const system = systemOf(liftChatMessages({ message: "hi" }));
+  assertStringIncludes(system, LIFT_PERSONA);
+  assert(
+    !system.includes(RUN_PERSONA),
+    "the lifting coach must not carry the running persona",
+  );
+  assert(
+    !system.toLowerCase().includes("runio"),
+    "a lifter should never see the other app's name",
+  );
+});
+
+Deno.test("the log goes into the system prompt exactly as rendered", () => {
+  // Same rule as Run's brief: it is prose, written to be read as knowledge.
+  // Reformatting or serialising it here would undo the point of it.
+  const system = systemOf(liftChatMessages({ brief: LIFT_LOG, message: "hi" }));
+  assertStringIncludes(system, LIFT_LOG);
+  assert(!system.includes('\\"'), "the log must not be JSON-encoded");
+});
+
+Deno.test("an empty log says so rather than heading nothing", () => {
+  // A lifter with no sessions is a real state on day one, and the prompt tells
+  // the coach to ask rather than guess at a training history.
+  const system = systemOf(liftChatMessages({ message: "hi" }));
+  assertStringIncludes(system, "(no sessions logged yet)");
+});
+
+Deno.test("the lifting coach is told the weekday, not the date", () => {
+  const system = systemOf(liftChatMessages({ message: "hi" }));
+  assert(
+    /Today is (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\./
+      .test(system),
+    `expected a weekday, got: ${system.slice(-120)}`,
+  );
+});
+
+Deno.test("the lifter's message is the last turn, after the history", () => {
+  const messages = liftChatMessages({
+    brief: LIFT_LOG,
+    history: [
+      { role: "user", text: "why has my bench stalled" },
+      { role: "coach", text: "you have run the same weight for three weeks" },
+    ],
+    message: "so what do I do",
+  });
+  assertEquals(messages.length, 4);
+  assertEquals(messages[1], {
+    role: "user",
+    content: "why has my bench stalled",
+  });
+  // "coach" is the app's word for it; the provider only knows "assistant".
+  assertEquals(messages[2], {
+    role: "assistant",
+    content: "you have run the same weight for three weeks",
+  });
+  assertEquals(messages[3], { role: "user", content: "so what do I do" });
+});
+
+Deno.test("a lift turn with nothing to answer is refused before it costs", () => {
+  assert(!liftChat.validRequest?.({ message: "   " }));
+  assert(!liftChat.validRequest?.({}));
+  assert(liftChat.validRequest?.({ message: "why has my bench stalled" }));
+});
+
+Deno.test("an empty reply is not a reply", () => {
+  // Unlike `summarise`, where an empty string is a legitimate answer: there is
+  // no such thing as having nothing to say to somebody who asked a question.
+  assert(!liftChat.valid({ reply: "" }));
+  assert(!liftChat.valid({ reply: "   " }));
+  assert(!liftChat.valid({}));
+  assert(liftChat.valid({ reply: "Add 2.5kg to your top set." }));
+});
+
+Deno.test("the lift reply is handed over trimmed", () => {
+  assertEquals(
+    liftChat.render?.({ reply: "  Add 2.5kg.\n" }),
+    { reply: "Add 2.5kg." },
+  );
+});
+
+Deno.test("every surface declares which app pays for it", () => {
+  for (const name of SURFACE_NAMES) {
+    const app = SURFACES[name].app;
+    assert(
+      app === "lift" || app === "run",
+      `${name} must name an app, got ${app}`,
+    );
+  }
+  // The entitlement check is keyed on this, so a surface silently landing in
+  // the wrong app would charge the wrong subscription.
+  assertEquals(SURFACES.lift_chat.app, "lift");
+  assertEquals(SURFACES.chat.app, "run");
+});
+
 // ---- model routing ----------------------------------------------------------
 //
 // The split exists because chat and summarise reach a person with no Dart
@@ -429,10 +538,13 @@ Deno.test("with COACH_CHAT_MODEL unset every surface runs on COACH_MODEL", () =>
   for (const s of SURFACE_NAMES) assertEquals(modelFor(s, get), "cheap");
 });
 
-Deno.test("exactly chat and summarise are human-facing", () => {
+Deno.test("exactly the three conversational surfaces are human-facing", () => {
+  // The property is "no Dart validator between this output and a person", not
+  // "it is a chat". Adding a surface without deciding which side it falls on is
+  // how a cheap model's mistake reaches a lifter as prose.
   assertEquals(
     SURFACE_NAMES.filter((s) => SURFACES[s].humanFacing),
-    ["chat", "summarise"],
+    ["chat", "summarise", "lift_chat"],
   );
 });
 
@@ -863,11 +975,19 @@ Deno.test("routing still demands endpoints that enforce the schema", () => {
   assertEquals(PROVIDER_ROUTING.require_parameters, true);
 });
 
-Deno.test("routing carries nothing beyond the two flags it is meant to", () => {
+Deno.test("one provider being down is not the coach being down", () => {
+  // OpenRouter's own default, stated explicitly so it is a decision someone
+  // can see and a test can hold — not somebody else's default that could
+  // change without anything here noticing.
+  assertEquals(PROVIDER_ROUTING.allow_fallbacks, true);
+});
+
+Deno.test("routing carries nothing beyond the flags it is meant to", () => {
   // A guard on scope rather than on values: this object is sent to a third
   // party on every request, so anything added to it should be a decision
   // someone made rather than a field that arrived.
   assertEquals(Object.keys(PROVIDER_ROUTING).sort(), [
+    "allow_fallbacks",
     "data_collection",
     "require_parameters",
   ]);

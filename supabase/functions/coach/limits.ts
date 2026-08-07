@@ -15,6 +15,14 @@
 /**
  * The prompt surfaces the proxy exposes. Each is priced differently, so each
  * is limited differently.
+ *
+ * The list spans BOTH apps. One coach function serves Lift and Run (the `coach`
+ * schema comment says so, and docs/architecture.md is written on it), so a
+ * surface name carries which app it belongs to — `lift_chat` is Lift's, the
+ * unprefixed ones are Run's, for the historical reason that they were written
+ * before there was a second app to disambiguate from. Which app a surface
+ * serves is declared in `surfaces.ts` and is what the entitlement check is
+ * keyed on; the client never says.
  */
 export type Surface =
   | "intake"
@@ -25,7 +33,8 @@ export type Surface =
   | "summarise"
   | "log_run"
   | "edit_run"
-  | "set_goal";
+  | "set_goal"
+  | "lift_chat";
 
 export const SURFACE_NAMES: readonly Surface[] = [
   "intake",
@@ -37,6 +46,7 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "log_run",
   "edit_run",
   "set_goal",
+  "lift_chat",
 ];
 
 export function isSurface(value: unknown): value is Surface {
@@ -145,6 +155,12 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // supersedes a block, and a runner who has legitimately changed their mind
     // four times in an hour has not changed their mind, something is looping.
     set_goal: { windowSeconds: 3600, max: 4 },
+    // A lifter talking. Sized like `chat` for the same reason: a message every
+    // twenty seconds sustained is faster than anyone converses, so the rate
+    // never binds in real use and the spend cap is what actually bounds a long
+    // conversation. Its own window rather than a shared one, because a lifter
+    // who also runs would otherwise spend one allowance on two coaches.
+    lift_chat: { windowSeconds: 300, max: 15 },
   },
   dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
   // PROVISIONAL — these three are placeholders, not measured figures. The real

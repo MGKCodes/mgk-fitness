@@ -9,40 +9,44 @@ it has been worked through.
 
 ---
 
-## 1. Move the coach to OpenRouter
+## 1. Move the coach to OpenRouter — **done, 2026-08-07**
 
-**The current implementation is wrong and should be changed before anything
-else is built on it.** `supabase/functions/coach/index.ts` calls
-`api.anthropic.com` directly with an `ANTHROPIC_API_KEY`. It works, but it
-hard-codes a vendor into a deployed function, and changing model means a
-function redeploy.
+It turned out not to be a rewrite. The repo already contained a complete
+OpenRouter proxy, inherited from Runio in the initial commit — `limits.ts`,
+`usage_store.ts`, `surfaces.ts` and 76 tests — and commit `c2c792b` had
+overwritten `index.ts` with a Lift-only Anthropic handler that imported none of
+it. So item 1 was really **reunification**, and doing it the roadmap's way
+would have written a second limiter next to the good one.
 
-Going through OpenRouter means the model is a **configuration value, not a
-code path** — swapping `anthropic/claude-sonnet-4.5` for something cheaper on
-the accessory-advice turns, or something bigger for plan generation, becomes a
-row in a table rather than a release.
+What was actually wrong, and is now fixed:
 
-What to change:
+- Deploying that `index.ts` would have **broken Runio's coach**. One function
+  per slug per project, and Runio's repo still defines the same slug — the
+  arrangement that caused the account-deletion bug.
+- **Lift's rate limiting did not work.** It called `usage_window(p_user_id,
+  p_hours)` with no `.schema('coach')`; the real function is
+  `coach.usage_window(p_user, p_since)`. `.rpc()` returns `{data, error}`
+  rather than throwing, so `used` was null, the cap never bound, and no usage
+  row was ever written. Both failures were silent.
 
-- `ANTHROPIC_API_KEY` → `OPENROUTER_API_KEY`, endpoint to
-  `https://openrouter.ai/api/v1/chat/completions`. The request shape is
-  OpenAI-style: `messages` with a `system` role entry rather than Anthropic's
-  separate `system` field.
-- Usage accounting reads `usage.prompt_tokens` / `usage.completion_tokens`
-  instead of `input_tokens` / `output_tokens`. `coach.record_usage` already
-  takes both.
-- Send `HTTP-Referer` and `X-Title` headers; OpenRouter uses them for
-  attribution and they are free to set.
-- **Decide where the model name lives.** A `coach.models` table keyed by
-  surface (`chat`, `plan_generation`, `session_note`) is the version worth
-  having: it is what makes "change the model without an app update" true, and
-  it lets the plan generator use a different model from the chat.
-- OpenRouter can fall back across providers. Worth turning on — a coach that
-  fails because one provider is down is a coach that fails on a Monday evening.
+The shape now: one function, both apps. `lift_chat` is a surface alongside
+Run's, with its own persona and its own rate window. Which app pays is read
+from `SURFACES[name].app`, never from the request, and resolves through
+`core.entitlements` — which also gave Runio the real tier lookup its code had
+been hard-coding to `free`.
 
-Keep everything else about the function as it is: the key stays server-side,
-the entitlement check stays server-side, and the log is still read as the
-caller so RLS decides what the model can see.
+**The `coach.models` table was dropped.** `modelFor` already routes per surface
+and per tier through `COACH_MODEL` / `COACH_CHAT_MODEL`, and `supabase secrets
+set` changes the model with no code change, which is the property that was
+actually wanted. A table would have bought a per-request read and a second
+place for the config to be wrong.
+
+Cross-provider fallback is on. It was already OpenRouter's default, so
+`allow_fallbacks: true` in `PROVIDER_ROUTING` changes no behaviour — it makes
+the decision visible and testable, which is the point, because the other two
+flags in that object narrow which providers are eligible to fall back to. A
+coach that fails because one provider is down is a coach that fails on a Monday
+evening; one that falls back to a provider training on injury notes is worse.
 
 ---
 
@@ -229,12 +233,27 @@ Not part of the five, but real, and each one is small:
 
 - **Two migrations are committed and not pushed** —
   `20260807120000_lift_sync_columns.sql` must be applied before sync works
-  against production. The `coach` edge function is not deployed.
+  against production, **and before the coach can read a log at all**: it adds
+  `lift.sets.set_type`, which the log select names, so without it the read is a
+  400 and the coach sees a lifter who has never trained. The `coach` edge
+  function is not deployed.
+- **`daily-ai-summary` still calls `api.anthropic.com` directly.** Out of scope
+  for item 1 — it predates the coach and is Liftio's, not the coach's — but it
+  is now the only place in the repo holding an `ANTHROPIC_API_KEY`. The
+  restructure migration says it stays app-local until a coach surface replaces
+  it; that surface is worth adding while the surfaces table is fresh.
 - **Nothing is pushed to the remote.** 18 commits sit locally.
 - **Liftio's ToS still contradicts the licence decision** made this session, in
   three files across `Liftio` and `getliftio.com`, and Liftio has no credits
   screen to point at. `mgk_lift`'s `credits_screen.dart` is a working
   reference. Draft wording exists.
+- **Runio's repo still defines `coach` and `delete-account`.**
+  `C:\Projects\Runio\supabase\functions\` has both, pointed at this same
+  project, and whichever repo deploys last wins. That is the arrangement that
+  caused the account-deletion bug; moving the functions here was supposed to
+  end it, and it has not until those two directories are deleted. Runio's copy
+  of `surfaces.ts` has now diverged too (no `lift_chat`, no `app` field), so
+  deploying from there would also take Lift's coach down.
 - **Pose selection is session state.** `core.user_settings.progress_pose_set`
   is the column; nothing writes it.
 - **Units are session state too.** `core.user_settings` is shared with Run and

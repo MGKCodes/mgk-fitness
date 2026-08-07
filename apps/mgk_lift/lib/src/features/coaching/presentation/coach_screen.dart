@@ -10,6 +10,10 @@ import '../domain/coach.dart';
 /// bigger decision than it looks — it is a record of somebody discussing their
 /// body and their injuries, and it should not start being kept as a side effect
 /// of a chat screen shipping. Wiring it is a deliberate follow-up.
+///
+/// Session-only is not the same as turn-only, though: what is on screen is sent
+/// with each message, so the coach follows the thread within a visit. What it
+/// does not do is remember the last one.
 class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key, required this.coach, this.opener});
 
@@ -59,6 +63,11 @@ class _CoachScreenState extends State<CoachScreen> {
     final text = _input.text.trim();
     if (text.isEmpty || _waiting) return;
 
+    // Taken before the new turn is added, because the coach is sent the
+    // conversation SO FAR plus the message — sending it twice would have the
+    // lifter appear to say the same thing to itself.
+    final history = List<CoachTurn>.unmodifiable(_turns);
+
     setState(() {
       _turns.add(
         CoachTurn(
@@ -75,7 +84,7 @@ class _CoachScreenState extends State<CoachScreen> {
     _toBottom();
 
     try {
-      final reply = await widget.coach.ask(text);
+      final reply = await widget.coach.ask(text, history: history);
       if (!mounted) return;
       setState(() {
         _turns.add(
@@ -288,9 +297,9 @@ class _Failure extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
     child: Text(
       failure.message,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: AppColors.textSecondary,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
     ),
   );
 }
@@ -305,9 +314,9 @@ class _Thinking extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Text(
         'Thinking…',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppColors.textTertiary,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
       ),
     ),
   );
