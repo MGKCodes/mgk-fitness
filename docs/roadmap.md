@@ -1,11 +1,25 @@
-# Roadmap — what happens next in Lift
+# Roadmap — worked through, 2026-08-07
 
-Written 2026-08-07, at the end of the session that built photos, sync, auth and
-the coach. It is ordered: each item assumes the one above it is done.
+Written at the end of the session that built photos, sync, auth and the coach;
+finished the same day. **All five items are done.**
 
-This is a working plan, not documentation of what exists. For that, see
-[architecture.md](architecture.md) and the app READMEs. Delete this file when
-it has been worked through.
+It said to delete this file once it had been worked through. It is kept instead,
+because three of the five were settled DIFFERENTLY from how they were written
+and the reasoning is worth more than the plan was:
+
+1. **The coach move to OpenRouter** was a reunification, not a rewrite — the
+   proxy already existed and had been orphaned.
+2. **The template picker shrank rather than went.** Removing it would have made
+   the free app worse at the problem it exists to solve.
+3. **The load rule became a schema property rather than a prompt instruction**,
+   which is the difference between asking a model to behave and making
+   misbehaviour unrepresentable.
+
+What is left is in [Carried-over debt](#carried-over-debt), and the first entry
+there is the one that matters: **none of this is on production yet.**
+
+For what the app now IS, see [architecture.md](architecture.md),
+[database.md](database.md) and [navigation.md](navigation.md).
 
 ---
 
@@ -136,7 +150,7 @@ Nothing in this item. Two things it touched are worth carrying forward:
 
 ---
 
-## 3. Coach-generated plans, and templates as its knowledge base
+## 3. Coach-generated plans — **done, 2026-08-07**
 
 The biggest of the four. **The half where being wrong is expensive and
 invisible is built**; what is left is app wiring.
@@ -162,21 +176,29 @@ prescription — "3×8, leave two in the tank" — and it is the common case for
 lifter a fortnight in, which is worth knowing when reading the Plan surface's
 "targets come from what you have actually lifted".
 
-### Still to wire
+### Also built
 
-- **Generation orchestration**: intake → skeleton → weeks, retrying a rejected
-  week with its own `violations` as the next attempt's brief. The validator
-  already writes them for that.
-- **Persistence** of a draft, and the accept that makes it `active`.
-- **The intake and Plan screens**, and Track's "Next up".
-- **Adaptation** — "shoulder is sore, can we move Thursday". Still needs a
-  proposal representation that is not a regenerated plan, or every small change
-  rewrites the block and loses what was actually done.
-- **`active_session_screen.dart` still says a template adds movements and no
-  numbers**, because "pre-filling weights would be the app asserting something
-  only the lifter knows". True of a static template, false of a plan derived
-  from their own log. The comment has to change in the same commit as the
-  behaviour rather than leaving two contradictory rules in the code.
+- **Generation orchestration** — `PlanGenerator` lays out the arc then fills
+  the first two weeks, retrying a rejected week once with its own `violations`
+  as the brief. Not the whole block: eight weeks generated on day one is eight
+  weeks of guesses about a lifter nobody has watched train.
+- **Persistence and the accept** that makes a draft `active`.
+- **The intake conversation, the draft review, and Track's "Next up".**
+- **Adaptation** — `lift_adapt` returns a DIFF, which is the representation the
+  roadmap said it needed. Four changes (move, lighten, drop, swap a movement),
+  each checked against the plan, each ticked individually. A finished session is
+  never editable: it happened, and rewriting it would make the log a lie.
+- **`active_session_screen.dart`'s contradiction is resolved.** A template still
+  adds movements and no numbers; a planned session fills the weights in, because
+  those came from the lifter's own logged sets rather than from a list written
+  for nobody. Both rules are now written down next to each other.
+
+### Mid-session swaps — `lift_swap`
+
+Added on request. Nothing changes until the lifter taps an option, and the plan
+is updated with what they chose — otherwise it would go on claiming they did
+something they swapped out, which is the one question `workout_id` exists to
+answer.
 
 ### Mid-session swaps — `lift_swap`
 
@@ -296,7 +318,18 @@ plan already knows what today is.
 
 ---
 
-## 4. Navigation audit — entry and exit on every screen
+## 4. Navigation audit — **done, 2026-08-07**
+
+[navigation.md](navigation.md) is the inventory. The gap it found was the one
+the roadmap predicted: **the active session had no back affordance at all**, so
+the only exits were Finish (disabled until a set is ticked) and Discard at the
+foot of a list. It has a back arrow now, deliberately unguarded — the session is
+already persisted and Track offers to resume it.
+
+Sign in and plan intake now block back while a request is in flight. The coach
+screen and the sheets deliberately do not, and the doc says why.
+
+### As originally written
 
 Every screen needs an obvious way in, an obvious way back, and an obvious next
 step. Some of this is already right and some is not; it has never been checked
@@ -323,7 +356,19 @@ so it is the natural checklist.
 
 ---
 
-## 5. Redesign the Track surface
+## 5. Redesign the Track surface — **done, 2026-08-07**
+
+Done after plans existed, as the item itself advised — the plan is the content
+that fills it, and redesigning it empty would have meant designing it twice.
+
+Three changes. Today's planned session is on it. An interrupted session says
+what it was and how far in, because a different button label was not enough for
+the one state where somebody has genuinely lost their place. And three figures
+about their actual training — sessions this week, week streak, when the last one
+was — absent rather than zeroed on an empty log, because three noughts on day
+one reads as a scoreboard somebody is already losing.
+
+### As originally written
 
 The direction is right and the execution is thin. Today it is an eyebrow, a
 headline, a "Next up" card that says "Nothing scheduled", and a primary button
@@ -347,22 +392,29 @@ it. Redesigning it empty means designing it twice.
 
 Not part of the five, but real, and each one is small:
 
-- **Three migrations are committed and not applied.** Production is at
-  `20260806150000`; the repo is three ahead. All three replay cleanly on a local
-  `db reset` and pass `supabase test db`, but none has been near the real
-  database:
+- **Five migrations are committed and not applied, and the coach is not
+  deployed.** The single most important entry here. Production is at
+  `20260806150000`; the repo is five ahead. All five replay cleanly on a local
+  `db reset` and the suite passes 33 pgTAP assertions, but none has been near
+  the real database. In order:
+
+      npx supabase db push
+      npx supabase functions deploy coach
+      npx supabase secrets set OPENROUTER_API_KEY=... COACH_MODEL=...
+
+  Two to watch:
   - `20260807120000_lift_sync_columns.sql` — sync needs it, **and the coach
     cannot read a log without it**: it adds `lift.sets.set_type`, which the log
     select names, so without it the read is a 400 and the coach sees a lifter
     who has never trained.
-  - `20260807130000_coach_memory_per_app.sql` — the one to watch. It drops and
-    re-adds `coach.summaries`'s primary key against live rows, and Runio writes
-    that table.
-  - `20260807140000_delete_account_scopes_the_coach.sql` — function only.
+  - `20260807130000_coach_memory_per_app.sql` — drops and re-adds
+    `coach.summaries`'s primary key against live rows in a table Runio also
+    writes. The compatibility was proven against local PostgREST, not against
+    Runio's compiled client.
 
-  The `coach` edge function is not deployed either, and it must not be deployed
-  before these are applied: it would fail closed on the limiter and 400 on the
-  log.
+  The function must not be deployed before the migrations land: it would fail
+  closed on the limiter and 400 on the log.
+
 - **`daily-ai-summary` still calls `api.anthropic.com` directly.** Out of scope
   for item 1 — it predates the coach and is Liftio's, not the coach's — but it
   is now the only place in the repo holding an `ANTHROPIC_API_KEY`. The

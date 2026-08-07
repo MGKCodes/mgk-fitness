@@ -185,6 +185,32 @@ not merely when the SQL was written differently. Its predecessor regex-parsed
 migration files, which checks a proxy for the schema rather than the schema, and
 broke the moment tables started moving between schemas.
 
+## Planning
+
+Lift's blocks live in `lift.plans` / `plan_weeks` / `plan_sessions`, which is
+`run.*` with the units changed. The arc is decided once and the sessions are
+filled in a week ahead, so they are generated separately and stored separately.
+
+**The rule worth knowing before reading any of it: the model cannot prescribe a
+weight.** `lift_week`'s schema has no field for a kilogram. The coach returns an
+intensity — a percentage of what the lifter can already do — and `PlanValidator`
+resolves it against their own estimated 1RM, rounds to a loadable 2.5 kg, and
+returns nothing at all when there is no qualifying set behind it. A null target
+is a real prescription rather than a gap.
+
+That is ADR-0003 in its strongest form. A prompt asking a model not to invent a
+number is a request; a schema with nowhere to put one is a guarantee, and it
+means no validator has to catch what cannot be said.
+
+`plan_sessions.workout_id` is the join that makes "did they do the plan"
+answerable without guessing which workout was probably which. It is
+`ON DELETE SET NULL`, so tidying the log cannot punch holes in the block.
+
+Changes to a running block are a **diff** (`lift_adapt`), never a regenerated
+week: move, lighten, drop, swap a movement. A regenerated week would rewrite
+sessions already trained and lose what actually happened. A session that has
+been done is never editable — it is a record, not a draft.
+
 ## Decisions
 
 The running app carries 20 ADRs in
