@@ -400,15 +400,21 @@ Not part of the five, but real, and each one is small:
   `npx supabase migration list` is the answer, and the count written here has
   already been wrong once.
 
-  In order, and the order matters:
+  Two steps, not three:
 
       npx supabase db push
-      npx supabase secrets set OPENROUTER_API_KEY=... COACH_MODEL=...
       npx supabase functions deploy coach
 
-  Secrets before the deploy so the function is never live and unconfigured. It
-  fails closed with `coach_not_configured` in that window rather than doing
-  anything unsafe, but a 503 to a paying lifter is still a 503.
+  **`OPENROUTER_API_KEY` and `COACH_MODEL` are already set** — Runio set them on
+  2026-07-28, and Edge Function secrets are project-wide rather than per
+  function, so the unified coach reads the ones that are already there. Confirm
+  with `npx supabase secrets list`, which prints digests rather than values.
+
+  Worth checking in the dashboard that `COACH_MODEL` is still a current
+  structured-output-capable id, because every Lift planning surface depends on
+  `response_format` being honoured and a model that silently drops it returns
+  prose the parser then rejects — which reads as a model failing to follow its
+  prompt and is not.
 
   Two to watch:
   - `20260807120000_lift_sync_columns.sql` — sync needs it, **and the coach
@@ -422,6 +428,19 @@ Not part of the five, but real, and each one is small:
 
   The function must not be deployed before the migrations land: it would fail
   closed on the limiter and 400 on the log.
+
+- **`COACH_MODEL_ALLOWLIST` is set on production**, since 2026-07-29. That is
+  the development escape hatch that lets a client name its own model, and
+  `surfaces.ts` says in capitals to delete it before launch. It is bounded — a
+  client can only pick an id already on the list, so the worst case is a
+  sidegrade rather than an escalation, and Lift's client never sends `model` at
+  all. But it is a live loosening on a project about to carry a second app, and
+  the code that documents it expects it to be gone. Check what is in it, then
+  `npx supabase secrets unset COACH_MODEL_ALLOWLIST`.
+
+- **`DAILY_GLOBAL_LIMIT` is set on production** and nothing in this repo reads
+  it. Almost certainly a legacy Liftio secret. Harmless, but it is one more
+  thing that looks load-bearing to whoever reads the list next.
 
 - **`daily-ai-summary` still calls `api.anthropic.com` directly.** Out of scope
   for item 1 — it predates the coach and is Liftio's, not the coach's — but it
