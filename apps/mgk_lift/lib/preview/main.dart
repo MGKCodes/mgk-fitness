@@ -261,8 +261,15 @@ class _Index extends StatelessWidget {
 
   final Map<String, WidgetBuilder> screens;
 
-  /// Height of one row, in logical pixels. Referenced by the capture script.
-  static const double rowHeight = 72;
+  /// Height of one row, in logical pixels. **Mirrored in
+  /// `tool/capture_screens.ps1`; change both or every tap lands on the wrong
+  /// row.**
+  ///
+  /// 56 rather than 72 so the list still fits on one screen as screens are
+  /// added. It has to: the capture script taps by computed position and cannot
+  /// reach a row below the fold, so at 72 the thirteenth screen became
+  /// invisible to the harness while looking perfectly fine by hand.
+  static const double rowHeight = 56;
 
   @override
   Widget build(BuildContext context) {
