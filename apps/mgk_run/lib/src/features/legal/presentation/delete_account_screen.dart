@@ -199,30 +199,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
         ],
         const SizedBox(height: 24),
-        OutlinedButton(
-          onPressed: _armed && !_busy ? _delete : null,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.danger,
-            disabledForegroundColor: AppColors.textTertiary,
-            side: BorderSide(
-              color: _armed && !_busy ? AppColors.danger : AppColors.elevated,
-            ),
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
-          ),
-          child: _busy
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Delete my data'),
+        DestructiveButton(
+          label: 'Delete my data',
+          busy: _busy,
+          onPressed: _armed ? _delete : null,
         ),
         const SizedBox(height: 8),
         TextButton(

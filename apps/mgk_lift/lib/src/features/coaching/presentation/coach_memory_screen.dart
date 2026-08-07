@@ -179,7 +179,9 @@ class _CoachMemoryScreenState extends State<CoachMemoryScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(label: 'Forget everything', onPressed: _forget),
+              // Offered, not urged. This screen is for reading; erasing is the
+              // control it happens to also carry.
+              DestructiveButton(label: 'Forget everything', onPressed: _forget),
             ],
           ],
         ),

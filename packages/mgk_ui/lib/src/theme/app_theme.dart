@@ -84,6 +84,22 @@ abstract final class AppTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
       ),
+      // Matches the filled button's metrics exactly, so the two can occupy the
+      // same slot without the layout shifting — see principle 2 in
+      // docs/design.md. Its absence is why Run's delete screen re-specified
+      // height, shape and text style by hand.
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          disabledForegroundColor: AppColors.textTertiary,
+          side: const BorderSide(color: AppColors.elevated),
+          minimumSize: const Size(0, 52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+      ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
       ),

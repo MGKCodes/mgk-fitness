@@ -156,6 +156,33 @@ only visible on the first turn, which is the state nobody re-checks.
 > yet. Make it a component, and pin the part of it that a screenshot would
 > catch but a compiler would not.
 
+## 10. The loudest thing on a screen is what the screen is for
+
+There is no accent colour (ADR-0009), so emphasis is a fixed budget: a silver
+fill, and one status red reserved for danger. Spending either is a claim about
+what somebody should do next.
+
+**Broken on the coach-memory screen**, which exists so a lifter can read what
+the coach has written about their body — and drew `Forget everything` as a
+full-width silver `PrimaryButton`, making the destructive action the brightest
+thing on the page and the memory itself second. Every other `PrimaryButton` in
+the suite is the action you came for: *Start a session*, *Build a plan*,
+*Continue*. This was the one that was not.
+
+The first fix overcorrected: an outlined button with a red border and red text
+pulled the eye *harder* than the silver fill it replaced, because on a grey
+screen a saturated ring is the strongest mark available. `DestructiveButton`
+settled on danger for the label and a neutral border — enough to say "this one
+is different", not enough to say "do this".
+
+Related: Run's delete-account screen had reached the same conclusion months
+earlier and expressed it as six inline style properties, because the theme had
+no `outlinedButtonTheme` to inherit from. Principle 9 again — it is now a
+component, and both apps use it.
+
+> Before reaching for the primary button, ask what the screen is for. If the
+> answer is "reading this", nothing on it should be shouting.
+
 ---
 
 ## How to check

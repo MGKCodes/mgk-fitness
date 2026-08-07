@@ -35,16 +35,28 @@ import '../src/features/tracking/presentation/track_surface.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import 'fakes.dart';
 
-/// A web harness for reviewing screens, driven by Playwright.
+/// A harness for reviewing screens one at a time.
 ///
-/// Same idea as `mgk_run`'s preview: every screen is addressable by URL
-/// (`?screen=track`), because Playwright cannot reliably tap a Flutter canvas
-/// to navigate. Screens are built over in-memory fakes, so no database, no
-/// network, and no emulator — the thing under review is the layout.
+/// Same idea as `mgk_run`'s preview: every screen is addressable without
+/// navigating to it, because a Flutter canvas cannot reliably be tapped
+/// through by a screenshot tool. Screens are built over in-memory fakes, so no
+/// database and no network — the thing under review is the layout.
 ///
-/// Run it with:
+/// **Prefer the emulator.** The web build renders blur, fonts, safe areas and
+/// scroll physics differently, which is not a detail when the whole review is
+/// "does this look right":
+///
+///     flutter run -d emulator-5554 -t lib/preview/main.dart \
+///       --dart-define=screen=plan-intake
+///     adb exec-out screencap -p > shot.png
+///
+/// The URL form still works on web, and is what Playwright drives:
 ///
 ///     flutter run -d web-server --web-port 5310 -t lib/preview/main.dart
+///
+/// It was URL-only until 2026-08-07, which quietly made the harness web-only:
+/// Android had no way to say which screen it wanted and always fell back to
+/// the index.
 void main() => runApp(const PreviewApp());
 
 /// One fixed "now", so a screenshot taken today and one taken next week show
