@@ -71,6 +71,10 @@ class PlanSurface extends StatelessWidget {
     AppSpacing.xxl,
   );
 
+  /// Whether the live-block layout is in play, which lays out differently from
+  /// the two copy states.
+  bool get isBlock => isEntitled && (plan?.isActive ?? false);
+
   @override
   Widget build(BuildContext context) {
     return PhotoBackdrop(
@@ -98,7 +102,15 @@ class PlanSurface extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisAlignment: MainAxisAlignment.center,
+                // Centred for the two states that are a fixed lump of copy —
+                // the offer and "no plan yet" — and TOP-ALIGNED for the live
+                // block, which is a list. Centring a list marooned two sessions
+                // in the middle of the screen with seven hundred pixels of
+                // nothing under them, and would push five off the bottom. It is
+                // the same fault this file already records fixing for the offer.
+                mainAxisAlignment: isBlock
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
                 children: switch ((isEntitled, plan)) {
                   (false, _) => _offer(context),
                   (true, final Plan p) when p.isActive => _block(context, p),
@@ -589,16 +601,18 @@ class _PlannedSessionRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            session.movements
-                .map((m) => '${m.name} ${m.render(unit)}')
-                .join(' · '),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+          // One per line, like PlanReviewScreen. Joined with middle dots this
+          // wrapped into a dense two-line block that cannot be scanned standing
+          // up holding a phone, which is the only posture that matters here.
+          for (final movement in session.movements)
+            Text(
+              '${movement.name} — ${movement.render(unit)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
         ],
       ),
     );

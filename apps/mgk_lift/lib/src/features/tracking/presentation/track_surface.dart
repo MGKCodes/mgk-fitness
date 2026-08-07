@@ -71,6 +71,29 @@ class TrackSurface extends StatelessWidget {
   /// the whole difference between a plan and a template.
   final ValueChanged<PlanSession>? onStartPlanned;
 
+  /// What the screen is about, in three words.
+  ///
+  /// Reads the same state the card below does, so the two cannot disagree —
+  /// which they did: "Ready when you are" sat above a card naming today's
+  /// prescribed session.
+  String get _headline {
+    if (openSession != null || hasOpenSession) return 'Pick up where you were';
+    final todays = plan?.sessionOn(today ?? DateTime.now());
+    if (todays != null && todays.status == PlanSessionStatus.planned) {
+      return 'Today is ${todays.title.toLowerCase()}';
+    }
+    if (plan != null) return 'Nothing scheduled today';
+    return 'Ready when you are';
+  }
+
+  /// The second line, or null when the card below already carries it.
+  String? get _support {
+    if (openSession != null || hasOpenSession) return null;
+    if (plan != null) return null;
+    return 'Start a session and log it set by set. It works with no signal '
+        'and syncs when you are back.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -90,20 +113,21 @@ class TrackSurface extends StatelessWidget {
             children: <Widget>[
               const SectionLabel('Today'),
               const SizedBox(height: AppSpacing.md),
-              Text(
-                hasOpenSession ? 'Session in progress' : 'Ready when you are',
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                hasOpenSession
-                    ? 'You have a session open. Pick up where you left off.'
-                    : 'Start a session and log it set by set. It works with no '
-                          'signal and syncs when you are back.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
+              Text(_headline, style: theme.textTheme.headlineSmall),
+              // The supporting line is dropped whenever the card below says
+              // the same thing better. It used to run unconditionally, so an
+              // interrupted session was announced twice — vaguely and large at
+              // the top, then precisely and small underneath — and a planned
+              // session sat under free-tier copy about logging set by set.
+              if (_support != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _support!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
+              ],
               const Spacer(),
 
               // The interrupted session takes the card when there is one: it is
@@ -165,7 +189,9 @@ class _NextUp extends StatelessWidget {
       ),
       (_, final PlanSession s, _) => (
         s.title,
-        s.movements.map((m) => '${m.name} ${m.render(unit)}').join(' · '),
+        // One per line, as on Plan and the review screen. Middle-dot joined,
+        // this wrapped into a dense block nobody reads standing up.
+        s.movements.map((m) => '${m.name} — ${m.render(unit)}').join('\n'),
       ),
       (_, _, final PlanSession s) => (
         'Rest day',
@@ -178,6 +204,7 @@ class _NextUp extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          const SizedBox(width: double.infinity),
           const SectionLabel('Next up', emphasis: LabelEmphasis.stat),
           const SizedBox(height: AppSpacing.sm),
           Text(title, style: theme.textTheme.titleMedium),
@@ -269,6 +296,10 @@ class _Interrupted extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          // Stretched, because GlassSurface sizes to its content and this card
+          // shares a slot with `Next up`. Left alone, the two states of the
+          // same position rendered at different widths on the same screen.
+          const SizedBox(width: double.infinity),
           const SectionLabel('Where you were', emphasis: LabelEmphasis.stat),
           const SizedBox(height: AppSpacing.sm),
           Text(session.name, style: theme.textTheme.titleMedium),

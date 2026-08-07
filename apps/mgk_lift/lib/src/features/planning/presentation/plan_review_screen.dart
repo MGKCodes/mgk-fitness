@@ -53,7 +53,7 @@ class PlanReviewScreen extends StatelessWidget {
                   AppSpacing.xl,
                   AppSpacing.lg,
                   AppSpacing.xl,
-                  AppSpacing.xxl,
+                  AppSpacing.xl,
                 ),
                 children: <Widget>[
                   if (plan.goal != null && plan.goal!.isNotEmpty) ...<Widget>[
@@ -99,14 +99,32 @@ class PlanReviewScreen extends StatelessWidget {
                   const SectionLabel('The block'),
                   const SizedBox(height: AppSpacing.sm),
 
+                  // The weeks that exist, in full.
                   for (final week in plan.arc)
-                    _WeekRow(
-                      week: week,
-                      sessions: plan.sessions
-                          .where((PlanSession s) => s.weekNumber == week.number)
+                    if (filled.contains(week.number))
+                      _WeekRow(
+                        week: week,
+                        sessions: plan.sessions
+                            .where(
+                              (PlanSession s) => s.weekNumber == week.number,
+                            )
+                            .toList(),
+                        unit: unit,
+                      ),
+
+                  // And the rest as ONE row, not one card each.
+                  //
+                  // Rendered individually they were six near-identical cards,
+                  // every one repeating that it would be written closer to the
+                  // time — a wall of sameness that makes a plan read as
+                  // generated, which is the impression this screen exists to
+                  // avoid. The arc is still shown, because knowing the block
+                  // deloads in week 4 is the point of having one.
+                  if (plan.arc.any((PlanWeek w) => !filled.contains(w.number)))
+                    _WeeksToCome(
+                      weeks: plan.arc
+                          .where((PlanWeek w) => !filled.contains(w.number))
                           .toList(),
-                      unit: unit,
-                      written: filled.contains(week.number),
                     ),
                 ],
               ),
@@ -149,13 +167,11 @@ class _WeekRow extends StatelessWidget {
     required this.week,
     required this.sessions,
     required this.unit,
-    required this.written,
   });
 
   final PlanWeek week;
   final List<PlanSession> sessions;
   final MassUnit unit;
-  final bool written;
 
   @override
   Widget build(BuildContext context) {
@@ -196,50 +212,37 @@ class _WeekRow extends StatelessWidget {
               ),
             ],
 
-            if (!written) ...<Widget>[
-              const SizedBox(height: AppSpacing.sm),
+            for (final session in sessions) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
               Text(
-                // Honest rather than blank. Weeks are written a week ahead so
-                // they can respond to what actually happened.
-                'Written closer to the time, once your coach has seen how the '
-                'weeks before it went.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
-                  height: 1.4,
+                '${_weekdayName(session.weekday)} · ${session.title}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ] else
-              for (final session in sessions) ...<Widget>[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  '${_weekdayName(session.weekday)} · ${session.title}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+              const SizedBox(height: AppSpacing.xs),
+              for (final movement in session.movements)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    '${movement.name} — ${movement.render(unit)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
+              if (session.rationale != null &&
+                  session.rationale!.isNotEmpty) ...<Widget>[
                 const SizedBox(height: AppSpacing.xs),
-                for (final movement in session.movements)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(
-                      '${movement.name} — ${movement.render(unit)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                Text(
+                  session.rationale!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.4,
                   ),
-                if (session.rationale != null &&
-                    session.rationale!.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    session.rationale!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
+                ),
               ],
+            ],
           ],
         ),
       ),
@@ -257,3 +260,64 @@ String _weekdayName(int weekday) => switch (weekday) {
   7 => 'Sunday',
   _ => 'Day $weekday',
 };
+
+/// The weeks the coach has not written yet, as one row.
+///
+/// **The arc without the repetition.** Each unwritten week rendered its own
+/// card, and since they carry only a phase and an intent, six of them read as
+/// the same card printed six times — which makes a plan look machine-made in
+/// the one place it most needs not to.
+///
+/// The phases still show, because the shape of the block is the thing worth
+/// knowing in advance: that week 4 backs off is a fact about the plan, and that
+/// week 5's sessions are not written yet is a fact about the plumbing.
+class _WeeksToCome extends StatelessWidget {
+  const _WeeksToCome({required this.weeks});
+
+  final List<PlanWeek> weeks;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final first = weeks.first.number;
+    final last = weeks.last.number;
+    final deloads = weeks
+        .where((PlanWeek w) => w.isDeload)
+        .map((PlanWeek w) => w.number)
+        .toList();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            first == last ? 'Week $first' : 'Weeks $first to $last',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Written a week at a time, so each one can answer how the last '
+            'actually went.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          if (deloads.isNotEmpty) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              deloads.length == 1
+                  ? 'Week ${deloads.single} backs off.'
+                  : 'Weeks ${deloads.join(' and ')} back off.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

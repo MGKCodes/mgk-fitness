@@ -70,9 +70,8 @@ class PreviewApp extends StatelessWidget {
       ),
       'plan-entitled': (_) =>
           const Scaffold(body: PlanSurface(isEntitled: true)),
-      // A live block, mid-week, with today's session on it.
-      // Item 5's three states: a plan for today, a rest day, and a session
-      // somebody walked away from.
+      // Item 5: what Track shows when a plan has something for today, and
+      // when somebody walked away mid-session.
       'track-planned': (_) => Scaffold(
         body: TrackSurface(
           plan: samplePlan(previewNow),
@@ -106,12 +105,17 @@ class PreviewApp extends StatelessWidget {
           onStartSession: () {},
         ),
       ),
+      // A live block, mid-week, with today's session on it.
       'plan-active': (_) => Scaffold(
         body: PlanSurface(
           isEntitled: true,
           plan: samplePlan(previewNow),
           today: previewNow,
           onOpenSession: (_) {},
+          // Passed so the adapt entry point is actually on screen. Without it
+          // the preview silently reviewed a surface with one of its two
+          // actions missing, which is how it went unlooked-at this long.
+          onAdapt: () {},
         ),
       ),
       'plan-review': (_) => PlanReviewScreen(
@@ -245,11 +249,21 @@ class PreviewApp extends StatelessWidget {
       ),
     };
 
-    // Web: addressable by URL, because Playwright cannot tap a Flutter canvas.
-    // Android: there is no URL, so the index is the entry point and each screen
-    // is pushed — which is also what makes `adb shell input tap` predictable,
-    // since a plain list has stable row positions.
-    final key = Uri.base.queryParameters['screen'];
+    // Three ways in, because the harness runs in three places.
+    //
+    // `--dart-define=screen=plan-active` is the one that works everywhere and
+    // is the one to reach for on a device. The URL parameter is web-only and
+    // exists because Playwright cannot tap a Flutter canvas. The index is the
+    // fallback: a plain list with stable row positions, which is what makes
+    // `adb shell input tap` predictable.
+    //
+    // The define takes precedence, and it matters that it does — the index's
+    // row positions shift every time a screen is added, so addressing a screen
+    // by name is the only stable way to screenshot the same thing twice.
+    const defined = String.fromEnvironment('screen');
+    final key = defined.isNotEmpty
+        ? defined
+        : Uri.base.queryParameters['screen'];
     final direct = screens[key];
 
     return MaterialApp(
