@@ -129,39 +129,19 @@ class _CoachScreenState extends State<CoachScreen> {
             Expanded(
               child: _turns.isEmpty && !_waiting
                   ? const _Empty()
-                  // Bottom-anchored: a short conversation sits against the
-                  // composer and grows upward, rather than one bubble floating
-                  // above a screen of nothing. A plain ListView top-anchors,
-                  // and `Spacer` cannot help inside one - a scrollable has no
-                  // bounded main axis to distribute.
-                  : LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight:
-                                constraints.maxHeight - AppSpacing.lg * 2,
+                  : ConversationView(
+                      controller: _scroll,
+                      children: <Widget>[
+                        for (final turn in _turns)
+                          ConversationBubble(
+                            text: turn.body,
+                            fromCoach: turn.fromCoach,
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              for (final turn in _turns)
-                                ConversationBubble(
-                                  text: turn.body,
-                                  fromCoach: turn.fromCoach,
-                                ),
-                              if (_waiting) const ThinkingIndicator(),
-                              // Attached to the message it refers to, not
-                              // stranded at the bottom of the screen with the
-                              // question at the top.
-                              if (_failure != null)
-                                _Failure(failure: _failure!),
-                            ],
-                          ),
-                        ),
-                      ),
+                        if (_waiting) const ThinkingIndicator(),
+                        // Attached to the message it refers to, not stranded at
+                        // the bottom of the screen with the question at the top.
+                        if (_failure != null) _Failure(failure: _failure!),
+                      ],
                     ),
             ),
 

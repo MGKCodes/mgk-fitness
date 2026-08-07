@@ -116,9 +116,8 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
           child: Column(
             children: <Widget>[
               Expanded(
-                child: ListView(
+                child: ConversationView(
                   controller: _scroll,
-                  padding: const EdgeInsets.all(AppSpacing.lg),
                   children: <Widget>[
                     for (final turn in _turns)
                       ConversationBubble(

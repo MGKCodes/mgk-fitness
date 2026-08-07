@@ -102,3 +102,51 @@ class ThinkingIndicator extends StatelessWidget {
     ),
   );
 }
+
+/// A conversation that grows upward from the composer.
+///
+/// **Bottom-anchored, and that is the whole reason this exists.** A plain
+/// `ListView` top-anchors, which leaves a two-line opener floating above a
+/// screen of nothing — and `Spacer` cannot help inside one, because a
+/// scrollable has no bounded main axis to distribute. The fix is a
+/// `SingleChildScrollView` whose child is forced to at least viewport height
+/// with its content pushed to the end.
+///
+/// It is a component rather than a paragraph of advice because the app that had
+/// worked this out still shipped a second conversation without it: the coach
+/// screen anchored correctly and the plan intake, written later, did not. A
+/// behaviour that lives in one screen is a behaviour the next screen will miss.
+class ConversationView extends StatelessWidget {
+  const ConversationView({
+    super.key,
+    required this.children,
+    this.controller,
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
+  });
+
+  /// The turns, oldest first, plus anything trailing them — a thinking
+  /// indicator, a failure note.
+  final List<Widget> children;
+
+  final ScrollController? controller;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (BuildContext context, BoxConstraints constraints) =>
+        SingleChildScrollView(
+          controller: controller,
+          padding: padding,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight - padding.vertical,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
+  );
+}

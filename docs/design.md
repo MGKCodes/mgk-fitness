@@ -127,6 +127,35 @@ chosen per screen: light where a headline sits, heavy under a price.
 > A flat dark screen where a photograph should be is throwing away the only
 > colour decision this product makes.
 
+## 9. A rule that lives in one screen is a rule the next screen will miss
+
+Every principle above is a claim about how something should look. This one is
+about where the claim has to live, and it is the only reason the rest hold.
+
+**Broken three times in one afternoon, all the same way: the better version was
+already in the repo and the newer code did not use it.** The coach screen had
+worked out that a conversation must grow upward from the composer, and said so
+in a comment explaining that a plain `ListView` top-anchors and `Spacer` cannot
+help inside one. The plan intake, written afterwards, used a plain `ListView`
+and put a two-line opener above fourteen hundred pixels of nothing — principle
+1, in a screen whose fix was already written down ten files away. The same day,
+one bubble widget existed twice, and the two coach sheets had drifted to two max
+heights and two label conventions within a day of each other.
+
+None of that was carelessness. Prose in a comment is advice, and advice is
+followed by whoever reads it. So the anchoring behaviour became
+`ConversationView`, the bubble became `ConversationBubble`, and the sheet shell
+became `CoachSheet` — and the first two are pinned by tests that fail if a lone
+turn drifts back to the top or a bubble reaches both margins.
+
+The test matters as much as the extraction. Both faults still compile, still
+pass `analyze`, and still look correct on a full screen of content; they are
+only visible on the first turn, which is the state nobody re-checks.
+
+> If a principle can only be obeyed by remembering it, it is not a principle
+> yet. Make it a component, and pin the part of it that a screenshot would
+> catch but a compiler would not.
+
 ---
 
 ## How to check
