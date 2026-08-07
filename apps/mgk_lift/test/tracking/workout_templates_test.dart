@@ -10,6 +10,53 @@ void main() {
     expect(workoutSplits, hasLength(8));
   });
 
+  group('what the picker offers', () {
+    test('a short list, and the rest stay as the coach\'s raw material', () {
+      // Fifteen is a lot to choose between with no coach and no plan. These six
+      // answer "what should I do today"; the other nine are body-part sessions
+      // for somebody who already knows, and they remain in `workoutTemplates`
+      // for the coach to compose from rather than being deleted.
+      expect(offeredTemplates.map((t) => t.id), <String>[
+        'push',
+        'pull',
+        'legs',
+        'upper',
+        'lower',
+        'full-body',
+      ]);
+      expect(workoutTemplates.length, greaterThan(offeredTemplates.length));
+    });
+
+    test('an offered split never opens a session the picker hides', () {
+      // The reason offeredSplits is derived rather than listed. A hand-kept
+      // second list drifts, and the drift shows up as a split whose Tuesday
+      // opens nothing — which reads as a bug in the picker, not a stale
+      // constant three files away.
+      final offered = <String>{for (final t in offeredTemplates) t.id};
+      for (final split in offeredSplits) {
+        for (final id in split.templateIds) {
+          expect(
+            offered,
+            contains(id),
+            reason: '${split.id} offers $id, which the picker does not show',
+          );
+        }
+      }
+    });
+
+    test('the splits that survive are the ones worth offering', () {
+      // Asserted by name rather than only by the rule above, so quietly
+      // dropping the last multi-day split fails here instead of silently
+      // leaving the picker with one entry.
+      expect(offeredSplits.map((s) => s.id), <String>[
+        'ppl',
+        'upper-lower',
+        'full-body',
+        'upper-lower-ppl',
+      ]);
+    });
+  });
+
   test('every template exercise resolves to a catalogue movement', () {
     // The load-bearing cross-reference. A name that does not resolve produces a
     // templated session with no form image and no muscle group — which looks
@@ -56,7 +103,8 @@ void main() {
       expect(
         split.daysPerWeek,
         greaterThanOrEqualTo(split.templateIds.length),
-        reason: '${split.id} has ${split.templateIds.length} sessions but '
+        reason:
+            '${split.id} has ${split.templateIds.length} sessions but '
             'only ${split.daysPerWeek} days',
       );
     }

@@ -30,8 +30,11 @@ class TemplatePickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final media = MediaQuery.of(context);
+    // The offered subset, not the whole catalogue. `offeredSplits` is derived
+    // from `offeredTemplates`, so a split can never appear here whose Tuesday
+    // opens a session the picker does not show.
     final byId = <String, WorkoutTemplate>{
-      for (final t in workoutTemplates) t.id: t,
+      for (final t in offeredTemplates) t.id: t,
     };
 
     return SizedBox(
@@ -73,7 +76,7 @@ class TemplatePickerSheet extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
                 children: <Widget>[
-                  for (final split in workoutSplits)
+                  for (final split in offeredSplits)
                     _SplitBlock(
                       split: split,
                       templates: <WorkoutTemplate>[

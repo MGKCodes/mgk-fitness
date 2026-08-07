@@ -18,6 +18,7 @@ class WorkoutTemplate {
     required this.name,
     required this.description,
     required this.exercises,
+    this.offered = false,
   });
 
   final String id;
@@ -28,6 +29,21 @@ class WorkoutTemplate {
 
   /// Movement names, in the order they should be done.
   final List<String> exercises;
+
+  /// Whether this one is offered in the picker.
+  ///
+  /// **All of them are the coach's raw material; a few of them are a menu.**
+  /// The full fifteen are what the coach composes from — it knows what a push
+  /// day contains and in what order, so it never has to invent a session from
+  /// nothing. But fifteen is a lot to choose between with no coach and no
+  /// plan, and the body-part splits among them are for somebody who already
+  /// knows what they are doing. So the picker offers the six that answer
+  /// "what should I do today" for a person who has just opened a tracker, and
+  /// the rest stay available to the coach.
+  ///
+  /// This is a display rule, not a tier: tracking is free and stays free, and
+  /// nothing here is withheld to sell anything.
+  final bool offered;
 }
 
 /// A weekly programme: which sessions, and how many days.

@@ -5,6 +5,13 @@
 // these are ordinary, well-understood programmes, and inventing new ones would
 // be change for its own sake.
 //
+// **All fifteen are the coach's raw material; six are the picker's menu.** The
+// coach composes from the whole set — it knows what a push day contains and in
+// what order, so it never invents a session from nothing — while the picker
+// offers only the six that answer "what should I do today" for somebody who has
+// just opened a tracker. See `offeredTemplates` at the foot of this file. That
+// is a display rule and not a tier: tracking is free and stays free.
+//
 // Edit directly. There is no generator to re-run — the source is a frozen repo,
 // and from here these evolve with Lift.
 //
@@ -20,6 +27,7 @@ import '../domain/workout_template.dart';
 const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   WorkoutTemplate(
     id: 'push',
+    offered: true,
     name: 'Push',
     description: 'Chest, shoulders & triceps',
     exercises: <String>[
@@ -33,6 +41,7 @@ const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   ),
   WorkoutTemplate(
     id: 'pull',
+    offered: true,
     name: 'Pull',
     description: 'Back & biceps',
     exercises: <String>[
@@ -46,6 +55,7 @@ const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   ),
   WorkoutTemplate(
     id: 'legs',
+    offered: true,
     name: 'Legs',
     description: 'Quads, hamstrings & calves',
     exercises: <String>[
@@ -59,6 +69,7 @@ const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   ),
   WorkoutTemplate(
     id: 'upper',
+    offered: true,
     name: 'Upper Body',
     description: 'Chest, back, shoulders & arms',
     exercises: <String>[
@@ -73,6 +84,7 @@ const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   ),
   WorkoutTemplate(
     id: 'lower',
+    offered: true,
     name: 'Lower Body',
     description: 'Quads, glutes, hamstrings & calves',
     exercises: <String>[
@@ -86,6 +98,7 @@ const List<WorkoutTemplate> workoutTemplates = <WorkoutTemplate>[
   ),
   WorkoutTemplate(
     id: 'full-body',
+    offered: true,
     name: 'Full Body',
     description: 'All major muscle groups',
     exercises: <String>[
@@ -260,7 +273,13 @@ const List<WorkoutSplit> workoutSplits = <WorkoutSplit>[
     id: 'body-part',
     name: 'Body Part',
     description: 'Chest · Back · Shoulders · Arms · Legs',
-    templateIds: <String>['chest-triceps', 'back-biceps', 'shoulders', 'arms', 'legs'],
+    templateIds: <String>[
+      'chest-triceps',
+      'back-biceps',
+      'shoulders',
+      'arms',
+      'legs',
+    ],
     daysPerWeek: 5,
     image: 'assets/images/splits/body-part.webp',
   ),
@@ -281,3 +300,27 @@ const List<WorkoutSplit> workoutSplits = <WorkoutSplit>[
     image: 'assets/images/splits/phul.webp',
   ),
 ];
+
+/// The templates the picker offers — the six that answer "what should I do
+/// today" for somebody with no plan.
+///
+/// [workoutTemplates] stays whole. The other nine are body-part sessions for a
+/// lifter who already knows what they are doing, and they are what the coach
+/// composes from rather than something withheld to sell it.
+final List<WorkoutTemplate> offeredTemplates = workoutTemplates
+    .where((WorkoutTemplate t) => t.offered)
+    .toList(growable: false);
+
+/// The splits the picker offers, **derived rather than listed**.
+///
+/// A split is offered when every template it references is. Keeping a second
+/// hand-written list is how you end up offering a split whose Tuesday opens a
+/// session that is no longer in the picker — and that failure looks like a bug
+/// in the picker rather than a stale constant.
+final List<WorkoutSplit> offeredSplits = workoutSplits
+    .where(
+      (WorkoutSplit s) => s.templateIds.every(
+        (String id) => offeredTemplates.any((WorkoutTemplate t) => t.id == id),
+      ),
+    )
+    .toList(growable: false);
