@@ -208,16 +208,22 @@ class _Choice<T> extends StatelessWidget {
         children: <Widget>[
           Text(label, style: theme.textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
-          SegmentedButton<T>(
-            segments: <ButtonSegment<T>>[
-              for (final entry in options.entries)
-                ButtonSegment<T>(value: entry.key, label: Text(entry.value)),
-            ],
-            selected: <T>{value},
-            showSelectedIcon: false,
-            onSelectionChanged: enabled
-                ? (selected) => onChanged(selected.first)
-                : null,
+          // Full width, so Distance and Weight line up instead of each sizing
+          // to its own longest word — and so the halves are big enough to hit
+          // without looking.
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<T>(
+              segments: <ButtonSegment<T>>[
+                for (final entry in options.entries)
+                  ButtonSegment<T>(value: entry.key, label: Text(entry.value)),
+              ],
+              selected: <T>{value},
+              showSelectedIcon: false,
+              onSelectionChanged: enabled
+                  ? (selected) => onChanged(selected.first)
+                  : null,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(

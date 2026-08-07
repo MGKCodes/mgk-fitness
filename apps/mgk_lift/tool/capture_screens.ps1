@@ -30,6 +30,8 @@ $screens = @(
   'session-empty',
   'session',
   'session-long',
+  'settings',
+  'credits',
   'coach-mark'
 )
 

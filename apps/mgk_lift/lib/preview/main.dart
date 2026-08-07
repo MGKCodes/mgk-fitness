@@ -3,6 +3,9 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/home/presentation/lift_shell.dart';
+import '../src/features/settings/domain/unit_preferences.dart';
+import '../src/features/settings/presentation/credits_screen.dart';
+import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import 'fakes.dart';
@@ -77,6 +80,11 @@ class PreviewApp extends StatelessWidget {
           session: s,
         );
       },
+      'settings': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+      ),
+      'credits': (_) => const CreditsScreen(),
       'coach-mark': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),

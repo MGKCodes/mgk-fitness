@@ -93,7 +93,10 @@ class _Credit extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // Stretch, not start: the notice cards otherwise size to their longest
+      // line, so three credits of different lengths give three different card
+      // widths down the page.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         SectionLabel(label),
         const SizedBox(height: AppSpacing.sm),
