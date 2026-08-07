@@ -7,6 +7,8 @@ import 'src/core/database/app_database.dart';
 import 'src/features/auth/data/supabase_auth.dart';
 import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/coaching/data/supabase_coach_memory.dart';
+import 'src/features/planning/data/supabase_coach_planner.dart';
+import 'src/features/planning/data/supabase_plan_store.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
@@ -92,6 +94,8 @@ class MgkLiftApp extends StatelessWidget {
         // stopped paying must still be able to read what was stored about them
         // and delete it.
         coachMemory: supabase == null ? null : SupabaseCoachMemory(supabase),
+        planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
+        plans: supabase == null ? null : SupabasePlanStore(supabase),
       ),
     );
   }

@@ -45,6 +45,7 @@ class ExerciseCard extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     this.onToggleWarmup,
+    this.onSwap,
     this.isCollapsed = false,
     this.onToggleCollapsed,
   });
@@ -65,6 +66,11 @@ class ExerciseCard extends StatelessWidget {
   /// Switches a set between working and warm-up. Null leaves the markers
   /// read-only.
   final void Function(SessionSet set)? onToggleWarmup;
+
+  /// Asks the coach for something else instead of this movement. **Null hides
+  /// the action entirely** rather than showing one that opens a sheet with
+  /// nothing behind it — there is no coach in a free or offline build.
+  final VoidCallback? onSwap;
 
   /// Shows the one-line summary instead of the set rows. Decided by the screen,
   /// not here, so the lifter's manual expand survives a rebuild.
@@ -130,6 +136,14 @@ class ExerciseCard extends StatelessWidget {
                     icon: const Icon(Icons.expand_less, size: 20),
                     color: AppColors.textTertiary,
                     tooltip: 'Collapse ${exercise.name}',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (onSwap != null)
+                  IconButton(
+                    onPressed: onSwap,
+                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    color: AppColors.textTertiary,
+                    tooltip: 'Swap this out',
                     visualDensity: VisualDensity.compact,
                   ),
                 IconButton(
@@ -208,11 +222,7 @@ class _CollapsedCard extends StatelessWidget {
         ),
         child: Row(
           children: <Widget>[
-            const Icon(
-              Icons.check_circle,
-              size: 18,
-              color: AppColors.success,
-            ),
+            const Icon(Icons.check_circle, size: 18, color: AppColors.success),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(
@@ -240,7 +250,6 @@ class _CollapsedCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// `3 sets · 85 kg × 6` — the count, and the best of them.
@@ -267,7 +276,10 @@ class _ColumnHeaders extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        const SizedBox(width: 28, child: SectionLabel('Set', emphasis: LabelEmphasis.stat)),
+        const SizedBox(
+          width: 28,
+          child: SectionLabel('Set', emphasis: LabelEmphasis.stat),
+        ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: SectionLabel(
@@ -351,7 +363,9 @@ class SetRow extends StatelessWidget {
                         ? 'Count this set'
                         : 'Mark as a warm-up',
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Text(
                         set.isWarmup ? 'W' : '${set.setNumber}',
                         textAlign: TextAlign.center,

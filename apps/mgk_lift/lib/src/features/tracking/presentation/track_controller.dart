@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../planning/domain/plan.dart';
+import '../../planning/domain/plan_generator.dart';
+import '../../planning/domain/plan_validator.dart';
+import '../../planning/domain/session_from_plan.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import 'active_session_screen.dart';
@@ -24,6 +28,8 @@ class TrackController {
     BuildContext context, {
     MassUnit massUnit = MassUnit.kilograms,
     VoidCallback? onDone,
+    CoachPlanner? planner,
+    List<Session> log = const <Session>[],
   }) async {
     final Session session = await recorder.current() ?? await recorder.start();
 
@@ -35,6 +41,44 @@ class TrackController {
           session: session,
           massUnit: massUnit,
           onFinished: onDone,
+          planner: planner,
+          log: log,
+        ),
+      ),
+    );
+  }
+
+  /// Starts today's planned session, movements and targets already in.
+  ///
+  /// **Resuming still wins.** An open session is offered back exactly as it is
+  /// for a plain start: filling a plan over the top of one somebody is halfway
+  /// through would destroy the sets they had already logged, which is the worst
+  /// thing this app could do.
+  Future<void> openPlanned(
+    BuildContext context,
+    PlanSession planned, {
+    MassUnit massUnit = MassUnit.kilograms,
+    void Function(Session session)? onStarted,
+    VoidCallback? onDone,
+    CoachPlanner? planner,
+    List<Session> log = const <Session>[],
+    void Function(String replaced, PlannedMovement with_)? onSwapped,
+  }) async {
+    final open = await recorder.current();
+    final session = open ?? await SessionFromPlan(recorder).start(planned);
+    if (open == null) onStarted?.call(session);
+
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          recorder: recorder,
+          session: session,
+          massUnit: massUnit,
+          onFinished: onDone,
+          planner: planner,
+          log: log,
+          onSwapped: onSwapped,
         ),
       ),
     );

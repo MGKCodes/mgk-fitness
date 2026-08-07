@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mgk_units/mgk_units.dart';
+
+import '../../planning/domain/plan.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 /// **Track** — the front page, and the part that has to work in a basement.
@@ -18,6 +21,10 @@ class TrackSurface extends StatelessWidget {
     this.onStartSession,
     this.onOpenPlan,
     this.hasOpenSession = false,
+    this.plan,
+    this.unit = MassUnit.kilograms,
+    this.today,
+    this.onStartPlanned,
   });
 
   /// Begins or resumes a session. Null while the recorder is not wired up,
@@ -30,6 +37,19 @@ class TrackSurface extends StatelessWidget {
   /// mid-workout. The button then offers to go back to it, because "Start a
   /// session" over the top of one already running is a lie about what happens.
   final bool hasOpenSession;
+
+  /// The live block, when there is one. Null keeps the free-tier copy, which is
+  /// the honest state for most of the app's users and not a degraded one.
+  final Plan? plan;
+
+  final MassUnit unit;
+
+  /// Injected so "what is today" is testable without waiting for Thursday.
+  final DateTime? today;
+
+  /// Starts a planned session — with its movements AND its targets, which is
+  /// the whole difference between a plan and a template.
+  final ValueChanged<PlanSession>? onStartPlanned;
 
   @override
   Widget build(BuildContext context) {
@@ -65,34 +85,14 @@ class TrackSurface extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              GlassSurface(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SectionLabel(
-                      'Next up',
-                      emphasis: LabelEmphasis.stat,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Nothing scheduled',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Your coach builds the plan. Until then, log whatever you '
-                      'are doing.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _NextUp(plan: plan, unit: unit, now: today ?? DateTime.now()),
               const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                label: hasOpenSession ? 'Resume session' : 'Start a session',
-                onPressed: onStartSession,
+              _StartButton(
+                plan: plan,
+                now: today ?? DateTime.now(),
+                hasOpenSession: hasOpenSession,
+                onStartSession: onStartSession,
+                onStartPlanned: onStartPlanned,
               ),
             ],
           ),
@@ -101,3 +101,114 @@ class TrackSurface extends StatelessWidget {
     );
   }
 }
+
+/// What the plan has for today — or, on a rest day, what is next.
+///
+/// "Nothing scheduled" was a placeholder for exactly this. With no plan it
+/// still says that, because for a free lifter it is true and it is not a
+/// failure: tracking works without a coach, and the card says so rather than
+/// dangling a locked feature.
+class _NextUp extends StatelessWidget {
+  const _NextUp({required this.plan, required this.unit, required this.now});
+
+  final Plan? plan;
+  final MassUnit unit;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final p = plan;
+    final todays = p?.sessionOn(now);
+    final next = todays == null ? p?.nextFrom(now) : null;
+
+    final (String title, String detail) = switch ((p, todays, next)) {
+      (null, _, _) => (
+        'Nothing scheduled',
+        'Your coach builds the plan. Until then, log whatever you are doing.',
+      ),
+      (_, final PlanSession s, _) => (
+        s.title,
+        s.movements.map((m) => '${m.name} ${m.render(unit)}').join(' · '),
+      ),
+      (_, _, final PlanSession s) => (
+        'Rest day',
+        'Next is ${s.title} on ${_weekdayName(s.weekday)}.',
+      ),
+      _ => ('Block finished', 'Ask your coach what comes next.'),
+    };
+
+    return GlassSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SectionLabel('Next up', emphasis: LabelEmphasis.stat),
+          const SizedBox(height: AppSpacing.sm),
+          Text(title, style: theme.textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            detail,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One button, three meanings, and the order matters.
+///
+/// Resuming beats starting: "Start a session" on top of one already running is
+/// a lie about what happens. Starting the planned session beats starting an
+/// empty one, because on a day the plan has something, that is what "start" is
+/// for — and a lifter who wants something else can still add whatever they like
+/// once they are in.
+class _StartButton extends StatelessWidget {
+  const _StartButton({
+    required this.plan,
+    required this.now,
+    required this.hasOpenSession,
+    this.onStartSession,
+    this.onStartPlanned,
+  });
+
+  final Plan? plan;
+  final DateTime now;
+  final bool hasOpenSession;
+  final VoidCallback? onStartSession;
+  final ValueChanged<PlanSession>? onStartPlanned;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hasOpenSession) {
+      return PrimaryButton(label: 'Resume session', onPressed: onStartSession);
+    }
+
+    final todays = plan?.sessionOn(now);
+    if (todays != null &&
+        todays.status == PlanSessionStatus.planned &&
+        onStartPlanned != null) {
+      return PrimaryButton(
+        label: 'Start ${todays.title.toLowerCase()}',
+        onPressed: () => onStartPlanned!(todays),
+      );
+    }
+
+    return PrimaryButton(label: 'Start a session', onPressed: onStartSession);
+  }
+}
+
+String _weekdayName(int weekday) => switch (weekday) {
+  1 => 'Monday',
+  2 => 'Tuesday',
+  3 => 'Wednesday',
+  4 => 'Thursday',
+  5 => 'Friday',
+  6 => 'Saturday',
+  7 => 'Sunday',
+  _ => 'another day',
+};

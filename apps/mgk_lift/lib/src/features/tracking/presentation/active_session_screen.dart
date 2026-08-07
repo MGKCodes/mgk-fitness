@@ -7,6 +7,9 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../data/exercise_lookup.dart';
 import '../domain/rest_timer.dart';
+import '../../planning/domain/plan_generator.dart';
+import '../../planning/domain/plan_validator.dart';
+import '../../planning/presentation/swap_sheet.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import 'exercise_card.dart';
@@ -30,6 +33,9 @@ class ActiveSessionScreen extends StatefulWidget {
     this.massUnit = MassUnit.kilograms,
     this.lookup,
     this.onFinished,
+    this.planner,
+    this.log = const <Session>[],
+    this.onSwapped,
     this.startRestOnOpen = false,
   });
 
@@ -48,6 +54,18 @@ class ActiveSessionScreen extends StatefulWidget {
 
   /// Called after a session is finished or discarded, so the caller can reload.
   final VoidCallback? onFinished;
+
+  /// The coach, for swapping a movement mid-session. Null hides the action.
+  final CoachPlanner? planner;
+
+  /// Finished sessions, so a suggested replacement's target can be derived from
+  /// what this lifter has actually lifted.
+  final List<Session> log;
+
+  /// Reports a swap that was accepted, so the plan can record that they did
+  /// something other than what it asked for. Without this the plan would go on
+  /// claiming a movement they replaced.
+  final void Function(String replaced, PlannedMovement with_)? onSwapped;
 
   /// Opens already resting. **For the preview harness only** — rest is never
   /// restored from disk, so a screenshot of the bar is otherwise unreachable
@@ -228,6 +246,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                                 isCollapsed: _isCollapsed(exercise),
                                 onToggleCollapsed: () =>
                                     _toggleCollapsed(exercise),
+                                onSwap: widget.planner == null
+                                    ? null
+                                    : () => _swap(exercise),
                                 onAddSet: () => _apply(
                                   () => widget.recorder.addSet(exercise.id),
                                 ),
@@ -313,12 +334,60 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// Adds the movements and stops there — no sets, no numbers. A template says
   /// what to do, not what to lift, and pre-filling weights would be the app
   /// asserting something only the lifter knows.
+  ///
+  /// **A planned session is different, and deliberately so.** `SessionFromPlan`
+  /// does fill in the weights, because those came from this lifter's own logged
+  /// sets rather than from a list written for nobody in particular — and where
+  /// the coach could not derive one, it leaves the field blank exactly as this
+  /// does. Both rules hold; they are about different things.
   Future<void> _useTemplate() async {
     final template = await TemplatePickerSheet.show(context);
     if (template == null) return;
     for (final name in template.exercises) {
       await _apply(() => widget.recorder.addExercise(name));
     }
+  }
+
+  /// Asks the coach for something else, and applies what the lifter picks.
+  ///
+  /// The old movement is removed and the new one added in its place, with its
+  /// sets seeded the same way a planned session's are — reps in, weight in when
+  /// the coach could derive one and blank when it could not.
+  Future<void> _swap(SessionExercise exercise) async {
+    final planner = widget.planner;
+    if (planner == null) return;
+
+    final choice = await SwapSheet.show(
+      context,
+      planner: planner,
+      session: _session,
+      movement: exercise.name,
+      log: widget.log,
+      unit: widget.massUnit,
+    );
+    if (choice == null || !mounted) return;
+
+    await _apply(() => widget.recorder.removeExercise(exercise.id));
+    await _apply(() => widget.recorder.addExercise(choice.name));
+
+    final added = _session.exercises.last;
+    for (var i = 0; i < choice.sets; i++) {
+      final set = i < added.sets.length
+          ? added.sets[i]
+          : (await widget.recorder.addSet(added.id)).exercises
+                .firstWhere((SessionExercise e) => e.id == added.id)
+                .sets
+                .last;
+      await _apply(
+        () => widget.recorder.updateSet(
+          set.id,
+          reps: choice.reps,
+          weightKg: choice.target?.kilograms,
+        ),
+      );
+    }
+
+    widget.onSwapped?.call(exercise.name, choice);
   }
 
   Future<void> _addExercise() async {
@@ -518,16 +587,11 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             PrimaryButton(label: 'Use a template', onPressed: onUseTemplate),
             const SizedBox(height: AppSpacing.sm),
-            OutlinedButton(
-              onPressed: onAdd,
-              child: const Text('Add exercise'),
-            ),
+            OutlinedButton(onPressed: onAdd, child: const Text('Add exercise')),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: onDiscard,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.danger,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
               child: const Text('Discard session'),
             ),
           ],

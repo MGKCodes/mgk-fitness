@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 import '../src/features/auth/data/fake_auth.dart';
 import '../src/features/auth/domain/account.dart';
@@ -14,6 +15,9 @@ import '../src/features/coaching/domain/coach_memory.dart';
 import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_screen.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
+import '../src/features/planning/domain/plan.dart';
+import '../src/features/planning/domain/plan_validator.dart';
+import '../src/features/planning/presentation/plan_review_screen.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
 import '../src/features/photos/domain/progress_photo.dart';
@@ -65,6 +69,27 @@ class PreviewApp extends StatelessWidget {
       ),
       'plan-entitled': (_) =>
           const Scaffold(body: PlanSurface(isEntitled: true)),
+      // A live block, mid-week, with today's session on it.
+      'plan-active': (_) => Scaffold(
+        body: PlanSurface(
+          isEntitled: true,
+          plan: samplePlan(previewNow),
+          today: previewNow,
+          onOpenSession: (_) {},
+        ),
+      ),
+      'plan-review': (_) => PlanReviewScreen(
+        plan: samplePlan(previewNow),
+        unit: MassUnit.kilograms,
+        onAccept: () {},
+      ),
+      // The honest first-plan state: a lifter with almost no history, so
+      // almost nothing carries a number.
+      'plan-review-no-targets': (_) => PlanReviewScreen(
+        plan: samplePlan(previewNow, targeted: false),
+        unit: MassUnit.kilograms,
+        onAccept: () {},
+      ),
       'profile': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
@@ -496,4 +521,67 @@ class _Index extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A block for the previews: two weeks written, the rest still to come.
+Plan samplePlan(DateTime now, {bool targeted = true}) {
+  final start = now.subtract(Duration(days: now.weekday - 1));
+  PlannedMovement m(String name, int sets, int reps, double? kg) =>
+      PlannedMovement(
+        name: name,
+        sets: sets,
+        reps: reps,
+        target: targeted && kg != null ? Mass.kilograms(kg) : null,
+      );
+
+  return Plan(
+    id: 'preview',
+    startDate: start,
+    weeks: 8,
+    status: PlanStatus.active,
+    goal: 'Get my bench past 100 by Christmas',
+    profile: const PlanProfile(daysPerWeek: 2, availableWeekdays: <int>[1, 4]),
+    arc: <PlanWeek>[
+      for (var i = 1; i <= 8; i++)
+        PlanWeek(
+          number: i,
+          phase: i % 4 == 0 ? PlanPhase.deload : PlanPhase.build,
+          intent: i % 4 == 0
+              ? 'Back off. Keep the movements, drop the load.'
+              : 'Add a little to the top set and keep the volume steady.',
+        ),
+    ],
+    sessions: <PlanSession>[
+      for (var week = 1; week <= 2; week++) ...<PlanSession>[
+        PlanSession(
+          id: 'preview-w$week-d1',
+          weekNumber: week,
+          weekday: 1,
+          scheduledDate: start.add(Duration(days: (week - 1) * 7)),
+          kind: 'push',
+          rationale:
+              'Your bench has not moved in three weeks, so the top set goes '
+              'up and everything else stays where it was.',
+          movements: <PlannedMovement>[
+            m('Barbell Bench Press', 3, 5, 85),
+            m('Dumbbell Shoulder Press', 3, 8, 27.5),
+            m('Cable Tricep Pushdown', 3, 12, null),
+          ],
+        ),
+        PlanSession(
+          id: 'preview-w$week-d4',
+          weekNumber: week,
+          weekday: 4,
+          scheduledDate: start.add(Duration(days: (week - 1) * 7 + 3)),
+          kind: 'pull',
+          rationale: 'Your back is behind your chest, so it gets the volume.',
+          movements: <PlannedMovement>[
+            m('Barbell Deadlift', 3, 5, 140),
+            m('Barbell Row', 3, 8, 70),
+            m('Cable Bicep Curl', 3, 12, null),
+          ],
+        ),
+      ],
+    ],
+  );
 }

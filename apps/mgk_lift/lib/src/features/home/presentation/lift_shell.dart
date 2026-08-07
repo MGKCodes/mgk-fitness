@@ -9,6 +9,13 @@ import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_screen.dart';
 import '../../coaching/presentation/plan_surface.dart';
+import '../../planning/domain/plan.dart';
+import '../../planning/domain/plan_generator.dart';
+import '../../planning/domain/plan_store.dart';
+import '../../planning/domain/plan_validator.dart';
+import '../../planning/domain/session_from_plan.dart';
+import '../../planning/presentation/plan_intake_screen.dart';
+import '../../planning/presentation/plan_review_screen.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/progress_photo.dart';
@@ -49,6 +56,8 @@ class LiftShell extends StatefulWidget {
     this.history,
     this.coach,
     this.coachMemory,
+    this.planner,
+    this.plans,
     this.isEntitled = false,
     this.hasCoachNote = false,
     this.photos,
@@ -80,6 +89,14 @@ class LiftShell extends StatefulWidget {
   /// somebody who has stopped paying should still be able to read what was
   /// stored about them and delete it.
   final CoachMemoryStore? coachMemory;
+
+  /// Builds and adapts plans. Null hides the entry point rather than showing
+  /// one that cannot work — the same rule every other optional dependency here
+  /// follows.
+  final CoachPlanner? planner;
+
+  /// Where the block lives between sessions.
+  final PlanStore? plans;
 
   /// Whether this account has the paid tier for Lift.
   ///
@@ -161,6 +178,11 @@ class _LiftShellState extends State<LiftShell> {
   Account? _account;
   StreamSubscription<Account?>? _authSub;
 
+  /// The live block, held at the shell because Track shows today's session and
+  /// Plan shows the week — one load, so the two cannot disagree.
+  Plan? _plan;
+  bool _buildingPlan = false;
+
   @override
   void initState() {
     super.initState();
@@ -168,6 +190,7 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     unawaited(_refreshPending());
+    unawaited(_refreshPlan());
 
     final auth = widget.auth;
     if (auth != null) {
@@ -272,8 +295,21 @@ class _LiftShellState extends State<LiftShell> {
                   onOpenPlan: () => _go(_planTab),
                   hasOpenSession: _hasOpenSession,
                   onStartSession: widget.recorder == null ? null : _openSession,
+                  plan: _plan,
+                  unit: _units.mass,
+                  onStartPlanned: widget.recorder == null
+                      ? null
+                      : _openPlannedSession,
                 ),
-                PlanSurface(isEntitled: widget.isEntitled),
+                PlanSurface(
+                  isEntitled: widget.isEntitled,
+                  plan: _plan,
+                  unit: _units.mass,
+                  onBuildPlan: _canPlan ? _buildPlan : null,
+                  onOpenSession: widget.recorder == null
+                      ? null
+                      : _openPlannedSession,
+                ),
                 ProfileSurface(
                   log: _log,
                   massUnit: _units.mass,
@@ -401,12 +437,158 @@ class _LiftShellState extends State<LiftShell> {
     );
   }
 
+  /// Whether a plan can be built at all: it takes a coach and somewhere to put
+  /// the result, and both are optional in a preview or an offline build.
+  bool get _canPlan =>
+      widget.planner != null && widget.plans != null && !_buildingPlan;
+
+  Future<void> _refreshPlan() async {
+    final plans = widget.plans;
+    if (plans == null) return;
+    try {
+      final plan = await plans.active();
+      if (!mounted) return;
+      setState(() => _plan = plan);
+    } on PlanException {
+      // A plan that will not load is not worth an error on the home screen.
+      // Track and Plan both read a null plan as "no block", which is a state
+      // they already handle, and the next refresh tries again.
+    }
+  }
+
+  /// Intake, generation, review, accept. Four steps, and the lifter can stop
+  /// after any of them.
+  Future<void> _buildPlan() async {
+    final planner = widget.planner;
+    final plans = widget.plans;
+    if (planner == null || plans == null) return;
+
+    final intake = await Navigator.of(context).push<PlanIntake>(
+      MaterialPageRoute<PlanIntake>(
+        builder: (_) => PlanIntakeScreen(
+          planner: planner,
+          opener:
+              'What are you training for, and which days can you get to the '
+              'gym?',
+        ),
+      ),
+    );
+    if (intake == null || !mounted) return;
+
+    setState(() => _buildingPlan = true);
+    try {
+      final draft = await PlanGenerator(
+        planner: planner,
+      ).generate(intake: intake, log: _log, startDate: DateTime.now());
+      await plans.save(draft);
+      if (!mounted) return;
+
+      // Shown before it is anyone's training. The draft is already saved, so
+      // backing out here leaves a plan they can be offered again rather than
+      // throwing away four model calls.
+      final accepted = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => PlanReviewScreen(
+            plan: draft,
+            unit: _units.mass,
+            onAccept: () => Navigator.of(context).pop(true),
+          ),
+        ),
+      );
+      if (accepted != true || !mounted) return;
+
+      final live = await plans.accept(draft);
+      if (!mounted) return;
+      setState(() => _plan = live);
+    } on PlanException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.failure.message)));
+    } finally {
+      if (mounted) setState(() => _buildingPlan = false);
+    }
+  }
+
+  /// Starts a planned session, and records which workout it became.
+  ///
+  /// The link is written when the session FINISHES, not when it starts: a
+  /// session opened and abandoned is not a session they did, and marking the
+  /// plan complete on open would claim otherwise.
+  Future<void> _openPlannedSession(PlanSession planned) async {
+    final recorder = widget.recorder;
+    if (recorder == null) return;
+
+    String? startedId;
+    await TrackController(recorder).openPlanned(
+      context,
+      planned,
+      massUnit: _units.mass,
+      planner: widget.planner,
+      log: _log,
+      onSwapped: (replaced, with_) =>
+          unawaited(_recordSwap(planned, replaced, with_)),
+      onStarted: (session) => startedId = session.id,
+      onDone: () {
+        final id = startedId;
+        if (id != null) {
+          unawaited(_markTrained(planned, id));
+        }
+        unawaited(_refreshSession());
+        unawaited(_refreshLog());
+      },
+    );
+    await _refreshSession();
+    await _refreshLog();
+  }
+
+  /// Records that a planned movement was replaced, so the plan stops claiming
+  /// they did something they swapped out.
+  ///
+  /// The plan is the record of what was PRESCRIBED, and leaving it stale would
+  /// make "did they follow the plan" answerable only wrongly — which is the one
+  /// question the whole `workout_id` join exists to answer.
+  Future<void> _recordSwap(
+    PlanSession planned,
+    String replaced,
+    PlannedMovement with_,
+  ) async {
+    final plans = widget.plans;
+    if (plans == null) return;
+    try {
+      await plans.replaceMovements(
+        planned,
+        applySwap(planned.movements, replaces: replaced, with_: with_),
+      );
+      await _refreshPlan();
+    } on PlanException {
+      // The session itself is correct either way; only the plan's copy is
+      // behind. Not worth interrupting a workout for.
+    }
+  }
+
+  Future<void> _markTrained(PlanSession planned, String workoutId) async {
+    final plans = widget.plans;
+    if (plans == null) return;
+    try {
+      await plans.markTrained(planned, workoutId);
+      await _refreshPlan();
+    } on PlanException {
+      // The session is logged either way. A plan that has not caught up is a
+      // worse outcome than an error nobody can act on, and the next refresh
+      // will not fix it — which is why this is worth revisiting when sync
+      // grows a retry queue.
+    }
+  }
+
   Future<void> _openSession() async {
     final recorder = widget.recorder;
     if (recorder == null) return;
     await TrackController(recorder).openSession(
       context,
       massUnit: _units.mass,
+      planner: widget.planner,
+      log: _log,
       onDone: () {
         unawaited(_refreshSession());
         unawaited(_refreshLog());
