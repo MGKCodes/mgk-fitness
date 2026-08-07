@@ -5,6 +5,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
+import '../../coaching/domain/coach.dart';
+import '../../coaching/presentation/coach_screen.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
@@ -44,7 +46,8 @@ class LiftShell extends StatefulWidget {
     this.recorder,
     this.units,
     this.history,
-    this.onOpenCoach,
+    this.coach,
+    this.isEntitled = false,
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
@@ -66,10 +69,17 @@ class LiftShell extends StatefulWidget {
   /// which is a real state (a new account) rather than an error.
   final SessionHistory? history;
 
-  /// Opens the conversation. **Null hides the mark entirely** rather than
-  /// showing an inert one — a mark that cannot open anything is worse than no
-  /// mark. It is null until the coach client exists.
-  final VoidCallback? onOpenCoach;
+  /// The conversation. **Null hides the mark entirely** rather than showing an
+  /// inert one — a mark that cannot open anything is worse than no mark.
+  final CoachService? coach;
+
+  /// Whether this account has the paid tier for Lift.
+  ///
+  /// Read from `core.entitlements`, which is client-read-only - the server
+  /// decides, and the edge function checks again before spending anything. This
+  /// only decides what the app *shows*: Plan was hardcoded to the sales pitch,
+  /// so somebody who had just paid still saw the offer.
+  final bool isEntitled;
 
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
@@ -235,7 +245,7 @@ class _LiftShellState extends State<LiftShell> {
 
   @override
   Widget build(BuildContext context) {
-    final openCoach = widget.onOpenCoach;
+    final coach = widget.coach;
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -246,7 +256,7 @@ class _LiftShellState extends State<LiftShell> {
           MediaQuery(
             data: MediaQuery.of(context).copyWith(
               padding: MediaQuery.of(context).padding.copyWith(
-                bottom: openCoach == null ? 0 : _coachMarkReserve,
+                bottom: coach == null ? 0 : _coachMarkReserve,
               ),
             ),
             child: IndexedStack(
@@ -257,7 +267,7 @@ class _LiftShellState extends State<LiftShell> {
                   hasOpenSession: _hasOpenSession,
                   onStartSession: widget.recorder == null ? null : _openSession,
                 ),
-                const PlanSurface(),
+                PlanSurface(isEntitled: widget.isEntitled),
                 ProfileSurface(
                   log: _log,
                   massUnit: _units.mass,
@@ -275,13 +285,13 @@ class _LiftShellState extends State<LiftShell> {
           // session" button as a second pill of the same size and weight, and
           // the eye could not tell which one was the point of the screen. The
           // coach is permanently available, not the thing you came here to do.
-          if (openCoach != null)
+          if (coach != null)
             Positioned(
               right: AppSpacing.lg,
               bottom: AppSpacing.lg,
               child: _CoachMark(
                 hasUnread: widget.hasCoachNote,
-                onTap: openCoach,
+                onTap: _openCoach,
               ),
             ),
         ],
@@ -340,6 +350,29 @@ class _LiftShellState extends State<LiftShell> {
           onSignOut: _account == null ? null : _signOut,
         ),
       ),
+    );
+  }
+
+  /// Opens the coach, or the thing that has to happen first.
+  ///
+  /// **Checked before the message, not after it.** Sending a question and
+  /// getting "sign in" or "that is a paid feature" back means the lifter typed
+  /// something for nothing, and the refusal arrives on a screen with no route
+  /// to the thing that would fix it. The server still enforces both - this only
+  /// stops a round trip that cannot succeed.
+  Future<void> _openCoach() async {
+    final coach = widget.coach;
+    if (coach == null) return;
+    if (_account == null) {
+      await _openSignIn();
+      return;
+    }
+    if (!widget.isEntitled) {
+      _go(_planTab);
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => CoachScreen(coach: coach)),
     );
   }
 

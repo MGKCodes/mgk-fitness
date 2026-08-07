@@ -7,6 +7,9 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../src/features/auth/data/fake_auth.dart';
 import '../src/features/auth/domain/account.dart';
 import '../src/features/auth/presentation/sign_in_screen.dart';
+import '../src/features/coaching/data/supabase_coach.dart';
+import '../src/features/coaching/domain/coach.dart';
+import '../src/features/coaching/presentation/coach_screen.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
@@ -139,6 +142,15 @@ class PreviewApp extends StatelessWidget {
         ),
         onSyncNow: () {},
       ),
+      'coach': (_) => CoachScreen(
+        coach: FakeCoach(),
+        opener: 'Your bench has not moved in three weeks. Want to look at it?',
+      ),
+      'coach-empty': (_) => CoachScreen(coach: FakeCoach()),
+      'coach-limit': (_) => CoachScreen(
+        coach: FakeCoach(failWith: CoachFailure.limitReached),
+        opener: 'Ask me anything about this week.',
+      ),
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
       'sign-in-error': (_) => SignInScreen(
         auth: FakeAuth(failWith: AuthFailure.wrongCredentials),
@@ -147,7 +159,7 @@ class PreviewApp extends StatelessWidget {
       'coach-mark': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
-        onOpenCoach: () {},
+        coach: FakeCoach(),
         hasCoachNote: true,
       ),
     };

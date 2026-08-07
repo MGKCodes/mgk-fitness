@@ -218,10 +218,26 @@ class _SignInScreenState extends State<SignInScreen> {
                     ],
 
                     const SizedBox(height: AppSpacing.xl),
-                    PrimaryButton(
-                      label: _creating ? 'Create account' : 'Sign in',
-                      onPressed: _busy ? null : _submit,
-                    ),
+                    if (_busy)
+                      // A disabled button on a slow connection reads as "you
+                      // did something wrong" rather than "waiting".
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.md,
+                          ),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
+                    else
+                      PrimaryButton(
+                        label: _creating ? 'Create account' : 'Sign in',
+                        onPressed: _submit,
+                      ),
                     const SizedBox(height: AppSpacing.sm),
                     TextButton(
                       onPressed: _busy

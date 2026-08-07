@@ -94,16 +94,24 @@ class BackupSection extends StatelessWidget {
             ],
 
             const SizedBox(height: AppSpacing.md),
-            if (!isSignedIn)
-              OutlinedButton(
-                onPressed: onSignIn,
-                child: const Text('Sign in to back up'),
-              )
-            else
-              OutlinedButton(
-                onPressed: isSyncing ? null : onSyncNow,
-                child: Text(count > 0 ? 'Back up now' : 'Check for changes'),
-              ),
+            // Full width, like every other button in the app. Left-aligned in
+            // a full-width card it read as an afterthought.
+            SizedBox(
+              width: double.infinity,
+              child: !isSignedIn
+                  ? OutlinedButton(
+                      onPressed: onSignIn,
+                      child: const Text('Sign in to back up'),
+                    )
+                  : OutlinedButton(
+                      onPressed: isSyncing ? null : onSyncNow,
+                      // "Sync now" either way. The old second label said
+                      // "check for changes", which understated it - the run
+                      // pushes and pulls regardless, and may bring down what
+                      // another device wrote.
+                      child: const Text('Sync now'),
+                    ),
+            ),
           ],
         ),
       ),
@@ -122,6 +130,18 @@ class BackupSection extends StatelessWidget {
     }
     if (count > 0) {
       return '$count session${count == 1 ? '' : 's'} waiting to upload.';
+    }
+    // What the last run actually moved. Without it the one moment the feature
+    // visibly did something passes in silence.
+    final report = lastReport;
+    if (report != null && report.outcome == SyncOutcome.synced) {
+      final parts = <String>[
+        if (report.pushed > 0) '${report.pushed} up',
+        if (report.pulled > 0) '${report.pulled} down',
+      ];
+      if (parts.isNotEmpty) {
+        return 'Backed up. ${parts.join(', ')} just now.';
+      }
     }
     final last = pending?.lastSyncedAt;
     return last == null

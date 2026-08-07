@@ -75,7 +75,7 @@ void main() {
 
       expect(find.text('Backup'), findsOneWidget);
       expect(find.text('3 sessions waiting to upload.'), findsOneWidget);
-      expect(find.text('Back up now'), findsOneWidget);
+      expect(find.text('Sync now'), findsOneWidget);
     });
 
     testWidgets('offers to check when there is nothing to send', (
@@ -97,7 +97,32 @@ void main() {
 
       expect(find.textContaining('Everything is backed up'), findsOneWidget);
       expect(find.textContaining('3 min ago'), findsOneWidget);
-      expect(find.text('Check for changes'), findsOneWidget);
+      // "Sync now" either way: the run pushes and pulls regardless, so
+      // "check for changes" understated what pressing it does.
+      expect(find.text('Sync now'), findsOneWidget);
+    });
+
+    testWidgets('reports what the last run actually moved', (
+      WidgetTester tester,
+    ) async {
+      // The one moment the feature visibly did something used to pass in
+      // silence - `pushed` and `pulled` were computed and never shown.
+      await tester.pumpWidget(
+        wrap(
+          BackupSection(
+            pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+            isSignedIn: true,
+            lastReport: SyncReport(
+              outcome: SyncOutcome.synced,
+              pushed: 3,
+              pulled: 1,
+              at: DateTime.now(),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Backed up. 3 up, 1 down just now.'), findsOneWidget);
     });
 
     testWidgets('a failure explains itself without the server error', (

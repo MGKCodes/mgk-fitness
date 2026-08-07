@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'src/core/config/app_config.dart';
 import 'src/core/database/app_database.dart';
 import 'src/features/auth/data/supabase_auth.dart';
+import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
@@ -84,7 +85,8 @@ class MgkLiftApp extends StatelessWidget {
         sync: (db == null || supabase == null)
             ? null
             : SupabaseSync(db, supabase),
-        // No coach client passed in: the mark stays absent rather than inert.
+        // The mark stays absent rather than inert when there is no server.
+        coach: supabase == null ? null : SupabaseCoach(supabase),
       ),
     );
   }

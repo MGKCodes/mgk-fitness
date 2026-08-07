@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/main.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
+import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
+import 'package:mgk_lift/src/features/auth/domain/account.dart';
+import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
+import 'package:mgk_lift/src/features/coaching/presentation/coach_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 void main() {
@@ -59,7 +63,7 @@ void main() {
     expect(find.text('Coach'), findsNothing);
 
     await tester.pumpWidget(
-      MaterialApp(home: LiftShell(onOpenCoach: () {})),
+      MaterialApp(home: LiftShell(coach: FakeCoach())),
     );
     await tester.pumpAndSettle();
     expect(find.text('Coach'), findsOneWidget);
@@ -73,7 +77,7 @@ void main() {
     // eye could not tell which one was the point of the screen. The coach is
     // permanently available; it is not what you came here to do.
     await tester.pumpWidget(
-      MaterialApp(home: LiftShell(onOpenCoach: () {})),
+      MaterialApp(home: LiftShell(coach: FakeCoach())),
     );
     await tester.pumpAndSettle();
 
@@ -88,9 +92,8 @@ void main() {
     // This is the whole point of a mark rather than a dock (Run's ADR-0017):
     // a dock can only live on one screen, so the coach would be present on a
     // third of the app and absent from the rest.
-    var opened = 0;
     await tester.pumpWidget(
-      MaterialApp(home: LiftShell(onOpenCoach: () => opened++)),
+      MaterialApp(home: LiftShell(coach: FakeCoach())),
     );
     await tester.pumpAndSettle();
 
@@ -104,7 +107,62 @@ void main() {
       );
     }
 
+  });
+
+  testWidgets('the mark opens the coach when the account can use it', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LiftShell(
+          coach: FakeCoach(),
+          auth: FakeAuth(account: const Account(id: 'u', email: 'a@b.com')),
+          isEntitled: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('Coach'));
-    expect(opened, 1);
+    await tester.pumpAndSettle();
+    expect(find.byType(CoachScreen), findsOneWidget);
+  });
+
+  testWidgets('signed out, the mark asks for an account before a message', (
+    WidgetTester tester,
+  ) async {
+    // Sending first and being refused afterwards means the lifter typed
+    // something for nothing, and the refusal lands on a screen with no route
+    // to the thing that would fix it.
+    await tester.pumpWidget(
+      MaterialApp(home: LiftShell(coach: FakeCoach(), auth: FakeAuth())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Coach'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CoachScreen), findsNothing);
+    expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('on the free tier the mark goes to the offer, not a refusal', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LiftShell(
+          coach: FakeCoach(),
+          auth: FakeAuth(account: const Account(id: 'u', email: 'a@b.com')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Coach'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CoachScreen), findsNothing);
+    expect(find.text('Train with a coach'), findsOneWidget);
   });
 }
