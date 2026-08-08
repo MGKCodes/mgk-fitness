@@ -1237,14 +1237,21 @@ class PreviewApp extends StatelessWidget {
     final builder = _screens[key];
     final content = builder ?? (_) => _Index(keys: _screens.keys.toList());
 
-    // `&pushed=1` mounts the screen *on top of* a route instead of as the root.
+    // Whether the screen is mounted *on top of* a route rather than as the root.
     //
     // An AppBar only draws a back arrow when `Navigator.canPop()` is true, so a
     // screen previewed at the root of the stack shows none however correctly it
     // is configured — the harness, not the screen, was hiding it. Screens the
     // app pushes (settings, profile, a run summary) should be reviewed this way;
     // tabs and the welcome screen should not, since they *are* roots.
-    final pushed = params['pushed'] == '1';
+    // **On by default**, and that is a change from `&pushed=1`. Opt-in put the
+    // burden on whoever remembered the flag, and Lift's harness — written after
+    // this comment, and without it — defaulted to root-mounted screens and
+    // reported a screen with a perfectly good back arrow as a dead end during
+    // the 2026-08-08 exit sweep. A default that hides a whole class of fault is
+    // not a default worth keeping. `&pushed=0` opts out, for checking how a
+    // screen behaves when it genuinely is the root.
+    final pushed = params['pushed'] != '0';
 
     return MaterialApp(
       title: 'Runio Preview',
@@ -1265,7 +1272,7 @@ class PreviewApp extends StatelessWidget {
   }
 }
 
-/// What sits beneath a `&pushed=1` preview, so back has somewhere to land.
+/// What sits beneath a pushed preview, so back has somewhere to land.
 class _PreviewUnderlay extends StatelessWidget {
   const _PreviewUnderlay();
 

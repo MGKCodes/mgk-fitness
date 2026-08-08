@@ -304,17 +304,59 @@ class PreviewApp extends StatelessWidget {
     final key = defined.isNotEmpty
         ? defined
         : Uri.base.queryParameters['screen'];
-    final direct = screens[key];
 
     return MaterialApp(
       title: 'Lift — preview',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: direct != null
-          ? Builder(builder: direct)
-          : _Index(screens: screens),
+      // The index is always the root and a named screen is *pushed* onto it,
+      // which matters more than it looks.
+      //
+      // **A screen mounted as `home` can never show a back arrow.** `AppBar`
+      // draws its leading from `Navigator.canPop()`, so every screen addressed
+      // by name rendered without one — and the harness is the tool the exit
+      // audit in [docs/navigation.md] was worked from. It was structurally
+      // blind to the single property being audited: the pose series looked
+      // like a dead end here while the real app gives it an arrow, and no
+      // screenshot from this harness could have told the difference.
+      //
+      // Pushing is safe for the tab surfaces too. They are the app's root and
+      // correctly have no back affordance, and they carry no `AppBar` — so
+      // nothing draws an arrow they would not really have.
+      home: _Harness(screens: screens, initial: key),
     );
   }
+}
+
+/// The index, with a named screen pushed on top of it.
+///
+/// Also makes a build go further: back returns to the index, so several screens
+/// can be reviewed from one `flutter run` instead of one per rebuild.
+class _Harness extends StatefulWidget {
+  const _Harness({required this.screens, this.initial});
+
+  final Map<String, WidgetBuilder> screens;
+  final String? initial;
+
+  @override
+  State<_Harness> createState() => _HarnessState();
+}
+
+class _HarnessState extends State<_Harness> {
+  @override
+  void initState() {
+    super.initState();
+    final builder = widget.screens[widget.initial];
+    if (builder == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
 
 Session _emptySession() => Session(
@@ -572,7 +614,17 @@ class _Index extends StatelessWidget {
       body: SafeArea(
         child: GridView.builder(
           padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
+          // **Scrollable, which it was not.** Fixed physics kept tap positions
+          // stable for `capture_screens.ps1`, and the cost was that the 11
+          // screens past the first screenful could not be reached by hand at
+          // all — coach, coach memory in three states, sign-in, credits. The
+          // docs called this index "the checklist"; it enumerated 35 screens
+          // and could open 24.
+          //
+          // The script is unaffected either way: it taps a computed row and
+          // never drags, so rows below the fold were already out of its reach
+          // and it reports them as missed. Reaching them needs
+          // `--dart-define=screen=`, one build each.
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             mainAxisExtent: cellHeight,

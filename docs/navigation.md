@@ -116,10 +116,27 @@ Checked and correct, no change needed:
 - Run's `coach_flow` blocks back at the confirmation step and sends it to the
   conversation instead, which is a step back rather than a trap.
 
-**One thing worth knowing for next time**: `grep appBar:` misses `SliverAppBar`,
-and a `width: 36` search matches layout columns as readily as grab bars. Both
-produced a false reading during this sweep — one screen looked like a dead end
-and was not, one sheet looked fine and was not. Confirm on the device.
+**The first version of this sweep was done by reading code, and that was not
+good enough.** Three things went wrong, and all three are worth remembering:
+
+- `grep appBar:` misses `SliverAppBar`, so Run's run-summary screen looked like
+  a dead end. It is not.
+- A `width: 36` search matches layout columns as readily as grab bars, so Run's
+  week-detail sheet looked like it had one. It did not.
+- **The harness could not show a back arrow at all.** It mounted the named
+  screen as the root, where `Navigator.canPop()` is false and `AppBar` draws no
+  leading — so no screenshot taken from it could distinguish a screen that has a
+  back arrow from one that does not. The conclusion here was right, but it rested
+  on reading code plus a single screen reached by tapping through. That is not
+  the same as having looked.
+
+Both harnesses now push by default and Lift's index scrolls, so all 35 screens
+open by hand. Every pushed screen in Lift has since been opened and its arrow
+seen: active session, plan intake, plan review, photos, pose series, settings,
+credits, sign-in, coach, coach memory.
+
+> Check whether the tool can even express the fault before trusting it to report
+> the fault absent.
 
 ## Known and accepted
 

@@ -202,6 +202,24 @@ the screen name came from the URL, so Android always fell back to the index.
 coach sheets and the plan intake conversation were absent from it, which is
 exactly why they went unreviewed longest.
 
+**And a harness can lie about what it shows.** Two faults in the tool itself,
+both found on 2026-08-08 by someone asking why a screen had no back arrow:
+
+- It mounted a named screen as `home`, so `Navigator.canPop()` was false and
+  `AppBar` never drew its back button. Every screen addressed by name looked
+  like a dead end. Run's harness had solved this months earlier and said so in
+  a comment; Lift's, written later, had not — and the audit in
+  [navigation.md](navigation.md) was run through Lift's. Both now push by
+  default.
+- The index was fixed at one screenful with `NeverScrollableScrollPhysics`, to
+  keep tap coordinates stable for `tool/capture_screens.ps1`. It listed 35
+  screens and could open 24. The eleven below the fold — the coach, coach memory
+  in three states, sign-in, credits — were unreachable by hand.
+
+The pattern is the same one principle 9 describes, one level up: **the thing you
+audit with needs auditing too.** A tool that cannot show a class of fault will
+report that class as absent, and it will be believed, because it is the tool.
+
 And the thing worth saying plainly: `flutter analyze` and widget tests prove a
 tree builds and the right strings are in it. They proved all six of these
 screens "correct" while five of them had layout faults. **They cannot see a
