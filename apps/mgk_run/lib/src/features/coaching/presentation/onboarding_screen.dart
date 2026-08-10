@@ -106,8 +106,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Bottom-anchored. A ListView top-anchors, which left the coach's
+            // opening question stranded at the top of the very first screen a
+            // runner ever sees, with a screen of nothing between it and the
+            // box they are meant to type in.
+            //
+            // ConversationView carries the anchoring and nothing else, so this
+            // keeps Run's own bubbles — the same component Lift's two
+            // conversations use, for the same reason.
             Expanded(
-              child: ListView.builder(
+              child: ConversationView(
                 controller: _scroll,
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg,
@@ -115,12 +123,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   AppSpacing.lg,
                   AppSpacing.sm,
                 ),
-                itemCount: _c.messages.length + (_c.isBusy ? 1 : 0),
-                itemBuilder: (context, i) {
-                  if (i >= _c.messages.length) return const TypingBubble();
-                  final message = _c.messages[i];
-                  return ChatBubble(text: message.text, isUser: message.isUser);
-                },
+                children: <Widget>[
+                  for (final message in _c.messages)
+                    ChatBubble(text: message.text, isUser: message.isUser),
+                  if (_c.isBusy) const TypingBubble(),
+                ],
               ),
             ),
             if (_c.error != null)
