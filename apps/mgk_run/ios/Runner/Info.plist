@@ -74,10 +74,13 @@
 	     rejects an upload that references the framework without a purpose
 	     string, so this is a build blocker rather than a nicety.
 
-	     Read-only. There is no NSHealthUpdateUsageDescription because nothing
-	     writes to Health yet - when Runio starts writing its own recordings
-	     (which is what makes it the preferred source in workout_dedup.dart),
-	     that key has to be added in the same commit as the write. -->
+	     Both purpose strings are required, and the trigger is the ENTITLEMENT
+	     rather than the code. App Store Connect rejected an upload with error
+	     90683 for a missing update string while nothing wrote to Health at all:
+	     "the app has one or more entitlements that permit such access... While
+	     your app might not use these APIs, a purpose string is still required."
+	     com.apple.developer.healthkit permits both directions; which one the app
+	     performs is settled at request time, and Apple does not look. -->
 	<!-- Every upload otherwise lands in App Store Connect as "Missing
 	     Compliance" and cannot go to a tester until somebody answers the export
 	     questionnaire by hand, per build.
@@ -90,6 +93,12 @@
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Runio reads your workouts from Health so runs you recorded on a watch or another app appear in your training log, and so your coach sees the whole picture.</string>
+	<!-- Runio does not write to Health yet. This describes what the entitlement
+	     permits and what the app is built toward: workout_dedup.dart already
+	     treats Runio's own recordings as the preferred source of a run, which
+	     only means anything once they are there. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Runio can save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
