@@ -497,6 +497,18 @@ Not part of the five, but real, and each one is small:
   `main.dart`.
 - **The rest-timer buzz is foreground-only.** A scheduled local notification
   needs a plugin and a runtime permission.
+- **Email confirmation is switched off in Supabase Auth**, from 2026-08-10, so
+  the first TestFlight build could be signed into without waiting on a
+  confirmation mail. It has to go back on before anyone outside the team uses
+  it: with it off, anybody can create an account on an address they do not own.
+  `AuthRepository.signUp` already returns whether a session was created, so
+  both paths work and turning it back on needs no code change.
+
+  The related question is why it was in the way at all. Supabase's built-in
+  mailer is rate-limited to a handful of messages an hour and is explicitly for
+  testing, so a real signup flow needs SMTP configured regardless. That is the
+  actual task; the toggle is a stopgap.
+
 - **Progress photos never sync.** The tables and the storage bucket exist. The
   screen currently promises "nothing is uploaded", and that sentence has to
   change in the same commit as the behaviour.
