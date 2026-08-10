@@ -43,9 +43,19 @@
 #     before any TestFlight upload will be accepted.
 # ───────────────────────────────────────────────────────────────────────────
 
+# One workflow per app, all in this one file, because Codemagic reads exactly
+# one codemagic.yaml — the repository root's — and this repo builds more than
+# one product. Lift is a sibling of the block below, not a second file:
+# its own `working_directory: apps/mgk_lift`, its own bundle identifier
+# (com.mgkcodes.fitness.lift), its own environment group. Everything above this
+# line — the key, the signing setup, the macOS instance — is shared.
+#
+# Worth adding when there are two: a `triggering.when.changeset.includes` on
+# each, so a commit that only touches Lift does not spend twenty minutes
+# building Run. While both are manual-trigger only, it costs nothing.
 workflows:
-  ios-release:
-    name: iOS — TestFlight
+  run-ios-release:
+    name: Run — iOS TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
     # Every script below runs from the app, not the repo root. Without this the
