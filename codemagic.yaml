@@ -30,6 +30,10 @@
 #     Environment variables, mark Secure) with:
 #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
 #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
+#       MAP_TILE_URL_TEMPLATE     optional. The tile server the privacy policy
+#                                 names. Without it the run map draws the route
+#                                 on charcoal with no basemap — which is what
+#                                 the first TestFlight build did.
 #     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
 #     and never reaches the client (ADR-0007); a provider key in this group
 #     would be a provider key in the app bundle.
@@ -138,9 +142,23 @@ workflows:
                   )
               return v
 
+          # Optional, unlike the two above: the app runs without a basemap, it
+          # just draws the route on charcoal. The first TestFlight build did
+          # exactly that and looked broken, because this was never passed
+          # through — AppConfig.hasBasemap is false on an empty string and the
+          # map has nothing to fetch.
+          #
+          # Whatever provider goes here must be the one the privacy policy
+          # names. That is the reason the app reads a template rather than
+          # hard-coding a tile server.
+          tiles = (os.environ.get("MAP_TILE_URL_TEMPLATE") or "").strip()
+          if not tiles:
+              print("MAP_TILE_URL_TEMPLATE unset — the build will have no basemap")
+
           cfg = {
               "SUPABASE_URL": need("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+              "MAP_TILE_URL_TEMPLATE": tiles,
               # Empty on purpose — see the note above.
               "DEV_ACCOUNT_1_LABEL": "",
               "DEV_ACCOUNT_1_EMAIL": "",

@@ -112,8 +112,23 @@ class _RecordingScreenState extends State<RecordingScreen> {
     if (mounted) widget.onCancel?.call();
   }
 
+  /// How far before a pace means anything.
+  ///
+  /// **A stationary phone still moves.** GPS drifts by metres while sitting on
+  /// a table, so any floor of zero lets elapsed time divide by noise: standing
+  /// at the start line for ten minutes with four metres of jitter reads as
+  /// 2500 min/km, climbing. That is what the first device test showed.
+  ///
+  /// A hundred metres is roughly half a minute of running — soon enough that a
+  /// runner is not left staring at dashes, far enough that drift cannot
+  /// dominate the quotient. The same instinct as `RunnerStats`, which refuses
+  /// to call anything under a kilometre a fastest pace.
+  static const double _paceFloorMeters = 100;
+
   String get _paceLabel {
-    if (_distanceM <= 0 || _elapsed == Duration.zero) {
+    if (_distanceM < _paceFloorMeters || _elapsed == Duration.zero) {
+      // Dashes rather than a number, because "no pace yet" is the true answer
+      // and a plausible wrong one is worse than an obvious absence.
       return '--:-- ${widget.unit.paceSuffix}';
     }
     return Pace.from(Distance.meters(_distanceM), _elapsed).format(widget.unit);
