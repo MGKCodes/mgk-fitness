@@ -409,37 +409,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            // Above the legal rows rather than inside them: this is a decision
-            // the runner makes, not a document they read.
-            Entrance(
-              index: 4,
-              child: BackupSection(
-                consent: _consent,
-                busy: _consentBusy,
-                onChanged: _setConsent,
-              ),
-            ),
-
-            PermissionsSection(health: widget.health),
-
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            Entrance(
-              index: 5,
-              child: SettingsTile(
-                icon: Icons.shield_outlined,
-                title: 'Privacy & legal',
-                subtitle: 'Disclaimer, privacy policy, your data',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        LegalScreen(auth: widget.auth, deleter: widget.deleter),
-                  ),
-                ),
-              ),
-            ),
             Entrance(
               index: 5,
               child: SettingsTile(
@@ -471,6 +440,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
+            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+
+            // Above the legal rows rather than inside them: this is a decision
+            // the runner makes, not a document they read.
+            Entrance(
+              index: 4,
+              child: BackupSection(
+                consent: _consent,
+                busy: _consentBusy,
+                onChanged: _setConsent,
+              ),
+            ),
+
+            PermissionsSection(health: widget.health),
+
+            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+
+            // Labelled rather than floating. Everything else on this screen
+            // sits under a heading; these did not, which made them read as
+            // leftovers — and left "Sign out" and "Delete account", both
+            // account actions, further from the account than the unit picker.
+            const Entrance(
+              index: 5,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                  AppSpacing.xl,
+                  AppSpacing.xs,
+                ),
+                child: SectionLabel('About'),
+              ),
+            ),
+            Entrance(
+              index: 5,
+              child: SettingsTile(
+                icon: Icons.shield_outlined,
+                title: 'Privacy & legal',
+                subtitle: 'Disclaimer, privacy policy, your data',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        LegalScreen(auth: widget.auth, deleter: widget.deleter),
+                  ),
+                ),
+              ),
+            ),
             // Debug builds only: enter the app as a seeded runner. Last, under
             // a divider, because it is a tool rather than a setting — and
             // absent entirely from a release bundle.

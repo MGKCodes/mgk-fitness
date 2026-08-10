@@ -143,14 +143,25 @@ void main() {
     // Units.
     expect(find.text('Kilometres'), findsOneWidget);
     expect(find.text('Miles'), findsOneWidget);
-    // The compliance surfaces, and deletion promoted out from behind them.
-    expect(find.text('Privacy & legal'), findsOneWidget);
+    // The account actions, now grouped under Account rather than floating
+    // below the divider.
     expect(find.text('Delete account'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     // Which build this is. Settings is a ListView and the version sits at its
     // foot, below the debug-only developer tools, so it has to be scrolled to
     // rather than found in the first viewport — a widget test runs in debug,
     // where those tools are present.
+    // Scrolled to in the order they appear, and asserted as each arrives: a
+    // lazy ListView disposes what it has scrolled past, so checking for an
+    // earlier row after reaching the foot finds nothing.
+    final legal = find.text('Privacy & legal');
+    await tester.scrollUntilVisible(
+      legal,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(legal, findsOneWidget);
+
     final version = find.textContaining('Runio $kAppVersion');
     await tester.scrollUntilVisible(
       version,
