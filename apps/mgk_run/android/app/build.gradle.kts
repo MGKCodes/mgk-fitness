@@ -24,7 +24,15 @@ android {
         applicationId = "com.mgkcodes.fitness.run"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // 26, not Flutter's default 24, because the `health` plugin declares
+        // 26 and the manifest merger refuses the mismatch outright — the
+        // Android build simply stops.
+        //
+        // Cheap here in a way it would not be for an Android-first app: this
+        // repo is iOS-first (ADR-0001) and Android is the surface the preview
+        // harness is reviewed on, so the devices this excludes are ones the
+        // app was never shipping to. API 26 is Android 8.0, from 2017.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

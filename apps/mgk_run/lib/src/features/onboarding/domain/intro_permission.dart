@@ -70,12 +70,16 @@ class IntroPermission {
 /// the runner's patience on. Health second, because it is an enhancement — a
 /// runner who says no to it simply starts from an empty log.
 ///
-/// **Neither request is real yet.** The conversation is built and the wiring is
-/// stubbed — see `intro_permission_requester.dart`, which names exactly what
-/// replaces each placeholder. That is deliberate: the shape of the exchange is
-/// what is being designed here, and neither platform call can be verified from
-/// the Windows harness this repo is developed on. HealthKit in particular has
-/// no package in `pubspec.yaml` and nothing in `lib/` reads it yet.
+/// **Both requests are real as of 2026-08-10** — location through geolocator,
+/// Health through the same `WorkoutSource` the rest of the app reads. Neither
+/// can be verified from the Windows harness this repo is developed on, so they
+/// are checked on a device; the refusal path stays covered by widget tests,
+/// which inject their own answer.
+///
+/// **Neither can be asked twice.** iOS records the answer on first ask and
+/// never shows the sheet again for the life of the install, so walking this
+/// conversation a second time replays the words without the dialogs. Settings →
+/// Permissions says how to actually revoke, because nothing in the app can.
 const List<IntroPermission> introPermissions = <IntroPermission>[
   IntroPermission(
     kind: IntroPermissionKind.location,
@@ -96,7 +100,11 @@ const List<IntroPermission> introPermissions = <IntroPermission>[
         'done and anything you record on a watch, so we are not starting '
         'from nothing.',
     cta: 'Allow Health',
-    granted: 'Perfect. I will pick up what is already there.',
+    // **Deliberately conditional.** iOS does not tell an app which health reads
+    // were granted, so "granted" here only means the sheet was answered. A
+    // runner who ticked nothing would otherwise be promised their history was
+    // coming, and then watch nothing arrive.
+    granted: 'Perfect. If there is anything there, I will pick it up.',
     denied:
         'That is fine. We will start from the runs we do together instead. '
         'You can change it later in Settings if you want me to look.',

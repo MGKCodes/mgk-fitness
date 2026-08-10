@@ -84,6 +84,14 @@ void main() {
     // The account facts moved here off Profile.
     expect(find.text('dev@runio.app'), findsOneWidget);
     // The compliance surfaces moved under Settings rather than a second icon.
+    // Scrolled to, because Settings grew a Permissions section above it and
+    // the list builds lazily — asserting from a fixed viewport was asserting
+    // the screen's length as much as its contents.
+    await tester.scrollUntilVisible(
+      find.text('Privacy & legal'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Privacy & legal'), findsOneWidget);
   });
 

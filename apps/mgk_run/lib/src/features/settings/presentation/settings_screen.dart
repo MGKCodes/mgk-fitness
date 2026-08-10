@@ -15,9 +15,9 @@ import '../../../dev/dev_persona_controls.dart';
 import '../data/backup_consent_factory.dart';
 import '../data/backup_eraser.dart';
 import '../domain/backup_consent.dart';
-import '../../health/data/health_kit_workouts.dart';
 import '../../health/domain/workout_source.dart';
 import 'backup_section.dart';
+import 'permissions_section.dart';
 import '../domain/unit_settings.dart';
 
 /// The shipped version, shown at the foot of Settings.
@@ -94,40 +94,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  /// What the last Health import found, or null before one is tried.
-  String? _healthResult;
-  bool _healthBusy = false;
-
-  late final WorkoutSource _health = widget.health ?? HealthKitWorkouts();
-
-  /// Asks for Health, reads the last 90 days, and says what came back.
-  ///
-  /// **It reports a count, never a refusal.** iOS does not tell an app which
-  /// read permissions were granted, so "nothing came back" covers a runner who
-  /// declined and a runner with no workouts equally — and saying "access
-  /// denied" would be a guess presented as fact
-  /// (docs/architecture/run-recording.md). The count is also the only thing
-  /// safe to put on screen: the workouts themselves are special-category data.
-  Future<void> _importHealth() async {
-    setState(() {
-      _healthBusy = true;
-      _healthResult = null;
-    });
-    await _health.requestAccess();
-    final found = await _health.since(
-      DateTime.now().subtract(const Duration(days: 90)),
-    );
-    if (!mounted) return;
-    setState(() {
-      _healthBusy = false;
-      _healthResult = found.isEmpty
-          ? 'Nothing came back. Health gives the same answer whether you '
-                'declined or have no workouts.'
-          : '${found.length} workout${found.length == 1 ? '' : 's'} in the '
-                'last 90 days, after removing duplicates.';
-    });
-  }
-
   late UnitSystem _unit = widget.unit;
   bool _saving = false;
 
@@ -456,21 +422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // Reads only. Runio does not write to Health yet, which is why
-            // there is no NSHealthUpdateUsageDescription in Info.plist.
-            Entrance(
-              index: 4,
-              child: SettingsTile(
-                icon: Icons.favorite_border,
-                title: 'Apple Health',
-                subtitle: _healthBusy
-                    ? 'Reading…'
-                    : _healthResult ??
-                          'Bring in runs recorded by your watch or another app',
-                showChevron: false,
-                onTap: _healthBusy ? null : _importHealth,
-              ),
-            ),
+            PermissionsSection(health: widget.health),
 
             const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
 
