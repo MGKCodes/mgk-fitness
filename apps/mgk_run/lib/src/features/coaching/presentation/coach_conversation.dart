@@ -226,7 +226,15 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     final now = DateTime.now();
     final thinking = controller.isBusy || controller.isProposing;
 
-    return ListView.builder(
+    // Bottom-anchored, like every other conversation in the suite. A
+    // ListView top-anchors, which pinned a single message — the common case
+    // for a sheet somebody has just opened, and for the rate-limited state —
+    // to the ceiling with the rest of the sheet empty beneath it.
+    //
+    // Built eagerly rather than lazily: a transcript is bounded by what has
+    // been said in one conversation, and each row needs the row before it to
+    // know whether it starts a run or crosses a day.
+    return ConversationView(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -234,34 +242,39 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
         AppSpacing.lg,
         AppSpacing.sm,
       ),
-      itemCount: entries.length + (thinking ? 1 : 0),
-      itemBuilder: (context, i) {
-        if (i >= entries.length) return const TypingBubble();
-        final entry = entries[i];
-        final previous = i == 0 ? null : entries[i - 1];
-        final startsRun = previous == null || previous.isUser != entry.isUser;
-        final at = entry.at;
-        final crossesDay =
-            at != null &&
-            previous != null &&
-            (previous.at == null || !_sameDay(previous.at!, at));
+      children: <Widget>[
+        for (int i = 0; i < entries.length; i++)
+          Builder(
+            builder: (BuildContext context) {
+              final entry = entries[i];
+              final previous = i == 0 ? null : entries[i - 1];
+              final startsRun =
+                  previous == null || previous.isUser != entry.isUser;
+              final at = entry.at;
+              final crossesDay =
+                  at != null &&
+                  previous != null &&
+                  (previous.at == null || !_sameDay(previous.at!, at));
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            if (crossesDay) DayDivider(label: dayLabel(at, now)),
-            ChatBubble(
-              text: entry.text,
-              isUser: entry.isUser,
-              showAvatar: startsRun,
-              proposal: entry.proposal,
-              unit: widget.unit,
-              onApply: () => unawaited(controller.applyProposal(entry)),
-              onDecline: () => controller.declineProposal(entry),
-            ),
-          ],
-        );
-      },
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  if (crossesDay) DayDivider(label: dayLabel(at, now)),
+                  ChatBubble(
+                    text: entry.text,
+                    isUser: entry.isUser,
+                    showAvatar: startsRun,
+                    proposal: entry.proposal,
+                    unit: widget.unit,
+                    onApply: () => unawaited(controller.applyProposal(entry)),
+                    onDecline: () => controller.declineProposal(entry),
+                  ),
+                ],
+              );
+            },
+          ),
+        if (thinking) const TypingBubble(),
+      ],
     );
   }
 

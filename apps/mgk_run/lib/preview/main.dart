@@ -338,6 +338,13 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   'profile': (_) => _shellTab(2, runs: _demoRuns()),
   // A runner with a past. Every plan Runio built was already on disk and
   // nothing showed them, so three blocks in read as a beginner.
+  // The four below render ProfileScreen bare, without HomeShell — so no nav
+  // bar, no coach mark, and that is deliberate rather than the fault it looks
+  // like. Each exists to pin one reading of the standing (has history, is
+  // building, is holding, too new to say) from a hand-picked log and, for the
+  // first, a set of past plans. Those go in as arguments; the shell derives its
+  // own from a store and cannot be handed them. The chrome is not what these
+  // are for.
   'profile-history': (context) => _standingPreview(
     context,
     runs: _demoRuns(),
