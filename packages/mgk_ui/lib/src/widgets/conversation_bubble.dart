@@ -139,7 +139,21 @@ class ConversationView extends StatelessWidget {
           padding: padding,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - padding.vertical,
+              // Clamped. A layout pass that reports no height makes this
+              // negative, and a BoxConstraints with a negative minimum fails
+              // an assertion that takes the whole route down — which is what
+              // it did, at -12, the first time this was given a padding taller
+              // than the height it was offered.
+              //
+              // Third instance of one mistake in this codebase: a measurement
+              // of the screen used as a size before asking whether the screen
+              // had been measured. The other two were a negative width in the
+              // coach reveal and a clamp with an inverted range in the coach
+              // sheet.
+              minHeight: (constraints.maxHeight - padding.vertical).clamp(
+                0.0,
+                double.infinity,
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,

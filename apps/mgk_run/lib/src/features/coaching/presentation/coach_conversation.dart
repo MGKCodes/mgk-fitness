@@ -125,7 +125,18 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     // honoured the floor but left the composer stranded mid-panel with dead
     // space beneath it.
     final available = media.size.height - media.padding.top;
-    final height = (available * 0.62).clamp(0.0, available - insets - 8);
+
+    // The ceiling is clamped before it is used as one. `clamp` throws
+    // ArgumentError when the upper bound is below the lower, and
+    // `available - insets - 8` goes negative on a layout pass that reports no
+    // height — which is not hypothetical: it took the sheet down with
+    // "Invalid argument(s): 0.0" on the way into this screen.
+    //
+    // Same shape as the negative width in coach_reveal.dart. Both are a
+    // measurement of the screen used as a size without asking whether the
+    // screen had been measured yet.
+    final ceiling = (available - insets - 8).clamp(0.0, double.infinity);
+    final height = (available * 0.62).clamp(0.0, ceiling);
 
     return Padding(
       padding: EdgeInsets.only(bottom: insets),
@@ -283,37 +294,45 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
 
   /// Nothing said yet. Openers rather than instructions — a runner should not
   /// have to think of a question before anything has been offered.
-  Widget _empty() => SingleChildScrollView(
+  /// Anchored to the composer like the transcript that replaces it.
+  ///
+  /// Otherwise the sheet opens with its invitation at the ceiling and the
+  /// content drops to the floor the moment the first message lands — one
+  /// component, two resting positions, and a jump between them that reads as
+  /// a glitch rather than as an answer arriving.
+  Widget _empty() => ConversationView(
     padding: const EdgeInsets.fromLTRB(
       AppSpacing.lg,
       0,
       AppSpacing.lg,
       AppSpacing.md,
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        const Text(
-          'Your coach can see your plan and your recent runs.',
-          style: TextStyle(color: AppColors.textSecondary, height: 1.45),
-        ),
-        if (widget.suggestions.isNotEmpty) ...<Widget>[
-          const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: <Widget>[
-              for (final suggestion in widget.suggestions)
-                _SuggestionChip(
-                  text: suggestion,
-                  onTap: () => _send(suggestion),
-                ),
-            ],
+    children: <Widget>[
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Text(
+            'Your coach can see your plan and your recent runs.',
+            style: TextStyle(color: AppColors.textSecondary, height: 1.45),
           ),
+          if (widget.suggestions.isNotEmpty) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: <Widget>[
+                for (final suggestion in widget.suggestions)
+                  _SuggestionChip(
+                    text: suggestion,
+                    onTap: () => _send(suggestion),
+                  ),
+              ],
+            ),
+          ],
         ],
-      ],
-    ),
+      ),
+    ],
   );
 }
 

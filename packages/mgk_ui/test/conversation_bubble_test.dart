@@ -62,6 +62,33 @@ void main() {
       final ScrollableState scrollable = tester.state(find.byType(Scrollable));
       expect(scrollable.position.maxScrollExtent, greaterThan(0));
     });
+
+    testWidgets('survives being offered less height than its padding', (
+      WidgetTester tester,
+    ) async {
+      // A zero-height layout pass is ordinary — it happens to a tab underneath
+      // a full-height sheet — and it made minHeight negative, which fails an
+      // assertion and replaces the whole route with the red error screen.
+      await tester.pumpWidget(
+        host(
+          const SizedBox(
+            height: 0,
+            child: ConversationView(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              children: <Widget>[
+                ConversationBubble(
+                  text: 'Still here.',
+                  fromCoach: true,
+                  selectable: false,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('ConversationBubble', () {
@@ -71,7 +98,8 @@ void main() {
           const ConversationView(
             children: <Widget>[
               ConversationBubble(
-                text: 'A reply long enough that it would happily run the full '
+                text:
+                    'A reply long enough that it would happily run the full '
                     'width of the screen if nothing stopped it, which is the '
                     'point of the constraint being tested here.',
                 fromCoach: true,
