@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -172,16 +174,35 @@ class CoachService
   /// deterministic plan, so it swallows failures and returns null. A turn of
   /// conversation has no fallback — silence in a chat is indistinguishable from
   /// being ignored — so everything here throws a message the UI can print.
+  /// How long one call to the coach may take before it counts as failed.
+  ///
+  /// **Nothing on this path had a deadline.** The plan reveal sets
+  /// `canPop: false` for the whole of its build -- correctly, there is nothing
+  /// behind it to go back to -- and its only exits are the buttons on the
+  /// failed and revealed states. Both need the call to *return*. A provider
+  /// that accepted the connection and then said nothing produced neither, and
+  /// the screen it stranded the runner on had no way out at all.
+  ///
+  /// Its own comment called that screen "never a dead end". This is what makes
+  /// that true.
+  static const Duration requestTimeout = Duration(seconds: 90);
+
   Future<Map<String, dynamic>> _invokeConversation(
     Map<String, dynamic> body,
   ) async {
     final Object? data;
     try {
-      final res = await _client.functions.invoke(
-        'coach',
-        body: <String, dynamic>{...body, ..._modelField},
-      );
+      final res = await _client.functions
+          .invoke('coach', body: <String, dynamic>{...body, ..._modelField})
+          .timeout(requestTimeout);
       data = res.data;
+    } on TimeoutException {
+      // Surfaced rather than swallowed. The plan reveal blocks the back gesture
+      // for the whole of its build, and its failure state is the only way off
+      // that screen -- so a provider that goes quiet has to reach it.
+      throw const CoachException(
+        'Your coach is taking longer than it should. Try again.',
+      );
     } on FunctionException catch (e) {
       // Non-2xx from the function; its body (with `error`) rides on `details`.
       final limit = _limitFrom(e.details);
@@ -259,14 +280,24 @@ class CoachService
     Map<String, dynamic> payload,
   ) async {
     try {
-      final res = await _client.functions.invoke(
-        'coach',
-        body: <String, dynamic>{'surface': surface, ...payload, ..._modelField},
-      );
+      final res = await _client.functions
+          .invoke(
+            'coach',
+            body: <String, dynamic>{
+              'surface': surface,
+              ...payload,
+              ..._modelField,
+            },
+          )
+          .timeout(requestTimeout);
       final data = res.data;
       if (data is Map<String, dynamic> && data['error'] == null) return data;
       final limit = _limitFrom(data);
       if (limit != null) throw limit;
+      return null;
+    } on TimeoutException {
+      // This invoker's contract is "null means fall back to the deterministic
+      // path", and a hung provider is exactly that case.
       return null;
     } on FunctionException catch (e) {
       final limit = _limitFrom(e.details);

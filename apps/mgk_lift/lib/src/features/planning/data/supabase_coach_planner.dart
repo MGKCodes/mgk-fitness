@@ -173,12 +173,28 @@ class SupabaseCoachPlanner implements CoachPlanner {
     _ => 'Day $weekday',
   };
 
+  /// How long one call to the coach may take before it is treated as failed.
+  ///
+  /// **A request with no deadline is a screen with no way out.** Plan intake
+  /// blocks the back gesture while a turn is in flight, deliberately — an
+  /// abandoned turn is a paid call whose answer would have been merged into
+  /// what the coach knows. That is only defensible if "in flight" ends. With no
+  /// timeout anywhere on this path, a provider that accepts a connection and
+  /// then says nothing left the lifter on a screen they could not leave.
+  ///
+  /// Generous rather than tight: these are two model calls deep and honestly
+  /// slow, and killing a request that would have landed is its own failure.
+  /// This is the boundary between "slow" and "never".
+  static const Duration requestTimeout = Duration(seconds: 90);
+
   Future<Map<String, Object?>> _invoke(Map<String, Object?> body) async {
     if (_client.auth.currentUser == null) {
       throw const PlanException(PlanFailure.signedOut);
     }
     try {
-      final res = await _client.functions.invoke('coach', body: body);
+      final res = await _client.functions
+          .invoke('coach', body: body)
+          .timeout(requestTimeout);
       final data = res.data;
       if (data is Map<String, Object?>) return data;
       if (data is Map) return data.cast<String, Object?>();

@@ -25,6 +25,11 @@ class SupabaseCoach implements CoachService {
 
   static const _surface = 'lift_chat';
 
+  /// How long one turn may take before it counts as failed. See
+  /// [SupabaseCoachPlanner.requestTimeout] — same reasoning, same number,
+  /// deliberately: a chat turn and a plan turn hit the same function.
+  static const Duration requestTimeout = Duration(seconds: 90);
+
   @override
   Future<String> ask(String message) async {
     if (_client.auth.currentUser == null) {
@@ -32,10 +37,16 @@ class SupabaseCoach implements CoachService {
     }
 
     try {
-      final res = await _client.functions.invoke(
-        'coach',
-        body: <String, Object?>{'surface': _surface, 'message': message},
-      );
+      final res = await _client.functions
+          .invoke(
+            'coach',
+            body: <String, Object?>{'surface': _surface, 'message': message},
+          )
+          // A provider that accepts the connection and then goes quiet would
+          // otherwise leave the composer disabled forever, with no error and
+          // nothing to retry. The catch-all below already calls this
+          // unavailable, which is what it is.
+          .timeout(requestTimeout);
 
       final data = res.data;
       if (data is Map && data['reply'] is String) {

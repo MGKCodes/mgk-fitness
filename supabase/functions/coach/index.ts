@@ -69,6 +69,16 @@ import {
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+/// How long the upstream call may take before it is abandoned.
+///
+/// **Deliberately shorter than the apps' own 90s deadline**, so a hung provider
+/// comes back as this function's 502 — an error the client can name and count
+/// against a rate budget — rather than as a client-side timeout with nothing
+/// logged and no usage recorded. Without it, `fetch` here waits as long as the
+/// provider holds the socket open, and both apps have screens that block the
+/// back gesture until the call returns.
+const UPSTREAM_TIMEOUT_MS = 75_000;
+
 /**
  * OpenRouter's attribution headers. Cosmetic — they decide which name the
  * account's usage appears under in OpenRouter's own rankings and nothing else,
@@ -181,6 +191,10 @@ async function callProvider(opts: {
         // PROVIDER_ROUTING.
         provider: PROVIDER_ROUTING,
       }),
+      // Aborting throws, which lands in the catch below and is already handled
+      // as an unreachable upstream. A timeout and a refused connection are the
+      // same thing from here: no answer, and the budget still spent.
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
   } catch (e) {
     // A throw here spends nothing, but it must still cost rate budget —
