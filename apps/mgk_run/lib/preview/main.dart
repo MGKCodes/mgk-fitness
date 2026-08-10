@@ -312,7 +312,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   },
   // The training log, which lives on the Profile page rather than on one of its
   // own. Kept as a key so the log can be reviewed directly.
-  'history': (context) => _demoProfileScreen(context),
+  'history': (_) => _shellTab(2, runs: _demoRuns()),
   // The real routing flow against a fake backend: welcome → sign-in (with the
   // debug quick-sign-in buttons) → home, all through the actual AuthGate.
   'app': (_) => AuthGate(
@@ -335,7 +335,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Profile: lifetime totals, what the coach makes of them, records, the goal,
   // then the whole log. The demo set deliberately earns no coach note, so this
   // is the invitation state.
-  'profile': (context) => _demoProfileScreen(context),
+  'profile': (_) => _shellTab(2, runs: _demoRuns()),
   // A runner with a past. Every plan Runio built was already on disk and
   // nothing showed them, so three blocks in read as a beginner.
   'profile-history': (context) => _standingPreview(
@@ -362,20 +362,10 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   ),
   // The same screen with nothing recorded — the empty state is the common one
   // for a new runner, so it gets its own key rather than being imagined.
-  'profile-empty': (_) => ProfileScreen(
-    stats: RunnerStats.from(const <RunSummary>[]),
-    profile: _demoProfile(),
-    standing: TrainingStanding.read(runs: const <RunSummary>[]),
-    onAskCoach: (_) {},
-    onOpenSettings: () {},
-  ),
+  'profile-empty': (_) => _shellTab(2),
   // A log long enough to scroll properly, so the backdrop's parallax clamp and
   // the stagger cap can be seen doing their job rather than assumed.
-  'profile-long': (context) => _standingPreview(
-    context,
-    runs: _parkrunHistory(),
-    profile: _parkrunProfile(),
-  ),
+  'profile-long': (_) => _shellTab(2, runs: _parkrunHistory()),
   // The legal / compliance surfaces (`legal`, `disclaimer-gate`, `disclaimer`,
   // `delete`). Folded in so this one harness serves every screen — they also
   // still have their own entry point in `legal_preview.dart`.
@@ -384,8 +374,26 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   ...glassPreviewScreens,
 };
 
-ProfileScreen _demoProfileScreen(BuildContext context) =>
-    _standingPreview(context, runs: _demoRuns(), profile: _demoProfile());
+/// A tab surface inside the shell it actually lives in.
+///
+/// **Because the shell is most of the screen.** The nav bar and the floating
+/// coach mark are HomeShell's, not the tab's, so a preview that renders
+/// ProfileScreen or PlanScreen on its own is missing two of the three things
+/// a runner sees — and, being pushed onto the index, gains a back arrow that
+/// tab has nowhere to point. All three were reported as bugs in the screen.
+/// They were bugs in the preview.
+///
+/// Fixtures go in as a run list and the shell derives the rest, the same way
+/// it does in the app, so what is on screen is what ships.
+Widget _shellTab(int tab, {List<RunSummary> runs = const <RunSummary>[]}) =>
+    HomeShell(
+      auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
+      recorderFactory: () => FakeRunRecorder(),
+      historySource: () async => runs,
+      coach: FakeCoachService(),
+      planClient: FakePlanClient(),
+      initialTab: tab,
+    );
 
 /// Profile with the standing read from the log, so the coach card shows what it
 /// actually says rather than a hand-written line.
@@ -1276,7 +1284,28 @@ class PreviewApp extends StatelessWidget {
     // the 2026-08-08 exit sweep. A default that hides a whole class of fault is
     // not a default worth keeping. `&pushed=0` opts out, for checking how a
     // screen behaves when it genuinely is the root.
+    //
+    // **Except for the screens that really are roots**, which is the half of
+    // the original comment above that defaulting `pushed` on threw away. A tab
+    // has nothing above it, and both ProfileScreen and PlanScreen carry their
+    // own AppBar — so pushing them drew a back arrow pointing somewhere a
+    // runner can never be. Matched by prefix, because the variants
+    // (home-planned, coach-chat-turn, profile-empty…) are those same surfaces
+    // with different fixtures, and a list of exact keys would go stale the
+    // next time one was added.
+    const rootPrefixes = <String>[
+      'welcome',
+      'home',
+      'coach',
+      'profile',
+      'history',
+      'app',
+    ];
+    final isRoot =
+        key != null && rootPrefixes.any((String p) => key.startsWith(p));
+
     final pushed =
+        !isRoot &&
         (definedPushed.isNotEmpty ? definedPushed : params['pushed']) != '0';
 
     return MaterialApp(
