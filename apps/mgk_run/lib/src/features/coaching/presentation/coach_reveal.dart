@@ -204,7 +204,20 @@ class _CoachRevealState extends State<CoachReveal>
                         child: CoachMarkGlyph(),
                       ),
                       SizedBox(
-                        width: full - kCoachMarkSize - AppSpacing.md,
+                        // Clamped, because this crashes the frame otherwise.
+                        // `full` comes from the incoming constraints, and a
+                        // layout pass that offers zero width — which is what
+                        // happens to the tab underneath a full-height modal
+                        // sheet — makes this negative. A SizedBox with a
+                        // negative width fails an assertion in
+                        // BoxConstraints, and the whole route below the sheet
+                        // is replaced by the red error screen: found as a red
+                        // wash behind the rest-day brief, which is a strange
+                        // way to discover a crash.
+                        width: (full - kCoachMarkSize - AppSpacing.md).clamp(
+                          0.0,
+                          double.infinity,
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.only(
                             top: AppSpacing.md,
