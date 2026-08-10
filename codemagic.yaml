@@ -20,11 +20,14 @@
 #     it would report no configuration found. This is a monorepo, so the app it
 #     builds is named by `working_directory` below rather than by where the
 #     file sits.
-#  2. App Store Connect API key → Team settings ▸ Integrations ▸ App Store
-#     Connect. Upload the .p8 (App Manager role) + Key ID + Issuer ID, and name
-#     the integration `runio_asc` (matches `app_store_connect:` below).
-#  3. Environment group `runio_env` (Application settings ▸ Environment
-#     variables, mark Secure) with:
+#  2. App Store Connect API key → Team settings ▸ Integrations ▸ **Developer
+#     Portal** ▸ Manage keys. Codemagic folded the App Store Connect key into
+#     that integration; there is no separate "App Store Connect" row. One key
+#     with App Manager covers signing AND the TestFlight upload, for every app
+#     in the team — already present as `frunt_asc`, which is what the workflow
+#     below references.
+#  3. Environment group `mgk_fitness_run_env` (Application settings ▸
+#     Environment variables, mark Secure) with:
 #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
 #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
 #     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
@@ -50,13 +53,21 @@ workflows:
     # wrong thing — or nothing.
     working_directory: apps/mgk_run
     integrations:
-      app_store_connect: runio_asc
+      # Named for frunt because that product registered it first, but an App
+      # Store Connect API key is issued to the TEAM, not to an app: the same
+      # key signs and uploads everything under MGKCodes Ltd. Referenced rather
+      # than duplicated because the .p8 downloads exactly once, so a second
+      # entry would mean a second Apple key for no benefit.
+      app_store_connect: frunt_asc
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.mgkcodes.fitness.run
       groups:
-        - runio_env
+        # Named for the suite, not the product, for the same reason the bundle
+        # id is: the app's name is not settled and this one does not need to
+        # care.
+        - mgk_fitness_run_env
       flutter: stable
       xcode: latest
       cocoapods: default
