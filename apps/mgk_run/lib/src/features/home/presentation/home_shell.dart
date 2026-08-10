@@ -992,78 +992,102 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// Vertical room the floating coach mark needs at the foot of a tab.
+  ///
+  /// Matches Lift's shell. Spent only when there is a coach to show — an app
+  /// without one would otherwise carry a strip of dead space above the nav bar
+  /// for a button that is not there.
+  static const double _coachMarkReserve = 64;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
-          IndexedStack(
-            index: _index,
-            children: <Widget>[
-              HomeTab(
-                onRecord: () => _startRun(context),
-                // Two destinations, not one. These were a single
-                // `onOpenCoach` that switched to the tab — so the coach's own
-                // note opened a plan screen, and the button offering to talk
-                // to a coach did too. Only one of them was ever about the
-                // plan (ADR-0017).
-                onOpenPlan: () => setState(() => _index = _planTab),
-                onOpenCoach: _chat == null ? null : _openCoach,
-                today: _todayView,
-                thisWeek: _thisWeek,
-                headline: _headline,
-                note: _note,
-                outcomes: _outcomes,
-                volumes: _volumes,
-                consistency: _consistency,
-                standing: _standing,
-                hasRuns: _allRuns.isNotEmpty,
-                missed: _missed,
-                onAskCoach: _chat == null ? null : _askCoach,
-                // Only with a plan to bend and a coach to bend it.
-                onAdjustWeek: widget.planClient == null || _todayView == null
-                    ? null
-                    : _adjustThisWeek,
-                unit: _unit,
-              ),
-              _PlanTab(
-                plans: _plans,
-                coach: widget.coach,
-                chat: _chatClient,
-                runs: widget.historySource,
-                planClient: widget.planClient,
-                memory: _memory,
-                summariser: _summariser,
-                unit: _unit,
-                onPlanChanged: _refreshHome,
-                onAskCoach: _askCoach,
-                runnerName: widget.auth.currentName,
-              ),
-              // The runner and their record, on one page: totals, bests, the goal,
-              // then every run. Reads the shell's own log rather than calling the
-              // source again, so the totals and the rows they come from are always
-              // the same load.
-              ProfileScreen(
-                stats: RunnerStats.from(_allRuns),
-                profile: _planProfile,
-                // Derived here rather than cached, exactly like the stats above:
-                // it reads the display unit, and a stored copy stayed in kilometres
-                // after the runner switched to miles. Both are a fold over the log,
-                // which is cheaper than a staleness bug.
-                //
-                // No plan goes in. Where they are in a block is the Plan tab's
-                // subject and today is Home's; this is the long view of the runner.
-                standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
-                // Past plans only — the current one is the Coach tab's subject.
-                pastPlans: _pastPlans,
-                runs: _allRuns,
-                unit: _unit,
-                onOpenRun: _openRun,
-                onAddRun: widget.runEditor == null ? null : _addRun,
-                onAskCoach: _chatClient == null ? null : _askCoach,
-                onOpenSettings: _openSettings,
-              ),
-            ],
+          // The room the floating coach mark needs, reserved by the widget
+          // that knows whether there is one — the same fix Lift's shell
+          // already carries. Without it the mark sits on top of whatever the
+          // tab has scrolled to its floor: on Profile that is the last run in
+          // the log, whose tap target it covers, so tapping the run opens the
+          // coach instead.
+          //
+          // Reserved here rather than as padding inside each tab, because
+          // three tabs each remembering it is three places to forget, and
+          // every one of them would have to know whether a coach exists.
+          MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              padding: MediaQuery.of(
+                context,
+              ).padding.copyWith(bottom: _chat == null ? 0 : _coachMarkReserve),
+            ),
+            child: IndexedStack(
+              index: _index,
+              children: <Widget>[
+                HomeTab(
+                  onRecord: () => _startRun(context),
+                  // Two destinations, not one. These were a single
+                  // `onOpenCoach` that switched to the tab — so the coach's own
+                  // note opened a plan screen, and the button offering to talk
+                  // to a coach did too. Only one of them was ever about the
+                  // plan (ADR-0017).
+                  onOpenPlan: () => setState(() => _index = _planTab),
+                  onOpenCoach: _chat == null ? null : _openCoach,
+                  today: _todayView,
+                  thisWeek: _thisWeek,
+                  headline: _headline,
+                  note: _note,
+                  outcomes: _outcomes,
+                  volumes: _volumes,
+                  consistency: _consistency,
+                  standing: _standing,
+                  hasRuns: _allRuns.isNotEmpty,
+                  missed: _missed,
+                  onAskCoach: _chat == null ? null : _askCoach,
+                  // Only with a plan to bend and a coach to bend it.
+                  onAdjustWeek: widget.planClient == null || _todayView == null
+                      ? null
+                      : _adjustThisWeek,
+                  unit: _unit,
+                ),
+                _PlanTab(
+                  plans: _plans,
+                  coach: widget.coach,
+                  chat: _chatClient,
+                  runs: widget.historySource,
+                  planClient: widget.planClient,
+                  memory: _memory,
+                  summariser: _summariser,
+                  unit: _unit,
+                  onPlanChanged: _refreshHome,
+                  onAskCoach: _askCoach,
+                  runnerName: widget.auth.currentName,
+                ),
+                // The runner and their record, on one page: totals, bests, the goal,
+                // then every run. Reads the shell's own log rather than calling the
+                // source again, so the totals and the rows they come from are always
+                // the same load.
+                ProfileScreen(
+                  stats: RunnerStats.from(_allRuns),
+                  profile: _planProfile,
+                  // Derived here rather than cached, exactly like the stats above:
+                  // it reads the display unit, and a stored copy stayed in kilometres
+                  // after the runner switched to miles. Both are a fold over the log,
+                  // which is cheaper than a staleness bug.
+                  //
+                  // No plan goes in. Where they are in a block is the Plan tab's
+                  // subject and today is Home's; this is the long view of the runner.
+                  standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
+                  // Past plans only — the current one is the Coach tab's subject.
+                  pastPlans: _pastPlans,
+                  runs: _allRuns,
+                  unit: _unit,
+                  onOpenRun: _openRun,
+                  onAddRun: widget.runEditor == null ? null : _addRun,
+                  onAskCoach: _chatClient == null ? null : _askCoach,
+                  onOpenSettings: _openSettings,
+                ),
+              ],
+            ),
           ),
           // Floating over every tab, which is the whole point of it: the dock
           // this replaces could only exist on the Plan tab, so the coach was

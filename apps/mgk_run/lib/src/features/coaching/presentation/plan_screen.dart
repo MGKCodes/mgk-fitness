@@ -380,10 +380,12 @@ class _NoPlan extends StatelessWidget {
           ),
           if (onBuildPlan != null) ...<Widget>[
             const SizedBox(height: AppSpacing.lg),
-            OutlinedButton(
-              onPressed: onBuildPlan,
-              child: const Text('Build a plan'),
-            ),
+            // The action this screen exists for, so it carries the weight —
+            // principle 10 in docs/design.md. As an OutlinedButton it was the
+            // quietest styled thing on a page whose entire message is "you have
+            // no plan, here is how to get one". Lift's identical control is a
+            // PrimaryButton; two apps in one suite had two answers.
+            PrimaryButton(label: 'Build a plan', onPressed: onBuildPlan),
           ],
         ],
       ),
