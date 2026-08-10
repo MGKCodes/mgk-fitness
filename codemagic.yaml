@@ -117,16 +117,41 @@ workflows:
         # and tree-shaken out of a release — but a credential that is not in the
         # binary cannot be extracted from the binary, and this is a health app.
         script: |
-          mkdir -p "$CM_BUILD_DIR/apps/mgk_run/config"
-          cat > "$CM_BUILD_DIR/apps/mgk_run/config/app_config.json" <<EOF
-          {
-            "SUPABASE_URL": "$SUPABASE_URL",
-            "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
-            "DEV_ACCOUNT_1_LABEL": "",
-            "DEV_ACCOUNT_1_EMAIL": "",
-            "DEV_ACCOUNT_1_PASSWORD": ""
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          # Built with a JSON serialiser rather than a heredoc, because the
+          # values are pasted into a web form by a human and arrive with
+          # whatever that paste carried. The first build died on exactly this:
+          #
+          #   FormatException: Control character in string (at line 2, char 60)
+          #
+          # — a trailing carriage return on SUPABASE_URL, written verbatim into
+          # the middle of a JSON string. json.dumps escapes; a heredoc does not.
+          # .strip() removes the whitespace; the serialiser handles the rest.
+          def need(name):
+              v = (os.environ.get(name) or "").strip()
+              if not v:
+                  sys.exit(
+                      f"{name} is empty. Set it in the mgk_fitness_run_env "
+                      "group, or the IPA ships unable to reach Supabase."
+                  )
+              return v
+
+          cfg = {
+              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+              # Empty on purpose — see the note above.
+              "DEV_ACCOUNT_1_LABEL": "",
+              "DEV_ACCOUNT_1_EMAIL": "",
+              "DEV_ACCOUNT_1_PASSWORD": "",
           }
-          EOF
+
+          out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_run/config/app_config.json"
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(cfg, indent=2))
+          print(f"wrote {out} ({len(cfg)} keys)")
+          PY
       - name: Flutter packages
         script: flutter pub get
       - name: Generate code
