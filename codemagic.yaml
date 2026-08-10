@@ -13,6 +13,13 @@
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
 #
 #  1. Connect this repo to Codemagic.
+#
+#  0. **This file must sit at the REPOSITORY ROOT.** Codemagic reads
+#     `codemagic.yaml` from the root of the clone and nowhere else, so while it
+#     lived at `apps/mgk_run/codemagic.yaml` the build could not start at all —
+#     it would report no configuration found. This is a monorepo, so the app it
+#     builds is named by `working_directory` below rather than by where the
+#     file sits.
 #  2. App Store Connect API key → Team settings ▸ Integrations ▸ App Store
 #     Connect. Upload the .p8 (App Manager role) + Key ID + Issuer ID, and name
 #     the integration `runio_asc` (matches `app_store_connect:` below).
@@ -38,6 +45,10 @@ workflows:
     name: iOS — TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
+    # Every script below runs from the app, not the repo root. Without this the
+    # first `flutter pub get` would run against the workspace root and build the
+    # wrong thing — or nothing.
+    working_directory: apps/mgk_run
     integrations:
       app_store_connect: runio_asc
     environment:
@@ -60,8 +71,8 @@ workflows:
         # and tree-shaken out of a release — but a credential that is not in the
         # binary cannot be extracted from the binary, and this is a health app.
         script: |
-          mkdir -p "$CM_BUILD_DIR/config"
-          cat > "$CM_BUILD_DIR/config/app_config.json" <<EOF
+          mkdir -p "$CM_BUILD_DIR/apps/mgk_run/config"
+          cat > "$CM_BUILD_DIR/apps/mgk_run/config/app_config.json" <<EOF
           {
             "SUPABASE_URL": "$SUPABASE_URL",
             "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
@@ -92,7 +103,8 @@ workflows:
             --dart-define-from-file=config/app_config.json \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
-      - build/ios/ipa/*.ipa
+      # Relative to the clone root, which `working_directory` does not change.
+      - apps/mgk_run/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
