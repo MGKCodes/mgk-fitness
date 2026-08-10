@@ -33,6 +33,15 @@
 #     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
 #     and never reaches the client (ADR-0007); a provider key in this group
 #     would be a provider key in the app bundle.
+#  5. **An App Store distribution provisioning profile for
+#     `com.mgkcodes.fitness.run`.** developer.apple.com ▸ Certificates,
+#     Identifiers & Profiles ▸ Profiles ▸ + ▸ Distribution ▸ App Store Connect,
+#     pick the App ID and the existing Apple Distribution certificate.
+#
+#     Create it AFTER the App ID's capabilities are set — a profile is a
+#     snapshot of them, so ticking HealthKit later means regenerating this.
+#     Nothing to download; Codemagic fetches it through the API key.
+#
 #  4. App Store Connect → new app, bundle id `com.mgkcodes.fitness.run`.
 #     **Not the product name, and deliberately so.** A bundle id is permanent
 #     once the App Store Connect record exists, and the name is not settled;
@@ -127,8 +136,14 @@ workflows:
       - name: Install CocoaPods
         script: find . -name "Podfile" -execdir pod install \;
       - name: Set up code signing
-        # Apple Distribution certificate from Codemagic (Team settings ▸ Code
-        # signing identities) + auto-fetch/create of the provisioning profile.
+        # Applies the profile Codemagic fetched during environment setup. It
+        # FETCHES; it does not create. The first build for this bundle id
+        # failed here with "No matching profiles found for bundle identifier
+        # ... and distribution type app_store", because an App ID is not a
+        # provisioning profile and nothing had made one.
+        #
+        # See setup step 5 above: the profile is created once, by hand, in the
+        # Apple Developer portal. After that every build finds it.
         script: xcode-project use-profiles
       - name: Build IPA
         # --dart-define-from-file is load-bearing: AppConfig reads every value
