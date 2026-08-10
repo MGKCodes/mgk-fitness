@@ -1233,7 +1233,23 @@ class PreviewApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final params = Uri.base.queryParameters;
-    final key = params['screen'];
+
+    // **Two ways in, because the harness has to run on a device.**
+    // `Uri.base` carries query parameters on web and nothing anywhere else, so
+    // while this was URL-only the whole harness was web-only by construction:
+    // Android had no way to name a screen and always fell back to the index.
+    //
+    // That is not a small gap for a review tool. The web build renders blur,
+    // fonts, safe areas and scroll physics differently, and every design fault
+    // found in Lift on 2026-08-07 was found by looking at an emulator. Lift's
+    // harness gained this define that day; this one is the same tool and had
+    // gone without it, which is why Run has never had a screen pass at all.
+    //
+    //     flutter run -d emulator-5554 -t lib/preview/main.dart     //       --dart-define=screen=summary
+    const definedScreen = String.fromEnvironment('screen');
+    const definedPushed = String.fromEnvironment('pushed');
+
+    final key = definedScreen.isNotEmpty ? definedScreen : params['screen'];
     final builder = _screens[key];
     final content = builder ?? (_) => _Index(keys: _screens.keys.toList());
 
@@ -1251,7 +1267,8 @@ class PreviewApp extends StatelessWidget {
     // the 2026-08-08 exit sweep. A default that hides a whole class of fault is
     // not a default worth keeping. `&pushed=0` opts out, for checking how a
     // screen behaves when it genuinely is the root.
-    final pushed = params['pushed'] != '0';
+    final pushed =
+        (definedPushed.isNotEmpty ? definedPushed : params['pushed']) != '0';
 
     return MaterialApp(
       title: 'Runio Preview',
@@ -1301,10 +1318,25 @@ class _Index extends StatelessWidget {
         children: <Widget>[
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Append ?screen=<key> to the URL to preview a screen:'),
+            child: Text(
+              'Tap a screen, or address one directly with ?screen=<key> on '
+              'web and --dart-define=screen=<key> on a device.',
+            ),
           ),
+          // **Tappable**, which it was not. The rows printed the URL to type,
+          // which is fine on web and useless on a phone — so on the device this
+          // harness was built to be reviewed on, the index could list 43 screens
+          // and open none of them. Pushing also means each screen is reviewed
+          // with a real back stack, the same as the app gives it.
           for (final k in keys)
-            ListTile(dense: true, title: Text(k), subtitle: Text('?screen=$k')),
+            ListTile(
+              dense: true,
+              title: Text(k),
+              subtitle: Text('?screen=$k'),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: _screens[k]!)),
+            ),
         ],
       ),
     );

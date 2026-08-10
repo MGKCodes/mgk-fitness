@@ -220,6 +220,22 @@ The pattern is the same one principle 9 describes, one level up: **the thing you
 audit with needs auditing too.** A tool that cannot show a class of fault will
 report that class as absent, and it will be believed, because it is the tool.
 
+**Check which app is actually on screen before believing a screenshot.**
+`flutter run` does not reliably foreground its app after a rebuild, and a
+screenshot carries no label. Reviewing Run began with a capture that was still
+showing Lift, and the capture after that was an ANR dialog — `mgk_lift isn't
+responding` — drawn over the top of everything.
+
+Guard on the focused *window*, not the resumed activity:
+
+    adb shell dumpsys window | grep mCurrentFocus
+
+`topResumedActivity` names the app beneath a system dialog, so it happily
+reports the right package while a crash box fills the screen. `mCurrentFocus`
+names the dialog. And leaving several `flutter run` sessions attached across a
+session is what produced the ANR in the first place — stop the previous one
+before starting the next.
+
 And the thing worth saying plainly: `flutter analyze` and widget tests prove a
 tree builds and the right strings are in it. They proved all six of these
 screens "correct" while five of them had layout faults. **They cannot see a
