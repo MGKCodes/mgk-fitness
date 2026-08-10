@@ -180,7 +180,16 @@ workflows:
             --dart-define-from-file=config/app_config.json \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
-      # Relative to the clone root, which `working_directory` does not change.
+      # **Both, deliberately.** A build that compiles and publishes nothing is
+      # the worst outcome available: every step reports success, the log says
+      # "No artifacts were found", and TestFlight stays empty. That is what
+      # happened on build 3, because these globs resolve relative to
+      # `working_directory` and the pattern was written relative to the clone
+      # root — with a comment confidently asserting the opposite.
+      #
+      # Codemagic ignores a pattern that matches nothing, so listing both costs
+      # nothing and removes the guess.
+      - build/ios/ipa/*.ipa
       - apps/mgk_run/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
