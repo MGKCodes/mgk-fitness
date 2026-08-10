@@ -132,8 +132,17 @@ const String _devTiles =
 final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Isolated single screens — visual checks only.
   'welcome': (_) => WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
-  'signin': (_) => const SignInScreen(),
-  'signup': (_) => const SignInScreen(initialSignUp: true),
+  'signin': (context) =>
+      SignInScreen(onBack: () => Navigator.of(context).maybePop()),
+  // `onBack` supplied, because SignInScreen only draws its app bar -- and so
+  // its back button -- when it has somewhere to go. AuthGate always passes one;
+  // a preview that did not made a screen with a perfectly good back control
+  // look like a dead end, which is the same way this harness misled the exit
+  // sweep once already.
+  'signup': (context) => SignInScreen(
+    initialSignUp: true,
+    onBack: () => Navigator.of(context).maybePop(),
+  ),
   'home': (_) => HomeShell(
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
     recorderFactory: () => FakeRunRecorder(),
