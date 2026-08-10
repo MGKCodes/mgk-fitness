@@ -57,7 +57,23 @@ workflows:
   run-ios-release:
     name: Run — iOS TestFlight
     instance_type: mac_mini_m2
-    max_build_duration: 60
+    # A cap on waste, not a target. A build that finishes in twenty minutes is
+    # billed twenty; this only bites when something hangs, and 60 meant an hour
+    # of a metered plan spent on a wedged process. A cold Flutter iOS build with
+    # a CocoaPods install lands well inside this.
+    max_build_duration: 45
+
+    # The single biggest saving on a metered plan. Without it every run
+    # re-downloads the whole pub cache and rebuilds every pod, which is most of
+    # a cold build's minutes and none of its value.
+    #
+    # Not cached: build/ and .dart_tool/, deliberately. Stale generated output
+    # is how a green build ships yesterday's code, and drift's sources are
+    # generated fresh each run for exactly that reason.
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $CM_BUILD_DIR/apps/mgk_run/ios/Pods
     # Every script below runs from the app, not the repo root. Without this the
     # first `flutter pub get` would run against the workspace root and build the
     # wrong thing — or nothing.
