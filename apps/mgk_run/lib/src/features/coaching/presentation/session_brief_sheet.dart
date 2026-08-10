@@ -227,29 +227,20 @@ class _EffortCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  effort.label,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+          // The session's name is the sheet's headline, two lines above this
+          // card. Repeating it here as the card's title said "Easy" twice
+          // within a hundred and thirty pixels, and the only new thing on the
+          // row was the number beside it — so the number is what the row is
+          // now. Principle 3: the more specific one wins.
+          if (effort.rpeHigh > 0)
+            Text(
+              'Effort ${effort.rpe}',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
-              if (effort.rpeHigh > 0)
-                Text(
-                  'effort ${effort.rpe}',
-                  style: const TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-            ],
-          ),
+            ),
           if (band != null) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
             Text(
