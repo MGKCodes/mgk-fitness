@@ -78,6 +78,16 @@
 	     writes to Health yet - when Runio starts writing its own recordings
 	     (which is what makes it the preferred source in workout_dedup.dart),
 	     that key has to be added in the same commit as the write. -->
+	<!-- Every upload otherwise lands in App Store Connect as "Missing
+	     Compliance" and cannot go to a tester until somebody answers the export
+	     questionnaire by hand, per build.
+
+	     False is the accurate answer, not the convenient one: the only
+	     cryptography here is HTTPS to Supabase and to the coach function, which
+	     is exempt under the standard TLS exemption. If Runio ever ships crypto of
+	     its own, this key has to be revisited rather than left. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Runio reads your workouts from Health so runs you recorded on a watch or another app appear in your training log, and so your coach sees the whole picture.</string>
 	<key>UIBackgroundModes</key>
