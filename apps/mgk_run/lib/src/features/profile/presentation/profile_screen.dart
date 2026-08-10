@@ -182,7 +182,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: _Lifetime(stats: stats, unit: widget.unit),
                     ),
 
-                  if (widget.standing != null) ...<Widget>[
+                  // Not on an empty log. The card directly above already says
+                  // "No runs yet — record your first run", and the standing's
+                  // own empty copy says "record a run… there is nothing to
+                  // compare you against": the same sentence twice, the second
+                  // one an empty state explaining why it has nothing to say.
+                  //
+                  // The coach is not lost with it — the mark floats over every
+                  // tab, which is the whole reason it floats.
+                  if (widget.standing != null && !stats.isEmpty) ...<Widget>[
                     const SizedBox(height: AppSpacing.xl),
                     Entrance(
                       index: 1,
