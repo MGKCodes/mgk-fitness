@@ -247,6 +247,7 @@ String weekSubtitle(
   UnitSystem unit = UnitSystem.metric,
   bool provisional = false,
   TrainingWeek? week,
+  bool showWeekNumber = true,
 }) {
   // The sum of the rows on screen, when there are rows. Prescriptions are
   // rounded in the runner's own unit, so converting the exact stored total
@@ -263,9 +264,18 @@ String weekSubtitle(
   }
 
   final phase = slot.isDeload ? 'Deload' : phaseLabel(slot.phase);
+  // The ordinal is dropped where the screen already carries it. On the plan
+  // screen the header reads "week 1 of 16" a hundred pixels above this line,
+  // and "week 1" underneath adds nothing except the loss of the denominator
+  // that made the header worth reading — the same stacking of "where am I"
+  // indicators that [todayHeading] above was trimmed for.
+  //
+  // The calendar keeps it. Its rows are titled with a date range, so this is
+  // the only place the week number appears at all.
+  final ordinal = showWeekNumber ? ' · week ${slot.index}' : '';
   return provisional
-      ? '$phase · $volume · week ${slot.index} · firms up closer'
-      : '$phase · $volume planned · week ${slot.index}';
+      ? '$phase · $volume$ordinal · firms up closer'
+      : '$phase · $volume planned$ordinal';
 }
 
 /// "a marathon" rather than "Marathon" mid-sentence.

@@ -131,7 +131,10 @@ void main() {
     // Dates, not an index. "W1" is the plan's internal numbering leaking onto
     // the screen — a runner cannot match it against a calendar or a race entry.
     final label = find.text('THIS WEEK · 20 – 26 JUL');
-    final value = find.text('Base · $volume planned · week 1');
+    // No "· week 1": the goal strip above already reads "week 1 of 16", and
+    // this line repeating the ordinal without the denominator was the third
+    // "where am I" indicator stacked in one card.
+    final value = find.text('Base · $volume planned');
     expect(label, findsOneWidget);
     expect(value, findsOneWidget);
 

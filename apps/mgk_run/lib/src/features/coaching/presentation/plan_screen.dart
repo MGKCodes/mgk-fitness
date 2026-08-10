@@ -293,7 +293,14 @@ class _WeekBlock extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        weekSubtitle(plan, slot, unit: unit, week: week),
+                        weekSubtitle(
+                          plan,
+                          slot,
+                          unit: unit,
+                          week: week,
+                          // The header above already says "week 1 of 16".
+                          showWeekNumber: false,
+                        ),
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,

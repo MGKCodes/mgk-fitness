@@ -118,7 +118,21 @@ class _ArcPainter extends CustomPainter {
     // drops below half its peak would otherwise draw as a flat line across the
     // top of the box, which says nothing about how it builds.
     const floor = 0.15;
+
+    // A rhythm has the same volume every week, so every ratio is 1 and the arc
+    // drew as a line pinned to the very top of the box with empty space under
+    // it — which reads as a chart that failed to load rather than as "steady",
+    // and is the exact fault the comment above describes for a different cause.
+    //
+    // Mid-height instead. There is no ramp to show, and a level line halfway up
+    // says the true thing: this is the shape, and it does not change.
+    final trough = weeks
+        .map((w) => w.volumeMeters)
+        .reduce((a, b) => a < b ? a : b);
+    final isLevel = peak == trough;
+
     double heightFor(int i) {
+      if (isLevel) return 0.5;
       final ratio = weeks[i].volumeMeters / peak;
       return floor + (1 - floor) * ratio;
     }
