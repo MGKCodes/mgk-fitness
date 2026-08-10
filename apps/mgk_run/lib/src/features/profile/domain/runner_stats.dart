@@ -40,7 +40,9 @@ class RunnerStats {
   );
 
   /// Folds a run list into its totals in a single pass.
-  factory RunnerStats.from(List<RunSummary> runs) {
+  /// [now] decides whether a streak is still running. Injected rather than
+  /// read from the clock so "has it lapsed" is testable without waiting a week.
+  factory RunnerStats.from(List<RunSummary> runs, {DateTime? now}) {
     if (runs.isEmpty) return empty;
 
     var totalMeters = 0.0;
@@ -77,7 +79,7 @@ class RunnerStats {
       longestRunMeters: longest,
       fastestPaceSecondsPerKm: fastest,
       firstRunAt: first,
-      currentStreakWeeks: _streakWeeks(runs),
+      currentStreakWeeks: _streakWeeks(runs, now ?? DateTime.now()),
     );
   }
 
@@ -86,11 +88,23 @@ class RunnerStats {
   /// Anchored to the last run rather than to today, so opening the app on a
   /// Monday having run on Sunday does not read as a broken streak — the runner
   /// has not missed anything yet.
-  static int _streakWeeks(List<RunSummary> runs) {
+  static int _streakWeeks(List<RunSummary> runs, DateTime now) {
     if (runs.isEmpty) return 0;
 
     final weeks = <DateTime>{for (final run in runs) _weekStart(run.startedAt)};
     var cursor = weeks.reduce((a, b) => a.isAfter(b) ? a : b);
+
+    // **A streak that cannot lapse is not a streak.** Anchoring to the last run
+    // is right for the Monday-after-a-Sunday-run case named above, and wrong
+    // once the gap is real: a runner who last went out twenty days ago was
+    // shown "4 wk" beside their coach saying "nothing recorded for 20 days".
+    // Two numbers on one screen, disagreeing.
+    //
+    // One week of grace, which is what the anchoring was for. Past that the
+    // run of weeks has ended, and the honest answer is none.
+    final thisWeek = _weekStart(now);
+    final lapsed = thisWeek.difference(cursor).inDays > 7;
+    if (lapsed) return 0;
 
     var streak = 0;
     while (weeks.contains(cursor)) {
