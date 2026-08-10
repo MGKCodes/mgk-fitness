@@ -1,8 +1,16 @@
 import 'health_workout.dart';
 
-/// Runio's own HealthKit source bundle id. Its recordings carry the GPS trace,
-/// so they win when the same run is reported by multiple sources.
-const String runioSourceBundleId = 'com.mgkcodes.runio';
+/// This app's own HealthKit source bundle id. Its recordings carry the GPS
+/// trace, so they win when the same run is reported by multiple sources.
+///
+/// **It has to be the real bundle identifier**, because that is what `HKSource`
+/// reports and this whole file is a comparison against it. It said
+/// `com.mgkcodes.runio` while the app was built as `com.mgkcodes.fitness.run`,
+/// which would have made every one of the app's own workouts look like a
+/// stranger's: no preference, so the watch's copy wins and the run in the log
+/// loses its GPS trace. Silent, and only in the wild — exactly the failure this
+/// file's own comment warns about.
+const String ownSourceBundleId = 'com.mgkcodes.fitness.run';
 
 /// Collapses workouts that are the **same physical run** into one.
 ///
@@ -21,7 +29,7 @@ const String runioSourceBundleId = 'com.mgkcodes.runio';
 /// it is pure and fixture-tested.
 List<HealthWorkout> dedupeWorkouts(
   Iterable<HealthWorkout> workouts, {
-  String preferredSourceBundleId = runioSourceBundleId,
+  String preferredSourceBundleId = ownSourceBundleId,
   Duration tolerance = const Duration(minutes: 1),
 }) {
   final sorted = workouts.toList()..sort((a, b) => a.start.compareTo(b.start));

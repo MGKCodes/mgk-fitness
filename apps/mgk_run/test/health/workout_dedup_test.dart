@@ -14,6 +14,10 @@ HealthWorkout _w(
   distanceMeters: distanceMeters,
 );
 
+/// The preferred source is the app's OWN bundle identifier, which is what
+/// HKSource reports. If that constant and the shipped id ever disagree, every
+/// one of this app's workouts reads as a stranger's and quietly loses to the
+/// watch's copy — taking the GPS trace with it.
 void main() {
   const watch = 'com.apple.health.watch';
   const thirdParty = 'com.thirdparty.app';
@@ -21,18 +25,18 @@ void main() {
   test('same run from watch + Runio + a third app collapses to one', () {
     final result = dedupeWorkouts(<HealthWorkout>[
       _w(watch, 0, 30, distanceMeters: 5000),
-      _w(runioSourceBundleId, 0, 30, distanceMeters: 5010),
+      _w(ownSourceBundleId, 0, 30, distanceMeters: 5010),
       _w(thirdParty, 1, 29, distanceMeters: 4990),
     ]);
 
     expect(result, hasLength(1));
-    expect(result.single.sourceBundleId, runioSourceBundleId);
+    expect(result.single.sourceBundleId, ownSourceBundleId);
   });
 
   test('distinct runs hours apart are both kept', () {
     final result = dedupeWorkouts(<HealthWorkout>[
-      _w(runioSourceBundleId, 0, 30, distanceMeters: 5000),
-      _w(runioSourceBundleId, 120, 25, distanceMeters: 4000),
+      _w(ownSourceBundleId, 0, 30, distanceMeters: 5000),
+      _w(ownSourceBundleId, 120, 25, distanceMeters: 4000),
     ]);
 
     expect(result, hasLength(2));
@@ -40,7 +44,7 @@ void main() {
 
   test('a small start-time skew between devices still merges', () {
     final result = dedupeWorkouts(<HealthWorkout>[
-      _w(runioSourceBundleId, 0, 30, distanceMeters: 5000),
+      _w(ownSourceBundleId, 0, 30, distanceMeters: 5000),
       HealthWorkout(
         sourceBundleId: watch,
         start: DateTime(2026, 1, 1, 8, 0, 20), // 20s later
@@ -50,7 +54,7 @@ void main() {
     ]);
 
     expect(result, hasLength(1));
-    expect(result.single.sourceBundleId, runioSourceBundleId);
+    expect(result.single.sourceBundleId, ownSourceBundleId);
   });
 
   test('without a Runio recording, the source with distance wins', () {

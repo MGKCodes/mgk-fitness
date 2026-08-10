@@ -109,7 +109,7 @@ class _RouteMapState extends State<RouteMap> {
         if (widget.tileUrlTemplate.isNotEmpty)
           TileLayer(
             urlTemplate: widget.tileUrlTemplate,
-            userAgentPackageName: 'com.mgkcodes.runio',
+            userAgentPackageName: 'com.mgkcodes.fitness.run',
           ),
         if (hasRoute)
           PolylineLayer<Object>(

@@ -23,7 +23,13 @@
 #     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
 #     and never reaches the client (ADR-0007); a provider key in this group
 #     would be a provider key in the app bundle.
-#  4. App Store Connect → new app, bundle id `com.mgkcodes.runio`. Required
+#  4. App Store Connect → new app, bundle id `com.mgkcodes.fitness.run`.
+#     **Not the product name, and deliberately so.** A bundle id is permanent
+#     once the App Store Connect record exists, and the name is not settled;
+#     `com.mgkcodes.runio` would have welded a working title to the app
+#     forever. This one says what the app *is* — MGKCodes, the fitness suite,
+#     the running one — and survives any rename, because the name customers
+#     see is CFBundleDisplayName and can change whenever you like. Required
 #     before any TestFlight upload will be accepted.
 # ───────────────────────────────────────────────────────────────────────────
 
@@ -37,7 +43,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.mgkcodes.runio
+        bundle_identifier: com.mgkcodes.fitness.run
       groups:
         - runio_env
       flutter: stable
