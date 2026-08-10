@@ -23,3 +23,24 @@ environment:
 workspace:
   - packages/*
   - apps/*
+
+# **A version clash between two mobile plugins, resolved at the package that
+# has versions on both sides.**
+#
+# `health` reaches win32 ^5 through device_info_plus; `geolocator` reaches
+# win32 ^6 through geolocator_linux -> package_info_plus. Without an override
+# there is no `health` newer than 3.0.6 — a 2021 release — that resolves
+# alongside geolocator at all.
+#
+# The first attempt forced `win32: ^6.0.0` on the reasoning that neither Linux
+# nor Windows is a target platform (ADR-0001 is iOS-first). That was wrong, and
+# wrong in a way worth recording: `flutter test` compiles for the HOST, so
+# device_info_plus's Windows implementation is built on this machine and failed
+# against win32 6. A desktop dependency being irrelevant to the shipped app
+# does not make it irrelevant to the build.
+#
+# device_info_plus 13 moved to win32 ^6, which is the version both sides can
+# agree on. Overriding it lifts the floor rather than forcing a package to
+# compile against an API it was not written for.
+dependency_overrides:
+  device_info_plus: ^13.0.0

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- HealthKit read access. Without this entitlement the HealthKit APIs are
+	     present but every query returns nothing, which is indistinguishable
+	     from a user who declined - see docs/architecture/run-recording.md. That
+	     is exactly the failure mode this app is told to design for, so it would
+	     have looked like working software right up to the point somebody asked
+	     why no workouts ever appeared.
+
+	     `healthkit.access` is deliberately absent: it is only needed for
+	     clinical health records, which this app does not read. -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+</dict>
+</plist>

@@ -70,6 +70,16 @@
 	<string>Runio uses your location to record your run's route, distance, and pace.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Runio keeps recording your run in the background so tracking continues with the screen locked.</string>
+	<!-- Required the moment the binary links HealthKit: App Store Connect
+	     rejects an upload that references the framework without a purpose
+	     string, so this is a build blocker rather than a nicety.
+
+	     Read-only. There is no NSHealthUpdateUsageDescription because nothing
+	     writes to Health yet - when Runio starts writing its own recordings
+	     (which is what makes it the preferred source in workout_dedup.dart),
+	     that key has to be added in the same commit as the write. -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Runio reads your workouts from Health so runs you recorded on a watch or another app appear in your training log, and so your coach sees the whole picture.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
