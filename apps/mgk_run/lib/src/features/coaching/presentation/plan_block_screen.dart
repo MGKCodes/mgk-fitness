@@ -115,10 +115,6 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final total = plan.skeleton.weeks.fold<double>(
-      0,
-      (sum, w) => sum + w.volumeMeters,
-    );
     // Null when there is no race to count down to. A horizon block has an arc
     // worth reading and simply no deadline attached to it.
     final event = plan.profile.eventDate;
@@ -129,7 +125,7 @@ class _Summary extends StatelessWidget {
         Expanded(
           child: Text(
             '${plan.skeleton.weeks.length} weeks · '
-            '${Distance.meters(total).format(unit, fractionDigits: 0)} in total',
+            '${_totalOfShown(plan.skeleton.weeks.map((w) => w.volumeMeters), unit)} in total',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -184,9 +180,7 @@ class _PhaseGroup extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              Distance.meters(
-                group.totalMeters,
-              ).format(unit, fractionDigits: 0),
+              _totalOfShown(group.weeks.map((w) => w.volumeMeters), unit),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textTertiary,
               ),
@@ -323,4 +317,23 @@ class _WeekRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The sum of the numbers on screen, not the sum of what they were rounded
+/// from.
+///
+/// Every week row rounds to whole kilometres or miles independently, so adding
+/// the exact metres and rounding once gives a different answer: this block's
+/// Build phase listed weeks summing to 373 km under a heading that said 372.
+///
+/// Same rule, and the same reasoning, as [formatPrescribedTotal] on the week
+/// screen — "a runner who adds up the rows and gets a different number has
+/// found a bug, whatever the tolerance says". It applies wherever a total sits
+/// above the figures it totals.
+String _totalOfShown(Iterable<double> meters, UnitSystem unit) {
+  final total = meters.fold<double>(
+    0,
+    (sum, m) => sum + Distance.meters(m).inDisplayUnit(unit).roundToDouble(),
+  );
+  return '${total.toStringAsFixed(0)} ${unit.distanceSuffix}';
 }
