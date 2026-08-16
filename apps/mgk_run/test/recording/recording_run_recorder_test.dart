@@ -180,43 +180,28 @@ void main() {
       expect(recorder.elapsed, const Duration(minutes: 12));
     });
 
-    test('keeps running through a pause — a race clock does not stop', () async {
+    test('stops when the runner presses Pause, and only then', () async {
+      // A pause is a deliberate act: pressing it means "this next bit is not
+      // my run", and the clock owes them that. The counterpart — that merely
+      // stopping running does NOT stop it — is pinned in the standing-still
+      // group below.
       await recorder.start();
       clock = clock.add(const Duration(minutes: 5));
       await recorder.pause();
 
       clock = clock.add(const Duration(minutes: 30)); // a long coffee
-      // The coffee is part of the run's time. That minute at a crossing counts
-      // towards your 10k whether you like it or not.
-      expect(recorder.elapsed, const Duration(minutes: 35));
+      expect(recorder.elapsed, const Duration(minutes: 5));
 
       await recorder.resume();
       clock = clock.add(const Duration(minutes: 2));
-      expect(recorder.elapsed, const Duration(minutes: 37));
+      expect(recorder.elapsed, const Duration(minutes: 7));
     });
 
-    test('movingTime is the figure that legitimately excludes stops', () async {
-      await recorder.start();
-      clock = clock.add(const Duration(minutes: 5));
-      await recorder.pause();
-      clock = clock.add(const Duration(minutes: 30));
-      expect(recorder.movingTime, const Duration(minutes: 5));
-
-      await recorder.resume();
-      clock = clock.add(const Duration(minutes: 2));
-      expect(recorder.movingTime, const Duration(minutes: 7));
-      // ...and the two disagree by exactly the pause, which is the point.
-      expect(
-        recorder.elapsed - recorder.movingTime,
-        const Duration(minutes: 30),
-      );
-    });
-
-    test('a stopped run stores WALL time, pauses included', () async {
-      // This briefly stored moving time, which also made it the divisor for
-      // avgPaceSPerKm — so every paced run recorded as faster than it was run,
-      // and the wall-clock figure was destroyed rather than moved (there is
-      // one duration column).
+    test('a stopped run stores exactly what the screen showed', () async {
+      // Storing anything else means the summary disagrees with the run, which
+      // it did in both directions within a day: first wall time against a
+      // moving-time display, then the reverse. durationS is also the divisor
+      // for avgPaceSPerKm, so a mismatch shows up as a pace nobody ran.
       await recorder.start();
       source.emit(_fix(0, 0));
       await pumpEventQueue();
@@ -228,17 +213,16 @@ void main() {
       clock = clock.add(const Duration(minutes: 5));
       await recorder.stop();
 
-      expect((await db.runById('run-1'))!.durationS, 35 * 60);
+      expect((await db.runById('run-1'))!.durationS, 15 * 60);
     });
 
-    test('both clocks stop at the line, not when the summary closes', () async {
+    test('the clock stops at the line, not when the summary closes', () async {
       await recorder.start();
       clock = clock.add(const Duration(minutes: 20));
       await recorder.stop();
 
       clock = clock.add(const Duration(hours: 2)); // summary left open
       expect(recorder.elapsed, const Duration(minutes: 20));
-      expect(recorder.movingTime, const Duration(minutes: 20));
     });
   });
 

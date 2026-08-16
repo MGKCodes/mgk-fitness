@@ -168,34 +168,33 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   bool get autoPaused => false;
 
-  /// Wall-clock time since the run began. **It does not stop.**
+  /// Time on the run's clock: wall time since the start, minus anything the
+  /// runner explicitly paused.
   ///
-  /// A race clock runs from gun to line. Standing at a crossing is part of your
-  /// 10k whether you like it or not, and a runner training against a race time
-  /// needs the number that is comparable to one. So this counts everything,
-  /// including a manual pause.
+  /// **Only the runner stops this clock, and only by pressing Pause.** That is
+  /// the whole rule, and both halves matter:
   ///
-  /// It briefly did not: the pause fix made this moving time, which also became
-  /// the stored `durationS` and therefore the divisor for average pace — so
-  /// every paced run recorded as faster than it was run. See [movingTime] for
-  /// the figure that legitimately excludes stops.
+  ///  * A pause is a deliberate act. Someone who presses it means "this next
+  ///    bit is not my run", and the clock owes them that.
+  ///  * Merely stopping running is not a pause. Waiting at a crossing is part
+  ///    of your 10k the way it is part of a race — the gun clock does not care
+  ///    that you stopped. That is why autopause is unwired (see [autoPaused]):
+  ///    a heuristic that stops the clock is a heuristic quietly editing
+  ///    somebody's time.
+  ///
+  /// Derived from the wall clock rather than accumulated from a ticker: iOS
+  /// throttles and then suspends timers behind a locked screen, so a run with
+  /// the screen locked came back having lost the minutes it was away.
+  ///
+  /// This is also exactly what [stop] stores, so the summary can never
+  /// contradict the number the runner watched.
   @override
   Duration get elapsed {
     final started = _startedAt;
     if (started == null) return Duration.zero;
-    final total = (_endedAt ?? _now()).difference(started);
-    return total.isNegative ? Duration.zero : total;
-  }
-
-  /// [elapsed] minus everything spent paused — the secondary figure, kept
-  /// because it is genuinely useful and not because it is the run's time.
-  ///
-  /// Not persisted: `run.runs` has one duration column and it holds the wall
-  /// clock. Adding a column for this is a schema change, and worth making only
-  /// once a surface actually shows it.
-  Duration get movingTime {
-    final started = _startedAt;
-    if (started == null) return Duration.zero;
+    // Frozen at the moment the clock stopped — a pause now, or the finish —
+    // and otherwise running to now. Past pauses come off either way, so a
+    // pause is never charged twice.
     final until = _notCountingSince ?? _endedAt ?? _now();
     final total = until.difference(started) - _pausedTotal;
     return total.isNegative ? Duration.zero : total;
@@ -408,9 +407,11 @@ class RecordingRunRecorder implements RunRecorder {
     );
     final ended = _now();
     _endedAt = ended;
-    // Wall clock, gun to line — the same number the screen showed, and the
-    // only one comparable to a race result. Average pace divides by it.
-    final durationS = ended.difference(_startedAt!).inSeconds;
+    // The same number the screen showed. Storing anything else means the
+    // summary disagrees with the run — which it did, in both directions,
+    // within a day: first wall time against a moving-time display, then
+    // moving time against a wall-clock one.
+    final durationS = elapsed.inSeconds;
     final avgPace = distanceM > 0 ? durationS / (distanceM / 1000) : null;
     await _db.finalizeRun(
       runId: runId,

@@ -79,17 +79,17 @@ abstract interface class RunRecorder {
   /// which of the two kinds of paused it is.
   bool get autoPaused;
 
-  /// Wall-clock time since the run began. **It does not stop for a pause.**
+  /// Time on the run's clock: wall time since the start, minus anything the
+  /// runner explicitly paused.
   ///
-  /// A race clock runs from gun to line, and a runner training against a race
-  /// time needs a number comparable to one — the minute spent at a crossing is
-  /// part of your 10k whether you like it or not. Implementations that
-  /// subtract stops here make every pace they store faster than it was run.
+  /// **Only the runner stops this clock, and only by pressing Pause.** A pause
+  /// is a deliberate act and the clock owes them it. Merely stopping running is
+  /// not one — waiting at a crossing is part of your 10k the way it is part of
+  /// a race — so no heuristic may stop this. See [autoPaused].
   ///
-  /// Derived from the wall clock rather than accumulated from a ticker, for a
-  /// separate reason: a timer is throttled and then suspended when iOS
-  /// backgrounds the app, so a run with the screen locked came back having
-  /// "lost" the minutes it was away.
+  /// Derived from the wall clock rather than accumulated from a ticker: a timer
+  /// is throttled and then suspended when iOS backgrounds the app, so a run
+  /// with the screen locked came back having "lost" the minutes it was away.
   Duration get elapsed;
 
   Future<void> start();
