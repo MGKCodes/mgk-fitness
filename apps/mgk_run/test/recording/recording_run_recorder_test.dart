@@ -180,20 +180,43 @@ void main() {
       expect(recorder.elapsed, const Duration(minutes: 12));
     });
 
-    test('freezes while paused and does not count the pause', () async {
+    test('keeps running through a pause — a race clock does not stop', () async {
       await recorder.start();
       clock = clock.add(const Duration(minutes: 5));
       await recorder.pause();
 
       clock = clock.add(const Duration(minutes: 30)); // a long coffee
-      expect(recorder.elapsed, const Duration(minutes: 5));
+      // The coffee is part of the run's time. That minute at a crossing counts
+      // towards your 10k whether you like it or not.
+      expect(recorder.elapsed, const Duration(minutes: 35));
 
       await recorder.resume();
       clock = clock.add(const Duration(minutes: 2));
-      expect(recorder.elapsed, const Duration(minutes: 7));
+      expect(recorder.elapsed, const Duration(minutes: 37));
     });
 
-    test('a stopped run stores moving time, not wall time', () async {
+    test('movingTime is the figure that legitimately excludes stops', () async {
+      await recorder.start();
+      clock = clock.add(const Duration(minutes: 5));
+      await recorder.pause();
+      clock = clock.add(const Duration(minutes: 30));
+      expect(recorder.movingTime, const Duration(minutes: 5));
+
+      await recorder.resume();
+      clock = clock.add(const Duration(minutes: 2));
+      expect(recorder.movingTime, const Duration(minutes: 7));
+      // ...and the two disagree by exactly the pause, which is the point.
+      expect(
+        recorder.elapsed - recorder.movingTime,
+        const Duration(minutes: 30),
+      );
+    });
+
+    test('a stopped run stores WALL time, pauses included', () async {
+      // This briefly stored moving time, which also made it the divisor for
+      // avgPaceSPerKm — so every paced run recorded as faster than it was run,
+      // and the wall-clock figure was destroyed rather than moved (there is
+      // one duration column).
       await recorder.start();
       source.emit(_fix(0, 0));
       await pumpEventQueue();
@@ -205,7 +228,17 @@ void main() {
       clock = clock.add(const Duration(minutes: 5));
       await recorder.stop();
 
-      expect((await db.runById('run-1'))!.durationS, 15 * 60);
+      expect((await db.runById('run-1'))!.durationS, 35 * 60);
+    });
+
+    test('both clocks stop at the line, not when the summary closes', () async {
+      await recorder.start();
+      clock = clock.add(const Duration(minutes: 20));
+      await recorder.stop();
+
+      clock = clock.add(const Duration(hours: 2)); // summary left open
+      expect(recorder.elapsed, const Duration(minutes: 20));
+      expect(recorder.movingTime, const Duration(minutes: 20));
     });
   });
 

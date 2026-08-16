@@ -94,6 +94,10 @@ class RecordingRunRecorder implements RunRecorder {
   Duration _pausedTotal = Duration.zero;
   DateTime? _notCountingSince;
 
+  /// Set once the run is finished, so both clocks stop at the line rather than
+  /// running on while the summary is open.
+  DateTime? _endedAt;
+
   StreamSubscription<RunPoint>? _sub;
 
   @override
@@ -164,14 +168,35 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   bool get autoPaused => false;
 
+  /// Wall-clock time since the run began. **It does not stop.**
+  ///
+  /// A race clock runs from gun to line. Standing at a crossing is part of your
+  /// 10k whether you like it or not, and a runner training against a race time
+  /// needs the number that is comparable to one. So this counts everything,
+  /// including a manual pause.
+  ///
+  /// It briefly did not: the pause fix made this moving time, which also became
+  /// the stored `durationS` and therefore the divisor for average pace — so
+  /// every paced run recorded as faster than it was run. See [movingTime] for
+  /// the figure that legitimately excludes stops.
   @override
   Duration get elapsed {
     final started = _startedAt;
     if (started == null) return Duration.zero;
-    // While stopped the clock is frozen at the moment it stopped; otherwise it
-    // runs to now. Either way the total of past stops comes off, so this is
-    // moving time and never counts a stop twice.
-    final until = _notCountingSince ?? _now();
+    final total = (_endedAt ?? _now()).difference(started);
+    return total.isNegative ? Duration.zero : total;
+  }
+
+  /// [elapsed] minus everything spent paused — the secondary figure, kept
+  /// because it is genuinely useful and not because it is the run's time.
+  ///
+  /// Not persisted: `run.runs` has one duration column and it holds the wall
+  /// clock. Adding a column for this is a schema change, and worth making only
+  /// once a surface actually shows it.
+  Duration get movingTime {
+    final started = _startedAt;
+    if (started == null) return Duration.zero;
+    final until = _notCountingSince ?? _endedAt ?? _now();
     final total = until.difference(started) - _pausedTotal;
     return total.isNegative ? Duration.zero : total;
   }
@@ -243,6 +268,7 @@ class RecordingRunRecorder implements RunRecorder {
     _distanceM = 0;
     _pausedTotal = Duration.zero;
     _notCountingSince = null;
+    _endedAt = null;
     _setProblem(null);
 
     await _db.upsertRun(
@@ -381,9 +407,10 @@ class RecordingRunRecorder implements RunRecorder {
       maxAccuracyM: _distanceAccuracyM,
     );
     final ended = _now();
-    // Moving time, not wall time: [elapsed] already subtracts every pause, and
-    // the stored duration has to agree with the number the screen showed.
-    final durationS = elapsed.inSeconds;
+    _endedAt = ended;
+    // Wall clock, gun to line — the same number the screen showed, and the
+    // only one comparable to a race result. Average pace divides by it.
+    final durationS = ended.difference(_startedAt!).inSeconds;
     final avgPace = distanceM > 0 ? durationS / (distanceM / 1000) : null;
     await _db.finalizeRun(
       runId: runId,

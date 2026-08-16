@@ -49,11 +49,10 @@ class FakeRunRecorder implements RunRecorder {
   Timer? _acquireTimer;
   int _index = 0;
 
-  /// The fake keeps a wall clock like the real recorder, so a paused preview
-  /// freezes and a backgrounded one catches up.
+  /// The fake keeps a wall clock like the real recorder, so a backgrounded
+  /// preview catches up. It does not track paused time: the clock does not stop
+  /// for a pause, and the real recorder's `movingTime` is not on the interface.
   DateTime? _startedAt;
-  Duration _pausedTotal = Duration.zero;
-  DateTime? _pausedAt;
 
   @override
   Stream<RunPoint> get points => _points.stream;
@@ -78,12 +77,12 @@ class FakeRunRecorder implements RunRecorder {
   @override
   bool get autoPaused => false;
 
+  /// Wall clock, matching the real recorder: it does not stop for a pause.
   @override
   Duration get elapsed {
     final started = _startedAt;
     if (started == null) return Duration.zero;
-    final until = _pausedAt ?? _now();
-    final total = until.difference(started) - _pausedTotal;
+    final total = _now().difference(started);
     return total.isNegative ? Duration.zero : total;
   }
 
@@ -96,8 +95,6 @@ class FakeRunRecorder implements RunRecorder {
   Future<void> start() async {
     if (_status == RecorderStatus.recording) return;
     _startedAt = _now();
-    _pausedTotal = Duration.zero;
-    _pausedAt = null;
 
     if (failsWith != null) {
       _problem = failsWith;
@@ -126,18 +123,12 @@ class FakeRunRecorder implements RunRecorder {
   @override
   Future<void> pause() async {
     if (_status != RecorderStatus.recording) return;
-    _pausedAt = _now();
     _setStatus(RecorderStatus.paused);
   }
 
   @override
   Future<void> resume() async {
     if (_status != RecorderStatus.paused) return;
-    final pausedAt = _pausedAt;
-    if (pausedAt != null) {
-      _pausedTotal += _now().difference(pausedAt);
-      _pausedAt = null;
-    }
     _setStatus(RecorderStatus.recording);
   }
 

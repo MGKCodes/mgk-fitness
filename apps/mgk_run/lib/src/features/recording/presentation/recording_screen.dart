@@ -112,10 +112,12 @@ class _RecordingScreenState extends State<RecordingScreen> {
   /// behind a locked screen, and a ticker that accumulated its own total came
   /// back from a backgrounded run minutes short with a pace to match.
   ///
-  /// Paused, idle and stopped all freeze [RunRecorder.elapsed], so a timer in
-  /// those states would repaint an unchanging number once a second forever.
+  /// Ticks while the run is live, **including while paused** — the clock keeps
+  /// running through a pause now, so stopping the repaint there would show a
+  /// frozen number that is quietly wrong rather than merely still.
   void _syncTicker() {
-    final shouldTick = _status == RecorderStatus.recording;
+    final shouldTick =
+        _status == RecorderStatus.recording || _status == RecorderStatus.paused;
     if (shouldTick) {
       _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() {});
