@@ -2,11 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/recording/domain/route_metrics.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 
-RunPoint _p(double lat, double lng, {double accuracy = 5}) => RunPoint(
+final _start = DateTime(2026, 1, 1, 8);
+
+RunPoint _p(
+  double lat,
+  double lng, {
+  double accuracy = 5,
+  Duration at = Duration.zero,
+}) => RunPoint(
   latitude: lat,
   longitude: lng,
   accuracyMeters: accuracy,
-  timestamp: DateTime(2026, 1, 1),
+  timestamp: _start.add(at),
 );
 
 void main() {
@@ -89,6 +96,70 @@ void main() {
         _p(0, 0.002), // ~111 m of movement
       ];
       expect(processedDistanceMeters(points), closeTo(222.39, 1));
+    });
+
+    test('does not bridge a gap in the trace', () {
+      // A pause, or a lost signal: the recorder stopped persisting, so the
+      // trace has a hole. The straight line across it is a line nobody ran.
+      final points = [
+        _p(0, 0, at: Duration.zero),
+        _p(0, 0.001, at: const Duration(seconds: 30)),
+        // ...ten minutes and a kilometre later.
+        _p(0, 0.01, at: const Duration(minutes: 10)),
+        _p(0, 0.011, at: const Duration(minutes: 10, seconds: 30)),
+      ];
+      // Two segments of ~111 m, and nothing for the ~1 km hole.
+      expect(processedDistanceMeters(points), closeTo(222.39, 1));
+    });
+
+    test('a normal fix interval is never treated as a gap', () {
+      final points = <RunPoint>[
+        for (var i = 0; i < 10; i++)
+          _p(0, i * 0.001, at: Duration(seconds: i * 3)),
+      ];
+      expect(processedDistanceMeters(points), closeTo(111.19 * 9, 2));
+    });
+  });
+
+  group('traceSegments', () {
+    test('a clean trace is one segment', () {
+      final points = [
+        _p(0, 0),
+        _p(0, 0.001, at: const Duration(seconds: 3)),
+        _p(0, 0.002, at: const Duration(seconds: 6)),
+      ];
+      final segments = traceSegments(points);
+      expect(segments, hasLength(1));
+      expect(segments.single, hasLength(3));
+    });
+
+    test('splits where recording stopped, so the map does not draw across', () {
+      final points = [
+        _p(0, 0),
+        _p(0, 0.001, at: const Duration(seconds: 3)),
+        _p(0, 0.01, at: const Duration(minutes: 10)),
+      ];
+      final segments = traceSegments(points);
+      expect(segments, hasLength(2));
+      expect(segments[0], hasLength(2));
+      expect(segments[1], hasLength(1));
+    });
+
+    test('drops poor fixes before deciding where the breaks are', () {
+      final points = [
+        _p(0, 0),
+        _p(0, 0.5, accuracy: 100, at: const Duration(seconds: 3)),
+        _p(0, 0.001, at: const Duration(seconds: 6)),
+      ];
+      // The wild fix never existed, so this is one continuous segment of two.
+      final segments = traceSegments(points);
+      expect(segments, hasLength(1));
+      expect(segments.single, hasLength(2));
+    });
+
+    test('is empty for a trace with nothing usable in it', () {
+      expect(traceSegments(const <RunPoint>[]), isEmpty);
+      expect(traceSegments([_p(0, 0, accuracy: 100)]), isEmpty);
     });
   });
 }

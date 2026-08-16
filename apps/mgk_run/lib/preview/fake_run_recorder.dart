@@ -11,19 +11,49 @@ class FakeRunRecorder implements RunRecorder {
   FakeRunRecorder({
     List<RunPoint>? trace,
     this.interval = const Duration(milliseconds: 500),
-  }) : _trace = trace ?? demoRunTrace();
+    this.failsWith,
+    this.acquireAfter = Duration.zero,
+    DateTime Function()? now,
+  }) : _trace = trace ?? demoRunTrace(),
+       _now = now ?? DateTime.now;
 
   final List<RunPoint> _trace;
   final Duration interval;
+
+  /// Injectable for the same reason the real recorder's is: elapsed time now
+  /// comes from the wall clock, and `tester.pump` advances Flutter's timers
+  /// without touching `DateTime.now`. A widget test cannot watch the clock move
+  /// unless it owns the clock.
+  final DateTime Function() _now;
+
+  /// Starts in a failed state, so the harness can render what a refused
+  /// permission or a switched-off location service actually looks like. Those
+  /// states shipped unlooked-at once already.
+  final RecorderProblem? failsWith;
+
+  /// How long to sit fixless before the trace begins — the "acquiring GPS"
+  /// state every real run opens with and no screenshot had ever shown.
+  final Duration acquireAfter;
 
   final StreamController<RunPoint> _points =
       StreamController<RunPoint>.broadcast();
   final StreamController<RecorderStatus> _statuses =
       StreamController<RecorderStatus>.broadcast();
+  final StreamController<RecorderProblem?> _problems =
+      StreamController<RecorderProblem?>.broadcast();
 
   RecorderStatus _status = RecorderStatus.idle;
+  RecorderProblem? _problem;
+  RunPoint? _lastFix;
   Timer? _timer;
+  Timer? _acquireTimer;
   int _index = 0;
+
+  /// The fake keeps a wall clock like the real recorder, so a paused preview
+  /// freezes and a backgrounded one catches up.
+  DateTime? _startedAt;
+  Duration _pausedTotal = Duration.zero;
+  DateTime? _pausedAt;
 
   @override
   Stream<RunPoint> get points => _points.stream;
@@ -34,6 +64,29 @@ class FakeRunRecorder implements RunRecorder {
   @override
   RecorderStatus get status => _status;
 
+  @override
+  RecorderProblem? get problem => _problem;
+
+  @override
+  Stream<RecorderProblem?> get problems => _problems.stream;
+
+  @override
+  RunPoint? get lastFix => _lastFix;
+
+  /// The canned trace never stops moving, so the preview never auto-pauses.
+  /// A harness screen for that state would need a trace with a stop in it.
+  @override
+  bool get autoPaused => false;
+
+  @override
+  Duration get elapsed {
+    final started = _startedAt;
+    if (started == null) return Duration.zero;
+    final until = _pausedAt ?? _now();
+    final total = until.difference(started) - _pausedTotal;
+    return total.isNegative ? Duration.zero : total;
+  }
+
   void _setStatus(RecorderStatus next) {
     _status = next;
     _statuses.add(next);
@@ -42,39 +95,71 @@ class FakeRunRecorder implements RunRecorder {
   @override
   Future<void> start() async {
     if (_status == RecorderStatus.recording) return;
+    _startedAt = _now();
+    _pausedTotal = Duration.zero;
+    _pausedAt = null;
+
+    if (failsWith != null) {
+      _problem = failsWith;
+      _problems.add(failsWith);
+      _setStatus(RecorderStatus.idle);
+      return;
+    }
+
     _setStatus(RecorderStatus.recording);
+    _acquireTimer = Timer(acquireAfter, _beginReplay);
+  }
+
+  void _beginReplay() {
     _timer = Timer.periodic(interval, (_) {
       if (_status != RecorderStatus.recording) return;
       if (_index >= _trace.length) {
         _timer?.cancel();
         return;
       }
-      _points.add(_trace[_index++]);
+      final fix = _trace[_index++];
+      _lastFix = fix;
+      _points.add(fix);
     });
   }
 
   @override
   Future<void> pause() async {
-    if (_status == RecorderStatus.recording) _setStatus(RecorderStatus.paused);
+    if (_status != RecorderStatus.recording) return;
+    _pausedAt = _now();
+    _setStatus(RecorderStatus.paused);
   }
 
   @override
   Future<void> resume() async {
-    if (_status == RecorderStatus.paused) _setStatus(RecorderStatus.recording);
+    if (_status != RecorderStatus.paused) return;
+    final pausedAt = _pausedAt;
+    if (pausedAt != null) {
+      _pausedTotal += _now().difference(pausedAt);
+      _pausedAt = null;
+    }
+    _setStatus(RecorderStatus.recording);
   }
 
   @override
   Future<void> stop() async {
-    _timer?.cancel();
-    _timer = null;
+    _cancelTimers();
     _setStatus(RecorderStatus.stopped);
   }
 
   @override
   Future<void> discard() async {
+    _cancelTimers();
+    _setStatus(RecorderStatus.stopped);
+  }
+
+  void _cancelTimers() {
     _timer?.cancel();
     _timer = null;
-    _setStatus(RecorderStatus.stopped);
+    // The acquire timer outlives a stop that happens during the fixless
+    // opening, and a pending timer is what `testWidgets` fails a teardown on.
+    _acquireTimer?.cancel();
+    _acquireTimer = null;
   }
 }
 

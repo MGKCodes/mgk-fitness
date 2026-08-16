@@ -7,6 +7,42 @@ import 'run_point.dart';
 /// Tunable; see docs/architecture/run-recording.md ("Accuracy filtering").
 const double kMaxHorizontalAccuracyMeters = 20;
 
+/// Accuracy good enough to **record and draw**, as opposed to good enough to
+/// measure with ([kMaxHorizontalAccuracyMeters]).
+///
+/// These have to be two numbers, and conflating them is what made the first
+/// device test look like a dead app. CoreLocation's opening fixes are routinely
+/// 65 m or worse — they come from cell and wifi while the GPS chip is still
+/// warming — and settle to 5–10 m only after ten to thirty seconds outdoors.
+/// Under tree cover or between tall buildings, 20–35 m is simply the accuracy
+/// on offer for the whole run.
+///
+/// Gating recording at 20 m therefore threw away *every* fix in exactly the
+/// conditions people run in, so nothing was persisted, nothing was drawn, and
+/// the screen sat at 0.00 km with no way to tell that from a broken GPS.
+///
+/// The looser gate keeps the trace, the map and the recovery marker alive; the
+/// strict one still guards the number, which is the thing that has to be right.
+/// A fix worse than this is genuinely useless — a 50 m error is most of a
+/// street — so it is still dropped.
+const double kMaxRecordableAccuracyMeters = 50;
+
+/// Longer than this between consecutive fixes and the trace is treated as
+/// **broken** rather than continuous.
+///
+/// Two things produce a gap: the runner paused (the recorder stops persisting
+/// while paused, so the trace simply has a hole), or the signal died in a
+/// tunnel or an underpass. Both look identical in the stored points, and in
+/// both cases the straight line across the hole is a line nobody ran.
+///
+/// So distance does not accumulate across a gap and the map does not draw
+/// across one. That under-counts a tunnel, which is the honest direction to be
+/// wrong in: bridging instead would silently credit a runner for the taxi home.
+///
+/// Thirty seconds is far outside normal delivery — iOS supplies roughly a fix a
+/// second with `distanceFilter: 0` — so this never fires on a healthy trace.
+const Duration kMaxTraceGap = Duration(seconds: 30);
+
 /// Great-circle distance in meters between two lat/lng pairs (haversine on a
 /// spherical earth). Accurate to well within GPS noise at running distances.
 double haversineMeters(double lat1, double lng1, double lat2, double lng2) {
@@ -52,36 +88,82 @@ double routeDistanceMeters(
   return total;
 }
 
-/// Distance in meters with poor fixes dropped **and** sub-[minSegmentMeters]
-/// hops ignored, so GPS jitter while stationary (a runner stopped at a light)
-/// does not inflate the total.
+/// [points], accuracy-filtered and split into continuously-recorded runs of
+/// fixes — one segment per unbroken stretch, broken wherever more than [maxGap]
+/// passed between consecutive fixes (see [kMaxTraceGap]).
 ///
-/// The anchor point only advances once real movement is seen, so a burst of
-/// tiny jitter hops collapses to nothing while a genuine stride still counts.
-/// This is the first-pass smoother; true speed-windowed autopause is a later
-/// refinement (see docs/architecture/run-recording.md).
+/// One rule, two consumers: distance must not accumulate across a gap and the
+/// map must not draw across one. Deriving both from this function is what keeps
+/// them from disagreeing — a pause that the total ignored but the polyline drew
+/// straight through would be two answers to one question.
+///
+/// Segments of a single point are kept: they carry no distance, but they are a
+/// real position and the map still marks them.
+List<List<RunPoint>> traceSegments(
+  Iterable<RunPoint> points, {
+  double maxAccuracyM = kMaxHorizontalAccuracyMeters,
+  Duration maxGap = kMaxTraceGap,
+}) {
+  final segments = <List<RunPoint>>[];
+  var current = <RunPoint>[];
+  RunPoint? previous;
+
+  for (final point in points) {
+    if (point.accuracyMeters > maxAccuracyM) continue;
+    if (previous != null &&
+        point.timestamp.difference(previous.timestamp).abs() > maxGap) {
+      segments.add(current);
+      current = <RunPoint>[];
+    }
+    current.add(point);
+    previous = point;
+  }
+
+  if (current.isNotEmpty) segments.add(current);
+  return segments;
+}
+
+/// Distance in meters with poor fixes dropped, sub-[minSegmentMeters] hops
+/// ignored, and gaps in the trace not bridged.
+///
+/// Jitter first: GPS drifts by metres while a runner stands at a light, so the
+/// anchor point only advances once real movement is seen and a burst of tiny
+/// hops collapses to nothing while a genuine stride still counts.
+///
+/// Gaps second: each segment from [traceSegments] is measured on its own and
+/// the holes between them contribute nothing, so a paused run no longer gains
+/// the whole displacement of the pause on the first fix after resuming.
+///
+/// True speed-windowed autopause is still a later refinement (see
+/// docs/architecture/run-recording.md).
 double processedDistanceMeters(
   Iterable<RunPoint> points, {
   double maxAccuracyM = kMaxHorizontalAccuracyMeters,
   double minSegmentMeters = 1.0,
+  Duration maxGap = kMaxTraceGap,
 }) {
   var total = 0.0;
-  RunPoint? anchor;
-  for (final point in points) {
-    if (point.accuracyMeters > maxAccuracyM) continue;
-    if (anchor == null) {
-      anchor = point;
-      continue;
-    }
-    final segment = haversineMeters(
-      anchor.latitude,
-      anchor.longitude,
-      point.latitude,
-      point.longitude,
-    );
-    if (segment >= minSegmentMeters) {
-      total += segment;
-      anchor = point; // only advance on real movement
+  for (final segment in traceSegments(
+    points,
+    maxAccuracyM: maxAccuracyM,
+    maxGap: maxGap,
+  )) {
+    RunPoint? anchor;
+    for (final point in segment) {
+      if (anchor == null) {
+        anchor = point;
+        continue;
+      }
+      final hop = haversineMeters(
+        anchor.latitude,
+        anchor.longitude,
+        point.latitude,
+        point.longitude,
+      );
+      if (hop >= minSegmentMeters) {
+        total += hop;
+        anchor = point; // only advance on real movement
+      }
     }
   }
   return total;

@@ -31,11 +31,21 @@ class GeolocatorLocationSource implements LocationSource {
 
   @override
   Future<void> start() async {
-    await _ensurePermission();
-    _controller ??= StreamController<RunPoint>.broadcast();
-    _subscription = Geolocator.getPositionStream(
-      locationSettings: _settings,
-    ).listen((position) => _controller?.add(_toRunPoint(position)));
+    await _ensureAvailable();
+    final controller = _controller ??= StreamController<RunPoint>.broadcast();
+    _subscription = Geolocator.getPositionStream(locationSettings: _settings)
+        .listen(
+          (position) => controller.add(_toRunPoint(position)),
+          // Without this the platform's failure is an unhandled async error:
+          // the stream stops, the screen keeps pulsing "Recording", and the
+          // run quietly stops existing. Forwarding it means the recorder finds
+          // out and can say so.
+          onError: (Object error, StackTrace stack) => controller.addError(
+            LocationUnavailable(_reasonFor(error), error),
+            stack,
+          ),
+          cancelOnError: false,
+        );
   }
 
   @override
@@ -46,16 +56,41 @@ class GeolocatorLocationSource implements LocationSource {
     _controller = null;
   }
 
-  Future<void> _ensurePermission() async {
+  /// Both preconditions, in the order the runner would fix them.
+  ///
+  /// The services check comes first and did not exist before: with the system
+  /// location switch off, `requestPermission` can return a perfectly granted
+  /// permission and the position stream then delivers nothing at all. That is a
+  /// working app with no fixes — the hardest state to diagnose from the screen.
+  Future<void> _ensureAvailable() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.servicesDisabled,
+      );
+    }
+
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      throw const LocationPermissionDeniedException();
+    if (permission == LocationPermission.deniedForever) {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.permissionDeniedForever,
+      );
+    }
+    if (permission == LocationPermission.denied) {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.permissionDenied,
+      );
     }
   }
+
+  LocationUnavailableReason _reasonFor(Object error) => switch (error) {
+    LocationServiceDisabledException() =>
+      LocationUnavailableReason.servicesDisabled,
+    PermissionDeniedException() => LocationUnavailableReason.permissionDenied,
+    _ => LocationUnavailableReason.failed,
+  };
 
   RunPoint _toRunPoint(Position position) => RunPoint(
     latitude: position.latitude,
@@ -76,15 +111,3 @@ LocationSettings _iosRunSettings() => AppleSettings(
   allowBackgroundLocationUpdates: true,
   showBackgroundLocationIndicator: true,
 );
-
-/// Thrown by [GeolocatorLocationSource.start] when location permission is not
-/// granted. A denied read is designed for (see the health-data rules), not
-/// surfaced as a crash.
-class LocationPermissionDeniedException implements Exception {
-  const LocationPermissionDeniedException();
-
-  @override
-  String toString() =>
-      'LocationPermissionDeniedException: '
-      'location permission was not granted';
-}
