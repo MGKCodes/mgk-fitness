@@ -91,6 +91,32 @@ came from each screen re-deriving this README's prose.
 - **`AppCard`** — `surface` fill, `AppRadius.card`. The main structural device.
 - **`GlassSurface`** — frosted panel. See the rule below before using it.
 - **`PhotoBackdrop`** — the signature photo-and-scrim treatment.
+- **`HeroNumeral`** — the README's own hero numeral, finally built: label, a
+  huge thin figure and the unit small beside it. Value and unit are separate
+  arguments, because one formatted string sets `km` at 112pt too.
+
+## Motion components
+
+Tokens alone were not enough: `AppMotion` and `Entrance` existed for months
+while onboarding, auth and the in-run screen used none of it, and the pieces
+that *were* animated had each hand-rolled their own. These are the vocabulary.
+
+- **`Entrance`** — fade and lift, once, on first build. The staggering unit.
+- **`CountUp`** — a figure counting to its value, then tweening between values.
+- **`Pulse`** — the suite's one "this is live" signal. Stops when inactive;
+  a controller left repeating never settles, burns a ticker and hangs
+  `pumpAndSettle`.
+- **`PressScale`** — a control acknowledging the finger. Wraps anything,
+  including widgets with their own gesture handling. Already inside
+  `PrimaryButton` and `DestructiveButton`, so most screens get it free.
+- **`TypingIndicator`** — three dots, for a **scripted** beat. Distinct from
+  `ThinkingIndicator`, which says "Thinking…" and is for a real model call.
+  Dots for a beat, words for a wait — using words for a scripted pause would be
+  the app claiming to think when it is not.
+- **`SequencedReveal`** — a conversation arriving a line at a time. Only new
+  children animate, so a growing transcript does not twitch on every keystroke.
+
+All of them self-disable under `MediaQuery.disableAnimations`.
 
 **Today and focus are different axes.** Today is a **fill** — solid silver with
 inverted ink, and it stays the loudest thing on any surface. A focused item (the

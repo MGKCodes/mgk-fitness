@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/press_scale.dart';
 import '../theme/app_colors.dart';
 
 /// The suite's silver primary button — full-width, with a busy state.
@@ -24,20 +25,27 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: busy ? null : onPressed,
-        child: busy
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.onPrimary,
-                ),
-              )
-            : Text(label),
+    return PressScale(
+      // The whole suite's primary action, so the acknowledgement lives here
+      // rather than at forty call sites. Disabled while busy: a control that
+      // springs under the finger but does nothing is worse than one that
+      // sits still.
+      enabled: !busy && onPressed != null,
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: busy ? null : onPressed,
+          child: busy
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.onPrimary,
+                  ),
+                )
+              : Text(label),
+        ),
       ),
     );
   }
@@ -80,23 +88,26 @@ class DestructiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: busy ? null : onPressed,
-        // Border and metrics come from the theme, so this differs from a plain
-        // outlined button in exactly one respect: the colour of its label.
-        style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-        child: busy
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.danger,
-                ),
-              )
-            : Text(label),
+    return PressScale(
+      enabled: !busy && onPressed != null,
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: busy ? null : onPressed,
+          // Border and metrics come from the theme, so this differs from a
+          // plain outlined button in exactly one respect: its label colour.
+          style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+          child: busy
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.danger,
+                  ),
+                )
+              : Text(label),
+        ),
       ),
     );
   }
