@@ -5,8 +5,8 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart' show CoachLetter;
-import '../domain/run_split.dart';
 import '../domain/run_summary.dart';
+import 'recording_readout.dart';
 import 'route_map.dart';
 
 /// Post-run summary: the route, the headline distance, the stats that exist,
@@ -127,7 +127,11 @@ class RunSummaryScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _Splits(splits: summary.splits, unit: unit),
+                  SplitList(
+                    splits: summary.splits,
+                    unit: unit,
+                    showHeartRate: true,
+                  ),
                 ],
                 // Only when there is somewhere to go. A summary opened from the
                 // log is dismissed with back, so its "Done" had nothing to do
@@ -265,79 +269,6 @@ class _RunNoteCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Splits extends StatelessWidget {
-  const _Splits({required this.splits, required this.unit});
-
-  final List<RunSplit> splits;
-  final UnitSystem unit;
-
-  double _paceSeconds(RunSplit split) =>
-      split.duration.inSeconds / (split.distanceMeters / 1000);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final slowest = splits
-        .map(_paceSeconds)
-        .fold<double>(1, (a, b) => a > b ? a : b);
-    return Column(
-      children: <Widget>[
-        for (final split in splits)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              children: <Widget>[
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    '${split.index}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: (_paceSeconds(split) / slowest).clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: AppColors.elevated,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 68,
-                  child: Text(
-                    Pace.secondsPerKilometer(_paceSeconds(split)).format(unit),
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 52,
-                  child: Text(
-                    split.avgHr != null ? '${split.avgHr}' : '—',
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 }

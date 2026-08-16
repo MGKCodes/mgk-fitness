@@ -4,7 +4,24 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_config.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
+
+/// How much of the basemap shows through, over the app's charcoal base.
+///
+/// The decision this encodes: a coloured or fully-lit basemap does real
+/// wayfinding work — green means park, blue means water — but at full strength
+/// it competes with the route, and the route is what the screen is about.
+/// Blending toward [AppColors.bg] keeps the information and gives back the
+/// contrast, which is the reason a stock style can be used rather than a
+/// bespoke one.
+///
+/// Set by eye against real MapTiler `backdrop-dark` tiles at zoom 14–16, which
+/// is where a run is actually read. Backdrop is already a recessive style — it
+/// is MapTiler's canvas, built to be drawn on — so it needs less taking away
+/// than a fuller one would: `dataviz-v4-dark` wants nearer 0.72 for the same
+/// result. Anything below about 0.6 stops being recessive and starts being fog.
+const double kBasemapOpacity = 0.85;
 
 /// Draws a run's route as a silver polyline over a dark basemap — used both for
 /// the live in-run map and the post-run route view.
@@ -15,7 +32,9 @@ import '../domain/run_point.dart';
 /// one.
 ///
 /// The basemap comes from [AppConfig.mapTileUrlTemplate] — the provider named in
-/// the privacy policy, with a bundle-restricted key supplied at build time. A
+/// the privacy policy, with a restricted key supplied at build time. (MapTiler
+/// restricts on a User-Agent substring rather than a bundle id, and the one it
+/// matches is [TileLayer.userAgentPackageName] below.) A
 /// build with none configured draws the route on the charcoal base alone, which
 /// is deliberate: shipping a hard-coded provider would mean calling a host the
 /// policy doesn't declare. Tiles load over the network, so widget tests and
@@ -27,23 +46,55 @@ class RouteMap extends StatefulWidget {
     this.strokeWidth = 4,
     this.interactive = true,
     this.followZoom = 16,
+    this.basemapOpacity = kBasemapOpacity,
+    this.focus,
+    this.showPosition = false,
     String? tileUrlTemplate,
-  }) : _tileUrlTemplate = tileUrlTemplate;
+    String? attribution,
+  }) : _tileUrlTemplate = tileUrlTemplate,
+       _attribution = attribution;
 
   final List<RunPoint> points;
   final double strokeWidth;
   final bool interactive;
 
+  /// Where to look before there is a route — the device's last known position,
+  /// supplied by the caller.
+  ///
+  /// Without this the map opened on a hard-coded Westminster while a runner in
+  /// Leeds waited for their first fix, which reads as a broken map rather than
+  /// an empty one. Null is handled honestly: see the acquiring state in [build].
+  final LatLng? focus;
+
+  /// Marks the newest fix with a live position dot. On for the in-run map, off
+  /// for a finished trace, where "latest" is just the end.
+  final bool showPosition;
+
   /// Overrides the configured basemap. Exists for the preview harness, which is
   /// a dev tool and may point at a keyless dev basemap; the app leaves it null
   /// and gets [AppConfig.current].
   final String? _tileUrlTemplate;
+  final String? _attribution;
 
   String get tileUrlTemplate =>
       _tileUrlTemplate ?? AppConfig.current.mapTileUrlTemplate;
 
+  String get attribution => _attribution ?? AppConfig.current.mapAttribution;
+
   /// Zoom used when following the live route.
   final double followZoom;
+
+  /// How much of the basemap comes through, over the charcoal base beneath it.
+  ///
+  /// **The route has to stay the loudest thing on the map**, and this is the
+  /// dial that guarantees it without changing provider. A stock dark basemap
+  /// sits somewhere between "readable" and "recessive"; blending it toward
+  /// `AppColors.bg` moves it along that line, so the streets stay legible
+  /// enough to recognise while the silver line stays the brightest mark.
+  ///
+  /// The default was chosen by eye against real tiles, not derived. Change it
+  /// by looking, not by reasoning.
+  final double basemapOpacity;
 
   @override
   State<RouteMap> createState() => _RouteMapState();
@@ -53,21 +104,34 @@ class _RouteMapState extends State<RouteMap> {
   final MapController _controller = MapController();
   int? _lastLength;
 
-  List<LatLng> get _route => <LatLng>[
-    for (final point in widget.points) LatLng(point.latitude, point.longitude),
+  /// The trace, accuracy-filtered and broken wherever recording stopped.
+  ///
+  /// Segments rather than one polyline because a paused run — or a signal lost
+  /// in an underpass — would otherwise be drawn as a straight line through
+  /// whatever lies between, which is a route nobody ran. Same rule the distance
+  /// uses, from the same function, so the picture and the number agree.
+  List<List<LatLng>> get _segments => <List<LatLng>>[
+    for (final segment in traceSegments(widget.points))
+      <LatLng>[
+        for (final point in segment) LatLng(point.latitude, point.longitude),
+      ],
   ];
 
   @override
   Widget build(BuildContext context) {
-    final route = _route;
-    final hasRoute = route.length >= 2;
+    final segments = _segments;
+    final drawn = segments.where((s) => s.length >= 2).toList();
+    final all = <LatLng>[for (final segment in segments) ...segment];
+    final hasRoute = all.isNotEmpty;
+
+    // Nothing to show and nowhere to look. Rendering a map of somewhere the
+    // runner has never been is worse than saying so.
+    if (!hasRoute && widget.focus == null) return const _AcquiringMap();
 
     // First build fits the route (via initialCameraFit below); later growth
     // follows the newest fix without changing zoom.
-    if (_lastLength != null &&
-        route.length != _lastLength &&
-        route.isNotEmpty) {
-      final target = route.last;
+    if (_lastLength != null && all.length != _lastLength && all.isNotEmpty) {
+      final target = all.last;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         try {
@@ -77,58 +141,95 @@ class _RouteMapState extends State<RouteMap> {
         }
       });
     }
-    _lastLength = route.length;
+    _lastLength = all.length;
 
-    return FlutterMap(
-      mapController: _controller,
-      options: MapOptions(
-        initialCameraFit: hasRoute
-            ? CameraFit.bounds(
-                bounds: LatLngBounds.fromPoints(route),
-                padding: const EdgeInsets.all(36),
-              )
-            : null,
-        initialCenter: route.isNotEmpty
-            ? route.first
-            : const LatLng(51.5074, -0.1278),
-        initialZoom: widget.followZoom,
-        // Charcoal under the tiles, so a build with no basemap — or a tile that
-        // hasn't loaded yet — shows the route on the app's own background
-        // rather than flutter_map's default light grey.
-        backgroundColor: AppColors.bg,
-        interactionOptions: InteractionOptions(
-          flags: widget.interactive
-              ? InteractiveFlag.all
-              : InteractiveFlag.none,
-        ),
-      ),
+    return Stack(
+      fit: StackFit.expand,
       children: <Widget>[
-        // Only ever the configured provider — the one the privacy policy names.
-        // With none configured the route draws on the charcoal base alone,
-        // which is a legitimate build state, not an error to surface.
-        if (widget.tileUrlTemplate.isNotEmpty)
-          TileLayer(
-            urlTemplate: widget.tileUrlTemplate,
-            userAgentPackageName: 'com.mgkcodes.fitness.run',
+        FlutterMap(
+          mapController: _controller,
+          options: MapOptions(
+            initialCameraFit: all.length >= 2
+                ? CameraFit.bounds(
+                    bounds: LatLngBounds.fromPoints(all),
+                    padding: const EdgeInsets.all(36),
+                  )
+                : null,
+            initialCenter: hasRoute ? all.first : widget.focus!,
+            initialZoom: widget.followZoom,
+            // Charcoal under the tiles, so a build with no basemap — or a tile
+            // that hasn't loaded yet — shows the route on the app's own
+            // background rather than flutter_map's default light grey.
+            backgroundColor: AppColors.bg,
+            interactionOptions: InteractionOptions(
+              flags: widget.interactive
+                  ? InteractiveFlag.all
+                  : InteractiveFlag.none,
+            ),
           ),
-        if (hasRoute)
-          PolylineLayer<Object>(
-            polylines: <Polyline<Object>>[
-              Polyline<Object>(
-                points: route,
-                color: AppColors.primary,
-                strokeWidth: widget.strokeWidth,
-                borderColor: AppColors.bg,
-                borderStrokeWidth: 1,
+          children: <Widget>[
+            // Only ever the configured provider — the one the privacy policy
+            // names. With none configured the route draws on the charcoal base
+            // alone, which is a legitimate build state, not an error to surface.
+            if (widget.tileUrlTemplate.isNotEmpty)
+              // Blended toward the charcoal base beneath it, so the basemap
+              // reads as context rather than content and the silver route stays
+              // the loudest mark.
+              //
+              // `Opacity` around the whole layer, not `TileDisplay`'s per-tile
+              // alpha, which flutter_map documents as unsafe for exactly this:
+              // a transparent tile lets the *previous* zoom level's tiles show
+              // through the new ones until they finish loading. This map changes
+              // zoom every time the strip is expanded, so that is not
+              // hypothetical. Fading stays on underneath.
+              Opacity(
+                opacity: widget.basemapOpacity,
+                child: TileLayer(
+                  urlTemplate: widget.tileUrlTemplate,
+                  // Also the value MapTiler's key restriction matches on:
+                  // flutter_map sends `User-Agent: flutter_map (<this>)`, and a
+                  // reverse-DNS bundle id is a distinctive enough substring that
+                  // no other app will satisfy it by accident.
+                  userAgentPackageName: 'com.mgkcodes.fitness.run',
+                  // A tile that will not load leaves the charcoal base showing,
+                  // which is the same picture as a build with no basemap. Better
+                  // a quiet hole than flutter_map's default broken-image glyph
+                  // tiled across the screen.
+                  errorTileCallback: (_, _, _) {},
+                ),
               ),
-            ],
-          ),
-        if (hasRoute)
-          MarkerLayer(
-            markers: <Marker>[
-              _endpoint(route.first, filled: false), // start (outlined)
-              _endpoint(route.last, filled: true), // latest / end (filled)
-            ],
+            if (drawn.isNotEmpty)
+              PolylineLayer<Object>(
+                polylines: <Polyline<Object>>[
+                  for (final segment in drawn)
+                    Polyline<Object>(
+                      points: segment,
+                      color: AppColors.primary,
+                      strokeWidth: widget.strokeWidth,
+                      borderColor: AppColors.bg,
+                      borderStrokeWidth: 1,
+                    ),
+                ],
+              ),
+            if (hasRoute)
+              MarkerLayer(
+                markers: <Marker>[
+                  _endpoint(all.first, filled: false), // start (outlined)
+                  if (widget.showPosition)
+                    _position(all.last)
+                  else
+                    _endpoint(all.last, filled: true), // end
+                ],
+              ),
+          ],
+        ),
+        // Required by every provider's terms, and read from the same config as
+        // the tiles so the two can never disagree about who is being credited.
+        if (widget.tileUrlTemplate.isNotEmpty && widget.attribution.isNotEmpty)
+          Positioned(
+            right: 6,
+            bottom: 4,
+            child: _Attribution(text: widget.attribution),
           ),
       ],
     );
@@ -146,4 +247,76 @@ class _RouteMapState extends State<RouteMap> {
       ),
     ),
   );
+
+  /// Where the runner is now: a bright dot with a soft halo, so it reads as a
+  /// live position rather than the end of a finished line.
+  Marker _position(LatLng at) => Marker(
+    point: at,
+    width: 28,
+    height: 28,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.textPrimary.withValues(alpha: 0.18),
+      ),
+      child: Center(
+        child: Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.bg, width: 2),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// What the map shows before the first fix — which is the first ten to thirty
+/// seconds of every run, and used to be a map of Westminster.
+class _AcquiringMap extends StatelessWidget {
+  const _AcquiringMap();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ColoredBox(
+      color: AppColors.bg,
+      child: Center(
+        child: Text(
+          'Finding you',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: AppColors.textTertiary,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The provider credit. Small, but never absent while tiles are on screen.
+class _Attribution extends StatelessWidget {
+  const _Attribution({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.bg.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 9, color: AppColors.textTertiary),
+        ),
+      ),
+    );
+  }
 }

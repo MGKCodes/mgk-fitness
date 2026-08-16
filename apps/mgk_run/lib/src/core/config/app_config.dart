@@ -36,7 +36,7 @@ class AppConfig {
   /// `https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=…`.
   ///
   /// Configured rather than hard-coded so the shipped app only ever calls the
-  /// provider named in the privacy policy, and so a bundle-restricted key stays
+  /// provider named in the privacy policy, and so a restricted key stays
   /// out of this public repo. Empty means **draw no basemap** — the route still
   /// renders on the charcoal base. See [hasBasemap].
   final String mapTileUrlTemplate;

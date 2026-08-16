@@ -10,6 +10,8 @@ import 'package:mgk_run/preview/glass_preview.dart' show glassPreviewScreens;
 import 'package:mgk_run/preview/legal_preview.dart' show legalPreviewScreens;
 import 'package:mgk_run/preview/fake_plan_client.dart';
 import 'package:mgk_run/preview/fake_run_recorder.dart';
+import 'package:mgk_run/src/features/recording/domain/run_recorder.dart'
+    show RecorderProblem;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
@@ -129,6 +131,11 @@ const String _fakeEmail = 'dev@runio.app';
 const String _devTiles =
     'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
 
+/// Credit for the harness basemap above. Carried here so the harness renders
+/// the attribution strip the shipping app renders — a screenshot taken without
+/// it is a screenshot of a layout that does not exist.
+const String _devAttribution = '© OpenStreetMap contributors © CARTO';
+
 final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Isolated single screens — visual checks only.
   'welcome': (_) => WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
@@ -239,9 +246,44 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
       context,
     ).showSnackBar(const SnackBar(content: Text('Run discarded.'))),
   ),
+  // The same screen on a planned day: today's session and how far through it
+  // the runner is. The half no generic tracker can draw.
+  'recording-planned': (_) => RecordingScreen(
+    recorder: FakeRunRecorder(),
+    plannedSession: const PlannedSession(
+      weekday: DateTime.monday,
+      kind: SessionKind.easy,
+      distanceMeters: 5000,
+    ),
+  ),
+  // The first half-minute of every run: recording, but no fix yet. This is the
+  // state the old screen rendered as a confident 0.00 km over a map of
+  // Westminster, and the reason a working app looked broken on first use.
+  'recording-acquiring': (_) => RecordingScreen(
+    recorder: FakeRunRecorder(acquireAfter: const Duration(minutes: 5)),
+  ),
+  // Permission refused for good. Nothing is being recorded, and the screen has
+  // to say so and offer the one thing that can change it.
+  'recording-denied': (_) => RecordingScreen(
+    recorder: FakeRunRecorder(
+      failsWith: RecorderProblem.permissionDeniedForever,
+    ),
+  ),
+  // Location Services off device-wide — a different remedy, so different copy
+  // and deliberately no Settings link, which cannot reach the system toggle.
+  'recording-no-services': (_) => RecordingScreen(
+    recorder: FakeRunRecorder(failsWith: RecorderProblem.locationServicesOff),
+  ),
+  // The motion vocabulary, on one screen. A component missing from the
+  // harness is a component nobody has looked at (docs/design.md).
+  'motion': (_) => const _MotionGallery(),
   // Post-run route view: the demo trace drawn on the dark basemap.
   'map': (_) => Scaffold(
-    body: RouteMap(points: demoRunTrace(), tileUrlTemplate: _devTiles),
+    body: RouteMap(
+      points: demoRunTrace(),
+      tileUrlTemplate: _devTiles,
+      attribution: _devAttribution,
+    ),
   ),
   // Post-run summary: map, headline distance, stats, and per-split pace.
   'summary': (_) =>
@@ -1579,6 +1621,108 @@ class _LiveChatState extends State<_LiveChat> {
       adapt: true,
       // Simulated — see the class doc.
       onApplyRun: (_) async => true,
+    );
+  }
+}
+
+/// Every motion component in one place, so the vocabulary can be seen rather
+/// than inferred from the screens that happen to use it.
+class _MotionGallery extends StatefulWidget {
+  const _MotionGallery();
+
+  @override
+  State<_MotionGallery> createState() => _MotionGalleryState();
+}
+
+class _MotionGalleryState extends State<_MotionGallery> {
+  bool _live = true;
+  int _turns = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Motion')),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        children: <Widget>[
+          const SectionLabel('HERO NUMERAL'),
+          const SizedBox(height: AppSpacing.md),
+          const HeroNumeral(label: 'DISTANCE', value: 12.4, unit: 'km'),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionLabel('PULSE'),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: <Widget>[
+              Pulse(
+                active: _live,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                    color: AppColors.textPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Text(_live ? 'Recording' : 'Paused'),
+              const Spacer(),
+              Switch(
+                value: _live,
+                onChanged: (value) => setState(() => _live = value),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionLabel('PRESS SCALE'),
+          const SizedBox(height: AppSpacing.md),
+          PrimaryButton(label: 'Hold me', onPressed: () {}),
+          const SizedBox(height: AppSpacing.sm),
+          DestructiveButton(label: 'And me', onPressed: () {}),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionLabel('TYPING INDICATOR'),
+          const SizedBox(height: AppSpacing.md),
+          const TypingIndicator(),
+          const SizedBox(height: AppSpacing.xxl),
+
+          Row(
+            children: <Widget>[
+              const SectionLabel('SEQUENCED REVEAL'),
+              const Spacer(),
+              TextButton(
+                onPressed: () => setState(() => _turns = _turns == 3 ? 5 : 3),
+                child: Text(_turns == 3 ? 'Add turns' : 'Reset'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SequencedReveal(
+            key: ValueKey<int>(_turns),
+            children: <Widget>[
+              for (var i = 0; i < _turns; i++)
+                ConversationBubble(
+                  text: 'Turn ${i + 1} of the conversation.',
+                  fromCoach: i.isEven,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionLabel('ENTRANCE (STAGGERED)'),
+          const SizedBox(height: AppSpacing.md),
+          for (var i = 0; i < 4; i++)
+            Entrance(
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(child: Text('Row ${i + 1}')),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

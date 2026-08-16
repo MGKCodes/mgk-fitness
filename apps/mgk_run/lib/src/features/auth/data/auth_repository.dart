@@ -106,6 +106,9 @@ class AuthRepository {
   Future<void> ensureProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.schema('core').from('profiles').upsert({'id': user.id, 'email': user.email});
+    await _client.schema('core').from('profiles').upsert({
+      'id': user.id,
+      'email': user.email,
+    });
   }
 }

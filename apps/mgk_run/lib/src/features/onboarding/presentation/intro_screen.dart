@@ -202,24 +202,36 @@ class _IntroScreenState extends State<IntroScreen> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Said(introPrompt(IntroStep.greeting)),
-                          Said(introWhoIAm),
-                          Said(introHowItWorks),
-                          if (reached >= IntroStep.name.index)
-                            Said(introPrompt(IntroStep.name)),
-                          if (_answeredName != null) Replied(_answeredName!),
-                          if (reached >=
-                              IntroStep.permissions.index) ...<Widget>[
-                            Said(
-                              introPrompt(
-                                IntroStep.permissions,
-                                name: _answeredName,
-                              ),
-                            ),
-                            ..._permissionTranscript(),
-                          ],
-                          if (_step == IntroStep.signUp)
-                            Said(introPrompt(IntroStep.signUp)),
+                          // **The pacing is the content.** These five bubbles
+                          // used to paint in a single frame, so the first
+                          // screen of the app — the one whose whole job is to
+                          // feel like meeting a coach — read as a form that had
+                          // already filled itself in. A conversation arrives a
+                          // line at a time, with somebody composing in between.
+                          SequencedReveal(
+                            onRevealed: _toEnd,
+                            children: <Widget>[
+                              Said(introPrompt(IntroStep.greeting)),
+                              Said(introWhoIAm),
+                              Said(introHowItWorks),
+                              if (reached >= IntroStep.name.index)
+                                Said(introPrompt(IntroStep.name)),
+                              if (_answeredName != null)
+                                Replied(_answeredName!),
+                              if (reached >=
+                                  IntroStep.permissions.index) ...<Widget>[
+                                Said(
+                                  introPrompt(
+                                    IntroStep.permissions,
+                                    name: _answeredName,
+                                  ),
+                                ),
+                                ..._permissionTranscript(),
+                              ],
+                              if (_step == IntroStep.signUp)
+                                Said(introPrompt(IntroStep.signUp)),
+                            ],
+                          ),
                         ],
                       ),
                     ),

@@ -163,11 +163,8 @@ class SupabaseRestore implements DataRestore {
         .eq('plan_id', planId)
         .order('week_number');
     final sessionRows = await fetchAllPages(
-      (f, t) => _run
-          .from('plan_sessions')
-          .select()
-          .eq('plan_id', planId)
-          .range(f, t),
+      (f, t) =>
+          _run.from('plan_sessions').select().eq('plan_id', planId).range(f, t),
     );
 
     await _db.restorePlan(
@@ -219,8 +216,7 @@ class SupabaseRestore implements DataRestore {
     if (convoRows.isEmpty) return 0;
 
     final turnRows = await fetchAllPages(
-      (f, t) =>
-          _coach.from('turns').select().order('created_at').range(f, t),
+      (f, t) => _coach.from('turns').select().order('created_at').range(f, t),
     );
 
     await _db.restoreCoachMemory(

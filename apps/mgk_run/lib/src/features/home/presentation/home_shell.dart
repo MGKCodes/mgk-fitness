@@ -905,6 +905,11 @@ class _HomeShellState extends State<HomeShell> {
             builder: (routeContext) => RecordingScreen(
               recorder: factory(),
               unit: _unit,
+              // Today's prescribed run, so the in-run screen can show how far
+              // through the coach's session they are. Null on a rest day, an
+              // unplanned day, or with no plan at all — and then the block is
+              // simply absent rather than an empty one.
+              plannedSession: _thisWeek?.runOn(DateTime.now().weekday),
               onFinish: () => Navigator.of(routeContext).pop(),
               onCancel: () => Navigator.of(routeContext).pop(),
             ),
