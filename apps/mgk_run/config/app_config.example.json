@@ -2,8 +2,9 @@
   "SUPABASE_URL": "https://your-project-ref.supabase.co",
   "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_...",
 
-  "_comment_map": "The basemap. Use a commercial provider with a BUNDLE-RESTRICTED key (MapTiler is what the privacy policy names). Leave empty and the app draws routes on the charcoal base with no tiles — a working state, not an error. Whatever you set here must match the sub-processor named in docs/privacy-policy.md.",
-  "MAP_TILE_URL_TEMPLATE": "https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=YOUR_MAPTILER_KEY",
+  "_comment_map": "The basemap. MapTiler is what the privacy policy names. Restrict the key in MapTiler Cloud under 'Allowed user-agent header' with the value com.mgkcodes.fitness.run — that is a substring of what flutter_map sends (User-Agent: flutter_map (com.mgkcodes.fitness.run)), and it is MapTiler's only mobile restriction: they do NOT restrict by bundle id. Leave both map values empty and the app draws routes on the charcoal base with no tiles — a working state, not an error. Whatever you set here must match the sub-processor named in docs/privacy-policy.md.",
+  "MAP_TILE_URL_TEMPLATE": "https://api.maptiler.com/maps/YOUR_DARK_DATAVIZ_STYLE/{z}/{x}/{y}@2x.png?key=YOUR_MAPTILER_KEY",
+  "_comment_attribution": "REQUIRED whenever MAP_TILE_URL_TEMPLATE is set — the CI build fails on tiles without credit, because serving a provider's tiles uncredited breaches their terms and the app cannot detect it at runtime.",
   "MAP_ATTRIBUTION": "© MapTiler © OpenStreetMap contributors",
 
   "_comment_dev_accounts": "OPTIONAL. Debug-only quick sign-in buttons on the sign-in screen (rendered only in debug builds, never release). Put real test-account credentials in your local, gitignored config/app_config.json — do NOT commit them. Up to three accounts via DEV_ACCOUNT_2_* and DEV_ACCOUNT_3_*. An account appears only when its EMAIL and PASSWORD are both non-empty.",

@@ -34,6 +34,12 @@
 #                                 names. Without it the run map draws the route
 #                                 on charcoal with no basemap — which is what
 #                                 the first TestFlight build did.
+#       MAP_ATTRIBUTION           required WHENEVER MAP_TILE_URL_TEMPLATE is
+#                                 set, and unused otherwise. Every provider
+#                                 worth using requires visible credit, so a
+#                                 basemap with no attribution is a terms
+#                                 breach rather than a cosmetic omission. The
+#                                 build refuses the pair half-set.
 #     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
 #     and never reaches the client (ADR-0007); a provider key in this group
 #     would be a provider key in the app bundle.
@@ -152,13 +158,37 @@ workflows:
           # names. That is the reason the app reads a template rather than
           # hard-coding a tile server.
           tiles = (os.environ.get("MAP_TILE_URL_TEMPLATE") or "").strip()
+          attribution = (os.environ.get("MAP_ATTRIBUTION") or "").strip()
+
+          # Loud, not a print. The first TestFlight build shipped with no
+          # basemap and nobody noticed until a run was recorded against a
+          # charcoal void, because the only signal was one line in the middle
+          # of a passing log. A banner survives skim-reading.
           if not tiles:
-              print("MAP_TILE_URL_TEMPLATE unset — the build will have no basemap")
+              print("=" * 72)
+              print("WARNING: MAP_TILE_URL_TEMPLATE is unset.")
+              print("This build ships WITHOUT A BASEMAP: run routes draw on")
+              print("bare charcoal. That is a legitimate build state, but it")
+              print("is almost certainly not the one you wanted for TestFlight.")
+              print("Set it in the mgk_fitness_run_env group.")
+              print("=" * 72)
+
+          # Attribution is not decorative — every provider's terms require
+          # visible credit, so tiles without it is a breach. Failing the build
+          # is the only way that stays true: the app cannot detect it, and a
+          # reviewer will not.
+          if tiles and not attribution:
+              sys.exit(
+                  "MAP_TILE_URL_TEMPLATE is set but MAP_ATTRIBUTION is empty. "
+                  "Serving a provider's tiles without their credit breaches "
+                  "their terms. Set both, or neither."
+              )
 
           cfg = {
               "SUPABASE_URL": need("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
               "MAP_TILE_URL_TEMPLATE": tiles,
+              "MAP_ATTRIBUTION": attribution,
               # Empty on purpose — see the note above.
               "DEV_ACCOUNT_1_LABEL": "",
               "DEV_ACCOUNT_1_EMAIL": "",
