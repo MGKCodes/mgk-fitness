@@ -4,7 +4,6 @@ import 'package:drift/drift.dart' show Value;
 
 import '../../../core/database/app_database.dart';
 import '../../history/data/run_backup.dart';
-import '../domain/live_metrics.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/run_recorder.dart';
@@ -87,14 +86,6 @@ class RecordingRunRecorder implements RunRecorder {
   RunPoint? _lastFix;
   double _distanceM = 0;
 
-  /// Recent fixes, in memory only, kept so autopause has something to measure
-  /// movement over. This is fed by **every** accepted fix including the ones
-  /// that are not persisted while auto-paused — otherwise the detector would
-  /// go blind the moment it fired and could never decide to start again.
-  final List<RunPoint> _recent = <RunPoint>[];
-
-  bool _autoPaused = false;
-
   /// Time not counted so far, and when the current not-counting began.
   ///
   /// One pair for both kinds of stop. Manual pause and autopause can overlap —
@@ -123,8 +114,55 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   RunPoint? get lastFix => _lastFix;
 
+  /// **Always false: autopause is switched off at the recording layer.**
+  ///
+  /// It was wired in and it reproduced, by a different route, the exact bug
+  /// this class was rewritten to fix. On the first device run it latched on
+  /// within seconds and never let go: the clock froze, nothing was persisted,
+  /// and the screen said "Auto-paused" — which is worse than the silent 0.00 km
+  /// it replaced, because it looks deliberate.
+  ///
+  /// Four faults compounded, and the constants were the least of them:
+  ///
+  ///  * [displacementOver] filters at [kMaxHorizontalAccuracyMeters] (20 m)
+  ///    while this recorder accepts fixes to [kMaxRecordableAccuracyMeters]
+  ///    (50 m) — so the detector went blind in exactly the conditions the wider
+  ///    gate exists to serve, and returned null.
+  ///  * A null reading while already paused was treated as "still stopped",
+  ///    which turns a gap in the data into a latch that cannot release.
+  ///  * Resuming demanded 15 m in 5 s (3.0 m/s, about 5:33/km) while pausing
+  ///    triggered below 0.67 m/s — you had to run hard to undo something a
+  ///    slow walk could cause.
+  ///  * Nothing waited for the run to actually start, so standing still after
+  ///    tapping Start was enough.
+  ///
+  /// **The rule that was broken is bigger than the tuning: a heuristic may not
+  /// stop the clock, and may not decide against persisting a fix.** Only the
+  /// runner stops the clock, by pressing Pause. Guessing wrong about a stop
+  /// costs a little inflated distance; guessing wrong about a start costs the
+  /// entire run, and one of those is recoverable.
+  ///
+  /// **The problem it was reaching for is real and is still open.** Standing
+  /// still DOES inflate distance: `processedDistanceMeters` only discards
+  /// sub-metre hops, and real GPS drift is metres, so forty seconds at a
+  /// crossing banks a few hundred of them (measured, see the recorder tests).
+  /// An earlier version of this comment claimed the jitter rule already
+  /// handled it. It does not.
+  ///
+  /// The fix belongs in the smoother, rejecting a hop by the speed it implies
+  /// over the interval it spans — the "speed-windowed" pass
+  /// docs/architecture/run-recording.md has always asked for — and not in a
+  /// gate in front of the write. An inflated distance is a wrong number on a
+  /// saved run. A gate that guesses wrong is no run at all.
+  ///
+  /// The detector itself is kept, tested, in `live_metrics.dart`. Re-enabling
+  /// it needs: its own accuracy gate matched to the record gate, a null reading
+  /// that fails *running* rather than stopped, thresholds tuned against a real
+  /// recorded trace rather than reasoned about, and a first-movement guard. It
+  /// should also become a display label over persisted data rather than a gate
+  /// in front of the write.
   @override
-  bool get autoPaused => _autoPaused;
+  bool get autoPaused => false;
 
   @override
   Duration get elapsed {
@@ -139,8 +177,11 @@ class RecordingRunRecorder implements RunRecorder {
   }
 
   /// Whether time and distance should currently be accruing.
-  bool get _counting =>
-      _status == RecorderStatus.recording && !_autoPaused && _runId != null;
+  ///
+  /// Deliberately reads nothing but lifecycle state. It used to consult the
+  /// autopause heuristic, which is how a wrong guess froze the clock — see
+  /// [autoPaused] for why that authority has been taken away.
+  bool get _counting => _status == RecorderStatus.recording && _runId != null;
 
   /// Folds every reason the run might not be counting into one clock.
   ///
@@ -202,8 +243,6 @@ class RecordingRunRecorder implements RunRecorder {
     _distanceM = 0;
     _pausedTotal = Duration.zero;
     _notCountingSince = null;
-    _autoPaused = false;
-    _recent.clear();
     _setProblem(null);
 
     await _db.upsertRun(
@@ -270,22 +309,11 @@ class RecordingRunRecorder implements RunRecorder {
     _setProblem(null);
     _lastFix = fix;
 
-    // The autopause window is fed before the decision to persist, not after:
-    // once auto-paused, nothing is written, so a detector reading the stored
-    // trace would never see the movement that should start the run again.
-    _recent.add(fix);
-    _trimRecent();
-
-    final wasAutoPaused = _autoPaused;
-    _autoPaused = detectAutoPause(_recent, wasPaused: wasAutoPaused);
-    if (_autoPaused != wasAutoPaused) _syncCounting();
-
-    // A standing runner still produces metres of drift per fix — more than the
-    // sub-metre rule discards — so persisting through a stop would quietly add
-    // a few hundred metres to a long wait. Not writing them leaves a gap in
-    // the trace instead, which is exactly what the gap rule already handles:
-    // no distance across it, and no line drawn through it.
-    if (_autoPaused) return;
+    // **Autopause is deliberately not wired in.** See [autoPaused].
+    //
+    // Nothing between here and the write below may decide not to persist. A
+    // fix that reached this point is going on disk: that is rule 1, and the
+    // whole of this class's reason to exist.
 
     final seq = _seq++;
     // Persist FIRST — an emitted point must already be on disk.
@@ -320,16 +348,6 @@ class RecordingRunRecorder implements RunRecorder {
     _points.add(fix);
   }
 
-  /// Keeps only what the detector can still use — the longest window it asks
-  /// about, plus a little slack. An unbounded list would grow for the length of
-  /// the run to answer a question about the last twelve seconds.
-  void _trimRecent() {
-    final cutoff = _recent.last.timestamp.subtract(
-      kAutoPauseWindow + const Duration(seconds: 5),
-    );
-    _recent.removeWhere((point) => point.timestamp.isBefore(cutoff));
-  }
-
   @override
   Future<void> pause() async {
     if (_status != RecorderStatus.recording) return;
@@ -343,11 +361,6 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   Future<void> resume() async {
     if (_status != RecorderStatus.paused) return;
-    // A manual resume overrides autopause: the runner has said they are going,
-    // and leaving the auto flag set would keep the clock stopped until the
-    // detector caught up several fixes later.
-    _autoPaused = false;
-    _recent.clear();
     _setStatus(RecorderStatus.recording);
     _syncCounting();
   }

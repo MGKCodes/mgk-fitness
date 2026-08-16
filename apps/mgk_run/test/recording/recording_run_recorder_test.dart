@@ -254,100 +254,72 @@ void main() {
     });
   });
 
-  group('autopause', () {
-    /// Fixes at a fixed spot, one a second — a runner standing at a light,
-    /// with the metres of GPS drift a stationary phone really produces.
-    void standStill({required int seconds, required Duration from}) {
+  group('a runner standing still', () {
+    /// Fixes at a fixed spot, one a second — a runner waiting at a light, with
+    /// the metres of GPS drift a stationary phone really produces.
+    void standStill({required int seconds}) {
       for (var i = 0; i <= seconds; i++) {
         source.emit(
           _fix(
             (i.isEven ? 1 : -1) * 0.00003, // ~3 m either side
             0,
-            at: DateTime(2026, 1, 1, 8).add(from + Duration(seconds: i)),
+            at: DateTime(2026, 1, 1, 8).add(Duration(seconds: i)),
           ),
         );
       }
     }
 
-    test('stops the clock when the runner stops', () async {
+    // These exist because autopause was wired in, shipped, and on the first
+    // device run latched within seconds and never released: the clock froze
+    // and nothing was written. The heuristic is unwired (see
+    // RecordingRunRecorder.autoPaused) and these pin the properties that its
+    // absence guarantees.
+
+    test('is still recorded — a guess never stops the writing', () async {
       await recorder.start();
-      standStill(seconds: 15, from: Duration.zero);
+      standStill(seconds: 40);
       await pumpEventQueue();
 
-      expect(recorder.autoPaused, isTrue);
-      // Still recording — this is not a button anyone pressed, and the run is
-      // still theirs to finish.
-      expect(recorder.status, RecorderStatus.recording);
+      // Rule 1: a fix that arrives is a fix on disk. Nothing between the
+      // source and the write is allowed a vote.
+      expect((await db.pointsForRun('run-1')).length, 41);
+    });
 
-      final atPause = recorder.elapsed;
+    test('does not stop the clock — only the runner does that', () async {
+      await recorder.start();
+      standStill(seconds: 40);
+      await pumpEventQueue();
+
       clock = clock.add(const Duration(minutes: 5));
-      expect(recorder.elapsed, atPause);
-    });
-
-    test('does not bank the drift of a long wait as distance', () async {
-      await recorder.start();
-      standStill(seconds: 40, from: Duration.zero);
-      await pumpEventQueue();
-
-      // Forty seconds of ~6 m hops is a few hundred metres if it is persisted
-      // and summed, which is what happened before the detector existed.
-      expect(recorder.distanceMeters, lessThan(20));
-    });
-
-    test('starts again once the runner does', () async {
-      await recorder.start();
-      standStill(seconds: 15, from: Duration.zero);
-      await pumpEventQueue();
-      expect(recorder.autoPaused, isTrue);
-
-      // Moving off at ~4 m/s.
-      final base = DateTime(2026, 1, 1, 8).add(const Duration(seconds: 16));
-      for (var i = 0; i <= 6; i++) {
-        source.emit(
-          _fix(i * 4 / 111190, 0, at: base.add(Duration(seconds: i))),
-        );
-      }
-      await pumpEventQueue();
-
+      expect(recorder.elapsed, const Duration(minutes: 5));
       expect(recorder.autoPaused, isFalse);
+      expect(recorder.status, RecorderStatus.recording);
     });
 
     test(
-      'a manual resume overrides it rather than waiting for the detector',
+      'DOES still bank the drift as distance — a known, open defect',
       () async {
+        // Characterisation, not approval. Autopause was reached for to solve
+        // this, and the justification for unwiring it originally claimed the
+        // jitter rule in processedDistanceMeters already handled it. It does
+        // not: that rule only discards sub-metre hops, and real GPS drift is
+        // metres. Forty seconds standing still banks a few hundred of them.
+        //
+        // Pinned so the number is visible and cannot quietly get worse. When
+        // the smoother learns to reject drift by implied speed, this test
+        // should fail — and the fix is to tighten the bound, not delete it.
         await recorder.start();
-        standStill(seconds: 15, from: Duration.zero);
+        standStill(seconds: 40);
         await pumpEventQueue();
-        expect(recorder.autoPaused, isTrue);
 
-        await recorder.pause();
-        await recorder.resume();
+        clock = clock.add(const Duration(minutes: 1));
+        await recorder.stop();
 
-        expect(recorder.autoPaused, isFalse);
-        // And the clock is running again immediately.
-        final before = recorder.elapsed;
-        clock = clock.add(const Duration(seconds: 30));
-        expect(recorder.elapsed, before + const Duration(seconds: 30));
+        final banked = (await db.runById('run-1'))!.distanceM;
+        expect(banked, greaterThan(100), reason: 'the defect is still present');
+        expect(banked, lessThan(400), reason: 'and has not got worse');
       },
     );
-
-    test('an overlapping manual pause is not charged twice', () async {
-      await recorder.start();
-      clock = clock.add(const Duration(minutes: 2));
-      standStill(seconds: 15, from: Duration.zero);
-      await pumpEventQueue();
-      final atStop = recorder.elapsed;
-
-      // Auto-paused, then the runner also hits Pause, then resumes. Two
-      // independent accumulators would deduct the overlap from the total once
-      // for each of them and leave the run short.
-      clock = clock.add(const Duration(minutes: 3));
-      await recorder.pause();
-      clock = clock.add(const Duration(minutes: 4));
-      await recorder.resume();
-
-      expect(recorder.elapsed, atStop);
-    });
   });
 
   group('when location is unavailable', () {
