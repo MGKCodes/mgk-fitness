@@ -86,13 +86,20 @@ The soonest goal: TestFlight, off the live server, on a real device.
       in the original plan — without it App Store Connect asks the export
       compliance question on *every* upload, which is friction on a phase whose
       whole point is fast iteration on TestFlight.
-- [ ] Add a `lift-ios-release` workflow to `codemagic.yaml`. Only
-      `run-ios-release` exists today. The file's own comments specify the shape:
-      its own `working_directory: apps/mgk_lift`, its own bundle identifier, its
-      own environment group. Mirror the Run workflow rather than inventing one.
-- [ ] Generate `config/app_config.json` from secure vars in the workflow, as
-      Run's does. The real file is gitignored and the build has no keys without
-      this step.
+- [x] Add a `lift-ios-release` workflow to `codemagic.yaml`, mirroring Run's.
+      Lift needs only two secrets against Run's six — `AppConfig` reads
+      `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` and nothing else, so the
+      basemap and dev-account machinery has no equivalent here.
+- [x] Generate `config/app_config.json` from secure vars in the workflow.
+      **Also created `config/app_config.example.json`**, which `AppConfig`'s
+      documentation claimed was committed — the directory did not exist.
+- [ ] **Create the `mgk_fitness_lift_env` variable group in Codemagic** with
+      those two values, marked Secure. The workflow names the group; the build
+      fails at the first script without it, by design.
+- [ ] **Check the iOS distribution profile exists for `com.mgkcodes.liftio`.**
+      It should, inherited from the Expo build — but a profile is a snapshot of
+      the App ID's capabilities when it was made, and Run's first build died at
+      `xcode-project use-profiles` for exactly this. Regenerate if it fails.
 - [ ] First TestFlight upload, installed on device.
 - [ ] **Prove a real `lift_chat` turn against production.** Carried over from
       [roadmap.md](roadmap.md) and still unproven: everything says the plumbing

@@ -1,13 +1,18 @@
-# Codemagic CI/CD — Runio (see docs/decisions/0020-codemagic-is-the-build-path.md).
+# Codemagic CI/CD for the suite — Run and Lift
+# (see apps/mgk_run/docs/decisions/0020-codemagic-is-the-build-path.md).
 #
-# One manual-trigger workflow: iOS → TestFlight. Builds run on a macOS cloud
-# machine, so shipping never depends on having a Mac to hand — which matters
-# here, because this app is developed on Windows against an Android emulator
-# and its actual target has never been built locally.
+# Two manual-trigger workflows, both iOS → TestFlight. Builds run on a macOS
+# cloud machine, so shipping never depends on having a Mac to hand — which
+# matters here, because both apps are developed on Windows against an Android
+# emulator and neither has ever been built locally for its actual target.
 #
-# **No Android workflow, deliberately.** Runio is iOS-only (ADR-0001). The
-# Android build exists as a verification harness for design work on Windows and
-# is not a product; a release pipeline for it would imply otherwise.
+# **No Android workflow yet, and the reason now differs per app.** Run is
+# iOS-only by decision (ADR-0001); its Android build is a verification harness
+# for design work on Windows, not a product, and a release pipeline would imply
+# otherwise. **Lift is iOS-only only because Android has not been set up yet** —
+# it ships to Play as part of 2.0.0, which needs an upload keystore before a
+# workflow can exist, since release builds are currently signed with the debug
+# key. Tracked in docs/release-2.0.0.md, Phase 4.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -247,6 +252,120 @@ workflows:
       # nothing and removes the guess.
       - build/ios/ipa/*.ipa
       - apps/mgk_run/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false   # flip on when ready for a store release
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Lift — see docs/release-2.0.0.md for the release this feeds.
+  #
+  # ONE-TIME SETUP, beyond what Run already established:
+  #
+  #  1. Environment group `mgk_fitness_lift_env` (Application settings ▸
+  #     Environment variables, mark Secure) with:
+  #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
+  #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
+  #     That is the whole list — `AppConfig` reads exactly two values. Lift has
+  #     no basemap and no debug quick-sign-in, so Run's other four have no
+  #     equivalent here. The OpenRouter key lives in Supabase secrets and never
+  #     reaches the client (ADR-0007).
+  #
+  #  2. **Nothing to create in App Store Connect.** The record exists — it is
+  #     Liftio, id 6759969740, shipping 1.4.0 today. This uploads 2.0.0 to the
+  #     same record, which is the entire point of ADR-0001.
+  #
+  #  3. **Check the distribution profile before the first build.** Run's first
+  #     build died on `xcode-project use-profiles` because an App ID is not a
+  #     provisioning profile and nothing had made one. Lift inherits Liftio's
+  #     App ID, so a profile probably exists — but it was made for an Expo
+  #     build, and a profile is a snapshot of the App ID's capabilities at
+  #     creation. If this fails the same way, regenerate it at
+  #     developer.apple.com ▸ Profiles ▸ Distribution ▸ App Store Connect.
+  #
+  # The App Store Connect API key is NOT repeated: `frunt_asc` is issued to the
+  # team, not to an app, and the .p8 downloads exactly once.
+  # ─────────────────────────────────────────────────────────────────────────
+  lift-ios-release:
+    name: Lift — iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $CM_BUILD_DIR/apps/mgk_lift/ios/Pods
+    working_directory: apps/mgk_lift
+    integrations:
+      app_store_connect: frunt_asc
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        # Liftio's id, inherited rather than suite-named. See
+        # apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
+        bundle_identifier: com.mgkcodes.liftio
+      groups:
+        - mgk_fitness_lift_env
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Generate config/app_config.json from secure vars
+        # Same JSON-serialiser approach as Run, and for the same reason: these
+        # values are pasted into a web form by a human, and Run's first build
+        # died on a trailing carriage return written verbatim into the middle of
+        # a JSON string. json.dumps escapes; a heredoc does not.
+        script: |
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          def need(name):
+              v = (os.environ.get(name) or "").strip()
+              if not v:
+                  sys.exit(
+                      f"{name} is empty. Set it in the mgk_fitness_lift_env "
+                      "group, or the IPA ships unable to reach Supabase."
+                  )
+              return v
+
+          cfg = {
+              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+          }
+
+          out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_lift/config/app_config.json"
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(cfg, indent=2))
+          print(f"wrote {out} ({len(cfg)} keys)")
+          PY
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        # Drift's generated sources are gitignored, so this is not optional:
+        # without it the local database does not compile. Lift leans on drift
+        # harder than Run does — the whole training log is local-first.
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Build IPA
+        # --dart-define-from-file is load-bearing: AppConfig reads both values
+        # from it, so an IPA built without this flag launches and then cannot
+        # sign anybody in.
+        script: |
+          flutter build ipa --release \
+            --build-number=$(($PROJECT_BUILD_NUMBER)) \
+            --dart-define-from-file=config/app_config.json \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      # Both patterns, as Run learned the hard way: these globs resolve relative
+      # to `working_directory`, a pattern that matches nothing is ignored
+      # silently, and the failure mode is a green build with an empty TestFlight.
+      - build/ios/ipa/*.ipa
+      - apps/mgk_lift/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:

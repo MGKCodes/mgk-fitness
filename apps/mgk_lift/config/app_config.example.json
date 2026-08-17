@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy to config/app_config.json and fill in. That file is gitignored because it carries real keys; this one is committed as the template. The app reads it via --dart-define-from-file, so a build without it comes out unable to reach Supabase — AppConfig.isConfigured is false and the app says so on a dedicated screen rather than crashing.",
+
+  "SUPABASE_URL": "https://your-project-ref.supabase.co",
+
+  "_comment_key": "The PUBLISHABLE (anon) key, never the service key. This one is meant to be public and ships in every binary; RLS is what protects the data. A service key here would be a full-access credential in a public app bundle.",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_..."
+}
