@@ -197,10 +197,20 @@ app cannot leave broken.
       same project, and whichever repo deploys last wins. Runio's `surfaces.ts`
       has diverged — no `lift_chat`, no `app` field — so a deploy from there
       takes Lift's coach down in production. This is a live hazard, not tidying.
-- [ ] **Units and pose selection are session state.** `core.user_settings` is
-      the right home for both and is shared with Run;
-      `InMemoryUnitPreferences` is still wired in `main.dart`. A shipped app
-      forgetting whether you use kg between launches is not shippable.
+- [x] **Units are session state.** Fixed, but not the way this item described.
+      Wiring the existing `SupabaseUnitPreferences` alone would have persisted
+      units *only for signed-in lifters*, and tracking is free and needs no
+      account — so the common case would still have lost the choice on every
+      launch. Now device-first with the account authoritative when it answers,
+      which is what `UnitPreferencesStore`'s documentation already promised
+      ("falls back to the last known choice") and could not keep with nowhere
+      local to fall back to. Also reloads on auth change: `initState` runs
+      before Supabase restores a session, so the shared value was previously
+      only picked up on the launch *after* signing in.
+- [ ] **Pose selection is session state.** `core.user_settings.progress_pose_set`
+      is the column and nothing writes it. The units work above establishes the
+      pattern to copy — a device store, an account store, one composing
+      repository — so this is now a smaller job than it was.
 - [ ] **Rest-timer buzz is foreground-only.** Needs a local-notification plugin
       and a runtime permission — and on Android, a permission that must be
       requested, not just declared.

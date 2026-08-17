@@ -50,6 +50,16 @@ dependencies:
   path: ^1.9.1
   image_picker: ^1.2.3
 
+  # Display preferences that must survive a launch without needing an account.
+  # Already in the lockfile via supabase_flutter, which uses it to persist the
+  # session, so declaring it directly adds nothing to the bundle — it stops the
+  # app depending on a transitive it never asked for.
+  #
+  # Deliberately NOT drift. The training log is relational and belongs in a
+  # database; "which unit do you read weights in" is one key, needs no migration
+  # when it changes, and must be readable before the database has opened.
+  shared_preferences: ^2.5.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

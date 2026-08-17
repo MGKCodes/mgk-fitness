@@ -205,6 +205,12 @@ class _LiftShellState extends State<LiftShell> {
         setState(() => _account = account);
         // Signing in is the moment there is somewhere to put the backlog.
         if (account != null) unawaited(_syncNow());
+        // ...and the moment the account's units become readable. The load in
+        // initState runs before Supabase has restored a session, so without
+        // this the shared choice is only ever picked up on the launch *after*
+        // signing in. Runs on sign-out too: the device value is then the only
+        // answer, and it should be the one on screen.
+        unawaited(_loadUnits());
       });
     }
   }
