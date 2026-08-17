@@ -71,21 +71,13 @@ abstract interface class RunRecorder {
   /// name rather than render as zeroes.
   RunPoint? get lastFix;
 
-  /// Whether the recorder has decided the runner has stopped moving.
-  ///
-  /// Separate from [RecorderStatus.paused], which is a button someone pressed.
-  /// A run waiting at a crossing is still `recording` and still theirs to
-  /// finish; it simply is not accruing time or distance, and the screen says
-  /// which of the two kinds of paused it is.
-  bool get autoPaused;
-
   /// Time on the run's clock: wall time since the start, minus anything the
   /// runner explicitly paused.
   ///
   /// **Only the runner stops this clock, and only by pressing Pause.** A pause
   /// is a deliberate act and the clock owes them it. Merely stopping running is
   /// not one — waiting at a crossing is part of your 10k the way it is part of
-  /// a race — so no heuristic may stop this. See [autoPaused].
+  /// a race — so no heuristic may stop this.
   ///
   /// Derived from the wall clock rather than accumulated from a ticker: a timer
   /// is throttled and then suspended when iOS backgrounds the app, so a run

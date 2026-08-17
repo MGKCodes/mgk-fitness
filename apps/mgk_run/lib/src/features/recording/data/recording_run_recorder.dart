@@ -87,10 +87,6 @@ class RecordingRunRecorder implements RunRecorder {
   double _distanceM = 0;
 
   /// Time not counted so far, and when the current not-counting began.
-  ///
-  /// One pair for both kinds of stop. Manual pause and autopause can overlap —
-  /// a runner stops at a light, autopause fires, then they hit Pause — and two
-  /// independent accumulators would charge that overlap twice.
   Duration _pausedTotal = Duration.zero;
   DateTime? _notCountingSince;
 
@@ -118,56 +114,6 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   RunPoint? get lastFix => _lastFix;
 
-  /// **Always false: autopause is switched off at the recording layer.**
-  ///
-  /// It was wired in and it reproduced, by a different route, the exact bug
-  /// this class was rewritten to fix. On the first device run it latched on
-  /// within seconds and never let go: the clock froze, nothing was persisted,
-  /// and the screen said "Auto-paused" — which is worse than the silent 0.00 km
-  /// it replaced, because it looks deliberate.
-  ///
-  /// Four faults compounded, and the constants were the least of them:
-  ///
-  ///  * [displacementOver] filters at [kMaxHorizontalAccuracyMeters] (20 m)
-  ///    while this recorder accepts fixes to [kMaxRecordableAccuracyMeters]
-  ///    (50 m) — so the detector went blind in exactly the conditions the wider
-  ///    gate exists to serve, and returned null.
-  ///  * A null reading while already paused was treated as "still stopped",
-  ///    which turns a gap in the data into a latch that cannot release.
-  ///  * Resuming demanded 15 m in 5 s (3.0 m/s, about 5:33/km) while pausing
-  ///    triggered below 0.67 m/s — you had to run hard to undo something a
-  ///    slow walk could cause.
-  ///  * Nothing waited for the run to actually start, so standing still after
-  ///    tapping Start was enough.
-  ///
-  /// **The rule that was broken is bigger than the tuning: a heuristic may not
-  /// stop the clock, and may not decide against persisting a fix.** Only the
-  /// runner stops the clock, by pressing Pause. Guessing wrong about a stop
-  /// costs a little inflated distance; guessing wrong about a start costs the
-  /// entire run, and one of those is recoverable.
-  ///
-  /// **The problem it was reaching for is real and is still open.** Standing
-  /// still DOES inflate distance: `processedDistanceMeters` only discards
-  /// sub-metre hops, and real GPS drift is metres, so forty seconds at a
-  /// crossing banks a few hundred of them (measured, see the recorder tests).
-  /// An earlier version of this comment claimed the jitter rule already
-  /// handled it. It does not.
-  ///
-  /// The fix belongs in the smoother, rejecting a hop by the speed it implies
-  /// over the interval it spans — the "speed-windowed" pass
-  /// docs/architecture/run-recording.md has always asked for — and not in a
-  /// gate in front of the write. An inflated distance is a wrong number on a
-  /// saved run. A gate that guesses wrong is no run at all.
-  ///
-  /// The detector itself is kept, tested, in `live_metrics.dart`. Re-enabling
-  /// it needs: its own accuracy gate matched to the record gate, a null reading
-  /// that fails *running* rather than stopped, thresholds tuned against a real
-  /// recorded trace rather than reasoned about, and a first-movement guard. It
-  /// should also become a display label over persisted data rather than a gate
-  /// in front of the write.
-  @override
-  bool get autoPaused => false;
-
   /// Time on the run's clock: wall time since the start, minus anything the
   /// runner explicitly paused.
   ///
@@ -178,9 +124,9 @@ class RecordingRunRecorder implements RunRecorder {
   ///    bit is not my run", and the clock owes them that.
   ///  * Merely stopping running is not a pause. Waiting at a crossing is part
   ///    of your 10k the way it is part of a race — the gun clock does not care
-  ///    that you stopped. That is why autopause is unwired (see [autoPaused]):
-  ///    a heuristic that stops the clock is a heuristic quietly editing
-  ///    somebody's time.
+  ///    that you stopped. An autopause heuristic was built and removed for
+  ///    exactly this: a guess that stops the clock is a guess quietly editing
+  ///    somebody's time, and when it latched it also stopped the writing.
   ///
   /// Derived from the wall clock rather than accumulated from a ticker: iOS
   /// throttles and then suspends timers behind a locked screen, so a run with
@@ -202,16 +148,15 @@ class RecordingRunRecorder implements RunRecorder {
 
   /// Whether time and distance should currently be accruing.
   ///
-  /// Deliberately reads nothing but lifecycle state. It used to consult the
-  /// autopause heuristic, which is how a wrong guess froze the clock — see
-  /// [autoPaused] for why that authority has been taken away.
+  /// Deliberately reads nothing but lifecycle state. It briefly consulted an
+  /// autopause heuristic, which is how a wrong guess froze the clock and
+  /// stopped the run recording. Nothing but Pause gets that authority.
   bool get _counting => _status == RecorderStatus.recording && _runId != null;
 
   /// Folds every reason the run might not be counting into one clock.
   ///
   /// Called after anything that could change [_counting]. Idempotent, so it is
-  /// safe to call on a transition that turns out not to be one — which matters,
-  /// because autopause evaluates on every fix.
+  /// safe to call on a transition that turns out not to be one.
   void _syncCounting() {
     if (_counting) {
       final since = _notCountingSince;
@@ -334,8 +279,6 @@ class RecordingRunRecorder implements RunRecorder {
     _setProblem(null);
     _lastFix = fix;
 
-    // **Autopause is deliberately not wired in.** See [autoPaused].
-    //
     // Nothing between here and the write below may decide not to persist. A
     // fix that reached this point is going on disk: that is rule 1, and the
     // whole of this class's reason to exist.

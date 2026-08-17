@@ -286,11 +286,10 @@ void main() {
       }
     }
 
-    // These exist because autopause was wired in, shipped, and on the first
-    // device run latched within seconds and never released: the clock froze
-    // and nothing was written. The heuristic is unwired (see
-    // RecordingRunRecorder.autoPaused) and these pin the properties that its
-    // absence guarantees.
+    // These exist because an autopause heuristic was wired in, shipped, and on
+    // the first device run latched within seconds and never released: the clock
+    // froze and nothing was written. It has been removed, and these pin the
+    // properties its absence guarantees.
 
     test('is still recorded — a guess never stops the writing', () async {
       await recorder.start();
@@ -309,7 +308,6 @@ void main() {
 
       clock = clock.add(const Duration(minutes: 5));
       expect(recorder.elapsed, const Duration(minutes: 5));
-      expect(recorder.autoPaused, isFalse);
       expect(recorder.status, RecorderStatus.recording);
     });
 

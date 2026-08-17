@@ -16,22 +16,6 @@ const Duration kLivePaceWindow = Duration(seconds: 30);
 /// pace and below, where the quotient is mostly noise.
 const double kLivePaceMinMeters = 25;
 
-/// Straight-line displacement below this over [kAutoPauseWindow] means stopped.
-///
-/// Straight-line rather than path length on purpose: a phone sitting still
-/// still produces metres of jitter every second, so a summed path says the
-/// runner is moving while the displacement — start of the window to end of it —
-/// stays near zero. That distinction is the whole autopause.
-const double kAutoPauseMeters = 8;
-
-/// And this much movement to start again. Higher than [kAutoPauseMeters] so the
-/// state cannot flap: without the gap, a runner waiting at a light would toggle
-/// between paused and running on every fix.
-const double kAutoResumeMeters = 15;
-
-const Duration kAutoPauseWindow = Duration(seconds: 12);
-const Duration kAutoResumeWindow = Duration(seconds: 5);
-
 /// How much to trust the position on screen.
 ///
 /// Reported because a runner cannot otherwise tell a stationary app from a
@@ -95,43 +79,6 @@ Pace? rollingPace(
   if (meters < minMeters) return null;
 
   return Pace.from(Distance.meters(meters), elapsed);
-}
-
-/// Straight-line displacement between the first and last usable fix inside the
-/// trailing [window]. Null when the window holds fewer than two.
-double? displacementOver(List<RunPoint> points, Duration window) {
-  if (points.length < 2) return null;
-  final cutoff = points.last.timestamp.subtract(window);
-  final recent = <RunPoint>[
-    for (final point in points)
-      if (!point.timestamp.isBefore(cutoff) &&
-          point.accuracyMeters <= kMaxHorizontalAccuracyMeters)
-        point,
-  ];
-  if (recent.length < 2) return null;
-  return haversineMeters(
-    recent.first.latitude,
-    recent.first.longitude,
-    recent.last.latitude,
-    recent.last.longitude,
-  );
-}
-
-/// Whether the runner has stopped, given whether they were already stopped.
-///
-/// Hysteresis rather than one threshold: stopping and starting use different
-/// distances, so a runner shuffling at a crossing does not flicker the state
-/// once a second. [wasPaused] is what makes it a state machine rather than a
-/// predicate.
-bool detectAutoPause(List<RunPoint> points, {required bool wasPaused}) {
-  if (wasPaused) {
-    final moved = displacementOver(points, kAutoResumeWindow);
-    if (moved == null) return true; // no news is still stopped
-    return moved < kAutoResumeMeters;
-  }
-  final moved = displacementOver(points, kAutoPauseWindow);
-  if (moved == null) return false; // not enough to call it stopped
-  return moved < kAutoPauseMeters;
 }
 
 /// The run so far, cut into splits of [splitMeters].

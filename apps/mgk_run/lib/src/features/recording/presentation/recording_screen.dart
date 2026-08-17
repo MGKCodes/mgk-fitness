@@ -155,8 +155,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   bool get _recording => _status == RecorderStatus.recording;
 
-  bool get _autoPaused => widget.recorder.autoPaused;
-
   /// Recording, but no fix has landed yet — the honest opening state of every
   /// run. CoreLocation takes ten to thirty seconds to settle, and rendering
   /// that as a confident 0.00 km is what made a working app look broken.
@@ -166,7 +164,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
     if (_problem != null) return 'Not recording';
     if (_acquiring) return 'Acquiring GPS';
     if (!_recording) return 'Paused';
-    return _autoPaused ? 'Auto-paused' : 'Recording';
+    return 'Recording';
   }
 
   Future<void> _togglePause() =>
@@ -263,7 +261,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
           children: <Widget>[
             _TopBar(
               label: _statusLabel,
-              pulsing: _recording && !_autoPaused,
+              pulsing: _recording,
               signal: gpsSignalFor(widget.recorder.lastFix),
               onCancel: widget.onCancel == null ? null : _cancel,
             ),

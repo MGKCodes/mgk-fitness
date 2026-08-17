@@ -74,11 +74,6 @@ class FakeRunRecorder implements RunRecorder {
   @override
   RunPoint? get lastFix => _lastFix;
 
-  /// The canned trace never stops moving, so the preview never auto-pauses.
-  /// A harness screen for that state would need a trace with a stop in it.
-  @override
-  bool get autoPaused => false;
-
   @override
   Duration get elapsed {
     final started = _startedAt;

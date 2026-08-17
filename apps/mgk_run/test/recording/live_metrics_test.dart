@@ -93,43 +93,6 @@ void main() {
     });
   });
 
-  group('detectAutoPause', () {
-    test('a runner who has stopped is detected as stopped', () {
-      // Standing still with GPS drift: a summed path would say "moving", the
-      // straight-line displacement says otherwise. That is the distinction the
-      // whole detector rests on.
-      final jitter = <RunPoint>[
-        for (var i = 0; i <= 15; i++)
-          _p(
-            (i.isEven ? 1 : -1) * 0.00003, // ~3 m of drift, back and forth
-            0,
-            at: Duration(seconds: i),
-          ),
-      ];
-      expect(detectAutoPause(jitter, wasPaused: false), isTrue);
-    });
-
-    test('a runner running is not', () {
-      final moving = _steady(metresPerSecond: 3.0, seconds: 15);
-      expect(detectAutoPause(moving, wasPaused: false), isFalse);
-    });
-
-    test('takes more movement to restart than to stop', () {
-      // Hysteresis: without it a runner shuffling at a crossing toggles the
-      // state on every fix.
-      final shuffle = _steady(metresPerSecond: 1.0, seconds: 5); // ~5 m
-      expect(detectAutoPause(shuffle, wasPaused: true), isTrue);
-
-      final away = _steady(metresPerSecond: 4.0, seconds: 5); // ~20 m
-      expect(detectAutoPause(away, wasPaused: true), isFalse);
-    });
-
-    test('too little data does not flip the state either way', () {
-      expect(detectAutoPause(<RunPoint>[_p(0, 0)], wasPaused: false), isFalse);
-      expect(detectAutoPause(<RunPoint>[_p(0, 0)], wasPaused: true), isTrue);
-    });
-  });
-
   group('splitsFor', () {
     test('cuts a steady run into even splits', () {
       // 5 m/s for 500 s = 2500 m: two full kilometres and a 500 m remainder.
