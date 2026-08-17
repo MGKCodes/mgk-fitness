@@ -18,6 +18,11 @@ packages/**/pubspec.lock
 *.dSYM/
 coverage/
 
+# Lane worktrees. A worktree created inside the repo is a whole second checkout,
+# which the main tree would otherwise report as untracked — and `git add -A`
+# would try to swallow. See the Branching section of CONTRIBUTING.md.
+.claude/worktrees/
+
 # IDE
 .idea/
 .vscode/
