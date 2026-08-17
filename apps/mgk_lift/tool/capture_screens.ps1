@@ -23,7 +23,7 @@ param(
   # Defaults to today, so a review folder is self-dating.
   [string]$Date = (Get-Date -Format 'yyyy-MM-dd'),
   [string]$Serial = 'emulator-5554',
-  [string]$Package = 'com.mgkcodes.fitness.lift'
+  [string]$Package = 'com.mgkcodes.liftio'
 )
 
 # The screen names, read from the source rather than duplicated here.

@@ -89,3 +89,7 @@ apps/*/screenshots/
 .playwright-mcp/
 *.png.tmp
 /plan-active.png
+
+# Flutter tool crash logs. Written to the working directory on a tool crash
+# (not an app crash) and named sequentially, so they accumulate silently.
+flutter_*.log

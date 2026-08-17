@@ -44,33 +44,48 @@ a clean first upload with nothing to migrate.
 
 Blocks everything else: signing, store records and product ids all key off these.
 
-- [ ] Change the iOS bundle id `com.mgkcodes.fitness.lift` →
+- [x] Change the iOS bundle id `com.mgkcodes.fitness.lift` →
       `com.mgkcodes.liftio` in `apps/mgk_lift/ios/Runner.xcodeproj`. The App ID
       and provisioning already exist from Liftio, so this reuses them rather
       than creating anything.
-- [ ] Change `applicationId` in `apps/mgk_lift/android/app/build.gradle.kts` →
-      `com.mgkcodes.liftio`.
-- [ ] `version: 2.0.0+1` in `apps/mgk_lift/pubspec.yaml`, replacing `0.1.0+1`
+- [x] Change `applicationId` in `apps/mgk_lift/android/app/build.gradle.kts` →
+      `com.mgkcodes.liftio`. **`namespace` moved with it**, which the plan did
+      not ask for — leaving the internal package as `com.mgkcodes.fitness.lift`
+      would have left the code contradicting the store identity. `MainActivity.kt`
+      moved to match.
+- [x] `version: 2.0.0+1` in `apps/mgk_lift/pubspec.yaml`, replacing `0.1.0+1`
       and the comment explaining why it was 0.1.0 — it says the app claims a
       real number "when it can replace what is shipped today", and this plan is
       that. Build numbers must strictly increase within the 2.0.0 train.
-- [ ] Display names: `CFBundleDisplayName` is `Mgk Lift` and `android:label` is
+- [x] Display names: `CFBundleDisplayName` is `Mgk Lift` and `android:label` is
       `mgk_lift`. Both are dev placeholders. Both become **Liftio**.
-- [ ] **Record the bundle-id decision.** `codemagic.yaml` argues at length that
-      bundle ids are permanent and named for the suite, not the product, and
-      this deliberately breaks that for Lift. `apps/mgk_lift` has no
-      `docs/decisions/` directory; `apps/mgk_run` does. Start one, or the next
-      person reads the codemagic comment as current.
+- [x] **Record the bundle-id decision** —
+      [ADR-0001](../apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md),
+      the first in Lift's own `docs/decisions/`. It turned out to **reverse** a
+      decision, not fill a gap: `apps/mgk_lift/README.md` explicitly recorded
+      the opposite — *"this is a new record, not an update. The existing listing
+      gets retired rather than upgraded."* The README, `docs/architecture.md`
+      and the `codemagic.yaml` comment were all updated in the same commit,
+      since each stated the old decision as current.
+
+**Verified:** analyzer clean, 252 tests pass, and a debug APK builds reporting
+`applicationId: com.mgkcodes.liftio`, `versionName: 2.0.0`. iOS signing is not
+provable from here — it needs the Codemagic macOS runner.
 
 ## Phase 1 — A build on the phone
 
 The soonest goal: TestFlight, off the live server, on a real device.
 
-- [ ] **`NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in
-      `Info.plist`.** Neither exists, and `image_picker` is a dependency with
+- [x] **`NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in
+      `Info.plist`.** Neither existed, and `image_picker` is a dependency with
       progress photos as a core feature — iOS *crashes* on picker launch
       without them, and Apple rejects on the metadata scan. Liftio paid for this
-      once at build #17; the strings it settled on are in its `app.json`.
+      once at build #17, so its accepted strings were carried over verbatim
+      rather than rewritten.
+- [x] **`ITSAppUsesNonExemptEncryption: false`**, also carried from Liftio. Not
+      in the original plan — without it App Store Connect asks the export
+      compliance question on *every* upload, which is friction on a phase whose
+      whole point is fast iteration on TestFlight.
 - [ ] Add a `lift-ios-release` workflow to `codemagic.yaml`. Only
       `run-ios-release` exists today. The file's own comments specify the shape:
       its own `working_directory: apps/mgk_lift`, its own bundle identifier, its

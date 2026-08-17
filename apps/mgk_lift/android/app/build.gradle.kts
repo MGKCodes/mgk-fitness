@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mgkcodes.fitness.lift"
+    namespace = "com.mgkcodes.liftio"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +20,13 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.mgkcodes.fitness.lift"
+        // Liftio's id, not the suite's `com.mgkcodes.fitness.*` — this app
+        // replaces the shipped Liftio rather than launching beside it, and on
+        // iOS that means inheriting its bundle id. Android matches so the two
+        // stores name the same product the same way, even though Play has no
+        // existing listing to inherit. See
+        // docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
+        applicationId = "com.mgkcodes.liftio"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

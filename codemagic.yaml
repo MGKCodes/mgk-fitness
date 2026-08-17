@@ -65,9 +65,17 @@
 # One workflow per app, all in this one file, because Codemagic reads exactly
 # one codemagic.yaml — the repository root's — and this repo builds more than
 # one product. Lift is a sibling of the block below, not a second file:
-# its own `working_directory: apps/mgk_lift`, its own bundle identifier
-# (com.mgkcodes.fitness.lift), its own environment group. Everything above this
-# line — the key, the signing setup, the macOS instance — is shared.
+# its own `working_directory: apps/mgk_lift`, its own bundle identifier, its own
+# environment group. Everything above this line — the key, the signing setup,
+# the macOS instance — is shared.
+#
+# **Lift's identifier does NOT follow the pattern above.** It is
+# `com.mgkcodes.liftio`, inherited from the app it replaces on an existing App
+# Store record, so do not copy Run's `com.mgkcodes.fitness.*` shape across. Its
+# App ID and provisioning profile already exist from the Expo build, which means
+# the signing step fetches rather than creates — the failure that caught the
+# first Run build does not apply. See
+# apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
 #
 # Worth adding when there are two: a `triggering.when.changeset.includes` on
 # each, so a commit that only touches Lift does not spend twenty minutes
