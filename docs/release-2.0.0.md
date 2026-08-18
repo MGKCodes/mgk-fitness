@@ -106,11 +106,20 @@ The soonest goal: TestFlight, off the live server, on a real device.
       config step with "SUPABASE_URL is empty". Lift has no group of its own;
       an empty one would just be somewhere for a future secret to land without
       anyone deciding it should.
-- [x] **Check the iOS distribution profile exists for `com.mgkcodes.liftio`.**
-      Confirmed present, inherited from the Expo build. Note it is a snapshot of
-      the App ID's capabilities at the time it was made, so if
-      `xcode-project use-profiles` still fails, regenerating it is the fix
-      rather than evidence that something deeper is wrong.
+- [ ] **Create an App Store distribution provisioning profile for
+      `com.mgkcodes.liftio`.** This was briefly ticked on the understanding that
+      an inherited App ID brought one with it. The first build (2026-08-18,
+      `7d758a2`) proved otherwise, failing with "No matching profiles found for
+      bundle identifier com.mgkcodes.liftio and distribution type app_store" —
+      the same message Run's first build produced. An App Store record, an App
+      ID and a distribution certificate are three separate things, and none of
+      them is a provisioning profile; EAS managed Liftio's signing and left
+      nothing this pipeline can fetch.
+
+      developer.apple.com ▸ Certificates, Identifiers & Profiles ▸ Profiles ▸ +
+      ▸ Distribution ▸ App Store Connect ▸ pick the App ID and the existing
+      Apple Distribution certificate. Nothing to download. Lift needs no
+      capabilities, so it will not need regenerating.
 - [ ] First TestFlight upload, installed on device.
 - [ ] **Prove a real `lift_chat` turn against production.** Carried over from
       [roadmap.md](roadmap.md) and still unproven: everything says the plumbing

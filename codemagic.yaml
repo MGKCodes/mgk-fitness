@@ -88,11 +88,17 @@
 #
 # **Lift's identifier does NOT follow the pattern above.** It is
 # `com.mgkcodes.liftio`, inherited from the app it replaces on an existing App
-# Store record, so do not copy Run's `com.mgkcodes.fitness.*` shape across. Its
-# App ID and provisioning profile already exist from the Expo build, which means
-# the signing step fetches rather than creates — the failure that caught the
-# first Run build does not apply. See
+# Store record, so do not copy Run's `com.mgkcodes.fitness.*` shape across. See
 # apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
+#
+# An earlier version of this comment claimed the inherited App ID meant the
+# provisioning profile came with it, so Run's first-build signing failure could
+# not repeat. **It repeated.** Lift's first build (2026-08-18, commit 7d758a2)
+# died with the identical message — "No matching profiles found for bundle
+# identifier com.mgkcodes.liftio and distribution type app_store". An App Store
+# record, an App ID and a distribution certificate are three things, and none of
+# them is a provisioning profile. EAS managed Liftio's signing and left nothing
+# behind that this pipeline can fetch.
 #
 # Worth adding when there are two: a `triggering.when.changeset.includes` on
 # each, so a commit that only touches Lift does not spend twenty minutes
@@ -291,13 +297,23 @@ workflows:
   #     Liftio, id 6759969740, shipping 1.4.0 today. This uploads 2.0.0 to the
   #     same record, which is the entire point of ADR-0001.
   #
-  #  3. **Check the distribution profile before the first build.** Run's first
-  #     build died on `xcode-project use-profiles` because an App ID is not a
-  #     provisioning profile and nothing had made one. Lift inherits Liftio's
-  #     App ID, so a profile probably exists — but it was made for an Expo
-  #     build, and a profile is a snapshot of the App ID's capabilities at
-  #     creation. If this fails the same way, regenerate it at
-  #     developer.apple.com ▸ Profiles ▸ Distribution ▸ App Store Connect.
+  #  3. **An App Store distribution provisioning profile for
+  #     `com.mgkcodes.liftio`.** developer.apple.com ▸ Certificates, Identifiers
+  #     & Profiles ▸ Profiles ▸ + ▸ Distribution ▸ App Store Connect, pick the
+  #     App ID and the existing Apple Distribution certificate. Nothing to
+  #     download — Codemagic fetches it through the API key.
+  #
+  #     Not optional and not inherited: the first build failed here, exactly as
+  #     Run's did. Note the failure lands during ENVIRONMENT SETUP, before any
+  #     script runs, because `ios_signing` below resolves at that point — so the
+  #     build reports no script output at all, which reads like a broken config
+  #     rather than a missing prerequisite.
+  #
+  #     Lift declares no entitlements and needs no capabilities — no Sign in
+  #     with Apple, no HealthKit, no push. Camera and photo library are
+  #     Info.plist usage strings, not App ID capabilities. So this profile does
+  #     not need regenerating unless that changes; a profile is a snapshot of
+  #     the App ID's capabilities at the moment it was made.
   #
   # The App Store Connect API key is NOT repeated: `frunt_asc` is issued to the
   # team, not to an app, and the .p8 downloads exactly once.
