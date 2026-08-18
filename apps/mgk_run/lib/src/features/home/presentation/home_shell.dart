@@ -890,6 +890,18 @@ class _HomeShellState extends State<HomeShell> {
   // for them, which is a thing the runner said rather than a button they
   // tapped (ADR-0017).
 
+  /// Metres run in the week in progress.
+  ///
+  /// Read off the volume series rather than recomputed, so the in-run panel and
+  /// Home's weekly chart can never disagree about the same week. Null when the
+  /// series has no current week yet — a fresh install, before anything is run.
+  double? get _currentWeekMeters {
+    for (final week in _volumes) {
+      if (week.isCurrent) return week.meters;
+    }
+    return null;
+  }
+
   /// Starts a run from Home. Recording is an action here, not a tab.
   void _startRun(BuildContext context) {
     final factory = widget.recorderFactory;
@@ -899,6 +911,7 @@ class _HomeShellState extends State<HomeShell> {
       );
       return;
     }
+    final profile = _planProfile;
     Navigator.of(context)
         .push(
           MaterialPageRoute<void>(
@@ -910,6 +923,15 @@ class _HomeShellState extends State<HomeShell> {
               // unplanned day, or with no plan at all — and then the block is
               // simply absent rather than an empty one.
               plannedSession: _thisWeek?.runOn(DateTime.now().weekday),
+              // The coach's numbers, so the screen can say whether the runner
+              // is inside the band today's session asked for. Derived in Dart
+              // from the profile's time trial and null without one, which the
+              // screen renders as no verdict rather than a guessed one.
+              paces: profile == null ? null : pacesFor(profile),
+              // Where this run sits in the week. A plan is about a block, and
+              // this is the only surface mid-effort that says so.
+              weekDoneMeters: _currentWeekMeters,
+              weekTargetMeters: _thisWeek?.volumeMeters,
               onFinish: () => Navigator.of(routeContext).pop(),
               onCancel: () => Navigator.of(routeContext).pop(),
             ),
@@ -1410,15 +1432,6 @@ class _PlanTabState extends State<_PlanTab> {
     if (mounted) unawaited(_show(plan));
   }
 
-  /// Target paces, derived in Dart from the profile's time trial — never stored,
-  /// never from the model (pace_model.dart).
-  TrainingPaces? _pacesFor(RunnerProfile profile) {
-    final distance = profile.timeTrialDistanceMeters;
-    final time = profile.timeTrialDuration;
-    if (distance == null || time == null) return null;
-    return TrainingPaces.fromRace(Distance.meters(distance), time);
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -1441,7 +1454,7 @@ class _PlanTabState extends State<_PlanTab> {
       );
     }
 
-    final paces = _pacesFor(plan.profile);
+    final paces = pacesFor(plan.profile);
     return PlanScreen(
       unit: widget.unit,
       plan: plan,

@@ -239,21 +239,42 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
     coach: FakeCoachService(),
     planClient: FakePlanClient(),
   ),
-  // In-run recording hero, driven by a fake recorder replaying a canned trace.
+  // The in-run screen on a planned day, with the coach's numbers behind it:
+  // a real session, real derived zones and the week so far, so the live pace
+  // band is computed the way it is on device rather than mocked.
   'recording': (context) => RecordingScreen(
-    recorder: FakeRunRecorder(),
-    onCancel: () => ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Run discarded.'))),
-  ),
-  // The same screen on a planned day: today's session and how far through it
-  // the runner is. The half no generic tracker can draw.
-  'recording-planned': (_) => RecordingScreen(
     recorder: FakeRunRecorder(),
     plannedSession: const PlannedSession(
       weekday: DateTime.monday,
       kind: SessionKind.easy,
       distanceMeters: 5000,
+    ),
+    paces: TrainingPaces.fromRace(
+      Distance.meters(5000),
+      const Duration(minutes: 24, seconds: 30),
+    ),
+    weekDoneMeters: 26800,
+    weekTargetMeters: 42000,
+    onCancel: () => ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Run discarded.'))),
+  ),
+  // No plan and no time trial. The band is absent rather than guessed, and the
+  // panel is shorter for it — the collapsed height follows its own content.
+  'recording-unplanned': (_) => RecordingScreen(recorder: FakeRunRecorder()),
+  // An interval session, where the band is deliberately absent: the effort
+  // alternates and PlannedSession carries no rep structure, so one band would
+  // tell somebody jogging their recovery that they are failing.
+  'recording-intervals': (_) => RecordingScreen(
+    recorder: FakeRunRecorder(),
+    plannedSession: const PlannedSession(
+      weekday: DateTime.tuesday,
+      kind: SessionKind.interval,
+      distanceMeters: 8000,
+    ),
+    paces: TrainingPaces.fromRace(
+      Distance.meters(5000),
+      const Duration(minutes: 24, seconds: 30),
     ),
   ),
   // The first half-minute of every run: recording, but no fix yet. This is the
@@ -264,14 +285,16 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   ),
   // Permission refused for good. Nothing is being recorded, and the screen has
   // to say so and offer the one thing that can change it.
-  'recording-denied': (_) => RecordingScreen(
+  'recording-denied': (context) => RecordingScreen(
+    onCancel: () => Navigator.of(context).maybePop(),
     recorder: FakeRunRecorder(
       failsWith: RecorderProblem.permissionDeniedForever,
     ),
   ),
   // Location Services off device-wide — a different remedy, so different copy
   // and deliberately no Settings link, which cannot reach the system toggle.
-  'recording-no-services': (_) => RecordingScreen(
+  'recording-no-services': (context) => RecordingScreen(
+    onCancel: () => Navigator.of(context).maybePop(),
     recorder: FakeRunRecorder(failsWith: RecorderProblem.locationServicesOff),
   ),
   // The motion vocabulary, on one screen. A component missing from the

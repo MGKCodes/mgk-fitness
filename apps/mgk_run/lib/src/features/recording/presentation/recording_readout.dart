@@ -98,7 +98,14 @@ class TargetBand extends StatelessWidget {
     required this.unit,
     required this.doneMeters,
     this.targetMeters = 0,
+    this.eyebrow = 'TODAY',
   });
+
+  /// The label above the title. Defaults to the session case this was written
+  /// for; a caller measuring something other than today — a week's volume, say
+  /// — passes its own, because a `TODAY` eyebrow under a `THIS WEEK` heading
+  /// contradicts itself.
+  final String eyebrow;
 
   /// What the session is: "Easy 5k", "Long run".
   final String title;
@@ -139,7 +146,7 @@ class TargetBand extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const SectionLabel('TODAY', emphasis: LabelEmphasis.stat),
+                  SectionLabel(eyebrow, emphasis: LabelEmphasis.stat),
                   const SizedBox(height: 4),
                   Text(
                     title,

@@ -49,6 +49,7 @@ class RouteMap extends StatefulWidget {
     this.basemapOpacity = kBasemapOpacity,
     this.focus,
     this.showPosition = false,
+    this.emptyLabel = 'Finding you',
     String? tileUrlTemplate,
     String? attribution,
   }) : _tileUrlTemplate = tileUrlTemplate,
@@ -65,6 +66,15 @@ class RouteMap extends StatefulWidget {
   /// Leeds waited for their first fix, which reads as a broken map rather than
   /// an empty one. Null is handled honestly: see the acquiring state in [build].
   final LatLng? focus;
+
+  /// What the map says when it has nothing to draw and nowhere to look.
+  ///
+  /// Null says nothing at all, which is the honest state when recording has
+  /// *failed* rather than not started yet: "Finding you" over a run whose
+  /// location permission was refused promises a search that is not happening,
+  /// in the one state where the app has just finished explaining that it
+  /// cannot. The panel carries the message; the map should not contradict it.
+  final String? emptyLabel;
 
   /// Marks the newest fix with a live position dot. On for the in-run map, off
   /// for a finished trace, where "latest" is just the end.
@@ -126,7 +136,9 @@ class _RouteMapState extends State<RouteMap> {
 
     // Nothing to show and nowhere to look. Rendering a map of somewhere the
     // runner has never been is worse than saying so.
-    if (!hasRoute && widget.focus == null) return const _AcquiringMap();
+    if (!hasRoute && widget.focus == null) {
+      return _AcquiringMap(label: widget.emptyLabel);
+    }
 
     // First build fits the route (via initialCameraFit below); later growth
     // follows the newest fix without changing zoom.
@@ -277,16 +289,20 @@ class _RouteMapState extends State<RouteMap> {
 /// What the map shows before the first fix — which is the first ten to thirty
 /// seconds of every run, and used to be a map of Westminster.
 class _AcquiringMap extends StatelessWidget {
-  const _AcquiringMap();
+  const _AcquiringMap({required this.label});
+
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final text = label;
+    if (text == null) return const ColoredBox(color: AppColors.bg);
     return ColoredBox(
       color: AppColors.bg,
       child: Center(
         child: Text(
-          'Finding you',
+          text,
           style: theme.textTheme.labelLarge?.copyWith(
             color: AppColors.textTertiary,
             letterSpacing: 1.5,

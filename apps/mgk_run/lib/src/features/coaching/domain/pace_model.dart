@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:mgk_units/mgk_units.dart';
 
+import 'runner_profile.dart';
+
 /// Deterministic pace derivation — done in **Dart, never the LLM** (see
 /// docs/architecture/plan-generation.md). One input, a recent race or time
 /// trial, produces predicted times and the training zones.
@@ -98,4 +100,23 @@ class PaceBand {
         : fastText;
     return '$fastValue–${slow.format(unit)}';
   }
+}
+
+/// The runner's training zones, or null when there is nothing to derive them
+/// from.
+///
+/// A profile with no time trial has no threshold, and a threshold guessed from
+/// weekly volume would be a number the validator exists to refuse. Null here is
+/// the honest answer, and every surface that shows a pace target has to handle
+/// it — the in-run band simply does not draw.
+///
+/// Lives here rather than on a screen because two surfaces need it: the plan
+/// tab, which lists the week's target paces, and the in-run readout, which
+/// judges the current one against them. It was private to the first, so the
+/// second could not reach it.
+TrainingPaces? pacesFor(RunnerProfile profile) {
+  final distance = profile.timeTrialDistanceMeters;
+  final time = profile.timeTrialDuration;
+  if (distance == null || time == null) return null;
+  return TrainingPaces.fromRace(Distance.meters(distance), time);
 }

@@ -168,3 +168,46 @@ double processedDistanceMeters(
   }
   return total;
 }
+
+/// Total ascent so far, in metres, or null when there is none worth reporting.
+///
+/// Barometric only — [RunPoint.altitudeMeters] comes from CMAltimeter and GPS
+/// altitude is deliberately never used, because its vertical error is several
+/// times its horizontal one and summing that noise invents hundreds of metres
+/// of climb on a flat run.
+///
+/// Rises under [kClimbNoiseMeters] are dropped rather than accumulated for the
+/// same reason the distance ignores sub-metre hops: a barometer drifts while
+/// you stand still, and an unfiltered sum turns that drift into a hill.
+///
+/// Null rather than zero below [kClimbFloorMeters]. Altitude data alone is not
+/// worth a row — reporting every flat run as `0 m` is true, useless, and trains
+/// the eye to skip the block on the runs where it does say something.
+double? climbMeters(List<RunPoint> points) {
+  double? last;
+  double total = 0;
+  var sawAltitude = false;
+
+  for (final point in points) {
+    final altitude = point.altitudeMeters;
+    if (altitude == null) continue;
+    sawAltitude = true;
+    if (last == null) {
+      last = altitude;
+      continue;
+    }
+    final delta = altitude - last;
+    if (delta.abs() < kClimbNoiseMeters) continue;
+    if (delta > 0) total += delta;
+    last = altitude;
+  }
+
+  if (!sawAltitude || total < kClimbFloorMeters) return null;
+  return total;
+}
+
+/// Barometric drift while standing still, which must not read as a hill.
+const double kClimbNoiseMeters = 1.0;
+
+/// Below this, there was no climb worth reporting.
+const double kClimbFloorMeters = 5.0;
