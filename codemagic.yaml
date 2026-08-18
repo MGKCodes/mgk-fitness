@@ -5,9 +5,11 @@
 # here, because this app is developed on Windows against an Android emulator
 # and its actual target has never been built locally.
 #
-# **No Android workflow, deliberately.** Runio is iOS-only (ADR-0001). The
-# Android build exists as a verification harness for design work on Windows and
-# is not a product; a release pipeline for it would imply otherwise.
+# **Two targets since ADR-0021**: iOS to TestFlight, Android to an artifact you
+# install or hand to Play. Android was previously excluded on the grounds that
+# it was a verification harness rather than a product — it is now a product, and
+# the recording layer carries a foreground service to make that true rather than
+# nominal.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -60,6 +62,13 @@
 #     the running one — and survives any rename, because the name customers
 #     see is CFBundleDisplayName and can change whenever you like. Required
 #     before any TestFlight upload will be accepted.
+#  8. **Android signing** (release builds only). Codemagic ▸ Code signing
+#     identities ▸ Android keystores ▸ upload a keystore with reference name
+#     `mgk_fitness_run_keystore`, then set its key alias and passwords there.
+#     Until that exists, `run-android-release` below produces a *debug-signed*
+#     APK, which installs on a device and on the emulator but cannot go to
+#     Play. That is deliberate: a build you can put on a phone today is worth
+#     more than a pipeline blocked on a keystore that does not exist yet.
 # ───────────────────────────────────────────────────────────────────────────
 
 # One workflow per app, all in this one file, because Codemagic reads exactly
@@ -245,3 +254,66 @@ workflows:
         auth: integration
         submit_to_testflight: true
         # submit_to_app_store: false   # flip on when ready for a store release
+
+  run-android-release:
+    name: Run — Android
+    # Linux, not macOS: an Android build has no reason to run on a Mac instance
+    # and a metered plan charges the difference. This is the cheapest machine
+    # Codemagic offers that can build Flutter for Android.
+    instance_type: linux_x2
+    max_build_duration: 30
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+    working_directory: apps/mgk_run
+    environment:
+      groups:
+        # The same group as iOS. Every value in it is the app's configuration
+        # rather than a platform's, so splitting it would mean maintaining the
+        # Supabase keys and the MapTiler key in two places and eventually
+        # getting them out of step.
+        - mgk_fitness_run_env
+      flutter: stable
+      java: 17
+    scripts:
+      # Byte-for-byte the same generation step as the iOS workflow. It is
+      # duplicated rather than shared because Codemagic has no include
+      # mechanism for script bodies; if one changes the other has to.
+      - name: Generate config/app_config.json from secure vars
+        script: |
+          mkdir -p config
+          cat > config/app_config.json <<JSON
+          {
+            "SUPABASE_URL": "$SUPABASE_URL",
+            "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
+            "MAP_TILE_URL_TEMPLATE": "$MAP_TILE_URL_TEMPLATE",
+            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION"
+          }
+          JSON
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Analyze
+        script: flutter analyze
+      - name: Test
+        # Cheap here in a way it is not on a Mac instance, and this suite is the
+        # only thing that checks the in-run screen against real phone widths.
+        script: flutter test
+      - name: Build APK
+        # --dart-define-from-file is load-bearing for the same reason it is on
+        # iOS: AppConfig reads every value from it, and a build without it
+        # launches and then cannot sign anybody in.
+        script: |
+          flutter build apk --release             --build-number=$(($PROJECT_BUILD_NUMBER))             --dart-define-from-file=config/app_config.json
+    artifacts:
+      # Both paths, for the same reason the iOS workflow lists both: these globs
+      # resolve relative to `working_directory`, and a build that publishes
+      # nothing reports success with an empty artifact list.
+      - build/app/outputs/flutter-apk/*.apk
+      - apps/mgk_run/build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/**/mapping.txt
+    # No `publishing:` block. Google Play wants an AAB, a signed one, and a
+    # track to publish to — none of which exists yet. Until it does, the APK is
+    # an artifact you download, which is exactly what testing on a device needs.

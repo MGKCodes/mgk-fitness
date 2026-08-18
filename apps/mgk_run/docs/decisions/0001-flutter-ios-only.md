@@ -1,6 +1,11 @@
 # 0001 — Flutter, iOS only
 
-**Status:** Accepted
+**Status:** Accepted; the platform scope is superseded by [ADR-0021](0021-android-is-a-target.md)
+
+> The Flutter choice below stands, and so does the decision against a watch
+> companion. **iOS only does not** — Android became a target on 2026-08-18.
+> The reasoning here is kept as written rather than edited, because the
+> argument it makes about Doze is exactly the work ADR-0021 takes on.
 
 ## Context
 

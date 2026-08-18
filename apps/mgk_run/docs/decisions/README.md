@@ -12,7 +12,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 
 | # | Decision | Status |
 |---|---|---|
-| [0001](0001-flutter-ios-only.md) | Flutter, iOS only | Accepted |
+| [0001](0001-flutter-ios-only.md) | Flutter, iOS only | Superseded in part by [0021](0021-android-is-a-target.md) |
 | [0002](0002-no-strava-integration.md) | No Strava integration | Accepted |
 | [0003](0003-llm-generates-validator-enforces.md) | LLM generates, validator enforces | Accepted |
 | [0004](0004-offline-first-local-source-of-truth.md) | Offline-first; local is source of truth for live runs | Accepted |
@@ -32,3 +32,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0018](0018-onboarding-opens-as-a-conversation.md) | Onboarding opens as a conversation; the form comes last | Accepted |
 | [0019](0019-onboarding-is-two-moments.md) | Onboarding is two moments; only the second is about a plan | Accepted |
 | [0020](0020-codemagic-is-the-build-path.md) | Codemagic is the build and submit path | Accepted |
+| [0021](0021-android-is-a-target.md) | Android is a target, and recording must survive Doze | Accepted |

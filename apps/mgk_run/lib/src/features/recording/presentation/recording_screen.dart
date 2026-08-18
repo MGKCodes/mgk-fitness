@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' show Geolocator;
@@ -1040,11 +1041,16 @@ class _ProblemLine extends StatelessWidget {
   /// The states differ in remedy, so they differ in copy. Offering "Open
   /// Settings" for a switched-off Location Services toggle sends people to a
   /// screen that cannot fix it.
+  ///
+  /// The device-settings path is per-platform, and has to be: it read
+  /// "Settings → Privacy & Security → Location Services" on every
+  /// platform, which is Apple's path and simply wrong on Android. Harmless
+  /// while there was one platform, a plain defect since ADR-0021 — and the kind
+  /// that hides in copy rather than in code.
   String get _message => switch (problem) {
     RecorderProblem.locationServicesOff =>
       'Location Services are off, so this run cannot be tracked. '
-          'Turn them on in Settings → Privacy & Security → Location '
-          'Services.',
+          'Turn them on in $_locationServicesPath.',
     RecorderProblem.permissionDenied =>
       'Run needs your location to record a route. Nothing is being tracked '
           'until you allow it.',
@@ -1055,6 +1061,11 @@ class _ProblemLine extends StatelessWidget {
       'Your location stopped arriving, so recording has paused. This usually '
           'clears on its own outdoors.',
   };
+
+  /// Where the device's own location switch lives, in that platform's words.
+  static String get _locationServicesPath => Platform.isAndroid
+      ? 'Settings → Location'
+      : 'Settings → Privacy & Security → Location Services';
 
   /// Only where Settings can actually change the outcome. A denied read is a
   /// designed-for outcome, not an error state.
