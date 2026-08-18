@@ -23,6 +23,7 @@ export 'src/widgets/app_card.dart';
 export 'src/widgets/conversation_bubble.dart';
 export 'src/widgets/glass_surface.dart';
 export 'src/widgets/hero_numeral.dart';
+export 'src/widgets/pace_band_meter.dart';
 export 'src/widgets/photo_backdrop.dart';
 export 'src/widgets/primary_button.dart';
 export 'src/widgets/section_label.dart';

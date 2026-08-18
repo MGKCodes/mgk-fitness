@@ -21,12 +21,31 @@ class StatBlock extends StatelessWidget {
     this.size = StatSize.standard,
     this.align = CrossAxisAlignment.start,
     this.valueColor,
+    this.valueWeight,
+    this.shrinkToFit = false,
   });
 
   final String label;
   final String value;
   final StatSize size;
   final CrossAxisAlignment align;
+
+  /// Overrides the weight [size] implies.
+  ///
+  /// Exists so a screen can set its own hierarchy without moving the scale for
+  /// every other screen: a readout sitting under a hero numeral wants to be
+  /// quieter than the same stat standing alone, because a bold supporting row
+  /// out-shouts a thin 96pt figure and inverts the thing the layout is saying.
+  final FontWeight? valueWeight;
+
+  /// Scales the value down rather than letting it clip.
+  ///
+  /// Off by default, because shrinking is a lie about the type scale and most
+  /// stats have room. On where the value is unbounded and the column is not —
+  /// an elapsed time crossing an hour gains two characters, and a `Text` in a
+  /// tight `Expanded` clips it **silently** (there is no overflow stripe inside
+  /// a bounded box), so the run would simply appear to lose its hours.
+  final bool shrinkToFit;
 
   /// Overrides the value colour — for a stat that signals status (on target,
   /// over limit), the only sanctioned use of colour (ADR-0009).
@@ -38,28 +57,52 @@ class StatBlock extends StatelessWidget {
       crossAxisAlignment: align,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SectionLabel(
-          label,
-          emphasis: size.labelEmphasis,
-          textAlign: align == CrossAxisAlignment.center
-              ? TextAlign.center
-              : null,
-        ),
-        SizedBox(height: size.gap),
-        Text(
-          value,
-          textAlign: align == CrossAxisAlignment.center
-              ? TextAlign.center
-              : null,
-          style: TextStyle(
-            color: valueColor ?? AppColors.textPrimary,
-            fontSize: size.valueSize,
-            fontWeight: size.valueWeight,
-            height: 1.1,
-            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+        _shrink(
+          SectionLabel(
+            label,
+            emphasis: size.labelEmphasis,
+            textAlign: align == CrossAxisAlignment.center
+                ? TextAlign.center
+                : null,
           ),
         ),
+        SizedBox(height: size.gap),
+        _value(),
       ],
+    );
+  }
+
+  Widget _value() {
+    final text = Text(
+      value,
+      maxLines: 1,
+      softWrap: false,
+      textAlign: align == CrossAxisAlignment.center ? TextAlign.center : null,
+      style: TextStyle(
+        color: valueColor ?? AppColors.textPrimary,
+        fontSize: size.valueSize,
+        fontWeight: valueWeight ?? size.valueWeight,
+        height: 1.1,
+        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+      ),
+    );
+    return _shrink(text);
+  }
+
+  /// Scales a child down to fit rather than letting it overflow.
+  ///
+  /// Applied to the **label as well as the value**. Guarding only the number
+  /// missed the narrower half of the problem: a label carrying its unit —
+  /// `PACE /KM`, letterspaced — is wider than the figure under it, and three of
+  /// them across a 320pt screen overflowed by 10px while every value fitted.
+  Widget _shrink(Widget child) {
+    if (!shrinkToFit) return child;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: align == CrossAxisAlignment.center
+          ? Alignment.center
+          : Alignment.centerLeft,
+      child: child,
     );
   }
 }

@@ -27,6 +27,8 @@ class HeroNumeral extends StatelessWidget {
     this.format = _twoPlaces,
     this.animate = true,
     this.size = 112,
+    this.weight = FontWeight.w100,
+    this.letterSpacing = -2,
   });
 
   /// The eyebrow: `DISTANCE`, `TOTAL`.
@@ -50,6 +52,23 @@ class HeroNumeral extends StatelessWidget {
   /// screen is for.
   final double size;
 
+  /// How heavy the numeral is drawn.
+  ///
+  /// All eight Inter faces ship with the package, so every step here is a real
+  /// cut rather than a synthetic one. Thin is the README's default and reads as
+  /// premium at 112pt on a flat ground — but the decimal point is the thing to
+  /// watch when changing it, because a `w100` period is a speck sitting in a
+  /// full digit-width tabular cell, and at a glance `0.45` can read as two
+  /// numbers rather than one.
+  final FontWeight weight;
+
+  /// Tracking. Negative tightens.
+  ///
+  /// Worth pairing with [weight]: the digits close up but the decimal point
+  /// keeps its full tabular cell, so tightening the figures without adding mass
+  /// to the point is what makes `0.45` separate into two numbers.
+  final double letterSpacing;
+
   static String _twoPlaces(double value) => value.toStringAsFixed(2);
 
   @override
@@ -57,11 +76,11 @@ class HeroNumeral extends StatelessWidget {
     final style = TextStyle(
       color: AppColors.textPrimary,
       fontSize: size,
-      // Thin, per the README. At this scale weight reads as shouting, and the
-      // design language is premium rather than loud.
-      fontWeight: FontWeight.w100,
+      // Thin by default, per the README. At this scale weight reads as
+      // shouting, and the design language is premium rather than loud.
+      fontWeight: weight,
       height: 1,
-      letterSpacing: -2,
+      letterSpacing: letterSpacing,
       // A ticking figure must not shift the layout under it.
       fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
     );
