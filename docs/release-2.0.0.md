@@ -96,10 +96,11 @@ The soonest goal: TestFlight, off the live server, on a real device.
 - [ ] **Create the `mgk_fitness_lift_env` variable group in Codemagic** with
       those two values, marked Secure. The workflow names the group; the build
       fails at the first script without it, by design.
-- [ ] **Check the iOS distribution profile exists for `com.mgkcodes.liftio`.**
-      It should, inherited from the Expo build — but a profile is a snapshot of
-      the App ID's capabilities when it was made, and Run's first build died at
-      `xcode-project use-profiles` for exactly this. Regenerate if it fails.
+- [x] **Check the iOS distribution profile exists for `com.mgkcodes.liftio`.**
+      Confirmed present, inherited from the Expo build. Note it is a snapshot of
+      the App ID's capabilities at the time it was made, so if
+      `xcode-project use-profiles` still fails, regenerating it is the fix
+      rather than evidence that something deeper is wrong.
 - [ ] First TestFlight upload, installed on device.
 - [ ] **Prove a real `lift_chat` turn against production.** Carried over from
       [roadmap.md](roadmap.md) and still unproven: everything says the plumbing
@@ -176,15 +177,34 @@ revoke, and a log of store notifications received.
 Entirely new ground: ADR-0001 is iOS-first, `codemagic.yaml` says "No Android
 workflow, deliberately", and Liftio never shipped to Play.
 
-- [ ] **Release signing.** `build.gradle.kts` currently signs release builds
-      with `signingConfigs.getByName("debug")`. Play rejects debug-signed
-      uploads outright. Needs an upload keystore, `key.properties` (gitignored,
-      already matched by the existing rules), and the release config wired up.
-- [ ] Google Play Console: create the app, claim `com.mgkcodes.liftio`.
+- [x] **Release signing wired.** `build.gradle.kts` now reads Codemagic's
+      `CM_KEYSTORE_*` variables first and a local gitignored `key.properties`
+      second. It **refuses to fall back to the debug key on a CI machine** and
+      fails the build instead, because Play accepts a debug-signed upload and
+      rejects it afterwards — a failure that looks like success. Locally the
+      fallback stays so `flutter run --release` works without the upload key,
+      behind a banner rather than a `logger.warn`, which Flutter's Gradle output
+      filtering swallows. `key.properties.example` documents the four values and
+      carries the `keytool` invocation.
+- [x] Add an Android workflow to `codemagic.yaml` (`lift-android-release`), and
+      correct the header that said there deliberately wasn't one — that decision
+      is Run's and does not extend to Lift. Runs on `linux_x2`: nothing about an
+      Android build needs Xcode, and macOS costs several times more per minute.
+- [ ] **Create the upload keystore** and add it to Codemagic as
+      `liftio_upload`. Nothing in this repo generates one — an upload key Play
+      has seen cannot be swapped without Google's intervention.
+- [ ] Google Play Console: create the app, claim `com.mgkcodes.liftio`. Nothing
+      claims it today; Liftio declared the package in `app.json` but never
+      shipped to Play, so this is a clean first upload with no migration.
 - [ ] Store listing, content rating, and the **Data safety form** — it must
       match reality, including the AI provider and health-adjacent data.
-- [ ] Add an Android workflow to `codemagic.yaml`, and update the comment that
-      says there deliberately isn't one.
+- [ ] **Upload the first `.aab` by hand.** The Play Developer API can add a
+      release to an existing listing but cannot create one, so the first bundle
+      goes through the Console UI. The workflow's `publishing:` block is
+      commented out until then — enabling it earlier turns a working build into
+      a failing one at the last step.
+- [ ] Google Play service account (Release manager), JSON pasted into
+      `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS`, then uncomment `publishing:`.
 - [ ] Internal testing track, installed on a real Android device.
 
 ## Phase 5 — Debt that touches the release
