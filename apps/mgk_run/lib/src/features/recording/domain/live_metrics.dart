@@ -38,9 +38,27 @@ enum GpsSignal {
   bool get measures => this == fair || this == good;
 }
 
-/// The signal implied by the newest fix.
-GpsSignal gpsSignalFor(RunPoint? fix) {
+/// How old the newest fix may be before the signal counts as gone.
+///
+/// Fixes land about once a second, so a gap this long is not jitter. Short
+/// enough that a runner entering an underpass sees it while they are still in
+/// there; long enough to ride out the handful of seconds a phone loses when it
+/// is switched between cell and GPS positioning, which is not worth an alarm.
+const Duration kStaleFixAfter = Duration(seconds: 15);
+
+/// The signal implied by the newest fix, given how long ago it arrived.
+///
+/// **Age is half the answer and used to be missing entirely.** Strength was
+/// read off the newest fix's accuracy alone, so a five-minute-old fix taken in
+/// an open sky still reported three bars: the screen went on claiming a good
+/// signal, over a distance that had stopped moving, for as long as the runner
+/// cared to look. That is the shape of the failure — nothing errors, so nothing
+/// says anything — and it is why [sinceFix] is required rather than optional.
+/// An optional age defaulting to "don't check" is exactly the reasoning that
+/// let the bug exist.
+GpsSignal gpsSignalFor(RunPoint? fix, {required Duration? sinceFix}) {
   if (fix == null) return GpsSignal.none;
+  if (sinceFix != null && sinceFix >= kStaleFixAfter) return GpsSignal.none;
   final accuracy = fix.accuracyMeters;
   if (accuracy > kMaxHorizontalAccuracyMeters) return GpsSignal.weak;
   if (accuracy > 10) return GpsSignal.fair;

@@ -71,6 +71,27 @@ abstract interface class RunRecorder {
   /// name rather than render as zeroes.
   RunPoint? get lastFix;
 
+  /// How long since the last fix **arrived**, or null before the first one has.
+  ///
+  /// Arrival, deliberately, not the timestamp the fix carries. They are the
+  /// same thing on a device and they are not in a replay, where a canned trace
+  /// carries the times it was recorded at — and a screen judging staleness by
+  /// the timestamp would call a fixture stale the moment it loaded. It is also
+  /// the more honest question: a fix delivered late still means the phone said
+  /// something.
+  ///
+  /// **Fixes stop arriving without anything failing.** A tunnel, a permission
+  /// downgraded to when-in-use mid-run, or an OS that has quietly deprioritised
+  /// the app all produce the same thing: no error on any stream, and no further
+  /// points. Nothing in [problem] fires, because nothing went wrong in a way
+  /// the platform is willing to report.
+  ///
+  /// The age of the newest fix is the only evidence of that, and it has to come
+  /// from here rather than being computed at the screen, because the recorder
+  /// owns the clock. A screen calling `DateTime.now()` against a fixture's
+  /// timestamps would call every test run stale.
+  Duration? get sinceLastFix;
+
   /// Time on the run's clock: wall time since the start, minus anything the
   /// runner explicitly paused.
   ///

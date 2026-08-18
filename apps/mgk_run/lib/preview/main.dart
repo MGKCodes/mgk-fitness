@@ -300,6 +300,11 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // The motion vocabulary, on one screen. A component missing from the
   // harness is a component nobody has looked at (docs/design.md).
   'motion': (_) => const _MotionGallery(),
+  // The hero numeral at every weight the package ships, so the decimal point
+  // can be judged by looking rather than argued about. It is the glyph to
+  // watch: tabular figures give the period a full digit-width cell, so at the
+  // lighter cuts it floats in a gap and `0.45` reads as two numbers.
+  'hero-weights': (_) => const _HeroWeights(),
   // Post-run route view: the demo trace drawn on the dark basemap.
   'map': (_) => Scaffold(
     body: RouteMap(
@@ -1650,6 +1655,57 @@ class _LiveChatState extends State<_LiveChat> {
 
 /// Every motion component in one place, so the vocabulary can be seen rather
 /// than inferred from the screens that happen to use it.
+/// Every Inter cut against the same value, for picking the hero's weight.
+class _HeroWeights extends StatelessWidget {
+  const _HeroWeights();
+
+  static const List<(String, FontWeight, double)> _rows =
+      <(String, FontWeight, double)>[
+        ('w100 Thin  ·  tracking -2  (was)', FontWeight.w100, -2),
+        ('w200 ExtraLight  ·  -1  (now)', FontWeight.w200, -1),
+        ('w300 Light  ·  -1', FontWeight.w300, -1),
+        ('w300 Light  ·  0', FontWeight.w300, 0),
+        ('w400 Regular  ·  0', FontWeight.w400, 0),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          itemCount: _rows.length,
+          separatorBuilder: (_, _) =>
+              const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+          itemBuilder: (context, i) {
+            final (label, weight, tracking) = _rows[i];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SectionLabel(label, emphasis: LabelEmphasis.stat),
+                const SizedBox(height: AppSpacing.sm),
+                // 0.45 on purpose: a decimal with a zero in front of it is the
+                // case that breaks, and it is what a run reads for its first
+                // half-kilometre.
+                HeroNumeral(
+                  label: 'DISTANCE',
+                  value: 0.45,
+                  unit: 'km',
+                  size: 96,
+                  weight: weight,
+                  letterSpacing: tracking,
+                  animate: false,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _MotionGallery extends StatefulWidget {
   const _MotionGallery();
 

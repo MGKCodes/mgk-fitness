@@ -45,6 +45,9 @@ class FakeRunRecorder implements RunRecorder {
   RecorderStatus _status = RecorderStatus.idle;
   RecorderProblem? _problem;
   RunPoint? _lastFix;
+
+  /// When the newest fix arrived — see [RunRecorder.sinceLastFix].
+  DateTime? _lastFixAt;
   Timer? _timer;
   Timer? _acquireTimer;
   int _index = 0;
@@ -73,6 +76,16 @@ class FakeRunRecorder implements RunRecorder {
 
   @override
   RunPoint? get lastFix => _lastFix;
+
+  @override
+  Duration? get sinceLastFix {
+    final at = _lastFixAt;
+    if (at == null) return null;
+    final age = _now().difference(at);
+    // A fix timestamped fractionally ahead of the clock is a rounding artefact,
+    // not time travel; report it as fresh rather than negative.
+    return age.isNegative ? Duration.zero : age;
+  }
 
   @override
   Duration get elapsed {
@@ -115,6 +128,7 @@ class FakeRunRecorder implements RunRecorder {
       }
       final fix = _trace[_index++];
       _lastFix = fix;
+      _lastFixAt = _now();
       _points.add(fix);
     });
   }

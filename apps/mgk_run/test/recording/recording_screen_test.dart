@@ -5,6 +5,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
 import 'package:mgk_units/mgk_units.dart';
+import 'package:mgk_run/src/features/recording/domain/live_metrics.dart';
+import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
 
@@ -72,6 +74,67 @@ void main() {
       await recorder.stop(); // cancel the replay timer before teardown
     },
   );
+
+  testWidgets('says the signal is gone when fixes stop arriving', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(kPhone);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // The failure this exists for, reproduced on an emulator before it was
+    // written: the GPS feed was cut and the screen carried on saying
+    // "Recording" with three bars, while the average pace inflated every
+    // second against a distance that had stopped. Nothing errors when fixes
+    // stop arriving, so `problem` stays null and nothing said a word.
+    //
+    // A trace of two points and then silence, which is what a tunnel looks
+    // like: the recorder is still `recording` throughout -- the run was never
+    // paused or stopped, it just went quiet.
+    final start = DateTime(2026, 1, 1, 8);
+    var clock = start;
+    final recorder = FakeRunRecorder(
+      interval: const Duration(milliseconds: 20),
+      now: () => clock,
+      trace: <RunPoint>[
+        RunPoint(
+          latitude: 51.5,
+          longitude: -0.12,
+          accuracyMeters: 5,
+          timestamp: start,
+        ),
+        RunPoint(
+          latitude: 51.5001,
+          longitude: -0.12,
+          accuracyMeters: 5,
+          timestamp: start.add(const Duration(seconds: 1)),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: RecordingScreen(recorder: recorder),
+      ),
+    );
+
+    clock = start.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Recording'), findsOneWidget);
+    expect(find.text('No signal'), findsNothing);
+
+    // The trace is spent. Let the clock run past the staleness threshold.
+    clock = clock.add(kStaleFixAfter + const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('No signal'), findsOneWidget);
+    expect(find.text('Recording'), findsNothing);
+    expect(
+      recorder.status,
+      RecorderStatus.recording,
+      reason: 'the run has not stopped -- that is the whole point',
+    );
+  });
 
   testWidgets('elapsed time survives the app being backgrounded', (
     tester,

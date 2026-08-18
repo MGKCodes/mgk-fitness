@@ -253,10 +253,25 @@ class _RecordingScreenState extends State<RecordingScreen> {
   bool get _recording => _status == RecorderStatus.recording;
   bool get _acquiring => _recording && _points.isEmpty && _problem == null;
 
+  /// Fixes have stopped arriving, and nothing reported it.
+  ///
+  /// Distinct from [_acquiring], which is the honest opening state of a run
+  /// that has not had a fix *yet*. This is a run that was being tracked and has
+  /// gone quiet — a tunnel, a permission downgraded mid-run, an OS that has
+  /// deprioritised the app. No stream errors, so [_problem] stays null, and
+  /// without this the screen goes on saying "Recording" over a frozen distance
+  /// for as long as the runner cares to look at it.
+  bool get _signalLost {
+    if (!_recording || _problem != null) return false;
+    final since = widget.recorder.sinceLastFix;
+    return since != null && since >= kStaleFixAfter;
+  }
+
   String get _statusLabel {
     if (_problem != null) return 'Not recording';
     if (_acquiring) return 'Acquiring GPS';
     if (!_recording) return 'Paused';
+    if (_signalLost) return 'No signal';
     return 'Recording';
   }
 
@@ -458,8 +473,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   bottom: false,
                   child: _TopStrip(
                     label: _statusLabel,
-                    pulsing: _recording,
-                    signal: gpsSignalFor(widget.recorder.lastFix),
+                    // The pulse is the screen's claim that something is
+                    // arriving. It has to stop when nothing is, or it becomes
+                    // the loudest part of the lie.
+                    pulsing: _recording && !_signalLost,
+                    signal: gpsSignalFor(
+                      widget.recorder.lastFix,
+                      sinceFix: widget.recorder.sinceLastFix,
+                    ),
                     onCancel: widget.onCancel == null ? null : _cancel,
                   ),
                 ),
@@ -472,6 +493,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 unit: widget.unit,
                 currentPace: _currentPace,
                 averagePace: _averagePace,
+                // While the signal is gone the average is elapsed time divided
+                // by a distance that has stopped growing, so it drifts slower
+                // every second and keeps looking like a measurement. Greyed to
+                // say it is no longer being computed from anything.
+                averageStale: _signalLost,
                 dashes: _dashes,
                 band: band,
                 standing: _standing,
@@ -608,6 +634,7 @@ class _Panel extends StatelessWidget {
     required this.unit,
     required this.currentPace,
     required this.averagePace,
+    required this.averageStale,
     required this.dashes,
     required this.band,
     required this.standing,
@@ -634,6 +661,7 @@ class _Panel extends StatelessWidget {
   final UnitSystem unit;
   final String currentPace;
   final String averagePace;
+  final bool averageStale;
   final String dashes;
   final PaceBand? band;
   final PaceStanding standing;
@@ -743,7 +771,7 @@ class _Panel extends StatelessWidget {
                   child: _PaceStat(
                     label: 'AVG ${unit.paceSuffix}',
                     value: averagePace,
-                    absent: averagePace == dashes,
+                    absent: averagePace == dashes || averageStale,
                   ),
                 ),
               ],
