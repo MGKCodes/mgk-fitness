@@ -93,9 +93,19 @@ The soonest goal: TestFlight, off the live server, on a real device.
 - [x] Generate `config/app_config.json` from secure vars in the workflow.
       **Also created `config/app_config.example.json`**, which `AppConfig`'s
       documentation claimed was committed — the directory did not exist.
-- [ ] **Create the `mgk_fitness_lift_env` variable group in Codemagic** with
-      those two values, marked Secure. The workflow names the group; the build
-      fails at the first script without it, by design.
+- [ ] **Create the `mgk_fitness_supabase` variable group in Codemagic** with
+      `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, marked Secure, and move
+      those two out of `mgk_fitness_run_env`. One project (ADR-0008) means one
+      group: a copy per app makes a key rotation half-land, with one product
+      fixed, the other pointed at a dead key, and no build failure to say so.
+      The workflows name the group; the build fails at the first script without
+      it, by design.
+
+      **Ordering matters.** Run's workflow now reads this group too, so it must
+      exist before this branch merges — otherwise Run's next build fails at its
+      config step with "SUPABASE_URL is empty". Lift has no group of its own;
+      an empty one would just be somewhere for a future secret to land without
+      anyone deciding it should.
 - [x] **Check the iOS distribution profile exists for `com.mgkcodes.liftio`.**
       Confirmed present, inherited from the Expo build. Note it is a snapshot of
       the App ID's capabilities at the time it was made, so if

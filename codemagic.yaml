@@ -32,10 +32,21 @@
 #     with App Manager covers signing AND the TestFlight upload, for every app
 #     in the team — already present as `frunt_asc`, which is what the workflow
 #     below references.
-#  3. Environment group `mgk_fitness_run_env` (Application settings ▸
+#  3a. Environment group `mgk_fitness_supabase` (Application settings ▸
 #     Environment variables, mark Secure) with:
 #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
 #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
+#
+#     **Shared by every workflow in this file**, because ADR-0008 says there is
+#     one Supabase project for the suite. Both apps read exactly these two
+#     values, so a copy per app would mean a key rotation that silently half
+#     lands — one product fixed, the other still pointed at a dead key, and no
+#     build failure to say so. `AppConfig` treats missing values as "no server"
+#     rather than as an error, so the symptom would be an app that ships and
+#     cannot sign anybody in.
+#
+#  3b. Environment group `mgk_fitness_run_env`, same screen, for what only Run
+#     has:
 #       MAP_TILE_URL_TEMPLATE     optional. The tile server the privacy policy
 #                                 names. Without it the run map draws the route
 #                                 on charcoal with no basemap — which is what
@@ -46,9 +57,9 @@
 #                                 basemap with no attribution is a terms
 #                                 breach rather than a cosmetic omission. The
 #                                 build refuses the pair half-set.
-#     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
-#     and never reaches the client (ADR-0007); a provider key in this group
-#     would be a provider key in the app bundle.
+#     Nothing else belongs in either group. The OpenRouter key lives in Supabase
+#     secrets and never reaches the client (ADR-0007); a provider key here would
+#     be a provider key in the app bundle.
 #  5. **An App Store distribution provisioning profile for
 #     `com.mgkcodes.fitness.run`.** developer.apple.com ▸ Certificates,
 #     Identifiers & Profiles ▸ Profiles ▸ + ▸ Distribution ▸ App Store Connect,
@@ -123,9 +134,12 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.mgkcodes.fitness.run
       groups:
-        # Named for the suite, not the product, for the same reason the bundle
-        # id is: the app's name is not settled and this one does not need to
-        # care.
+        # The Supabase pair is shared with Lift — one project (ADR-0008), so one
+        # place to rotate a key.
+        - mgk_fitness_supabase
+        # What only Run has: the basemap. Named for the suite, not the product,
+        # for the same reason the bundle id is — the app's name is not settled
+        # and this one does not need to care.
         - mgk_fitness_run_env
       flutter: stable
       xcode: latest
@@ -157,7 +171,7 @@ workflows:
               v = (os.environ.get(name) or "").strip()
               if not v:
                   sys.exit(
-                      f"{name} is empty. Set it in the mgk_fitness_run_env "
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
                       "group, or the IPA ships unable to reach Supabase."
                   )
               return v
@@ -265,14 +279,13 @@ workflows:
   #
   # ONE-TIME SETUP, beyond what Run already established:
   #
-  #  1. Environment group `mgk_fitness_lift_env` (Application settings ▸
-  #     Environment variables, mark Secure) with:
-  #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
-  #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
-  #     That is the whole list — `AppConfig` reads exactly two values. Lift has
-  #     no basemap and no debug quick-sign-in, so Run's other four have no
-  #     equivalent here. The OpenRouter key lives in Supabase secrets and never
-  #     reaches the client (ADR-0007).
+  #  1. **No environment group of its own.** `AppConfig` reads exactly the two
+  #     values already in `mgk_fitness_supabase` (setup 3a), so Lift references
+  #     that and nothing else — Run's map and dev-account variables have no
+  #     equivalent here, and an empty `mgk_fitness_lift_env` would only be a
+  #     place for a future secret to land without anyone deciding it should.
+  #     The OpenRouter key lives in Supabase secrets and never reaches the
+  #     client (ADR-0007).
   #
   #  2. **Nothing to create in App Store Connect.** The record exists — it is
   #     Liftio, id 6759969740, shipping 1.4.0 today. This uploads 2.0.0 to the
@@ -308,7 +321,10 @@ workflows:
         # apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
         bundle_identifier: com.mgkcodes.liftio
       groups:
-        - mgk_fitness_lift_env
+        # The only group Lift needs. `AppConfig` reads exactly these two values,
+        # so there is no lift-specific group to create — an empty one would be a
+        # place for the next secret to go without saying so.
+        - mgk_fitness_supabase
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -326,7 +342,7 @@ workflows:
               v = (os.environ.get(name) or "").strip()
               if not v:
                   sys.exit(
-                      f"{name} is empty. Set it in the mgk_fitness_lift_env "
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
                       "group, or the IPA ships unable to reach Supabase."
                   )
               return v
@@ -430,7 +446,10 @@ workflows:
       android_signing:
         - liftio_upload
       groups:
-        - mgk_fitness_lift_env
+        # The only group Lift needs. `AppConfig` reads exactly these two values,
+        # so there is no lift-specific group to create — an empty one would be a
+        # place for the next secret to go without saying so.
+        - mgk_fitness_supabase
       flutter: stable
     scripts:
       - name: Generate config/app_config.json from secure vars
@@ -445,7 +464,7 @@ workflows:
               v = (os.environ.get(name) or "").strip()
               if not v:
                   sys.exit(
-                      f"{name} is empty. Set it in the mgk_fitness_lift_env "
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
                       "group, or the bundle ships unable to reach Supabase."
                   )
               return v
