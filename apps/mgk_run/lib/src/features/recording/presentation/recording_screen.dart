@@ -379,6 +379,32 @@ class _RecordingScreenState extends State<RecordingScreen> {
     return bandFor(session.kind, paces);
   }
 
+  /// Whether today's band is a **ceiling** rather than a corridor.
+  ///
+  /// The two instructions are not worth the same. On an easy, recovery or long
+  /// session, running slower than the band is the session working, not failing:
+  /// nobody's aerobic base suffers from twenty seconds a kilometre, and the
+  /// point of the day is time on the feet. Running *faster* defeats it
+  /// entirely, so EASE OFF earns its place and PICK IT UP does not — it is a
+  /// quality-session rule applied to a day that is not about pace, and it fires
+  /// hardest on a tired runner at the end of a long one, which is the worst
+  /// possible moment to nag somebody for being tired.
+  ///
+  /// On threshold, marathon pace and a time trial the pace *is* the session, so
+  /// both directions are real. Intervals never get a band at all — see [_band].
+  bool get _effortCapped => switch (widget.plannedSession?.kind) {
+    SessionKind.easy || SessionKind.recovery || SessionKind.long => true,
+    SessionKind.threshold ||
+    SessionKind.marathonPace ||
+    SessionKind.timeTrial => false,
+    // No band on these, so the answer is never used. Spelled out rather than
+    // defaulted so a new kind has to be considered here.
+    SessionKind.interval ||
+    SessionKind.rest ||
+    SessionKind.strength ||
+    null => false,
+  };
+
   /// Where the current effort sits, with hysteresis.
   ///
   /// **Sticky on purpose.** GPS pace is noisy enough that a bare comparison
@@ -388,6 +414,18 @@ class _RecordingScreenState extends State<RecordingScreen> {
   /// returning to it does not. The same hysteresis the autopause uses, for the
   /// same reason.
   PaceStanding _standingFor(PaceBand band, Pace? current) {
+    if (current == null) return PaceStanding.unknown;
+    // A ceiling has no lower edge to fall off, so being under it is simply
+    // being within it. Resolved here rather than in the copy so the rail, the
+    // verdict and the hysteresis all agree about what state the runner is in.
+    if (_effortCapped) {
+      final capped = _rawStandingFor(band, current);
+      return capped == PaceStanding.under ? PaceStanding.inBand : capped;
+    }
+    return _rawStandingFor(band, current);
+  }
+
+  PaceStanding _rawStandingFor(PaceBand band, Pace? current) {
     if (current == null) return PaceStanding.unknown;
     final now = current.secondsPerKilometer;
     final slow = band.slow.secondsPerKilometer;
@@ -578,9 +616,15 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 railPosition: band == null || current == null
                     ? 0.5
                     : _railPosition(band, current),
-                bandSlowLabel: band == null ? null : _bare(band.slow),
+                // No slow label when the band is a ceiling: naming a lower
+                // edge implies falling below it means something, and on these
+                // sessions it does not. The fast edge is the whole instruction.
+                bandSlowLabel: band == null || _effortCapped
+                    ? null
+                    : _bare(band.slow),
                 bandFastLabel: band == null ? null : _bare(band.fast),
                 verdict: _verdict(_standing),
+                effortCapped: _effortCapped,
                 showBrief: showBrief,
                 splits: _splits,
                 session: widget.plannedSession,
@@ -717,6 +761,7 @@ class _Panel extends StatelessWidget {
     required this.bandSlowLabel,
     required this.bandFastLabel,
     required this.verdict,
+    required this.effortCapped,
     required this.showBrief,
     required this.splits,
     required this.session,
@@ -745,6 +790,11 @@ class _Panel extends StatelessWidget {
   final String? bandSlowLabel;
   final String? bandFastLabel;
   final String? verdict;
+
+  /// Whether the band is a ceiling rather than a corridor, which changes what
+  /// the meter lights: everything up to the fast edge, rather than a segment
+  /// with a lower bound the session does not have.
+  final bool effortCapped;
 
   /// Whether the effort brief sits in the collapsed panel rather than below
   /// the fold. Must agree with the `hasBrief` the detent was computed with, or
@@ -901,6 +951,10 @@ class _Panel extends StatelessWidget {
                 position: railPosition,
                 slowLabel: bandSlowLabel,
                 fastLabel: bandFastLabel,
+                // Lit from the rail's start on a capped session, so the lit
+                // region means "acceptable" in both cases rather than meaning
+                // "the band" in one and something narrower in the other.
+                bandStart: effortCapped ? 0 : PaceBandMeter.defaultBandStart,
               ),
               const SizedBox(height: 6),
               SectionLabel(

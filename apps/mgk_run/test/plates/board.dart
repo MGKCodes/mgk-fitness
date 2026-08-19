@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_run_recorder.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
+import 'package:mgk_run/src/features/coaching/domain/session_effort.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
@@ -70,11 +71,18 @@ void main() {
   Widget screen(
     FakeRunRecorder rec, {
     PlannedSession? session = easy5k,
+    SessionKind? kind,
     double? weekDone,
     double? weekTarget,
   }) => RecordingScreen(
     recorder: rec,
-    plannedSession: session,
+    plannedSession: kind == null
+        ? session
+        : PlannedSession(
+            weekday: DateTime.monday,
+            kind: kind,
+            distanceMeters: 5000,
+          ),
     paces: session == null
         ? null
         : TrainingPaces.fromRace(
@@ -213,14 +221,38 @@ void main() {
   // screen says PICK IT UP at every distance, and a board that can only render
   // one of three states cannot be used to judge the other two.
   group('verdicts', () {
-    for (final (String name, Duration pace) in <(String, Duration)>[
-      ('19-verdict-pick-it-up', Duration(minutes: 7, seconds: 30)),
-      ('20-verdict-on-target', Duration(minutes: 6, seconds: 40)),
-      ('21-verdict-ease-off', Duration(minutes: 5, seconds: 45)),
-    ]) {
+    final TrainingPaces paces = TrainingPaces.fromRace(
+      Distance.meters(5000),
+      const Duration(minutes: 24, seconds: 30),
+    );
+
+    /// Derived from the band rather than typed in, so these stay outside it if
+    /// the pace model ever moves.
+    Duration under(SessionKind kind) => Duration(
+      seconds: bandFor(kind, paces)!.slow.secondsPerKilometer.round() + 75,
+    );
+    Duration over(SessionKind kind) => Duration(
+      seconds: bandFor(kind, paces)!.fast.secondsPerKilometer.round() - 75,
+    );
+
+    for (final (String name, SessionKind kind, Duration pace)
+        in <(String, SessionKind, Duration)>[
+          ('19-easy-under', SessionKind.easy, under(SessionKind.easy)),
+          ('20-easy-over', SessionKind.easy, over(SessionKind.easy)),
+          (
+            '21-threshold-under',
+            SessionKind.threshold,
+            under(SessionKind.threshold),
+          ),
+          (
+            '22-threshold-over',
+            SessionKind.threshold,
+            over(SessionKind.threshold),
+          ),
+        ]) {
       testWidgets(name, (WidgetTester tester) async {
         final FakeRunRecorder rec = recorder(pacePerKm: pace);
-        await shot(tester, name, screen(rec), drive: advance(125));
+        await shot(tester, name, screen(rec, kind: kind), drive: advance(125));
         await rec.stop();
       });
     }

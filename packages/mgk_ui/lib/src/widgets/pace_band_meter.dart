@@ -42,10 +42,19 @@ class PaceBandMeter extends StatelessWidget {
     required this.position,
     this.slowLabel,
     this.fastLabel,
-    this.bandStart = 0.32,
-    this.bandEnd = 0.68,
+    this.bandStart = defaultBandStart,
+    this.bandEnd = defaultBandEnd,
     this.height = 6,
   });
+
+  /// Where the lit segment sits when the band has two edges.
+  ///
+  /// Named so a caller that needs to move one edge — a session where the band
+  /// is a ceiling rather than a corridor, and everything slower is fine — can
+  /// say `bandStart: 0` without restating the other end as a magic number that
+  /// then drifts from this one.
+  static const double defaultBandStart = 0.32;
+  static const double defaultBandEnd = 0.68;
 
   final PaceStanding standing;
 
