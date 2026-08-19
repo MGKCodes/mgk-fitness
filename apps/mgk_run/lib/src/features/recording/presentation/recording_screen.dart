@@ -331,7 +331,21 @@ class _RecordingScreenState extends State<RecordingScreen> {
     return _bare(Pace.from(Distance.meters(_distanceM), _elapsed));
   }
 
-  Pace? get _current => rollingPace(_points);
+  /// The live pace, or null once the fixes stop as well as when there has not
+  /// been enough movement to say.
+  ///
+  /// [rollingPace] windows off the newest point's own timestamp and is handed
+  /// no clock, so it cannot tell a runner who has stopped from a phone that has
+  /// stopped hearing satellites: it keeps returning the last honest window for
+  /// as long as the screen is open. This is the half of its contract only the
+  /// caller can keep, because only the caller knows what time it is.
+  ///
+  /// Dashed rather than greyed, which is the treatment the *average* gets in
+  /// the same state. The distinction is real: an average over a run that
+  /// happened is still a fact about that run, and stops being updated. A
+  /// current pace over fixes that stopped arriving is not a fact about
+  /// anything.
+  Pace? get _current => _signalLost ? null : rollingPace(_points);
 
   /// Whether the run has gone far enough, or long enough, to be judged.
   ///

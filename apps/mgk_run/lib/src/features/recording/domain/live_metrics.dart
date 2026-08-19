@@ -68,9 +68,16 @@ GpsSignal gpsSignalFor(RunPoint? fix, {required Duration? sinceFix}) {
 /// Pace over the trailing [window], or null when there is not enough recent
 /// movement to say.
 ///
-/// Null is a real answer here, not a gap: at the start of a run, standing at a
-/// light, or with the signal gone, there is no current pace, and a plausible
-/// wrong number is worse than an honest absence. The screen renders dashes.
+/// Null is a real answer here, not a gap: at the start of a run, or standing at
+/// a light, there is no current pace, and a plausible wrong number is worse
+/// than an honest absence. The screen renders dashes.
+///
+/// **It cannot detect a lost signal, and used to claim it could.** The window
+/// is measured back from `points.last.timestamp`, not from now, and no clock is
+/// passed in — so once fixes stop arriving the last window stays eligible
+/// forever and this keeps returning the pace from it. Staleness is the
+/// caller's to apply, against [kStaleFixAfter]; see `_current` on the recording
+/// screen.
 Pace? rollingPace(
   List<RunPoint> points, {
   Duration window = kLivePaceWindow,
