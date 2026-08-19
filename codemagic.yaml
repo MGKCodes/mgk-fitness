@@ -104,6 +104,99 @@
 # each, so a commit that only touches Lift does not spend twenty minutes
 # building Run. While both are manual-trigger only, it costs nothing.
 workflows:
+  # ───────────────────────────────────────────────────────────────────────────
+  # The only workflow here that is not a build.
+  #
+  # Until this existed, NOTHING ran automatically: the three workflows below all
+  # produce store artefacts, and the 188 Deno tests, 3 pgTAP suites and 292
+  # Flutter tests were run by hand or not at all. A suite that only runs when
+  # somebody remembers is a suite that is green because nobody looked.
+  #
+  # Linux, because none of it needs Xcode and the macOS instance costs several
+  # times more per minute. The whole thing is minutes, mostly spent installing
+  # tools rather than running tests — `deno test` alone is 188 tests in one
+  # second.
+  #
+  # **Each layer is its own step on purpose.** One combined script would report
+  # "tests failed" and leave you to find out which of four things broke; named
+  # steps put the answer in the build list.
+  # ───────────────────────────────────────────────────────────────────────────
+  checks:
+    name: Checks — Deno, pgTAP, Flutter
+    instance_type: linux_x2
+    max_build_duration: 20
+
+    # Unlike the release workflows, this one is meant to run without being
+    # asked. A check you have to trigger is a check you skip on the day you are
+    # in a hurry, which is the day you needed it.
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: '*'
+          include: true
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.cache/deno
+
+    environment:
+      flutter: stable
+
+    scripts:
+      - name: Deno — coach function
+        # No permission flags. The tests fake `fetch` rather than reaching the
+        # network, which is why they are a second rather than a minute, and why
+        # a red here is always the code rather than the weather.
+        working_directory: supabase/functions/coach
+        script: deno test
+
+      - name: Deno — eval rules
+        # The arithmetic half of the coach evals. Separate from the graded run,
+        # which costs money, needs an account and is deliberately not a gate —
+        # see supabase/evals/README.md. These are pure functions and belong
+        # here with everything else that cannot be flaky.
+        working_directory: supabase/evals
+        script: deno test --allow-net=jsr.io
+
+      - name: pgTAP — schema contracts
+        # `supabase test db` spins Postgres in Docker, so this is the slowest
+        # step by a distance. It earns it: coach_contract.sql asserts invariants
+        # against the catalog rather than against migration text, which is the
+        # only version of that check that survives a migration being edited.
+        script: |
+          curl -fsSL https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz             | tar -xz -C /tmp
+          sudo mv /tmp/supabase /usr/local/bin/supabase
+          supabase --version
+          supabase test db
+
+      - name: Flutter — packages and generated code
+        # **Not optional.** `*.g.dart` is gitignored, so a fresh clone has no
+        # drift sources and mgk_lift does not compile without this — the same
+        # reason both release workflows carry the identical step. Analysing
+        # before it runs reports a few hundred phantom errors about undefined
+        # getters, which is a very convincing way to waste an afternoon.
+        script: |
+          flutter pub get
+          cd apps/mgk_lift && dart run build_runner build --delete-conflicting-outputs
+
+      - name: Flutter — analyze
+        # mgk_run is excluded deliberately. Its drift sources would need
+        # generating too, which doubles this step's runtime to analyse code
+        # this workflow does not test and whose own release workflow already
+        # covers it.
+        script: flutter analyze apps/mgk_lift packages/mgk_ui
+
+      - name: Flutter — mgk_ui
+        working_directory: packages/mgk_ui
+        script: flutter test
+
+      - name: Flutter — mgk_lift
+        working_directory: apps/mgk_lift
+        script: flutter test
+
   run-ios-release:
     name: Run — iOS TestFlight
     instance_type: mac_mini_m2
