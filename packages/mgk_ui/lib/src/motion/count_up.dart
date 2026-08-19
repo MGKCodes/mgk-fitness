@@ -24,6 +24,7 @@ class CountUp extends StatefulWidget {
     this.duration = AppMotion.slow,
     this.style,
     this.textAlign,
+    this.builder,
   });
 
   final double value;
@@ -31,6 +32,12 @@ class CountUp extends StatefulWidget {
   final Duration duration;
   final TextStyle? style;
   final TextAlign? textAlign;
+
+  /// Renders the formatted value, for a caller that needs more than one style
+  /// across it — a hero numeral setting its digits tabular and its decimal
+  /// point proportional, say. Given one, [style] and [textAlign] are the
+  /// builder's business rather than this widget's.
+  final Widget Function(String text, TextStyle style)? builder;
 
   @override
   State<CountUp> createState() => _CountUpState();
@@ -87,11 +94,14 @@ class _CountUpState extends State<CountUp> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, _) => Text(
-        widget.format(_current),
-        style: widget.style,
-        textAlign: widget.textAlign,
-      ),
+      builder: (context, _) {
+        final String text = widget.format(_current);
+        final Widget Function(String, TextStyle)? build = widget.builder;
+        if (build != null) {
+          return build(text, widget.style ?? const TextStyle());
+        }
+        return Text(text, style: widget.style, textAlign: widget.textAlign);
+      },
     );
   }
 }
