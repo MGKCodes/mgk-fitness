@@ -30,6 +30,7 @@ void main() {
     RecorderProblem? failsWith,
     Duration acquireAfter = Duration.zero,
     int? traceLength,
+    Duration? pacePerKm,
   }) {
     clock = DateTime(2026, 1, 1, 8);
     return FakeRunRecorder(
@@ -40,9 +41,11 @@ void main() {
       // *without* leaving the recording state — which is the only way to reach
       // the signal-lost readout. Pausing looks similar from the inside and is
       // not the same screen at all: it says Paused, and offers Resume.
-      trace: traceLength == null
+      trace: traceLength == null && pacePerKm == null
           ? null
-          : demoRunTrace().take(traceLength).toList(),
+          : demoRunTrace(
+              pacePerKm: pacePerKm,
+            ).take(traceLength ?? 440).toList(),
       now: () => clock,
     );
   }
@@ -200,6 +203,27 @@ void main() {
       );
       await rec.stop();
     });
+  });
+
+  // The band for an easy 5 k off a 24:30 time trial is 6:24–6:55. Three runs
+  // at the same distance, differing only in pace, so the three verdicts can be
+  // read against each other rather than one at a time.
+  //
+  // This is the whole reason demoRunTrace takes a pace: on the default loop the
+  // screen says PICK IT UP at every distance, and a board that can only render
+  // one of three states cannot be used to judge the other two.
+  group('verdicts', () {
+    for (final (String name, Duration pace) in <(String, Duration)>[
+      ('19-verdict-pick-it-up', Duration(minutes: 7, seconds: 30)),
+      ('20-verdict-on-target', Duration(minutes: 6, seconds: 40)),
+      ('21-verdict-ease-off', Duration(minutes: 5, seconds: 45)),
+    ]) {
+      testWidgets(name, (WidgetTester tester) async {
+        final FakeRunRecorder rec = recorder(pacePerKm: pace);
+        await shot(tester, name, screen(rec), drive: advance(125));
+        await rec.stop();
+      });
+    }
   });
 
   group('no plan', () {
