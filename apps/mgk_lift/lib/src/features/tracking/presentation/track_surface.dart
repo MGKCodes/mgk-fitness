@@ -358,42 +358,30 @@ class _RecentStrip extends StatelessWidget {
         )
         .length;
 
+    // StatBlock, not a local widget. This row used to be `_Figure`, a fourth
+    // copy of the design system's Stat that put the value above the label —
+    // the opposite of Profile and the session header, on the screen a lifter
+    // opens most. It also rendered without tabular figures, so a counter
+    // changing width shifted the row under it.
     return Row(
       children: <Widget>[
-        _Figure(value: '$thisWeek', label: 'this week'),
-        _Figure(value: '${stats.currentWeekStreak}', label: 'week streak'),
-        if (finished.isNotEmpty)
-          _Figure(
-            value: _ago(finished.first.startedAt, now),
-            label: 'last session',
+        Expanded(
+          child: StatBlock(label: 'this week', value: '$thisWeek'),
+        ),
+        Expanded(
+          child: StatBlock(
+            label: 'week streak',
+            value: '${stats.currentWeekStreak}',
           ),
-      ],
-    );
-  }
-}
-
-class _Figure extends StatelessWidget {
-  const _Figure({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(value, style: theme.textTheme.titleMedium),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textTertiary,
+        ),
+        if (finished.isNotEmpty)
+          Expanded(
+            child: StatBlock(
+              label: 'last session',
+              value: _ago(finished.first.startedAt, now),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

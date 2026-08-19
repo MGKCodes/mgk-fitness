@@ -628,9 +628,19 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xl),
-            PrimaryButton(label: 'Use a template', onPressed: onUseTemplate),
+            // **Adding a movement is the primary, not the template picker.**
+            // These were the other way round, which made the loudest action on
+            // a blank session the one the "Lift templates are the coach's
+            // grounding layer, not a user-facing library" decision says should
+            // not be a user-facing library at all. Loudness is the half of that
+            // decision this screen owns; whether the picker survives is item 3
+            // of docs/roadmap.md and is not settled here.
+            PrimaryButton(label: 'Add exercise', onPressed: onAdd),
             const SizedBox(height: AppSpacing.sm),
-            OutlinedButton(onPressed: onAdd, child: const Text('Add exercise')),
+            OutlinedButton(
+              onPressed: onUseTemplate,
+              child: const Text('Use a template'),
+            ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: onDiscard,

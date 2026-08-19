@@ -258,9 +258,13 @@ void trackContentTests() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('this week'), findsOneWidget);
-    expect(find.text('week streak'), findsOneWidget);
-    expect(find.text('last session'), findsOneWidget);
+    // Upper case because these are SectionLabels now. Track used to draw its
+    // figures with a local widget that set its own label style; moving the row
+    // onto StatBlock put it in the same treatment as Profile and the session
+    // header, which is the point of the change rather than a side effect of it.
+    expect(find.text('THIS WEEK'), findsOneWidget);
+    expect(find.text('WEEK STREAK'), findsOneWidget);
+    expect(find.text('LAST SESSION'), findsOneWidget);
   });
 
   testWidgets('an empty log shows no figures rather than zeroes', (
@@ -272,6 +276,6 @@ void trackContentTests() {
       MaterialApp(home: TrackSurface(today: DateTime(2026, 8, 12))),
     );
     await tester.pumpAndSettle();
-    expect(find.text('this week'), findsNothing);
+    expect(find.text('THIS WEEK'), findsNothing);
   });
 }

@@ -46,17 +46,39 @@ class StatBlock extends StatelessWidget {
               : null,
         ),
         SizedBox(height: size.gap),
-        Text(
-          value,
-          textAlign: align == CrossAxisAlignment.center
-              ? TextAlign.center
-              : null,
-          style: TextStyle(
-            color: valueColor ?? AppColors.textPrimary,
-            fontSize: size.valueSize,
-            fontWeight: size.valueWeight,
-            height: 1.1,
-            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+        // **One line, shrunk to fit rather than wrapped.**
+        //
+        // A Stat is a value on a shared baseline with its neighbours, and a
+        // value that wraps breaks that: the block grows taller, its label is
+        // pushed up, and the row stops reading as a row. There was no guard
+        // here at all, so the failure mode was silent and reachable from two
+        // directions — Track's "last session" saying `2 weeks ago` in a third
+        // of a phone's width, and the session header's clock reaching
+        // `18:42:11` on a session left open overnight and resumed.
+        //
+        // scaleDown, not ellipsis: a truncated number is a wrong number, and
+        // these are numbers. Slightly small and correct beats crisp and cut in
+        // half. The scale needed is small in practice — a few percent — because
+        // the widths involved are close.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: align == CrossAxisAlignment.center
+              ? Alignment.center
+              : AlignmentDirectional.centerStart,
+          child: Text(
+            value,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: align == CrossAxisAlignment.center
+                ? TextAlign.center
+                : null,
+            style: TextStyle(
+              color: valueColor ?? AppColors.textPrimary,
+              fontSize: size.valueSize,
+              fontWeight: size.valueWeight,
+              height: 1.1,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
           ),
         ),
       ],
