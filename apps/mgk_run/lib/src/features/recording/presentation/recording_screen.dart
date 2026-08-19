@@ -38,13 +38,39 @@ const double _heroSize = 96;
 /// a time trial behind it.
 const double _bandBlockHeight = AppSpacing.lg + 34 + 6 + 18;
 
+/// How far, or how long, before the coach will hand a verdict down.
+///
+/// `rollingPace` is honest from 25 m — enough to *report a number*. It is
+/// nowhere near enough to *issue an instruction*. Every run starts from a
+/// standstill, so the first thirty-second window is an acceleration, and the
+/// verdict derived from it is `PICK IT UP` on every run ever recorded —
+/// including the ones that go on to be far too fast. Firing the most negative
+/// reading at the moment it is least earned is how a runner learns to stop
+/// believing the band.
+///
+/// Either trips it, whichever comes first: 400 m so a quick runner is not held
+/// for three minutes, three minutes so a slow one is not held for 400 m.
+const double kVerdictWarmUpMeters = 400;
+const Duration kVerdictWarmUpTime = Duration(minutes: 3);
+
+/// The effort brief, while it sits above the fold — see [_EffortBrief].
+///
+/// Its prose is capped at two lines up here for the same reason this whole sum
+/// exists: the detent is computed, not measured, and a third line would push
+/// the controls off the bottom of a small phone.
+const double _briefBlockHeight = AppSpacing.lg + 14 + 6 + 41;
+
 /// A problem message and, where one helps, the Settings button under it. Only
 /// present when recording has actually failed — but when it is, it pushes the
 /// controls down, and a detent that does not know about it strands them off
 /// the bottom exactly as a fixed fraction used to.
 const double _problemBlockHeight = 96 + AppSpacing.lg;
 
-double _panelContentHeight({required bool hasBand, required bool hasProblem}) =>
+double _panelContentHeight({
+  required bool hasBand,
+  required bool hasProblem,
+  required bool hasBrief,
+}) =>
     AppSpacing.md + // top padding
     16 + // sheet handle and its gap
     12 + // DISTANCE eyebrow
@@ -53,6 +79,7 @@ double _panelContentHeight({required bool hasBand, required bool hasProblem}) =>
     AppSpacing.lg + // gap
     52 + // TIME / PACE / AVG label and value
     (hasBand ? _bandBlockHeight : 0) +
+    (hasBrief ? _briefBlockHeight : 0) +
     (hasProblem ? _problemBlockHeight : 0) +
     AppSpacing.xl + // gap
     48 + // Lap / Pause / Finish
@@ -77,9 +104,14 @@ double collapsedFractionFor(
   double bottomInset = 0,
   bool hasBand = true,
   bool hasProblem = false,
+  bool hasBrief = false,
 }) {
   if (height <= 0) return 0.42;
-  final content = _panelContentHeight(hasBand: hasBand, hasProblem: hasProblem);
+  final content = _panelContentHeight(
+    hasBand: hasBand,
+    hasProblem: hasProblem,
+    hasBrief: hasBrief,
+  );
   return ((content + bottomInset) / height).clamp(0.32, 0.88);
 }
 
@@ -301,6 +333,15 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   Pace? get _current => rollingPace(_points);
 
+  /// Whether the run has gone far enough, or long enough, to be judged.
+  ///
+  /// See [kVerdictWarmUpMeters]. Note this gates the *verdict*, not the pace:
+  /// the figure keeps updating from the first honest window, because reporting
+  /// what somebody is doing and telling them to do something else are
+  /// different claims with different burdens of proof.
+  bool get _warmedUp =>
+      _distanceM >= kVerdictWarmUpMeters || _elapsed >= kVerdictWarmUpTime;
+
   String get _currentPace {
     final pace = _current;
     return pace == null ? _dashes : _bare(pace);
@@ -414,18 +455,37 @@ class _RecordingScreenState extends State<RecordingScreen> {
   Widget build(BuildContext context) {
     final band = _band;
     final current = _current;
-    if (band != null) _standing = _standingFor(band, current);
+    // Unknown until warmed up, which reads as FINDING YOUR PACE rather than as
+    // an instruction — and takes the rail's marker with it, since
+    // [PaceBandMeter] draws no marker on an unknown standing. That is the
+    // right call here and not just an inherited one: during the warm-up the
+    // rolling pace is an acceleration off a standstill, so a marker pinned to
+    // the slow end would say "you are slow" exactly as loudly as the words
+    // did. The rail stays, showing the shape of what is being asked for
+    // without yet placing the runner inside it.
+    if (band != null) {
+      _standing = _warmedUp
+          ? _standingFor(band, current)
+          : PaceStanding.unknown;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final height = constraints.maxHeight;
+          // The brief rides above the fold only while the verdict is held.
+          // It is the answer to "what am I doing", which is the question of
+          // the first few minutes — and once the band starts speaking, the
+          // panel gives the height back and the map takes it, by which time
+          // the route has a shape worth the space.
+          final showBrief = !_warmedUp && widget.plannedSession != null;
           final collapsed = collapsedFractionFor(
             height,
             bottomInset: MediaQuery.paddingOf(context).bottom,
             hasBand: band != null,
             hasProblem: _problem != null,
+            hasBrief: showBrief,
           );
           // **The map is a full screen tall, hung above the fold.**
           //
@@ -507,6 +567,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 bandSlowLabel: band == null ? null : _bare(band.slow),
                 bandFastLabel: band == null ? null : _bare(band.fast),
                 verdict: _verdict(_standing),
+                showBrief: showBrief,
                 splits: _splits,
                 session: widget.plannedSession,
                 climbMeters: climbMeters(_points),
@@ -642,6 +703,7 @@ class _Panel extends StatelessWidget {
     required this.bandSlowLabel,
     required this.bandFastLabel,
     required this.verdict,
+    required this.showBrief,
     required this.splits,
     required this.session,
     required this.climbMeters,
@@ -669,6 +731,11 @@ class _Panel extends StatelessWidget {
   final String? bandSlowLabel;
   final String? bandFastLabel;
   final String? verdict;
+
+  /// Whether the effort brief sits in the collapsed panel rather than below
+  /// the fold. Must agree with the `hasBrief` the detent was computed with, or
+  /// the panel is taller than the height reserved for it.
+  final bool showBrief;
   final List<RunSplit> splits;
   final PlannedSession? session;
   final double? climbMeters;
@@ -722,18 +789,24 @@ class _Panel extends StatelessWidget {
             // beside it — a 0.01 km hero next to a rolling pace that cannot
             // exist under 25 m of movement.
             //
-            // `w200` rather than the default hairline, and tracking eased from
-            // -2 to -1: at w100 the decimal point is a speck alone in a full
-            // tabular cell, so `0.45` separates into two numbers, and the
-            // supporting row below — bold at w600 — out-shouted a figure three
-            // times its size. Weight is what was inverting the hierarchy, not
-            // scale.
+            // `w300` rather than the default hairline, and tracking eased from
+            // -2 to -1. Picked off a side-by-side plate (`?screen=hero-weights`,
+            // w100 to w400) as the lightest cut that still holds when the screen
+            // is read at arm's length while moving: below w300 the figure washes
+            // out, above it the numeral stops looking designed and starts
+            // looking like a default. The supporting row below — bold at w600 —
+            // had also out-shouted a figure three times its size, so weight was
+            // what inverted the hierarchy, not scale.
+            //
+            // The decimal point is a separate fix and not a matter of weight at
+            // all: see HeroNumeral._spans, which spares separators the tabular
+            // digit cell that made `0.45` read as two numbers.
             HeroNumeral(
               label: 'DISTANCE',
               value: Distance.meters(distanceM).inDisplayUnit(unit),
               unit: unit.distanceSuffix,
               size: _heroSize,
-              weight: FontWeight.w200,
+              weight: FontWeight.w300,
               letterSpacing: -1,
               animate: false,
             ),
@@ -767,12 +840,32 @@ class _Panel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+                // On a planned session the third column is what is *left*,
+                // not what has averaged.
+                //
+                // Average pace is the only figure on this row a runner cannot
+                // act on: it reports how the run has gone, which is the
+                // summary screen's job and told better there, and for the
+                // opening minutes it reserves a third of the row for `--:--`.
+                // What is left answers the question the pace band provokes —
+                // hold this, and for how much longer — and it has a value from
+                // the first metre. Without a plan there is no distance to
+                // count down to, so the average keeps the slot.
                 Expanded(
-                  child: _PaceStat(
-                    label: 'AVG ${unit.paceSuffix}',
-                    value: averagePace,
-                    absent: averagePace == dashes || averageStale,
-                  ),
+                  child: session == null
+                      ? _PaceStat(
+                          label: 'AVG ${unit.paceSuffix}',
+                          value: averagePace,
+                          absent: averagePace == dashes || averageStale,
+                        )
+                      : StatBlock(
+                          label: 'TO GO ${unit.distanceSuffix}',
+                          value: _remaining(session!, distanceM, unit),
+                          size: StatSize.hero,
+                          align: CrossAxisAlignment.center,
+                          valueWeight: FontWeight.w400,
+                          shrinkToFit: true,
+                        ),
                 ),
               ],
             ),
@@ -800,6 +893,15 @@ class _Panel extends StatelessWidget {
                 verdict ?? 'FINDING YOUR PACE',
                 emphasis: LabelEmphasis.stat,
               ),
+            ],
+
+            // What the session is for, while the band is still holding its
+            // tongue. The two are deliberately the same threshold: the screen
+            // either tells you what to do, or tells you what you are here to
+            // do, and never neither.
+            if (showBrief && session != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              _EffortBrief(effort: effortFor(session!.kind), maxLines: 2),
             ],
 
             const SizedBox(height: AppSpacing.xl),
@@ -851,14 +953,19 @@ class _Panel extends StatelessWidget {
                 doneMeters: distanceM,
                 targetMeters: session!.distanceMeters,
               ),
-              const SizedBox(height: AppSpacing.lg),
               // What the session is *for*, and how it should feel from the
               // inside. This is the half of the coach that survives having no
               // network: `effortFor` is a pure function over the session kind,
               // so it is here on a run in a tunnel, and it answers the question
               // the band above provokes — the meter says ease off, and this
               // says what easy is supposed to feel like.
-              _EffortBrief(effort: effortFor(session!.kind)),
+              //
+              // Uncapped down here, and absent entirely while it is above the
+              // fold: the same paragraph twice on one sheet reads as a bug.
+              if (!showBrief) ...<Widget>[
+                const SizedBox(height: AppSpacing.lg),
+                _EffortBrief(effort: effortFor(session!.kind)),
+              ],
             ],
 
             if (climbMeters != null) ...<Widget>[
@@ -1014,9 +1121,14 @@ class _PaceStat extends StatelessWidget {
 /// actually taught — a percentage of pace is not a unit of anything, since pace
 /// and effort are not proportional.
 class _EffortBrief extends StatelessWidget {
-  const _EffortBrief({required this.effort});
+  const _EffortBrief({required this.effort, this.maxLines});
 
   final SessionEffort effort;
+
+  /// Capped when the brief sits above the fold, where the collapsed detent is
+  /// a computed sum and an unexpected third line would push Finish off the
+  /// bottom of a small phone. Uncapped below it, where the sheet scrolls.
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -1033,6 +1145,8 @@ class _EffortBrief extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           effort.feel,
+          maxLines: maxLines,
+          overflow: maxLines == null ? null : TextOverflow.ellipsis,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: AppColors.textSecondary,
             height: 1.45,
@@ -1041,6 +1155,18 @@ class _EffortBrief extends StatelessWidget {
       ],
     );
   }
+}
+
+/// What is left of today's session, in the runner's unit, never below zero.
+///
+/// Clamped rather than allowed to go negative: past the target the session is
+/// done, and `-0.42` is not a thing a runner needs told while still running.
+String _remaining(PlannedSession session, double doneM, UnitSystem unit) {
+  final remaining = (session.distanceMeters - doneM).clamp(
+    0.0,
+    double.infinity,
+  );
+  return Distance.meters(remaining).inDisplayUnit(unit).toStringAsFixed(2);
 }
 
 /// What today's session is called — the runner's own word for it when they have

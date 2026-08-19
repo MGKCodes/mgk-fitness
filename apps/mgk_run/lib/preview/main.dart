@@ -1661,9 +1661,12 @@ class _HeroWeights extends StatelessWidget {
 
   static const List<(String, FontWeight, double)> _rows =
       <(String, FontWeight, double)>[
+        // No `w200` row: the package ships Inter at 100/300/400/500/600/700/
+        // 800/900, so asking for ExtraLight drew Thin. The second row is what
+        // `w200` was actually rendering all along.
         ('w100 Thin  ·  tracking -2  (was)', FontWeight.w100, -2),
-        ('w200 ExtraLight  ·  -1  (now)', FontWeight.w200, -1),
-        ('w300 Light  ·  -1', FontWeight.w300, -1),
+        ('w100 Thin  ·  -1  (what w200 really drew)', FontWeight.w100, -1),
+        ('w300 Light  ·  -1  (now)', FontWeight.w300, -1),
         ('w300 Light  ·  0', FontWeight.w300, 0),
         ('w400 Regular  ·  0', FontWeight.w400, 0),
       ];
