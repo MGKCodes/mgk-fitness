@@ -85,6 +85,95 @@ class SupabaseCoach implements CoachService {
   };
 }
 
+/// The stored conversation, read directly against `coach.turns`.
+///
+/// **Not through the Edge Function**, unlike [SupabaseCoach] above — the same
+/// split, and the same reasoning, as [SupabaseCoachMemory]. `authenticated`
+/// already holds SELECT on `coach.turns` and the `own_turns` policy scopes it
+/// to the caller, so this needs nothing the function could add.
+///
+/// The conversation is addressed rather than looked up. Lift keeps exactly one
+/// per person, and the function derives its id the same way — `lift:<user id>`
+/// — so finding it costs no round trip. That id is a contract shared with
+/// `supabase/functions/coach/coach_memory.ts`; changing it in one place
+/// silently orphans every turn written by the other.
+class SupabaseCoachTranscript implements CoachTranscript {
+  SupabaseCoachTranscript(this._client);
+
+  final SupabaseClient _client;
+
+  static const _app = 'lift';
+
+  /// The window the server replays. **Mirrored from `MEMORY_TURNS` in
+  /// `supabase/functions/coach/coach_memory.ts`.** If that number moves and
+  /// this does not, the screen starts showing turns the coach has forgotten —
+  /// which is the failure this whole feature exists to prevent, wearing the
+  /// opposite mask.
+  static const int window = 20;
+
+  /// A row read is not a model call. [SupabaseCoach.requestTimeout] is ninety
+  /// seconds because a provider may legitimately think for that long; nothing
+  /// here may.
+  static const Duration requestTimeout = Duration(seconds: 10);
+
+  SupabaseQuerySchema get _coach => _client.schema('coach');
+
+  @override
+  Future<List<CoachTurn>> read() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return const <CoachTurn>[];
+
+    try {
+      // Newest first with a limit, then reversed — the last N turns, which is
+      // not what `order(seq)` with a limit returns.
+      final rows = await _coach
+          .from('turns')
+          .select('id, role, body, created_at')
+          .eq('conversation_id', '$_app:$userId')
+          .order('seq', ascending: false)
+          .limit(window)
+          .timeout(requestTimeout);
+
+      return _parse(rows).reversed.toList();
+    } on Object {
+      // Deliberately silent. The composer works without this, and an error
+      // banner over a working screen would be the app complaining about its
+      // own history rather than helping anyone train.
+      return const <CoachTurn>[];
+    }
+  }
+
+  /// Rows to turns, dropping anything that cannot be attributed.
+  ///
+  /// Mirrors `parseTurns` in the Edge Function, and for the same reason: a turn
+  /// whose speaker is unknown is dropped rather than guessed at. Put it on the
+  /// wrong side and the screen shows the coach saying what the lifter said.
+  static List<CoachTurn> _parse(List<Map<String, dynamic>> rows) {
+    final turns = <CoachTurn>[];
+    for (final row in rows) {
+      final role = row['role'];
+      if (role != 'user' && role != 'assistant') continue;
+
+      final body = (row['body'] as String? ?? '').trim();
+      if (body.isEmpty) continue;
+
+      turns.add(
+        CoachTurn(
+          id: row['id'] as String? ?? 'turn${turns.length}',
+          body: body,
+          fromCoach: role == 'assistant',
+          at:
+              DateTime.tryParse(
+                row['created_at'] as String? ?? '',
+              )?.toLocal() ??
+              DateTime.now(),
+        ),
+      );
+    }
+    return turns;
+  }
+}
+
 /// A scripted coach, for tests and the preview harness.
 class FakeCoach implements CoachService {
   FakeCoach({
@@ -104,5 +193,55 @@ class FakeCoach implements CoachService {
     final failure = failWith;
     if (failure != null) throw CoachException(failure);
     return reply;
+  }
+}
+
+/// A scripted transcript, for tests and the preview harness.
+class FakeCoachTranscript implements CoachTranscript {
+  FakeCoachTranscript({List<CoachTurn>? turns, this.empty = false})
+    : _turns = turns ?? _sample();
+
+  final List<CoachTurn> _turns;
+
+  /// Reads as a conversation that never happened. The real one answers this way
+  /// on a failed read too, so a screen that handles this handles both.
+  final bool empty;
+
+  @override
+  Future<List<CoachTurn>> read() async => empty ? const <CoachTurn>[] : _turns;
+
+  static List<CoachTurn> _sample() {
+    final at = DateTime(2026, 8, 6, 18, 30);
+    return <CoachTurn>[
+      CoachTurn(
+        id: 't1',
+        body: 'Why has my bench stalled?',
+        fromCoach: false,
+        at: at,
+      ),
+      CoachTurn(
+        id: 't2',
+        body:
+            'You have held 85 kg for six sessions and every top set stopped at '
+            'six reps. That is not a plateau, it is a rep target you keep '
+            'hitting exactly. Take 80 kg and push for nine.',
+        fromCoach: true,
+        at: at.add(const Duration(seconds: 20)),
+      ),
+      CoachTurn(
+        id: 't3',
+        body: 'Shoulder is sore on the left though',
+        fromCoach: false,
+        at: at.add(const Duration(minutes: 1)),
+      ),
+      CoachTurn(
+        id: 't4',
+        body:
+            'Then keep the bar off the sticking point for a fortnight — floor '
+            'press instead of flat, same weights. I will keep that in mind.',
+        fromCoach: true,
+        at: at.add(const Duration(minutes: 1, seconds: 15)),
+      ),
+    ];
   }
 }

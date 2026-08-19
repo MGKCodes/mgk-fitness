@@ -64,3 +64,31 @@ abstract interface class CoachService {
   /// coach's mouth and then ask it to act on them.
   Future<String> ask(String message);
 }
+
+/// Reading back what was already said.
+///
+/// **A separate interface from [CoachService], for the same reason
+/// [CoachMemoryStore] is one:** this does not go through the Edge Function. The
+/// function exists to hold a provider key and to gate spending, and neither
+/// applies to selecting rows the caller already owns. RLS scopes the read, so
+/// routing it through a function would add a hop and a second place for the
+/// scoping to be wrong.
+///
+/// One method, because one is what the screen uses. Widening it to cover
+/// deleting or paging would be inventing requirements for the fake that
+/// implements it — clearing the transcript already exists, on
+/// [CoachMemoryStore.clear], which cascades from `coach.conversations`.
+abstract interface class CoachTranscript {
+  /// What the coach still has in mind, oldest first.
+  ///
+  /// **Deliberately the same window the server replays**, not everything ever
+  /// said. The screen and the coach then agree about what the conversation is:
+  /// a lifter who can see a turn can assume it was taken into account, and one
+  /// who cannot see it can assume it was not. Showing more would reintroduce
+  /// the gap this exists to close, in the direction that misleads.
+  ///
+  /// Never throws. A transcript that will not load is not worth an error on a
+  /// screen whose composer works regardless — the fallback is an empty list,
+  /// which is the state the screen already handles.
+  Future<List<CoachTurn>> read();
+}

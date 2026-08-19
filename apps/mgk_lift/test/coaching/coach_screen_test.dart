@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
@@ -135,4 +137,151 @@ void main() {
       'So what do I do?',
     ]);
   });
+
+  group('resuming a stored conversation', () {
+    testWidgets('what was said before is on screen when it opens', (
+      WidgetTester tester,
+    ) async {
+      // The whole point: the server always replayed this to the model, so a
+      // screen that did not show it invited the lifter to re-explain an injury
+      // the coach already knew about.
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(coach: FakeCoach(), transcript: FakeCoachTranscript()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Why has my bench stalled?'), findsOneWidget);
+      expect(
+        find.textContaining('held 85 kg for six sessions'),
+        findsOneWidget,
+      );
+      expect(find.text('It has read your log'), findsNothing);
+    });
+
+    testWidgets('turns keep the order they were said in', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(coach: FakeCoach(), transcript: FakeCoachTranscript()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final first = tester
+          .getTopLeft(find.text('Why has my bench stalled?'))
+          .dy;
+      final later = tester
+          .getTopLeft(find.text('Shoulder is sore on the left though'))
+          .dy;
+      expect(first, lessThan(later));
+    });
+
+    testWidgets('a transcript that will not load opens like a new one', (
+      WidgetTester tester,
+    ) async {
+      // read() never throws — a failed read arrives as an empty list, and the
+      // composer never depended on it. Breaking the working half to report the
+      // broken one would be the wrong trade.
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(
+            coach: FakeCoach(),
+            transcript: FakeCoachTranscript(empty: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('It has read your log'), findsOneWidget);
+    });
+
+    testWidgets('the opener gives way to a real conversation', (
+      WidgetTester tester,
+    ) async {
+      // Appended after real history it reads as something the coach just said.
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(
+            coach: FakeCoach(),
+            transcript: FakeCoachTranscript(),
+            opener: 'Bench has not moved.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bench has not moved.'), findsNothing);
+      expect(find.text('Why has my bench stalled?'), findsOneWidget);
+    });
+
+    testWidgets('the opener survives an empty transcript', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(
+            coach: FakeCoach(),
+            transcript: FakeCoachTranscript(empty: true),
+            opener: 'Bench has not moved.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bench has not moved.'), findsOneWidget);
+    });
+
+    testWidgets('a question asked mid-read still lands after the history', (
+      WidgetTester tester,
+    ) async {
+      // The composer stays live while the transcript loads, so this race is
+      // reachable by anyone who opens the coach and types immediately.
+      // Appending the history would file it underneath the new question.
+      final slow = _SlowTranscript();
+      await tester.pumpWidget(
+        wrap(CoachScreen(coach: FakeCoach(), transcript: slow)),
+      );
+      await tester.pump();
+
+      await ask(tester, 'Shoulder is sore');
+      slow.complete();
+      await tester.pumpAndSettle();
+
+      final history = tester
+          .getTopLeft(find.text('Why has my bench stalled?'))
+          .dy;
+      final asked = tester.getTopLeft(find.text('Shoulder is sore')).dy;
+      expect(history, lessThan(asked));
+    });
+
+    testWidgets('resuming does not resend the history', (
+      WidgetTester tester,
+    ) async {
+      // The server holds the thread. Showing it must not turn the screen into a
+      // second source of truth for what was said.
+      final coach = FakeCoach();
+      await tester.pumpWidget(
+        wrap(CoachScreen(coach: coach, transcript: FakeCoachTranscript())),
+      );
+      await tester.pumpAndSettle();
+
+      await ask(tester, 'So what do I do?');
+
+      expect(coach.asked, <String>['So what do I do?']);
+    });
+  });
+}
+
+/// A transcript that answers only when told to, so the gap between opening the
+/// screen and the history arriving can be tested rather than assumed away.
+class _SlowTranscript implements CoachTranscript {
+  final Completer<List<CoachTurn>> _done = Completer<List<CoachTurn>>();
+
+  void complete() => _done.complete(FakeCoachTranscript().read());
+
+  @override
+  Future<List<CoachTurn>> read() => _done.future;
 }

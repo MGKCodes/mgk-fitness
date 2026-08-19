@@ -255,6 +255,11 @@ class PreviewApp extends StatelessWidget {
         opener: 'Your bench has not moved in three weeks. Want to look at it?',
       ),
       'coach-empty': (_) => CoachScreen(coach: FakeCoach()),
+      // Reopening the app on a conversation already in progress — the state a
+      // returning lifter actually sees, and the one that did not exist before
+      // the transcript was wired.
+      'coach-resumed': (_) =>
+          CoachScreen(coach: FakeCoach(), transcript: FakeCoachTranscript()),
       // The three states of the memory: one that has been formed, one that has
       // not yet, and one that will not load.
       'coach-memory': (_) => CoachMemoryScreen(

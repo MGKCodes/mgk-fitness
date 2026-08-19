@@ -98,6 +98,10 @@ class MgkLiftApp extends StatelessWidget {
             : SupabaseSync(db, supabase),
         // The mark stays absent rather than inert when there is no server.
         coach: supabase == null ? null : SupabaseCoach(supabase),
+        // Reading back what was already said. Paired with `coach` rather than
+        // gated separately: there is no build that can hold a conversation but
+        // must not be shown it.
+        transcript: supabase == null ? null : SupabaseCoachTranscript(supabase),
         // Not gated on the entitlement the way the coach is: somebody who has
         // stopped paying must still be able to read what was stored about them
         // and delete it.

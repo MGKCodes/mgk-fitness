@@ -5,24 +5,44 @@ import '../domain/coach.dart';
 
 /// The conversation.
 ///
-/// **Kept for the session only.** `coach.conversations` and `coach.turns` exist
-/// server-side and are where this belongs, but persisting a conversation is a
-/// bigger decision than it looks — it is a record of somebody discussing their
-/// body and their injuries, and it should not start being kept as a side effect
-/// of a chat screen shipping. Wiring it is a deliberate follow-up.
+/// **What is on screen is what the coach remembers.** The server has always
+/// kept the transcript and replayed it — that is why the coach follows a thread
+/// across visits and across devices — but until [transcript] existed the screen
+/// drew only what it had seen since it opened. Reopening the app gave an empty
+/// screen and a coach that still knew you, which is a strange thing to hand
+/// somebody: it invites them to re-explain an injury they already described,
+/// and it makes the coach look like it invented the context it then uses.
 ///
-/// **What is on screen is not what the coach remembers.** The server keeps the
-/// transcript and replays it, so the coach follows the thread across visits and
-/// across devices; this list is only what this screen has drawn since it
-/// opened. The two are allowed to differ — reopening the app gives you an empty
-/// screen and a coach that still knows you.
+/// The two now show the same window deliberately, not incidentally. See
+/// [CoachTranscript.read] for why matching the replayed window beats showing
+/// everything ever said.
+///
+/// **Nothing new is stored to make this work.** The rows already existed; this
+/// only reads them back. What the coach keeps, and how to erase it, is Settings
+/// → Coach, which the empty state points at before a first message rather than
+/// after.
 class CoachScreen extends StatefulWidget {
-  const CoachScreen({super.key, required this.coach, this.opener});
+  const CoachScreen({
+    super.key,
+    required this.coach,
+    this.transcript,
+    this.opener,
+  });
 
   final CoachService coach;
 
+  /// What was said before. **Null means this build cannot resume** — a preview,
+  /// a test, or a signed-out session — and the screen opens on its empty state
+  /// exactly as it always did.
+  final CoachTranscript? transcript;
+
   /// A first line from the coach, so the screen is not an empty box with a
   /// cursor in it.
+  ///
+  /// **Ignored once there is a transcript to show.** Appended after a real
+  /// conversation it would read as something the coach just said; placed before
+  /// one it would rewrite how the conversation started. An opener is for an
+  /// empty screen, which is the only place it is now used.
   final String? opener;
 
   @override
@@ -38,20 +58,59 @@ class _CoachScreenState extends State<CoachScreen> {
   CoachFailure? _failure;
   int _counter = 0;
 
+  /// True until the stored conversation has been read, so the screen does not
+  /// flash its empty state — "It has read your log" — at somebody who has been
+  /// talking to it for a month.
+  bool _resuming = false;
+
   @override
   void initState() {
     super.initState();
-    final opener = widget.opener;
-    if (opener != null) {
-      _turns.add(
-        CoachTurn(
-          id: 'opener',
-          body: opener,
-          fromCoach: true,
-          at: DateTime.now(),
-        ),
-      );
+    final transcript = widget.transcript;
+    if (transcript != null) {
+      _resuming = true;
+      _resume(transcript);
+      return;
     }
+    _addOpener();
+  }
+
+  /// Draws the stored conversation, then scrolls to the end of it.
+  ///
+  /// [CoachTranscript.read] does not throw, so there is no failure branch here:
+  /// a transcript that would not load arrives as an empty list and the screen
+  /// opens the way it does for somebody new. That is the right fallback — the
+  /// composer never depended on this, and refusing to show a screen because its
+  /// history is unavailable would break the working half to report the broken
+  /// one.
+  Future<void> _resume(CoachTranscript transcript) async {
+    final stored = await transcript.read();
+    if (!mounted) return;
+    setState(() {
+      // **Inserted at the front, not appended.** The composer stays live while
+      // this runs, so a lifter can ask something before the history arrives —
+      // and appending would then file the old conversation underneath the
+      // question they just asked, which reads as the coach answering first.
+      _turns.insertAll(0, stored);
+      _resuming = false;
+      if (_turns.isEmpty) _addOpener();
+    });
+    // Opening at the top of a long conversation would bury the composer and
+    // the most recent thing said. The newest turn is the one being answered.
+    if (stored.isNotEmpty) _toBottom();
+  }
+
+  void _addOpener() {
+    final opener = widget.opener;
+    if (opener == null) return;
+    _turns.add(
+      CoachTurn(
+        id: 'opener',
+        body: opener,
+        fromCoach: true,
+        at: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -127,7 +186,12 @@ class _CoachScreenState extends State<CoachScreen> {
         child: Column(
           children: <Widget>[
             Expanded(
-              child: _turns.isEmpty && !_waiting
+              child: _resuming && _turns.isEmpty
+                  // Bounded by SupabaseCoachTranscript.requestTimeout, which is
+                  // what keeps this from becoming a spinner nobody can leave.
+                  // The composer below stays live throughout.
+                  ? const Center(child: CircularProgressIndicator())
+                  : _turns.isEmpty && !_waiting
                   ? const _Empty()
                   : ConversationView(
                       controller: _scroll,

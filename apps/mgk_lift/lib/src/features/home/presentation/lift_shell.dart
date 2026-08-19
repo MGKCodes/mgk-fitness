@@ -56,6 +56,7 @@ class LiftShell extends StatefulWidget {
     this.units,
     this.history,
     this.coach,
+    this.transcript,
     this.coachMemory,
     this.planner,
     this.plans,
@@ -84,6 +85,11 @@ class LiftShell extends StatefulWidget {
   /// The conversation. **Null hides the mark entirely** rather than showing an
   /// inert one — a mark that cannot open anything is worse than no mark.
   final CoachService? coach;
+
+  /// What was said before, so opening the coach resumes rather than restarts.
+  /// Null is a build that can talk but not remember out loud — a preview, or a
+  /// session with no server — and the screen falls back to its empty state.
+  final CoachTranscript? transcript;
 
   /// What the coach remembers, for Settings to show and clear. Separate from
   /// [coach] because it needs neither the Edge Function nor an entitlement:
@@ -432,9 +438,12 @@ class _LiftShellState extends State<LiftShell> {
       _go(_planTab);
       return;
     }
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => CoachScreen(coach: coach)));
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            CoachScreen(coach: coach, transcript: widget.transcript),
+      ),
+    );
   }
 
   Future<void> _signOut() async {
