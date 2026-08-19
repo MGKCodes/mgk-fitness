@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -180,15 +181,20 @@ class PreviewApp extends StatelessWidget {
         history: const FakeHistory(<Session>[]),
         initialTab: 2,
       ),
+      // Every session screen pins `now` to previewNow. The fixtures start at
+      // previewNow too, so the header reads the elapsed time the fixture meant
+      // — 34 minutes, not the days since previewNow went past.
       'session-empty': (_) => ActiveSessionScreen(
         recorder: FakeSessionRecorder(_emptySession()),
         session: _emptySession(),
+        now: previewNow,
       ),
       'session': (_) {
         final s = _openSession();
         return ActiveSessionScreen(
           recorder: FakeSessionRecorder(s),
           session: s,
+          now: previewNow,
         );
       },
       // A six-movement template, three of them finished. The case the collapse
@@ -199,6 +205,7 @@ class PreviewApp extends StatelessWidget {
         return ActiveSessionScreen(
           recorder: FakeSessionRecorder(s),
           session: s,
+          now: previewNow,
         );
       },
       // Mid-rest, with the bar showing. The fixture ticks a set on open, which
@@ -209,6 +216,7 @@ class PreviewApp extends StatelessWidget {
           recorder: FakeSessionRecorder(s),
           session: s,
           startRestOnOpen: true,
+          now: previewNow,
         );
       },
       'photos': (_) => const _PhotosPreview(),
@@ -521,6 +529,16 @@ class _PhotosPreviewState extends State<_PhotosPreview> {
   }
 
   Future<void> _prepare() async {
+    // No file system in a browser, so there is nothing to write the asset to
+    // and no path worth inventing. PhotoThumb renders every photo as "gone" on
+    // web, which is what a browser honestly has — so hand it any path and let
+    // it say so, rather than awaiting a write that throws and leaving the
+    // screen on a spinner forever. Real imagery needs the emulator; the grid,
+    // the chrome and the empty states are reviewable here.
+    if (kIsWeb) {
+      setState(() => _path = 'preview-photo.webp');
+      return;
+    }
     final bytes = await rootBundle.load(
       'assets/images/backgrounds/hero_profile.webp',
     );

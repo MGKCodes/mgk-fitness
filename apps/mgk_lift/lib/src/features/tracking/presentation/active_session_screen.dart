@@ -37,6 +37,7 @@ class ActiveSessionScreen extends StatefulWidget {
     this.log = const <Session>[],
     this.onSwapped,
     this.startRestOnOpen = false,
+    this.now,
   });
 
   final SessionRecorder recorder;
@@ -73,6 +74,18 @@ class ActiveSessionScreen extends StatefulWidget {
   @visibleForTesting
   final bool startRestOnOpen;
 
+  /// What "now" is, for the elapsed clock. Injected so a test or the preview
+  /// harness can pin it — same convention as [PhotosSurface.now].
+  ///
+  /// **Without this the harness could not show this screen at all.** Its
+  /// sessions start at a frozen `previewNow`, while the clock read the real
+  /// one, so the header rendered the gap between the two: `307:25:40` and
+  /// climbing by a day every day. A screenshot of the loudest number on the
+  /// screen was therefore never reviewable, and got quietly worse with age.
+  ///
+  /// Null means the real clock, which is every case outside a test.
+  final DateTime? now;
+
   @override
   State<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
 }
@@ -85,7 +98,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// `startedAt` when the session is finished, so a dropped tick costs a second
   /// on screen and nothing in the data.
   Timer? _clock;
-  DateTime _now = DateTime.now();
+  late DateTime _now = widget.now ?? DateTime.now();
 
   /// The rest since the last set was ticked. Null when nothing is resting —
   /// either none has started, or the lifter dismissed it.
@@ -122,7 +135,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     super.initState();
     if (widget.startRestOnOpen) _startRest();
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() => _now = DateTime.now());
+      // A pinned clock stays pinned. Ticking it would walk the elapsed time
+      // forward from the frozen start and undo the point of injecting it.
+      setState(() => _now = widget.now ?? DateTime.now());
       _alertIfRestOver();
     });
   }
@@ -152,7 +167,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// the app misreading what happened.
   void _startRest() {
     setState(() {
-      _rest = RestTimer(startedAt: DateTime.now(), duration: _restLength);
+      // From the same clock the bar is read against. Starting rest at the real
+      // now while `_now` is pinned would show a countdown that has already run
+      // out by days, which is how a pinned clock leaks into a second surface.
+      _rest = RestTimer(startedAt: _now, duration: _restLength);
       _restAlerted = false;
     });
   }

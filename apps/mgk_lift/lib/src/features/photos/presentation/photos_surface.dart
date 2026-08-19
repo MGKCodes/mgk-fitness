@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -463,6 +464,14 @@ class _Empty extends StatelessWidget {
 /// the app's documents directory, which does not survive a reinstall and can be
 /// cleared by the OS under storage pressure. The row outliving its JPEG has to
 /// read as "this photo is gone" rather than taking the screen down.
+///
+/// **On the web there is no file system, so every photo is that state.** The
+/// app does not ship to a browser; the preview harness compiles there so
+/// screens can be reviewed without a device, and `File.existsSync` throws
+/// `UnsupportedError` rather than answering false. That threw before the first
+/// frame, so the photo screens rendered nothing but a spinner and could not be
+/// reviewed at all. Answering "gone" is both what keeps them drawable and what
+/// is actually true of a browser.
 class PhotoThumb extends StatelessWidget {
   const PhotoThumb({super.key, required this.path, this.fit = BoxFit.cover});
 
@@ -471,6 +480,7 @@ class PhotoThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) return const _MissingFile();
     final file = File(path);
     if (!file.existsSync()) return const _MissingFile();
     return Image.file(
