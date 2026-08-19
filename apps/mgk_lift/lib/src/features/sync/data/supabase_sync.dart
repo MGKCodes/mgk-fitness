@@ -34,7 +34,7 @@ import 'sync_queue.dart';
 /// Last write wins, by `updatedAt`. Two devices editing the same past session
 /// is rare enough, and the alternative — merging set-by-set — invents a lifter's
 /// intent from timestamps. If it happens, the newer edit stands.
-class SupabaseSync {
+class SupabaseSync implements BackupService {
   SupabaseSync(this._db, this._client) : _queue = SyncQueue(_db);
 
   final AppDatabase _db;
@@ -50,6 +50,7 @@ class SupabaseSync {
   SupabaseQuerySchema get _lift => _client.schema('lift');
 
   /// What is waiting to go up.
+  @override
   Future<SyncPending> pending() => _queue.pending();
 
   /// Pushes local changes, then pulls remote ones.
@@ -57,6 +58,7 @@ class SupabaseSync {
   /// Push first, deliberately. If both directions have work, the local device
   /// is where the lifter just was, and pulling first would let a stale remote
   /// copy win a last-write-wins comparison against an edit made seconds ago.
+  @override
   Future<SyncReport> run() async {
     final user = _client.auth.currentUser;
     if (user == null) return const SyncReport.signedOut();

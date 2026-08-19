@@ -62,3 +62,27 @@ class SyncPending {
 
   bool get hasWork => workouts > 0;
 }
+
+/// Backing the training log up to an account, and saying what is waiting.
+///
+/// The shell held the concrete `SupabaseSync` before this existed, which was the
+/// one place a screen named a data-layer class. It cost more than tidiness: that
+/// class reaches the on-device database, the database reaches `dart:ffi`, and
+/// `dart:ffi` does not exist on the web — so importing it from the shell put the
+/// entire native stack in the import graph of every screen. The preview harness
+/// could not be compiled for a browser at all, despite passing nothing but
+/// fakes, and `main.dart`'s claim that the widgets "take interfaces, so a test
+/// or the preview harness passes fakes and never needs a database" was false in
+/// exactly one place.
+///
+/// Two methods, because two is what the shell uses. A wider interface would be
+/// inventing requirements for the fake that implements it.
+abstract interface class BackupService {
+  /// What is waiting to upload, and when the last run succeeded.
+  Future<SyncPending> pending();
+
+  /// Push what is pending, pull what is missing. Never throws — a failure is a
+  /// [SyncReport] with [SyncOutcome.unavailable], because the local database is
+  /// the source of truth and nothing is lost by a sync that did not happen.
+  Future<SyncReport> run();
+}

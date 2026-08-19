@@ -23,7 +23,6 @@ import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
-import '../../sync/data/supabase_sync.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
@@ -125,7 +124,7 @@ class LiftShell extends StatefulWidget {
   /// "this device only" rather than hiding the section — somebody whose
   /// training exists in one place should be told so while the phone still
   /// exists.
-  final SupabaseSync? sync;
+  final BackupService? sync;
 
   /// Signing in and out. **Null means this build has no account system**, which
   /// Settings reports as "this device only". Nothing in the app requires it:
