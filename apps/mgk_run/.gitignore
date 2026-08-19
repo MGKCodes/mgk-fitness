@@ -72,3 +72,7 @@ Thumbs.db
 
 # Supabase CLI scratch, written wherever the CLI happens to be invoked from.
 **/supabase/.temp/
+
+# Design plates: the PNGs written by test/plates, regenerated on demand.
+# Anchored, so it ignores the output directory and not the source one.
+/plates/
