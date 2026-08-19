@@ -454,13 +454,34 @@ class _RecordingScreenState extends State<RecordingScreen> {
     final fast = band.fast.secondsPerKilometer;
     final width = slow - fast;
     if (width <= 0) return 0.5;
-    // The band occupies 0.32..0.68 of the rail, so the margin each side is
-    // width * ((1 / 0.36) - 1) / 2.
-    final margin = width * 0.889;
-    final railSlow = slow + margin;
-    final railFast = fast - margin;
-    return ((railSlow - current.secondsPerKilometer) / (railSlow - railFast))
-        .clamp(0.0, 1.0);
+
+    const inside = PaceBandMeter.defaultBandStart;
+    const span = PaceBandMeter.defaultBandEnd - inside;
+    final now = current.secondsPerKilometer;
+
+    // Linear inside the band, where a second either way is the whole question.
+    if (now <= slow && now >= fast) {
+      return inside + span * ((slow - now) / width);
+    }
+
+    // **Compressed outside it, rather than clamped.**
+    //
+    // The rail used to extend one band-width-ish past each edge and then clamp,
+    // which meant it delivered the opposite of what it promised: the meter's
+    // own doc says the rail is wider than the band "so that being outside it is
+    // still drawn somewhere, rather than pinned to an edge with no sense of by
+    // how much", and a band is about thirty seconds wide, so anything much past
+    // half a minute off pinned and stopped saying anything. Somebody two
+    // minutes down got the same mark as somebody thirty-five seconds down.
+    //
+    // A band width out spends half the remaining rail, two widths three
+    // quarters, and so on — approaching the end without ever arriving. The
+    // marker therefore always moves when the pace moves, and the gradation
+    // stays finest where the runner is closest to the band, which is where it
+    // is worth having.
+    final overshoot = now > slow ? (now - slow) / width : (fast - now) / width;
+    final compressed = inside * (overshoot / (overshoot + 1));
+    return now > slow ? inside - compressed : inside + span + compressed;
   }
 
   String? _verdict(PaceStanding standing) => switch (standing) {
