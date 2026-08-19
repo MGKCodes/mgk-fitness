@@ -8,12 +8,26 @@ class CoachTurn {
     required this.body,
     required this.fromCoach,
     required this.at,
+    this.suggestions = const <String>[],
   });
 
   final String id;
   final String body;
   final bool fromCoach;
   final DateTime at;
+
+  /// Replies the coach offered, for somebody who does not want to type.
+  ///
+  /// **On the turn that proposed them, deliberately.** The app is not allowed
+  /// to put words in the coach's mouth — see [CoachService.ask] — and a chip
+  /// the client invented, then sent as the lifter's own message, is precisely
+  /// that. Hanging them off the turn means a turn with none renders none, and
+  /// there is nowhere for a local default to appear.
+  ///
+  /// Not persisted. `coach.turns` stores what was said; an offer that was not
+  /// taken was not said, and replaying it later would put stale options under a
+  /// year-old message.
+  final List<String> suggestions;
 }
 
 /// Why a turn could not happen.

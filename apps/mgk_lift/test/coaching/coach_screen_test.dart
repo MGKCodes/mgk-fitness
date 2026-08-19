@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
 import 'package:mgk_lift/src/features/coaching/domain/coach.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/coach_screen.dart';
@@ -271,6 +272,88 @@ void main() {
       await ask(tester, 'So what do I do?');
 
       expect(coach.asked, <String>['So what do I do?']);
+    });
+  });
+
+  group('suggested replies', () {
+    CoachTurn coachSaid(String body, List<String> chips) => CoachTurn(
+      id: body,
+      body: body,
+      fromCoach: true,
+      at: DateTime(2026, 8, 6),
+      suggestions: chips,
+    );
+
+    Widget withChips(List<CoachTurn> turns, {FakeCoach? coach}) => wrap(
+      CoachScreen(
+        coach: coach ?? FakeCoach(),
+        transcript: FakeCoachTranscript(turns: turns),
+      ),
+    );
+
+    testWidgets('the chips the coach offered are shown', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        withChips(<CoachTurn>[
+          coachSaid('What are you training for?', <String>[
+            'Get stronger',
+            'Lose weight',
+          ]),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Get stronger'), findsOneWidget);
+      expect(find.text('Lose weight'), findsOneWidget);
+    });
+
+    testWidgets('tapping one sends exactly what it said', (
+      WidgetTester tester,
+    ) async {
+      // Not a paraphrase. The server replays the transcript, so a chip sending
+      // anything other than its own label puts a sentence nobody saw into what
+      // the coach then reasons from.
+      final coach = FakeCoach();
+      await tester.pumpWidget(
+        withChips(<CoachTurn>[
+          coachSaid('What are you training for?', <String>['Get stronger']),
+        ], coach: coach),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Get stronger'));
+      await tester.pumpAndSettle();
+
+      expect(coach.asked, <String>['Get stronger']);
+    });
+
+    testWidgets('only the newest turn offers them', (
+      WidgetTester tester,
+    ) async {
+      // Chips under an older message offer to answer a question that has
+      // already been answered.
+      await tester.pumpWidget(
+        withChips(<CoachTurn>[
+          coachSaid('Old question?', <String>['Stale option']),
+          coachSaid('New question?', <String>['Live option']),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stale option'), findsNothing);
+      expect(find.text('Live option'), findsOneWidget);
+    });
+
+    testWidgets('a turn with none renders none', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(
+          CoachScreen(coach: FakeCoach(), transcript: FakeCoachTranscript()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SuggestionChips), findsNothing);
     });
   });
 }

@@ -120,8 +120,15 @@ class _CoachScreenState extends State<CoachScreen> {
     super.dispose();
   }
 
-  Future<void> _send() async {
-    final text = _input.text.trim();
+  Future<void> _send() => _sendText(_input.text);
+
+  /// Sends [raw], whether it was typed or tapped.
+  ///
+  /// A chip passes the coach's exact wording rather than a paraphrase of it —
+  /// the transcript is what the coach replays, so a chip that sends something
+  /// other than what it displayed would put a sentence nobody saw into it.
+  Future<void> _sendText(String raw) async {
+    final text = raw.trim();
     if (text.isEmpty || _waiting) return;
 
     setState(() {
@@ -196,11 +203,23 @@ class _CoachScreenState extends State<CoachScreen> {
                   : ConversationView(
                       controller: _scroll,
                       children: <Widget>[
-                        for (final turn in _turns)
+                        for (final turn in _turns) ...<Widget>[
                           ConversationBubble(
                             text: turn.body,
                             fromCoach: turn.fromCoach,
                           ),
+                          // Only under the newest turn. Chips under an old
+                          // message offer to answer a question that has already
+                          // been answered, and tapping one would send it as
+                          // though it were the reply to the latest thing said.
+                          if (turn == _turns.last &&
+                              !_waiting &&
+                              turn.suggestions.isNotEmpty)
+                            SuggestionChips(
+                              suggestions: turn.suggestions,
+                              onSelected: _sendText,
+                            ),
+                        ],
                         if (_waiting) const ThinkingIndicator(),
                         // Attached to the message it refers to, not stranded at
                         // the bottom of the screen with the question at the top.

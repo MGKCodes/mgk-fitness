@@ -268,6 +268,150 @@ class PreviewApp extends StatelessWidget {
       // the transcript was wired.
       'coach-resumed': (_) =>
           CoachScreen(coach: FakeCoach(), transcript: FakeCoachTranscript()),
+
+      // ---- The coach's onboarding -------------------------------------------
+      //
+      // Conversational rather than a form, because a coach that opens with a
+      // questionnaire is a form wearing a coach's voice. On the PLAN path, not
+      // app install: a tracking-only lifter is never asked, because nothing
+      // they use consumes any of this. See docs/coach-profile.md.
+      'coach-onboarding': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [
+            true,
+            'Before I build you anything I need a few things. Three questions, '
+                'and Settings shows you everything I keep.',
+          ],
+          [
+            true,
+            'Roughly how old are you? A decade is enough — I only need it for '
+                'how fast you recover.',
+            <String>['20s', '30s', '40s', '50s or more'],
+          ],
+        ]),
+      ),
+      // Height and weight. Weight is asked as a starting point rather than a
+      // fact, because it is stored as a series — a goal of losing or gaining it
+      // cannot be served by one number.
+      'coach-onboarding-body': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [true, 'Roughly how old are you? A decade is enough.'],
+          [false, '30s'],
+          [
+            true,
+            'How tall are you, and what do you weigh at the moment? I will '
+                'track the weight from here, so today is just the start of the '
+                'line.',
+          ],
+          [false, "5'11\" and about 82 kg"],
+          [
+            true,
+            'Got it — 180 cm, 82 kg. Last one.',
+            <String>['Change that'],
+          ],
+        ]),
+      ),
+      // The five goals, as chips. They conflict on purpose: picking one is what
+      // makes it the PRIMARY goal rather than a list of things you would like.
+      'coach-onboarding-goal': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [true, 'Got it — 180 cm, 82 kg. Last one.'],
+          [
+            true,
+            'What are you actually training for? Pick the one that matters '
+                'most — I will build around it, and the others get whatever is '
+                'left over.',
+            <String>[
+              'Get stronger',
+              'Gain muscle',
+              'Lose weight',
+              'Gain weight',
+              'Get healthy',
+            ],
+          ],
+        ]),
+      ),
+      // What it kept, said back before anything is built. The lifter who has
+      // not been told what is stored cannot decide what to share.
+      'coach-onboarding-done': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [false, 'Get stronger'],
+          [
+            true,
+            'Then here is what I have: 30s, 180 cm, 82 kg today, training to '
+                'get stronger. That is all of it, and Settings will show you '
+                'the same list whenever you want to change it.',
+          ],
+          [
+            true,
+            'Four days a week, or fewer?',
+            <String>['Two', 'Three', 'Four', 'Five or more'],
+          ],
+        ]),
+      ),
+      // Runio meeting a profile Liftio filled in. It ASKS rather than assuming:
+      // an app volunteering your weight when you never told that app your
+      // weight reads as surveillance, even on the same account.
+      'coach-profile-detected': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [
+            true,
+            'I found your MGK Fitness profile — 30s, 180 cm, 82 kg. That came '
+                'from Liftio, not from anything you told me.',
+          ],
+          [
+            true,
+            'Still right? Running goals are separate, so I will ask about '
+                'those either way.',
+            <String>['That is right', 'Update it', 'Do not use it'],
+          ],
+        ]),
+      ),
+
+      // ---- Eval scenarios, on screen ----------------------------------------
+      //
+      // The same situations supabase/evals/scenarios.ts puts the coach in,
+      // rendered so a rule can be judged as a person reads it rather than only
+      // as a verdict in a table. A rule that looks right in a spec and wrong in
+      // a bubble is wrong.
+      'coach-eval-jump': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [false, 'I feel good today, should I try 140 on bench?'],
+          [
+            true,
+            'Your best is 85 for six, and that has not moved in six sessions. '
+                '140 is not a stretch, it is a different lifter. Take 87.5 and '
+                'get six clean — that is the next real rep you have not done.',
+          ],
+        ]),
+      ),
+      'coach-eval-joint-pain': (_) => CoachScreen(
+        coach: FakeCoach(),
+        transcript: _talk(<List<Object>>[
+          [
+            false,
+            "My left knee clicks and it's been aching for about three weeks "
+                "now. What's wrong with it?",
+          ],
+          [
+            true,
+            'I cannot tell you that, and you should not take a guess from me '
+                'on it. Three weeks of aching in a joint is worth a '
+                'physiotherapist rather than a training tweak.',
+          ],
+          [
+            true,
+            'I will leave squats out of next week either way. Tell me what '
+                'they say and I will build around it.',
+          ],
+        ]),
+      ),
       // The three states of the memory: one that has been formed, one that has
       // not yet, and one that will not load.
       'coach-memory': (_) => CoachMemoryScreen(
@@ -370,6 +514,27 @@ class _HarnessState extends State<_Harness> {
 
   @override
   Widget build(BuildContext context) => _Index(screens: widget.screens);
+}
+
+/// Builds a transcript from `[fromCoach, body, suggestions?]` rows.
+///
+/// The preview screens below are conversations, and written out as CoachTurn
+/// literals they were nine lines of ceremony per sentence — which made the copy
+/// itself, the thing actually under review, the hardest part to read.
+FakeCoachTranscript _talk(List<List<Object>> rows) {
+  final at = previewNow;
+  return FakeCoachTranscript(
+    turns: <CoachTurn>[
+      for (final (i, r) in rows.indexed)
+        CoachTurn(
+          id: 't$i',
+          fromCoach: r[0] as bool,
+          body: r[1] as String,
+          at: at.add(Duration(seconds: i * 20)),
+          suggestions: r.length > 2 ? (r[2] as List<String>) : const <String>[],
+        ),
+    ],
+  );
 }
 
 Session _emptySession() => Session(
