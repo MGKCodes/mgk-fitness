@@ -16,7 +16,9 @@ import '../src/features/coaching/domain/coach_memory.dart';
 import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
+import '../src/features/planning/domain/intake_flow.dart';
 import '../src/features/planning/domain/plan.dart';
+import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/plan_validator.dart';
 import '../src/features/planning/presentation/adapt_sheet.dart';
 import '../src/features/planning/presentation/plan_intake_screen.dart';
@@ -64,11 +66,6 @@ void main() => runApp(const PreviewApp());
 /// the same streak. A harness whose output changes with the wall clock is
 /// useless for comparing before and after.
 final DateTime previewNow = DateTime(2026, 8, 6, 18, 30);
-
-/// Repeated across the onboarding fixtures so each step carries the turns
-/// before it rather than starting mid-conversation.
-const String _onboardingOpener =
-    'I am your coach. A few questions first, then I will build you something.';
 
 class PreviewApp extends StatelessWidget {
   const PreviewApp({super.key});
@@ -273,144 +270,122 @@ class PreviewApp extends StatelessWidget {
       // the transcript was wired.
       'coach-resumed': (_) => _sheet(FakeCoachTranscript()),
 
-      // ---- The coach's onboarding -------------------------------------------
+      // ---- The plan intake, end to end ---------------------------------------
       //
-      // Conversational rather than a form, because a coach that opens with a
-      // questionnaire is a form wearing a coach's voice. On the PLAN path, not
-      // app install: a tracking-only lifter is never asked, because nothing
-      // they use consumes any of this. See docs/coach-profile.md.
+      // **This is the onboarding.** Tracking is free and asks nothing; the plan
+      // and the coach are the paid half, so these questions live behind the
+      // payment gate and fire the moment somebody wants a block built. There is
+      // no first-run questionnaire, because a lifter who only ever tracks is
+      // never asked any of it.
       //
-      // **Nothing is repeated back as it is given.** Echoing each answer turned
-      // a four-question conversation into eight turns, half of them the coach
-      // telling you what you had just said. The confirmation happens once, at
-      // the end, where it is a thing to accept rather than a tic.
-      'coach-onboarding': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, _onboardingOpener],
-          [true, 'When were you born?', CoachAsk.yearOfBirth, 1],
+      // Ordered by leverage rather than convention -- days decides the split
+      // outright, body metrics barely touch programming -- and every step
+      // carries the same chrome: one question, its own control, and a bar
+      // counting all seven. See planning/domain/intake_flow.dart.
+      'intake-1-days': (_) => _sheet(_ask(0, const <List<Object>>[])),
+      'intake-2-equipment': (_) => _sheet(
+        _ask(1, <List<Object>>[
+          [true, IntakeField.days.question],
+          [false, '4 days'],
         ]),
       ),
-      // Height BEFORE weight, and asked separately. Together they read as a
-      // medical form; apart, height is the harmless one and answering it makes
-      // the next question ordinary rather than the first thing asked.
-      //
-      // **Cumulative, like the real conversation.** These fixtures used to hold
-      // only the turns nearest the question, which made the board look as
-      // though the history vanished at each step. Nothing removes a turn -- the
-      // list only ever grows -- and a preview that implied otherwise was
-      // inventing a bug to review.
-      'coach-onboarding-height': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, _onboardingOpener],
-          [true, 'When were you born?'],
-          [false, '1994'],
-          [true, 'How tall are you?', CoachAsk.heightCm, 2],
+      'intake-3-injuries': (_) => _sheet(
+        _ask(2, <List<Object>>[
+          [true, IntakeField.days.question],
+          [false, '4 days'],
+          [true, IntakeField.equipment.question],
+          [false, 'A full gym'],
         ]),
       ),
-      'coach-onboarding-weight': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, _onboardingOpener],
-          [true, 'When were you born?'],
-          [false, '1994'],
-          [true, 'How tall are you?'],
-          [false, '180 cm'],
-          [
-            true,
-            'And roughly what do you weigh? I will track it from here, so this '
-                'is a starting point rather than a number to get right.',
-            CoachAsk.weightKg,
-            3,
-          ],
+      'intake-4-goal': (_) => _sheet(
+        _ask(3, <List<Object>>[
+          [true, IntakeField.equipment.question],
+          [false, 'A full gym'],
+          [true, IntakeField.injuries.question],
+          [false, 'Left shoulder on pressing'],
         ]),
       ),
-      // The same question in pounds and feet. Height follows the mass unit
-      // rather than carrying its own setting -- somebody who weighs in pounds
-      // measures height in feet -- and the wheel steps in the DISPLAY unit, so
-      // an imperial reader never gets three rows in a row reading the same.
-      'coach-onboarding-imperial': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, _onboardingOpener],
-          [true, 'When were you born?'],
-          [false, '1994'],
-          [true, 'How tall are you?', CoachAsk.heightCm, 2],
-        ]),
-        massUnit: MassUnit.pounds,
-      ),
-      // The five goals, stacked rather than wrapped. They conflict on purpose:
-      // picking one is what makes it the PRIMARY goal rather than a wish list.
-      'coach-onboarding-goal': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, 'When were you born?'],
-          [false, '1994'],
-          [true, 'How tall are you?'],
-          [false, '180 cm'],
-          [true, 'And roughly what do you weigh?'],
-          [false, '82 kg'],
-          [
-            true,
-            'Last one. What are you actually training for? I will build around '
-                'whichever you pick.',
-            <String>[
-              'Get stronger',
-              'Gain muscle',
-              'Lose weight',
-              'Gain weight',
-              'Get healthy',
-              'Prefer not to say',
-            ],
-            4,
-          ],
-        ]),
-      ),
-      // The one confirmation, at the end. Everything it holds, in one place,
-      // with changing it as available as accepting it.
-      'coach-onboarding-summary': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, 'How tall are you?'],
-          [false, '180 cm'],
-          [true, 'And roughly what do you weigh?'],
-          [false, '82 kg'],
-          [true, 'What are you actually training for?'],
+      'intake-5-year': (_) => _sheet(
+        _ask(4, <List<Object>>[
+          [true, IntakeField.injuries.question],
+          [false, 'Left shoulder on pressing'],
+          [true, IntakeField.goal.question],
           [false, 'Get stronger'],
-          [
-            true,
-            'Here is what I have. Born 1994, 180 cm, 82 kg today, '
-                'training to get stronger.',
-            <String>['That is right', 'Change something', 'Start over'],
-          ],
         ]),
       ),
-      // A declined answer, carried rather than nagged. "Prefer not to say" is
-      // an answer -- a coach that asks again has not accepted one.
-      'coach-onboarding-declined': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, 'How tall are you?'],
+      'intake-6-height': (_) => _sheet(
+        _ask(5, <List<Object>>[
+          [true, IntakeField.goal.question],
+          [false, 'Get stronger'],
+          [true, IntakeField.yearOfBirth.question],
+          [false, '1994'],
+        ]),
+      ),
+      'intake-7-weight': (_) => _sheet(
+        _ask(6, <List<Object>>[
+          [true, IntakeField.yearOfBirth.question],
+          [false, '1994'],
+          [true, IntakeField.height.question],
           [false, '180 cm'],
-          [true, 'And roughly what do you weigh?'],
-          [false, 'Prefer not to say'],
+        ]),
+      ),
+      // The one confirmation, at the end. Nothing was repeated back on the way
+      // through, so this is the first time the lifter sees it all together --
+      // which is what makes it worth reading rather than a tic.
+      'intake-8-summary': (_) => _sheet(
+        _talk(<List<Object>>[
+          [true, IntakeField.weight.question],
+          [false, '82 kg'],
           [
             true,
-            'Fine — I will work from what you lift instead, which is the better '
-                'signal anyway. Last one.',
-            <String>['Get stronger', 'Gain muscle', 'Lose weight'],
+            'Four days, a full gym, working around the left shoulder, training '
+                'to get stronger. Born 1994, 180 cm, 82 kg.',
+          ],
+          [
+            true,
+            'That right?',
+            <String>['That is right', 'Change something'],
+            7,
+          ],
+        ], total: 7),
+      ),
+      // The recommendation. The coach NAMES the split rather than writing a
+      // week out -- surfaces.ts forbids laying training out in chat, and this
+      // obeys it: the name comes from TrainingSplit.forDays, which is chosen by
+      // arithmetic and checked, and the day-by-day opens on the Plan surface.
+      'intake-9-split': (_) => _sheet(
+        _talk(<List<Object>>[
+          [false, 'That is right'],
+          [
+            true,
+            'Then I am putting you on ${TrainingSplit.upperLower.name}. '
+                '${TrainingSplit.upperLower.why}',
+          ],
+          [
+            true,
+            'Your week: ${TrainingSplit.upperLower.weekFor(4).join('  ·  ')}. '
+                'Pressing stays off the left shoulder until you tell me '
+                'otherwise.',
+            <String>['Show me the week', 'Pick a different split'],
           ],
         ]),
       ),
-      // Runio meeting a profile Liftio filled in. It ASKS rather than assuming:
-      // an app volunteering your weight when you never told that app your
-      // weight reads as surveillance, even on the same account.
-      'coach-profile-detected': (_) => _sheet(
+      // Swapping a movement out. SwapSheet already does this for a live
+      // session; the same mechanism answers "I have no cable machine", which is
+      // the case it was never framed around.
+      'intake-10-swap': (_) => _sheet(
         _talk(<List<Object>>[
+          [false, 'I do not have a cable machine for the tricep pushdown'],
           [
             true,
-            'I found your MGK Fitness profile — born 1994, 180 cm, 82 kg. That '
-                'came from Liftio, not from anything you told me.',
+            'Then take an overhead dumbbell extension instead. Same job on the '
+                'long head, and it does not put the shoulder anywhere it is '
+                'complaining about.',
           ],
           [
             true,
-            'Still right? Running goals are separate, so I will ask about those '
-                'either way.',
-            <String>['That is right', 'Update it', 'Do not use it'],
+            'Want me to swap it for the whole block, or just this week?',
+            <String>['The whole block', 'Just this week', 'Leave it'],
           ],
         ]),
       ),
@@ -556,6 +531,28 @@ class _HarnessState extends State<_Harness> {
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
 
+/// The intake's opening line. Short, because the questions carry themselves
+/// and the bar in the chrome already says how many there are.
+const String _intakeOpener =
+    'I am your coach. Seven questions, most of them skippable, and then I will '
+    'build you a block.';
+
+/// One step of the intake: the turns so far, then the question at [index] with
+/// whatever control it wants and the bar at the right count.
+///
+/// The opener is a turn of its own rather than being glued to the first
+/// question — run together they made one seven-line bubble, and the question
+/// somebody actually has to answer was buried at the bottom of it.
+FakeCoachTranscript _ask(int index, List<List<Object>> before) {
+  final f = IntakeField.values[index];
+  final control = f.ask ?? f.options;
+  return _talk(<List<Object>>[
+    if (index == 0) [true, _intakeOpener],
+    ...before,
+    [true, f.question, control, index + 1],
+  ], total: IntakeField.values.length);
+}
+
 /// The coach as it is actually presented: a sheet, over a photograph, in glass.
 ///
 /// Every coach preview goes through this rather than rendering CoachScreen
@@ -618,7 +615,7 @@ Widget _sheetOf({
 /// The screens above are conversations, and written out as CoachTurn literals
 /// they were nine lines of ceremony per sentence — which made the copy itself,
 /// the thing actually under review, the hardest part to read.
-FakeCoachTranscript _talk(List<List<Object>> rows) {
+FakeCoachTranscript _talk(List<List<Object>> rows, {int total = 4}) {
   final at = previewNow;
   return FakeCoachTranscript(
     turns: <CoachTurn>[
@@ -633,7 +630,7 @@ FakeCoachTranscript _talk(List<List<Object>> rows) {
               : const <String>[],
           ask: r.length > 2 && r[2] is CoachAsk ? r[2] as CoachAsk : null,
           step: r.length > 3 ? r[3] as int : null,
-          stepsTotal: r.length > 3 ? 4 : null,
+          stepsTotal: r.length > 3 ? total : null,
         ),
     ],
   );

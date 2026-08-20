@@ -22,7 +22,7 @@ class StepProgress extends StatelessWidget {
     super.key,
     required this.step,
     required this.total,
-    this.width = 18,
+    this.totalWidth = 108,
   });
 
   /// 1-based, and clamped: a step past the total draws as complete rather than
@@ -30,23 +30,28 @@ class StepProgress extends StatelessWidget {
   final int step;
   final int total;
 
-  /// Each segment's length. Small — this sits beside a label, not across the
-  /// screen, and a wide one starts competing with the question being asked.
-  final double width;
+  /// How much room the whole row takes. **Fixed, with the segments dividing
+  /// it**, rather than a fixed width each: seven questions at a fixed segment
+  /// width overran the header and pushed the close button off the sheet, and a
+  /// row that changes width as the sequence grows is a row that has to be
+  /// re-checked every time a question is added.
+  final double totalWidth;
 
   @override
   Widget build(BuildContext context) {
     final done = step.clamp(0, total);
+    const gap = 4.0;
+    final segment = (totalWidth - gap * (total - 1)) / total;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         for (var i = 0; i < total; i++)
           Padding(
-            padding: EdgeInsets.only(left: i == 0 ? 0 : 4),
+            padding: EdgeInsets.only(left: i == 0 ? 0 : gap),
             child: AnimatedContainer(
               duration: AppMotion.base,
               curve: AppMotion.standard,
-              width: width,
+              width: segment,
               height: 3,
               decoration: BoxDecoration(
                 color: i < done ? AppColors.textPrimary : AppColors.elevated,
