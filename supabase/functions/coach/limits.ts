@@ -37,6 +37,7 @@ export type Surface =
   | "lift_chat"
   | "lift_summarise"
   | "lift_intake"
+  | "lift_plan"
   | "lift_swap";
 
 export const SURFACE_NAMES: readonly Surface[] = [
@@ -52,6 +53,7 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "lift_chat",
   "lift_summarise",
   "lift_intake",
+  "lift_plan",
   "lift_swap",
 ];
 
@@ -175,6 +177,10 @@ export const DEFAULT_LIMITS: LimitConfig = {
     lift_summarise: { windowSeconds: 3600, max: 6 },
     // Onboarding, four to six turns, and a lifter may restart it. Generous and
     // short like Run's `intake`: it must feel instant.
+    // Building a plan is a deliberate act, not something anybody does in a
+    // loop. Six an hour covers a first attempt, two validator retries and
+    // somebody changing their mind twice.
+    lift_plan: { windowSeconds: 3600, max: 6 },
     lift_intake: { windowSeconds: 300, max: 12 },
     // The block's arc, laid out once per block (every 8 to 16 weeks) with up to
     // two validator-driven attempts. The tightest allowance of the three —

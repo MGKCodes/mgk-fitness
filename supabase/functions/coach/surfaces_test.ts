@@ -24,6 +24,7 @@ import {
   liftChatMessages,
   liftIntakeMessages,
   liftSummariseMessages,
+  liftPlanMessages,
   liftSwapMessages,
   logRunMessages,
   modelFor,
@@ -1156,4 +1157,75 @@ Deno.test("routing carries nothing beyond the flags it is meant to", () => {
     "data_collection",
     "require_parameters",
   ]);
+});
+
+// ---- lift_plan --------------------------------------------------------------
+
+const PLAN_BODY = {
+  profile: { days_per_week: 4, equipment: "a full gym", goal: "get stronger" },
+  catalogue: ["Barbell Bench Press", "Barbell Back Squat", "Barbell Row"]
+    .join(String.fromCharCode(10)),
+  brief: "Push, 5 Aug, bench 85x6",
+};
+
+Deno.test("lift_plan hands over the catalogue and says to copy it exactly", () => {
+  // A model asked to name exercises from memory gets roughly half of them
+  // wrong -- measured, not assumed -- and a plan naming something absent from
+  // the catalogue renders a placeholder and breaks the swap.
+  const system = systemOf(liftPlanMessages(PLAN_BODY));
+  assertStringIncludes(system, "Barbell Back Squat");
+  assertStringIncludes(system, "EXACTLY from the catalogue");
+});
+
+Deno.test("lift_plan does not prescribe sets, reps or weights", () => {
+  // Those come from the lifter's own logged sets. A number from the model would
+  // be a guess wearing a prescription's clothes.
+  const system = systemOf(liftPlanMessages(PLAN_BODY));
+  assertStringIncludes(system, "Say nothing about sets, reps or weights");
+});
+
+Deno.test("lift_plan is not pushed toward a named split", () => {
+  // The whole reason this surface came back: three templates were quietly the
+  // definition of a valid plan.
+  const system = systemOf(liftPlanMessages(PLAN_BODY));
+  assertStringIncludes(system, "does not have to be one");
+});
+
+Deno.test("lift_plan carries house guidance when there is some", () => {
+  // From coach.knowledge, so changing how splits are chosen does not need a
+  // function deploy.
+  const system = systemOf(
+    liftPlanMessages({ ...PLAN_BODY, guidance: "Prefer upper/lower at five days." }),
+  );
+  assertStringIncludes(system, "House guidance");
+  assertStringIncludes(system, "Prefer upper/lower at five days.");
+});
+
+Deno.test("lift_plan works with no guidance at all", () => {
+  // Absent is fine: the checked rules are in the instructions, not the table.
+  const system = systemOf(liftPlanMessages(PLAN_BODY));
+  assertEquals(system.includes("House guidance"), false);
+});
+
+Deno.test("a rejected plan is handed its violations to fix", () => {
+  const system = systemOf(
+    liftPlanMessages({
+      ...PLAN_BODY,
+      violations: ["Train legs on a second day."],
+    }),
+  );
+  assertStringIncludes(system, "rejected by the validator");
+  assertStringIncludes(system, "Train legs on a second day.");
+});
+
+Deno.test("lift_plan is registered and produces a structure", () => {
+  const spec = SURFACES.lift_plan;
+  assertEquals(spec.app, "lift");
+  assertEquals(
+    spec.valid!({ reply: "x", name: "Upper / Lower", days: [{ day: "Upper" }] }),
+    true,
+  );
+  // A reply with no days is not a plan.
+  assertEquals(spec.valid!({ reply: "x", name: "y", days: [] }), false);
+  assertEquals(spec.valid!({ reply: "x", days: [{ day: "Upper" }] }), false);
 });

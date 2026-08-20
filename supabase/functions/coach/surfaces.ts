@@ -1720,6 +1720,175 @@ export const PROVIDER_ROUTING = {
 
 // Typed against the `Surface` union, so a surface added to the limiter without
 // a prompt (or the other way round) does not compile.
+// ---- lift_plan (building a standing plan) -----------------------------------
+
+/// Building somebody a training week.
+///
+/// **This is the surface that was deleted and put back**, and the reason is
+/// worth keeping. It was removed on the argument that this file forbids the
+/// coach from writing training out. It does — for the CHAT surface, and the
+/// same paragraph says plans are built *elsewhere, checked*. This is the
+/// elsewhere. Replacing it with a fixed template made three shipped shapes the
+/// definition of a valid plan, which is a much smaller product than anybody
+/// wants.
+///
+/// ## What it is allowed to invent, and what it is not
+///
+/// It may invent the SHAPE. An upper/lower with a dedicated arm day, a week
+/// that gives a lagging body part its own session, a hybrid nobody has a name
+/// for — all fine. `PlanShape` in the app checks what a plan does rather than
+/// what it is called: every muscle trained at volume gets two exposures, nothing
+/// hard on back-to-back days, weekly sets in range, no empty day.
+///
+/// It may not invent MOVEMENTS. Every name has to exist in the catalogue it is
+/// given, because a plan naming something that does not exist renders a
+/// placeholder and breaks the swap — and a model asked to name exercises from
+/// memory gets roughly half of them wrong, which is measured rather than
+/// assumed.
+///
+/// It does not set weights. `SessionPrescription` derives those from the
+/// lifter's own logged sets; a number from here would be a guess wearing a
+/// prescription's clothes.
+const LIFT_PLAN_INSTRUCTIONS =
+  `Build this lifter a training week. Use what you know about programming: their
+history, their goal, the equipment they described in their own words, and
+anything they are working around.
+
+Name the plan the way a coach would say it out loud. It does not have to be one
+of the common splits, and it should not be forced into one if a better
+arrangement suits this person.
+
+Rules that are checked after you answer, so getting them wrong costs a retry:
+
+- Every movement must be copied EXACTLY from the catalogue you are given. Do not
+  invent, abbreviate or reword a name.
+- Give one day per training day, in the same order as the weekdays provided.
+  Days may repeat.
+- Any muscle you train seriously must be trained on at least two days.
+- Do not train the same muscle hard on consecutive days.
+- Four to six movements a day. Compounds first, and mark the ones progress is
+  measured in as main lifts.
+- Roles are your own words for what a slot is for: "horizontal press",
+  "hinge", "lateral raise". They outlive the movement in them.
+
+Say nothing about sets, reps or weights. The app derives those from what this
+person has actually lifted.`;
+
+const LIFT_PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "name", "days"],
+  properties: {
+    reply: {
+      type: "string",
+      description:
+        "One or two sentences to the lifter on why this shape suits them. " +
+        "Shown under the plan; not a list of the training.",
+    },
+    name: {
+      type: "string",
+      description:
+        "What the plan is called, in the coach's words. Free text.",
+    },
+    days: {
+      type: "array",
+      minItems: 1,
+      maxItems: 7,
+      description:
+        "One entry per training day, in the same order as the weekdays given.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["day", "movements"],
+        properties: {
+          day: {
+            type: "string",
+            description:
+              "What this day is called: 'Upper', 'Push', 'Arms'. Repeats are " +
+              "normal and expected.",
+          },
+          movements: {
+            type: "array",
+            minItems: 1,
+            maxItems: 8,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["role", "movement", "is_main"],
+              properties: {
+                role: {
+                  type: "string",
+                  description: "What the slot is for, independent of what fills it.",
+                },
+                movement: {
+                  type: "string",
+                  description:
+                    "Copied exactly from the catalogue. Never invented.",
+                },
+                is_main: {
+                  type: "boolean",
+                  description:
+                    "Whether progress is measured in this movement. Main lifts " +
+                    "are never rotated away.",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export function liftPlanMessages(body: Body): Message[] {
+  const profile = (body.profile as Record<string, unknown>) ?? {};
+  const brief = text(body.brief, MAX_BRIEF_CHARS);
+  const memory = text(body.memory, MAX_MEMORY_CHARS);
+  // Guidance comes from coach.knowledge rather than from this file, so a
+  // change to how splits are chosen does not need a function deploy. Absent is
+  // fine: the rules above are the part that is checked.
+  const guidance = text(body.guidance, MAX_BRIEF_CHARS);
+  const catalogue = text(body.catalogue, 24000);
+
+  const system = `${LIFT_PERSONA}
+
+${LIFT_PLAN_INSTRUCTIONS}
+
+` +
+    `Today is ${today()}.
+
+` +
+    (guidance ? `House guidance:
+${guidance}
+
+` : "") +
+    (memory ? `What you know about them:
+${memory}
+
+` : "") +
+    `What they told you:
+${JSON.stringify(profile)}
+
+` +
+    `Recent training (most recent first):
+${
+      brief || "(no sessions logged yet)"
+    }
+
+` +
+    `Movements you may use, one per line. Copy names exactly:
+${catalogue}` +
+    violationNote(body.violations);
+
+  return [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: "Build the plan.",
+    },
+  ];
+}
+
 export const SURFACES: Record<Surface, SurfaceSpec> = {
   intake: {
     name: "intake",
@@ -1849,6 +2018,18 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     // The reply reaches the lifter with no validator in between — only the
     // OPTIONS are graded in Dart. Same reasoning as `lift_chat`.
     humanFacing: true,
+  },
+  lift_plan: {
+    name: "lift_plan",
+    app: "lift",
+    schema: LIFT_PLAN_SCHEMA,
+    // Room for six days of six movements plus a sentence. Bigger than the chat
+    // surfaces because this one legitimately produces a structure.
+    maxTokens: 3072,
+    messages: liftPlanMessages,
+    valid: (p) =>
+      typeof p.reply === "string" && typeof p.name === "string" &&
+      Array.isArray(p.days) && p.days.length > 0,
   },
   lift_intake: {
     name: "lift_intake",

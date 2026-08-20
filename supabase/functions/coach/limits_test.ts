@@ -41,6 +41,7 @@ const TEST_LIMITS: LimitConfig = {
     set_goal: { windowSeconds: 3600, max: 2 },
     lift_chat: { windowSeconds: 300, max: 5 },
     lift_summarise: { windowSeconds: 3600, max: 2 },
+    lift_plan: { windowSeconds: 3600, max: 6 },
     lift_intake: { windowSeconds: 300, max: 3 },
     lift_swap: { windowSeconds: 3600, max: 3 },
   },
