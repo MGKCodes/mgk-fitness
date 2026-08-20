@@ -1,0 +1,134 @@
+import 'package:meta/meta.dart';
+
+import 'plan_generator.dart';
+import 'standing_plan.dart';
+import 'training_split.dart';
+
+/// Where a standing plan is kept.
+///
+/// ## Smaller than the block store it replaces, and that is the point
+///
+/// The block store had five methods, three of which existed because the plan
+/// was a list of sessions written in advance: `markTrained` stamped a session
+/// row when its workout finished, `replaceMovements` rewrote one after a swap,
+/// and `accept` promoted a whole generated block from draft to active.
+///
+/// A standing plan has no session rows to stamp. A finished workout updates the
+/// SLOT it came from — the top set and how long it has been stuck — which is
+/// one write against a couple of dozen rows that outlive every session, rather
+/// than a rewrite of a schedule. So the store is: read the live one, replace
+/// it, and record what a session did to a slot.
+abstract interface class StandingPlanStore {
+  /// The live plan, or null if there is not one.
+  Future<StandingPlan?> active();
+
+  /// Replaces whatever is live.
+  ///
+  /// **One live plan per person**, enforced by a partial unique index in the
+  /// database rather than here — two active plans is not a state with a
+  /// meaning, because the plan screen would have to choose which one today
+  /// belongs to and would be wrong half the time.
+  ///
+  /// The plan being replaced becomes `superseded` rather than disappearing:
+  /// "I do not like this split" should not erase what somebody has run.
+  Future<StandingPlan> replace(StandingPlan plan);
+
+  /// What a finished session did to one slot.
+  ///
+  /// Called once per movement when a workout is finished. [topKg] and [reps]
+  /// are the best set; passing a lighter one than last time deliberately does
+  /// NOT count as movement, because a lighter session is a lighter session
+  /// rather than a regression to program around.
+  Future<void> recordResult(
+    String slotId, {
+    required double topKg,
+    required int reps,
+    required bool improved,
+  });
+}
+
+/// A store that keeps everything in memory, for tests and the preview harness.
+@visibleForTesting
+class InMemoryStandingPlanStore implements StandingPlanStore {
+  InMemoryStandingPlanStore([this._plan]);
+
+  StandingPlan? _plan;
+
+  /// Everything asked of it, in order, so a test can assert what was written.
+  final List<String> calls = <String>[];
+
+  @override
+  Future<StandingPlan?> active() async => _plan;
+
+  @override
+  Future<StandingPlan> replace(StandingPlan plan) async {
+    calls.add('replace:${plan.id}');
+    return _plan = plan;
+  }
+
+  @override
+  Future<void> recordResult(
+    String slotId, {
+    required double topKg,
+    required int reps,
+    required bool improved,
+  }) async {
+    calls.add('result:$slotId:$topKg×$reps:${improved ? 'up' : 'held'}');
+    final plan = _plan;
+    if (plan == null) return;
+    _plan = StandingPlan(
+      id: plan.id,
+      split: plan.split,
+      weekdays: plan.weekdays,
+      startedAt: plan.startedAt,
+      slots: <String, List<MovementSlot>>{
+        for (final day in plan.slots.entries)
+          day.key: <MovementSlot>[
+            for (final s in day.value)
+              if (s.id != slotId)
+                s
+              else
+                MovementSlot(
+                  id: s.id,
+                  role: s.role,
+                  movement: s.movement,
+                  isMain: s.isMain,
+                  lastTopKg: topKg,
+                  lastTopReps: reps,
+                  // Improved resets the count; held increments it. That counter
+                  // is the whole rotation trigger, so getting it backwards
+                  // would either rotate everything or nothing.
+                  sessionsAtSameTop: improved ? 0 : s.sessionsAtSameTop + 1,
+                ),
+          ],
+      },
+    );
+  }
+}
+
+/// How a split is written down and read back.
+///
+/// **Not `TrainingSplit.name`.** That is the lifter-facing label — "Push / Pull
+/// / Legs" — and it is going to be reworded eventually, at which point every
+/// stored row would stop parsing. The wire value is a separate, boring string
+/// that nobody is tempted to improve.
+extension TrainingSplitWire on TrainingSplit {
+  String get wire => switch (this) {
+    TrainingSplit.fullBody => 'full_body',
+    TrainingSplit.upperLower => 'upper_lower',
+    TrainingSplit.pushPullLegs => 'push_pull_legs',
+  };
+
+  static TrainingSplit fromWire(String value) => switch (value) {
+    'upper_lower' => TrainingSplit.upperLower,
+    'push_pull_legs' => TrainingSplit.pushPullLegs,
+    // Anything unrecognised reads as the least demanding shape rather than
+    // throwing. A plan that will not load is worse than one that loads as three
+    // full-body days, and the day count corrects it on the next save.
+    _ => TrainingSplit.fullBody,
+  };
+}
+
+/// Reasons a plan could not be read or written. Reuses [PlanFailure] rather
+/// than inventing a parallel set, because the screens already handle it.
+typedef StandingPlanException = PlanException;
