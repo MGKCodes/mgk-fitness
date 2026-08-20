@@ -233,8 +233,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
   void _markLap() {
     final distance = _distanceM - _lapAnchorMeters;
     final duration = _elapsed - _lapAnchorElapsed;
-    // A lap of nothing is a mistap, not a lap.
+    // A lap of nothing is a mistap, not a lap — and it gets no confirmation,
+    // because confirming a thing that did not happen is worse than silence.
     if (distance < 1 || duration <= Duration.zero) return;
+    unawaited(AppHaptics.commit());
     setState(() {
       _laps.add(
         RunSplit(
@@ -253,6 +255,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
   StreamSubscription<RecorderProblem?>? _problemSub;
   Timer? _ticker;
 
+  /// Whole display units already felt, so a kilometre ticks once and not on
+  /// every fix that lands inside it.
+  int _milestonesFelt = 0;
+
+  /// Whether the last look said the signal had gone, so the loss is announced
+  /// on the edge rather than every second it stays lost.
+  bool _signalWasLost = false;
+
   @override
   void initState() {
     super.initState();
@@ -263,6 +273,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
         _distanceM = processedDistanceMeters(_points);
         _splits = splitsFor(_points);
       });
+      _feelMilestone();
     });
     _statusSub = widget.recorder.statusChanges.listen((status) {
       setState(() => _status = status);
@@ -282,7 +293,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
   void _syncTicker() {
     if (_status == RecorderStatus.recording) {
       _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        setState(() {});
+        _feelSignal();
       });
     } else {
       _ticker?.cancel();
@@ -530,10 +543,51 @@ class _RecordingScreenState extends State<RecordingScreen> {
   /// on.
   Future<void> _askAgain() => widget.recorder.start();
 
-  Future<void> _togglePause() =>
-      _recording ? widget.recorder.pause() : widget.recorder.resume();
+  /// A kilometre — or a mile — turning over.
+  ///
+  /// **One of only two haptics on this screen the runner did not ask for**, and
+  /// it is the case [AppHaptics.milestone] exists for: somebody mid-stride
+  /// cannot read a screen, and the distance ticking past a round number is the
+  /// thing they would look down for if they could.
+  ///
+  /// Counted off the display unit rather than off `_splits`, for two reasons.
+  /// `splitsFor` includes a trailing *partial* split, so its length grows the
+  /// moment a new kilometre starts rather than when one finishes. And a runner
+  /// in miles should feel a mile, not a kilometre they never asked to be
+  /// measured in.
+  void _feelMilestone() {
+    if (!_recording) return;
+    final whole = Distance.meters(
+      _distanceM,
+    ).inDisplayUnit(widget.unit).floor();
+    if (whole <= _milestonesFelt) return;
+    _milestonesFelt = whole;
+    unawaited(AppHaptics.milestone());
+  }
+
+  /// The signal going, felt on the edge.
+  ///
+  /// The other unbidden one, and it earns the exception the same way: the run
+  /// carries on looking like a run — the clock still moves — while the distance
+  /// quietly stops growing. A runner who cannot look would otherwise find out
+  /// at the end. Fired once as it goes and once as it returns, never every
+  /// second it stays gone.
+  void _feelSignal() {
+    final lost = _signalLost;
+    if (lost == _signalWasLost) return;
+    _signalWasLost = lost;
+    unawaited(lost ? AppHaptics.problem() : AppHaptics.selection());
+  }
+
+  Future<void> _togglePause() {
+    // A state the runner chose, and one they often choose without looking —
+    // at a crossing, mid-sentence. The tick is how they know it took.
+    unawaited(AppHaptics.selection());
+    return _recording ? widget.recorder.pause() : widget.recorder.resume();
+  }
 
   Future<void> _finish() async {
+    unawaited(AppHaptics.commit());
     await widget.recorder.stop();
     widget.onFinish?.call();
   }
