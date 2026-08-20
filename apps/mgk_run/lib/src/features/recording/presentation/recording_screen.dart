@@ -600,14 +600,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
         title: const Text('Discard this run?'),
         content: const Text("Your progress won't be saved."),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Keep running',
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep running'),
           ),
-          TextButton(
+          AppTextButton(
+            label: 'Discard',
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Discard'),
           ),
         ],
       ),
@@ -805,11 +805,11 @@ class _TopStrip extends StatelessWidget {
                 ? null
                 : _Scrim(
                     circular: true,
-                    child: IconButton(
-                      icon: const Icon(Icons.close),
-                      color: AppColors.textPrimary,
+                    child: AppIconButton(
+                      icon: Icons.close,
                       tooltip: 'Cancel run',
                       onPressed: onCancel,
+                      color: AppColors.textPrimary,
                     ),
                   ),
           ),
@@ -1484,17 +1484,17 @@ class _ProblemLine extends StatelessWidget {
         if (_offersAskAgain)
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: AppTextButton(
+              label: 'Allow location',
               onPressed: onAskAgain,
-              child: const Text('Allow location'),
             ),
           ),
         if (_offersSettings)
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: AppTextButton(
+              label: 'Open Settings',
               onPressed: Geolocator.openAppSettings,
-              child: const Text('Open Settings'),
             ),
           ),
       ],

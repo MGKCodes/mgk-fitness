@@ -20,6 +20,7 @@ export 'src/motion/typing_indicator.dart';
 export 'src/theme/app_colors.dart';
 export 'src/theme/app_radius.dart';
 export 'src/theme/app_theme.dart';
+export 'src/widgets/app_buttons.dart';
 export 'src/widgets/app_card.dart';
 export 'src/widgets/conversation_bubble.dart';
 export 'src/widgets/glass_surface.dart';

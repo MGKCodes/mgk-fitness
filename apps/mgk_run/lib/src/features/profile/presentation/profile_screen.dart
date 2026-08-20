@@ -156,8 +156,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: const Text('Profile'),
               actions: <Widget>[
                 if (widget.onOpenSettings != null)
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined),
+                  AppIconButton(
+                    icon: Icons.settings_outlined,
                     tooltip: 'Settings',
                     onPressed: widget.onOpenSettings,
                   ),

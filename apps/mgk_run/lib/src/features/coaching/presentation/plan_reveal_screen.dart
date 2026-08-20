@@ -183,12 +183,12 @@ class _Failed extends StatelessWidget {
         PrimaryButton(label: 'Try again', onPressed: onRetry),
         const SizedBox(height: AppSpacing.sm),
         Center(
-          child: TextButton(
+          child: AppTextButton(
+            label: 'Not now',
             onPressed: onLeave,
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
             ),
-            child: const Text('Not now'),
           ),
         ),
       ],

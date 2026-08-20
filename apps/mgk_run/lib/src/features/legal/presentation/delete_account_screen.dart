@@ -205,9 +205,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           onPressed: _armed ? _delete : null,
         ),
         const SizedBox(height: 8),
-        TextButton(
+        AppTextButton(
+          label: 'Keep my account',
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Keep my account'),
         ),
       ],
     );

@@ -258,18 +258,16 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: _submit,
                         busy: _busy,
                       ),
-                      TextButton(
+                      AppTextButton(
+                        label: _isSignUp
+                            ? 'Have an account? Sign in'
+                            : 'New here? Create an account',
                         onPressed: _busy
                             ? null
                             : () => setState(() {
                                 _isSignUp = !_isSignUp;
                                 _message = null;
                               }),
-                        child: Text(
-                          _isSignUp
-                              ? 'Have an account? Sign in'
-                              : 'New here? Create an account',
-                        ),
                       ),
                       if (kDebugMode &&
                           widget.devAccounts.isNotEmpty) ...<Widget>[

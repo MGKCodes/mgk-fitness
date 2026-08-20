@@ -54,12 +54,12 @@ Future<BackupConsent?> askBackupConsent(BuildContext context) =>
             ],
           ),
           actions: <Widget>[
-            TextButton(
-              // Says what it costs, so declining is a decision rather than a
-              // dismissal. "Not now" would imply the question comes back.
+            // Says what it costs, so declining is a decision rather than a
+            // dismissal. "Not now" would imply the question comes back.
+            AppTextButton(
+              label: 'Keep it on this phone only',
               onPressed: () =>
                   Navigator.of(context).pop(BackupConsent.declined),
-              child: const Text('Keep it on this phone only'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(BackupConsent.granted),

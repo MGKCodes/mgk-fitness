@@ -61,10 +61,10 @@ class RunSummaryScreen extends StatelessWidget {
             title: const Text('Run summary'),
             actions: <Widget>[
               if (onEdit != null)
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: onEdit,
+                AppIconButton(
+                  icon: Icons.edit_outlined,
                   tooltip: 'Edit run',
+                  onPressed: onEdit,
                 ),
             ],
           ),

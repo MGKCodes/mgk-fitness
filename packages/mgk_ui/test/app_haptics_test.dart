@@ -71,6 +71,89 @@ void main() {
     });
   });
 
+  group('the quiet controls', () {
+    testWidgets('a text button ticks and still fires', (
+      WidgetTester tester,
+    ) async {
+      final List<String> fired = recordHaptics(tester);
+      int taps = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: AppTextButton(label: 'Never mind', onPressed: () => taps++),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Never mind'));
+      await tester.pump();
+
+      expect(fired, <String>['HapticFeedbackType.selectionClick']);
+      expect(taps, 1);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('an icon button ticks, and carries its accessible name', (
+      WidgetTester tester,
+    ) async {
+      final List<String> fired = recordHaptics(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: AppIconButton(
+              icon: Icons.close,
+              tooltip: 'Close',
+              onPressed: () {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pump();
+
+      expect(fired, <String>['HapticFeedbackType.selectionClick']);
+      // The tooltip is required on this widget precisely so this cannot be
+      // forgotten: an icon alone is the one control that cannot explain itself.
+      expect(find.byTooltip('Close'), findsOneWidget);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('neither pretends to have felt you when it is disabled', (
+      WidgetTester tester,
+    ) async {
+      final List<String> fired = recordHaptics(tester);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: <Widget>[
+                AppTextButton(label: 'Busy', onPressed: null, busy: true),
+                AppIconButton(
+                  icon: Icons.close,
+                  tooltip: 'Close',
+                  onPressed: null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Busy'), warnIfMissed: false);
+      await tester.tap(find.byIcon(Icons.close), warnIfMissed: false);
+      await tester.pump();
+
+      expect(fired, isEmpty);
+      await tester.pumpAndSettle();
+    });
+  });
+
   group('AppCard', () {
     testWidgets('a tappable card ticks; a plain one is not a control', (
       WidgetTester tester,

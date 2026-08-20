@@ -35,8 +35,8 @@ class MedicalDisclaimerScreen extends StatelessWidget {
         title: Text(_isGate ? 'Before we start' : medicalDisclaimer.title),
         automaticallyImplyLeading: !_isGate,
         leading: _isGate && onDecline != null
-            ? IconButton(
-                icon: const Icon(Icons.close),
+            ? AppIconButton(
+                icon: Icons.close,
                 tooltip: 'Not now',
                 onPressed: onDecline,
               )
@@ -90,10 +90,7 @@ class MedicalDisclaimerScreen extends StatelessWidget {
                     ),
                     if (onDecline != null) ...<Widget>[
                       const SizedBox(height: 4),
-                      TextButton(
-                        onPressed: onDecline,
-                        child: const Text('Not now'),
-                      ),
+                      AppTextButton(label: 'Not now', onPressed: onDecline),
                     ],
                   ],
                 ),

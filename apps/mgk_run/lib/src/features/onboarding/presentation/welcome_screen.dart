@@ -81,9 +81,9 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Entrance(
                   index: 5,
-                  child: TextButton(
+                  child: AppTextButton(
+                    label: 'I already have an account',
                     onPressed: onHaveAccount,
-                    child: const Text('I already have an account'),
                   ),
                 ),
               ],

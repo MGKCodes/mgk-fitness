@@ -46,8 +46,8 @@ class PlanArcScreen extends StatelessWidget {
         actions: onReplacePlan == null
             ? null
             : <Widget>[
-                IconButton(
-                  icon: const Icon(Icons.autorenew),
+                AppIconButton(
+                  icon: Icons.autorenew,
                   tooltip: 'Start a new plan',
                   onPressed: onReplacePlan,
                 ),

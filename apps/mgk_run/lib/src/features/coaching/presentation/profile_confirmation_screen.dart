@@ -175,10 +175,10 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
         title: const Text('Confirm your details'),
         leading: widget.onBack == null
             ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: widget.onBack,
+            : AppIconButton(
+                icon: Icons.arrow_back,
                 tooltip: 'Back',
+                onPressed: widget.onBack,
               ),
       ),
       body: SafeArea(

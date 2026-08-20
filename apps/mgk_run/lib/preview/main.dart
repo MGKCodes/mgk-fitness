@@ -1716,9 +1716,9 @@ class _MotionGalleryState extends State<_MotionGallery> {
             children: <Widget>[
               const SectionLabel('SEQUENCED REVEAL'),
               const Spacer(),
-              TextButton(
+              AppTextButton(
+                label: _turns == 3 ? 'Add turns' : 'Reset',
                 onPressed: () => setState(() => _turns = _turns == 3 ? 5 : 3),
-                child: Text(_turns == 3 ? 'Add turns' : 'Reset'),
               ),
             ],
           ),

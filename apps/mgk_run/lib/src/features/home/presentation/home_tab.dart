@@ -414,7 +414,8 @@ class _Today extends StatelessWidget {
             // wants the plan.
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: AppTextButton(
+                label: session == null ? 'Talk to your coach' : 'See the week',
                 onPressed: session == null
                     ? (onOpenCoach ?? onOpenPlan)
                     : onOpenPlan,
@@ -424,9 +425,6 @@ class _Today extends StatelessWidget {
                     horizontal: AppSpacing.sm,
                   ),
                   visualDensity: VisualDensity.compact,
-                ),
-                child: Text(
-                  session == null ? 'Talk to your coach' : 'See the week',
                 ),
               ),
             ),
@@ -492,10 +490,7 @@ class _Today extends StatelessWidget {
                       ),
                     ),
                   ),
-                  TextButton(
-                    onPressed: onRecord,
-                    child: const Text('Record another'),
-                  ),
+                  AppTextButton(label: 'Record another', onPressed: onRecord),
                 ],
               )
             else
@@ -524,7 +519,8 @@ class _Today extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: AppTextButton(
+                label: 'Not feeling it? Adjust this week',
                 onPressed: onAdjustWeek,
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
@@ -533,7 +529,6 @@ class _Today extends StatelessWidget {
                   ),
                   visualDensity: VisualDensity.compact,
                 ),
-                child: const Text('Not feeling it? Adjust this week'),
               ),
             ),
           ],
@@ -658,14 +653,14 @@ class _FirstRun extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: AppTextButton(
+              label: 'Training for something? See how plans work',
               onPressed: onOpenPlan,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 visualDensity: VisualDensity.compact,
               ),
-              child: const Text('Training for something? See how plans work'),
             ),
           ),
         ],

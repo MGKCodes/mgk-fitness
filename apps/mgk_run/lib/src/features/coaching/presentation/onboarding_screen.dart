@@ -85,10 +85,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         title: const Text('Your coach'),
         leading: widget.onExit == null
             ? null
-            : IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: widget.onExit,
+            : AppIconButton(
+                icon: Icons.close,
                 tooltip: 'Close',
+                onPressed: widget.onExit,
               ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2),

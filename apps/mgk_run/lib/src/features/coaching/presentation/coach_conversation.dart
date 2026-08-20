@@ -222,11 +222,12 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     child: Row(
       children: <Widget>[
         const Expanded(child: SectionLabel('Your coach')),
-        IconButton(
-          icon: const Icon(Icons.close, size: 22),
-          color: AppColors.textSecondary,
+        AppIconButton(
+          icon: Icons.close,
           tooltip: 'Close the conversation',
           onPressed: () => Navigator.of(context).maybePop(),
+          size: 22,
+          color: AppColors.textSecondary,
         ),
       ],
     ),

@@ -148,8 +148,8 @@ class _WeekDetailScreenState extends State<WeekDetailScreen> {
         ),
         actions: _canAdjust
             ? <Widget>[
-                IconButton(
-                  icon: const Icon(Icons.tune),
+                AppIconButton(
+                  icon: Icons.tune,
                   tooltip: 'Adjust week',
                   onPressed: _openAdjust,
                 ),

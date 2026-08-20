@@ -204,9 +204,9 @@ class _WeekAdjustSheetState extends State<WeekAdjustSheet> {
           ),
         ),
         const SizedBox(width: 12),
-        TextButton(
+        AppTextButton(
+          label: 'Back',
           onPressed: () => setState(() => _proposal = null),
-          child: const Text('Back'),
         ),
       ],
     ),

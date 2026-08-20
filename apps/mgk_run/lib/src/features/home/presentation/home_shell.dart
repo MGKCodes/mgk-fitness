@@ -1376,9 +1376,9 @@ class _PlanTabState extends State<_PlanTab> {
           'Runs you have already recorded are kept.',
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Keep it',
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep it'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
