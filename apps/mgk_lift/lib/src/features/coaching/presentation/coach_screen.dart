@@ -58,6 +58,16 @@ class _CoachScreenState extends State<CoachScreen> {
   CoachFailure? _failure;
   int _counter = 0;
 
+  /// Where the newest turn sits in a counted sequence, if it is in one.
+  (int, int)? get _progress {
+    if (_turns.isEmpty) return null;
+    final t = _turns.last;
+    final step = t.step;
+    final total = t.stepsTotal;
+    if (step == null || total == null) return null;
+    return (step, total);
+  }
+
   /// The value under the slider, while a turn is asking for one. Reset on every
   /// new ask, so the previous answer never becomes the next question's default.
   double? _asked;
@@ -217,6 +227,14 @@ class _CoachScreenState extends State<CoachScreen> {
                 children: <Widget>[
                   const SectionLabel('Coach'),
                   const Spacer(),
+                  // Beside the label rather than in the conversation: it
+                  // answers "how much longer" without the coach having to say
+                  // it. Absent entirely outside a counted sequence, because a
+                  // conversation with no end has no honest progress to report.
+                  if (_progress != null) ...<Widget>[
+                    StepProgress(step: _progress!.$1, total: _progress!.$2),
+                    const SizedBox(width: AppSpacing.md),
+                  ],
                   IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: const Icon(Icons.close),

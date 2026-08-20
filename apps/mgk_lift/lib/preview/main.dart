@@ -68,9 +68,7 @@ final DateTime previewNow = DateTime(2026, 8, 6, 18, 30);
 /// Repeated across the onboarding fixtures so each step carries the turns
 /// before it rather than starting mid-conversation.
 const String _onboardingOpener =
-    'Before I build you anything I need four things. Spin rather than type, '
-    'skip anything you would rather not say, and Settings shows you the lot '
-    'afterwards.';
+    'I am your coach. A few questions first, then I will build you something.';
 
 class PreviewApp extends StatelessWidget {
   const PreviewApp({super.key});
@@ -288,13 +286,8 @@ class PreviewApp extends StatelessWidget {
       // the end, where it is a thing to accept rather than a tic.
       'coach-onboarding': (_) => _sheet(
         _talk(<List<Object>>[
-          [
-            true,
-            'Before I build you anything I need four things. Spin rather than '
-                'type, skip anything you would rather not say, and Settings '
-                'shows you the lot afterwards.',
-          ],
-          [true, 'When were you born?', CoachAsk.yearOfBirth],
+          [true, _onboardingOpener],
+          [true, 'When were you born?', CoachAsk.yearOfBirth, 1],
         ]),
       ),
       // Height BEFORE weight, and asked separately. Together they read as a
@@ -311,7 +304,7 @@ class PreviewApp extends StatelessWidget {
           [true, _onboardingOpener],
           [true, 'When were you born?'],
           [false, '1994'],
-          [true, 'How tall are you?', CoachAsk.heightCm],
+          [true, 'How tall are you?', CoachAsk.heightCm, 2],
         ]),
       ),
       'coach-onboarding-weight': (_) => _sheet(
@@ -326,6 +319,7 @@ class PreviewApp extends StatelessWidget {
             'And roughly what do you weigh? I will track it from here, so this '
                 'is a starting point rather than a number to get right.',
             CoachAsk.weightKg,
+            3,
           ],
         ]),
       ),
@@ -351,6 +345,7 @@ class PreviewApp extends StatelessWidget {
               'Get healthy',
               'Prefer not to say',
             ],
+            4,
           ],
         ]),
       ),
@@ -594,7 +589,8 @@ Widget _sheetOf({
   ),
 );
 
-/// Builds a transcript from `[fromCoach, body, suggestions? | CoachAsk?]` rows.
+/// Builds a transcript from
+/// `[fromCoach, body, suggestions? | CoachAsk?, step?]` rows.
 ///
 /// The screens above are conversations, and written out as CoachTurn literals
 /// they were nine lines of ceremony per sentence — which made the copy itself,
@@ -613,6 +609,8 @@ FakeCoachTranscript _talk(List<List<Object>> rows) {
               ? r[2] as List<String>
               : const <String>[],
           ask: r.length > 2 && r[2] is CoachAsk ? r[2] as CoachAsk : null,
+          step: r.length > 3 ? r[3] as int : null,
+          stepsTotal: r.length > 3 ? 4 : null,
         ),
     ],
   );

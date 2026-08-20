@@ -88,8 +88,19 @@ class _WheelPickerState extends State<WheelPicker> {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         SectionLabel(widget.label),
-        SizedBox(
+        const SizedBox(height: 6),
+        // Carded to match a bubble, because that is what it sits among. Bare,
+        // the drum was a column of numbers floating on the glass with a
+        // selection band and two hard-edged fades, and it read as an unfinished
+        // control rather than as the coach's half of the conversation.
+        Container(
           height: WheelPicker._height,
+          decoration: BoxDecoration(
+            color: AppColors.elevated.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.elevated),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             alignment: Alignment.center,
             children: <Widget>[
@@ -99,7 +110,7 @@ class _WheelPickerState extends State<WheelPicker> {
               Container(
                 height: WheelPicker._itemExtent,
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.55),
+                  color: AppColors.surface.withValues(alpha: 0.70),
                   borderRadius: BorderRadius.circular(AppRadius.control),
                 ),
               ),
@@ -179,11 +190,14 @@ class _WheelFade extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
+        // The CARD's fill, not the page base. Fading to `bg` over glass drew
+        // two opaque charcoal bands across a translucent panel, which is the
+        // one thing on this sheet that looked like it had been forgotten.
         colors: <Color>[
-          AppColors.bg,
-          AppColors.bg.withValues(alpha: 0),
-          AppColors.bg.withValues(alpha: 0),
-          AppColors.bg,
+          AppColors.elevated,
+          AppColors.elevated.withValues(alpha: 0),
+          AppColors.elevated.withValues(alpha: 0),
+          AppColors.elevated,
         ],
         stops: const <double>[0, 0.28, 0.72, 1],
       ),

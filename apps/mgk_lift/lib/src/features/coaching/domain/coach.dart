@@ -68,6 +68,8 @@ class CoachTurn {
     required this.at,
     this.suggestions = const <String>[],
     this.ask,
+    this.step,
+    this.stepsTotal,
   });
 
   final String id;
@@ -96,6 +98,16 @@ class CoachTurn {
   /// a conversation is the most expensive thing you can put in front of a
   /// person who has not yet decided the app is worth the effort.
   final CoachAsk? ask;
+
+  /// Where this turn sits in a fixed sequence of questions, 1-based, and how
+  /// many there are. Both null outside one.
+  ///
+  /// **Drawn as chrome, never said.** A coach that announces "question two of
+  /// four" is reading its own progress bar aloud, which turns a conversation
+  /// into a form with a friendly voice. Like [suggestions] and [ask] it comes
+  /// from the coach, because only the coach knows how many questions are left.
+  final int? step;
+  final int? stepsTotal;
 }
 
 /// Why a turn could not happen.
