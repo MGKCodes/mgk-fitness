@@ -405,6 +405,7 @@ class PreviewApp extends StatelessWidget {
           today: DateTime(2026, 8, 17),
           onStartToday: () {},
           onSwap: (_) {},
+          onChangeSplit: () {},
         ),
       ),
       // A rest day is an answer, not an empty state. Nothing owed, nothing
@@ -416,6 +417,7 @@ class PreviewApp extends StatelessWidget {
           plan: _standingPlan(),
           today: DateTime(2026, 8, 19),
           onSwap: (_) {},
+          onChangeSplit: () {},
         ),
       ),
       // After the session. The coach reads what happened, the lifter answers in
@@ -614,17 +616,23 @@ StandingPlan _standingPlan() => StandingPlan(
         movement: 'Barbell Bench Press',
         isMain: true,
         sessionsAtSameTop: 6,
+        lastTopKg: 85,
+        lastTopReps: 6,
       ),
       const MovementSlot(
         id: 'u2',
         role: 'vertical pull',
         movement: 'Lat Pulldown',
+        lastTopKg: 70,
+        lastTopReps: 10,
       ),
       const MovementSlot(
         id: 'u3',
         role: 'lateral raise',
         movement: 'Cable Lateral Raise',
         sessionsAtSameTop: 6,
+        lastTopKg: 12,
+        lastTopReps: 12,
       ),
     ],
     'Lower': <MovementSlot>[
@@ -633,6 +641,8 @@ StandingPlan _standingPlan() => StandingPlan(
         role: 'squat',
         movement: 'Barbell Back Squat',
         isMain: true,
+        lastTopKg: 110,
+        lastTopReps: 5,
       ),
       const MovementSlot(
         id: 'l2',

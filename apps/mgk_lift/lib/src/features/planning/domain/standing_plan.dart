@@ -93,6 +93,23 @@ class StandingPlan {
     return day == null ? const <MovementSlot>[] : slots[day] ?? const [];
   }
 
+  /// The whole seven-day week, rest days included.
+  ///
+  /// **Rest is part of the shape, not an absence.** Listing only training days
+  /// meant Wednesday, Saturday and Sunday did not appear anywhere, so the one
+  /// question the overview exists to answer — what does my week look like —
+  /// could not be answered from it.
+  List<({int weekday, String? day})> get week {
+    final shape = split.weekFor(weekdays.length);
+    return <({int weekday, String? day})>[
+      for (var d = DateTime.monday; d <= DateTime.sunday; d++)
+        (
+          weekday: d,
+          day: weekdays.contains(d) ? shape[weekdays.indexOf(d)] : null,
+        ),
+    ];
+  }
+
   /// Slots worth looking at, because the numbers have stopped moving.
   List<MovementSlot> get stalled =>
       slots.values.expand((s) => s).where((s) => s.hasStalled).toList();
@@ -107,6 +124,8 @@ class MovementSlot {
     required this.movement,
     this.isMain = false,
     this.sessionsAtSameTop = 0,
+    this.lastTopKg,
+    this.lastTopReps,
   });
 
   final String id;
@@ -130,6 +149,17 @@ class MovementSlot {
 
   /// How many sessions the top set has failed to improve.
   final int sessionsAtSameTop;
+
+  /// The best set last time this slot came round.
+  ///
+  /// **The plan screen was numbers-free without these**, on a screen in an app
+  /// whose whole design language is numerals — it could name the movements and
+  /// say nothing about what you lift, which is the one thing you open it to
+  /// check on the way to the gym.
+  final double? lastTopKg;
+  final int? lastTopReps;
+
+  bool get hasHistory => lastTopKg != null && lastTopReps != null;
 
   /// Six sessions, and only for accessories.
   ///
