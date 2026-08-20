@@ -124,8 +124,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   AppSpacing.sm,
                 ),
                 children: <Widget>[
+                  // Each turn arrives. `Entrance` plays once per widget, so
+                  // the bubbles already on screen stay exactly where they are
+                  // and only the newcomer moves — re-running the whole
+                  // transcript on every keystroke would make it twitch.
+                  //
+                  // Left at index 0 deliberately. Staggering by position would
+                  // make the tenth message wait for nine beats that have
+                  // already happened; in a growing transcript the only thing
+                  // arriving is the last one.
                   for (final message in _c.messages)
-                    ChatBubble(text: message.text, isUser: message.isUser),
+                    Entrance(
+                      child: ChatBubble(
+                        text: message.text,
+                        isUser: message.isUser,
+                      ),
+                    ),
                   if (_c.isBusy) const TypingBubble(),
                 ],
               ),

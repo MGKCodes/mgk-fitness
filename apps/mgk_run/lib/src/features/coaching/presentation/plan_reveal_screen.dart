@@ -221,21 +221,36 @@ class _Revealed extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const Said('Here it is.'),
+        // The payoff of the whole of onboarding, and it used to land in one
+        // frame. The coach says here it is, then the thing itself, then what
+        // shape it is — in that order, because that is the order somebody
+        // reads it in and the order it was promised in.
+        //
+        // Entrance rather than SequencedReveal: this is read, not answered, but
+        // it is still a screen somebody has been waiting on, and a paced reveal
+        // that holds back a plan they have already waited for would be making
+        // them wait twice.
+        const Entrance(child: Said('Here it is.')),
         const SizedBox(height: AppSpacing.xl),
 
-        Text(
-          headline.goal,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            height: 1.1,
+        Entrance(
+          index: 1,
+          child: Text(
+            headline.goal,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-          headline.position,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: AppColors.textSecondary,
+        Entrance(
+          index: 2,
+          child: Text(
+            headline.position,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ),
 
@@ -243,7 +258,7 @@ class _Revealed extends StatelessWidget {
         // quote, and inventing one would describe a habit as a project.
         if (shape.progresses) ...<Widget>[
           const SizedBox(height: AppSpacing.xl),
-          const SectionLabel('The shape of it'),
+          const Entrance(index: 3, child: SectionLabel('The shape of it')),
           const SizedBox(height: AppSpacing.md),
           _Fact(label: 'Length', value: '${weeks.length} weeks'),
           _Fact(

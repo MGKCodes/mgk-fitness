@@ -188,12 +188,18 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                 children: <Widget>[
-                  Text(
-                    "Here's what I heard. Fix anything I got wrong, then I'll "
-                    'build your plan.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      height: 1.4,
+                  // The coach's line arrives; the fields it is about do not.
+                  // Same reasoning as the sign-in screen — staggering inputs
+                  // puts movement under a cursor and fights focus for a
+                  // flourish.
+                  Entrance(
+                    child: Text(
+                      "Here's what I heard. Fix anything I got wrong, then I'll "
+                      'build your plan.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
