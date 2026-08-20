@@ -9,26 +9,51 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(13);
+select plan(14);
 
 
 -- 1 ------------------------------------------------------------------------
 -- core.delete_account enumerates tables by their `user_id` column rather than
 -- a hard-coded list. A user-owned table without one silently escapes erasure —
 -- a GDPR problem that no application test would catch.
+--
+-- **The exemption list is the dangerous part of this test, so it is short and
+-- it is argued.** A table earns a place on it only by holding no personal data
+-- at all — the same rows for every account, nothing traceable to a person. If
+-- adding a table here feels like the quick way to make this pass, it is the
+-- wrong table.
+--
+--   coach.knowledge — training claims and coaching guidance, identical for
+--   everybody, authored in the repo and synced. Deleting an account must not
+--   delete the coach's knowledge of how to train.
 select is(
   (select count(*)::int
    from pg_class c
    join pg_namespace n on n.oid = c.relnamespace
    where n.nspname in ('coach', 'lift', 'run')
      and c.relkind = 'r'
+     and (n.nspname || '.' || c.relname) not in ('coach.knowledge')
      and not exists (
        select 1 from pg_attribute a
        where a.attrelid = c.oid and a.attname = 'user_id'
          and a.attnum > 0 and not a.attisdropped
      )),
   0,
-  'every table in coach/lift/run declares user_id, so the deletion sweep finds it'
+  'every user-owned table in coach/lift/run declares user_id, so the deletion sweep finds it'
+);
+
+-- 1b -----------------------------------------------------------------------
+-- The other half of that exemption: a table excused from the sweep had better
+-- genuinely hold nothing personal. Asserted rather than trusted, because the
+-- exemption above is a hole and this is what keeps it the size it was dug.
+select is(
+  (select count(*)::int
+   from pg_attribute a
+   where a.attrelid = 'coach.knowledge'::regclass
+     and a.attnum > 0 and not a.attisdropped
+     and a.attname in ('user_id', 'email', 'account_id')),
+  0,
+  'coach.knowledge holds nothing that identifies a person'
 );
 
 

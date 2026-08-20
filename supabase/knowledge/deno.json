@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "sync": "deno run --allow-read --allow-net --allow-env sync.ts",
+    "check": "deno test --allow-read --allow-net --allow-env"
+  }
+}
