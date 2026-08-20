@@ -110,22 +110,27 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: <Widget>[
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.danger,
-              size: 22,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'This cannot be undone.',
-                style: theme.textTheme.titleMedium,
+        // Arrives, but only just. This screen asks somebody to confirm
+        // something irreversible, and a flourish would be the wrong register —
+        // the warning should be there when they look, not perform its way in.
+        Entrance(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.danger,
+                size: 22,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'This cannot be undone.',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
         Text(

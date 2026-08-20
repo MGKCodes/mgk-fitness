@@ -169,14 +169,21 @@ class _WeekDetailScreenState extends State<WeekDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               if (_week.provisional) const _ProvisionalBanner(),
+              // The week assembles a day at a time. Seven rows is inside
+              // AppMotion.maxStaggered, so the last one is not left waiting —
+              // beyond that a stagger stops reading as choreography and starts
+              // reading as lag.
               for (var day = 1; day <= 7; day++)
-                _DayRow(
-                  key: day == focused ? _focusedKey : null,
-                  name: weekdayName(day),
-                  session: _week.runOn(day),
-                  paces: widget.paces,
-                  unit: widget.unit,
-                  focused: day == focused,
+                Entrance(
+                  index: day - 1,
+                  child: _DayRow(
+                    key: day == focused ? _focusedKey : null,
+                    name: weekdayName(day),
+                    session: _week.runOn(day),
+                    paces: widget.paces,
+                    unit: widget.unit,
+                    focused: day == focused,
+                  ),
                 ),
             ],
           ),
