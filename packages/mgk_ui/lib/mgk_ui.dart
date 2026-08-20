@@ -28,4 +28,5 @@ export 'src/widgets/primary_button.dart';
 export 'src/widgets/section_label.dart';
 export 'src/widgets/sheet_handle.dart';
 export 'src/widgets/stat_block.dart';
-export 'src/widgets/slider_field.dart';
+export 'src/widgets/option_stack.dart';
+export 'src/widgets/wheel_picker.dart';

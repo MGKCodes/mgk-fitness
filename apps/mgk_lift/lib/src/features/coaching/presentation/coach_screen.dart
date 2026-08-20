@@ -364,24 +364,23 @@ class _AskField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (String label, String Function(double) format) = switch (ask.kind) {
-      CoachAskKind.yearOfBirth => ('Year of birth', (v) => '${v.round()}'),
-      CoachAskKind.heightCm => ('Height', (v) => '${v.round()} cm'),
-      CoachAskKind.weightKg => ('Weight', (v) => '${v.round()} kg'),
+    final (String label, String Function(int) format) = switch (ask.kind) {
+      CoachAskKind.yearOfBirth => ('Year of birth', (v) => '$v'),
+      CoachAskKind.heightCm => ('Height', (v) => '$v cm'),
+      CoachAskKind.weightKg => ('Weight', (v) => '$v kg'),
     };
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SliderField(
+          WheelPicker(
             label: label,
-            value: value,
-            min: ask.min,
-            max: ask.max,
-            divisions: (ask.max - ask.min).round(),
+            min: ask.min.round(),
+            max: ask.max.round(),
+            initial: value.round(),
             format: format,
-            onChanged: onChanged,
+            onChanged: (v) => onChanged(v.toDouble()),
             onSkip: onSkip,
           ),
           const SizedBox(height: AppSpacing.xs),

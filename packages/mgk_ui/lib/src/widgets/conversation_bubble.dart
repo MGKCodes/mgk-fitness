@@ -122,6 +122,7 @@ class ConversationView extends StatelessWidget {
     required this.children,
     this.controller,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
+    this.anchor = ConversationAnchor.top,
   });
 
   /// The turns, oldest first, plus anything trailing them — a thinking
@@ -130,6 +131,9 @@ class ConversationView extends StatelessWidget {
 
   final ScrollController? controller;
   final EdgeInsets padding;
+
+  /// Which end a conversation shorter than the screen settles against.
+  final ConversationAnchor anchor;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -156,11 +160,41 @@ class ConversationView extends StatelessWidget {
               ),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: anchor == ConversationAnchor.top
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: children,
             ),
           ),
         ),
   );
+}
+
+/// Which end a short conversation settles against.
+///
+/// **This has been both ways, and the second answer is not a reversal of the
+/// first — the screen changed underneath it.**
+///
+/// Bottom was right while the coach was a full-height page. A lone opener at
+/// the top of 844pt left the rest of the screen empty beneath it, and the reply
+/// was as far from the composer as the layout could put it.
+///
+/// The coach is a sheet now, and two things flipped with it. The sheet is
+/// shorter, so the gap a top anchor leaves is smaller than the gap a bottom
+/// anchor left. And the composer is above a keyboard that opens and closes:
+/// bottom-anchored, every turn on screen jumps the height of the keyboard each
+/// time somebody taps the field, which is motion nobody asked for applied to
+/// text they were reading.
+///
+/// Top also means an onboarding question stays where it was read while its
+/// answer is being chosen underneath it — a wheel and a stack of options are
+/// tall, and bottom-anchored they push the question they belong to off screen.
+enum ConversationAnchor {
+  /// Turns settle at the top. The default, and what a sheet wants.
+  top,
+
+  /// Turns settle against the composer. For a full-height surface, where the
+  /// distance from the last word to the field is otherwise the whole screen.
+  bottom,
 }

@@ -65,6 +65,13 @@ void main() => runApp(const PreviewApp());
 /// useless for comparing before and after.
 final DateTime previewNow = DateTime(2026, 8, 6, 18, 30);
 
+/// Repeated across the onboarding fixtures so each step carries the turns
+/// before it rather than starting mid-conversation.
+const String _onboardingOpener =
+    'Before I build you anything I need four things. Spin rather than type, '
+    'skip anything you would rather not say, and Settings shows you the lot '
+    'afterwards.';
+
 class PreviewApp extends StatelessWidget {
   const PreviewApp({super.key});
 
@@ -283,7 +290,7 @@ class PreviewApp extends StatelessWidget {
         _talk(<List<Object>>[
           [
             true,
-            'Before I build you anything I need four things. Drag rather than '
+            'Before I build you anything I need four things. Spin rather than '
                 'type, skip anything you would rather not say, and Settings '
                 'shows you the lot afterwards.',
           ],
@@ -293,8 +300,15 @@ class PreviewApp extends StatelessWidget {
       // Height BEFORE weight, and asked separately. Together they read as a
       // medical form; apart, height is the harmless one and answering it makes
       // the next question ordinary rather than the first thing asked.
+      //
+      // **Cumulative, like the real conversation.** These fixtures used to hold
+      // only the turns nearest the question, which made the board look as
+      // though the history vanished at each step. Nothing removes a turn -- the
+      // list only ever grows -- and a preview that implied otherwise was
+      // inventing a bug to review.
       'coach-onboarding-height': (_) => _sheet(
         _talk(<List<Object>>[
+          [true, _onboardingOpener],
           [true, 'When were you born?'],
           [false, '1994'],
           [true, 'How tall are you?', CoachAsk.heightCm],
@@ -302,6 +316,9 @@ class PreviewApp extends StatelessWidget {
       ),
       'coach-onboarding-weight': (_) => _sheet(
         _talk(<List<Object>>[
+          [true, _onboardingOpener],
+          [true, 'When were you born?'],
+          [false, '1994'],
           [true, 'How tall are you?'],
           [false, '180 cm'],
           [
@@ -316,6 +333,11 @@ class PreviewApp extends StatelessWidget {
       // picking one is what makes it the PRIMARY goal rather than a wish list.
       'coach-onboarding-goal': (_) => _sheet(
         _talk(<List<Object>>[
+          [true, 'When were you born?'],
+          [false, '1994'],
+          [true, 'How tall are you?'],
+          [false, '180 cm'],
+          [true, 'And roughly what do you weigh?'],
           [false, '82 kg'],
           [
             true,
@@ -336,6 +358,11 @@ class PreviewApp extends StatelessWidget {
       // with changing it as available as accepting it.
       'coach-onboarding-summary': (_) => _sheet(
         _talk(<List<Object>>[
+          [true, 'How tall are you?'],
+          [false, '180 cm'],
+          [true, 'And roughly what do you weigh?'],
+          [false, '82 kg'],
+          [true, 'What are you actually training for?'],
           [false, 'Get stronger'],
           [
             true,
@@ -349,6 +376,8 @@ class PreviewApp extends StatelessWidget {
       // an answer -- a coach that asks again has not accepted one.
       'coach-onboarding-declined': (_) => _sheet(
         _talk(<List<Object>>[
+          [true, 'How tall are you?'],
+          [false, '180 cm'],
           [true, 'And roughly what do you weigh?'],
           [false, 'Prefer not to say'],
           [

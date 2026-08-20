@@ -12,9 +12,13 @@ void main() {
   );
 
   group('ConversationView', () {
-    testWidgets('anchors a short conversation to the bottom', (
+    testWidgets('settles a short conversation at the top', (
       WidgetTester tester,
     ) async {
+      // This assertion used to be its own inverse, and the reason it flipped is
+      // worth keeping: the coach became a sheet. See [ConversationAnchor].
+      // Bottom-anchored inside a sheet, every turn on screen jumps the height
+      // of the keyboard each time the composer is tapped.
       await tester.pumpWidget(
         host(
           const ConversationView(
@@ -28,14 +32,30 @@ void main() {
       final screen = tester.getSize(find.byType(Scaffold)).height;
       final bubble = tester.getRect(find.byType(ConversationBubble));
 
-      // The fault this replaced: a lone opener pinned to the top with the rest
-      // of the screen empty beneath it. Asserted against the lower third rather
-      // than an exact offset, so padding stays free to change.
       expect(
-        bubble.bottom,
-        greaterThan(screen * 2 / 3),
-        reason: 'a single turn should sit near the composer, not at the top',
+        bubble.top,
+        lessThan(screen / 3),
+        reason: 'a single turn should stay where it was read',
       );
+    });
+
+    testWidgets('the bottom anchor is still available for a full page', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        host(
+          const ConversationView(
+            anchor: ConversationAnchor.bottom,
+            children: <Widget>[
+              ConversationBubble(text: 'One line.', fromCoach: true),
+            ],
+          ),
+        ),
+      );
+
+      final screen = tester.getSize(find.byType(Scaffold)).height;
+      final bubble = tester.getRect(find.byType(ConversationBubble));
+      expect(bubble.bottom, greaterThan(screen * 2 / 3));
     });
 
     testWidgets('a long conversation still scrolls', (
