@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 import '../domain/coach.dart';
 
@@ -27,6 +30,7 @@ class CoachScreen extends StatefulWidget {
     required this.coach,
     this.transcript,
     this.opener,
+    this.massUnit = MassUnit.kilograms,
   });
 
   final CoachService coach;
@@ -44,6 +48,11 @@ class CoachScreen extends StatefulWidget {
   /// one it would rewrite how the conversation started. An opener is for an
   /// empty screen, which is the only place it is now used.
   final String? opener;
+
+  /// What the lifter works in. Only the asked-for values read it — height and
+  /// weight are offered in the system they already use everywhere else, and
+  /// height follows the mass unit rather than carrying a preference of its own.
+  final MassUnit massUnit;
 
   @override
   State<CoachScreen> createState() => _CoachScreenState();
@@ -198,6 +207,80 @@ class _CoachScreenState extends State<CoachScreen> {
     });
   }
 
+  /// The turns, the thinking indicator and whatever the newest turn is
+  /// asking for. Lifted out of build so the top bar can be stacked over it.
+  Widget _conversation(BuildContext context) {
+    return _resuming && _turns.isEmpty
+        // Bounded by SupabaseCoachTranscript.requestTimeout, which is
+        // what keeps this from becoming a spinner nobody can leave.
+        // The composer below stays live throughout.
+        ? const Center(child: CircularProgressIndicator())
+        : _turns.isEmpty && !_waiting
+        ? const _Empty()
+        : ConversationView(
+            controller: _scroll,
+            // Room for the bar stacked over this. Without it the
+            // first turn opens already underneath the blur.
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              _TopBar.height,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            children: <Widget>[
+              for (final turn in _turns) ...<Widget>[
+                // Keyed by the turn, so Entrance plays once when a
+                // message ARRIVES and never again — an un-keyed list
+                // reuses element state positionally and the whole
+                // conversation re-zooms every time somebody speaks.
+                Entrance(
+                  key: ValueKey<String>(turn.id),
+                  // Settling into place reads as something being
+                  // said; a plain fade reads as something loading.
+                  scaleFrom: 0.94,
+                  offset: 8,
+                  child: ConversationBubble(
+                    text: turn.body,
+                    fromCoach: turn.fromCoach,
+                  ),
+                ),
+                // Only under the newest turn. Chips under an old
+                // message offer to answer a question that has already
+                // been answered, and tapping one would send it as
+                // though it were the reply to the latest thing said.
+                if (turn == _turns.last &&
+                    !_waiting &&
+                    turn.suggestions.isNotEmpty)
+                  OptionStack(options: turn.suggestions, onSelected: _sendText),
+                if (turn == _turns.last && !_waiting && turn.ask != null)
+                  _AskField(
+                    ask: turn.ask!,
+                    massUnit: widget.massUnit,
+                    value: _asked ?? turn.ask!.initial,
+                    onChanged: (v) => setState(() => _asked = v),
+                    onConfirm: () {
+                      final v = _asked ?? turn.ask!.initial;
+                      _asked = null;
+                      _sendText(_render(turn.ask!, v));
+                    },
+                    // Declining is an answer, not a cancel. Age,
+                    // height and weight are health data collected to
+                    // build a plan, and a plan can be built without
+                    // any of them -- worse, but built.
+                    onSkip: () {
+                      _asked = null;
+                      _sendText('Prefer not to say');
+                    },
+                  ),
+              ],
+              if (_waiting) const ThinkingIndicator(),
+              // Attached to the message it refers to, not stranded at
+              // the bottom of the screen with the question at the top.
+              if (_failure != null) _Failure(failure: _failure!),
+            ],
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     // **No Scaffold and no AppBar.** The coach is not a page any more — it is
@@ -216,102 +299,32 @@ class _CoachScreenState extends State<CoachScreen> {
         top: false,
         child: Column(
           children: <Widget>[
-            const SheetHandle(bottomSpacing: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.lg,
-                right: AppSpacing.lg,
-                bottom: AppSpacing.sm,
-              ),
-              child: Row(
+            Expanded(
+              child: Stack(
                 children: <Widget>[
-                  const SectionLabel('Coach'),
-                  const Spacer(),
-                  // Beside the label rather than in the conversation: it
-                  // answers "how much longer" without the coach having to say
-                  // it. Absent entirely outside a counted sequence, because a
-                  // conversation with no end has no honest progress to report.
-                  if (_progress != null) ...<Widget>[
-                    StepProgress(step: _progress!.$1, total: _progress!.$2),
-                    const SizedBox(width: AppSpacing.md),
-                  ],
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.close),
-                    iconSize: 20,
-                    color: AppColors.textSecondary,
-                    tooltip: 'Close',
-                    visualDensity: VisualDensity.compact,
+                  Positioned.fill(child: _conversation(context)),
+                  // **The bar floats over the conversation, and blurs it.**
+                  //
+                  // Laid out above the list, the bar cut the topmost bubble
+                  // dead along a straight edge — text simply stopped, mid-word,
+                  // against a hard line. Content passing UNDER a blurred bar is
+                  // what makes a scroll read as continuing past the chrome
+                  // rather than being clipped by it.
+                  //
+                  // The list carries matching top padding, so nothing is
+                  // permanently hidden: the first turn starts below the bar and
+                  // only travels under it once there is more than a screenful.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _TopBar(
+                      progress: _progress,
+                      onClose: () => Navigator.of(context).maybePop(),
+                    ),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: _resuming && _turns.isEmpty
-                  // Bounded by SupabaseCoachTranscript.requestTimeout, which is
-                  // what keeps this from becoming a spinner nobody can leave.
-                  // The composer below stays live throughout.
-                  ? const Center(child: CircularProgressIndicator())
-                  : _turns.isEmpty && !_waiting
-                  ? const _Empty()
-                  : ConversationView(
-                      controller: _scroll,
-                      children: <Widget>[
-                        for (final turn in _turns) ...<Widget>[
-                          // Keyed by the turn, so Entrance plays once when a
-                          // message ARRIVES and never again — an un-keyed list
-                          // reuses element state positionally and the whole
-                          // conversation re-zooms every time somebody speaks.
-                          Entrance(
-                            key: ValueKey<String>(turn.id),
-                            // Settling into place reads as something being
-                            // said; a plain fade reads as something loading.
-                            scaleFrom: 0.94,
-                            offset: 8,
-                            child: ConversationBubble(
-                              text: turn.body,
-                              fromCoach: turn.fromCoach,
-                            ),
-                          ),
-                          // Only under the newest turn. Chips under an old
-                          // message offer to answer a question that has already
-                          // been answered, and tapping one would send it as
-                          // though it were the reply to the latest thing said.
-                          if (turn == _turns.last &&
-                              !_waiting &&
-                              turn.suggestions.isNotEmpty)
-                            OptionStack(
-                              options: turn.suggestions,
-                              onSelected: _sendText,
-                            ),
-                          if (turn == _turns.last &&
-                              !_waiting &&
-                              turn.ask != null)
-                            _AskField(
-                              ask: turn.ask!,
-                              value: _asked ?? turn.ask!.initial,
-                              onChanged: (v) => setState(() => _asked = v),
-                              onConfirm: () {
-                                final v = _asked ?? turn.ask!.initial;
-                                _asked = null;
-                                _sendText(_render(turn.ask!, v));
-                              },
-                              // Declining is an answer, not a cancel. Age,
-                              // height and weight are health data collected to
-                              // build a plan, and a plan can be built without
-                              // any of them -- worse, but built.
-                              onSkip: () {
-                                _asked = null;
-                                _sendText('Prefer not to say');
-                              },
-                            ),
-                        ],
-                        if (_waiting) const ThinkingIndicator(),
-                        // Attached to the message it refers to, not stranded at
-                        // the bottom of the screen with the question at the top.
-                        if (_failure != null) _Failure(failure: _failure!),
-                      ],
-                    ),
             ),
 
             Padding(
@@ -364,10 +377,18 @@ String _render(CoachAsk ask, double v) => switch (ask.kind) {
   CoachAskKind.weightKg => '${v.round()} kg',
 };
 
-/// One asked-for value, with its slider and its two ways out.
+/// `69` inches as `5' 9"`.
+///
+/// A single wheel of inches rather than two of feet and inches: two drums for
+/// one measurement doubles the chrome to save nobody any scrolling, and the
+/// combined value is what gets stored either way.
+String _feetInches(int inches) => "${inches ~/ 12}' ${inches % 12}\"";
+
+/// One asked-for value, with its wheel and its two ways out.
 class _AskField extends StatelessWidget {
   const _AskField({
     required this.ask,
+    required this.massUnit,
     required this.value,
     required this.onChanged,
     required this.onConfirm,
@@ -375,6 +396,9 @@ class _AskField extends StatelessWidget {
   });
 
   final CoachAsk ask;
+
+  /// What the lifter works in. Height follows it — see build.
+  final MassUnit massUnit;
   final double value;
   final ValueChanged<double> onChanged;
   final VoidCallback onConfirm;
@@ -382,11 +406,54 @@ class _AskField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (String label, String Function(int) format) = switch (ask.kind) {
-      CoachAskKind.yearOfBirth => ('Year of birth', (v) => '$v'),
-      CoachAskKind.heightCm => ('Height', (v) => '$v cm'),
-      CoachAskKind.weightKg => ('Weight', (v) => '$v kg'),
+    // **Imperial follows the mass unit**, rather than carrying a preference of
+    // its own. Somebody who weighs in pounds measures height in feet; a third
+    // setting for the pairing would be a question nobody wants asked, and a way
+    // for the two halves of one body to disagree.
+    final imperial = massUnit == MassUnit.pounds;
+
+    final (
+      String label,
+      int min,
+      int max,
+      int initial,
+      String Function(int) fmt,
+    ) = switch (ask.kind) {
+      // A year is a year in both systems.
+      CoachAskKind.yearOfBirth => (
+        'Year of birth',
+        ask.min.round(),
+        ask.max.round(),
+        ask.initial.round(),
+        (v) => '$v',
+      ),
+      // **The wheel steps in the DISPLAY unit, not the stored one.** Over
+      // centimetres, an imperial reader gets a drum where two or three rows
+      // in a row read as the same inches -- the value stalls under a moving
+      // finger, which is exactly the failure the wheel replaced a slider to
+      // avoid.
+      CoachAskKind.heightCm =>
+        imperial
+            ? ('Height', 51, 87, 69, _feetInches)
+            : (
+                'Height',
+                ask.min.round(),
+                ask.max.round(),
+                ask.initial.round(),
+                (v) => '$v cm',
+              ),
+      CoachAskKind.weightKg =>
+        imperial
+            ? ('Weight', 80, 440, 176, (v) => '$v lb')
+            : (
+                'Weight',
+                ask.min.round(),
+                ask.max.round(),
+                ask.initial.round(),
+                (v) => '$v kg',
+              ),
     };
+
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Column(
@@ -394,10 +461,10 @@ class _AskField extends StatelessWidget {
         children: <Widget>[
           WheelPicker(
             label: label,
-            min: ask.min.round(),
-            max: ask.max.round(),
-            initial: value.round(),
-            format: format,
+            min: min,
+            max: max,
+            initial: initial,
+            format: fmt,
             onChanged: (v) => onChanged(v.toDouble()),
             onSkip: onSkip,
           ),
@@ -473,6 +540,81 @@ class _Failure extends StatelessWidget {
       style: Theme.of(
         context,
       ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+    ),
+  );
+}
+
+/// The sheet's chrome: a handle, the label, how far through, and a way out.
+///
+/// **Blurred, with the conversation running under it.** Laid out above the
+/// list, this cut the topmost bubble along a straight edge and text stopped
+/// mid-word against a hard line. A bar that frosts what passes behind it is
+/// what makes the scroll read as continuing past the chrome rather than being
+/// clipped by it — and it is the one piece of this sheet where the iOS
+/// convention is simply right.
+///
+/// The fade below the blur matters as much as the blur. A blurred band with a
+/// hard bottom edge is still an edge; letting it dissolve over the last few
+/// pixels is what stops the boundary being a line.
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.progress, required this.onClose});
+
+  final (int, int)? progress;
+  final VoidCallback onClose;
+
+  /// Mirrored into the list's top padding, so the first turn opens below the
+  /// bar rather than already under it.
+  static const double height = 64;
+
+  @override
+  Widget build(BuildContext context) => ClipRect(
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              AppColors.bg.withValues(alpha: 0.55),
+              AppColors.bg.withValues(alpha: 0.28),
+              AppColors.bg.withValues(alpha: 0),
+            ],
+            stops: const <double>[0, 0.65, 1],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SheetHandle(bottomSpacing: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.lg,
+                right: AppSpacing.sm,
+              ),
+              child: Row(
+                children: <Widget>[
+                  const SectionLabel('Coach'),
+                  const Spacer(),
+                  if (progress != null) ...<Widget>[
+                    StepProgress(step: progress!.$1, total: progress!.$2),
+                    const SizedBox(width: AppSpacing.md),
+                  ],
+                  IconButton(
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close),
+                    iconSize: 20,
+                    color: AppColors.textSecondary,
+                    tooltip: 'Close',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

@@ -1,4 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -18,6 +23,24 @@ import 'section_label.dart';
 /// the thumb that is dragging it, so the value being chosen is the one thing
 /// hidden by your own hand. A wheel is read at the centre and driven from
 /// anywhere on it.
+///
+/// ## Cupertino underneath, this design language on top
+///
+/// The drum is a [CupertinoPicker] rather than a hand-rolled
+/// [ListWheelScrollView], because the parts worth having are the parts that are
+/// tedious to reproduce: the deceleration curve, the snap, and the **selection
+/// haptic on every value it passes**. A wheel without that tick feels like a
+/// list; with it, it feels like a dial. None of it is visual, which is why
+/// building the widget from scratch got everything except the thing that
+/// mattered.
+///
+/// What is NOT taken is the look. `selectionOverlay` is this system's card, not
+/// Cupertino's grey bars, and `useMagnifier` is off — the lens is iOS chrome
+/// and this palette has none to match it.
+///
+/// **The haptic is platform-split on purpose.** CupertinoPicker only calls
+/// [HapticFeedback.selectionClick] on iOS, so Android gets nothing unless it is
+/// added — and adding it unconditionally would fire twice per value on iOS.
 ///
 /// **Reduced motion is respected by the platform here**, not by this widget:
 /// the drum is a scroll, and a scroll is direct manipulation rather than
@@ -114,47 +137,55 @@ class _WheelPickerState extends State<WheelPicker> {
                   borderRadius: BorderRadius.circular(AppRadius.control),
                 ),
               ),
-              ListWheelScrollView.useDelegate(
-                controller: _controller,
+              CupertinoPicker.builder(
+                scrollController: _controller,
                 itemExtent: WheelPicker._itemExtent,
-                // Flat rather than the default barrel. A pronounced curve is
-                // iOS chrome; this design language has no chrome to match, and
-                // the tilt makes the neighbours harder to read for no gain.
-                diameterRatio: 100,
-                perspective: 0.002,
-                physics: const FixedExtentScrollPhysics(),
+                // The lens is iOS chrome, and this palette has nothing to match
+                // it with. The selection band does the same job flat.
+                useMagnifier: false,
+                magnification: 1,
+                squeeze: 1,
+                backgroundColor: const Color(0x00000000),
+                // The default is a pair of grey hairlines. The band behind the
+                // numbers is already the selection, so this would be a second
+                // one drawn in another design system's voice.
+                selectionOverlay: const SizedBox.shrink(),
                 onSelectedItemChanged: (i) {
                   setState(() => _value = widget.min + i);
+                  // iOS already ticked inside CupertinoPicker. Doing it here as
+                  // well is a double tap per value, which reads as a stutter
+                  // rather than a dial.
+                  if (defaultTargetPlatform != TargetPlatform.iOS) {
+                    unawaited(HapticFeedback.selectionClick());
+                  }
                   widget.onChanged(_value);
                 },
-                childDelegate: ListWheelChildBuilderDelegate(
-                  childCount: count,
-                  builder: (context, i) {
-                    final v = widget.min + i;
-                    final selected = v == _value;
-                    return Center(
-                      child: Text(
-                        format(v),
-                        style: TextStyle(
-                          color: selected
-                              ? AppColors.textPrimary
-                              : AppColors.textTertiary,
-                          fontSize: selected ? 26 : 20,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          height: 1.1,
-                          // The column is a list of numbers being scrolled
-                          // past. Without tabular figures each row sits at a
-                          // slightly different width and the drum wobbles.
-                          fontFeatures: const <FontFeature>[
-                            FontFeature.tabularFigures(),
-                          ],
-                        ),
+                childCount: count,
+                itemBuilder: (context, i) {
+                  final v = widget.min + i;
+                  final selected = v == _value;
+                  return Center(
+                    child: Text(
+                      format(v),
+                      style: TextStyle(
+                        color: selected
+                            ? AppColors.textPrimary
+                            : AppColors.textTertiary,
+                        fontSize: selected ? 26 : 20,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        height: 1.1,
+                        // The column is a list of numbers being scrolled past.
+                        // Without tabular figures each row sits at a slightly
+                        // different width and the drum wobbles.
+                        fontFeatures: const <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
               // Fades top and bottom, so values run out of the drum rather than
               // stopping at a hard edge.

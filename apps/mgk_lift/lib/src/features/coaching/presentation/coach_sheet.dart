@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 import '../domain/coach.dart';
 import 'coach_screen.dart';
@@ -29,11 +30,16 @@ class CoachSheet extends StatelessWidget {
     required this.coach,
     this.transcript,
     this.opener,
+    this.massUnit = MassUnit.kilograms,
   });
 
   final CoachService coach;
   final CoachTranscript? transcript;
   final String? opener;
+
+  /// Passed through to the asked-for values, which are offered in the system
+  /// the lifter already uses everywhere else.
+  final MassUnit massUnit;
 
   /// The share of the screen it opens at. Tall enough that a conversation is a
   /// conversation rather than a peephole, short enough that the surface behind
@@ -97,6 +103,7 @@ class CoachSheet extends StatelessWidget {
             coach: coach,
             transcript: transcript,
             opener: opener,
+            massUnit: massUnit,
           ),
         ),
       ),

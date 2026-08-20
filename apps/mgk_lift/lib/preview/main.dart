@@ -323,6 +323,19 @@ class PreviewApp extends StatelessWidget {
           ],
         ]),
       ),
+      // The same question in pounds and feet. Height follows the mass unit
+      // rather than carrying its own setting -- somebody who weighs in pounds
+      // measures height in feet -- and the wheel steps in the DISPLAY unit, so
+      // an imperial reader never gets three rows in a row reading the same.
+      'coach-onboarding-imperial': (_) => _sheet(
+        _talk(<List<Object>>[
+          [true, _onboardingOpener],
+          [true, 'When were you born?'],
+          [false, '1994'],
+          [true, 'How tall are you?', CoachAsk.heightCm, 2],
+        ]),
+        massUnit: MassUnit.pounds,
+      ),
       // The five goals, stacked rather than wrapped. They conflict on purpose:
       // picking one is what makes it the PRIMARY goal rather than a wish list.
       'coach-onboarding-goal': (_) => _sheet(
@@ -550,8 +563,16 @@ class _HarnessState extends State<_Harness> {
 /// CoachSheet's — so a preview that skipped it reviewed the coach on a flat
 /// charcoal panel, which is the one surface GlassSurface says the effect does
 /// not work on.
-Widget _sheet(CoachTranscript? transcript, {String? opener}) =>
-    _sheetOf(coach: FakeCoach(), transcript: transcript, opener: opener);
+Widget _sheet(
+  CoachTranscript? transcript, {
+  String? opener,
+  MassUnit massUnit = MassUnit.kilograms,
+}) => _sheetOf(
+  coach: FakeCoach(),
+  transcript: transcript,
+  opener: opener,
+  massUnit: massUnit,
+);
 
 /// The same, for a preview that needs a particular coach — one that refuses,
 /// or one that fails.
@@ -559,6 +580,7 @@ Widget _sheetOf({
   required CoachService coach,
   CoachTranscript? transcript,
   String? opener,
+  MassUnit massUnit = MassUnit.kilograms,
 }) => Scaffold(
   backgroundColor: AppColors.bg,
   // Something for the sheet to sit over, so the height it opens at reads as a
@@ -582,6 +604,7 @@ Widget _sheetOf({
             coach: coach,
             transcript: transcript,
             opener: opener,
+            massUnit: massUnit,
           ),
         ),
       ),
