@@ -58,6 +58,10 @@ class _CoachScreenState extends State<CoachScreen> {
   CoachFailure? _failure;
   int _counter = 0;
 
+  /// The value under the slider, while a turn is asking for one. Reset on every
+  /// new ask, so the previous answer never becomes the next question's default.
+  double? _asked;
+
   /// True until the stored conversation has been read, so the screen does not
   /// flash its empty state — "It has read your log" — at somebody who has been
   /// talking to it for a month.
@@ -186,12 +190,44 @@ class _CoachScreenState extends State<CoachScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Coach')),
-      body: SafeArea(
+    // **No Scaffold and no AppBar.** The coach is not a page any more — it is
+    // the sheet that slides up over whichever of the three surfaces you were
+    // on, so the chrome it needs is a drag handle rather than a title bar with
+    // a back arrow to a place you never left. Material, because the composer is
+    // a TextField and ink has to land somewhere.
+    //
+    // Transparent, because [CoachSheet] paints the photograph and the glass
+    // behind this. A fill here would put an opaque sheet on top of the effect
+    // and leave the blur doing nothing, which is exactly the no-op GlassSurface
+    // warns about.
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        top: false,
         child: Column(
           children: <Widget>[
+            const SheetHandle(bottomSpacing: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                bottom: AppSpacing.sm,
+              ),
+              child: Row(
+                children: <Widget>[
+                  const SectionLabel('Coach'),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close),
+                    iconSize: 20,
+                    color: AppColors.textSecondary,
+                    tooltip: 'Close',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: _resuming && _turns.isEmpty
                   // Bounded by SupabaseCoachTranscript.requestTimeout, which is
@@ -204,9 +240,20 @@ class _CoachScreenState extends State<CoachScreen> {
                       controller: _scroll,
                       children: <Widget>[
                         for (final turn in _turns) ...<Widget>[
-                          ConversationBubble(
-                            text: turn.body,
-                            fromCoach: turn.fromCoach,
+                          // Keyed by the turn, so Entrance plays once when a
+                          // message ARRIVES and never again — an un-keyed list
+                          // reuses element state positionally and the whole
+                          // conversation re-zooms every time somebody speaks.
+                          Entrance(
+                            key: ValueKey<String>(turn.id),
+                            // Settling into place reads as something being
+                            // said; a plain fade reads as something loading.
+                            scaleFrom: 0.94,
+                            offset: 8,
+                            child: ConversationBubble(
+                              text: turn.body,
+                              fromCoach: turn.fromCoach,
+                            ),
                           ),
                           // Only under the newest turn. Chips under an old
                           // message offer to answer a question that has already
@@ -215,9 +262,30 @@ class _CoachScreenState extends State<CoachScreen> {
                           if (turn == _turns.last &&
                               !_waiting &&
                               turn.suggestions.isNotEmpty)
-                            SuggestionChips(
-                              suggestions: turn.suggestions,
+                            OptionStack(
+                              options: turn.suggestions,
                               onSelected: _sendText,
+                            ),
+                          if (turn == _turns.last &&
+                              !_waiting &&
+                              turn.ask != null)
+                            _AskField(
+                              ask: turn.ask!,
+                              value: _asked ?? turn.ask!.initial,
+                              onChanged: (v) => setState(() => _asked = v),
+                              onConfirm: () {
+                                final v = _asked ?? turn.ask!.initial;
+                                _asked = null;
+                                _sendText(_render(turn.ask!, v));
+                              },
+                              // Declining is an answer, not a cancel. Age,
+                              // height and weight are health data collected to
+                              // build a plan, and a plan can be built without
+                              // any of them -- worse, but built.
+                              onSkip: () {
+                                _asked = null;
+                                _sendText('Prefer not to say');
+                              },
                             ),
                         ],
                         if (_waiting) const ThinkingIndicator(),
@@ -262,6 +330,63 @@ class _CoachScreenState extends State<CoachScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// What the lifter's answer reads as in the transcript.
+///
+/// The slider's number, said the way a person would say it — the coach replays
+/// this later, and "82 kg" is a sentence where "82.0" is a reading off an
+/// instrument.
+String _render(CoachAsk ask, double v) => switch (ask.kind) {
+  CoachAskKind.yearOfBirth => '${v.round()}',
+  CoachAskKind.heightCm => '${v.round()} cm',
+  CoachAskKind.weightKg => '${v.round()} kg',
+};
+
+/// One asked-for value, with its slider and its two ways out.
+class _AskField extends StatelessWidget {
+  const _AskField({
+    required this.ask,
+    required this.value,
+    required this.onChanged,
+    required this.onConfirm,
+    required this.onSkip,
+  });
+
+  final CoachAsk ask;
+  final double value;
+  final ValueChanged<double> onChanged;
+  final VoidCallback onConfirm;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String label, String Function(double) format) = switch (ask.kind) {
+      CoachAskKind.yearOfBirth => ('Year of birth', (v) => '${v.round()}'),
+      CoachAskKind.heightCm => ('Height', (v) => '${v.round()} cm'),
+      CoachAskKind.weightKg => ('Weight', (v) => '${v.round()} kg'),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SliderField(
+            label: label,
+            value: value,
+            min: ask.min,
+            max: ask.max,
+            divisions: (ask.max - ask.min).round(),
+            format: format,
+            onChanged: onChanged,
+            onSkip: onSkip,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          PrimaryButton(label: 'That is me', onPressed: onConfirm),
+        ],
       ),
     );
   }

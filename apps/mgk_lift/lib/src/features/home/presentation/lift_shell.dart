@@ -7,7 +7,7 @@ import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
-import '../../coaching/presentation/coach_screen.dart';
+import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../planning/domain/plan.dart';
 import '../../planning/domain/plan_generator.dart';
@@ -355,7 +355,7 @@ class _LiftShellState extends State<LiftShell> {
             Positioned(
               right: AppSpacing.lg,
               bottom: AppSpacing.lg,
-              child: _CoachMark(
+              child: CoachMark(
                 hasUnread: widget.hasCoachNote,
                 onTap: _openCoach,
               ),
@@ -438,12 +438,9 @@ class _LiftShellState extends State<LiftShell> {
       _go(_planTab);
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            CoachScreen(coach: coach, transcript: widget.transcript),
-      ),
-    );
+    // A sheet over the surface you were on, not a fourth destination pushed on
+    // top of it. See CoachSheet for why the difference is more than presentation.
+    await CoachSheet.show(context, coach: coach, transcript: widget.transcript);
   }
 
   Future<void> _signOut() async {
@@ -661,63 +658,5 @@ class _LiftShellState extends State<LiftShell> {
     // session still open must leave Track offering to resume it.
     await _refreshSession();
     await _refreshLog();
-  }
-}
-
-/// The floating way in to the coach.
-///
-/// A pill that wraps its label rather than filling the width. See the call site
-/// for why: at full width it read as a second primary button.
-///
-/// Placeholder for the reveal treatment `mgk_run` uses, which animates the
-/// coach's latest observation before settling. Kept visually identical in
-/// resting state so the two apps read the same; the animation comes across when
-/// the coach itself does.
-class _CoachMark extends StatelessWidget {
-  const _CoachMark({required this.hasUnread, required this.onTap});
-
-  final bool hasUnread;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassSurface(
-      onTap: onTap,
-      // Fully rounded, not the control radius. A rounded rectangle at this size
-      // reads as a button; a pill reads as a persistent affordance.
-      borderRadius: BorderRadius.circular(999),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
-      ),
-      child: Row(
-        // Wrap the content. `Expanded` here is what made it full-width.
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          // Not `Icons.auto_awesome`: the sparkle is on every AI feature
-          // shipped in the last three years, and it says "generated" rather
-          // than "someone is paying attention".
-          const Icon(
-            Icons.chat_bubble_outline,
-            size: 18,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text('Coach', style: theme.textTheme.bodyMedium),
-          if (hasUnread) ...<Widget>[
-            const SizedBox(width: AppSpacing.sm),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

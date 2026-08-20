@@ -7,7 +7,7 @@ import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
-import 'package:mgk_lift/src/features/coaching/presentation/coach_screen.dart';
+import 'package:mgk_lift/src/features/coaching/presentation/coach_sheet.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 void main() {
@@ -63,11 +63,11 @@ void main() {
     // open anything is worse than no mark, so this is asserted rather than left
     // to reviewer memory.
     await tester.pumpWidget(const MaterialApp(home: LiftShell()));
-    expect(find.text('Coach'), findsNothing);
+    expect(find.byType(CoachMark), findsNothing);
 
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
-    expect(find.text('Coach'), findsOneWidget);
+    expect(find.byType(CoachMark), findsOneWidget);
   });
 
   testWidgets('the coach mark does not compete with the screen\'s own action', (
@@ -77,12 +77,16 @@ void main() {
     // "Start a session" as a second pill of the same size and weight, and the
     // eye could not tell which one was the point of the screen. The coach is
     // permanently available; it is not what you came here to do.
+    //
+    // Now a circle, which cannot compete on width — so the assertion is a
+    // quarter rather than a half, and it is the letter dropping the label that
+    // is really being pinned here.
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
 
-    final markWidth = tester.getSize(find.text('Coach')).width;
+    final markWidth = tester.getSize(find.byType(CoachMark)).width;
     final screenWidth = tester.getSize(find.byType(LiftShell)).width;
-    expect(markWidth, lessThan(screenWidth / 2));
+    expect(markWidth, lessThan(screenWidth / 4));
   });
 
   testWidgets('the coach mark floats over every surface, not just one', (
@@ -98,7 +102,7 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
       expect(
-        find.text('Coach'),
+        find.byType(CoachMark),
         findsOneWidget,
         reason: 'the coach mark vanished on $tab',
       );
@@ -121,9 +125,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Coach'));
+    await tester.tap(find.byType(CoachMark));
     await tester.pumpAndSettle();
-    expect(find.byType(CoachScreen), findsOneWidget);
+    expect(find.byType(CoachSheet), findsOneWidget);
   });
 
   testWidgets('signed out, the mark asks for an account before a message', (
@@ -139,10 +143,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Coach'));
+    await tester.tap(find.byType(CoachMark));
     await tester.pumpAndSettle();
 
-    expect(find.byType(CoachScreen), findsNothing);
+    expect(find.byType(CoachSheet), findsNothing);
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
@@ -161,10 +165,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Coach'));
+    await tester.tap(find.byType(CoachMark));
     await tester.pumpAndSettle();
 
-    expect(find.byType(CoachScreen), findsNothing);
+    expect(find.byType(CoachSheet), findsNothing);
     expect(find.text('Train with a coach'), findsOneWidget);
   });
 }

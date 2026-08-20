@@ -353,7 +353,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(SuggestionChips), findsNothing);
+      expect(find.byType(OptionStack), findsNothing);
     });
   });
 }

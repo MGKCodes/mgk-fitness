@@ -1,5 +1,63 @@
 import 'package:meta/meta.dart';
 
+/// A value the coach has asked for, and the shape of the control that answers.
+///
+/// **Proposed by the coach, like [CoachTurn.suggestions].** The app does not
+/// decide that now is the moment to ask a person their weight; it renders the
+/// question it was given. The same rule, for the same reason: a control the
+/// client raised on its own, whose answer is then sent as the lifter's message,
+/// puts words in the coach's mouth.
+///
+/// Three kinds, because three is what the profile needs — see
+/// docs/coach-profile.md. Anything else is a sentence, and the coach has a
+/// composer for those.
+enum CoachAskKind {
+  /// A year, not a birthday. Programming cares whether somebody is thirty or
+  /// sixty; a full date is more personal data carrying no more usable signal.
+  yearOfBirth,
+  heightCm,
+  weightKg,
+}
+
+@immutable
+class CoachAsk {
+  const CoachAsk({
+    required this.kind,
+    required this.min,
+    required this.max,
+    required this.initial,
+  });
+
+  final CoachAskKind kind;
+  final double min;
+  final double max;
+
+  /// Where the slider starts. A sensible middle rather than the minimum: a
+  /// control that opens at 40 kg makes everybody drag, and a person who drags
+  /// past their own number twice stops trusting the reading.
+  final double initial;
+
+  /// Asked once each, with ranges wide enough to be nobody's edge case.
+  static const yearOfBirth = CoachAsk(
+    kind: CoachAskKind.yearOfBirth,
+    min: 1940,
+    max: 2012,
+    initial: 1994,
+  );
+  static const heightCm = CoachAsk(
+    kind: CoachAskKind.heightCm,
+    min: 130,
+    max: 220,
+    initial: 175,
+  );
+  static const weightKg = CoachAsk(
+    kind: CoachAskKind.weightKg,
+    min: 35,
+    max: 200,
+    initial: 80,
+  );
+}
+
 /// One thing said, by either side.
 @immutable
 class CoachTurn {
@@ -9,6 +67,7 @@ class CoachTurn {
     required this.fromCoach,
     required this.at,
     this.suggestions = const <String>[],
+    this.ask,
   });
 
   final String id;
@@ -28,6 +87,15 @@ class CoachTurn {
   /// taken was not said, and replaying it later would put stale options under a
   /// year-old message.
   final List<String> suggestions;
+
+  /// A value this turn is asking for, rendered as a slider rather than left to
+  /// the composer.
+  ///
+  /// None of these are typed. A height, a weight and a year are things somebody
+  /// knows approximately and adjusts until it looks right, and a keyboard over
+  /// a conversation is the most expensive thing you can put in front of a
+  /// person who has not yet decided the app is worth the effort.
+  final CoachAsk? ask;
 }
 
 /// Why a turn could not happen.
