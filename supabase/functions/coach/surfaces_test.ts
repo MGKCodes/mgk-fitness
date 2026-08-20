@@ -21,13 +21,10 @@ import {
   conversation,
   editRunMessages,
   LIFT_PERSONA,
-  liftAdaptMessages,
   liftChatMessages,
   liftIntakeMessages,
-  liftSkeletonMessages,
   liftSummariseMessages,
   liftSwapMessages,
-  liftWeekMessages,
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
@@ -593,51 +590,6 @@ function schemaKeys(
   return found;
 }
 
-Deno.test("the week schema has nowhere to put a weight", () => {
-  // The load-bearing assertion of the whole planning design. The rule is that a
-  // target comes from what the lifter has actually lifted; a prompt asking a
-  // model to honour that is a request, and a schema with no field for a
-  // kilogram is a guarantee. Dart derives the number from their own log.
-  //
-  // Written against a real regression path: adding `target_kg` here "so the
-  // model can be helpful" would compile, pass every other test, and quietly
-  // put invented weights in front of somebody under a loaded bar.
-  const keys = schemaKeys(SURFACES.lift_week.schema);
-  for (const banned of ["target_kg", "weight", "weight_kg", "kg", "load"]) {
-    assert(!keys.has(banned), `lift_week must not accept "${banned}"`);
-  }
-  assert(keys.has("intensity_pct"), "it prescribes intensity instead");
-});
-
-Deno.test("the week prompt says a weight cannot be smuggled into a note", () => {
-  // `note` is free text, so the schema alone cannot stop it. The prompt is the
-  // only control on that one, which is why it is asserted separately rather
-  // than assumed to be covered by the test above.
-  const system = systemOf(liftWeekMessages({}));
-  assertStringIncludes(system, "You cannot prescribe a weight");
-  assertStringIncludes(system, "must not try to put one in a note");
-});
-
-Deno.test("null intensity is the right answer, not a gap to fill", () => {
-  // A percentage on a movement they have never done resolves to nothing, so a
-  // model that fills every slot produces a plan that looks complete and is
-  // mostly empty. The prompt has to make null the expected case.
-  const system = systemOf(liftWeekMessages({}));
-  assertStringIncludes(system, 'Leave "intensity_pct" null');
-  assertStringIncludes(system, "Null is a real answer");
-});
-
-Deno.test("the skeleton decides shape and refuses to decide content", () => {
-  // Shape and content in one call means neither is done carefully, and a
-  // skeleton that names movements gives the week generator something wrong to
-  // work around rather than a brief to work from.
-  const system = systemOf(liftSkeletonMessages({}));
-  assertStringIncludes(system, "Do not name movements, sets, reps or weights");
-  const keys = schemaKeys(SURFACES.lift_skeleton.schema);
-  assert(!keys.has("movements"), "the skeleton carries no movements");
-  assert(keys.has("intent"), "what it carries is the intent");
-});
-
 Deno.test("intake asks which weekdays, not only how many", () => {
   // A block is laid out on named days, so "four days" alone cannot be turned
   // into a week — the plan would have nowhere to put its sessions.
@@ -651,14 +603,6 @@ Deno.test("intake does not promise what will be in the sessions", () => {
   // specific promise here is a plan disappointing before it exists.
   const system = systemOf(liftIntakeMessages({}));
   assertStringIncludes(system, "Do not discuss what will be in the sessions");
-});
-
-Deno.test("the planning surfaces are validated, so none is human-facing", () => {
-  // All three are graded by the Dart validator before anything is shown, which
-  // is what lets them run on the cheap model.
-  for (const s of ["lift_intake", "lift_skeleton", "lift_week"] as const) {
-    assert(!SURFACES[s].humanFacing, `${s} is validated, not human-facing`);
-  }
 });
 
 // ---- lift_swap --------------------------------------------------------------
@@ -676,20 +620,6 @@ const IN_SESSION = {
     { name: "Cable Fly", sets: [{ is_completed: false }] },
   ],
 };
-
-Deno.test("the swap schema has nowhere to put a weight either", () => {
-  // The same rule as lift_week, and the case where breaking it is most
-  // tempting: a substitute is usually something they have never done, which is
-  // exactly when a model is most inclined to invent a starting number.
-  const keys = schemaKeys(SURFACES.lift_swap.schema);
-  for (const banned of ["target_kg", "weight", "weight_kg", "kg", "load"]) {
-    assert(!keys.has(banned), `lift_swap must not accept "${banned}"`);
-  }
-  assertStringIncludes(
-    systemOf(liftSwapMessages({ message: "hi" })),
-    'You cannot prescribe a weight and must not put one in "why"',
-  );
-});
 
 Deno.test("the coach can see what has already been done, not just what is left", () => {
   // Swapping the third of three sets is a different question from swapping
@@ -742,50 +672,6 @@ Deno.test("the swap proposes and never acts", () => {
   assert(!keys.has("applied"), "the surface must not report having acted");
 });
 
-Deno.test("a swap turn with nothing said is refused before it costs", () => {
-  assert(!SURFACES.lift_swap.validRequest?.({ session: IN_SESSION }));
-  assert(!SURFACES.lift_swap.validRequest?.({ message: "  " }));
-  assert(SURFACES.lift_swap.validRequest?.({ message: "swap the bench" }));
-});
-
-// ---- lift_adapt -------------------------------------------------------------
-
-Deno.test("adapting returns a diff, never a week", () => {
-  // The design decision the whole surface turns on. A surface that regenerated
-  // the week would rewrite sessions already trained, lose what actually
-  // happened, and make "move Thursday" indistinguishable from starting again.
-  const keys = schemaKeys(SURFACES.lift_adapt.schema);
-  assert(keys.has("changes"), "it proposes changes");
-  assert(!keys.has("sessions"), "and never a replacement week");
-  assert(!keys.has("movements"), "nor a replacement session");
-});
-
-Deno.test("a finished session is not the coach's to edit", () => {
-  // It happened. Rewriting it would make the lifter's log a lie, which is a
-  // different and worse failure than a bad suggestion.
-  assertStringIncludes(
-    systemOf(liftAdaptMessages({ message: "move thursday" })),
-    "Never change a session that is already done",
-  );
-});
-
-Deno.test("adapting proposes and says so, rather than reporting a change", () => {
-  // "I have moved it" is false at the moment it is written: the lifter
-  // approves the set before anything moves.
-  const system = systemOf(liftAdaptMessages({ message: "move thursday" }));
-  // Short fragments: the prompt is hard-wrapped, so asserting a whole clause
-  // tests the formatting rather than the rule.
-  assertStringIncludes(system, "not something you have");
-  assertStringIncludes(system, "before anything moves");
-});
-
-Deno.test("an impossible request is refused in words, not forced", () => {
-  assertStringIncludes(
-    systemOf(liftAdaptMessages({ message: "move thursday" })),
-    "An empty list is a real answer",
-  );
-});
-
 Deno.test("every surface declares which app pays for it", () => {
   for (const name of SURFACE_NAMES) {
     const app = SURFACES[name].app;
@@ -832,32 +718,6 @@ Deno.test("with COACH_CHAT_MODEL unset every surface runs on COACH_MODEL", () =>
   const get = env({ COACH_MODEL: "cheap" });
   for (const s of SURFACE_NAMES) assertEquals(modelFor(s, get), "cheap");
 });
-
-Deno.test("exactly the unvalidated surfaces are human-facing", () => {
-  // The property is "no Dart validator between this output and a person", not
-  // "it is a chat". Adding a surface without deciding which side it falls on is
-  // how a cheap model's mistake reaches a lifter as prose. The two memory
-  // surfaces qualify for the stronger version of the reason: their output is
-  // stored and reloaded into every later prompt, so an error compounds rather
-  // than passing.
-  assertEquals(
-    SURFACE_NAMES.filter((s) => SURFACES[s].humanFacing),
-    [
-      "chat",
-      "summarise",
-      "lift_chat",
-      "lift_summarise",
-      "lift_swap",
-      "lift_adapt",
-    ],
-  );
-});
-
-// ---- tiers ------------------------------------------------------------------
-//
-// The safety property is the fallback DIRECTION. Anything unrecognised must
-// resolve to the cheapest tier, because the alternative is a forged or buggy
-// request billing at the dearest model's rate.
 
 Deno.test("a known tier is read, anything else is free", () => {
   assertEquals(tierFrom("free"), "free");

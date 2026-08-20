@@ -1397,51 +1397,7 @@ next, so a vague one produces a vague week.
 Do not name movements, sets, reps or weights. That is the next call's job, and
 guessing at it here just gives it something wrong to work around.`;
 
-const LIFT_SKELETON_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["weeks"],
-  properties: {
-    weeks: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["index", "phase", "intent"],
-        properties: {
-          index: { type: "integer", description: "1-based week number." },
-          phase: {
-            type: "string",
-            enum: ["base", "build", "peak", "deload"],
-          },
-          intent: {
-            type: "string",
-            description:
-              "One sentence on what this week is for, written for whoever " +
-              "fills in its sessions.",
-          },
-        },
-      },
-    },
-  },
-};
 
-export function liftSkeletonMessages(body: Body): Message[] {
-  const profile = (body.profile as Record<string, unknown>) ?? {};
-  const brief = text(body.brief, MAX_BRIEF_CHARS);
-  const system = `${LIFT_PERSONA}\n\nToday is ${today()}.\n\n` +
-    LIFT_SKELETON_INSTRUCTIONS + violationNote(body.violations);
-  return [
-    { role: "system", content: system },
-    {
-      role: "user",
-      content: `The lifter:\n${JSON.stringify(profile)}\n\n` +
-        `Recent training (most recent first):\n${
-          brief || "(no sessions logged yet)"
-        }`,
-    },
-  ];
-}
 
 // ---- lift_week --------------------------------------------------------------
 
@@ -1486,83 +1442,7 @@ the tank" — and let the app supply the number.
 "rationale" is one or two sentences to the LIFTER about why this session looks
 like this. Plain, specific to them, no filler. It is shown to them.`;
 
-const LIFT_WEEK_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["sessions"],
-  properties: {
-    sessions: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["weekday", "kind", "movements", "rationale"],
-        properties: {
-          weekday: { type: "integer", description: "1=Monday..7=Sunday." },
-          kind: {
-            type: "string",
-            description:
-              'What sort of session it is: "push", "pull", "legs", "upper", ' +
-              '"lower", "full-body".',
-          },
-          movements: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["name", "sets", "reps", "intensity_pct", "note"],
-              properties: {
-                name: {
-                  type: "string",
-                  description: "The movement, by its usual name.",
-                },
-                sets: { type: "integer" },
-                reps: { type: "integer" },
-                // Deliberately a percentage and never a weight. See the
-                // section header: the schema is what makes the rule hold.
-                intensity_pct: nullable(
-                  "integer",
-                  "Percentage of their one-rep max, 40 to 100. Null for " +
-                    "accessory work, bodyweight, machines, or any movement " +
-                    "not in their log.",
-                ),
-                note: nullable(
-                  "string",
-                  "A short cue or an effort instruction. Never a weight.",
-                ),
-              },
-            },
-          },
-          rationale: {
-            type: "string",
-            description:
-              "One or two sentences to the lifter on why this session looks " +
-              "like this.",
-          },
-        },
-      },
-    },
-  },
-};
 
-export function liftWeekMessages(body: Body): Message[] {
-  const profile = (body.profile as Record<string, unknown>) ?? {};
-  const slot = (body.slot as Record<string, unknown>) ?? {};
-  const brief = text(body.brief, MAX_BRIEF_CHARS);
-  const system = `${LIFT_PERSONA}\n\n${LIFT_WEEK_INSTRUCTIONS}` +
-    violationNote(body.violations);
-  return [
-    { role: "system", content: system },
-    {
-      role: "user",
-      content: `This week:\n${JSON.stringify(slot)}\n\n` +
-        `The lifter:\n${JSON.stringify(profile)}\n\n` +
-        `Recent training (most recent first):\n${
-          brief || "(no sessions logged yet)"
-        }`,
-    },
-  ];
-}
 
 // ---- lift_swap (mid-session substitution) -----------------------------------
 
@@ -1782,81 +1662,7 @@ shoulder another two days" is the register.
 it as something you are suggesting, not something you have done — they approve
 it before anything moves.`;
 
-const LIFT_ADAPT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["reply", "changes"],
-  properties: {
-    reply: {
-      type: "string",
-      description:
-        "What the coach is proposing, in a sentence or two. Never phrased as " +
-        "something already done.",
-    },
-    changes: {
-      type: "array",
-      description:
-        "The smallest set of changes that honours the request. May be empty " +
-        "when the honest answer is that it cannot be done.",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["action", "weekday", "to_weekday", "movement", "to", "why"],
-        properties: {
-          action: {
-            type: "string",
-            enum: ["move", "lighten", "drop", "swap_movement"],
-          },
-          weekday: {
-            type: "integer",
-            description: "Which session this changes. 1=Monday..7=Sunday.",
-          },
-          to_weekday: nullable(
-            "integer",
-            'Where it moves to. Only for "move"; null otherwise.',
-          ),
-          movement: nullable(
-            "string",
-            'The movement being replaced. Only for "swap_movement".',
-          ),
-          to: nullable(
-            "string",
-            'What replaces it. Only for "swap_movement".',
-          ),
-          why: {
-            type: "string",
-            description: "One short line, shown to the lifter.",
-          },
-        },
-      },
-    },
-  },
-};
 
-export function liftAdaptMessages(body: Body): Message[] {
-  const message = text(body.message, MAX_MESSAGE_CHARS);
-  const week = clamp(String(body.week ?? ""), MAX_BRIEF_CHARS);
-  const memory = text(body.memory, MAX_MEMORY_CHARS);
-
-  const system = `${LIFT_PERSONA}
-
-${LIFT_ADAPT_INSTRUCTIONS}
-
-` +
-    (memory
-      ? `What you know about them:
-${memory}
-
-`
-      : "") +
-    `This week as it stands:
-${week || "(nothing scheduled)"}`;
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: message },
-  ];
-}
 
 // ---- provider routing -------------------------------------------------------
 
@@ -2029,18 +1835,6 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     // `chat` and `summarise` are marked, and the same routing consequence.
     humanFacing: true,
   },
-  lift_adapt: {
-    name: "lift_adapt",
-    app: "lift",
-    schema: LIFT_ADAPT_SCHEMA,
-    maxTokens: 1024,
-    messages: liftAdaptMessages,
-    validRequest: (b) =>
-      typeof b.message === "string" && b.message.trim() !== "",
-    valid: (p) => typeof p.reply === "string" && Array.isArray(p.changes),
-    // The reply reaches the lifter directly; only the CHANGES are graded.
-    humanFacing: true,
-  },
   lift_swap: {
     name: "lift_swap",
     app: "lift",
@@ -2065,22 +1859,6 @@ export const SURFACES: Record<Surface, SurfaceSpec> = {
     valid: (p) =>
       typeof p.reply === "string" && typeof p.extracted === "object" &&
       p.extracted !== null,
-  },
-  lift_skeleton: {
-    name: "lift_skeleton",
-    app: "lift",
-    schema: LIFT_SKELETON_SCHEMA,
-    maxTokens: 2048,
-    messages: liftSkeletonMessages,
-    valid: (p) => Array.isArray(p.weeks) && p.weeks.length > 0,
-  },
-  lift_week: {
-    name: "lift_week",
-    app: "lift",
-    schema: LIFT_WEEK_SCHEMA,
-    maxTokens: 2048,
-    messages: liftWeekMessages,
-    valid: (p) => Array.isArray(p.sessions) && p.sessions.length > 0,
   },
   lift_summarise: {
     name: "lift_summarise",

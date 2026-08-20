@@ -37,10 +37,7 @@ export type Surface =
   | "lift_chat"
   | "lift_summarise"
   | "lift_intake"
-  | "lift_skeleton"
-  | "lift_week"
-  | "lift_swap"
-  | "lift_adapt";
+  | "lift_swap";
 
 export const SURFACE_NAMES: readonly Surface[] = [
   "intake",
@@ -55,10 +52,7 @@ export const SURFACE_NAMES: readonly Surface[] = [
   "lift_chat",
   "lift_summarise",
   "lift_intake",
-  "lift_skeleton",
-  "lift_week",
   "lift_swap",
-  "lift_adapt",
 ];
 
 export function isSurface(value: unknown): value is Surface {
@@ -185,10 +179,8 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // The block's arc, laid out once per block (every 8 to 16 weeks) with up to
     // two validator-driven attempts. The tightest allowance of the three —
     // enough to re-plan a few times while onboarding, and no more.
-    lift_skeleton: { windowSeconds: 3600, max: 6 },
     // One call per week of the block, generated a week ahead, up to two
     // attempts. 12/h covers backfilling several weeks at once plus retries.
-    lift_week: { windowSeconds: 3600, max: 12 },
     // A lifter standing in front of a machine somebody else is on. An hour
     // window rather than five minutes because that is the shape of the use:
     // two or three swaps spread across a session, not a burst. Twelve covers a
@@ -200,7 +192,6 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // somebody is working through, and a lifter who has legitimately
     // rearranged their week six times in an hour has not rearranged it,
     // something is looping.
-    lift_adapt: { windowSeconds: 3600, max: 6 },
   },
   dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
   // PROVISIONAL — these three are placeholders, not measured figures. The real
