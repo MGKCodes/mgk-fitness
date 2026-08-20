@@ -28,7 +28,9 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
     try {
       final rows = await _lift
           .from('plans')
-          .select('id, split, available_weekdays, started_at')
+          .select(
+            'id, split, day_order, rationale, available_weekdays, started_at',
+          )
           .eq('status', 'active')
           .limit(1);
       if (rows.isEmpty) return null;
@@ -72,7 +74,9 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
         'id': plan.id,
         'user_id': userId,
         'status': 'active',
-        'split': plan.split.wire,
+        'split': plan.name,
+        'day_order': plan.dayOrder,
+        'rationale': plan.rationale,
         'days_per_week': plan.weekdays.length,
         'available_weekdays': plan.weekdays,
         'started_at': (plan.startedAt ?? DateTime.now())
@@ -178,7 +182,12 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
 
     return StandingPlan(
       id: plan['id'] as String,
-      split: TrainingSplitWire.fromWire(plan['split'] as String? ?? ''),
+      name: plan['split'] as String? ?? 'Your plan',
+      dayOrder: <String>[
+        for (final d in (plan['day_order'] as List?) ?? const [])
+          if (d is String) d,
+      ],
+      rationale: plan['rationale'] as String?,
       weekdays: <int>[
         for (final d in (plan['available_weekdays'] as List?) ?? const [])
           if (d is num) d.toInt(),

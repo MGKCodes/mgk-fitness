@@ -88,7 +88,7 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
           children: <Widget>[
             const SectionLabel('Your plan'),
             const SizedBox(height: 4),
-            Text(plan.split.name, style: theme.textTheme.headlineSmall),
+            Text(plan.name, style: theme.textTheme.headlineSmall),
             const SizedBox(height: 2),
             Text(
               // No end date, so the only honest thing to say about time is how
@@ -168,7 +168,8 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               child: Text(
-                plan.split.why,
+                plan.rationale ??
+                    'Built around the days you train and the kit you have.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.45,

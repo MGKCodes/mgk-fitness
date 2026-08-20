@@ -1,7 +1,5 @@
 import 'package:meta/meta.dart';
 
-import 'training_split.dart';
-
 /// A plan that does not end.
 ///
 /// ## Why the block model was wrong here
@@ -53,14 +51,35 @@ import 'training_split.dart';
 class StandingPlan {
   const StandingPlan({
     required this.id,
-    required this.split,
+    required this.name,
+    required this.dayOrder,
     required this.weekdays,
     required this.slots,
     this.startedAt,
+    this.rationale,
   });
 
   final String id;
-  final TrainingSplit split;
+
+  /// What this plan is called, in the coach's words — "Upper / Lower",
+  /// "Push / Pull / Legs", "Upper, Lower and an arm day".
+  ///
+  /// **Free text, not one of three.** An earlier version made the plan an enum
+  /// of the three templates the app ships, which quietly made those templates
+  /// the definition of a valid plan: an upper/lower with a dedicated arm day is
+  /// a perfectly reasonable four-day week and would have been refused for not
+  /// being on the list. What makes a plan good is checked by [PlanShape], which
+  /// judges what it does rather than what it is called.
+  final String name;
+
+  /// The day of the split each training day runs, in weekday order — parallel
+  /// to [weekdays]. Names are the coach's: 'Upper', 'Push', 'Arms', 'Chest and
+  /// back'. Repeats are fine and normal.
+  final List<String> dayOrder;
+
+  /// One or two sentences on why this shape, for the lifter. Written by the
+  /// coach, because this is the part a template could never do well.
+  final String? rationale;
 
   /// Which weekdays it runs on, `DateTime.monday`-style. Length decides the
   /// split, and the two are checked against each other rather than trusted.
@@ -84,8 +103,8 @@ class StandingPlan {
   /// behind on a plan that had moved on without you.
   String? dayFor(DateTime date) {
     final i = weekdays.indexOf(date.weekday);
-    if (i < 0) return null;
-    return split.weekFor(weekdays.length)[i];
+    if (i < 0 || i >= dayOrder.length) return null;
+    return dayOrder[i];
   }
 
   List<MovementSlot> movementsFor(DateTime date) {
@@ -99,16 +118,15 @@ class StandingPlan {
   /// meant Wednesday, Saturday and Sunday did not appear anywhere, so the one
   /// question the overview exists to answer — what does my week look like —
   /// could not be answered from it.
-  List<({int weekday, String? day})> get week {
-    final shape = split.weekFor(weekdays.length);
-    return <({int weekday, String? day})>[
-      for (var d = DateTime.monday; d <= DateTime.sunday; d++)
-        (
-          weekday: d,
-          day: weekdays.contains(d) ? shape[weekdays.indexOf(d)] : null,
-        ),
-    ];
-  }
+  List<({int weekday, String? day})> get week => <({int weekday, String? day})>[
+    for (var d = DateTime.monday; d <= DateTime.sunday; d++)
+      (
+        weekday: d,
+        day: weekdays.contains(d) && weekdays.indexOf(d) < dayOrder.length
+            ? dayOrder[weekdays.indexOf(d)]
+            : null,
+      ),
+  ];
 
   /// Slots worth looking at, because the numbers have stopped moving.
   List<MovementSlot> get stalled =>

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/tracking/data/exercise_catalogue.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan_template.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan.dart';
-import 'package:mgk_lift/src/features/planning/domain/standing_plan_rules.dart';
+import 'package:mgk_lift/src/features/planning/domain/plan_shape.dart';
 import 'package:mgk_lift/src/features/planning/domain/training_split.dart';
 
 StandingPlan build({
@@ -13,8 +13,13 @@ StandingPlan build({
   final split = TrainingSplit.forDays(days);
   return StandingPlan(
     id: 'p',
-    split: split,
-    weekdays: <int>[for (var i = 1; i <= days; i++) i],
+    name: split.name,
+    dayOrder: split.weekFor(days),
+    // Spaced the way somebody would actually train, not Mon-Tue-Wed. The
+    // property checks caught this: full body on back-to-back days trains legs
+    // and back twice with no day between, which is the thing the recovery rule
+    // exists to stop.
+    weekdays: _weekdays(days),
     slots: PlanTemplate.slotsFor(
       split: split,
       days: days,
@@ -23,6 +28,15 @@ StandingPlan build({
     ),
   );
 }
+
+/// Realistic training days for a given count.
+List<int> _weekdays(int days) => switch (days) {
+  2 => const <int>[1, 4],
+  3 => const <int>[1, 3, 5],
+  4 => const <int>[1, 2, 4, 5],
+  5 => const <int>[1, 2, 3, 4, 5],
+  _ => const <int>[1, 2, 3, 4, 5, 6],
+};
 
 void main() {
   test('every movement the template can name is in the catalogue', () {
@@ -44,12 +58,15 @@ void main() {
     }
   });
 
-  test('a generated plan passes its own rules at every day count', () {
+  test('the fallback plan passes the property checks at every day count', () {
+    // The template is the floor now, not the product -- what it has to clear is
+    // PlanShape, which judges what a plan DOES rather than recognising a shape
+    // off a list. If the floor cannot clear the bar, the bar is wrong.
     for (final days in <int>[2, 3, 4, 5, 6]) {
       expect(
-        StandingPlanRules.violations(build(days: days)),
+        PlanShape.violations(build(days: days)),
         isEmpty,
-        reason: '$days days',
+        reason: '\$days days',
       );
     }
   });

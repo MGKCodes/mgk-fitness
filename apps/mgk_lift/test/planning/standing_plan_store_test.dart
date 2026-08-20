@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan_store.dart';
-import 'package:mgk_lift/src/features/planning/domain/training_split.dart';
 
 StandingPlan plan() => StandingPlan(
   id: 'p1',
-  split: TrainingSplit.upperLower,
+  name: 'Upper / Lower',
+  dayOrder: const <String>['Upper', 'Lower', 'Upper', 'Lower'],
   weekdays: const <int>[1, 2, 4, 5],
   slots: <String, List<MovementSlot>>{
     'Upper': <MovementSlot>[
@@ -23,27 +23,6 @@ StandingPlan plan() => StandingPlan(
 );
 
 void main() {
-  group('the split survives a round trip', () {
-    test('every split has a wire value and comes back as itself', () {
-      for (final s in TrainingSplit.values) {
-        expect(TrainingSplitWire.fromWire(s.wire), s, reason: s.name);
-      }
-    });
-
-    test('the wire value is not the label', () {
-      // The label is lifter-facing and will be reworded eventually. If the two
-      // were the same string, rewording it would stop every stored row parsing.
-      expect(TrainingSplit.pushPullLegs.wire, 'push_pull_legs');
-      expect(TrainingSplit.pushPullLegs.name, isNot('push_pull_legs'));
-    });
-
-    test('an unknown split loads as full body rather than throwing', () {
-      // A plan that will not load is worse than one that loads as three
-      // full-body days, and the day count corrects it on the next save.
-      expect(TrainingSplitWire.fromWire('nonsense'), TrainingSplit.fullBody);
-    });
-  });
-
   group('recording what a session did', () {
     test('an improvement resets the stall counter', () async {
       final store = InMemoryStandingPlanStore(plan());

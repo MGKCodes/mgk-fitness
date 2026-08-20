@@ -70,13 +70,28 @@ drop table if exists lift.plan_weeks;
 alter table lift.plans drop column if exists start_date;
 alter table lift.plans drop column if exists weeks;
 
--- Which split, and which weekdays it runs on. The two are checked against each
--- other in the app (StandingPlanRules) rather than here, because "a 4-day week
--- is Upper/Lower" is a training rule that will change, and a check constraint
--- is the wrong place to keep a rule with an opinion in it.
+-- What the plan is CALLED, in the coach's words, and the day it runs on each
+-- training day.
+--
+-- **Free text, deliberately, and this started life as a check constraint on
+-- three values.** That quietly made the three templates the app ships the
+-- definition of a valid plan: an upper/lower with a dedicated arm day is a
+-- perfectly good four-day week and the database would have refused it. What
+-- makes a plan good is checked by `PlanShape`, which judges what it DOES —
+-- frequency, volume, recovery, movements that exist — and does not care what
+-- anybody calls it.
 alter table lift.plans
-  add column if not exists split text not null default 'full_body'
-    check (split in ('full_body', 'upper_lower', 'push_pull_legs'));
+  add column if not exists split text not null default 'Full body';
+
+-- Parallel to available_weekdays: the day each training day runs. Names are the
+-- coach's — 'Upper', 'Push', 'Arms', 'Chest and back'. Repeats are normal.
+alter table lift.plans
+  add column if not exists day_order text[] not null default '{}';
+
+-- One or two sentences on why this shape, written for the lifter. The part a
+-- template could never do well, and the reason a model is worth calling here.
+alter table lift.plans
+  add column if not exists rationale text;
 
 -- Kept for interest, not for arithmetic. Nothing is derived from it, no week
 -- number is computed off it, and it expires nothing — it exists so the app can
@@ -97,7 +112,9 @@ alter table lift.plans
   check (status in ('draft', 'active', 'superseded'));
 
 comment on column lift.plans.split is
-  'Which shape the week takes. Chosen from the number of training days by TrainingSplit.forDays, never by a model.';
+  'What the plan is called, in the coach''s words. Free text: the shape is judged by what it does, not by which template it matches.';
+comment on column lift.plans.day_order is
+  'The day of the split each training day runs, parallel to available_weekdays.';
 comment on column lift.plans.started_at is
   'When this plan began. Nothing is derived from it and it expires nothing.';
 

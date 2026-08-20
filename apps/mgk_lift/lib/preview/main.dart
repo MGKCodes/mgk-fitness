@@ -618,7 +618,13 @@ StandingPlan _standingPlan() {
   };
   return StandingPlan(
     id: 'preview',
-    split: TrainingSplit.upperLower,
+    // Named by the coach, not chosen from a list of three. See PlanShape for
+    // why the app checks what a plan DOES rather than what it is called.
+    name: 'Upper / Lower',
+    dayOrder: const <String>['Upper', 'Lower', 'Upper', 'Lower'],
+    rationale:
+        'Four days splits cleanly in half: everything twice a week, and short '
+        'enough sessions that the last movement still gets your attention.',
     // Mon, Tue, Thu, Fri.
     weekdays: const <int>[1, 2, 4, 5],
     startedAt: DateTime(2026, 3, 2),

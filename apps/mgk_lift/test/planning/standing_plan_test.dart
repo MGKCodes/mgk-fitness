@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan.dart';
-import 'package:mgk_lift/src/features/planning/domain/training_split.dart';
 
 MovementSlot slot(
   String role,
@@ -17,7 +16,8 @@ MovementSlot slot(
 
 StandingPlan fourDay({Map<String, List<MovementSlot>>? slots}) => StandingPlan(
   id: 'p',
-  split: TrainingSplit.upperLower,
+  name: 'Upper / Lower',
+  dayOrder: const <String>['Upper', 'Lower', 'Upper', 'Lower'],
   // Mon, Tue, Thu, Fri.
   weekdays: const <int>[1, 2, 4, 5],
   slots: slots ?? const <String, List<MovementSlot>>{},

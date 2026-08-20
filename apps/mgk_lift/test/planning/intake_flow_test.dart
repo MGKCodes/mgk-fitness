@@ -60,9 +60,11 @@ void main() {
       expect(TrainingSplit.forDays(3), TrainingSplit.fullBody);
     });
 
-    test('four is upper/lower, five or more is push/pull/legs', () {
+    test('four and five are upper/lower, six is push/pull/legs', () {
+      // Five is not PPL: five does not divide into three, so the rotation comes
+      // out Push, Pull, Legs, Push, Pull and trains legs once a week.
       expect(TrainingSplit.forDays(4), TrainingSplit.upperLower);
-      expect(TrainingSplit.forDays(5), TrainingSplit.pushPullLegs);
+      expect(TrainingSplit.forDays(5), TrainingSplit.upperLower);
       expect(TrainingSplit.forDays(6), TrainingSplit.pushPullLegs);
     });
 
@@ -73,13 +75,14 @@ void main() {
         'Upper',
         'Lower',
       ]);
-      // Five days over a three-day cycle wraps rather than running out.
-      expect(TrainingSplit.forDays(5).weekFor(5), <String>[
+      // Six days over a three-day cycle wraps rather than running out.
+      expect(TrainingSplit.forDays(6).weekFor(6), <String>[
         'Push',
         'Pull',
         'Legs',
         'Push',
         'Pull',
+        'Legs',
       ]);
     });
   });

@@ -2,7 +2,6 @@ import 'package:meta/meta.dart';
 
 import 'plan_generator.dart';
 import 'standing_plan.dart';
-import 'training_split.dart';
 
 /// Where a standing plan is kept.
 ///
@@ -78,8 +77,10 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
     if (plan == null) return;
     _plan = StandingPlan(
       id: plan.id,
-      split: plan.split,
+      name: plan.name,
+      dayOrder: plan.dayOrder,
       weekdays: plan.weekdays,
+      rationale: plan.rationale,
       startedAt: plan.startedAt,
       slots: <String, List<MovementSlot>>{
         for (final day in plan.slots.entries)
@@ -104,29 +105,6 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
       },
     );
   }
-}
-
-/// How a split is written down and read back.
-///
-/// **Not `TrainingSplit.name`.** That is the lifter-facing label — "Push / Pull
-/// / Legs" — and it is going to be reworded eventually, at which point every
-/// stored row would stop parsing. The wire value is a separate, boring string
-/// that nobody is tempted to improve.
-extension TrainingSplitWire on TrainingSplit {
-  String get wire => switch (this) {
-    TrainingSplit.fullBody => 'full_body',
-    TrainingSplit.upperLower => 'upper_lower',
-    TrainingSplit.pushPullLegs => 'push_pull_legs',
-  };
-
-  static TrainingSplit fromWire(String value) => switch (value) {
-    'upper_lower' => TrainingSplit.upperLower,
-    'push_pull_legs' => TrainingSplit.pushPullLegs,
-    // Anything unrecognised reads as the least demanding shape rather than
-    // throwing. A plan that will not load is worse than one that loads as three
-    // full-body days, and the day count corrects it on the next save.
-    _ => TrainingSplit.fullBody,
-  };
 }
 
 /// Reasons a plan could not be read or written. Reuses [PlanFailure] rather

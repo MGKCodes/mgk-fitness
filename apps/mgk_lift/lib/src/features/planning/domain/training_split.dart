@@ -75,9 +75,15 @@ enum TrainingSplit {
   final String why;
 
   /// The rule, whole. Deliberately total and deliberately dull.
+  ///
+  /// **Five days is upper/lower, not push/pull/legs.** Five does not divide
+  /// into three: the rotation comes out Push, Pull, Legs, Push, Pull, which
+  /// trains legs once a week — the one arrangement the evidence is consistently
+  /// against, and exactly what PlanShape flagged when it was first pointed at
+  /// this. U/L/U/L/U gives everything at least twice.
   static TrainingSplit forDays(int days) => switch (days) {
     <= 3 => TrainingSplit.fullBody,
-    4 => TrainingSplit.upperLower,
+    4 || 5 => TrainingSplit.upperLower,
     _ => TrainingSplit.pushPullLegs,
   };
 
