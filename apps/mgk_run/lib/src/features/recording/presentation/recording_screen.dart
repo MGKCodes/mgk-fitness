@@ -491,6 +491,17 @@ class _RecordingScreenState extends State<RecordingScreen> {
     PaceStanding.unknown => null,
   };
 
+  /// Asks again, for the one refusal that can be asked again.
+  ///
+  /// `_ensureAvailable` in the geolocator source already re-requests when the
+  /// permission is merely `denied`, so starting again is the whole retry. If it
+  /// comes back refused — or refused permanently, which is what a second
+  /// refusal becomes on Android and what iOS reports immediately — the recorder
+  /// emits the new problem and this panel redraws itself into the state that
+  /// offers Settings instead. Nothing here needs to know which platform it is
+  /// on.
+  Future<void> _askAgain() => widget.recorder.start();
+
   Future<void> _togglePause() =>
       _recording ? widget.recorder.pause() : widget.recorder.resume();
 
@@ -654,6 +665,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 weekDoneMeters: widget.weekDoneMeters,
                 weekTargetMeters: widget.weekTargetMeters,
                 problem: _problem,
+                onAskAgain: _askAgain,
                 recording: _recording,
                 onLap: _markLap,
                 onTogglePause: _togglePause,
@@ -791,6 +803,7 @@ class _Panel extends StatelessWidget {
     required this.weekDoneMeters,
     required this.weekTargetMeters,
     required this.problem,
+    required this.onAskAgain,
     required this.recording,
     required this.onLap,
     required this.onTogglePause,
@@ -828,6 +841,10 @@ class _Panel extends StatelessWidget {
   final double? weekDoneMeters;
   final double? weekTargetMeters;
   final RecorderProblem? problem;
+
+  /// Re-requests location. Only reachable from the refusal that can be
+  /// re-requested; see [_ProblemLine].
+  final Future<void> Function() onAskAgain;
   final bool recording;
   final VoidCallback onLap;
   final Future<void> Function() onTogglePause;
@@ -861,7 +878,7 @@ class _Panel extends StatelessWidget {
             const SheetHandle(),
 
             if (problem != null) ...<Widget>[
-              _ProblemLine(problem: problem!),
+              _ProblemLine(problem: problem!, onAskAgain: onAskAgain),
               const SizedBox(height: AppSpacing.lg),
             ],
 
@@ -1281,9 +1298,10 @@ String _sessionTitle(PlannedSession session) {
 
 /// A problem, stated on the panel rather than as a banner over the map.
 class _ProblemLine extends StatelessWidget {
-  const _ProblemLine({required this.problem});
+  const _ProblemLine({required this.problem, required this.onAskAgain});
 
   final RecorderProblem problem;
+  final Future<void> Function() onAskAgain;
 
   /// The states differ in remedy, so they differ in copy. Offering "Open
   /// Settings" for a switched-off Location Services toggle sends people to a
@@ -1314,10 +1332,23 @@ class _ProblemLine extends StatelessWidget {
       ? 'Settings → Location'
       : 'Settings → Privacy & Security → Location Services';
 
+  /// **The two refusals are not the same refusal.**
+  ///
+  /// `RecorderProblem` draws the distinction on purpose — one "can be asked for
+  /// again", the other says "re-asking does nothing, Settings only" — and this
+  /// widget used to collapse it, sending both to `openAppSettings`. That is the
+  /// wrong remedy for the re-askable one and much the worse path: leave the
+  /// app, find Run in a list, find Location, change it, come back, start the
+  /// run again. Against one tap that re-shows the prompt they just dismissed.
+  ///
+  /// So: ask again where asking works, Settings where it does not.
+  bool get _offersAskAgain => problem == RecorderProblem.permissionDenied;
+
   /// Only where Settings can actually change the outcome. A denied read is a
-  /// designed-for outcome, not an error state.
+  /// designed-for outcome, not an error state — and Settings cannot reach the
+  /// device-wide Location Services switch at all, which is why that state gets
+  /// a written path instead of a button.
   bool get _offersSettings =>
-      problem == RecorderProblem.permissionDenied ||
       problem == RecorderProblem.permissionDeniedForever;
 
   @override
@@ -1334,6 +1365,14 @@ class _ProblemLine extends StatelessWidget {
             height: 1.4,
           ),
         ),
+        if (_offersAskAgain)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onAskAgain,
+              child: const Text('Allow location'),
+            ),
+          ),
         if (_offersSettings)
           Align(
             alignment: Alignment.centerLeft,
