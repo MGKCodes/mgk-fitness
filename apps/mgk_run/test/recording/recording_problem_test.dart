@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_run_recorder.dart';
+import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
+import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 /// A phone, not Flutter's default 800x600 surface — see recording_screen_test.
@@ -41,7 +44,20 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
-        home: RecordingScreen(recorder: recorder),
+        home: RecordingScreen(
+          recorder: recorder,
+          // A planned session, so the band would exist if nothing had gone
+          // wrong — otherwise "no band" would pass for the wrong reason.
+          plannedSession: const PlannedSession(
+            weekday: DateTime.monday,
+            kind: SessionKind.easy,
+            distanceMeters: 5000,
+          ),
+          paces: TrainingPaces.fromRace(
+            Distance.meters(5000),
+            const Duration(minutes: 24, seconds: 30),
+          ),
+        ),
       ),
     );
     await tester.pump();
@@ -110,6 +126,28 @@ void main() {
     expect(find.text('Open Settings'), findsNothing);
     expect(find.text('Allow location'), findsNothing);
     expect(find.textContaining('clears on its own'), findsOneWidget);
+
+    await recorder.stop();
+  });
+
+  testWidgets('the coach says nothing while there is nothing to say it about', (
+    WidgetTester tester,
+  ) async {
+    final _CountingRecorder recorder = await pumpProblem(
+      tester,
+      RecorderProblem.permissionDenied,
+    );
+
+    // The panel has just said nothing is being tracked. A pace rail underneath
+    // it is a second, contradictory answer to the same question — and
+    // FINDING YOUR PACE claims to be looking for a pace on a run that never
+    // started.
+    expect(find.text('FINDING YOUR PACE'), findsNothing);
+    expect(find.textContaining('NO FASTER THAN'), findsNothing);
+    expect(find.byType(PaceBandMeter), findsNothing);
+    // The message itself is still there, and so is the way out.
+    expect(find.textContaining('Nothing is being tracked'), findsOneWidget);
+    expect(find.text('Finish'), findsOneWidget);
 
     await recorder.stop();
   });

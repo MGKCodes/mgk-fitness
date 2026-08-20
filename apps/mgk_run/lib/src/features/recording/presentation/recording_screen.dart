@@ -567,7 +567,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
           final collapsed = collapsedFractionFor(
             height,
             bottomInset: MediaQuery.paddingOf(context).bottom,
-            hasBand: band != null,
+            // No band while recording has failed. The panel is already saying
+            // why there is nothing; a pace rail underneath is a second and
+            // contradictory answer to the same question — the reasoning the
+            // map already uses for its emptyLabel.
+            hasBand: band != null && _problem == null,
             hasProblem: _problem != null,
             hasBrief: showBrief,
           );
@@ -976,7 +980,16 @@ class _Panel extends StatelessWidget {
             // runner is inside it. Deterministic — derived from the profile's
             // time trial in Dart, never from a model, and absent entirely when
             // there is no plan or no time trial to derive it from.
-            if (band != null) ...<Widget>[
+            // Suppressed while recording has failed, and the two flags have
+            // to agree: `collapsedFractionFor` is told the same thing, or the
+            // detent reserves height for a block that is not drawn.
+            //
+            // The screen has just said in plain English that nothing is being
+            // tracked. Rendering FINDING YOUR PACE under that claims to be
+            // looking for a pace on a run that never started — the same lie as
+            // a confident figure over fixes that stopped arriving, except this
+            // one contradicts a sentence two lines above it.
+            if (band != null && problem == null) ...<Widget>[
               const SizedBox(height: AppSpacing.lg),
               // The band's edges are written under the ends of the rail rather
               // than as a range beside the verdict. As a range they said what
