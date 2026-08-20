@@ -122,6 +122,13 @@ workflows:
         # id is: the app's name is not settled and this one does not need to
         # care.
         - mgk_fitness_run_env
+        # **Both groups, and the split is not obvious from here.** The Supabase
+        # credentials live in their own group in the Codemagic account; the map
+        # values live in the one above. A build attaching only one of them
+        # prepares the machine, installs SDKs, sets up signing, and then dies
+        # half a second into the config step on an empty SUPABASE_URL. These
+        # two are what the app cannot start without.
+        - mgk_fitness_supabase
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -269,11 +276,17 @@ workflows:
     working_directory: apps/mgk_run
     environment:
       groups:
-        # The same group as iOS. Every value in it is the app's configuration
-        # rather than a platform's, so splitting it would mean maintaining the
-        # Supabase keys and the MapTiler key in two places and eventually
-        # getting them out of step.
+        # The same groups as iOS, and there are two of them.
+        #
+        # This comment used to argue against splitting them — that keeping the
+        # Supabase keys and the map values together avoided maintaining them in
+        # two places and eventually getting them out of step. They were split in
+        # the Codemagic account anyway, and this file was not told, so they got
+        # out of step in precisely the way predicted: the next build failed on
+        # an empty SUPABASE_URL. The argument was right and the file still has
+        # to match the account.
         - mgk_fitness_run_env
+        - mgk_fitness_supabase
       flutter: stable
       java: 17
     scripts:
