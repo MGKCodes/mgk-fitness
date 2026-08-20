@@ -103,14 +103,20 @@ void main() {
   });
 
   group('the brief rides above the fold only while the verdict is held', () {
-    for (final MapEntry<String, Size> entry in <String, Size>{
-      'iPhone 15': kPhone,
-      'small phone': kSmallPhone,
-    }.entries) {
-      testWidgets('${entry.key} — visible early, and Finish still reachable', (
+    // The brief buys its height from the map, so it only rides above the fold
+    // where there is map to sell. On a phone with room that is a good trade; at
+    // 320x568 the panel reached 0.79 and left a strip barely taller than the
+    // position marker. See [kBriefMaxCollapsedFraction].
+    for (final (String name, Size size, bool expected)
+        in <(String, Size, bool)>[
+          ('iPhone 15', kPhone, true),
+          ('iPhone 15 Pro Max', Size(430, 932), true),
+          ('small phone', kSmallPhone, false),
+        ]) {
+      testWidgets('$name — brief above the fold: $expected', (
         WidgetTester tester,
       ) async {
-        await tester.binding.setSurfaceSize(entry.value);
+        await tester.binding.setSurfaceSize(size);
         addTearDown(() => tester.binding.setSurfaceSize(null));
 
         final FakeRunRecorder recorder = recorderAt();
@@ -119,17 +125,19 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(
-          onScreen(tester, find.textContaining('RPE'), entry.value),
-          isTrue,
-          reason: 'the brief should be readable without opening the sheet',
+          onScreen(tester, find.textContaining('RPE'), size),
+          expected,
+          reason: expected
+              ? 'the brief should be readable without opening the sheet'
+              : 'a screen this short cannot afford to sell the map',
         );
-        // The taller panel must not cost the controls their place — this is
-        // the whole reason the detent is summed from its parts.
+        // Reachable either way — this is the whole reason the detent is summed
+        // from its parts rather than guessed as a fraction.
         for (final String label in <String>['Lap', 'Pause', 'Finish']) {
           expect(
-            onScreen(tester, find.text(label), entry.value),
+            onScreen(tester, find.text(label), size),
             isTrue,
-            reason: '$label is off-screen at ${entry.key} with the brief up',
+            reason: '$label is off-screen at $name',
           );
         }
 

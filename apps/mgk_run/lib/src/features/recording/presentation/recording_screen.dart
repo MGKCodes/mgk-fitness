@@ -85,6 +85,34 @@ double _panelContentHeight({
     48 + // Lap / Pause / Finish
     AppSpacing.lg; // bottom padding
 
+/// The most of the screen the collapsed panel may take *because of the brief*.
+///
+/// The brief buys its height from the map, and on a short screen there is not
+/// enough map to sell. At 320x568 the panel went to 0.79 with the brief up,
+/// leaving a strip barely taller than the position marker — the trade is worth
+/// making on a phone with room and not on one without. Nothing breaks below
+/// this; the controls stay reachable either way. It simply stops being a good
+/// deal.
+const double kBriefMaxCollapsedFraction = 0.70;
+
+/// Whether the effort brief can afford to sit above the fold on this screen.
+bool briefFitsOn(
+  double height, {
+  double bottomInset = 0,
+  required bool hasBand,
+  required bool hasProblem,
+}) {
+  if (height <= 0) return false;
+  final withBrief =
+      _panelContentHeight(
+        hasBand: hasBand,
+        hasProblem: hasProblem,
+        hasBrief: true,
+      ) +
+      bottomInset;
+  return withBrief / height <= kBriefMaxCollapsedFraction;
+}
+
 /// The panel's full extent, as a fraction of the screen.
 ///
 /// **Two resting places, not three.** A middle detent sounds generous and costs
@@ -563,7 +591,15 @@ class _RecordingScreenState extends State<RecordingScreen> {
           // the first few minutes — and once the band starts speaking, the
           // panel gives the height back and the map takes it, by which time
           // the route has a shape worth the space.
-          final showBrief = !_warmedUp && widget.plannedSession != null;
+          final showBrief =
+              !_warmedUp &&
+              widget.plannedSession != null &&
+              briefFitsOn(
+                height,
+                bottomInset: MediaQuery.paddingOf(context).bottom,
+                hasBand: band != null && _problem == null,
+                hasProblem: _problem != null,
+              );
           final collapsed = collapsedFractionFor(
             height,
             bottomInset: MediaQuery.paddingOf(context).bottom,
@@ -945,7 +981,6 @@ class _Panel extends StatelessWidget {
                     absent: currentPace == dashes,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
                 // On a planned session the third column is what is *left*,
                 // not what has averaged.
                 //
@@ -957,6 +992,17 @@ class _Panel extends StatelessWidget {
                 // hold this, and for how much longer — and it has a value from
                 // the first metre. Without a plan there is no distance to
                 // count down to, so the average keeps the slot.
+                const SizedBox(width: AppSpacing.sm),
+                // Without a plan there is nothing to count down to, so the
+                // average keeps the slot.
+                //
+                // Dropping to two columns was tried and reverted. The empty
+                // `--:--` that prompted it lasts under a minute — the average
+                // appears at [_paceFloorMeters], 100 m — and it is already the
+                // quietest thing on the row. Removing a runner's only summary
+                // figure for the whole of every unplanned run, to save forty
+                // seconds of a dash that is deliberately faint, is a worse
+                // screen than the one it fixes.
                 Expanded(
                   child: session == null
                       ? _PaceStat(
@@ -1335,9 +1381,12 @@ class _ProblemLine extends StatelessWidget {
     RecorderProblem.permissionDeniedForever =>
       'Location is turned off for Run, so there is nothing to record. '
           'You can change it in Settings.',
+    // Not "recording has paused": `_onSourceError` sets a problem and never
+    // touches the status, so the run is still recording and the clock is still
+    // running — and Pause means something specific two controls below this.
     RecorderProblem.locationFailed =>
-      'Your location stopped arriving, so recording has paused. This usually '
-          'clears on its own outdoors.',
+      'Your location stopped arriving, so nothing is being added to this run. '
+          'It usually clears on its own outdoors.',
   };
 
   /// Where the device's own location switch lives, in that platform's words.
