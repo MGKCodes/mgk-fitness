@@ -22,7 +22,6 @@ import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/plan_validator.dart';
-import '../src/features/planning/presentation/adapt_sheet.dart';
 import '../src/features/planning/presentation/plan_intake_screen.dart';
 import '../src/features/planning/presentation/plan_review_screen.dart';
 import '../src/features/planning/presentation/standing_plan_surface.dart';
@@ -132,10 +131,6 @@ class PreviewApp extends StatelessWidget {
           plan: samplePlan(previewNow),
           today: previewNow,
           onOpenSession: (_) {},
-          // Passed so the adapt entry point is actually on screen. Without it
-          // the preview silently reviewed a surface with one of its two
-          // actions missing, which is how it went unlooked-at this long.
-          onAdapt: () {},
         ),
       ),
       // The three the harness could not reach, which is why nobody had
@@ -154,14 +149,6 @@ class PreviewApp extends StatelessWidget {
           session: _openSession(),
           movement: 'Barbell Bench Press',
           log: sampleLog(previewNow),
-        ),
-      ),
-      'adapt-sheet': (_) => _SheetHost(
-        open: (context) => AdaptSheet.show(
-          context,
-          planner: FakePlanner(),
-          plan: samplePlan(previewNow),
-          weekNumber: 1,
         ),
       ),
       'plan-review': (_) => PlanReviewScreen(

@@ -11,11 +11,9 @@ import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../planning/domain/plan.dart';
 import '../../planning/domain/plan_generator.dart';
-import '../../planning/domain/plan_adaptation.dart';
 import '../../planning/domain/plan_store.dart';
 import '../../planning/domain/plan_validator.dart';
 import '../../planning/domain/session_from_plan.dart';
-import '../../planning/presentation/adapt_sheet.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
 import '../../planning/presentation/plan_review_screen.dart';
 import '../../profile/presentation/profile_surface.dart';
@@ -330,9 +328,11 @@ class _LiftShellState extends State<LiftShell> {
                   onOpenSession: widget.recorder == null
                       ? null
                       : _openPlannedSession,
-                  onAdapt: (_plan != null && widget.planner != null)
-                      ? _adaptWeek
-                      : null,
+                  // Adapting a WEEK no longer has a subject: a standing plan
+                  // has no weeks. What the feature was for is real and moves to
+                  // the post-session review, where the coach reads what
+                  // happened and the lifter's own answer changes the next
+                  // session. See docs/plan-model.md.
                 ),
                 ProfileSurface(
                   log: _log,
@@ -573,34 +573,6 @@ class _LiftShellState extends State<LiftShell> {
   /// is safe precisely because they are a DIFF: everything the coach did not
   /// name comes through untouched, so writing the result cannot lose a session
   /// nobody discussed.
-  Future<void> _adaptWeek() async {
-    final planner = widget.planner;
-    final plans = widget.plans;
-    final plan = _plan;
-    if (planner == null || plans == null || plan == null) return;
-
-    final weekNumber = plan.weekOf(DateTime.now());
-    if (weekNumber == null) return;
-
-    final accepted = await AdaptSheet.show(
-      context,
-      planner: planner,
-      plan: plan,
-      weekNumber: weekNumber,
-    );
-    if (accepted == null || accepted.isEmpty || !mounted) return;
-
-    final changed = const PlanAdapter().apply(plan, accepted);
-    setState(() => _plan = changed);
-    try {
-      await plans.save(changed);
-    } on PlanException {
-      // The screen already shows the change. A failed write means the next
-      // load reverts it, which is confusing but not destructive — and better
-      // than blocking the workout on a network the gym does not have.
-      await _refreshPlan();
-    }
-  }
 
   /// Records that a planned movement was replaced, so the plan stops claiming
   /// they did something they swapped out.

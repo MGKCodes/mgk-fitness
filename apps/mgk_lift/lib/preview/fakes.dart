@@ -1,6 +1,5 @@
 import '../src/features/stats/domain/session_history.dart';
 import '../src/features/planning/domain/plan.dart';
-import '../src/features/planning/domain/plan_adaptation.dart';
 import '../src/features/planning/domain/plan_generator.dart';
 import '../src/features/planning/domain/plan_proposal.dart';
 import '../src/features/tracking/domain/session.dart';
@@ -324,38 +323,6 @@ class FakePlanner implements CoachPlanner {
           },
         ],
       },
-    });
-  }
-
-  @override
-  Future<AdaptProposal> adapt({
-    required String message,
-    required Plan plan,
-    required int weekNumber,
-  }) async {
-    _maybeFail();
-    return AdaptProposal.fromJson(<String, Object?>{
-      'reply':
-          'I would move Thursday to Friday and go lighter on Monday. That '
-          'gives the shoulder two more days before it takes any load.',
-      'changes': <Object?>[
-        <String, Object?>{
-          'action': 'move',
-          'weekday': 4,
-          'to_weekday': 5,
-          'movement': null,
-          'to': null,
-          'why': 'Two more days before it takes load',
-        },
-        <String, Object?>{
-          'action': 'lighten',
-          'weekday': 1,
-          'to_weekday': null,
-          'movement': null,
-          'to': null,
-          'why': 'A set off everything, ten per cent down',
-        },
-      ],
     });
   }
 }

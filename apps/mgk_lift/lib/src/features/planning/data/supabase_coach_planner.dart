@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 // below still reads as the app's own session.
 import '../../tracking/domain/session.dart';
 import '../domain/plan.dart';
-import '../domain/plan_adaptation.dart';
 import '../domain/plan_generator.dart';
 import '../domain/plan_proposal.dart';
 
@@ -121,57 +120,6 @@ class SupabaseCoachPlanner implements CoachPlanner {
     });
     return SwapProposal.fromJson(data);
   }
-
-  @override
-  Future<AdaptProposal> adapt({
-    required String message,
-    required Plan plan,
-    required int weekNumber,
-  }) async {
-    final data = await _invoke(<String, Object?>{
-      'surface': 'lift_adapt',
-      'message': message,
-      // Rendered rather than serialised: the coach is choosing between days
-      // and movements, and a struct invites it to quote ids back.
-      'week': _renderWeek(plan, weekNumber),
-    });
-    return AdaptProposal.fromJson(data);
-  }
-
-  /// The week as prose, with what has already been done marked.
-  ///
-  /// **Done sessions are labelled, not hidden.** The coach has to see them to
-  /// avoid proposing a change to one, and to know which days are taken.
-  static String _renderWeek(Plan plan, int weekNumber) {
-    final week =
-        plan.sessions
-            .where((PlanSession s) => s.weekNumber == weekNumber)
-            .toList()
-          ..sort((a, b) => a.weekday.compareTo(b.weekday));
-
-    final lines = <String>[];
-    for (final s in week) {
-      final done = s.status == PlanSessionStatus.planned
-          ? ''
-          : ' (already done)';
-      lines.add('${_weekdayName(s.weekday)}: ${s.title}$done');
-      for (final m in s.movements) {
-        lines.add('  ${m.name} ${m.sets}x${m.reps}');
-      }
-    }
-    return lines.join('\n');
-  }
-
-  static String _weekdayName(int weekday) => switch (weekday) {
-    1 => 'Monday',
-    2 => 'Tuesday',
-    3 => 'Wednesday',
-    4 => 'Thursday',
-    5 => 'Friday',
-    6 => 'Saturday',
-    7 => 'Sunday',
-    _ => 'Day $weekday',
-  };
 
   /// How long one call to the coach may take before it is treated as failed.
   ///
