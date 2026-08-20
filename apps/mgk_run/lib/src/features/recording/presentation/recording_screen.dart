@@ -972,6 +972,10 @@ class _Panel extends StatelessWidget {
                 position: railPosition,
                 slowLabel: bandSlowLabel,
                 fastLabel: bandFastLabel,
+                // Uppercased to sit with the other labels on this panel; the
+                // meter appends it to each pace and adds the direction words
+                // itself, so the caller hands over bare figures.
+                unitSuffix: unit.paceSuffix.toUpperCase(),
                 // Lit from the rail's start on a capped session, so the lit
                 // region means "acceptable" in both cases rather than meaning
                 // "the band" in one and something narrower in the other.
