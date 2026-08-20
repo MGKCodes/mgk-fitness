@@ -18,6 +18,7 @@ import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/planning/domain/intake_flow.dart';
 import '../src/features/planning/domain/plan.dart';
+import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/plan_validator.dart';
@@ -601,62 +602,56 @@ class _HarnessState extends State<_Harness> {
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
 
-/// A four-day Upper/Lower, with one accessory that has gone stale.
-StandingPlan _standingPlan() => StandingPlan(
-  id: 'preview',
-  split: TrainingSplit.upperLower,
-  // Mon, Tue, Thu, Fri.
-  weekdays: const <int>[1, 2, 4, 5],
-  startedAt: DateTime(2026, 3, 2),
-  slots: <String, List<MovementSlot>>{
-    'Upper': <MovementSlot>[
-      const MovementSlot(
-        id: 'u1',
-        role: 'horizontal press',
-        movement: 'Barbell Bench Press',
-        isMain: true,
-        sessionsAtSameTop: 6,
-        lastTopKg: 85,
-        lastTopReps: 6,
-      ),
-      const MovementSlot(
-        id: 'u2',
-        role: 'vertical pull',
-        movement: 'Lat Pulldown',
-        lastTopKg: 70,
-        lastTopReps: 10,
-      ),
-      const MovementSlot(
-        id: 'u3',
-        role: 'lateral raise',
-        movement: 'Cable Lateral Raise',
-        sessionsAtSameTop: 6,
-        lastTopKg: 12,
-        lastTopReps: 12,
-      ),
-    ],
-    'Lower': <MovementSlot>[
-      const MovementSlot(
-        id: 'l1',
-        role: 'squat',
-        movement: 'Barbell Back Squat',
-        isMain: true,
-        lastTopKg: 110,
-        lastTopReps: 5,
-      ),
-      const MovementSlot(
-        id: 'l2',
-        role: 'hinge',
-        movement: 'Romanian Deadlift',
-      ),
-      const MovementSlot(
-        id: 'l3',
-        role: 'calf',
-        movement: 'Standing Calf Raise',
-      ),
-    ],
-  },
-);
+/// A real four-day Upper/Lower, generated rather than hand-listed.
+///
+/// **Built by PlanTemplate**, so the board shows a plan at the density the app
+/// will actually produce — six movements on an Upper day rather than the three
+/// a hand-written fixture happened to contain. A screen reviewed against a
+/// fixture that is smaller than reality is a screen reviewed against a
+/// different screen.
+StandingPlan _standingPlan() {
+  final slots = PlanTemplate.slotsFor(
+    split: TrainingSplit.upperLower,
+    days: 4,
+    equipment: Equipment.fullGym,
+  );
+  // A history, so the plan screen has numbers on it. Keyed by role rather than
+  // by movement, which is the whole point of the slot.
+  const history = <String, (double, int, int)>{
+    'horizontal press': (85, 6, 6),
+    'vertical pull': (70, 10, 1),
+    'vertical press': (45, 8, 0),
+    'horizontal row': (75, 8, 2),
+    'lateral raise': (12, 12, 6),
+    'triceps': (32, 12, 0),
+    'squat': (110, 5, 3),
+    'hinge': (140, 5, 1),
+    'quad accessory': (160, 10, 0),
+    'hamstring accessory': (45, 12, 2),
+  };
+  return StandingPlan(
+    id: 'preview',
+    split: TrainingSplit.upperLower,
+    // Mon, Tue, Thu, Fri.
+    weekdays: const <int>[1, 2, 4, 5],
+    startedAt: DateTime(2026, 3, 2),
+    slots: <String, List<MovementSlot>>{
+      for (final day in slots.entries)
+        day.key: <MovementSlot>[
+          for (final s in day.value)
+            MovementSlot(
+              id: s.id,
+              role: s.role,
+              movement: s.movement,
+              isMain: s.isMain,
+              lastTopKg: history[s.role]?.$1,
+              lastTopReps: history[s.role]?.$2,
+              sessionsAtSameTop: history[s.role]?.$3 ?? 0,
+            ),
+        ],
+    },
+  );
+}
 
 /// The intake's opening line. Short, because the questions carry themselves
 /// and the bar in the chrome already says how many there are.
