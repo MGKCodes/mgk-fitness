@@ -71,6 +71,72 @@ void main() {
     });
   });
 
+  group('AppCard', () {
+    testWidgets('a tappable card ticks; a plain one is not a control', (
+      WidgetTester tester,
+    ) async {
+      final List<String> fired = recordHaptics(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: AppCard(child: SizedBox(width: 200, height: 80)),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppCard));
+      await tester.pump();
+      expect(
+        fired,
+        isEmpty,
+        reason: 'a card that does nothing must not pretend to be pressable',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: AppCard(
+              onTap: () {},
+              child: const SizedBox(width: 200, height: 80),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppCard));
+      await tester.pump();
+      expect(fired, <String>['HapticFeedbackType.selectionClick']);
+
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('and the card still owns its tap', (WidgetTester tester) async {
+      int taps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: AppCard(
+              onTap: () => taps++,
+              child: const SizedBox(width: 200, height: 80),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppCard));
+      await tester.pump();
+
+      // PressScale only listens, so wrapping the card must not have eaten the
+      // gesture on its way through.
+      expect(taps, 1);
+      await tester.pumpAndSettle();
+    });
+  });
+
   group('PressScale', () {
     testWidgets('ticks on the way down, before the tap does anything', (
       WidgetTester tester,
