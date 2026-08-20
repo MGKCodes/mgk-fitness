@@ -18,11 +18,13 @@ import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/coaching/presentation/plan_surface.dart';
 import '../src/features/planning/domain/intake_flow.dart';
 import '../src/features/planning/domain/plan.dart';
+import '../src/features/planning/domain/standing_plan.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/plan_validator.dart';
 import '../src/features/planning/presentation/adapt_sheet.dart';
 import '../src/features/planning/presentation/plan_intake_screen.dart';
 import '../src/features/planning/presentation/plan_review_screen.dart';
+import '../src/features/planning/presentation/standing_plan_surface.dart';
 import '../src/features/planning/presentation/swap_sheet.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
@@ -390,6 +392,72 @@ class PreviewApp extends StatelessWidget {
         ]),
       ),
 
+      // ---- The standing plan --------------------------------------------------
+      //
+      // What "Show me the week" opens onto. No week number, no end date, no
+      // completion -- those are marathon ideas, and "get stronger" has no week
+      // 12. See planning/domain/standing_plan.dart.
+      'plan-standing': (_) => Scaffold(
+        backgroundColor: AppColors.bg,
+        body: StandingPlanSurface(
+          plan: _standingPlan(),
+          // A Monday: Upper.
+          today: DateTime(2026, 8, 17),
+          onStartToday: () {},
+          onSwap: (_) {},
+        ),
+      ),
+      // A rest day is an answer, not an empty state. Nothing owed, nothing
+      // behind -- which is the whole point of deriving the week rather than
+      // scheduling it.
+      'plan-standing-rest': (_) => Scaffold(
+        backgroundColor: AppColors.bg,
+        body: StandingPlanSurface(
+          plan: _standingPlan(),
+          today: DateTime(2026, 8, 19),
+          onSwap: (_) {},
+        ),
+      ),
+      // After the session. The coach reads what happened, the lifter answers in
+      // their own words, and THAT is what changes the next one -- rather than a
+      // block regenerating itself on a schedule nobody asked about.
+      'plan-review-after': (_) => _sheet(
+        _talk(<List<Object>>[
+          [
+            true,
+            'Upper done. Bench went 85 for 6, 6 and 5 — the third set is the '
+                'first time that has dropped. Everything else held.',
+          ],
+          [
+            true,
+            'How did it actually feel?',
+            <String>[
+              'Harder than usual',
+              'About right',
+              'Easy, I had more in me',
+            ],
+          ],
+        ]),
+      ),
+      'plan-review-answered': (_) => _sheet(
+        _talk(<List<Object>>[
+          [true, 'How did it actually feel?'],
+          [false, 'Harder than usual'],
+          [
+            true,
+            'Then I am holding 85 next Thursday rather than adding. Two sessions '
+                'at the same weight is not a stall, it is a week that was heavy '
+                'for reasons outside the gym.',
+          ],
+          [
+            true,
+            'The lateral raise has not moved in six sessions though. Want '
+                'something else in that slot?',
+            <String>['Swap it', 'Leave it for now'],
+          ],
+        ]),
+      ),
+
       // ---- Eval scenarios, on screen ----------------------------------------
       //
       // The same situations supabase/evals/scenarios.ts puts the coach in,
@@ -530,6 +598,55 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
+
+/// A four-day Upper/Lower, with one accessory that has gone stale.
+StandingPlan _standingPlan() => StandingPlan(
+  id: 'preview',
+  split: TrainingSplit.upperLower,
+  // Mon, Tue, Thu, Fri.
+  weekdays: const <int>[1, 2, 4, 5],
+  startedAt: DateTime(2026, 3, 2),
+  slots: <String, List<MovementSlot>>{
+    'Upper': <MovementSlot>[
+      const MovementSlot(
+        id: 'u1',
+        role: 'horizontal press',
+        movement: 'Barbell Bench Press',
+        isMain: true,
+        sessionsAtSameTop: 6,
+      ),
+      const MovementSlot(
+        id: 'u2',
+        role: 'vertical pull',
+        movement: 'Lat Pulldown',
+      ),
+      const MovementSlot(
+        id: 'u3',
+        role: 'lateral raise',
+        movement: 'Cable Lateral Raise',
+        sessionsAtSameTop: 6,
+      ),
+    ],
+    'Lower': <MovementSlot>[
+      const MovementSlot(
+        id: 'l1',
+        role: 'squat',
+        movement: 'Barbell Back Squat',
+        isMain: true,
+      ),
+      const MovementSlot(
+        id: 'l2',
+        role: 'hinge',
+        movement: 'Romanian Deadlift',
+      ),
+      const MovementSlot(
+        id: 'l3',
+        role: 'calf',
+        movement: 'Standing Calf Raise',
+      ),
+    ],
+  },
+);
 
 /// The intake's opening line. Short, because the questions carry themselves
 /// and the bar in the chrome already says how many there are.
