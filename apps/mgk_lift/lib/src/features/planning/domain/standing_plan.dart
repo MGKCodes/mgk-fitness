@@ -36,7 +36,8 @@ import 'package:meta/meta.dart';
 /// keep replacing, because there is no previous number to beat.
 ///
 /// What variation is good for is avoiding detrimental adaptation, and it works
-/// best **planned rather than reactive**. So:
+/// best **planned rather than reactive** — claim C4 in docs/research/training.md.
+/// So:
 ///
 ///  * main lifts stay, indefinitely, because they are what progress is measured
 ///    in;

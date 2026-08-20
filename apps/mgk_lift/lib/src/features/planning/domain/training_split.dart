@@ -14,16 +14,13 @@
 ///
 /// A split sounds like a training philosophy and is really a scheduling
 /// wrapper. The evidence is unhelpful to anyone selling one: volume-equated,
-/// training frequency has close to no independent effect on hypertrophy — its
-/// benefit is that it lets more weekly volume fit. Twice-weekly beats
-/// once-weekly mostly in untrained lifters, and the useful target is roughly
-/// 12–20 hard sets per muscle per week.
+/// frequency has close to no independent effect on hypertrophy (**C2**). What
+/// drives the outcome is weekly volume (**C1**), so the real question is how to
+/// fit 12–20 hard sets per muscle into the days somebody has — arithmetic on
+/// one number. Goal does not change the shape of the week; it changes the rep
+/// ranges inside it.
 ///
-/// So the real question is "how do we fit that many sets into the days you
-/// have", which is arithmetic on one number. Goal does not change the shape of
-/// the week; it changes the rep ranges inside it.
-///
-/// See the meta-analyses in docs/coach-profile.md's sources.
+/// Claims, citations and dates: docs/research/training.md.
 enum TrainingSplit {
   /// Two or three days. Every session touches everything, because at this
   /// frequency a split would leave a muscle group trained once a week — the one
@@ -76,11 +73,17 @@ enum TrainingSplit {
 
   /// The rule, whole. Deliberately total and deliberately dull.
   ///
-  /// **Five days is upper/lower, not push/pull/legs.** Five does not divide
-  /// into three: the rotation comes out Push, Pull, Legs, Push, Pull, which
-  /// trains legs once a week — the one arrangement the evidence is consistently
-  /// against, and exactly what PlanShape flagged when it was first pointed at
-  /// this. U/L/U/L/U gives everything at least twice.
+  /// **Five days is upper/lower, not push/pull/legs, and that is arithmetic
+  /// rather than evidence.** Five does not divide into three: pinned to fixed
+  /// weekdays the rotation comes out Push, Pull, Legs, Push, Pull, so legs is
+  /// trained once that week — which C3 says is a poor way to deliver its
+  /// volume. U/L/U/L/U gives everything at least twice.
+  ///
+  /// **A real limitation, not a position:** plenty of people run PPL as a
+  /// ROLLING cycle, legs every third session whatever weekday it lands on. A
+  /// plan here is a fixed set of weekdays and cannot express that, so those
+  /// lifters are served an upper/lower instead. Recorded at the foot of
+  /// docs/research/training.md.
   static TrainingSplit forDays(int days) => switch (days) {
     <= 3 => TrainingSplit.fullBody,
     4 || 5 => TrainingSplit.upperLower,

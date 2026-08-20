@@ -21,6 +21,9 @@ import 'standing_plan.dart';
 ///
 /// ## Progression is a rule, not a suggestion
 ///
+/// Claim C5 in docs/research/training.md, and the closest thing to settled that
+/// this field has.
+///
 /// If the top set moved last time, add one increment. If it did not, hold.
 /// That is the whole rule, and it is deliberately dull — a coach that improvises
 /// a jump is a coach that occasionally improvises a bad one, and the interesting

@@ -21,10 +21,16 @@ import 'standing_plan.dart';
 ///
 /// ## What the numbers are, and where they come from
 ///
-/// Roughly 12–20 hard sets per muscle per week, and two exposures beat one —
-/// volume-equated, frequency itself does little, so its value is that it lets
-/// the volume fit. Both bounds matter: too little does nothing, and too much is
-/// how people end up injured or quitting.
+/// Roughly 12–20 hard sets per muscle per week — claim **C1** in
+/// docs/research/training.md, which is where the citation, the confidence and
+/// the date it was last checked live.
+///
+/// **The two-exposure rule rests on C3, not on "twice beats once".** That
+/// older claim (C2) came from a 2016 meta-analysis with a known confounder, and
+/// the same group's later 25-study review found frequency close to neutral once
+/// volume is equated. What survives is practical: a muscle needing 12–20 hard
+/// sets a week is badly served by one session, because sets late in a long one
+/// are done under accumulated fatigue.
 ///
 /// Secondary muscles count half. A bench press is chest work and it is also
 /// triceps work, and counting it as neither or as both whole is wrong in
@@ -164,9 +170,9 @@ abstract final class PlanShape {
       }
     }
 
-    // A muscle the plan trains ONCE a week is the one arrangement the evidence
-    // is consistently against. A muscle it does not train at all is a choice
-    // (nobody has to train calves) and is left alone.
+    // A muscle the plan trains ONCE a week is a poor way to deliver a week's
+    // volume — see C3. A muscle it does not train at all is a choice (nobody
+    // has to train calves) and is left alone.
     for (final entry in exposures.entries) {
       final trained = weeklySets[entry.key]?.round() ?? 0;
       if (trained >= minWeeklySets && entry.value < 2) {
