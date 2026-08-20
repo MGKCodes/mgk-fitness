@@ -5,114 +5,135 @@
 -- that exists and a constraint that binds are different claims — and the
 -- second is the one that matters at 2am when a generator retries.
 --
+-- Rewritten for the standing plan. The block model's invariants — a week
+-- number, one session per weekday per week, a session belonging to a week that
+-- exists — went with `plan_weeks` and `plan_sessions`. What replaces them is
+-- about slots, and the two that survived unchanged are the ones that were never
+-- about blocks: a lifter has one active plan, and a plan belongs to one person.
+--
 --     supabase test db
 
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(6);
+select plan(8);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values ('dddddddd-0000-0000-0000-000000000004',
         '00000000-0000-0000-0000-000000000000',
         'authenticated', 'authenticated', 'lifter@example.com');
 
-insert into lift.plans (id, user_id, start_date, weeks, status,
-                        days_per_week, available_weekdays)
-values ('p1', 'dddddddd-0000-0000-0000-000000000004', current_date, 8, 'active',
-        4, array[1,2,4,5]::smallint[]);
+insert into lift.plans (id, user_id, status, days_per_week,
+                        available_weekdays, split, started_at)
+values ('plan-1', 'dddddddd-0000-0000-0000-000000000004', 'active', 4,
+        '{1,2,4,5}', 'upper_lower', date '2026-03-02');
 
 
--- 1 --------------------------------------------------------------------------
--- Two active blocks is not a state with a meaning: Track would have to pick
--- which one today belongs to, and whichever it picked would be wrong half the
--- time. A generator that retries after a timeout is how you get here.
+-- ---------------------------------------------------------------------------
+-- One live plan
+--
+-- Two active plans is not a state with a meaning: the plan screen would have to
+-- choose which one today belongs to, and whichever it chose would be wrong half
+-- the time. Survives the model change unchanged, because it was never about
+-- weeks.
+-- ---------------------------------------------------------------------------
+
 select throws_ok(
-  $$insert into lift.plans (id, user_id, start_date, weeks, status,
-                            days_per_week, available_weekdays)
-    values ('p2', 'dddddddd-0000-0000-0000-000000000004', current_date, 8,
-            'active', 4, array[1,2,4,5]::smallint[])$$,
+  $$insert into lift.plans (id, user_id, status, days_per_week,
+                            available_weekdays, split)
+    values ('plan-2', 'dddddddd-0000-0000-0000-000000000004', 'active', 3,
+            '{1,3,5}', 'full_body')$$,
   '23505',
   null,
   'a lifter cannot have two active plans at once'
 );
 
-
--- 2 --------------------------------------------------------------------------
--- The draft is where a generated plan waits to be accepted, so any number of
--- them must be allowed alongside the active one — the partial index must not
--- have become a total one.
 select lives_ok(
-  $$insert into lift.plans (id, user_id, start_date, weeks, status,
-                            days_per_week, available_weekdays)
-    values ('p3', 'dddddddd-0000-0000-0000-000000000004', current_date, 8,
-            'draft', 4, array[1,2,4,5]::smallint[]),
-           ('p4', 'dddddddd-0000-0000-0000-000000000004', current_date, 8,
-            'draft', 4, array[1,2,4,5]::smallint[])$$,
-  'drafts are unlimited: only one plan may be ACTIVE'
+  $$insert into lift.plans (id, user_id, status, days_per_week,
+                            available_weekdays, split)
+    values ('plan-3', 'dddddddd-0000-0000-0000-000000000004', 'superseded', 3,
+            '{1,3,5}', 'full_body')$$,
+  'a replaced plan stays in the history beside the live one'
 );
 
 
--- 3 --------------------------------------------------------------------------
--- One session per weekday per week. A generator asked to fill a week twice
--- would otherwise double it, and the second copy is indistinguishable from a
--- session the lifter added.
-insert into lift.plan_weeks (id, plan_id, user_id, week_number, phase)
-values ('w1', 'p1', 'dddddddd-0000-0000-0000-000000000004', 1, 'base');
-
-insert into lift.plan_sessions (id, plan_id, user_id, week_number, weekday,
-                                scheduled_date, kind)
-values ('s1', 'p1', 'dddddddd-0000-0000-0000-000000000004', 1, 1,
-        current_date, 'push');
+-- ---------------------------------------------------------------------------
+-- There is no finish line, so there is no status for reaching one
+-- ---------------------------------------------------------------------------
 
 select throws_ok(
-  $$insert into lift.plan_sessions (id, plan_id, user_id, week_number, weekday,
-                                    scheduled_date, kind)
-    values ('s2', 'p1', 'dddddddd-0000-0000-0000-000000000004', 1, 1,
-            current_date, 'pull')$$,
+  $$update lift.plans set status = 'completed' where id = 'plan-1'$$,
+  '23514',
+  null,
+  'a standing plan cannot be completed, because it does not end'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- Slots
+-- ---------------------------------------------------------------------------
+
+insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                             role, movement, is_main)
+values ('slot-1', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+        'Upper', 0, 'horizontal press', 'Barbell Bench Press', true);
+
+select throws_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, is_main)
+    values ('slot-2', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Upper', 0, 'vertical pull', 'Wide Grip Lat Pull Down', true)$$,
   '23505',
   null,
-  'a week cannot have two sessions on the same day'
+  'two movements cannot claim the same position on a day'
 );
 
-
--- 4, 5 -----------------------------------------------------------------------
--- Deleting a logged workout must not delete the planned session that asked for
--- it. CASCADE here would mean a lifter tidying their history silently punched
--- holes in their own block, and the block is the record of what was PRESCRIBED
--- — it stays true whether or not they kept the session they did.
-insert into lift.workouts (id, user_id, name, started_at)
-values ('wk1', 'dddddddd-0000-0000-0000-000000000004', 'Push', now());
-
-update lift.plan_sessions set workout_id = 'wk1', status = 'completed'
- where id = 's1';
-
-delete from lift.workouts where id = 'wk1';
-
-select isnt_empty(
-  $$select 1 from lift.plan_sessions where id = 's1'$$,
-  'deleting a logged workout leaves the planned session standing'
+select lives_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, is_main)
+    values ('slot-3', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 0, 'squat', 'Barbell Back Squat', true)$$,
+  'the same position on a different day is a different slot'
 );
 
-select is(
-  (select workout_id from lift.plan_sessions where id = 's1'),
+-- A movement that has never been done has no numbers, and a zero is not the
+-- same claim as an absence: the app renders null as a blank field and would
+-- render 0 kg as a prescription.
+select throws_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, last_top_kg)
+    values ('slot-4', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 1, 'hinge', 'Barbell Deadlift', 0)$$,
+  '23514',
   null,
-  'and its link is nulled rather than left pointing at nothing'
+  'a logged top set cannot weigh nothing'
 );
 
 
--- 6 --------------------------------------------------------------------------
--- Deleting the plan DOES take its weeks and sessions: they have no meaning
--- without it, unlike a workout, which is the lifter's own record.
-delete from lift.plans where id = 'p1';
+-- ---------------------------------------------------------------------------
+-- Slots belong to their plan
+-- ---------------------------------------------------------------------------
 
-select is_empty(
-  $$select 1 from lift.plan_sessions where plan_id = 'p1'
-    union all
-    select 1 from lift.plan_weeks where plan_id = 'p1'$$,
-  'deleting a plan takes its weeks and sessions with it'
+select throws_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement)
+    values ('slot-5', 'no-such-plan',
+            'dddddddd-0000-0000-0000-000000000004',
+            'Upper', 9, 'triceps', 'Cable Tricep Pushdown')$$,
+  '23503',
+  null,
+  'a slot cannot belong to a plan that does not exist'
 );
 
+-- Replacing a plan takes its slots with it. Without this the next plan inherits
+-- movements from the one it replaced, which is the kind of bug that looks like
+-- the coach having strange opinions.
+delete from lift.plans where id = 'plan-1';
+select is(
+  (select count(*)::int from lift.plan_slots where plan_id = 'plan-1'),
+  0,
+  'deleting a plan takes its slots with it'
+);
 
 select * from finish();
 rollback;
