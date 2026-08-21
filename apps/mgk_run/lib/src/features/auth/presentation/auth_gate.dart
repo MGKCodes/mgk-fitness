@@ -157,9 +157,14 @@ class _SignedOutFlow extends StatefulWidget {
 }
 
 class _SignedOutFlowState extends State<_SignedOutFlow> {
-  /// Where in the signed-out flow we are. Creating an account goes through the
-  /// coach first; signing back into one goes straight to the form, because a
-  /// returning runner has met the coach already (ADR-0018).
+  /// Where in the signed-out flow we are.
+  ///
+  /// Creating a profile now happens **inside** the conversation, so [_Signed.intro]
+  /// is terminal on that path: it makes the account itself and `AuthGate` swaps
+  /// the subtree when the session lands. [_Signed.form] is reached only by a
+  /// returning runner saying they already have one, because somebody signing
+  /// back in wants a form their password manager recognises rather than a
+  /// conversation they have had before.
   _Signed _at = _Signed.welcome;
 
   /// What the intro conversation gathered, carried into the form and then into
@@ -198,15 +203,11 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
           setState(() => _at = _Signed.welcome);
         },
         child: IntroScreen(
+          auth: widget.auth,
           initial: _answers,
           requestPermission: widget.requestPermission ?? requestIntroPermission,
           onBack: () => setState(() => _at = _Signed.welcome),
-          onDone: (answers) {
-            setState(() {
-              _answers = answers;
-              _at = _Signed.form;
-            });
-          },
+          onSignUpIntent: widget.onSignUpIntent,
         ),
       );
     }

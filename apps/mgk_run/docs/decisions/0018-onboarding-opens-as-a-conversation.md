@@ -104,3 +104,44 @@ Reverse this if sign-up completion drops. Three exchanges before the form is
 three chances to leave, and the current arrangement is a bet that meeting the
 coach makes people *more* likely to finish, not less. If it does not, the
 conversation moves to after the form and becomes what it replaced.
+
+## Amendment, 2026-08-21 — there is no form
+
+**The title is now half wrong: the form does not come last, because there is no
+form.** The address and the password are asked in the conversation, one question
+at a time, and `IntroScreen` creates the profile itself.
+
+The handoff was the thing worth removing. A conversation that ends by pushing a
+form has not avoided the form; it has put one behind a curtain, and the runner
+meets it at the exact moment they were told the talking was over. Everything
+this ADR argued for — the coach is met by talking to it, nothing is asked cold,
+the last thing rather than the first — is more true without the handoff than
+with it, so this is the same decision carried further rather than a new one.
+
+Three things came with it and are worth naming, because each is a thing the form
+was doing for free:
+
+- **Autofill has to be asked for.** A password manager needs an `AutofillGroup`
+  spanning both questions, `newUsername` / `newPassword` hints, and a
+  `TextInput.finishAutofillContext()` on success. A form gets prompted to save
+  by default; a conversation gets nothing unless it says so, and silently losing
+  password managers on the one screen people use them would have been a worse
+  regression than the form was a problem.
+- **Validation is the coach talking.** A short password is refused here, in the
+  coach's voice, before the call is made — and the rule is stated a sentence
+  before it is asked for, because a coach that asks, waits, then rejects has
+  spent the trust the conversation just built.
+- **The backend's words never reach the screen.** A failure is a sentence and a
+  coarse code (`E-ACC-01`, `E-ACC-02`). Coarse on purpose: a finer set would
+  answer whether an address already has a profile, which is not something an
+  unauthenticated screen should tell a stranger.
+
+**Signing back in is still a form**, reached from the welcome screen, and should
+stay one. A returning runner is not learning what the app is — they want the
+screen their password manager recognises, and they have had this conversation.
+
+**Settings replays the conversation without its account steps.** `IntroScreen`
+takes a nullable `auth`; null runs the permissions and stops. Without that, a
+signed-in runner replaying the intro would be walked into making a second
+profile. The same seam is what a runner arriving from Lift will need — signed in
+already, but new to this app — which is unbuilt and named in the open items.

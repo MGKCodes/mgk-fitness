@@ -105,10 +105,12 @@ class _PermissionsSectionState extends State<PermissionsSection> {
   Future<void> _replayIntro() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        // No `auth`, so the conversation stops after the last permission
+        // instead of walking a signed-in runner into making a second profile.
         builder: (_) => IntroScreen(
           requestPermission: (p) => requestIntroPermission(p, health: _health),
           onBack: () => Navigator.of(context).maybePop(),
-          onDone: (_) => Navigator.of(context).maybePop(),
+          onFinished: () => Navigator.of(context).maybePop(),
         ),
       ),
     );

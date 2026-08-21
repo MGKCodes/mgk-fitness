@@ -57,8 +57,21 @@ enum IntroStep {
   /// rather than at the moment of first use.
   permissions,
 
-  /// The one form in the flow.
+  /// The address the profile is made against.
+  ///
+  /// This used to be the whole account step: the coach said its piece and
+  /// handed off to a form on a screen of its own. The handoff was the problem.
+  /// A conversation that ends by pushing a form has not avoided the form, it
+  /// has put one behind a curtain, and the runner meets it at the moment they
+  /// were told the talking was over.
   signUp,
+
+  /// The password, asked in the conversation like everything before it.
+  ///
+  /// Split from [signUp] rather than sharing a step because two fields at once
+  /// is a form, whatever it is dressed as. One question at a time is the only
+  /// thing making this a conversation.
+  password,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,10 +109,63 @@ String introPrompt(IntroStep step, {String? name}) => switch (step) {
   IntroStep.permissions =>
     name == null ? 'Nearly there.' : 'Nearly there, $name.',
   IntroStep.signUp =>
-    'Last thing. Set up an account so I know it is you, and your running '
+    'Last thing. Set up a profile so I know it is you, and your running '
         'history stays yours. The same $kPlatformName profile works in Lift '
-        'too.',
+        'too. What email should I use?',
+  IntroStep.password =>
+    'And a password. $kMinPasswordLength characters or more, which is the '
+        'only rule I have.',
 };
+
+/// The shortest password the backend will take.
+///
+/// Named here, and **said out loud before the password is asked for** rather
+/// than after one is refused. A coach that asks for something, waits, and then
+/// rejects it has spent the trust the conversation just built on a rule it
+/// could have mentioned a sentence earlier.
+const int kMinPasswordLength = 6;
+
+/// What the coach says when an address does not look like one.
+///
+/// Deliberately not "invalid email". It is a question, because the runner has
+/// almost certainly just mistyped and the screen is still a conversation.
+const String introBadEmail =
+    'That does not look quite like an email address. Mind checking it?';
+
+/// What the coach says when the password is too short.
+const String introShortPassword =
+    'A bit longer than that. $kMinPasswordLength characters is the minimum.';
+
+/// What the coach says when the profile was made but needs confirming first.
+///
+/// Not an error, and not phrased as one: the account exists, and the only
+/// thing left is a link in an inbox.
+const String introConfirmEmail =
+    'Nearly there. I have sent you an email to confirm the address, and then '
+    'you are in.';
+
+/// What the coach says when sign-up failed for a reason the runner cannot fix.
+///
+/// **The reason itself never reaches the screen.** A backend message is written
+/// for whoever is reading a log, not for somebody halfway through meeting an
+/// app, and this one arrives at the worst possible moment to be shown a stack
+/// of jargon. What the runner gets is a sentence in the coach's voice and a
+/// short code; what support gets, from a screenshot, is the code.
+///
+/// The codes are deliberately coarse. A finer set would say more than we want
+/// to tell somebody who is guessing at addresses: whether an account exists at
+/// all is not something an unauthenticated screen should be willing to answer.
+String introTrouble(String code) =>
+    'I could not set that up just now. Worth trying again in a moment. ($code)';
+
+/// Something between the app and the backend went wrong: no network, a refused
+/// connection, a timeout.
+const String kSignUpCodeUnreachable = 'E-ACC-01';
+
+/// The backend answered, and said no. Covers a rejected address, a password it
+/// will not take, and an address already in use, on purpose — see
+/// [introTrouble] for why the three are not told apart on screen.
+const String kSignUpCodeRefused = 'E-ACC-02';
 
 /// What to call the coach.
 ///
