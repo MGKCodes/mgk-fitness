@@ -202,6 +202,14 @@ abstract final class PlanShape {
     }
 
     // ---- a day between hits ---------------------------------------------
+    //
+    // Only when the two lists agree. A mismatch is already reported above, and
+    // walking `dayNames` by `weekdays.length` past that point is a RangeError
+    // rather than a violation — this crashed on a proposal that gave one day
+    // for a four-day week, which is exactly the malformed input this function
+    // exists to survive.
+    if (dayNames.length != plan.weekdays.length) return out;
+
     for (var i = 0; i < plan.weekdays.length; i++) {
       final j = (i + 1) % plan.weekdays.length;
       final gap = (plan.weekdays[j] - plan.weekdays[i] + 7) % 7;

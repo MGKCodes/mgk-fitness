@@ -66,6 +66,7 @@ import {
   shouldRegenerate,
   type StoredTurn,
 } from "./coach_memory.ts";
+import { Knowledge } from "./knowledge.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -469,6 +470,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     body.brief = brief;
     body.memory = memory.summary;
     body.history = memory.turns;
+  }
+
+  if (surfaceName === "lift_plan") {
+    // Same overwrite rule as lift_chat, for the same reason: guidance is prompt
+    // content, and prompt content a client supplies is prompt content a client
+    // controls. The training log comes from the database as the caller, so a
+    // plan is built from what somebody has actually lifted.
+    //
+    // The CATALOGUE is the one exception and stays client-supplied, because it
+    // lives in the app and this function has no copy. Forging it gains nothing:
+    // PlanShape checks every movement against the real catalogue app-side, so a
+    // plan built from invented names fails before it is shown. Worth moving to
+    // the same table as the knowledge eventually.
+    const [brief, guidance] = await Promise.all([
+      new LiftLog(supabaseUrl, anonKey).recent(authHeader),
+      new Knowledge(supabaseUrl, anonKey, authHeader).forApp("lift"),
+    ]);
+    body.brief = brief;
+    body.guidance = guidance;
+    body.memory = (await memoryStore!.read("lift", userId)).summary;
   }
 
   // 5. Spend tokens, then record what they cost. `record` runs for every
