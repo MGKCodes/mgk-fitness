@@ -84,13 +84,21 @@
 #     signing identities:
 #
 #       iOS certificates       the .p12 AND its password, reference name
-#                              `liftio_distribution`
+#                              `Lift MGKFitness Distribution`
 #       Provisioning profiles  the .mobileprovision, reference name
-#                              `liftio_app_store`
+#                              `Lift MGKFitness App Store`
 #
-#     Those names are what `lift-ios-release` references below, so a typo there
-#     fails the build with a profile that does not exist rather than one that
-#     does not match. Both come out of EAS, which still holds the private key
+#     **The reference name is an identifier, not a label.** It is what
+#     `lift-ios-release` looks the identity up by, and nothing in the Codemagic
+#     UI says so. A mismatch fails the build before a machine starts, listing
+#     the names it does have — which is at least a readable failure.
+#
+#     Lift's certificate is NOT the one Run and Frunt use. Codemagic holds
+#     `frunt_distribution` (Apple Distribution, June 2027) for those two and
+#     fetches their profiles automatically; Lift's is EAS's older certificate
+#     (March 2027), uploaded here because EAS holds the only copy of its
+#     private key. Moving Lift onto the June certificate would let it fetch
+#     like Run does — worth doing once a release is not riding on it. Both come out of EAS, which still holds the private key
 #     for the certificate it generated — `eas credentials -p ios` in the old
 #     Expo project, build profile `production`, then download credentials to
 #     credentials.json. That yields `dist-cert.p12` and its password.
@@ -493,10 +501,12 @@ workflows:
         # These are reference names in Codemagic ▸ Teams ▸ Code signing
         # identities, NOT files in this repo — setup note 6 above. Uploading
         # the pair once is the price of not depending on that fetch.
+        # Quoted because these are reference names typed into the Codemagic
+        # UI, not identifiers — spaces are legal in them and these have some.
         provisioning_profiles:
-          - liftio_app_store
+          - "Lift MGKFitness App Store"
         certificates:
-          - liftio_distribution
+          - "Lift MGKFitness Distribution"
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
