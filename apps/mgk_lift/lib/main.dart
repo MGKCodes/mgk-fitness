@@ -12,7 +12,9 @@ import 'src/features/planning/data/supabase_plan_store.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
-import 'src/features/settings/domain/unit_preferences.dart';
+import 'src/features/settings/data/local_unit_preferences.dart';
+import 'src/features/settings/data/supabase_unit_preferences.dart';
+import 'src/features/settings/data/unit_preferences_repository.dart';
 import 'src/features/stats/data/drift_session_history.dart';
 import 'src/features/sync/data/supabase_sync.dart';
 import 'src/features/tracking/data/drift_session_recorder.dart';
@@ -75,10 +77,16 @@ class MgkLiftApp extends StatelessWidget {
       home: LiftShell(
         recorder: db == null ? null : DriftSessionRecorder(db),
         history: db == null ? null : DriftSessionHistory(db),
-        // Units still live for the session only. `core.user_settings` is shared
-        // with Run and is the right home; wiring it is a small job that wants
-        // the account to exist first, which it now does.
-        units: InMemoryUnitPreferences(),
+        // Device first, account when it can answer. The account half is what
+        // makes units agree with Run; the device half is what makes them
+        // survive a launch at all, because tracking needs no sign-in and a
+        // free lifter would otherwise get the default every time.
+        units: UnitPreferencesRepository(
+          local: LocalUnitPreferences(),
+          remote: supabase == null
+              ? null
+              : SupabaseUnitPreferences(client: supabase),
+        ),
         // Photos live on the same on-device database, so they come and go with
         // it: no database means no camera entry point, rather than a screen
         // that cannot save what it takes.

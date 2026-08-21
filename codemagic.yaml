@@ -1,15 +1,19 @@
-# Codemagic CI/CD — Runio (see docs/decisions/0020-codemagic-is-the-build-path.md).
+# Codemagic CI/CD for the suite — Run and Lift
+# (see apps/mgk_run/docs/decisions/0020-codemagic-is-the-build-path.md).
 #
-# One manual-trigger workflow: iOS → TestFlight. Builds run on a macOS cloud
-# machine, so shipping never depends on having a Mac to hand — which matters
-# here, because this app is developed on Windows against an Android emulator
-# and its actual target has never been built locally.
+# Three manual-trigger workflows: Run → TestFlight, Lift → TestFlight, and
+# Lift → Play. The iOS pair runs on macOS cloud machines, so shipping never
+# depends on having a Mac to hand — which matters here, because both apps are
+# developed on Windows against an Android emulator and neither has ever been
+# built locally for its actual target. The Android one runs on Linux, because
+# nothing about it needs Xcode and the macOS instance costs several times more
+# per minute.
 #
-# **Two targets since ADR-0021**: iOS to TestFlight, Android to an artifact you
-# install or hand to Play. Android was previously excluded on the grounds that
-# it was a verification harness rather than a product — it is now a product, and
-# the recording layer carries a foreground service to make that true rather than
-# nominal.
+# **Run has no Android workflow, deliberately** (ADR-0001). Its Android build is
+# a verification harness for design work on Windows, not a product, and a
+# release pipeline would imply otherwise. That decision is Run's alone: Lift
+# ships to both stores as part of 2.0.0, which is why the asymmetry below is
+# intended rather than unfinished.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -28,10 +32,21 @@
 #     with App Manager covers signing AND the TestFlight upload, for every app
 #     in the team — already present as `frunt_asc`, which is what the workflow
 #     below references.
-#  3. Environment group `mgk_fitness_run_env` (Application settings ▸
+#  3a. Environment group `mgk_fitness_supabase` (Application settings ▸
 #     Environment variables, mark Secure) with:
 #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
 #       SUPABASE_PUBLISHABLE_KEY  the publishable (anon) key, NOT the service key
+#
+#     **Shared by every workflow in this file**, because ADR-0008 says there is
+#     one Supabase project for the suite. Both apps read exactly these two
+#     values, so a copy per app would mean a key rotation that silently half
+#     lands — one product fixed, the other still pointed at a dead key, and no
+#     build failure to say so. `AppConfig` treats missing values as "no server"
+#     rather than as an error, so the symptom would be an app that ships and
+#     cannot sign anybody in.
+#
+#  3b. Environment group `mgk_fitness_run_env`, same screen, for what only Run
+#     has:
 #       MAP_TILE_URL_TEMPLATE     optional. The tile server the privacy policy
 #                                 names. Without it the run map draws the route
 #                                 on charcoal with no basemap — which is what
@@ -42,9 +57,9 @@
 #                                 basemap with no attribution is a terms
 #                                 breach rather than a cosmetic omission. The
 #                                 build refuses the pair half-set.
-#     Nothing else belongs here. The OpenRouter key lives in Supabase secrets
-#     and never reaches the client (ADR-0007); a provider key in this group
-#     would be a provider key in the app bundle.
+#     Nothing else belongs in either group. The OpenRouter key lives in Supabase
+#     secrets and never reaches the client (ADR-0007); a provider key here would
+#     be a provider key in the app bundle.
 #  5. **An App Store distribution provisioning profile for
 #     `com.mgkcodes.fitness.run`.** developer.apple.com ▸ Certificates,
 #     Identifiers & Profiles ▸ Profiles ▸ + ▸ Distribution ▸ App Store Connect,
@@ -62,21 +77,28 @@
 #     the running one — and survives any rename, because the name customers
 #     see is CFBundleDisplayName and can change whenever you like. Required
 #     before any TestFlight upload will be accepted.
-#  8. **Android signing** (release builds only). Codemagic ▸ Code signing
-#     identities ▸ Android keystores ▸ upload a keystore with reference name
-#     `mgk_fitness_run_keystore`, then set its key alias and passwords there.
-#     Until that exists, `run-android-release` below produces a *debug-signed*
-#     APK, which installs on a device and on the emulator but cannot go to
-#     Play. That is deliberate: a build you can put on a phone today is worth
-#     more than a pipeline blocked on a keystore that does not exist yet.
 # ───────────────────────────────────────────────────────────────────────────
 
 # One workflow per app, all in this one file, because Codemagic reads exactly
 # one codemagic.yaml — the repository root's — and this repo builds more than
 # one product. Lift is a sibling of the block below, not a second file:
-# its own `working_directory: apps/mgk_lift`, its own bundle identifier
-# (com.mgkcodes.fitness.lift), its own environment group. Everything above this
-# line — the key, the signing setup, the macOS instance — is shared.
+# its own `working_directory: apps/mgk_lift`, its own bundle identifier, its own
+# environment group. Everything above this line — the key, the signing setup,
+# the macOS instance — is shared.
+#
+# **Lift's identifier does NOT follow the pattern above.** It is
+# `com.mgkcodes.liftio`, inherited from the app it replaces on an existing App
+# Store record, so do not copy Run's `com.mgkcodes.fitness.*` shape across. See
+# apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
+#
+# An earlier version of this comment claimed the inherited App ID meant the
+# provisioning profile came with it, so Run's first-build signing failure could
+# not repeat. **It repeated.** Lift's first build (2026-08-18, commit 7d758a2)
+# died with the identical message — "No matching profiles found for bundle
+# identifier com.mgkcodes.liftio and distribution type app_store". An App Store
+# record, an App ID and a distribution certificate are three things, and none of
+# them is a provisioning profile. EAS managed Liftio's signing and left nothing
+# behind that this pipeline can fetch.
 #
 # Worth adding when there are two: a `triggering.when.changeset.includes` on
 # each, so a commit that only touches Lift does not spend twenty minutes
@@ -118,17 +140,13 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.mgkcodes.fitness.run
       groups:
-        # Named for the suite, not the product, for the same reason the bundle
-        # id is: the app's name is not settled and this one does not need to
-        # care.
-        - mgk_fitness_run_env
-        # **Both groups, and the split is not obvious from here.** The Supabase
-        # credentials live in their own group in the Codemagic account; the map
-        # values live in the one above. A build attaching only one of them
-        # prepares the machine, installs SDKs, sets up signing, and then dies
-        # half a second into the config step on an empty SUPABASE_URL. These
-        # two are what the app cannot start without.
+        # The Supabase pair is shared with Lift — one project (ADR-0008), so one
+        # place to rotate a key.
         - mgk_fitness_supabase
+        # What only Run has: the basemap. Named for the suite, not the product,
+        # for the same reason the bundle id is — the app's name is not settled
+        # and this one does not need to care.
+        - mgk_fitness_run_env
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -159,7 +177,7 @@ workflows:
               v = (os.environ.get(name) or "").strip()
               if not v:
                   sys.exit(
-                      f"{name} is empty. Set it in the mgk_fitness_run_env "
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
                       "group, or the IPA ships unable to reach Supabase."
                   )
               return v
@@ -262,6 +280,252 @@ workflows:
         submit_to_testflight: true
         # submit_to_app_store: false   # flip on when ready for a store release
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # Lift — see docs/release-2.0.0.md for the release this feeds.
+  #
+  # ONE-TIME SETUP, beyond what Run already established:
+  #
+  #  1. **No environment group of its own.** `AppConfig` reads exactly the two
+  #     values already in `mgk_fitness_supabase` (setup 3a), so Lift references
+  #     that and nothing else — Run's map and dev-account variables have no
+  #     equivalent here, and an empty `mgk_fitness_lift_env` would only be a
+  #     place for a future secret to land without anyone deciding it should.
+  #     The OpenRouter key lives in Supabase secrets and never reaches the
+  #     client (ADR-0007).
+  #
+  #  2. **Nothing to create in App Store Connect.** The record exists — it is
+  #     Liftio, id 6759969740, shipping 1.4.0 today. This uploads 2.0.0 to the
+  #     same record, which is the entire point of ADR-0001.
+  #
+  #  3. **An App Store distribution provisioning profile for
+  #     `com.mgkcodes.liftio`.** developer.apple.com ▸ Certificates, Identifiers
+  #     & Profiles ▸ Profiles ▸ + ▸ Distribution ▸ App Store Connect, pick the
+  #     App ID and the existing Apple Distribution certificate. Nothing to
+  #     download — Codemagic fetches it through the API key.
+  #
+  #     Not optional and not inherited: the first build failed here, exactly as
+  #     Run's did. Note the failure lands during ENVIRONMENT SETUP, before any
+  #     script runs, because `ios_signing` below resolves at that point — so the
+  #     build reports no script output at all, which reads like a broken config
+  #     rather than a missing prerequisite.
+  #
+  #     Lift declares no entitlements and needs no capabilities — no Sign in
+  #     with Apple, no HealthKit, no push. Camera and photo library are
+  #     Info.plist usage strings, not App ID capabilities. So this profile does
+  #     not need regenerating unless that changes; a profile is a snapshot of
+  #     the App ID's capabilities at the moment it was made.
+  #
+  # The App Store Connect API key is NOT repeated: `frunt_asc` is issued to the
+  # team, not to an app, and the .p8 downloads exactly once.
+  # ─────────────────────────────────────────────────────────────────────────
+  lift-ios-release:
+    name: Lift — iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $CM_BUILD_DIR/apps/mgk_lift/ios/Pods
+    working_directory: apps/mgk_lift
+    integrations:
+      app_store_connect: frunt_asc
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        # Liftio's id, inherited rather than suite-named. See
+        # apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
+        bundle_identifier: com.mgkcodes.liftio
+      groups:
+        # The only group Lift needs. `AppConfig` reads exactly these two values,
+        # so there is no lift-specific group to create — an empty one would be a
+        # place for the next secret to go without saying so.
+        - mgk_fitness_supabase
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Generate config/app_config.json from secure vars
+        # Same JSON-serialiser approach as Run, and for the same reason: these
+        # values are pasted into a web form by a human, and Run's first build
+        # died on a trailing carriage return written verbatim into the middle of
+        # a JSON string. json.dumps escapes; a heredoc does not.
+        script: |
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          def need(name):
+              v = (os.environ.get(name) or "").strip()
+              if not v:
+                  sys.exit(
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
+                      "group, or the IPA ships unable to reach Supabase."
+                  )
+              return v
+
+          cfg = {
+              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+          }
+
+          out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_lift/config/app_config.json"
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(cfg, indent=2))
+          print(f"wrote {out} ({len(cfg)} keys)")
+          PY
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        # Drift's generated sources are gitignored, so this is not optional:
+        # without it the local database does not compile. Lift leans on drift
+        # harder than Run does — the whole training log is local-first.
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Build IPA
+        # --dart-define-from-file is load-bearing: AppConfig reads both values
+        # from it, so an IPA built without this flag launches and then cannot
+        # sign anybody in.
+        script: |
+          flutter build ipa --release \
+            --build-number=$(($PROJECT_BUILD_NUMBER)) \
+            --dart-define-from-file=config/app_config.json \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      # Both patterns, as Run learned the hard way: these globs resolve relative
+      # to `working_directory`, a pattern that matches nothing is ignored
+      # silently, and the failure mode is a green build with an empty TestFlight.
+      - build/ios/ipa/*.ipa
+      - apps/mgk_lift/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false   # flip on when ready for a store release
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Lift — Android. The suite's first Android release of anything.
+  #
+  # Runs on Linux, not macOS: nothing here needs Xcode, and the macOS instance
+  # costs several times as much per minute. The iOS workflow above is on mac
+  # because it has to be, not because the suite standardises on it.
+  #
+  # ONE-TIME SETUP:
+  #
+  #  1. **An upload keystore**, created once and backed up somewhere that is not
+  #     this repository:
+  #
+  #       keytool -genkey -v -keystore liftio-upload.jks \
+  #         -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+  #
+  #     Upload it to Codemagic ▸ Team settings ▸ Code signing identities ▸
+  #     Android keystores, referenced below as `liftio_upload`. Codemagic then
+  #     exports CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS /
+  #     CM_KEY_PASSWORD, which `app/build.gradle.kts` reads in preference to a
+  #     local `key.properties`. The build REFUSES to fall back to the debug key
+  #     on a CI machine, because Play accepts that upload and rejects it after.
+  #
+  #  2. **A Google Play service account.** Play Console ▸ Setup ▸ API access ▸
+  #     link a Google Cloud project, create a service account, grant it Release
+  #     manager. Download the JSON and paste it into a secure variable named
+  #     GCLOUD_SERVICE_ACCOUNT_CREDENTIALS in the group below.
+  #
+  #  3. **Upload the first bundle BY HAND.** The Play Developer API cannot
+  #     create an app listing — it can only add a release to one that exists —
+  #     so the very first `.aab` has to go through the Play Console UI, along
+  #     with the store listing, content rating and Data safety form. Every build
+  #     after that publishes through this workflow. Set `publishing` aside until
+  #     then: with no listing, the upload step fails after a successful build,
+  #     which reads like a broken pipeline rather than a missing prerequisite.
+  #
+  # There is no App Store Connect integration here and no `ios_signing`; an
+  # Android build needs neither, and naming them would imply Apple credentials
+  # were involved in shipping to Google.
+  # ─────────────────────────────────────────────────────────────────────────
+  lift-android-release:
+    name: Lift — Android internal
+    instance_type: linux_x2
+    max_build_duration: 45
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        # Gradle's cache, which is most of a cold Android build's minutes.
+        # Not build/, for the same reason the iOS workflow does not cache it:
+        # stale generated output is how a green build ships yesterday's code.
+        - $HOME/.gradle/caches
+    working_directory: apps/mgk_lift
+    environment:
+      android_signing:
+        - liftio_upload
+      groups:
+        # The only group Lift needs. `AppConfig` reads exactly these two values,
+        # so there is no lift-specific group to create — an empty one would be a
+        # place for the next secret to go without saying so.
+        - mgk_fitness_supabase
+      flutter: stable
+    scripts:
+      - name: Generate config/app_config.json from secure vars
+        # Identical to the iOS workflow's, deliberately: the app reads the same
+        # two values whichever store it came from, and a second copy that drifts
+        # would mean one platform quietly shipping a different backend.
+        script: |
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          def need(name):
+              v = (os.environ.get(name) or "").strip()
+              if not v:
+                  sys.exit(
+                      f"{name} is empty. Set it in the mgk_fitness_supabase "
+                      "group, or the bundle ships unable to reach Supabase."
+                  )
+              return v
+
+          cfg = {
+              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+          }
+
+          out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_lift/config/app_config.json"
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(cfg, indent=2))
+          print(f"wrote {out} ({len(cfg)} keys)")
+          PY
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Build AAB
+        # An app bundle, not an APK: Play has required .aab for new apps since
+        # 2021, and this listing does not exist yet, so there is no legacy APK
+        # path available even as a fallback.
+        #
+        # --build-number drives versionCode, which Play requires to increase on
+        # every upload and never repeat. Same source as the iOS build number so
+        # the two stores cannot disagree about which build is newer.
+        script: |
+          flutter build appbundle --release \
+            --build-number=$(($PROJECT_BUILD_NUMBER)) \
+            --dart-define-from-file=config/app_config.json
+    artifacts:
+      - build/app/outputs/bundle/**/*.aab
+      - apps/mgk_lift/build/app/outputs/bundle/**/*.aab
+      # The mapping file. Without it Play shows obfuscated stack traces and
+      # there is no way to symbolicate a crash after the fact.
+      - build/app/outputs/mapping/**/mapping.txt
+      - apps/mgk_lift/build/app/outputs/mapping/**/mapping.txt
+    # Commented until the listing exists — see setup step 3. Uncommenting before
+    # the first manual upload turns a working build into a failing one.
+    # publishing:
+    #   google_play:
+    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    #     track: internal
+    #     submit_as_draft: true
+
   run-android-release:
     name: Run — Android
     # Linux, not macOS: an Android build has no reason to run on a Mac instance
@@ -276,15 +540,17 @@ workflows:
     working_directory: apps/mgk_run
     environment:
       groups:
-        # The same groups as iOS, and there are two of them.
+        # The same two groups as iOS, and the split is deliberate: the Supabase
+        # values belong to the suite (ADR-0008 — one project for both apps), the
+        # map values belong to Run.
         #
-        # This comment used to argue against splitting them — that keeping the
-        # Supabase keys and the map values together avoided maintaining them in
-        # two places and eventually getting them out of step. They were split in
-        # the Codemagic account anyway, and this file was not told, so they got
-        # out of step in precisely the way predicted: the next build failed on
-        # an empty SUPABASE_URL. The argument was right and the file still has
-        # to match the account.
+        # This comment used to argue against splitting them, on the grounds that
+        # one group avoided maintaining the same keys in two places. That was
+        # answered rather than ignored: the values are not duplicated, they are
+        # each in exactly one group, and Lift references the Supabase one
+        # instead of keeping a copy. Attach only the second and the build
+        # installs SDKs, sets up signing, and dies half a second into the config
+        # step on an empty SUPABASE_URL.
         - mgk_fitness_run_env
         - mgk_fitness_supabase
       flutter: stable

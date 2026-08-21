@@ -11,6 +11,61 @@ if the answer is no.
 
 Small fixes — a bug, a doc gap, a broken example — just send them.
 
+## Branching
+
+`main` is the trunk. There is no long-lived `develop`: releases are tagged
+builds, so a permanent second trunk would buy staging this project doesn't need
+and cost a merge hop on every change.
+
+Branches are named for the **lane** they own — the top-level tree the work
+belongs to:
+
+```
+lift/rest-timer          apps/mgk_lift/
+run/split-drift          apps/mgk_run/
+ui/glass-tokens          packages/mgk_ui/
+db/session-schema        supabase/
+```
+
+The lane is deliberately coarser than the commit scope. `feat(coach)` and
+`feat(db)` are both `lift/` branches, because coaching and the drift schema
+both live inside `apps/mgk_lift` and can't be worked on independently anyway.
+
+### Two lanes at once
+
+Two apps sharing a design system means two people — or two agents — working at
+the same time is the normal case, not the exception. What makes it safe is a
+worktree, not a branch:
+
+```sh
+git worktree add .claude/worktrees/lift lift/rest-timer
+```
+
+A branch on its own isn't enough. Both checkouts would still share one working
+tree and one index, so `git add -A`, `git stash` or `git reset --hard` from
+either side reaches into the other's uncommitted work and there is no undo. A
+worktree gives each lane its own index and its own files.
+
+A fresh worktree is a fresh checkout: `.dart_tool/` and `*.g.dart` are ignored,
+so pub resolution and generated code don't come with it. Run Setup inside the
+worktree before `flutter analyze` there means anything.
+
+### Shared packages
+
+`mgk_ui` and `mgk_units` are imported by both apps, so they are the one place
+lanes overlap. The line that matters is additive versus mutative:
+
+- **Adding** — a new widget in a new file, plus one export in `mgk_ui.dart` —
+  is fine from any lane. Nothing that already exists changes behaviour, and the
+  only shared surface is a one-line append that merges cleanly.
+- **Changing** an existing widget's API, or any colour, spacing or motion
+  token, changes both apps underneath whoever else is working. That goes on a
+  `ui/` branch, merges to `main` first, and the app lanes rebase onto it.
+
+This isn't ceremony about small edits. A token change is a two-app change
+whether or not the second app is open in front of you, and the person who finds
+out is the one whose running app just started rendering wrong.
+
 ## Sign your commits (DCO)
 
 Every commit needs a [Developer Certificate of

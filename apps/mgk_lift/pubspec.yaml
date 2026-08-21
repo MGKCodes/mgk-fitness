@@ -2,10 +2,17 @@ name: mgk_lift
 description: "Lifting: workouts, progress photos, and the AI coach. Part of the MGKCodes fitness suite."
 publish_to: none
 
-# Liftio's App Store build is at 1.4.0. This is a rewrite, not a continuation:
-# it starts at 0.1.0 and only claims a 1.x number when it can replace what is
-# shipped today.
-version: 0.1.0+1
+# Liftio's App Store build is at 1.4.0, and this replaces it rather than
+# launching beside it — same listing, same bundle id, so the version has to
+# exceed what is shipped. A rewrite that changes language, storage and business
+# model is what a major bump is for.
+#
+# It sat at 0.1.0 until it could make that claim. See
+# [docs/decisions/0001-liftio-is-replaced-not-relaunched.md].
+#
+# Build numbers must strictly increase within the 2.0.0 train; App Store Connect
+# rejects a re-used one.
+version: 2.0.0+1
 
 environment:
   sdk: ^3.11.5
@@ -42,6 +49,16 @@ dependencies:
   path_provider: ^2.1.6
   path: ^1.9.1
   image_picker: ^1.2.3
+
+  # Display preferences that must survive a launch without needing an account.
+  # Already in the lockfile via supabase_flutter, which uses it to persist the
+  # session, so declaring it directly adds nothing to the bundle — it stops the
+  # app depending on a transitive it never asked for.
+  #
+  # Deliberately NOT drift. The training log is relational and belongs in a
+  # database; "which unit do you read weights in" is one key, needs no migration
+  # when it changes, and must be readable before the database has opened.
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

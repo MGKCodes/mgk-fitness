@@ -1,4 +1,4 @@
-package com.mgkcodes.fitness.lift
+package com.mgkcodes.liftio
 
 import io.flutter.embedding.android.FlutterActivity
 

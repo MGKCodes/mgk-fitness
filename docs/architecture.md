@@ -162,8 +162,14 @@ strings are cheap to change.
 
 Exactly one naming decision is expensive later: **bundle IDs**, because they
 cannot be changed on an existing App Store record. Hence
-`com.mgkcodes.fitness.run` and `com.mgkcodes.fitness.lift` — "fitness" is
-descriptive, not brand, so it survives whatever the suite ends up called.
+`com.mgkcodes.fitness.run` — "fitness" is descriptive, not brand, so it survives
+whatever the suite ends up called.
+
+**Lift is the exception, and for the same reason.** It is
+`com.mgkcodes.liftio`, inherited from the app it replaces on an App Store record
+that already exists. The convention protects a product with no shipped
+predecessor; Lift has one, and the record is worth more than the tidier string.
+See [ADR-0001](../apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md).
 
 Everything else stays brand-neutral for the same reason: Dart packages
 (`mgk_run`, `mgk_ui`) and Postgres schemas (`core`, `lift`, `run`, `coach`).

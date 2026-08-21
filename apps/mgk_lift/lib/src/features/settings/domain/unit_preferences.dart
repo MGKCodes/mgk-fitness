@@ -47,6 +47,20 @@ abstract interface class UnitPreferencesStore {
   Future<void> save(UnitPreferences prefs);
 }
 
+/// One place units can be kept, which is allowed to have no opinion.
+///
+/// The difference from [UnitPreferencesStore] is the whole point: a store must
+/// produce units for something to display, so it has to turn "I don't know" into
+/// the default. A *source* may answer null, and callers composing several
+/// sources need that — otherwise an unreachable server and a lifter who genuinely
+/// uses kilograms are the same value, and the only safe move is to ignore both.
+abstract interface class UnitPreferencesSource {
+  /// What this source holds, or null when it holds nothing and cannot say.
+  Future<UnitPreferences?> fetch();
+
+  Future<void> save(UnitPreferences prefs);
+}
+
 /// Keeps the choice for the session only. What tests and previews want, and the
 /// fallback when there is no backend wired up.
 class InMemoryUnitPreferences implements UnitPreferencesStore {

@@ -41,14 +41,19 @@ Most of the backend is already built and tested by the time screens arrive here:
 
 ## A note on the bundle ID
 
-This app is `com.mgkcodes.fitness.lift`. The live app is
-`com.mgkcodes.liftio`.
+This app is `com.mgkcodes.liftio` — the live app's id, inherited rather than
+replaced, so **this ships as an update to the existing App Store record** and
+existing installs receive it as 2.0.0.
 
-Bundle IDs cannot be changed on an existing App Store record, so **this is a new
-record, not an update.** The existing listing gets retired rather than upgraded,
-and existing installs will not receive this as an upgrade. That was a deliberate
-call taken while the user count was small enough to absorb it — the alternative
-was carrying a name that predates the suite forever.
+It was `com.mgkcodes.fitness.lift` until 2026-08-17, matching the suite
+convention that `mgk_run` still follows. That would have created a second
+listing beside Liftio: no upgrade path, no inherited reviews, and the App Store
+id already published on `getliftio.com` pointing at a retired app.
+
+Bundle IDs still cannot be changed on an existing App Store record — which is
+precisely why the id moved this direction and not the other. The reasoning, and
+the earlier decision it reverses, is in
+[docs/decisions/0001-liftio-is-replaced-not-relaunched.md](docs/decisions/0001-liftio-is-replaced-not-relaunched.md).
 
 ## Running it
 
