@@ -256,6 +256,7 @@ workflows:
         script: |
           python3 - <<'PY'
           import json, os, pathlib, sys
+          from urllib.parse import urlparse
 
           # Built with a JSON serialiser rather than a heredoc, because the
           # values are pasted into a web form by a human and arrive with
@@ -272,6 +273,22 @@ workflows:
                   sys.exit(
                       f"{name} is empty. Set it in the mgk_fitness_supabase "
                       "group, or the IPA ships unable to reach Supabase."
+                  )
+              return v
+
+          # Non-empty is not the same as usable. Build 9 shipped SUPABASE_URL as
+          # a bare host with no scheme, so Uri.parse found no host and every
+          # request died with "No host specified in URI ...". The app booted,
+          # onboarding rendered, and the first sign-up was where it surfaced.
+          # need() strips whitespace and rejects empty; this rejects the rest.
+          def need_https(name):
+              v = need(name)
+              parsed = urlparse(v)
+              if parsed.scheme != "https" or not parsed.netloc:
+                  sys.exit(
+                      f"{name} must be a full https URL with a host, e.g. "
+                      f"https://<project-ref>.supabase.co - got {v!r}. Fix it "
+                      "in the mgk_fitness_supabase group."
                   )
               return v
 
@@ -312,7 +329,7 @@ workflows:
               )
 
           cfg = {
-              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_URL": need_https("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
               "MAP_TILE_URL_TEMPLATE": tiles,
               "MAP_ATTRIBUTION": attribution,
@@ -446,6 +463,7 @@ workflows:
         script: |
           python3 - <<'PY'
           import json, os, pathlib, sys
+          from urllib.parse import urlparse
 
           def need(name):
               v = (os.environ.get(name) or "").strip()
@@ -456,8 +474,24 @@ workflows:
                   )
               return v
 
+          # Non-empty is not the same as usable. Build 9 shipped SUPABASE_URL as
+          # a bare host with no scheme, so Uri.parse found no host and every
+          # request died with "No host specified in URI ...". The app booted,
+          # onboarding rendered, and the first sign-up was where it surfaced.
+          # need() strips whitespace and rejects empty; this rejects the rest.
+          def need_https(name):
+              v = need(name)
+              parsed = urlparse(v)
+              if parsed.scheme != "https" or not parsed.netloc:
+                  sys.exit(
+                      f"{name} must be a full https URL with a host, e.g. "
+                      f"https://<project-ref>.supabase.co - got {v!r}. Fix it "
+                      "in the mgk_fitness_supabase group."
+                  )
+              return v
+
           cfg = {
-              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_URL": need_https("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
           }
 
@@ -568,6 +602,7 @@ workflows:
         script: |
           python3 - <<'PY'
           import json, os, pathlib, sys
+          from urllib.parse import urlparse
 
           def need(name):
               v = (os.environ.get(name) or "").strip()
@@ -578,8 +613,24 @@ workflows:
                   )
               return v
 
+          # Non-empty is not the same as usable. Build 9 shipped SUPABASE_URL as
+          # a bare host with no scheme, so Uri.parse found no host and every
+          # request died with "No host specified in URI ...". The app booted,
+          # onboarding rendered, and the first sign-up was where it surfaced.
+          # need() strips whitespace and rejects empty; this rejects the rest.
+          def need_https(name):
+              v = need(name)
+              parsed = urlparse(v)
+              if parsed.scheme != "https" or not parsed.netloc:
+                  sys.exit(
+                      f"{name} must be a full https URL with a host, e.g. "
+                      f"https://<project-ref>.supabase.co - got {v!r}. Fix it "
+                      "in the mgk_fitness_supabase group."
+                  )
+              return v
+
           cfg = {
-              "SUPABASE_URL": need("SUPABASE_URL"),
+              "SUPABASE_URL": need_https("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
           }
 
