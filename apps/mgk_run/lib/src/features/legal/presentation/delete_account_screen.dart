@@ -235,7 +235,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           result.loginRetainedForSiblingApp
               ? 'Every run, route point, split, and your runner profile have '
                     'been removed from our servers. Your login is still active '
-                    'because Liftio is using it — email hello@mgkcodes.com if '
+                    'because Lift is using it — email hello@mgkcodes.com if '
                     'you want that removed too.'
               : 'Every run, route point, split, and your runner profile have '
                     'been removed from our servers, along with your login.',

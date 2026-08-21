@@ -126,7 +126,7 @@ void main() {
     );
   });
 
-  testWidgets('the settings screen says the choice is shared with Liftio', (
+  testWidgets('the settings screen says the choice is shared with Lift', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -140,6 +140,6 @@ void main() {
     );
 
     // One account across both apps — surprising if unexplained.
-    expect(find.textContaining('Liftio'), findsOneWidget);
+    expect(find.textContaining('Lift'), findsOneWidget);
   });
 }

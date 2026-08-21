@@ -401,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 AppSpacing.sm,
               ),
               child: Text(
-                'Shared with Liftio — changing it here changes it there too. '
+                'Shared with Lift — changing it here changes it there too. '
                 'Your runs are always stored in metric.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textTertiary,
