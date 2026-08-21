@@ -1,3 +1,4 @@
+import 'src/core/brand.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -59,7 +60,7 @@ class RunioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = database;
     return MaterialApp(
-      title: 'Runio',
+      title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: isConfigured && db != null

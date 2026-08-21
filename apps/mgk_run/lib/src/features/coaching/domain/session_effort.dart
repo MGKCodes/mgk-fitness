@@ -161,7 +161,7 @@ SessionEffort effortFor(SessionKind kind) => switch (kind) {
         'are running tomorrow.',
     purpose:
         'Strength work keeps you durable enough to keep running, which is what '
-        'actually gets you to the start line. Runio schedules it; what is in '
+        'actually gets you to the start line. The app schedules it; what is in '
         'it is up to you.',
     rpeLow: 0,
     rpeHigh: 0,

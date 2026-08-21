@@ -1,4 +1,4 @@
-/// The conversation Runio opens with, **before there is an account**.
+/// The conversation the app opens with, **before there is an account**.
 ///
 /// ## Why a script and not the model
 ///
@@ -24,12 +24,14 @@
 ///
 /// ## Why it exists at all
 ///
-/// So that the first thing a runner does in Runio is **talk to the coach**. The
-/// coach is then never something to be discovered later; it is how the app
+/// So that the first thing a runner does in the app is **talk to the coach**.
+/// The coach is then never something to be discovered later; it is how the app
 /// works, learned by doing it once. It also means a runner who opens the app and
 /// leaves has cost nothing, where an LLM-from-turn-one intake bills for every
 /// bounce.
 library;
+
+import '../../../core/brand.dart';
 
 /// The steps of the first conversation, in order.
 enum IntroStep {
@@ -87,7 +89,7 @@ enum IntroStep {
 /// line that breaks the model's own stated voice is a seam the runner can see.
 /// `intro_script_test.dart` holds this.
 String introPrompt(IntroStep step, {String? name}) => switch (step) {
-  IntroStep.greeting => 'Hey there. Thanks for downloading Runio.',
+  IntroStep.greeting => 'Hey there. Thanks for downloading $kProductName.',
   IntroStep.name => 'First things first. What should I call you?',
   // The permissions speak for themselves — see `introPermissions`, which
   // carries a line per permission rather than one for the step.
@@ -95,7 +97,8 @@ String introPrompt(IntroStep step, {String? name}) => switch (step) {
     name == null ? 'Nearly there.' : 'Nearly there, $name.',
   IntroStep.signUp =>
     'Last thing. Set up an account so I know it is you, and your running '
-        'history stays yours. One login covers Runio and Liftio.',
+        'history stays yours. The same $kPlatformName profile works in Lift '
+        'too.',
 };
 
 /// What to call the coach.

@@ -1,3 +1,4 @@
+import 'src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -71,7 +72,7 @@ class MgkLiftApp extends StatelessWidget {
     final supabase = client;
 
     return MaterialApp(
-      title: 'Lift',
+      title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: LiftShell(

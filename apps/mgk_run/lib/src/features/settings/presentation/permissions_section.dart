@@ -1,3 +1,4 @@
+import '../../../core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -186,10 +187,10 @@ class _PermissionsSectionState extends State<PermissionsSection> {
             // App-Store-safe deep link to it at all.
             child: Text(
               'iOS only asks once. To be asked again, or to turn either off:\n\n'
-              '• Location — Settings › Runio › Location\n'
-              '• Health — Settings › Privacy & Security › Health › Runio, or '
-              'the Health app › Sharing › Apps › Runio\n\n'
-              'Deleting and reinstalling Runio resets both prompts, and takes '
+              '• Location — Settings › $kAppName › Location\n'
+              '• Health — Settings › Privacy & Security › Health › $kAppName, '
+              'or the Health app › Sharing › Apps › $kAppName\n\n'
+              'Deleting and reinstalling the app resets both prompts, and takes '
               'any runs that have not been backed up with it.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textTertiary,

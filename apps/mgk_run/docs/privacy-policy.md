@@ -1,4 +1,4 @@
-# Privacy Policy — Runio
+# Privacy Policy — MGKFitness: Run
 
 > **Draft — legally unreviewed.** The data flows below are accurate as built and
 > were checked against the running system, not written from intent. What is still
@@ -18,7 +18,7 @@ hello@mgkcodes.com
 
 ## Summary
 
-Runio is a running coach. Your runs and plans live on your phone; backing them
+MGKFitness: Run is a running coach. Your runs and plans live on your phone; backing
 up to our servers is optional and off until you ask. To coach you it sends your
 training context, and what you say in the conversation, to an AI provider. We do
 not sell your data. You can delete everything at any time.
@@ -92,7 +92,7 @@ We do not sell personal data, and we do not use it for third-party advertising.
 ## Where data is stored
 
 Your runs, plans and conversations live **on your device**, which is the copy
-Runio actually works from — the app records, reads and plans with no network at
+the app actually works from — it records, reads and plans with no network at
 all. Data in transit is encrypted (HTTPS/TLS).
 
 ## Backing up is optional, and off until you ask
@@ -116,9 +116,9 @@ The AI requests described above are a separate thing and happen either way: the
 coach cannot answer without sending your training context, so using the coach
 sends it whether or not backup is on.
 
-Our Supabase project is shared with our lifting app **Liftio** (see Your rights
-below). Runio's own data lives in its own schema, separated per user by
-row-level security.
+Our Supabase project is shared with our lifting app **MGKFitness: Lift** (see
+Your rights below). This app's own data lives in its own schema, separated per
+user by row-level security.
 
 ## Your rights
 
@@ -127,7 +127,7 @@ consent. There are two in-app controls, and they do different things:
 
 - **Back up my data → off** withdraws consent to storing your data on our
   servers and deletes what is already there. Your phone keeps its copy.
-- **Delete account** removes **every** Runio record we hold for you — runs,
+- **Delete account** removes **every** record we hold for you — runs,
   route points, splits, plans, sessions, your runner profile, your coach
   conversations and your usage records. It is written to sweep every table keyed
   to your account rather than a list someone has to remember to update, so a
@@ -135,11 +135,11 @@ consent. There are two in-app controls, and they do different things:
 
 To exercise any right, use those controls or contact hello@mgkcodes.com.
 
-Your Runio login is a **shared MGKCodes fitness account**, also usable by our
-lifting app **Liftio**. If the account holds no Liftio data, deletion removes the
-login itself. If it does, we delete all of your Runio data and keep only the
-login, so your Liftio data survives — email hello@mgkcodes.com to remove the
-login as well.
+Your login is your **MGKFitness profile**, shared with our lifting app
+**MGKFitness: Lift**. If the profile holds no data from Lift, deletion removes
+the profile itself. If it does, we delete everything this app holds and keep only
+the profile, so your data in Lift survives — email hello@mgkcodes.com to remove
+the profile as well.
 
 ## Retention
 
@@ -155,7 +155,7 @@ obligations. Two things expire on their own without you asking:
 
 ## Children
 
-Runio is not directed at children under 16 and we do not knowingly collect their
+The app is not directed at children under 16 and we do not knowingly collect
 data.
 
 ## Changes

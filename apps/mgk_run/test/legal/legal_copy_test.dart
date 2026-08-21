@@ -174,8 +174,8 @@ void main() {
 
     test('promises the deletion path the app actually implements', () {
       expect(app, contains('delete'));
-      expect(app, contains('Liftio'));
-      expect(doc, contains('Liftio'));
+      expect(app, contains('Lift'));
+      expect(doc, contains('Lift'));
       expect(app, contains('hello@mgkcodes.com'));
       expect(doc, contains('hello@mgkcodes.com'));
     });

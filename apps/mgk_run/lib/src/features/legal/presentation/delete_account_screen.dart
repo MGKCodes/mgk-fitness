@@ -134,7 +134,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
         const SizedBox(height: 20),
         Text(
-          'Deleting removes all of your Runio data from our servers — not '
+          'Deleting removes all of your data from our servers — not '
           'hidden, actually deleted:',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: AppColors.textSecondary,
@@ -144,7 +144,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         const SizedBox(height: 14),
         const _DeletedItem('Every run, with its route points and splits'),
         const _DeletedItem('Your runner profile and generated plans'),
-        const _DeletedItem('The date of birth and weight you gave Runio'),
+        const _DeletedItem('The date of birth and weight you gave the app'),
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(16),
@@ -161,10 +161,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your login is a shared MGKCodes fitness account, so Liftio can '
-                'use it too. If it holds no Liftio data we delete the login as '
-                'well. If it does, we delete everything Runio holds and keep '
-                'only the login, so your Liftio data survives.',
+                'Your login is your $kPlatformName profile, so Lift can use '
+                'it too. If it holds no data from Lift we delete the profile '
+                'as well. If it does, we delete everything this app holds '
+                'and keep only the profile, so your data in Lift survives.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.5,
@@ -229,7 +229,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           color: AppColors.success,
         ),
         const SizedBox(height: 16),
-        Text('Your Runio data is deleted', style: theme.textTheme.titleLarge),
+        Text('Your data is deleted', style: theme.textTheme.titleLarge),
         const SizedBox(height: 12),
         Text(
           result.loginRetainedForSiblingApp

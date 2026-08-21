@@ -38,7 +38,7 @@ class FakeCoachService
       case 0:
         return const IntakeTurn(
           reply:
-              "Hi, I'm your Runio coach. What are you training for, and when "
+              "Hi, I'm your coach. What are you training for, and when "
               'is it?',
           extracted: IntakeSlots(),
         );

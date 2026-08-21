@@ -1,3 +1,4 @@
+import '../../../core/brand.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
@@ -55,7 +56,7 @@ class LegalScreen extends StatelessWidget {
             SettingsTile(
               icon: Icons.medical_information_outlined,
               title: 'Medical disclaimer',
-              subtitle: 'Runio is not medical advice',
+              subtitle: '$kProductName is not medical advice',
               onTap: () => _push(context, const MedicalDisclaimerScreen()),
             ),
             SettingsTile(

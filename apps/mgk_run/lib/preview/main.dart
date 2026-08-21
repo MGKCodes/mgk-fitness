@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1381,7 +1382,7 @@ class PreviewApp extends StatelessWidget {
         (definedPushed.isNotEmpty ? definedPushed : params['pushed']) != '0';
 
     return MaterialApp(
-      title: 'Runio Preview',
+      title: '$kProductName preview',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       // A multi-segment initialRoute makes Flutter build one route per segment,
@@ -1423,7 +1424,7 @@ class _Index extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Runio · screen preview')),
+      appBar: AppBar(title: Text('$kProductName · screen preview')),
       body: ListView(
         children: <Widget>[
           const Padding(
