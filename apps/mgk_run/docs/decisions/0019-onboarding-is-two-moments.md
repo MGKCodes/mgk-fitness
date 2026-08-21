@@ -121,6 +121,53 @@ on. It is recorded here because the notice in
 long after it was done, which is a more expensive kind of staleness than a
 missing note: it sent a reader looking for a blocker that did not exist.
 
+## Amendment, 2026-08-21 — signed in is not onboarded
+
+This ADR assumed the two were the same, and while sign-up and onboarding were
+one moment they were. They are not any more, and the assumption had already
+started costing: an existing session survives an app update, so the
+conversation simply did not run.
+
+The case that matters is not that one. It is a runner who makes their profile
+in **Lift** and then installs this app. They arrive signed in, having never met
+this coach, and under a shared profile that is the growth path rather than an
+edge case. They would have landed in the shell — and then met the location
+dialog on top of the first run they tried to start, because
+`GeolocatorLocationSource` asks at recording time when it has not been granted.
+That is the exact scenario the section above rejects, reached by a door this
+ADR did not know it had left open.
+
+So the gate no longer asks "signed out?". Each step is asked whether it is
+already satisfied, because the steps do not share a lifetime:
+
+| Step | Belongs to | Skipped for an arrival from Lift |
+|---|---|---|
+| Meet the coach | this app | No — a different coach, never met |
+| Name | the profile, shared | **Yes** — already on it |
+| Permissions | **the install** | No — and a new phone needs them again |
+| Profile | the profile, shared | **Yes** — they have one |
+
+Two rules hold this together:
+
+- **Only "met the coach" is persisted**, in auth metadata, namespaced per app
+  (`run_intro_seen`). Metadata for the same reasons the name uses it: it travels
+  with the account, needs no migration, and arrives with the session. Namespaced
+  because the profile is shared and meeting a coach is not.
+- **Permission state is never persisted.** The OS is the only honest source and
+  it can be revoked behind the app's back, so it is asked every time. The
+  requester already reads the current state before prompting, so an
+  already-granted permission answers itself without a dialog.
+
+Note what this does not do: nothing is backfilled. Every existing account will
+see the conversation once more, on next launch. That is deliberate rather than
+overlooked — the app is not released, the accounts are testers', and inventing a
+backfill heuristic for a userbase of a handful is more code and more ways to be
+wrong than the thing it saves.
+
+Still open: Settings replays the intro to re-ask permissions and has no `auth`
+to hand, so it still asks for a name the profile already knows. Harmless, and
+the same skip applies once the section is given one.
+
 ## The obvious alternative
 
 **Keep one flow and put the paywall in front of all of it.** Simpler to build,

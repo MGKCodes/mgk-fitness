@@ -99,6 +99,34 @@ class AuthRepository {
     );
   }
 
+  /// The metadata key recording that this app's coach has been met.
+  ///
+  /// **Namespaced by app on purpose.** One profile spans the suite, so a single
+  /// `intro_seen` would mean a runner who onboarded in Lift arrives here having
+  /// apparently already met a coach they have never spoken to. The profile is
+  /// shared; meeting a coach is not.
+  static const String _metCoachKey = 'run_intro_seen';
+
+  /// Whether this runner has been through this app's opening conversation.
+  ///
+  /// In metadata rather than a table for the same reasons the name is: it
+  /// travels with the account, needs no migration, and arrives with the session
+  /// on every device, so a reinstall or a second phone does not replay it.
+  ///
+  /// **Permissions are deliberately not recorded here.** They are per install
+  /// and the OS can revoke them behind the app's back, so the only honest
+  /// source is the OS, asked every time. This records one fact: the conversation
+  /// happened.
+  bool get hasMetCoach =>
+      _client.auth.currentUser?.userMetadata?[_metCoachKey] == true;
+
+  /// Records that the conversation happened.
+  Future<void> markCoachMet() async {
+    await _client.auth.updateUser(
+      UserAttributes(data: <String, dynamic>{_metCoachKey: true}),
+    );
+  }
+
   Future<void> signOut() => _client.auth.signOut();
 
   /// Ensures a row in the shared `public.profiles` table for the signed-in

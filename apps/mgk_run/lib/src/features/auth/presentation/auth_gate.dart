@@ -90,6 +90,21 @@ class _AuthGateState extends State<AuthGate> {
   /// the fact would otherwise be gone by the time the shell exists.
   bool _justSignedUp = false;
 
+  /// Set the moment the signed-in conversation finishes, so the shell arrives
+  /// without waiting on the round trip that records it.
+  bool _metCoachThisSession = false;
+
+  Future<void> _coachMet(AuthRepository auth) async {
+    setState(() => _metCoachThisSession = true);
+    // Deliberately not awaited before the shell appears, and deliberately not
+    // allowed to fail loudly: the conversation has happened either way, and a
+    // dropped connection must not strand somebody on an intro they have just
+    // finished. The cost of losing it is that it is asked once more.
+    try {
+      await auth.markCoachMet();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = widget.auth;
@@ -105,6 +120,30 @@ class _AuthGateState extends State<AuthGate> {
             devAccounts: accounts,
             onSignUpIntent: (v) => _justSignedUp = v,
             requestPermission: widget.requestPermission,
+          );
+        }
+        // **Signed in is not the same as onboarded.**
+        //
+        // This used to read the two as one thing, because for as long as
+        // signing up and onboarding were the same moment they were. They are
+        // not any more. A runner who made their profile in Lift and then
+        // installed this app arrives here signed in and having never met this
+        // coach - and under a shared profile that is the growth path, not an
+        // edge case. They would have landed in the shell, and met the location
+        // dialog on top of the first run they tried to start, which is the
+        // exact thing ADR-0019 asked for permissions during onboarding to
+        // avoid.
+        //
+        // No account steps: they have a profile. Just the coach, and the
+        // permissions this install has never been asked for.
+        if (!_justSignedUp && !_metCoachThisSession && !auth.hasMetCoach) {
+          return IntroScreen(
+            // What the profile already knows. The name is shared across the
+            // suite, so somebody arriving from Lift is not asked for it twice.
+            initial: IntroAnswers(name: auth.currentName),
+            requestPermission:
+                widget.requestPermission ?? requestIntroPermission,
+            onFinished: () => _coachMet(auth),
           );
         }
         return HomeShell(

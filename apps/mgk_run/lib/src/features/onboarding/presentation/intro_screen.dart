@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -104,6 +106,15 @@ class _IntroScreenState extends State<IntroScreen> {
       : IntroStep.greeting;
   late String? _answeredName = widget.initial.name;
 
+  /// The name was known before a word was said.
+  ///
+  /// True for a runner arriving from Lift: the name lives on the shared
+  /// profile, so asking for it again would be this whole bug in miniature -
+  /// treating a fact that belongs to the profile as one that belongs to this
+  /// app. The step is skipped, and the transcript does not pretend to have
+  /// asked.
+  late final bool _knewName = widget.initial.name != null;
+
   /// Which permission is on screen. Only meaningful at [IntroStep.permissions].
   int _permissionIndex = 0;
 
@@ -160,17 +171,21 @@ class _IntroScreenState extends State<IntroScreen> {
     final given = _name.text.trim();
     setState(() {
       _answeredName = given.isEmpty ? null : given;
-      // A build with nothing to ask for skips the step rather than rendering an
-      // empty one. Not hypothetical: the list is one entry today and the whole
-      // point of it being a list is that entries come and go.
-      _step = introPermissions.isEmpty
-          ? IntroStep.signUp
-          : IntroStep.permissions;
-      if (introPermissions.isEmpty && widget.auth == null) {
-        _step = IntroStep.name;
-      }
     });
-    _toEnd();
+    _afterName();
+  }
+
+  /// Where the conversation goes once the name is settled, however it was.
+  void _afterName() {
+    if (introPermissions.isNotEmpty) {
+      _advance(IntroStep.permissions);
+      return;
+    }
+    // A build with nothing to ask for skips the step rather than rendering an
+    // empty one. Not hypothetical: the list is one entry today and the whole
+    // point of it being a list is that entries come and go. `_afterPermission`
+    // is what knows where an intro with no account steps ends.
+    _afterPermission();
   }
 
   /// **Deliberately permissive.** The only address this rejects is one that
@@ -224,6 +239,11 @@ class _IntroScreenState extends State<IntroScreen> {
         name: _answeredName ?? '',
       );
       if (signedIn) {
+        // They have just had the conversation, so record it - otherwise the
+        // gate above would show it to them again on their next phone. Not
+        // awaited and not allowed to throw: the profile exists, and a failure
+        // here must not be reported as a failure to create it.
+        unawaited(widget.auth!.markCoachMet().catchError((_) {}));
         // Tells iOS and Android the credentials that were just used are worth
         // offering to save. Without it a password manager sees two fields in a
         // conversation, no submitted form, and nothing to prompt about - which
@@ -344,9 +364,9 @@ class _IntroScreenState extends State<IntroScreen> {
                               Said(introPrompt(IntroStep.greeting)),
                               Said(introWhoIAm),
                               Said(introHowItWorks),
-                              if (reached >= IntroStep.name.index)
+                              if (!_knewName && reached >= IntroStep.name.index)
                                 Said(introPrompt(IntroStep.name)),
-                              if (_answeredName != null)
+                              if (!_knewName && _answeredName != null)
                                 Replied(_answeredName!),
                               if (reached >=
                                   IntroStep.permissions.index) ...<Widget>[
@@ -427,7 +447,7 @@ class _IntroScreenState extends State<IntroScreen> {
   Widget _answer(ThemeData theme) => switch (_step) {
     IntroStep.greeting => PrimaryButton(
       label: 'Sounds good',
-      onPressed: () => _advance(IntroStep.name),
+      onPressed: _knewName ? _afterName : () => _advance(IntroStep.name),
     ),
 
     IntroStep.name => Row(
