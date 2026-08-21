@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -15,7 +16,7 @@ void main() {
       MaterialApp(home: AuthGate(auth: FakeAuthRepository())),
     );
 
-    expect(find.text('RUNIO'), findsOneWidget);
+    expect(find.text(kAppName.toUpperCase()), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
   });
 
@@ -32,7 +33,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Developer sign-in'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Runner A'));
+    // Scroll it into view first. The screen gained the shared-profile
+    // explainer under its heading, which is enough to push the developer
+    // buttons below an 800x600 test viewport - they are reachable in the app,
+    // which scrolls, and a tap on an off-screen widget is a warning rather
+    // than a failure, so without this the failure surfaces two lines later as
+    // a missing Home.
+    final quickSignIn = find.widgetWithText(OutlinedButton, 'Runner A');
+    await tester.ensureVisible(quickSignIn);
+    await tester.pumpAndSettle();
+    await tester.tap(quickSignIn);
     await tester.pumpAndSettle();
 
     // The fake flipped to signed-in and emitted; the real AuthGate swapped in
