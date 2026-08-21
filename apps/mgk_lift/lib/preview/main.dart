@@ -80,6 +80,18 @@ class PreviewApp extends StatelessWidget {
         recorder: FakeSessionRecorder(_openSession()),
         history: FakeHistory(sampleLog(previewNow)),
       ),
+      // **The only entry that renders the coach mark.** Every other shell entry
+      // omits `coach`, and the shell draws the mark only when there is one — so
+      // until this existed the harness could not show the mark at all, and no
+      // screenshot taken from it could tell a shell that has one from a shell
+      // that does not. Same class of blind spot as the back arrow in
+      // docs/navigation.md, found the same way: by trying to photograph it.
+      'track-coach': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        hasCoachNote: true,
+      ),
       'plan': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),

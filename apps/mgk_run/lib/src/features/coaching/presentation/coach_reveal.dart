@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import '../domain/coach_note.dart';
-import 'coach_button.dart';
 
 /// How long the reveal takes: arrive, type, hold, retract.
 ///

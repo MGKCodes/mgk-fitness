@@ -1,8 +1,24 @@
+/// The coach mark: the way into the conversation, floating over whatever the
+/// person is reading.
+///
+/// **Lives here because both apps have a coach.** It was built in Runio and
+/// stayed there, and Lift grew its own — a 56px `GlassSurface` circle — which
+/// contradicted this one on every point Runio had reasoned out: glass over a
+/// flat ground (a no-op by `GlassSurface`'s own rule), a circle bottom-right
+/// (Material's signature), and a size nothing else agreed with. Two marks, one
+/// coach, and the considered one was the one not shared.
+///
+/// Principle 9 in docs/design.md, arriving from the other direction: the rule
+/// did not live in one screen, it lived in one *app*, and the next app missed
+/// it just the same.
+library;
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import 'package:mgk_ui/mgk_ui.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 
 /// The mark at rest. Shared with `CoachReveal`, which retracts to exactly this.
 const double kCoachMarkSize = 44;

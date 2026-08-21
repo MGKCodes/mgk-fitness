@@ -9,7 +9,6 @@ import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
-import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../coaching/presentation/week_ribbon.dart';
 import 'training_charts.dart';

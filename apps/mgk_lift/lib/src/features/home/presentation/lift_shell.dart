@@ -157,9 +157,12 @@ class _LiftShellState extends State<LiftShell> {
   /// Vertical room the floating mark occupies, handed to the surfaces through
   /// MediaQuery so their SafeArea absorbs it. Only applied when there is a mark.
   ///
-  /// Its height plus the gap beneath it — a compact pill, since the mark stopped
-  /// being full-width.
-  static const double _coachMarkReserve = 64;
+  /// **Derived, not typed in.** It was 64 — the old 56px circle plus its gap —
+  /// and stayed 64 when the mark changed size, which is how a reserve and the
+  /// thing it reserves for drift apart. `kCoachMarkExtent` already includes the
+  /// overhang of the unread dot, so this is that plus the inset the mark is
+  /// positioned at, and it follows the mark from now on.
+  static const double _coachMarkReserve = kCoachMarkExtent + AppSpacing.lg;
 
   /// Held at the shell rather than on a surface, because Track logs in these
   /// units and Profile reports in them — one load, so the two cannot disagree.
@@ -356,7 +359,7 @@ class _LiftShellState extends State<LiftShell> {
             Positioned(
               right: AppSpacing.lg,
               bottom: AppSpacing.lg,
-              child: CoachMark(
+              child: CoachButton(
                 hasUnread: widget.hasCoachNote,
                 onTap: _openCoach,
               ),
