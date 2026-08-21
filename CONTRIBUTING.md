@@ -59,12 +59,27 @@ lanes overlap. The line that matters is additive versus mutative:
   is fine from any lane. Nothing that already exists changes behaviour, and the
   only shared surface is a one-line append that merges cleanly.
 - **Changing** an existing widget's API, or any colour, spacing or motion
-  token, changes both apps underneath whoever else is working. That goes on a
-  `ui/` branch, merges to `main` first, and the app lanes rebase onto it.
+  token, changes both apps underneath whoever else is working. Do it anyway
+  where the work calls for it — most of the good design-system changes are
+  found while building a real screen, and a rule that sends every one of them
+  to a separate branch means the shared layer only improves when somebody sits
+  down to improve it in the abstract, which is when it stops improving.
 
-This isn't ceremony about small edits. A token change is a two-app change
-whether or not the second app is open in front of you, and the person who finds
-out is the one whose running app just started rendering wrong.
+  What is not optional is finishing it: **run the other app's suite against the
+  result before merging, and say in the PR what will look different over
+  there.** A `ui/` branch merged to `main` first is still the cleaner route for
+  a change large enough to review on its own, and it stays available — it is
+  just not the toll on every token.
+
+A token change is a two-app change whether or not the second app is open in
+front of you, and the person who finds out is the one whose running app just
+started rendering wrong. Running their tests is how you find out first.
+
+Worked example: the run lane changed `HeroNumeral`, `PressScale`, `AppCard`,
+`PaceBandMeter`, `MgkPageTransitions` and the button font token in one branch.
+All six were right, and Liftio inherited a font correction it had never asked
+for. What made that safe was `flutter test apps/mgk_lift` before the merge, not
+the branch it happened on.
 
 ## Sign your commits (DCO)
 
@@ -104,9 +119,18 @@ A change is done when:
 - If it changes the schema: `supabase db reset` replays cleanly,
   `supabase test db` passes, and `supabase db diff --linked` reports nothing.
 - If it changes a decision: the relevant ADR is updated **in the same PR**.
+- If someone using the app would notice: a line in that app's `CHANGELOG.md`,
+  under `[Unreleased]`, **in the same PR**.
 
-That last one matters more than it looks. A decision record that lags the code
-is worse than no decision record, because people trust it.
+The last two matter more than they look. A decision record that lags the code is
+worse than no decision record, because people trust it. And a changelog is the
+only part of this repo written for somebody who will never read the commits —
+the reason it is here at all is that this project is public and AGPL, and
+"notable changes" is what a stranger gets instead of your git log.
+
+The test for whether a change earns a line is not how hard it was. It is whether
+a person using the app would notice. A refactor with no behaviour change earns
+nothing; a two-character fix that stops the pace freezing earns a line.
 
 ## Setup
 
