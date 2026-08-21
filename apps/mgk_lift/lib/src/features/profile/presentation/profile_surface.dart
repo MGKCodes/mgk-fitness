@@ -208,6 +208,7 @@ class _HeadlineStats extends StatelessWidget {
                 child: StatBlock(
                   label: 'Volume',
                   value: compactVolume(stats.totalVolume, massUnit),
+                  shrinkToFit: true,
                 ),
               ),
               Expanded(
@@ -222,6 +223,7 @@ class _HeadlineStats extends StatelessWidget {
                 child: StatBlock(
                   label: 'Time',
                   value: _compactDuration(stats.totalTime),
+                  shrinkToFit: true,
                 ),
               ),
               Expanded(

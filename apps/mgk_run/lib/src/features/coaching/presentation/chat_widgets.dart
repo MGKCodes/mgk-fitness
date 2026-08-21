@@ -366,7 +366,7 @@ class _Actions extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          TextButton(onPressed: onDecline, child: const Text('Not this time')),
+          AppTextButton(label: 'Not this time', onPressed: onDecline),
         ],
       ),
     ],

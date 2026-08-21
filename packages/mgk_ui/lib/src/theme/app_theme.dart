@@ -81,7 +81,16 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          // The family is spelled out because a ButtonStyle's textStyle is
+          // handed to Material as the label's *whole* style rather than merged
+          // over the text theme — omit it and `fontFamily` resolves to null,
+          // so every button label silently renders in SF Pro or Roboto while
+          // the rest of the screen is Inter.
+          textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
         ),
       ),
       // Matches the filled button's metrics exactly, so the two can occupy the
@@ -97,7 +106,16 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          // The family is spelled out because a ButtonStyle's textStyle is
+          // handed to Material as the label's *whole* style rather than merged
+          // over the text theme — omit it and `fontFamily` resolves to null,
+          // so every button label silently renders in SF Pro or Roboto while
+          // the rest of the screen is Inter.
+          textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

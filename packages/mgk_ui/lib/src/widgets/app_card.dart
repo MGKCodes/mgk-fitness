@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/press_scale.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 
@@ -39,7 +40,7 @@ class AppCard extends StatelessWidget {
     final radius = borderRadius ?? AppRadius.cardAll;
     final content = Padding(padding: padding, child: child);
 
-    return Material(
+    final surface = Material(
       color: color ?? AppColors.surface,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
@@ -47,5 +48,18 @@ class AppCard extends StatelessWidget {
           ? content
           : InkWell(onTap: onTap, borderRadius: radius, child: content),
     );
+
+    if (onTap == null) return surface;
+
+    // A tappable card gets the same acknowledgement the primary button gets:
+    // it settles under the finger and ticks. [PressScale] only listens — it
+    // never enters the gesture arena — so the InkWell above still owns the tap
+    // and keeps its semantics and its tap target.
+    //
+    // The ripple stays underneath deliberately. It is nearly invisible on these
+    // surfaces (see PressScale's own note on why a spreading grey circle is the
+    // wrong answer here), but removing it would take the platform's own
+    // accessibility affordance with it for a feel this already replaces.
+    return PressScale(child: surface);
   }
 }

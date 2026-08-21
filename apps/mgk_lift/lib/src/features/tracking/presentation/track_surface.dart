@@ -371,6 +371,8 @@ class _RecentStrip extends StatelessWidget {
             child: StatBlock(
               label: 'last session',
               value: _ago(finished.first.startedAt, now),
+              // 'a month ago' in a third of a phone's width.
+              shrinkToFit: true,
             ),
           ),
       ],

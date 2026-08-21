@@ -203,9 +203,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onFieldSubmitted: (v) => Navigator.of(dialogContext).pop(v),
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Cancel',
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(draft),
@@ -233,9 +233,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'Your runs stay on this device. Sign back in to sync them.',
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Stay signed in',
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Stay signed in'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),

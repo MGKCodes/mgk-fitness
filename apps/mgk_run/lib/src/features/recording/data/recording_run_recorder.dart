@@ -84,6 +84,9 @@ class RecordingRunRecorder implements RunRecorder {
   /// after resuming is an anchor rather than the far end of a long segment.
   RunPoint? _lastMeasured;
   RunPoint? _lastFix;
+
+  /// When the newest fix arrived — see [RunRecorder.sinceLastFix].
+  DateTime? _lastFixAt;
   double _distanceM = 0;
 
   /// Time not counted so far, and when the current not-counting began.
@@ -113,6 +116,16 @@ class RecordingRunRecorder implements RunRecorder {
 
   @override
   RunPoint? get lastFix => _lastFix;
+
+  @override
+  Duration? get sinceLastFix {
+    final at = _lastFixAt;
+    if (at == null) return null;
+    final age = _now().difference(at);
+    // A fix timestamped fractionally ahead of the clock is a rounding artefact,
+    // not time travel; report it as fresh rather than negative.
+    return age.isNegative ? Duration.zero : age;
+  }
 
   /// Time on the run's clock: wall time since the start, minus anything the
   /// runner explicitly paused.
@@ -209,6 +222,7 @@ class RecordingRunRecorder implements RunRecorder {
     _seq = 0;
     _lastMeasured = null;
     _lastFix = null;
+    _lastFixAt = null;
     _distanceM = 0;
     _pausedTotal = Duration.zero;
     _notCountingSince = null;
@@ -278,6 +292,7 @@ class RecordingRunRecorder implements RunRecorder {
     // A fix arriving is proof location is working, whatever went wrong before.
     _setProblem(null);
     _lastFix = fix;
+    _lastFixAt = _now();
 
     // Nothing between here and the write below may decide not to persist. A
     // fix that reached this point is going on disk: that is rule 1, and the

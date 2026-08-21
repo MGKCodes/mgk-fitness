@@ -45,6 +45,9 @@ class FakeRunRecorder implements RunRecorder {
   RecorderStatus _status = RecorderStatus.idle;
   RecorderProblem? _problem;
   RunPoint? _lastFix;
+
+  /// When the newest fix arrived — see [RunRecorder.sinceLastFix].
+  DateTime? _lastFixAt;
   Timer? _timer;
   Timer? _acquireTimer;
   int _index = 0;
@@ -73,6 +76,16 @@ class FakeRunRecorder implements RunRecorder {
 
   @override
   RunPoint? get lastFix => _lastFix;
+
+  @override
+  Duration? get sinceLastFix {
+    final at = _lastFixAt;
+    if (at == null) return null;
+    final age = _now().difference(at);
+    // A fix timestamped fractionally ahead of the clock is a rounding artefact,
+    // not time travel; report it as fresh rather than negative.
+    return age.isNegative ? Duration.zero : age;
+  }
 
   @override
   Duration get elapsed {
@@ -115,6 +128,7 @@ class FakeRunRecorder implements RunRecorder {
       }
       final fix = _trace[_index++];
       _lastFix = fix;
+      _lastFixAt = _now();
       _points.add(fix);
     });
   }
@@ -159,32 +173,108 @@ class FakeRunRecorder implements RunRecorder {
   }
 }
 
+/// Metres between two nearby coordinates, flat-earth style.
+///
+/// Equirectangular rather than haversine on purpose: over a few hundred metres
+/// the difference is millimetres, and this is fake data being laid out, not a
+/// measurement being taken. The recorder's own distances go through
+/// `route_metrics.dart`.
+double _metersBetween(double lat1, double lng1, double lat2, double lng2) {
+  const double metersPerDegree = 111320;
+  final double dy = (lat2 - lat1) * metersPerDegree;
+  final double dx =
+      (lng2 - lng1) * metersPerDegree * math.cos(lat1 * math.pi / 180);
+  return math.sqrt(dx * dx + dy * dy);
+}
+
 /// A demo run around a park. Shared by the fake recorder and the map preview.
 ///
 /// It's a loop, but a deliberately *wobbly* one — the radius is perturbed and
 /// each fix jittered, so it reads like a real run following streets rather than
 /// a perfect circle. This is fake data; real GPS traces come from the recorder.
-List<RunPoint> demoRunTrace() {
-  const baseLat = 51.5450;
-  const baseLng = -0.1500;
-  const radius = 0.0026;
-  final lngScale = 1 / math.cos(baseLat * math.pi / 180);
-  final start = DateTime(2026, 1, 1, 8);
-  final points = <RunPoint>[];
-  for (var i = 0; i < 440; i++) {
-    final t = i * 0.0143; // ~one full loop over the run
-    final r =
+///
+/// [pacePerKm] asks for a run at a chosen pace. The default loop averages
+/// ~9:32/km over its whole length, and nearer 8:45 across the opening quarter
+/// the plates actually show — either way outside every band the coach
+/// prescribes: fine for judging a layout, useless for judging the band, because
+/// a screen driven by it says PICK IT UP at every distance and can never render
+/// ON TARGET or EASE OFF.
+///
+/// **A paced trace is resampled, not scaled.** Scaling the radius was the
+/// obvious approach and it is wrong: the radius is modulated by two sine terms,
+/// so the loop's speed varies around it and there is no single number to scale.
+/// A constant measured off the first quarter of the loop ran ~50 s/km fast
+/// against the whole of it. Instead the shape is walked at a fine step and a fix
+/// is laid down every time the required arc length has been covered, so the run
+/// happens at the asked pace *everywhere* rather than on average.
+///
+/// The per-fix jitter is dropped when a pace is asked for. At ~2 m amplitude
+/// against a ~7 m spacing it is a third of the distance between fixes, which is
+/// precisely what makes a pace unpredictable — and an unpredictable pace is the
+/// one thing a paced trace must not have. The radius wobble stays, so the route
+/// still bends like streets.
+List<RunPoint> demoRunTrace({Duration? pacePerKm}) {
+  const double baseLat = 51.5450;
+  const double baseLng = -0.1500;
+  const double radius = 0.0026;
+  const int count = 440;
+  final double lngScale = 1 / math.cos(baseLat * math.pi / 180);
+  final DateTime start = DateTime(2026, 1, 1, 8);
+
+  /// The loop's shape at [t] radians around it.
+  (double, double) shapeAt(double t) {
+    final double r =
         radius * (1 + 0.28 * math.sin(t * 2) + 0.12 * math.sin(t * 5 + 0.7));
-    points.add(
-      RunPoint(
-        latitude: baseLat + r * math.sin(t) + 0.00002 * math.sin(i * 1.7),
-        longitude:
-            baseLng + lngScale * r * math.cos(t) + 0.00002 * math.cos(i * 2.3),
-        accuracyMeters: 5,
-        altitudeMeters: 40,
-        timestamp: start.add(Duration(seconds: i * 3)),
-      ),
-    );
+    return (baseLat + r * math.sin(t), baseLng + lngScale * r * math.cos(t));
   }
+
+  RunPoint fixAt(double lat, double lng, int i) => RunPoint(
+    latitude: lat,
+    longitude: lng,
+    accuracyMeters: 5,
+    altitudeMeters: 40,
+    timestamp: start.add(Duration(seconds: i * 3)),
+  );
+
+  final List<RunPoint> points = <RunPoint>[];
+
+  if (pacePerKm == null) {
+    for (int i = 0; i < count; i++) {
+      final double t = i * 0.0143; // ~one full loop over the run
+      final (double lat, double lng) = shapeAt(t);
+      points.add(
+        fixAt(
+          lat + 0.00002 * math.sin(i * 1.7),
+          lng + 0.00002 * math.cos(i * 2.3),
+          i,
+        ),
+      );
+    }
+    return points;
+  }
+
+  // Fixes are three seconds apart, so the ground each one must cover follows
+  // directly from the pace asked for.
+  final double metersPerPoint = 3000 / pacePerKm.inSeconds;
+
+  double t = 0;
+  (double, double) here = shapeAt(t);
+  points.add(fixAt(here.$1, here.$2, 0));
+
+  double carried = 0;
+  // Bounded so a pathological pace cannot spin forever; 40 laps is far past
+  // anything the harness asks for.
+  const double tLimit = 2 * math.pi * 40;
+  while (points.length < count && t < tLimit) {
+    t += 0.0001;
+    final (double, double) next = shapeAt(t);
+    carried += _metersBetween(here.$1, here.$2, next.$1, next.$2);
+    here = next;
+    if (carried >= metersPerPoint) {
+      carried -= metersPerPoint;
+      points.add(fixAt(here.$1, here.$2, points.length));
+    }
+  }
+
   return points;
 }

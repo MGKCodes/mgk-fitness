@@ -557,7 +557,14 @@ class _Header extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: StatBlock(label: 'Elapsed', value: _clock(elapsed)),
+                child: StatBlock(
+                  label: 'Elapsed',
+                  value: _clock(elapsed),
+                  // Crosses an hour and gains two characters. A Text in a
+                  // bounded Expanded clips silently, so the session would
+                  // simply appear to lose its hours.
+                  shrinkToFit: true,
+                ),
               ),
               Expanded(
                 child: StatBlock(
@@ -565,6 +572,7 @@ class _Header extends StatelessWidget {
                   value: volumeKg == 0
                       ? '—'
                       : Mass.kilograms(volumeKg).label(massUnit),
+                  shrinkToFit: true,
                 ),
               ),
               Expanded(

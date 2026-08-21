@@ -62,19 +62,31 @@ class ShapeQuestionScreen extends StatelessWidget {
                 minHeight:
                     constraints.maxHeight - AppSpacing.lg - AppSpacing.xl,
               ),
+              // Arrives, rather than being painted in one frame — but does
+              // not make anybody wait.
+              //
+              // SequencedReveal was tried here first, to match how the coach
+              // speaks on the intro screen, and it is the wrong instrument. The
+              // intro is a monologue somebody reads; this is a question they
+              // have to answer, and holding its four answers back behind a
+              // timed beat is friction dressed as pacing. Entrance staggers the
+              // arrival and gates nothing.
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Said(shapeQuestion(name: name)),
+                  Entrance(child: Said(shapeQuestion(name: name))),
                   const SizedBox(height: AppSpacing.md),
-                  for (final option in shapeOptions)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: ChoiceCard(
-                        label: option.label,
-                        detail: option.detail,
-                        onTap: () => onChosen(option.shape),
+                  for (final (i, option) in shapeOptions.indexed)
+                    Entrance(
+                      index: i + 1,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: ChoiceCard(
+                          label: option.label,
+                          detail: option.detail,
+                          onTap: () => onChosen(option.shape),
+                        ),
                       ),
                     ),
                 ],

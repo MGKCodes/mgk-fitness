@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
@@ -61,10 +63,10 @@ class RunSummaryScreen extends StatelessWidget {
             title: const Text('Run summary'),
             actions: <Widget>[
               if (onEdit != null)
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: onEdit,
+                AppIconButton(
+                  icon: Icons.edit_outlined,
                   tooltip: 'Edit run',
+                  onPressed: onEdit,
                 ),
             ],
           ),
@@ -103,34 +105,56 @@ class RunSummaryScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
             sliver: SliverList(
               delegate: SliverChildListDelegate(<Widget>[
-                // Without a route there is nothing to lay the headline over, so
-                // it sits inline on the base instead.
+                // **The one screen in the app that has earned an entrance.**
+                //
+                // It arrives the instant a run ends, at the one moment somebody
+                // is certainly looking at the phone rather than glancing down
+                // at it, and every figure on it is a fact they just went and
+                // made. Landing it fully formed in a single frame throws that
+                // away. The order is the order they matter in: what you did,
+                // then the numbers, then what the coach makes of them, then the
+                // splits behind it.
+                //
+                // Entrance plays once and self-disables under reduced motion,
+                // so this is choreography rather than something to sit through.
                 if (!summary.hasRoute) ...<Widget>[
-                  _Headline(summary: summary, unit: unit, theme: theme),
+                  Entrance(
+                    child: _Headline(
+                      summary: summary,
+                      unit: unit,
+                      theme: theme,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
-                _StatGrid(tiles: _tiles()),
+                Entrance(index: 1, child: _StatGrid(tiles: _tiles())),
                 // The numbers first — that is what the screen is for — then the
                 // coach's read of them, above the splits a pacing note refers
                 // to.
                 if (note != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.xxl),
-                  _RunNoteCard(note: note),
+                  Entrance(index: 2, child: _RunNoteCard(note: note)),
                 ],
                 if (summary.splits.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 32),
-                  Text(
-                    'SPLITS',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                      letterSpacing: 3,
+                  Entrance(
+                    index: 3,
+                    child: Text(
+                      'SPLITS',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 3,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  SplitList(
-                    splits: summary.splits,
-                    unit: unit,
-                    showHeartRate: true,
+                  Entrance(
+                    index: 4,
+                    child: SplitList(
+                      splits: summary.splits,
+                      unit: unit,
+                      showHeartRate: true,
+                    ),
                   ),
                 ],
                 // Only when there is somewhere to go. A summary opened from the
@@ -140,7 +164,19 @@ class RunSummaryScreen extends StatelessWidget {
                 // way it hides [onEdit].
                 if (onDone != null) ...<Widget>[
                   const SizedBox(height: 32),
-                  FilledButton(onPressed: onDone, child: const Text('Done')),
+                  // Arrives last, and commits when it goes: closing a finished
+                  // run is the end of the thing the run was, so it is felt
+                  // rather than merely acted on.
+                  Entrance(
+                    index: 5,
+                    child: PrimaryButton(
+                      label: 'Done',
+                      onPressed: () {
+                        unawaited(AppHaptics.commit());
+                        onDone!();
+                      },
+                    ),
+                  ),
                 ],
               ]),
             ),

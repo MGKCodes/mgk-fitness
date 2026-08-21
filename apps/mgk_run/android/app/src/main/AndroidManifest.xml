@@ -5,6 +5,36 @@
     <!-- Supabase sync and map tiles. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!--
+      Recording survives the screen locking (ADR-0021).
+
+      Android stops delivering location to a backgrounded app, and does it
+      SILENTLY: no error, no exception, the fixes just stop while the screen
+      still says "Recording" and the average pace inflates against a frozen
+      distance. A foreground service is the only way to keep a run recording,
+      and geolocator_android already declares it with
+      foregroundServiceType="location" — these are the permissions it needs.
+
+      FOREGROUND_SERVICE_LOCATION is the typed permission Android 14 requires
+      in addition to the untyped one; POST_NOTIFICATIONS is what lets the
+      service's notification actually appear from Android 13; WAKE_LOCK keeps
+      fixes arriving rather than being delivered in a burst when the device
+      next wakes.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!--
+      ACCESS_BACKGROUND_LOCATION is deliberately NOT requested. A foreground
+      service of type `location`, started while the app is in the foreground —
+      which it always is, since a run begins with a tap — keeps receiving
+      location without it. Asking for it would trigger a Play Store review and
+      show the runner a far more alarming dialog, to buy a capability this app
+      does not use.
+    -->
+
     <application
         android:label="Runio"
         android:name="${applicationName}"

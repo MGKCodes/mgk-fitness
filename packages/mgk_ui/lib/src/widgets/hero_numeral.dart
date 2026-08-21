@@ -27,6 +27,8 @@ class HeroNumeral extends StatelessWidget {
     this.format = _twoPlaces,
     this.animate = true,
     this.size = 112,
+    this.weight = FontWeight.w100,
+    this.letterSpacing = -2,
   });
 
   /// The eyebrow: `DISTANCE`, `TOTAL`.
@@ -50,19 +52,83 @@ class HeroNumeral extends StatelessWidget {
   /// screen is for.
   final double size;
 
+  /// How heavy the numeral is drawn.
+  ///
+  /// All eight Inter faces ship with the package, so every step here is a real
+  /// cut rather than a synthetic one. Thin is the README's default and reads as
+  /// premium at 112pt on a flat ground, but it does not survive being read at
+  /// arm's length while moving: the in-run screen sets `w300`, picked off a
+  /// side-by-side plate (`?screen=hero-weights`) as the lightest cut that still
+  /// holds outdoors. Treat this default as the showcase value, not the
+  /// legibility one.
+  final FontWeight weight;
+
+  /// Tracking. Negative tightens.
+  final double letterSpacing;
+
   static String _twoPlaces(double value) => value.toStringAsFixed(2);
+
+  /// Digits keep tabular figures; everything between them does not.
+  ///
+  /// Tabular figures exist so that a *ticking digit* cannot shift the layout
+  /// under it — 1 must occupy what 8 occupies. A separator never ticks: there
+  /// is always exactly one decimal point, and always the same thousands comma.
+  /// The feature nonetheless hands each of them a full digit-width cell, and
+  /// that gap is what makes `0.45` read as two numbers with a speck between
+  /// them — the effect blamed on weight, which weight can only ever mask by
+  /// drawing a bigger speck in the same oversized cell.
+  ///
+  /// Splitting the run fixes the cause: the digits stay locked to their grid,
+  /// the point closes up to its natural width, and nothing that varies has been
+  /// allowed to move.
+  static List<TextSpan> _spans(String text, TextStyle style) {
+    final TextStyle proportional = style.copyWith(
+      fontFeatures: const <FontFeature>[],
+    );
+
+    final List<TextSpan> spans = <TextSpan>[];
+    final StringBuffer run = StringBuffer();
+    bool? runIsDigits;
+
+    void flush() {
+      if (run.isEmpty) return;
+      spans.add(
+        TextSpan(
+          text: run.toString(),
+          style: runIsDigits! ? style : proportional,
+        ),
+      );
+      run.clear();
+    }
+
+    for (final int rune in text.runes) {
+      final bool isDigit = rune >= 0x30 && rune <= 0x39;
+      if (runIsDigits != isDigit) {
+        flush();
+        runIsDigits = isDigit;
+      }
+      run.writeCharCode(rune);
+    }
+    flush();
+
+    return spans;
+  }
+
+  static Widget _numeral(String text, TextStyle style) =>
+      Text.rich(TextSpan(children: _spans(text, style)));
 
   @override
   Widget build(BuildContext context) {
     final style = TextStyle(
       color: AppColors.textPrimary,
       fontSize: size,
-      // Thin, per the README. At this scale weight reads as shouting, and the
-      // design language is premium rather than loud.
-      fontWeight: FontWeight.w100,
+      // Thin by default, per the README. At this scale weight reads as
+      // shouting, and the design language is premium rather than loud.
+      fontWeight: weight,
       height: 1,
-      letterSpacing: -2,
-      // A ticking figure must not shift the layout under it.
+      letterSpacing: letterSpacing,
+      // A ticking figure must not shift the layout under it. Applied per-run by
+      // [_spans], so the separators are spared the digit-width cell.
       fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
     );
 
@@ -91,8 +157,9 @@ class HeroNumeral extends StatelessWidget {
                         format: format,
                         duration: AppMotion.slow,
                         style: style,
+                        builder: _numeral,
                       )
-                    : Text(format(value), style: style),
+                    : _numeral(format(value), style),
               ),
             ),
             const SizedBox(width: 8),

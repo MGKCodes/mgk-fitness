@@ -140,9 +140,9 @@ class AdjustReasonsSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(
+              child: AppTextButton(
+                label: 'Never mind',
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Never mind'),
               ),
             ),
           ],

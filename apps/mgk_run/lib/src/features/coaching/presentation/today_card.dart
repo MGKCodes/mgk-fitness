@@ -120,7 +120,7 @@ class TodayCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            TextButton(onPressed: onSkip, child: const Text('Skip')),
+            AppTextButton(label: 'Skip', onPressed: onSkip),
           ],
         );
       case SessionStatus.completed:
@@ -151,8 +151,7 @@ class TodayCard extends StatelessWidget {
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
       const Spacer(),
-      if (onReset != null)
-        TextButton(onPressed: onReset, child: const Text('Undo')),
+      if (onReset != null) AppTextButton(label: 'Undo', onPressed: onReset),
     ],
   );
 }

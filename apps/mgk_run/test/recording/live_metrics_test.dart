@@ -38,21 +38,60 @@ List<RunPoint> _steady({
 void main() {
   group('gpsSignalFor', () {
     test('no fix is none, and none does not measure', () {
-      expect(gpsSignalFor(null), GpsSignal.none);
+      expect(gpsSignalFor(null, sinceFix: null), GpsSignal.none);
       expect(GpsSignal.none.measures, isFalse);
     });
 
     test('a fix too loose to measure with is weak', () {
       // Recorded and drawn, but outside the distance gate — the state the old
       // single-threshold code threw away entirely.
-      expect(gpsSignalFor(_p(0, 0, accuracy: 35)), GpsSignal.weak);
+      expect(
+        gpsSignalFor(_p(0, 0, accuracy: 35), sinceFix: Duration.zero),
+        GpsSignal.weak,
+      );
       expect(GpsSignal.weak.measures, isFalse);
     });
 
     test('an open sky is good, and a loose-but-usable fix is fair', () {
-      expect(gpsSignalFor(_p(0, 0, accuracy: 5)), GpsSignal.good);
-      expect(gpsSignalFor(_p(0, 0, accuracy: 15)), GpsSignal.fair);
+      expect(
+        gpsSignalFor(_p(0, 0, accuracy: 5), sinceFix: Duration.zero),
+        GpsSignal.good,
+      );
+      expect(
+        gpsSignalFor(_p(0, 0, accuracy: 15), sinceFix: Duration.zero),
+        GpsSignal.fair,
+      );
       expect(GpsSignal.fair.measures, isTrue);
+    });
+
+    test('a stale fix reports no signal however clean it was', () {
+      // The defect this argument exists for: strength was read off accuracy
+      // alone, so a fix taken under an open sky went on reporting three bars
+      // for as long as the runner looked at it -- while the distance behind it
+      // had stopped moving and nothing had errored.
+      final pristine = _p(0, 0, accuracy: 3);
+      expect(gpsSignalFor(pristine, sinceFix: Duration.zero), GpsSignal.good);
+      expect(
+        gpsSignalFor(pristine, sinceFix: kStaleFixAfter),
+        GpsSignal.none,
+        reason: 'the threshold itself is stale, not merely past it',
+      );
+      expect(
+        gpsSignalFor(pristine, sinceFix: const Duration(minutes: 5)),
+        GpsSignal.none,
+      );
+    });
+
+    test('a gap shorter than the threshold is not a lost signal', () {
+      // Phones lose a few seconds switching between cell and GPS positioning.
+      // Calling that "no signal" would cry wolf on every run.
+      expect(
+        gpsSignalFor(
+          _p(0, 0, accuracy: 5),
+          sinceFix: kStaleFixAfter - const Duration(seconds: 1),
+        ),
+        GpsSignal.good,
+      );
     });
   });
 

@@ -108,8 +108,8 @@ class PlanScreen extends StatelessWidget {
         title: const Text('Plan'),
         actions: <Widget>[
           if (current != null && onReplacePlan != null)
-            IconButton(
-              icon: const Icon(Icons.autorenew),
+            AppIconButton(
+              icon: Icons.autorenew,
               tooltip: 'Start a new plan',
               onPressed: onReplacePlan,
             ),

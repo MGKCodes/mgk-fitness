@@ -618,3 +618,74 @@ workflows:
     #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
     #     track: internal
     #     submit_as_draft: true
+
+  run-android-release:
+    name: Run — Android
+    # Linux, not macOS: an Android build has no reason to run on a Mac instance
+    # and a metered plan charges the difference. This is the cheapest machine
+    # Codemagic offers that can build Flutter for Android.
+    instance_type: linux_x2
+    max_build_duration: 30
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+    working_directory: apps/mgk_run
+    environment:
+      groups:
+        # The same two groups as iOS, and the split is deliberate: the Supabase
+        # values belong to the suite (ADR-0008 — one project for both apps), the
+        # map values belong to Run.
+        #
+        # This comment used to argue against splitting them, on the grounds that
+        # one group avoided maintaining the same keys in two places. That was
+        # answered rather than ignored: the values are not duplicated, they are
+        # each in exactly one group, and Lift references the Supabase one
+        # instead of keeping a copy. Attach only the second and the build
+        # installs SDKs, sets up signing, and dies half a second into the config
+        # step on an empty SUPABASE_URL.
+        - mgk_fitness_run_env
+        - mgk_fitness_supabase
+      flutter: stable
+      java: 17
+    scripts:
+      # Byte-for-byte the same generation step as the iOS workflow. It is
+      # duplicated rather than shared because Codemagic has no include
+      # mechanism for script bodies; if one changes the other has to.
+      - name: Generate config/app_config.json from secure vars
+        script: |
+          mkdir -p config
+          cat > config/app_config.json <<JSON
+          {
+            "SUPABASE_URL": "$SUPABASE_URL",
+            "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
+            "MAP_TILE_URL_TEMPLATE": "$MAP_TILE_URL_TEMPLATE",
+            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION"
+          }
+          JSON
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Analyze
+        script: flutter analyze
+      - name: Test
+        # Cheap here in a way it is not on a Mac instance, and this suite is the
+        # only thing that checks the in-run screen against real phone widths.
+        script: flutter test
+      - name: Build APK
+        # --dart-define-from-file is load-bearing for the same reason it is on
+        # iOS: AppConfig reads every value from it, and a build without it
+        # launches and then cannot sign anybody in.
+        script: |
+          flutter build apk --release             --build-number=$(($PROJECT_BUILD_NUMBER))             --dart-define-from-file=config/app_config.json
+    artifacts:
+      # Both paths, for the same reason the iOS workflow lists both: these globs
+      # resolve relative to `working_directory`, and a build that publishes
+      # nothing reports success with an empty artifact list.
+      - build/app/outputs/flutter-apk/*.apk
+      - apps/mgk_run/build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/**/mapping.txt
+    # No `publishing:` block. Google Play wants an AAB, a signed one, and a
+    # track to publish to — none of which exists yet. Until it does, the APK is
+    # an artifact you download, which is exactly what testing on a device needs.

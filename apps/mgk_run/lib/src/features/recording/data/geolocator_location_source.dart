@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:geolocator/geolocator.dart';
 
 import '../domain/run_point.dart';
 import 'location_source.dart';
 
-/// [LocationSource] backed by the `geolocator` plugin — the production source on
-/// iOS.
+/// [LocationSource] backed by the `geolocator` plugin — the production source
+/// on both platforms.
 ///
 /// UNVERIFIED on this machine: geolocator's background location only behaves
 /// correctly on a real device, so this must be exercised with a **TestFlight
@@ -18,7 +19,7 @@ import 'location_source.dart';
 /// Barometric altitude via `CMAltimeter` is a separate platform channel (TODO).
 class GeolocatorLocationSource implements LocationSource {
   GeolocatorLocationSource({LocationSettings? settings})
-    : _settings = settings ?? _iosRunSettings();
+    : _settings = settings ?? runSettingsForPlatform();
 
   final LocationSettings _settings;
 
@@ -100,6 +101,47 @@ class GeolocatorLocationSource implements LocationSource {
     timestamp: position.timestamp,
   );
 }
+
+/// The recording settings this platform needs to keep a run alive.
+///
+/// **The two platforms fail differently, so they are configured differently.**
+/// iOS suspends timers behind a locked screen but keeps delivering location to
+/// an app with the background mode declared. Android stops delivering entirely
+/// unless a foreground service is running — and stops *silently*, with no error
+/// on the stream, which is the worst shape a failure can take here: the screen
+/// goes on saying "Recording" over a distance that has stopped moving.
+///
+/// Anything that is not iOS or Android is a test or a preview harness, where
+/// the base settings are enough and the platform-specific classes would throw.
+LocationSettings runSettingsForPlatform() {
+  if (Platform.isIOS || Platform.isMacOS) return _iosRunSettings();
+  if (Platform.isAndroid) return _androidRunSettings();
+  return const LocationSettings(
+    accuracy: LocationAccuracy.best,
+    distanceFilter: 0,
+  );
+}
+
+/// Android settings: the same accuracy, plus the foreground service that is the
+/// only thing standing between a locked screen and a lost run (ADR-0021).
+///
+/// The notification is not a nicety the platform demands and we tolerate — it
+/// is the honest statement that a run is being recorded, and the wake lock is
+/// what makes fixes arrive as they happen rather than in a burst when the
+/// device next wakes. `setOngoing` because a runner dismissing this by accident
+/// mid-run would be dismissing their run.
+LocationSettings _androidRunSettings() => AndroidSettings(
+  accuracy: LocationAccuracy.best,
+  distanceFilter: 0,
+  intervalDuration: const Duration(seconds: 1),
+  foregroundNotificationConfig: const ForegroundNotificationConfig(
+    notificationTitle: 'Recording your run',
+    notificationText: 'Run is tracking your route, distance and pace.',
+    notificationChannelName: 'Run recording',
+    enableWakeLock: true,
+    setOngoing: true,
+  ),
+);
 
 /// iOS settings tuned for run recording: best accuracy, fitness activity type,
 /// and background updates so the run keeps recording with the screen locked.

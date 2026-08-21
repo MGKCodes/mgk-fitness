@@ -182,10 +182,20 @@ class _SignInScreenState extends State<SignInScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _isSignUp ? 'Create your account' : 'Welcome back',
-                        style: theme.textTheme.bodyLarge,
-                        textAlign: TextAlign.center,
+                      // The words arrive; the form does not.
+                      //
+                      // This is the first screen anybody sees and it appeared
+                      // in a single frame. Only the parts nobody types into are
+                      // choreographed: staggering the fields themselves would
+                      // put movement under a cursor and risk fighting autofill
+                      // and focus for the sake of a flourish on the one screen
+                      // that should feel most solid.
+                      Entrance(
+                        child: Text(
+                          _isSignUp ? 'Create your account' : 'Welcome back',
+                          style: theme.textTheme.bodyLarge,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       // Signing up and signing in are not the same act, and the
                       // screen used to tell them apart by one word. Someone
@@ -194,7 +204,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       // to decide from.
                       if (_isSignUp) ...<Widget>[
                         const SizedBox(height: 20),
-                        const _WhatYouGet(),
+                        const Entrance(index: 1, child: _WhatYouGet()),
                       ],
                       const SizedBox(height: 32),
                       // First, and only when signing up. The coach's whole
@@ -258,18 +268,16 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: _submit,
                         busy: _busy,
                       ),
-                      TextButton(
+                      AppTextButton(
+                        label: _isSignUp
+                            ? 'Have an account? Sign in'
+                            : 'New here? Create an account',
                         onPressed: _busy
                             ? null
                             : () => setState(() {
                                 _isSignUp = !_isSignUp;
                                 _message = null;
                               }),
-                        child: Text(
-                          _isSignUp
-                              ? 'Have an account? Sign in'
-                              : 'New here? Create an account',
-                        ),
                       ),
                       if (kDebugMode &&
                           widget.devAccounts.isNotEmpty) ...<Widget>[
