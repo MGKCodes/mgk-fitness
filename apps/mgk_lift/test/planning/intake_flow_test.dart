@@ -60,12 +60,19 @@ void main() {
       expect(TrainingSplit.forDays(3), TrainingSplit.fullBody);
     });
 
-    test('four and five are upper/lower, six is push/pull/legs', () {
-      // Five is not PPL: five does not divide into three, so the rotation comes
-      // out Push, Pull, Legs, Push, Pull and trains legs once a week.
+    test('five days gets its own arrangement, not a cycle', () {
+      // Neither split divides into five, and both failures are real: cycling
+      // PPL trains legs once, cycling upper/lower runs Upper three times and
+      // puts direct back volume past the cap. PlanShape caught both.
       expect(TrainingSplit.forDays(4), TrainingSplit.upperLower);
-      expect(TrainingSplit.forDays(5), TrainingSplit.upperLower);
       expect(TrainingSplit.forDays(6), TrainingSplit.pushPullLegs);
+      expect(TrainingSplit.forDays(5).weekFor(5), <String>[
+        'Push',
+        'Pull',
+        'Legs',
+        'Upper',
+        'Lower',
+      ]);
     });
 
     test('the week is trimmed to the days there are', () {

@@ -94,6 +94,8 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
                   role: s.role,
                   movement: s.movement,
                   isMain: s.isMain,
+                  sets: s.sets,
+                  reps: s.reps,
                   lastTopKg: topKg,
                   lastTopReps: reps,
                   // Improved resets the count; held increments it. That counter

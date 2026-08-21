@@ -39,7 +39,7 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
       final slots = await _lift
           .from('plan_slots')
           .select(
-            'id, day, sort_order, role, movement, is_main, '
+            'id, day, sort_order, role, movement, is_main, sets, reps, '
             'sessions_at_same_top, last_top_kg, last_top_reps',
           )
           .eq('plan_id', plan['id'] as String)
@@ -97,6 +97,8 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
               'role': s.role,
               'movement': s.movement,
               'is_main': s.isMain,
+              'sets': s.sets,
+              'reps': s.reps,
               'sessions_at_same_top': s.sessionsAtSameTop,
               'last_top_kg': s.lastTopKg,
               'last_top_reps': s.lastTopReps,
@@ -173,6 +175,11 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
           role: r['role'] as String? ?? '',
           movement: r['movement'] as String? ?? '',
           isMain: r['is_main'] as bool? ?? false,
+          // Falling back rather than throwing: a row written before the
+          // columns existed is a plan that still renders, and the next save
+          // corrects it.
+          sets: (r['sets'] as num?)?.toInt() ?? 3,
+          reps: (r['reps'] as num?)?.toInt() ?? 10,
           sessionsAtSameTop: (r['sessions_at_same_top'] as num?)?.toInt() ?? 0,
           lastTopKg: (r['last_top_kg'] as num?)?.toDouble(),
           lastTopReps: (r['last_top_reps'] as num?)?.toInt(),

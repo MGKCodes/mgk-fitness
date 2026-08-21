@@ -637,6 +637,8 @@ StandingPlan _standingPlan() {
               role: s.role,
               movement: s.movement,
               isMain: s.isMain,
+              sets: s.sets,
+              reps: s.reps,
               lastTopKg: history[s.role]?.$1,
               lastTopReps: history[s.role]?.$2,
               sessionsAtSameTop: history[s.role]?.$3 ?? 0,

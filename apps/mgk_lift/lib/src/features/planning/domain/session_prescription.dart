@@ -3,53 +3,33 @@ import 'package:mgk_units/mgk_units.dart';
 import 'plan_validator.dart';
 import 'standing_plan.dart';
 
-/// Turns today's slots into today's session: sets, reps and a weight.
+/// Turns today's slots into today's session.
 ///
-/// A [MovementSlot] says what to train and what has been trained in it. It says
-/// nothing about how many sets, how many reps, or what to put on the bar —
-/// because those are not properties of the plan, they are properties of *this*
-/// session, and they change as the numbers do.
+/// ## What this does and does not decide
 ///
-/// ## This is where the goal finally does something
+/// **Sets and reps are not here any more.** They came from a lookup on the
+/// goal — four by five for strength, four by eight for size — which made two
+/// numbers in a table the definition of how to train a movement. A hinge and a
+/// lateral raise do not want the same prescription even in the same session
+/// with the same goal, and the evidence is less tidy than the folklore anyway:
+/// hypertrophy is available across roughly 5–30 reps, and it is strength that
+/// is load-specific (c6-rep-ranges). They are prescribed per slot now, by
+/// something that knows about programming.
 ///
-/// Days decides the split, equipment decides the movements, and injuries rule
-/// roles out. The goal has been carried through the whole intake without
-/// changing anything, which is correct — it moves rep ranges, and rep ranges
-/// live here. Three goals produce two schemes, because "lose fat, keep muscle"
-/// and "build muscle" are the same training question with different eating
-/// around it: hold the stimulus, keep the volume.
+/// **The weight stays here, and only here.** It comes from what this lifter has
+/// actually lifted, which is the one thing a coach with all the programming
+/// knowledge in the world cannot know about them. That is the same line
+/// `PlanValidator` draws — *"the coach prescribes an intensity; the kilograms
+/// come from this lifter's own logged sets, or they do not come at all"*.
 ///
-/// ## Progression is a rule, not a suggestion
+/// ## Progression is deliberately dull
 ///
-/// Claim C5 in docs/research/training.md, and the closest thing to settled that
-/// this field has.
-///
-/// If the top set moved last time, add one increment. If it did not, hold.
-/// That is the whole rule, and it is deliberately dull — a coach that improvises
-/// a jump is a coach that occasionally improvises a bad one, and the interesting
-/// judgement (why has this stalled, is this fatigue or is it programming) is a
-/// conversation rather than a number.
-///
-/// **No history means no number.** A slot with nothing logged in it gets a null
-/// target, which the session screen renders as an empty field exactly the way a
-/// hand-added movement does. Inventing a starting weight is the app asserting
-/// something only the lifter knows.
+/// Claim c5-progressive-overload, and the closest thing to settled that this
+/// field has. If the top set moved last time, add one increment. If it did not,
+/// hold. That is the whole rule — a coach that improvises a jump improvises a
+/// bad one eventually, and the interesting judgement (is this fatigue or is it
+/// programming) is a conversation rather than a number.
 abstract final class SessionPrescription {
-  /// Sets and reps for a slot, given what somebody is training for.
-  ///
-  /// Main lifts get fewer reps and one more set than accessories under every
-  /// goal: they are the movements progress is measured in, so they carry the
-  /// heaviest work and the most of it.
-  static ({int sets, int reps}) scheme({
-    required bool isMain,
-    required TrainingGoal goal,
-  }) => switch ((goal, isMain)) {
-    (TrainingGoal.strength, true) => (sets: 4, reps: 5),
-    (TrainingGoal.strength, false) => (sets: 3, reps: 8),
-    (TrainingGoal.muscle, true) => (sets: 4, reps: 8),
-    (TrainingGoal.muscle, false) => (sets: 3, reps: 12),
-  };
-
   /// The smallest jump worth making, in kilograms.
   ///
   /// Different by movement class because they are different in the gym: a
@@ -68,24 +48,37 @@ abstract final class SessionPrescription {
     return Mass.kilograms(next);
   }
 
+  /// What to say when there is no number to give.
+  ///
+  /// **A blank field is not an instruction.** A movement with no history used to
+  /// render as an empty box, which is honest about what the app knows and
+  /// useless to somebody standing in front of a rack. Telling them to pick a
+  /// weight they could do the top rep count with, comfortably, is the thing a
+  /// coach would actually say — and it is still not the app asserting a number
+  /// it has no basis for.
+  ///
+  /// Null once there is history, because then there is a real number.
+  static String? startingAdvice(MovementSlot slot) => slot.hasHistory
+      ? null
+      : 'Pick a weight you could do ${slot.reps} with comfortably, '
+            'and leave a couple in the tank.';
+
   /// The whole session, in the order the slots are trained.
-  static List<PlannedMovement> forDay({
-    required List<MovementSlot> slots,
-    required TrainingGoal goal,
-  }) => <PlannedMovement>[
-    for (final s in slots)
-      PlannedMovement(
-        name: s.movement,
-        sets: scheme(isMain: s.isMain, goal: goal).sets,
-        reps: scheme(isMain: s.isMain, goal: goal).reps,
-        target: target(s),
-        // Said only when it is worth saying. A note on every movement is a
-        // note nobody reads by the third one.
-        note: s.hasStalled
-            ? 'Not moved in ${s.sessionsAtSameTop} sessions'
-            : null,
-      ),
-  ];
+  static List<PlannedMovement> forDay(List<MovementSlot> slots) =>
+      <PlannedMovement>[
+        for (final s in slots)
+          PlannedMovement(
+            name: s.movement,
+            sets: s.sets,
+            reps: s.reps,
+            target: target(s),
+            // One note, and only where it earns its place. A note on every
+            // movement is a note nobody reads by the third one.
+            note: s.hasStalled
+                ? 'Not moved in ${s.sessionsAtSameTop} sessions'
+                : startingAdvice(s),
+          ),
+      ];
 }
 
 /// What somebody is training for, once it has been reduced to what it changes.
@@ -96,9 +89,10 @@ abstract final class SessionPrescription {
 /// the stimulus, keep the volume — and differ in what somebody eats, which is
 /// not something this app has any business prescribing.
 ///
-/// Collapsing them here rather than in the intake is deliberate: the label a
-/// lifter picked is theirs and worth keeping, and the fact that two labels
-/// share a rep scheme is an implementation detail they never need to be told.
+/// It no longer selects a rep scheme. It is passed to the planner as context,
+/// where it biases the prescription rather than determining it: per
+/// c6-rep-ranges, strength is where the rep range genuinely narrows, and size
+/// is available across a wide one.
 enum TrainingGoal {
   strength,
   muscle;

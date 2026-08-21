@@ -32,10 +32,17 @@ import 'standing_plan.dart';
 /// sets a week is badly served by one session, because sets late in a long one
 /// are done under accumulated fatigue.
 ///
-/// Secondary muscles count half. A bench press is chest work and it is also
-/// triceps work, and counting it as neither or as both whole is wrong in
-/// opposite directions. Half is the convention and it is close enough for a
-/// bound this wide.
+/// **The volume cap counts PRIMARY work only; frequency counts both.** Those
+/// are different questions and they were being answered with one number. "Sets
+/// for a muscle" in the literature means direct work, so counting fractional
+/// secondary sets against a hard cap mixes conventions and systematically
+/// inflates whatever gets listed as a secondary most often — back and shoulders,
+/// which nearly every pull and press touches. Under one combined count a
+/// perfectly ordinary pull day read as 29 sets of back.
+///
+/// Frequency is the opposite case: a muscle worked hard as a secondary HAS been
+/// trained that day, and pretending otherwise would demand a second direct day
+/// for something already getting plenty.
 abstract final class PlanShape {
   /// Muscles a plan is judged on. Core is trained incidentally by most
   /// compounds and nobody quits over its volume; cardio is not this app's job.
@@ -61,9 +68,10 @@ abstract final class PlanShape {
   static int capFor(String muscle) =>
       muscle == 'Legs' ? maxWeeklySets * 2 : maxWeeklySets;
 
-  /// Sets assumed per movement when judging volume, matching what
-  /// `SessionPrescription` actually prescribes.
-  static const int setsPerMovement = 3;
+  /// Assumed only when a slot does not carry its own set count, which should
+  /// not happen now that the planner prescribes them. Kept as a floor so a
+  /// malformed slot cannot silently count as zero volume.
+  static const int assumedSets = 3;
 
   /// Reasons this plan should not be shown, phrased as instructions so the list
   /// can go straight back to whatever produced it.
@@ -132,7 +140,10 @@ abstract final class PlanShape {
     }
 
     // ---- frequency and volume, per muscle -------------------------------
-    final weeklySets = <String, double>{};
+    // Direct work only, for the cap.
+    final directSets = <String, double>{};
+    // Direct or indirect, for the frequency question and the floor.
+    final anySets = <String, double>{};
     final exposures = <String, int>{};
     // **Over dayOrder, not over its distinct names.** An Upper/Lower week runs
     // 'Upper' twice, and counting day NAMES made that one exposure — which had
@@ -143,16 +154,23 @@ abstract final class PlanShape {
       for (final s in plan.slots[dayNames[i]] ?? const <MovementSlot>[]) {
         final ex = look.byName(s.movement);
         if (ex == null) continue;
-        void add(String muscle, double weight) {
+        // The slot's OWN set count. Assuming three flattered a plan that
+        // prescribed five and understated one that prescribed two, which is
+        // the difference between a volume check and a movement count.
+        final sets = (s.sets > 0 ? s.sets : assumedSets).toDouble();
+
+        void add(String muscle, {required bool direct}) {
           if (!judged.contains(muscle)) return;
-          weeklySets[muscle] =
-              (weeklySets[muscle] ?? 0) + setsPerMovement * weight;
+          if (direct) {
+            directSets[muscle] = (directSets[muscle] ?? 0) + sets;
+          }
+          anySets[muscle] = (anySets[muscle] ?? 0) + (direct ? sets : sets / 2);
           hitThisDay.add(muscle);
         }
 
-        add(ex.muscleGroup, 1);
+        add(ex.muscleGroup, direct: true);
         for (final m in ex.secondaryMuscles) {
-          add(m, 0.5);
+          add(m, direct: false);
         }
       }
       for (final m in hitThisDay) {
@@ -160,7 +178,7 @@ abstract final class PlanShape {
       }
     }
 
-    for (final entry in weeklySets.entries) {
+    for (final entry in directSets.entries) {
       final sets = entry.value.round();
       final cap = capFor(entry.key);
       if (sets > cap) {
@@ -174,7 +192,7 @@ abstract final class PlanShape {
     // volume — see C3. A muscle it does not train at all is a choice (nobody
     // has to train calves) and is left alone.
     for (final entry in exposures.entries) {
-      final trained = weeklySets[entry.key]?.round() ?? 0;
+      final trained = anySets[entry.key]?.round() ?? 0;
       if (trained >= minWeeklySets && entry.value < 2) {
         out.add(
           'Train ${entry.key.toLowerCase()} on a second day; '

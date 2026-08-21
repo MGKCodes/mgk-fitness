@@ -73,11 +73,8 @@ enum TrainingSplit {
 
   /// The rule, whole. Deliberately total and deliberately dull.
   ///
-  /// **Five days is upper/lower, not push/pull/legs, and that is arithmetic
-  /// rather than evidence.** Five does not divide into three: pinned to fixed
-  /// weekdays the rotation comes out Push, Pull, Legs, Push, Pull, so legs is
-  /// trained once that week — which C3 says is a poor way to deliver its
-  /// volume. U/L/U/L/U gives everything at least twice.
+  /// **Five days gets its own arrangement**, because neither split divides
+  /// into it — see [weekFor]. That is arithmetic rather than evidence.
   ///
   /// **A real limitation, not a position:** plenty of people run PPL as a
   /// ROLLING cycle, legs every third session whatever weekday it lands on. A
@@ -86,12 +83,23 @@ enum TrainingSplit {
   /// docs/research/training.md.
   static TrainingSplit forDays(int days) => switch (days) {
     <= 3 => TrainingSplit.fullBody,
-    4 || 5 => TrainingSplit.upperLower,
+    4 => TrainingSplit.upperLower,
     _ => TrainingSplit.pushPullLegs,
   };
 
   /// The week as it will actually run, for the days there are.
-  List<String> weekFor(int days) => <String>[
-    for (var i = 0; i < days; i++) shape[i % shape.length],
-  ];
+  ///
+  /// **Five days is its own arrangement rather than a cycle.** Neither
+  /// two-way nor three-way divides into five, and both failures are real:
+  /// cycling push/pull/legs gives P, P, L, P, P and trains legs once, while
+  /// cycling upper/lower gives U, L, U, L, U and runs Upper three times —
+  /// which put direct back volume at 29 sets a week, well past the cap.
+  /// PlanShape caught both. Push/Pull/Legs plus an upper and a lower day is
+  /// the ordinary answer and balances at two exposures each.
+  List<String> weekFor(int days) {
+    if (this == TrainingSplit.pushPullLegs && days == 5) {
+      return const <String>['Push', 'Pull', 'Legs', 'Upper', 'Lower'];
+    }
+    return <String>[for (var i = 0; i < days; i++) shape[i % shape.length]];
+  }
 }

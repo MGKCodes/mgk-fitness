@@ -11,6 +11,8 @@ MovementSlot slot(
   role: role,
   movement: movement,
   isMain: main,
+  sets: 3,
+  reps: 10,
   sessionsAtSameTop: stale,
 );
 

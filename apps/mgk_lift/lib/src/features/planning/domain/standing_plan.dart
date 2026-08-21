@@ -142,6 +142,8 @@ class MovementSlot {
     required this.role,
     required this.movement,
     this.isMain = false,
+    required this.sets,
+    required this.reps,
     this.sessionsAtSameTop = 0,
     this.lastTopKg,
     this.lastTopReps,
@@ -165,6 +167,26 @@ class MovementSlot {
   /// Main lifts are not rotated. Progress is measured in them, and a number
   /// that changes movement every few weeks is not a trend.
   final bool isMain;
+
+  /// How much of this movement, prescribed per slot rather than derived from
+  /// the goal.
+  ///
+  /// **These are coaching knowledge, and they were a lookup table until they
+  /// were not.** An earlier version computed them from the goal alone — four by
+  /// five for strength, four by eight for size — which is the same anchoring
+  /// problem the split had, one level down: a hinge and a lateral raise do not
+  /// want the same prescription even in the same session with the same goal.
+  ///
+  /// The evidence is also less tidy than the folklore. Hypertrophy is available
+  /// across roughly 5–30 reps when volume is equated and sets go near failure;
+  /// it is STRENGTH that is load-specific. So for size the rep range is largely
+  /// a practicality choice, and pretending otherwise dressed a preference up as
+  /// a rule. See c6-rep-ranges in coach.knowledge.
+  ///
+  /// The weight is not here, and never will be: that comes from what this
+  /// lifter has actually lifted.
+  final int sets;
+  final int reps;
 
   /// How many sessions the top set has failed to improve.
   final int sessionsAtSameTop;

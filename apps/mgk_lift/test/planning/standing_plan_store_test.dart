@@ -14,6 +14,8 @@ StandingPlan plan() => StandingPlan(
         role: 'horizontal press',
         movement: 'Barbell Bench Press',
         isMain: true,
+        sets: 4,
+        reps: 6,
         lastTopKg: 85,
         lastTopReps: 6,
         sessionsAtSameTop: 2,

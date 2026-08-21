@@ -210,6 +210,14 @@ abstract final class PlanTemplate {
             role: r.role,
             movement: movement,
             isMain: r.main,
+            sets: r.main ? 4 : 3,
+            // **Conservative, and not a recommendation.** The fallback runs
+            // when a model was unavailable or produced something that failed
+            // checking twice, so it should be unremarkable rather than clever:
+            // per c6-rep-ranges hypertrophy is available across a wide range,
+            // so a middling one costs nothing, and a main lift sits lower
+            // because strength is where the load genuinely matters.
+            reps: r.main ? 6 : 10,
           ),
         );
       }
