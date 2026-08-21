@@ -5,42 +5,32 @@ import '../../health/domain/workout_source.dart';
 import '../domain/intro_permission.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PERMISSION REQUESTS — PLACEHOLDER
+// PERMISSION REQUESTS
 //
-// **Neither request below is real.** Both return "granted" without asking the
-// OS anything, so the onboarding conversation can be walked end to end while it
-// is being designed.
+// **Both requests are real.** This block used to say the opposite, at length,
+// and kept saying it for the whole of the integration it was waiting for:
+// location has gone through geolocator and HealthKit through `health` for some
+// time, and the notice claiming neither was wired outlived both.
 //
-// This is the one file that has to change when the platform work lands. What
-// replaces each branch:
+// It is recorded here rather than deleted quietly because the stale version
+// was not harmless. It named itself the thing that had to change before
+// release, and said in bold that shipping without it was an App Store
+// rejection - so anyone who read it concluded the release was blocked on work
+// that was already done. A placeholder notice is a claim about the code, and
+// it goes stale exactly like any other.
 //
-//   location   — geolocator, which is already a dependency and already used by
-//                `recording/data/geolocator_location_source.dart`:
+//   location   — `Geolocator.checkPermission()` first, then `requestPermission()`
+//                only when the answer is `denied`. Reading before asking matters:
+//                on an already-decided permission a request is either a no-op or
+//                a second dialog depending on platform, and a runner who granted
+//                this on a previous install should not be asked again.
 //
-//                  var p = await Geolocator.checkPermission();
-//                  if (p == LocationPermission.denied) {
-//                    p = await Geolocator.requestPermission();
-//                  }
-//                  return p == LocationPermission.always ||
-//                      p == LocationPermission.whileInUse;
+//   healthKit  — `WorkoutSource.requestAccess()`, backed by `health: 13.2.0`.
+//                See the note on that branch for why `true` means less here than
+//                it looks like it does.
 //
-//                Read the current state before asking: `requestPermission` on
-//                an already-decided permission is either a no-op or a second
-//                dialog depending on platform, and a runner who granted this on
-//                a previous install should not be asked again.
-//
-//   healthKit  — in development, nothing landed yet. Needs a package in
-//                `pubspec.yaml`, the HealthKit capability in Xcode, and the
-//                read types declared. See `docs/roadmap.md`.
-//
-//                **It has to be wired before release**, not because the
-//                conversation is wrong but because asking for authorisation to
-//                data the app never reads is an App Store rejection. The step
-//                is written and waiting for the integration; it must not
-//                overtake it.
-//
-// Whatever replaces these must keep the two properties [requestIntroPermission]
-// documents below: never throws, never hangs.
+// Both keep the two properties [requestIntroPermission] documents below: never
+// throws, never hangs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Raises the OS dialog for [permission] and reports whether it was allowed.

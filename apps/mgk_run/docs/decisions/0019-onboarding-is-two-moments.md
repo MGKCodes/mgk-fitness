@@ -100,20 +100,26 @@ is what recording needs, so it is the one worth spending the runner's patience
 on. Health second because it is an enhancement — a runner who declines simply
 starts from an empty log.
 
-**Both requests are stubbed for now.** The conversation is built; the platform
-calls behind it are placeholders that return "granted" without asking anything,
-under a marked block in `intro_permission_requester.dart` naming exactly what
-replaces each. This is deliberate. The shape of the exchange is what is being
-designed, and neither call can be verified from the Windows harness this repo is
-developed on — location's real geolocator call was tried and could not be
-confirmed either way, and HealthKit has no package in `pubspec.yaml` and nothing
-in `lib/` that reads it at all.
+**Both requests are real, since 2026-08-21.** They were stubbed when this ADR
+was written — the conversation was built first and the platform calls behind it
+returned "granted" without asking anything, because the shape of the exchange
+was what was being designed and neither call could be verified from the Windows
+harness this repo is developed on.
 
-HealthKit is in development, so the step is written and waiting for the
-integration rather than speculating about one. The consequence to keep in view:
-**it has to be wired before release**, because asking for authorisation to data
-the app never reads is an App Store rejection. The step must not overtake the
-integration. The stub is a design scaffold, not a shipping state.
+That has landed. Location goes through `geolocator`, reading the current state
+before asking so a runner who granted it on a previous install is not asked
+again. HealthKit goes through `health: 13.2.0`, and `true` from it means "the
+sheet was answered" rather than "reads were allowed" — iOS refuses to say which
+reads it granted, by design, so the coach's reply is written not to over-claim
+on the strength of it.
+
+The warning this section used to carry — that wiring HealthKit was a release
+blocker, because asking for authorisation to data the app never reads is an App
+Store rejection — is discharged, not dropped. It was correct, and it was acted
+on. It is recorded here because the notice in
+`intro_permission_requester.dart` went on claiming the work was outstanding
+long after it was done, which is a more expensive kind of staleness than a
+missing note: it sent a reader looking for a blocker that did not exist.
 
 ## The obvious alternative
 
