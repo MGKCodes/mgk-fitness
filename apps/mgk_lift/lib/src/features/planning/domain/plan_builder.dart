@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import 'plan.dart';
+import 'plan_intake.dart';
 import 'plan_shape.dart';
 import 'plan_template.dart';
 import 'standing_plan.dart';
@@ -40,20 +40,24 @@ class ProposedDay {
   const ProposedDay({required this.day, required this.movements});
 
   final String day;
-  final List<ProposedMovement> movements;
+  final List<ProposedSlot> movements;
 
   static ProposedDay fromJson(Map<String, Object?> json) => ProposedDay(
     day: (json['day'] as String? ?? '').trim(),
-    movements: <ProposedMovement>[
+    movements: <ProposedSlot>[
       for (final m in (json['movements'] as List?) ?? const [])
-        if (m is Map<String, Object?>) ProposedMovement.fromJson(m),
+        if (m is Map<String, Object?>) ProposedSlot.fromJson(m),
     ],
   );
 }
 
+/// Named `Slot` rather than `Movement` because `ProposedMovement` is taken by
+/// the block model's week proposal, which is on its way out but not gone yet.
+/// The name is also the better one: this becomes a [MovementSlot], and the
+/// movement in it is only this month's answer to the role.
 @immutable
-class ProposedMovement {
-  const ProposedMovement({
+class ProposedSlot {
+  const ProposedSlot({
     required this.role,
     required this.movement,
     required this.isMain,
@@ -67,17 +71,16 @@ class ProposedMovement {
   final int sets;
   final int reps;
 
-  static ProposedMovement fromJson(Map<String, Object?> json) =>
-      ProposedMovement(
-        role: (json['role'] as String? ?? '').trim(),
-        movement: (json['movement'] as String? ?? '').trim(),
-        isMain: json['is_main'] as bool? ?? false,
-        // Defaulted rather than rejected. A missing set count is a plan worth
-        // checking rather than one worth throwing away, and PlanShape will say
-        // so if the volume comes out wrong.
-        sets: (json['sets'] as num?)?.toInt() ?? 3,
-        reps: (json['reps'] as num?)?.toInt() ?? 10,
-      );
+  static ProposedSlot fromJson(Map<String, Object?> json) => ProposedSlot(
+    role: (json['role'] as String? ?? '').trim(),
+    movement: (json['movement'] as String? ?? '').trim(),
+    isMain: json['is_main'] as bool? ?? false,
+    // Defaulted rather than rejected. A missing set count is a plan worth
+    // checking rather than one worth throwing away, and PlanShape will say
+    // so if the volume comes out wrong.
+    sets: (json['sets'] as num?)?.toInt() ?? 3,
+    reps: (json['reps'] as num?)?.toInt() ?? 10,
+  );
 }
 
 /// Builds a plan: ask the coach, check it, ask again, fall back.

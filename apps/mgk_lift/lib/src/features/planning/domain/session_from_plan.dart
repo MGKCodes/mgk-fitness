@@ -1,7 +1,6 @@
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
-import 'plan.dart';
-import 'plan_validator.dart';
+import 'planned_movement.dart';
 
 /// Turns a planned session into a live one.
 ///
@@ -21,7 +20,7 @@ import 'plan_validator.dart';
 /// a fixed list written for nobody in particular. It stops holding for a plan,
 /// because the number did not come from the app asserting anything. It came
 /// from their own logged sets, by way of an estimated 1RM and a percentage the
-/// coach chose. `PlanValidator` is what makes that true rather than a claim: a
+/// coach chose. `SwapValidator` is what makes that true rather than a claim: a
 /// weight it could not derive is left null, and a null weight is pre-filled as
 /// a blank exactly the way a template's would be.
 ///
@@ -37,10 +36,14 @@ class SessionFromPlan {
   /// Sets are added ticked-OFF: the lifter still does the work and still
   /// confirms each one. Pre-ticking would log a session nobody had done, which
   /// is the one thing a tracker must never do.
-  Future<Session> start(PlanSession planned, {DateTime? at}) async {
-    var session = await recorder.start(name: planned.title, at: at);
+  Future<Session> start(
+    String title,
+    List<PlannedMovement> movements, {
+    DateTime? at,
+  }) async {
+    var session = await recorder.start(name: title, at: at);
 
-    for (final movement in planned.movements) {
+    for (final movement in movements) {
       session = await recorder.addExercise(movement.name);
       final exercise = session.exercises.last;
 

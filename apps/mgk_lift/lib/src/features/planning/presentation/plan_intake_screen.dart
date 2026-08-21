@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
-import '../domain/plan.dart';
-import '../domain/plan_generator.dart';
+import '../domain/plan_intake.dart';
+import '../domain/coach_planner.dart';
 
 /// The conversation that sets a block up.
 ///

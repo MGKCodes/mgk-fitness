@@ -1,3 +1,4 @@
+import '../../tracking/data/exercise_catalogue.dart';
 import 'standing_plan.dart';
 import 'training_split.dart';
 
@@ -257,10 +258,66 @@ enum Equipment {
   /// thing that fits.
   bool canDo(Equipment needs) => index >= needs.index;
 
+  /// Which of the catalogue's `equipment` values this kit covers.
+  ///
+  /// The catalogue labels a movement with one thing it needs — Barbell, Cable,
+  /// Machine, Bodyweight and so on — and this maps a lifter's answer onto that
+  /// vocabulary so the coach is never offered a machine they do not have.
+  ///
+  /// **Bodyweight is in every set.** Somebody with a full gym can still do a
+  /// press-up, and excluding it because they have better options would be the
+  /// filter deciding what they want rather than what they can.
+  Set<String> get catalogueEquipment => switch (this) {
+    Equipment.fullGym => const <String>{
+      'Barbell',
+      'Dumbbell',
+      'Cable',
+      'Machine',
+      'EZ Bar',
+      'Bodyweight',
+      'Band',
+      'Stability Ball',
+      'Balance Board',
+      'Bike',
+      'Treadmill',
+      'Wall Ball',
+    },
+    Equipment.homeWeights => const <String>{
+      'Barbell',
+      'Dumbbell',
+      'EZ Bar',
+      'Bodyweight',
+      'Band',
+      'Stability Ball',
+    },
+    Equipment.minimalKit => const <String>{
+      'Dumbbell',
+      'Band',
+      'Bodyweight',
+      'Stability Ball',
+    },
+    Equipment.bodyweight => const <String>{'Bodyweight'},
+  };
+
   static Equipment fromAnswer(String answer) => switch (answer.toLowerCase()) {
     'a full gym' => Equipment.fullGym,
     'home, with weights' => Equipment.homeWeights,
     'minimal kit' => Equipment.minimalKit,
     _ => Equipment.bodyweight,
   };
+}
+
+/// The movement names a lifter can actually use, for the coach to choose from.
+///
+/// **Names only, and filtered.** The whole catalogue is 266 entries with muscle
+/// groups and equipment attached; the coach needs the names it may write and
+/// nothing else, and sending the ones this person cannot do is both a longer
+/// prompt and an invitation to prescribe a cable machine to somebody with a
+/// pair of dumbbells.
+List<String> catalogueFor(Equipment equipment) {
+  final allowed = equipment.catalogueEquipment;
+  return <String>[
+    for (final e in exerciseCatalogue)
+      if (allowed.contains(e.equipment)) e.name,
+  ]..sort();
 }

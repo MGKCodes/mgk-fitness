@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import 'plan_generator.dart';
+import 'coach_planner.dart';
 import 'standing_plan.dart';
 
 /// Where a standing plan is kept.

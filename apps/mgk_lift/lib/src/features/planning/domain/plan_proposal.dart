@@ -94,7 +94,7 @@ class ProposedMovement {
   final int? intensityPct;
 
   /// A cue or an effort instruction. Never a weight — the prompt forbids it
-  /// and [PlanValidator] does not read one out of it.
+  /// and [SwapValidator] does not read one out of it.
   final String? note;
 
   static ProposedMovement fromJson(Map<String, Object?> json) =>

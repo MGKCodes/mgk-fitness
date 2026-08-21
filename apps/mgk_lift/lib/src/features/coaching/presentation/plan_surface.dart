@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
-import '../../planning/domain/plan.dart';
+import '../../planning/domain/standing_plan.dart';
+import '../../planning/presentation/standing_plan_surface.dart';
 
 /// **Plan** — what the coach has you working toward. The paid surface.
 ///
@@ -32,6 +33,7 @@ class PlanSurface extends StatelessWidget {
     this.unit = MassUnit.kilograms,
     this.today,
     this.onOpenSession,
+    this.onSwapSlot,
   });
 
   /// Starts the coach conversation that produces a plan. Null when the coach is
@@ -47,7 +49,7 @@ class PlanSurface extends StatelessWidget {
 
   /// The live block. Null is a real state for a paid lifter who has not built
   /// one yet, and it is what the offer-shaped "no plan" copy is for.
-  final Plan? plan;
+  final StandingPlan? plan;
 
   /// How weights are shown. The plan stores kilograms and converts at display,
   /// like everything else.
@@ -58,7 +60,12 @@ class PlanSurface extends StatelessWidget {
   final DateTime? today;
 
   /// Opens one session of the plan.
-  final ValueChanged<PlanSession>? onOpenSession;
+  /// Starts today's session, given the day of the split it is.
+  final ValueChanged<String>? onOpenSession;
+
+  /// "I have no cable machine." Reaches SwapSheet from the plan rather than
+  /// from a session already underway.
+  final void Function(MovementSlot)? onSwapSlot;
 
   /// Asks the coach to change the week ahead. Null hides the action.
 
@@ -71,10 +78,35 @@ class PlanSurface extends StatelessWidget {
 
   /// Whether the live-block layout is in play, which lays out differently from
   /// the two copy states.
-  bool get isBlock => isEntitled && (plan?.isActive ?? false);
+  /// Whether there is a live plan to show rather than an offer or an invitation.
+  bool get isBlock => isEntitled && plan != null;
 
   @override
   Widget build(BuildContext context) {
+    // **A live plan is a different screen, not a different branch.**
+    //
+    // This surface is the paywall and the invitation: photography, a pitch, a
+    // price. Once somebody has a plan, none of that is what they came for —
+    // they want to know what they are doing today and whether it is ready.
+    // StandingPlanSurface answers exactly that, so the live case hands over to
+    // it whole rather than trying to render a week inside a sales page.
+    final live = plan;
+    if (isEntitled && live != null) {
+      return StandingPlanSurface(
+        plan: live,
+        today: today ?? DateTime.now(),
+        massUnit: unit,
+        onStartToday: onOpenSession == null
+            ? null
+            : () {
+                final day = live.dayFor(today ?? DateTime.now());
+                if (day != null) onOpenSession!(day);
+              },
+        onSwap: onSwapSlot,
+        onChangeSplit: onBuildPlan,
+      );
+    }
+
     return PhotoBackdrop(
       image: 'assets/images/backgrounds/hero_paywall.webp',
       // `grounded`, not `quiet`. Quiet is nearly opaque, and on this image it
@@ -109,10 +141,10 @@ class PlanSurface extends StatelessWidget {
                 mainAxisAlignment: isBlock
                     ? MainAxisAlignment.start
                     : MainAxisAlignment.center,
-                children: switch ((isEntitled, plan)) {
-                  (false, _) => _offer(context),
-                  (true, final Plan p) when p.isActive => _block(context, p),
-                  (true, _) => _entitled(context),
+                // Only two states reach here: the live plan returns above.
+                children: switch (isEntitled) {
+                  false => _offer(context),
+                  true => _entitled(context),
                 },
               ),
             ),
@@ -126,67 +158,6 @@ class PlanSurface extends StatelessWidget {
   ///
   /// The week the lifter is IN, not the whole block. A twelve-week plan
   /// rendered in full is a document; what somebody opens Plan to find out is
-  /// what is on this week and what is next.
-  List<Widget> _block(BuildContext context, Plan plan) {
-    final theme = Theme.of(context);
-    final now = today ?? DateTime.now();
-    final weekNumber = plan.weekOf(now);
-    final week = weekNumber == null
-        ? null
-        : plan.arc.where((PlanWeek w) => w.number == weekNumber).firstOrNull;
-    final sessions =
-        plan.sessions
-            .where((PlanSession s) => s.weekNumber == weekNumber)
-            .toList()
-          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    return <Widget>[
-      const SectionLabel('Plan'),
-      const SizedBox(height: AppSpacing.md),
-      Text(
-        weekNumber == null
-            ? 'Block finished'
-            : 'Week $weekNumber of ${plan.weeks}',
-        style: theme.textTheme.headlineSmall,
-      ),
-      if (week != null) ...<Widget>[
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          week.intent?.isNotEmpty ?? false
-              ? week.intent!
-              : '${week.phase.label} week.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.4,
-          ),
-        ),
-      ],
-      const SizedBox(height: AppSpacing.xl),
-
-      if (sessions.isEmpty)
-        _Note(
-          text:
-              'This week is written closer to the time, once your coach has '
-              'seen how the last one went.',
-        )
-      else
-        for (final session in sessions)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _PlannedSessionRow(
-              session: session,
-              unit: unit,
-              isToday: _sameDay(session.scheduledDate, now),
-              onTap: onOpenSession == null
-                  ? null
-                  : () => onOpenSession!(session),
-            ),
-          ),
-    ];
-  }
-
-  static bool _sameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Paid, but no plan yet.
   List<Widget> _entitled(BuildContext context) {
@@ -528,87 +499,3 @@ class _Line extends StatelessWidget {
     );
   }
 }
-
-/// One planned session in the week's list.
-///
-/// Says what it is, when, and how loaded it actually is. A session whose
-/// movements have no targets is not broken — it is what the coach can honestly
-/// prescribe for a movement it has not seen — so it renders as sets and reps
-/// rather than as a gap where a number should be.
-class _PlannedSessionRow extends StatelessWidget {
-  const _PlannedSessionRow({
-    required this.session,
-    required this.unit,
-    required this.isToday,
-    this.onTap,
-  });
-
-  final PlanSession session;
-  final MassUnit unit;
-  final bool isToday;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final done = session.status == PlanSessionStatus.completed;
-
-    return AppCard(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  session.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: done ? AppColors.textTertiary : null,
-                  ),
-                ),
-              ),
-              Text(
-                done
-                    ? 'Done'
-                    : isToday
-                    ? 'Today'
-                    : _shortWeekday(session.weekday),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isToday && !done
-                      ? AppColors.textPrimary
-                      : AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          // One per line, like PlanReviewScreen. Joined with middle dots this
-          // wrapped into a dense two-line block that cannot be scanned standing
-          // up holding a phone, which is the only posture that matters here.
-          for (final movement in session.movements)
-            Text(
-              '${movement.name} — ${movement.render(unit)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-String _shortWeekday(int weekday) => switch (weekday) {
-  1 => 'Mon',
-  2 => 'Tue',
-  3 => 'Wed',
-  4 => 'Thu',
-  5 => 'Fri',
-  6 => 'Sat',
-  7 => 'Sun',
-  _ => '',
-};

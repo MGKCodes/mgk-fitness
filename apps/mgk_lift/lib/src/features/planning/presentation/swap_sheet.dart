@@ -3,9 +3,9 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../tracking/domain/session.dart';
-import '../domain/plan.dart';
-import '../domain/plan_generator.dart';
-import '../domain/plan_validator.dart';
+import '../domain/coach_planner.dart';
+import '../domain/swap_validator.dart';
+import '../domain/planned_movement.dart';
 import 'coach_sheet.dart';
 
 /// "I don't like barbell bench press, can we swap it out."
@@ -26,7 +26,7 @@ class SwapSheet extends StatefulWidget {
     required this.movement,
     required this.log,
     this.unit = MassUnit.kilograms,
-    this.validator = const PlanValidator(),
+    this.validator = const SwapValidator(),
   });
 
   final CoachPlanner planner;
@@ -43,7 +43,7 @@ class SwapSheet extends StatefulWidget {
   final List<Session> log;
 
   final MassUnit unit;
-  final PlanValidator validator;
+  final SwapValidator validator;
 
   /// Returns the chosen replacement, or null if they backed out.
   static Future<PlannedMovement?> show(

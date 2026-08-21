@@ -1,6 +1,10 @@
 import '../src/features/stats/domain/session_history.dart';
-import '../src/features/planning/domain/plan.dart';
-import '../src/features/planning/domain/plan_generator.dart';
+import '../src/features/planning/domain/plan_intake.dart';
+import '../src/features/planning/domain/plan_builder.dart';
+import '../src/features/planning/domain/plan_template.dart';
+import '../src/features/planning/domain/standing_plan.dart';
+import '../src/features/planning/domain/training_split.dart';
+import '../src/features/planning/domain/coach_planner.dart';
 import '../src/features/planning/domain/plan_proposal.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/domain/session_recorder.dart';
@@ -282,17 +286,40 @@ class FakePlanner implements CoachPlanner {
   }
 
   @override
-  Future<List<PlanWeek>> skeleton({
+  Future<PlanProposal> plan({
     required PlanIntake intake,
+    required List<int> weekdays,
+    required List<String> catalogue,
     List<String> violations = const <String>[],
-  }) async => const <PlanWeek>[];
-
-  @override
-  Future<WeekProposal> week({
-    required PlanIntake intake,
-    required PlanWeek slot,
-    List<String> violations = const <String>[],
-  }) async => const WeekProposal(sessions: <ProposedSession>[]);
+  }) async {
+    _maybeFail();
+    // Built by the template rather than scripted, so the fake produces a plan
+    // that clears PlanShape at any day count instead of one that happens to
+    // pass at four.
+    final split = TrainingSplit.forDays(weekdays.length);
+    final slots = PlanTemplate.slotsFor(split: split, days: weekdays.length);
+    final order = split.weekFor(weekdays.length);
+    return PlanProposal(
+      reply: split.why,
+      name: split.name,
+      days: <ProposedDay>[
+        for (final day in order)
+          ProposedDay(
+            day: day,
+            movements: <ProposedSlot>[
+              for (final s in slots[day] ?? const <MovementSlot>[])
+                ProposedSlot(
+                  role: s.role,
+                  movement: s.movement,
+                  isMain: s.isMain,
+                  sets: s.sets,
+                  reps: s.reps,
+                ),
+            ],
+          ),
+      ],
+    );
+  }
 
   @override
   Future<SwapProposal> swap({

@@ -1,6 +1,6 @@
 import 'package:mgk_units/mgk_units.dart';
 
-import 'plan_validator.dart';
+import 'planned_movement.dart';
 import 'standing_plan.dart';
 
 /// Turns today's slots into today's session.
@@ -19,7 +19,7 @@ import 'standing_plan.dart';
 /// **The weight stays here, and only here.** It comes from what this lifter has
 /// actually lifted, which is the one thing a coach with all the programming
 /// knowledge in the world cannot know about them. That is the same line
-/// `PlanValidator` draws — *"the coach prescribes an intensity; the kilograms
+/// `SwapValidator` draws — *"the coach prescribes an intensity; the kilograms
 /// come from this lifter's own logged sets, or they do not come at all"*.
 ///
 /// ## Progression is deliberately dull

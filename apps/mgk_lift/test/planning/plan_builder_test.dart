@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_lift/src/features/planning/domain/plan.dart';
+import 'package:mgk_lift/src/features/planning/domain/plan_intake.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan_builder.dart';
 import 'package:mgk_lift/src/features/planning/domain/plan_template.dart';
 
@@ -220,7 +220,7 @@ void main() {
 
   test('a movement with no sets given is defaulted, not dropped', () async {
     // A plan worth checking rather than one worth throwing away.
-    final m = ProposedMovement.fromJson(<String, Object?>{
+    final m = ProposedSlot.fromJson(<String, Object?>{
       'role': 'r',
       'movement': 'Barbell Row',
       'is_main': false,

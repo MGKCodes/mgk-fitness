@@ -7,8 +7,8 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../data/exercise_lookup.dart';
 import '../domain/rest_timer.dart';
-import '../../planning/domain/plan_generator.dart';
-import '../../planning/domain/plan_validator.dart';
+import '../../planning/domain/coach_planner.dart';
+import '../../planning/domain/planned_movement.dart';
 import '../../planning/presentation/swap_sheet.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';

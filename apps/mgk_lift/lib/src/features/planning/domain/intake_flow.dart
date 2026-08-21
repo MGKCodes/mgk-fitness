@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 
 import '../../coaching/domain/coach.dart';
-import 'plan.dart';
+import 'plan_intake.dart';
 
 /// Everything the coach needs before it can build anything, and what to ask
 /// next when some of it is missing.

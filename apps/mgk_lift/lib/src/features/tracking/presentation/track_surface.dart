@@ -3,7 +3,7 @@ import 'package:mgk_units/mgk_units.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 
-import '../../planning/domain/plan.dart';
+import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
 import '../domain/session.dart';
 
@@ -62,7 +62,7 @@ class TrackSurface extends StatelessWidget {
 
   /// The live block, when there is one. Null keeps the free-tier copy, which is
   /// the honest state for most of the app's users and not a degraded one.
-  final Plan? plan;
+  final StandingPlan? plan;
 
   final MassUnit unit;
 
@@ -71,7 +71,8 @@ class TrackSurface extends StatelessWidget {
 
   /// Starts a planned session — with its movements AND its targets, which is
   /// the whole difference between a plan and a template.
-  final ValueChanged<PlanSession>? onStartPlanned;
+  /// Starts today's session, given the day of the split it is.
+  final ValueChanged<String>? onStartPlanned;
 
   /// What the screen is about, in three words.
   ///
@@ -86,9 +87,9 @@ class TrackSurface extends StatelessWidget {
   String get _headline {
     final open = openSession;
     if (open != null) return '${open.name} is still open';
-    final todays = plan?.sessionOn(today ?? DateTime.now());
-    if (todays != null && todays.status == PlanSessionStatus.planned) {
-      return 'Today is ${todays.title.toLowerCase()}';
+    final todays = plan?.dayFor(today ?? DateTime.now());
+    if (todays != null) {
+      return 'Today is ${todays.toLowerCase()}';
     }
     if (plan != null) return 'Nothing scheduled today';
     return 'Ready when you are';
@@ -179,7 +180,7 @@ class TrackSurface extends StatelessWidget {
 class _NextUp extends StatelessWidget {
   const _NextUp({required this.plan, required this.unit, required this.now});
 
-  final Plan? plan;
+  final StandingPlan? plan;
   final MassUnit unit;
   final DateTime now;
 
@@ -187,25 +188,27 @@ class _NextUp extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final p = plan;
-    final todays = p?.sessionOn(now);
-    final next = todays == null ? p?.nextFrom(now) : null;
+    final today = p?.dayFor(now);
+    final movements = p == null ? const <MovementSlot>[] : p.movementsFor(now);
 
-    final (String title, String detail) = switch ((p, todays, next)) {
-      (null, _, _) => (
+    // **No "block finished".** There is no end to reach, so the only states are
+    // no plan, a training day, and a rest day -- and a rest day is an answer
+    // rather than a gap.
+    final (String title, String detail) = switch ((p, today)) {
+      (null, _) => (
         'Nothing scheduled',
         'Your coach builds the plan. Until then, log whatever you are doing.',
       ),
-      (_, final PlanSession s, _) => (
-        s.title,
-        // One per line, as on Plan and the review screen. Middle-dot joined,
-        // this wrapped into a dense block nobody reads standing up.
-        s.movements.map((m) => '${m.name} — ${m.render(unit)}').join('\n'),
+      (_, final String day) => (
+        day,
+        // One per line, as on Plan. Middle-dot joined, this wrapped into a
+        // dense block nobody reads standing up.
+        movements.map((m) => m.movement).join(String.fromCharCode(10)),
       ),
-      (_, _, final PlanSession s) => (
+      _ => (
         'Rest day',
-        'Next is ${s.title} on ${_weekdayName(s.weekday)}.',
+        'Nothing owed. Log something anyway if you feel like it.',
       ),
-      _ => ('Block finished', 'Ask your coach what comes next.'),
     };
 
     return GlassSurface(
@@ -247,7 +250,7 @@ class _StartButton extends StatelessWidget {
     this.onStartPlanned,
   });
 
-  final Plan? plan;
+  final StandingPlan? plan;
 
   /// The same session the card above reads, rather than a bool derived from it
   /// — so "Resume session" and "Where you were" cannot describe different
@@ -256,7 +259,9 @@ class _StartButton extends StatelessWidget {
 
   final DateTime now;
   final VoidCallback? onStartSession;
-  final ValueChanged<PlanSession>? onStartPlanned;
+
+  /// Starts today's session, given the day of the split it is.
+  final ValueChanged<String>? onStartPlanned;
 
   @override
   Widget build(BuildContext context) {
@@ -264,12 +269,10 @@ class _StartButton extends StatelessWidget {
       return PrimaryButton(label: 'Resume session', onPressed: onStartSession);
     }
 
-    final todays = plan?.sessionOn(now);
-    if (todays != null &&
-        todays.status == PlanSessionStatus.planned &&
-        onStartPlanned != null) {
+    final todays = plan?.dayFor(now);
+    if (todays != null && onStartPlanned != null) {
       return PrimaryButton(
-        label: 'Start ${todays.title.toLowerCase()}',
+        label: 'Start ${todays.toLowerCase()}',
         onPressed: () => onStartPlanned!(todays),
       );
     }
@@ -277,17 +280,6 @@ class _StartButton extends StatelessWidget {
     return PrimaryButton(label: 'Start a session', onPressed: onStartSession);
   }
 }
-
-String _weekdayName(int weekday) => switch (weekday) {
-  1 => 'Monday',
-  2 => 'Tuesday',
-  3 => 'Wednesday',
-  4 => 'Thursday',
-  5 => 'Friday',
-  6 => 'Saturday',
-  7 => 'Sunday',
-  _ => 'another day',
-};
 
 /// The session they were in the middle of.
 ///

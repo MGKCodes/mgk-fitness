@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../domain/plan_generator.dart';
+import '../domain/coach_planner.dart';
 import '../domain/standing_plan.dart';
 import '../domain/standing_plan_store.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/planning/domain/intake_flow.dart';
-import 'package:mgk_lift/src/features/planning/domain/plan.dart';
+import 'package:mgk_lift/src/features/planning/domain/plan_intake.dart';
 import 'package:mgk_lift/src/features/planning/domain/training_split.dart';
 
 void main() {

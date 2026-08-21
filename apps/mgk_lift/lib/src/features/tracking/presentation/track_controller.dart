@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_units/mgk_units.dart';
 
-import '../../planning/domain/plan.dart';
-import '../../planning/domain/plan_generator.dart';
-import '../../planning/domain/plan_validator.dart';
+import '../../planning/domain/coach_planner.dart';
+import '../../planning/domain/planned_movement.dart';
 import '../../planning/domain/session_from_plan.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
@@ -56,7 +55,8 @@ class TrackController {
   /// thing this app could do.
   Future<void> openPlanned(
     BuildContext context,
-    PlanSession planned, {
+    String title,
+    List<PlannedMovement> movements, {
     MassUnit massUnit = MassUnit.kilograms,
     void Function(Session session)? onStarted,
     VoidCallback? onDone,
@@ -65,7 +65,8 @@ class TrackController {
     void Function(String replaced, PlannedMovement with_)? onSwapped,
   }) async {
     final open = await recorder.current();
-    final session = open ?? await SessionFromPlan(recorder).start(planned);
+    final session =
+        open ?? await SessionFromPlan(recorder).start(title, movements);
     if (open == null) onStarted?.call(session);
 
     if (!context.mounted) return;

@@ -9,13 +9,14 @@ import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
-import '../../planning/domain/plan.dart';
-import '../../planning/domain/plan_generator.dart';
-import '../../planning/domain/plan_store.dart';
-import '../../planning/domain/plan_validator.dart';
-import '../../planning/domain/session_from_plan.dart';
+import '../../planning/domain/plan_intake.dart';
+import '../../planning/domain/plan_builder.dart';
+import '../../planning/domain/session_prescription.dart';
+import '../../planning/domain/coach_planner.dart';
+import '../../planning/domain/plan_template.dart';
+import '../../planning/domain/standing_plan.dart';
+import '../../planning/domain/standing_plan_store.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
-import '../../planning/presentation/plan_review_screen.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/progress_photo.dart';
@@ -101,7 +102,7 @@ class LiftShell extends StatefulWidget {
   final CoachPlanner? planner;
 
   /// Where the block lives between sessions.
-  final PlanStore? plans;
+  final StandingPlanStore? plans;
 
   /// Whether this account has the paid tier for Lift.
   ///
@@ -188,7 +189,7 @@ class _LiftShellState extends State<LiftShell> {
 
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
-  Plan? _plan;
+  StandingPlan? _plan;
   bool _buildingPlan = false;
 
   @override
@@ -501,29 +502,45 @@ class _LiftShellState extends State<LiftShell> {
 
     setState(() => _buildingPlan = true);
     try {
-      final draft = await PlanGenerator(
-        planner: planner,
-      ).generate(intake: intake, log: _log, startDate: DateTime.now());
-      await plans.save(draft);
+      final equipment = Equipment.fromAnswer(intake.equipment ?? '');
+      final built =
+          await PlanBuilder(
+            propose:
+                ({
+                  required PlanIntake intake,
+                  required List<int> weekdays,
+                  required List<String> catalogue,
+                  List<String> violations = const <String>[],
+                }) => planner.plan(
+                  intake: intake,
+                  weekdays: weekdays,
+                  catalogue: catalogue,
+                  violations: violations,
+                ),
+          ).build(
+            id: 'plan-${DateTime.now().millisecondsSinceEpoch}',
+            intake: intake,
+            // What they said, or a sensible week if they declined. Days is the one
+            // question the intake will not let somebody skip, so this is a
+            // belt-and-braces default rather than a real case.
+            weekdays: intake.availableWeekdays ?? const <int>[1, 2, 4, 5],
+            catalogue: catalogueFor(equipment),
+            equipment: equipment,
+          );
+
+      await plans.replace(built.plan);
       if (!mounted) return;
 
-      // Shown before it is anyone's training. The draft is already saved, so
-      // backing out here leaves a plan they can be offered again rather than
-      // throwing away four model calls.
-      final accepted = await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(
-          builder: (_) => PlanReviewScreen(
-            plan: draft,
-            unit: _units.mass,
-            onAccept: () => Navigator.of(context).pop(true),
-          ),
-        ),
-      );
-      if (accepted != true || !mounted) return;
-
-      final live = await plans.accept(draft);
-      if (!mounted) return;
-      setState(() => _plan = live);
+      // **No separate review screen.** Reviewing a block made sense when four
+      // model calls produced twelve weeks nobody had seen. A standing plan is
+      // one week, it carries the coach's own reason for its shape, and the plan
+      // surface has "Change the split" on it — so landing there IS the review,
+      // and an extra screen in between would be a gate on the thing they asked
+      // for.
+      setState(() {
+        _plan = built.plan;
+        _index = _planTab;
+      });
     } on PlanException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -539,78 +556,38 @@ class _LiftShellState extends State<LiftShell> {
   /// The link is written when the session FINISHES, not when it starts: a
   /// session opened and abandoned is not a session they did, and marking the
   /// plan complete on open would claim otherwise.
-  Future<void> _openPlannedSession(PlanSession planned) async {
+  /// Starts today's session from the plan.
+  ///
+  /// **Derived on the spot rather than looked up.** A standing plan has no
+  /// session rows to open — [SessionPrescription] turns today's slots into
+  /// movements, with the weight worked out from what this lifter has actually
+  /// lifted and left blank where there is nothing to work it out from.
+  Future<void> _openPlannedSession(String day) async {
     final recorder = widget.recorder;
-    if (recorder == null) return;
+    final plan = _plan;
+    if (recorder == null || plan == null) return;
 
-    String? startedId;
+    final slots = plan.slots[day] ?? const <MovementSlot>[];
+    if (slots.isEmpty) return;
+
     await TrackController(recorder).openPlanned(
       context,
-      planned,
+      day,
+      SessionPrescription.forDay(slots),
       massUnit: _units.mass,
       planner: widget.planner,
       log: _log,
-      onSwapped: (replaced, with_) =>
-          unawaited(_recordSwap(planned, replaced, with_)),
-      onStarted: (session) => startedId = session.id,
       onDone: () {
-        final id = startedId;
-        if (id != null) {
-          unawaited(_markTrained(planned, id));
-        }
+        // Recording what the session did to each slot -- the top set and
+        // whether it moved -- is the post-session review, and is the next
+        // thing to build. Until then the plan does not learn from a workout,
+        // which is a gap rather than a decision.
         unawaited(_refreshSession());
         unawaited(_refreshLog());
       },
     );
     await _refreshSession();
     await _refreshLog();
-  }
-
-  /// Asks the coach to change the week ahead, and applies what the lifter
-  /// keeps.
-  ///
-  /// The changes are applied to the plan in memory and then saved whole. That
-  /// is safe precisely because they are a DIFF: everything the coach did not
-  /// name comes through untouched, so writing the result cannot lose a session
-  /// nobody discussed.
-
-  /// Records that a planned movement was replaced, so the plan stops claiming
-  /// they did something they swapped out.
-  ///
-  /// The plan is the record of what was PRESCRIBED, and leaving it stale would
-  /// make "did they follow the plan" answerable only wrongly — which is the one
-  /// question the whole `workout_id` join exists to answer.
-  Future<void> _recordSwap(
-    PlanSession planned,
-    String replaced,
-    PlannedMovement with_,
-  ) async {
-    final plans = widget.plans;
-    if (plans == null) return;
-    try {
-      await plans.replaceMovements(
-        planned,
-        applySwap(planned.movements, replaces: replaced, with_: with_),
-      );
-      await _refreshPlan();
-    } on PlanException {
-      // The session itself is correct either way; only the plan's copy is
-      // behind. Not worth interrupting a workout for.
-    }
-  }
-
-  Future<void> _markTrained(PlanSession planned, String workoutId) async {
-    final plans = widget.plans;
-    if (plans == null) return;
-    try {
-      await plans.markTrained(planned, workoutId);
-      await _refreshPlan();
-    } on PlanException {
-      // The session is logged either way. A plan that has not caught up is a
-      // worse outcome than an error nobody can act on, and the next refresh
-      // will not fix it — which is why this is worth revisiting when sync
-      // grows a retry queue.
-    }
   }
 
   Future<void> _openSession() async {

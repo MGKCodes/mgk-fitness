@@ -3,8 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 // `Session` is also a gotrue type. Hidden rather than aliased so every use
 // below still reads as the app's own session.
 import '../../tracking/domain/session.dart';
-import '../domain/plan.dart';
-import '../domain/plan_generator.dart';
+import '../domain/plan_intake.dart';
+import '../domain/plan_builder.dart';
+import '../domain/coach_planner.dart';
 import '../domain/plan_proposal.dart';
 
 /// The planning half of the coach, via the same `coach` Edge Function.
@@ -54,47 +55,26 @@ class SupabaseCoachPlanner implements CoachPlanner {
   }
 
   @override
-  Future<List<PlanWeek>> skeleton({
+  Future<PlanProposal> plan({
     required PlanIntake intake,
+    required List<int> weekdays,
+    required List<String> catalogue,
     List<String> violations = const <String>[],
   }) async {
     final data = await _invoke(<String, Object?>{
-      'surface': 'lift_skeleton',
+      'surface': 'lift_plan',
       'profile': intake.toJson(),
+      'weekdays': weekdays,
+      // The one input the function cannot read for itself: the catalogue lives
+      // in the app. Sent filtered to what this lifter can actually use, both to
+      // keep the prompt short and so the coach is never offered a machine they
+      // do not have. Everything else the prompt needs -- the log, the memory,
+      // the house guidance -- is read server-side and overwrites whatever is
+      // sent here.
+      'catalogue': catalogue.join(String.fromCharCode(10)),
       if (violations.isNotEmpty) 'violations': violations,
     });
-
-    final weeks = data['weeks'];
-    if (weeks is! List) return const <PlanWeek>[];
-    return <PlanWeek>[
-      for (final w in weeks)
-        if (w is Map<String, Object?>)
-          PlanWeek(
-            number: (w['index'] as num?)?.toInt() ?? 0,
-            phase: PlanPhase.fromWire(w['phase'] as String? ?? 'base'),
-            intent: (w['intent'] as String?)?.trim(),
-          ),
-    ]..removeWhere((PlanWeek w) => w.number < 1);
-  }
-
-  @override
-  Future<WeekProposal> week({
-    required PlanIntake intake,
-    required PlanWeek slot,
-    List<String> violations = const <String>[],
-  }) async {
-    final data = await _invoke(<String, Object?>{
-      'surface': 'lift_week',
-      'profile': intake.toJson(),
-      'slot': <String, Object?>{
-        'week': slot.number,
-        'phase': slot.phase.wire,
-        'intent': slot.intent,
-        'is_deload': slot.isDeload,
-      },
-      if (violations.isNotEmpty) 'violations': violations,
-    });
-    return WeekProposal.fromJson(data);
+    return PlanProposal.fromJson(data);
   }
 
   @override

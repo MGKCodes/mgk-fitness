@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_lift/src/features/planning/domain/plan.dart';
-import 'package:mgk_lift/src/features/planning/domain/plan_validator.dart';
+import 'package:mgk_lift/src/features/planning/domain/planned_movement.dart';
 import 'package:mgk_lift/src/features/planning/domain/session_from_plan.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session_recorder.dart';
@@ -125,14 +124,13 @@ class FakeRecorder implements SessionRecorder {
   );
 }
 
-PlanSession planned(List<PlannedMovement> movements) => PlanSession(
-  id: 'p1-w1-d1',
-  weekNumber: 1,
-  weekday: 1,
-  scheduledDate: DateTime(2026, 8, 10),
-  kind: 'push',
-  movements: movements,
-);
+/// A day's worth of prescribed movements.
+///
+/// **A day, not a PlanSession.** A standing plan has no session rows to open:
+/// SessionPrescription turns today's slots into these, and the session is
+/// named after the day of the split rather than after a row somebody wrote in
+/// advance.
+const String plannedDay = 'Push';
 
 void main() {
   group('starting a planned session', () {
@@ -141,16 +139,15 @@ void main() {
       // because the coach derived it from this lifter's own log, not because
       // the app decided something only they could know.
       final recorder = FakeRecorder();
-      final session = await SessionFromPlan(recorder).start(
-        planned(<PlannedMovement>[
-          PlannedMovement(
-            name: 'Barbell Bench Press',
-            sets: 3,
-            reps: 5,
-            target: const Mass.kilograms(85),
-          ),
-        ]),
-      );
+      final session = await SessionFromPlan(recorder)
+          .start(plannedDay, <PlannedMovement>[
+            PlannedMovement(
+              name: 'Barbell Bench Press',
+              sets: 3,
+              reps: 5,
+              target: const Mass.kilograms(85),
+            ),
+          ]);
 
       final exercise = session.exercises.single;
       expect(exercise.name, 'Barbell Bench Press');
@@ -166,9 +163,10 @@ void main() {
       // field would read as a bug and would have to be cleared before logging.
       final recorder = FakeRecorder();
       final session = await SessionFromPlan(recorder).start(
-        planned(const <PlannedMovement>[
+        plannedDay,
+        const <PlannedMovement>[
           PlannedMovement(name: 'Cable Fly', sets: 3, reps: 12),
-        ]),
+        ],
       );
 
       for (final set in session.exercises.single.sets) {
@@ -180,30 +178,30 @@ void main() {
     test('nothing is ticked off — they still have to do it', () async {
       // The one thing a tracker must never do is log a session nobody did.
       final recorder = FakeRecorder();
-      final session = await SessionFromPlan(recorder).start(
-        planned(<PlannedMovement>[
-          PlannedMovement(
-            name: 'Barbell Bench Press',
-            sets: 3,
-            reps: 5,
-            target: const Mass.kilograms(85),
-          ),
-        ]),
-      );
+      final session = await SessionFromPlan(recorder)
+          .start(plannedDay, <PlannedMovement>[
+            PlannedMovement(
+              name: 'Barbell Bench Press',
+              sets: 3,
+              reps: 5,
+              target: const Mass.kilograms(85),
+            ),
+          ]);
       expect(
         session.exercises.single.sets.every((SessionSet s) => !s.isCompleted),
         isTrue,
       );
     });
 
-    test('the session is named after what the plan called it', () async {
+    test('the session is named after the day of the split', () async {
       final recorder = FakeRecorder();
       final session = await SessionFromPlan(recorder).start(
-        planned(const <PlannedMovement>[
+        plannedDay,
+        const <PlannedMovement>[
           PlannedMovement(name: 'Cable Fly', sets: 1, reps: 10),
-        ]),
+        ],
       );
-      expect(session.name, 'Push');
+      expect(session.name, plannedDay);
     });
   });
 
