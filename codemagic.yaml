@@ -77,6 +77,40 @@
 #     the running one — and survives any rename, because the name customers
 #     see is CFBundleDisplayName and can change whenever you like. Required
 #     before any TestFlight upload will be accepted.
+#
+#  6. **Lift only — the signing pair, uploaded by hand.** Everything above is
+#     Run's. Lift does not fetch its profile at build time (see the note below
+#     the setup block), so both halves have to sit in Codemagic ▸ Teams ▸ Code
+#     signing identities:
+#
+#       iOS certificates       the .p12 AND its password, reference name
+#                              `liftio_distribution`
+#       Provisioning profiles  the .mobileprovision, reference name
+#                              `liftio_app_store`
+#
+#     Those names are what `lift-ios-release` references below, so a typo there
+#     fails the build with a profile that does not exist rather than one that
+#     does not match. Both come out of EAS, which still holds the private key
+#     for the certificate it generated — `eas credentials -p ios` in the old
+#     Expo project, build profile `production`, then download credentials to
+#     credentials.json. That yields `dist-cert.p12` and its password.
+#
+#     **Generate the profile in the Apple portal, not from EAS.** What EAS
+#     hands back is its own cached `*[expo] …` blob, which is stale the moment
+#     anything changes in the portal, and a deleted profile still signs
+#     locally — it fails at the upload, after a full green build. Profiles ▸ +
+#     ▸ Distribution ▸ App Store Connect ▸ the `com.mgkcodes.liftio` App ID ▸
+#     the certificate **expiring 2027-03-03**, which is the one the .p12
+#     contains. A profile whose certificate you do not hold the key for is the
+#     failure this whole workflow exists to avoid.
+#
+#     Verify the pair before uploading, offline and in seconds: the profile is
+#     a CMS-wrapped plist (`openssl smime -inform der -verify -noverify`), and
+#     its `DeveloperCertificates[0]` must be byte-identical to the certificate
+#     inside the .p12. If they differ, the build signs and then fails at the
+#     end. A profile is also a snapshot of the App ID's capabilities, so
+#     regenerate it after changing them — Lift has no entitlements file today,
+#     but In-App Purchase arrives with payments.
 # ───────────────────────────────────────────────────────────────────────────
 
 # One workflow per app, all in this one file, because Codemagic reads exactly
@@ -99,6 +133,12 @@
 # record, an App ID and a distribution certificate are three things, and none of
 # them is a provisioning profile. EAS managed Liftio's signing and left nothing
 # behind that this pipeline can fetch.
+#
+# **Resolved by not fetching at all.** Three more identical failures on
+# 2026-08-21 — after the profile had been created by hand, and with the bundle
+# id, team and certificate each ruled out — moved Lift to manual signing: the
+# certificate and profile are uploaded to Codemagic once and the fetch step
+# stops existing. Run still fetches, because for Run it has always worked.
 #
 # Worth adding when there are two: a `triggering.when.changeset.includes` on
 # each, so a commit that only touches Lift does not spend twenty minutes
@@ -422,13 +462,41 @@ workflows:
         - $CM_BUILD_DIR/apps/mgk_lift/ios/Pods
     working_directory: apps/mgk_lift
     integrations:
+      # Still here, but now only for `publishing` at the foot of this workflow:
+      # the TestFlight upload authenticates with this key. Signing no longer
+      # goes through it — see `ios_signing` below.
       app_store_connect: frunt_asc
     environment:
       ios_signing:
-        distribution_type: app_store
-        # Liftio's id, inherited rather than suite-named. See
-        # apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md.
-        bundle_identifier: com.mgkcodes.liftio
+        # Manual signing, where Run uses `distribution_type` +
+        # `bundle_identifier`. The automatic form asks Codemagic to fetch a
+        # matching profile from App Store Connect at build time, and for
+        # `com.mgkcodes.liftio` that fetch has never once succeeded — five
+        # builds (7d758a2 on 2026-08-18; 6a87ad71 / 6a87afcd / 6a87b020 /
+        # 6a885451 on 2026-08-21), every one with `startedAt` null, so no
+        # machine ever started and nothing about the build itself was reached.
+        #
+        # Ruled out, each with evidence rather than assumption: the bundle id
+        # (yaml and pbxproj match exactly), the Apple team (all six profiles
+        # live in ZTS7SQYSA5, and Run's fetch works from the same key), and
+        # profile type (App Store, no provisioned devices).
+        #
+        # The team does hold TWO distribution certificates, which is worth
+        # knowing whatever the cause: a legacy `iPhone Distribution` expiring
+        # 2027-03-03 that EAS created and still holds the private key for, and
+        # an `Apple Distribution` expiring 2027-06-03 that Frunt and Run's
+        # profiles use. Every Liftio profile hung off the EAS one. Re-pointing
+        # Lift's profile at the June certificate was the obvious fix and it did
+        # NOT work — 6a885451 failed identically — so the fetch failure remains
+        # genuinely unexplained. Do not spend another build on a theory.
+        #
+        # These are reference names in Codemagic ▸ Teams ▸ Code signing
+        # identities, NOT files in this repo — setup note 6 above. Uploading
+        # the pair once is the price of not depending on that fetch.
+        provisioning_profiles:
+          - liftio_app_store
+        certificates:
+          - liftio_distribution
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
