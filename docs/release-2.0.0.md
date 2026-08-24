@@ -8,6 +8,13 @@ differently from how it is written here, change the item and say why — the
 reasoning is worth more than the checkbox, which is the lesson
 [roadmap.md](roadmap.md) records about itself.
 
+**The UI work found by testing lives next door.** The first build on a phone
+turned up a list of interaction and layout gaps that are not phases of this
+plan; they are in
+[lift-2.0.0-punch-list.md](lift-2.0.0-punch-list.md). Two items overlap and are
+tracked there rather than duplicated: the resumable coach transcript in Phase 5,
+and the template picker's fate, which is item 3 of [roadmap.md](roadmap.md).
+
 ---
 
 ## The decisions this plan rests on

@@ -1,4 +1,4 @@
-# Liftio 2.0.0 — TestFlight test sheet
+# MGKFitness: Lift 2.0.0 — TestFlight test sheet
 
 Fill this in on the phone, with the build in your hand. Tick what passes, write
 a line where it does not, and hand the whole thing back — a failed row with two
@@ -63,7 +63,7 @@ me nothing:
 | A1 | Install from TestFlight and open it | Opens without a crash | ☐ |
 | A2 | *(Upgrade only)* Open on a device that had 1.4.0 | Opens, and does not behave like a fresh install | ☐ |
 | A3 | *(Upgrade only)* Look for your old training history | **Unverified — this is the big one.** Whether 2.0.0 restores a 1.4.0 lifter's history on sign-in has never been proven either way. Write down exactly what you see. | ☐ |
-| A4 | Check the name under the home-screen icon | Reads as Liftio, not a placeholder | ☐ |
+| A4 | Check the name under the home-screen icon | Reads `Lift` — not `Mgk Lift`, and not the full `MGKFitness: Lift`, which iOS would truncate | ☐ |
 | A5 | Force-quit and reopen | Returns to where you were | ☐ |
 
 ## B. Account
@@ -153,8 +153,8 @@ movements rotate rather than the plan finishing.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| H1 | With Runio on the same account, compare the profile | Age, height and weight match — one person, two apps | ☐ |
-| H2 | Change your weight in Liftio, then open Runio | It follows across | ☐ |
+| H1 | With MGKFitness: Run on the same account, compare the profile | Age, height and weight match — one person, two apps | ☐ |
+| H2 | Change your weight here, then open MGKFitness: Run | It follows across | ☐ |
 
 ---
 
