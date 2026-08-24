@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -64,10 +65,7 @@ void main() {
         findsOneWidget,
       );
       // The shared-login consequence is disclosed before the runner commits.
-      expect(
-        find.textContaining('shared MGKCodes fitness account'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('$kPlatformName profile'), findsOneWidget);
     });
 
     testWidgets('the delete button is inert until the phrase is typed', (
@@ -112,7 +110,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(deleter.calls, 1);
-      expect(find.text('Your Runio data is deleted'), findsOneWidget);
+      expect(find.text('Your data is deleted'), findsOneWidget);
     });
 
     testWidgets('lower case counts, since the field is a confirmation not a '
@@ -181,7 +179,7 @@ void main() {
       expect(auth.isSignedIn, isFalse);
     });
 
-    testWidgets('explains when the shared login was kept for Liftio', (
+    testWidgets('explains when the shared profile was kept for Lift', (
       tester,
     ) async {
       await pumpScreen(
@@ -199,12 +197,12 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Your Runio data is deleted'), findsOneWidget);
+      expect(find.text('Your data is deleted'), findsOneWidget);
       expect(find.textContaining('Your login is still active'), findsOneWidget);
       expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
     });
 
-    testWidgets('says the login went too when the account was Runio-only', (
+    testWidgets('says the profile went too when it held nothing else', (
       tester,
     ) async {
       await pumpScreen(
@@ -247,7 +245,7 @@ void main() {
         findsOneWidget,
       );
       // No false success, and no sign-out on a failed deletion.
-      expect(find.text('Your Runio data is deleted'), findsNothing);
+      expect(find.text('Your data is deleted'), findsNothing);
       expect(auth.isSignedIn, isTrue);
     });
 

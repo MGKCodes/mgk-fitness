@@ -173,8 +173,13 @@ class _SignInScreenState extends State<SignInScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // **Never the app's name.** What is being made here
+                      // is not an account for this app - it is the profile
+                      // that works across every app in the suite, and heading
+                      // the screen with one app's name says the opposite of
+                      // that to the person who already has one from Lift.
                       Text(
-                        'RUNIO',
+                        '$kPlatformName Profile',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: 2,
@@ -194,6 +199,24 @@ class _SignInScreenState extends State<SignInScreen> {
                         child: Text(
                           _isSignUp ? 'Create your account' : 'Welcome back',
                           style: theme.textTheme.bodyLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Said on both halves of the screen, not just sign-up.
+                      // Someone signing in may be arriving from Lift with a
+                      // profile they did not know reached this far, and that
+                      // is worth telling them at the moment they are wondering
+                      // whether their details will work.
+                      Entrance(
+                        child: Text(
+                          'One profile for every $kPlatformName app. The same '
+                          'sign-in works in Lift and in anything else we make, '
+                          'so you only set this up once.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),

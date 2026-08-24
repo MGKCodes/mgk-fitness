@@ -32,14 +32,21 @@ class _RecordingConsent implements BackupConsentStore {
 /// one thing worth doing hidden behind a button, and both were met by a
 /// data-privacy modal first (ADR-0017).
 ///
-/// Walks **moment one**: the greeting, a name, each permission in turn, the
-/// form. What it no longer walks is the shape question and the costs statement,
-/// which moved to the plan flow (ADR-0019).
+/// Walks **moment one**: the greeting, a name, each permission in turn, then
+/// the address and the password. What it no longer walks is the shape question
+/// and the costs statement, which moved to the plan flow (ADR-0019) — nor a
+/// form, because there is no longer one to walk: the profile is created in the
+/// conversation itself.
 ///
 /// Driven off `introPermissions` rather than a fixed list of taps, so adding or
 /// removing a permission does not silently strand every flow test on a screen
 /// it does not know how to leave.
-Future<void> _throughIntro(WidgetTester tester, {String? name}) async {
+Future<void> _throughIntro(
+  WidgetTester tester, {
+  String? name,
+  String email = 'sam@runio.app',
+  String password = 'password',
+}) async {
   await tester.tap(find.text('Get started'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Sounds good'));
@@ -53,7 +60,11 @@ Future<void> _throughIntro(WidgetTester tester, {String? name}) async {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
   }
-  await tester.tap(find.text('Create my account'));
+  await tester.enterText(find.byType(TextField), email);
+  await tester.tap(find.byTooltip('Continue'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField), password);
+  await tester.tap(find.byTooltip('Create my profile'));
   await tester.pumpAndSettle();
 }
 
@@ -89,10 +100,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await _throughIntro(tester, name: 'Sam');
-    await tester.enterText(find.byType(TextFormField).at(0), 'sam@runio.app');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password');
-    await tester.tap(find.text('Sign up'));
-    await tester.pumpAndSettle();
 
     expect(
       find.byType(CoachFlow),
@@ -194,12 +201,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await _throughIntro(tester, name: 'Sam');
-    await tester.enterText(find.byType(TextFormField).at(0), 'sam@runio.app');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password');
-    await tester.tap(find.text('Sign up'));
-    await tester.pumpAndSettle();
 
-    // Given to the coach, carried through the form, stored on the account.
+    // Given to the coach and stored on the profile, without a form in between.
     expect(auth.lastName, 'Sam');
     expect(auth.currentName, 'Sam');
   });
@@ -305,6 +308,12 @@ void main() {
     // so this now watches the thing it still decides: whether the shell takes
     // the new-account road, which skips the restore and the consent question
     // in front of it.
+    //
+    // The change of mind is a real one now. Sign-up finishes inside the
+    // conversation, so walking the intro no longer arrives at the screen the
+    // dev buttons live on - it arrives at Home, signed in. What still has to
+    // hold is that entering the conversation and leaving it does not leave the
+    // claim behind.
     await tester.binding.setSurfaceSize(const Size(420, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -326,9 +335,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await _throughIntro(tester);
+    // Start down the sign-up road, which is what claims the intent...
+    await tester.tap(find.text('Get started'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sounds good'), findsOneWidget);
 
-    // Then change their mind and use the dev entry instead.
+    // ...then change their mind, back out, and sign in as the dev account.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('I already have an account'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Dev'));
     await tester.pumpAndSettle();
 

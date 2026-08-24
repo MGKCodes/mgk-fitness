@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/main.dart';
@@ -33,7 +34,7 @@ void main() {
       ),
     );
 
-    expect(find.text('RUNIO'), findsOneWidget);
+    expect(find.text(kAppName.toUpperCase()), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
     expect(find.text('I already have an account'), findsOneWidget);
   });

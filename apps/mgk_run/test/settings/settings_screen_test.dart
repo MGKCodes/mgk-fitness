@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -162,7 +163,7 @@ void main() {
     );
     expect(legal, findsOneWidget);
 
-    final version = find.textContaining('Runio $kAppVersion');
+    final version = find.textContaining('$kProductName $kAppVersion');
     await tester.scrollUntilVisible(
       version,
       300,

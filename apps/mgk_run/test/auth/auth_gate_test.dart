@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -15,7 +16,7 @@ void main() {
       MaterialApp(home: AuthGate(auth: FakeAuthRepository())),
     );
 
-    expect(find.text('RUNIO'), findsOneWidget);
+    expect(find.text(kAppName.toUpperCase()), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
   });
 
@@ -32,7 +33,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Developer sign-in'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Runner A'));
+    // Scroll it into view first. The screen gained the shared-profile
+    // explainer under its heading, which is enough to push the developer
+    // buttons below an 800x600 test viewport - they are reachable in the app,
+    // which scrolls, and a tap on an off-screen widget is a warning rather
+    // than a failure, so without this the failure surfaces two lines later as
+    // a missing Home.
+    final quickSignIn = find.widgetWithText(OutlinedButton, 'Runner A');
+    await tester.ensureVisible(quickSignIn);
+    await tester.pumpAndSettle();
+    await tester.tap(quickSignIn);
     await tester.pumpAndSettle();
 
     // The fake flipped to signed-in and emitted; the real AuthGate swapped in
@@ -44,8 +54,15 @@ void main() {
   /// there was nothing on the navigator for the system back gesture to pop and
   /// it fell through to the platform — quitting Runio from the second screen a
   /// new runner ever sees.
-  testWidgets('system back on sign-in returns to the conversation, not out of '
-      'the app', (tester) async {
+  testWidgets('system back inside the conversation does not leave the app', (
+    tester,
+  ) async {
+    // Every step of the signed-out flow is a *state* of one widget rather than
+    // a pushed route, so a back gesture finds nothing on the navigator to pop
+    // and goes straight past the app to the launcher. The conversation is now
+    // several questions deep - it ends by creating the profile rather than
+    // handing off to a form - so there is more of it to fall out of than there
+    // used to be, and the guard matters more, not less.
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -53,15 +70,13 @@ void main() {
         home: AuthGate(
           auth: FakeAuthRepository(),
           devAccounts: devAccounts,
-          // There is no platform here to grant anything, and the intro now
-          // waits on a real dialog before it will move on.
+          // There is no platform here to grant anything, and the intro waits on
+          // a real dialog before it will move on.
           requestPermission: (_) async => true,
         ),
       ),
     );
 
-    // "Get started" now opens the coach's conversation, and the form is the
-    // last step of it rather than the first thing after the welcome screen.
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sounds good'));
@@ -75,9 +90,11 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('Create my account'));
-    await tester.pumpAndSettle();
-    expect(find.text('Create your account'), findsOneWidget);
+
+    // Deep in it: the address has been asked for, and no form was pushed to
+    // ask - which is the whole point of the change this guards.
+    expect(find.text('Sam'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNothing);
 
     // What the hardware back button / back gesture does.
     final popped = await tester.binding.handlePopRoute();
@@ -88,12 +105,10 @@ void main() {
       isTrue,
       reason: 'the app must handle the pop rather than let it exit',
     );
-    // Back into the conversation, with the answers still there — not past it.
-    expect(find.text('Create your account'), findsNothing);
     expect(
-      find.text('Sam'),
+      find.text('Get started'),
       findsOneWidget,
-      reason: 'the name they gave is still in the transcript behind them',
+      reason: 'back out of the conversation lands on the welcome screen',
     );
   });
 

@@ -1,4 +1,4 @@
-# Medical Disclaimer — Runio
+# Medical Disclaimer — MGKFitness: Run
 
 > This wording is surfaced to the user at onboarding, before a plan is
 > generated, and is available from settings. Have it reviewed before
@@ -10,7 +10,7 @@
 > `lib/src/features/legal/domain/legal_copy.dart` — **change both together**, a
 > regression test (`test/legal/legal_copy_test.dart`) fails if they drift.
 
-Runio provides general fitness and training information and generates running
+MGKFitness: Run provides general fitness and training information and generates
 training plans. **It is not medical advice and is not a substitute for
 professional medical care.**
 
@@ -25,6 +25,6 @@ professional medical care.**
 - You are responsible for training within your own limits and for your own
   safety.
 
-By using Runio you acknowledge that you exercise at your own risk and that
+By using the app you acknowledge that you exercise at your own risk and that
 MGKCodes Ltd is not liable for injury or health issues arising from use of the
 app.

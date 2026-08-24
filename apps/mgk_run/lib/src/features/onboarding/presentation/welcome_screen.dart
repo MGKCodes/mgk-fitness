@@ -1,3 +1,4 @@
+import '../../../core/brand.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
@@ -97,16 +98,19 @@ class WelcomeScreen extends StatelessWidget {
 
 /// The wordmark.
 ///
-/// Still reads RUNIO while the monorepo calls this app Run and the suite name
-/// is not settled (see the repo README). Left alone deliberately — renaming the
-/// product is a branding decision, not a layout one, and it wants to change
-/// here, in `CFBundleDisplayName`, and in the copy at the same time.
+/// The app's own front door, so it carries the app's name rather than the
+/// platform's — this is the one screen where "which app is this" is the
+/// question being answered.
+///
+/// The branding decision this used to wait for has been made: see
+/// `docs/naming.md`. It arrives from [kAppName] rather than a literal so the
+/// wordmark, `CFBundleDisplayName` and `android:label` cannot drift apart.
 class _Wordmark extends StatelessWidget {
   const _Wordmark();
 
   @override
   Widget build(BuildContext context) => Text(
-    'RUNIO',
+    kAppName.toUpperCase(),
     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
       fontWeight: FontWeight.w800,
       letterSpacing: 2,

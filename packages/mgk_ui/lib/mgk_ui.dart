@@ -8,6 +8,7 @@
 /// neutral — are in this package's README.
 library;
 
+export 'src/brand/app_brand.dart';
 export 'src/motion/app_haptics.dart';
 export 'src/motion/app_motion.dart';
 export 'src/motion/count_up.dart';

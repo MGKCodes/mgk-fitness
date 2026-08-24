@@ -100,20 +100,73 @@ is what recording needs, so it is the one worth spending the runner's patience
 on. Health second because it is an enhancement — a runner who declines simply
 starts from an empty log.
 
-**Both requests are stubbed for now.** The conversation is built; the platform
-calls behind it are placeholders that return "granted" without asking anything,
-under a marked block in `intro_permission_requester.dart` naming exactly what
-replaces each. This is deliberate. The shape of the exchange is what is being
-designed, and neither call can be verified from the Windows harness this repo is
-developed on — location's real geolocator call was tried and could not be
-confirmed either way, and HealthKit has no package in `pubspec.yaml` and nothing
-in `lib/` that reads it at all.
+**Both requests are real, since 2026-08-21.** They were stubbed when this ADR
+was written — the conversation was built first and the platform calls behind it
+returned "granted" without asking anything, because the shape of the exchange
+was what was being designed and neither call could be verified from the Windows
+harness this repo is developed on.
 
-HealthKit is in development, so the step is written and waiting for the
-integration rather than speculating about one. The consequence to keep in view:
-**it has to be wired before release**, because asking for authorisation to data
-the app never reads is an App Store rejection. The step must not overtake the
-integration. The stub is a design scaffold, not a shipping state.
+That has landed. Location goes through `geolocator`, reading the current state
+before asking so a runner who granted it on a previous install is not asked
+again. HealthKit goes through `health: 13.2.0`, and `true` from it means "the
+sheet was answered" rather than "reads were allowed" — iOS refuses to say which
+reads it granted, by design, so the coach's reply is written not to over-claim
+on the strength of it.
+
+The warning this section used to carry — that wiring HealthKit was a release
+blocker, because asking for authorisation to data the app never reads is an App
+Store rejection — is discharged, not dropped. It was correct, and it was acted
+on. It is recorded here because the notice in
+`intro_permission_requester.dart` went on claiming the work was outstanding
+long after it was done, which is a more expensive kind of staleness than a
+missing note: it sent a reader looking for a blocker that did not exist.
+
+## Amendment, 2026-08-21 — signed in is not onboarded
+
+This ADR assumed the two were the same, and while sign-up and onboarding were
+one moment they were. They are not any more, and the assumption had already
+started costing: an existing session survives an app update, so the
+conversation simply did not run.
+
+The case that matters is not that one. It is a runner who makes their profile
+in **Lift** and then installs this app. They arrive signed in, having never met
+this coach, and under a shared profile that is the growth path rather than an
+edge case. They would have landed in the shell — and then met the location
+dialog on top of the first run they tried to start, because
+`GeolocatorLocationSource` asks at recording time when it has not been granted.
+That is the exact scenario the section above rejects, reached by a door this
+ADR did not know it had left open.
+
+So the gate no longer asks "signed out?". Each step is asked whether it is
+already satisfied, because the steps do not share a lifetime:
+
+| Step | Belongs to | Skipped for an arrival from Lift |
+|---|---|---|
+| Meet the coach | this app | No — a different coach, never met |
+| Name | the profile, shared | **Yes** — already on it |
+| Permissions | **the install** | No — and a new phone needs them again |
+| Profile | the profile, shared | **Yes** — they have one |
+
+Two rules hold this together:
+
+- **Only "met the coach" is persisted**, in auth metadata, namespaced per app
+  (`run_intro_seen`). Metadata for the same reasons the name uses it: it travels
+  with the account, needs no migration, and arrives with the session. Namespaced
+  because the profile is shared and meeting a coach is not.
+- **Permission state is never persisted.** The OS is the only honest source and
+  it can be revoked behind the app's back, so it is asked every time. The
+  requester already reads the current state before prompting, so an
+  already-granted permission answers itself without a dialog.
+
+Note what this does not do: nothing is backfilled. Every existing account will
+see the conversation once more, on next launch. That is deliberate rather than
+overlooked — the app is not released, the accounts are testers', and inventing a
+backfill heuristic for a userbase of a handful is more code and more ways to be
+wrong than the thing it saves.
+
+Still open: Settings replays the intro to re-ask permissions and has no `auth`
+to hand, so it still asks for a name the profile already knows. Harmless, and
+the same skip applies once the section is given one.
 
 ## The obvious alternative
 

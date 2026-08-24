@@ -140,7 +140,7 @@ class GoalDraft {
         out.add(
           GoalIssue(
             'goal',
-            'That is over ${(kMaxGoalMeters / 1000).round()} km. Runio does not '
+            'That is over ${(kMaxGoalMeters / 1000).round()} km. The app does not '
                 'plan ultras.',
           ),
         );

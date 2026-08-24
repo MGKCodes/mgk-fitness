@@ -90,6 +90,21 @@ class _AuthGateState extends State<AuthGate> {
   /// the fact would otherwise be gone by the time the shell exists.
   bool _justSignedUp = false;
 
+  /// Set the moment the signed-in conversation finishes, so the shell arrives
+  /// without waiting on the round trip that records it.
+  bool _metCoachThisSession = false;
+
+  Future<void> _coachMet(AuthRepository auth) async {
+    setState(() => _metCoachThisSession = true);
+    // Deliberately not awaited before the shell appears, and deliberately not
+    // allowed to fail loudly: the conversation has happened either way, and a
+    // dropped connection must not strand somebody on an intro they have just
+    // finished. The cost of losing it is that it is asked once more.
+    try {
+      await auth.markCoachMet();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = widget.auth;
@@ -105,6 +120,30 @@ class _AuthGateState extends State<AuthGate> {
             devAccounts: accounts,
             onSignUpIntent: (v) => _justSignedUp = v,
             requestPermission: widget.requestPermission,
+          );
+        }
+        // **Signed in is not the same as onboarded.**
+        //
+        // This used to read the two as one thing, because for as long as
+        // signing up and onboarding were the same moment they were. They are
+        // not any more. A runner who made their profile in Lift and then
+        // installed this app arrives here signed in and having never met this
+        // coach - and under a shared profile that is the growth path, not an
+        // edge case. They would have landed in the shell, and met the location
+        // dialog on top of the first run they tried to start, which is the
+        // exact thing ADR-0019 asked for permissions during onboarding to
+        // avoid.
+        //
+        // No account steps: they have a profile. Just the coach, and the
+        // permissions this install has never been asked for.
+        if (!_justSignedUp && !_metCoachThisSession && !auth.hasMetCoach) {
+          return IntroScreen(
+            // What the profile already knows. The name is shared across the
+            // suite, so somebody arriving from Lift is not asked for it twice.
+            initial: IntroAnswers(name: auth.currentName),
+            requestPermission:
+                widget.requestPermission ?? requestIntroPermission,
+            onFinished: () => _coachMet(auth),
           );
         }
         return HomeShell(
@@ -157,9 +196,14 @@ class _SignedOutFlow extends StatefulWidget {
 }
 
 class _SignedOutFlowState extends State<_SignedOutFlow> {
-  /// Where in the signed-out flow we are. Creating an account goes through the
-  /// coach first; signing back into one goes straight to the form, because a
-  /// returning runner has met the coach already (ADR-0018).
+  /// Where in the signed-out flow we are.
+  ///
+  /// Creating a profile now happens **inside** the conversation, so [_Signed.intro]
+  /// is terminal on that path: it makes the account itself and `AuthGate` swaps
+  /// the subtree when the session lands. [_Signed.form] is reached only by a
+  /// returning runner saying they already have one, because somebody signing
+  /// back in wants a form their password manager recognises rather than a
+  /// conversation they have had before.
   _Signed _at = _Signed.welcome;
 
   /// What the intro conversation gathered, carried into the form and then into
@@ -198,15 +242,11 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
           setState(() => _at = _Signed.welcome);
         },
         child: IntroScreen(
+          auth: widget.auth,
           initial: _answers,
           requestPermission: widget.requestPermission ?? requestIntroPermission,
           onBack: () => setState(() => _at = _Signed.welcome),
-          onDone: (answers) {
-            setState(() {
-              _answers = answers;
-              _at = _Signed.form;
-            });
-          },
+          onSignUpIntent: widget.onSignUpIntent,
         ),
       );
     }

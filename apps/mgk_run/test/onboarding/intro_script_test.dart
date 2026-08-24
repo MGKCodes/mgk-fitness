@@ -1,7 +1,8 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_script.dart';
 
-/// The conversation Runio opens with, before there is an account.
+/// The conversation the app opens with, before there is an account.
 ///
 /// **Moment one** of two (ADR-0019). It ends with a free account and a working
 /// run tracker. What it used to also do — ask what the runner was training for,
@@ -83,12 +84,12 @@ void main() {
       expect(said, isNotEmpty);
     });
 
-    test('the form is asked for as one login across both apps', () {
-      // ADR-0008: Runio and Liftio share an identity. A runner finding that out
+    test('the form is asked for as one profile across both apps', () {
+      // ADR-0008: the two apps share an identity. A runner finding that out
       // later, from a delete-account screen, is finding it out too late.
       final said = introPrompt(IntroStep.signUp);
-      expect(said, contains('Runio'));
-      expect(said, contains('Liftio'));
+      expect(said, contains(kPlatformName));
+      expect(said, contains('Lift'));
     });
 
     test('and the account is not sold as a second phone', () {

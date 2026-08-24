@@ -44,8 +44,26 @@ class AppConfig {
   /// Attribution required by the tile provider's terms, shown on the map.
   final String mapAttribution;
 
+  /// Whether this build can actually reach a backend.
+  ///
+  /// The URL has to parse with a host, not merely be non-empty. Build 9 shipped
+  /// `SUPABASE_URL` as a bare `<ref>.supabase.co`: non-empty, but it parses as a
+  /// *path*, so every request failed with "No host specified in URI" — and only
+  /// at the first sign-up, long after the app looked healthy. A build that
+  /// cannot reach Supabase should say so on the first screen instead.
+  ///
+  /// `http` is permitted so a local Supabase stack still works. The release
+  /// build insists on https in `codemagic.yaml`, which is where a plaintext
+  /// backend would actually matter.
   bool get isConfigured =>
-      supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+      _hasHost(supabaseUrl) && supabasePublishableKey.isNotEmpty;
+
+  static bool _hasHost(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        uri.host.isNotEmpty &&
+        (uri.scheme == 'https' || uri.scheme == 'http');
+  }
 
   /// Whether a basemap is available. False in a build with no tile provider
   /// configured, which is a normal state rather than an error.

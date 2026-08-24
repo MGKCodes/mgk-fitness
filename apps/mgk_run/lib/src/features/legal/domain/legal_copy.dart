@@ -1,3 +1,4 @@
+import '../../../core/brand.dart';
 import 'legal_document.dart';
 
 /// The in-app legal copy. **Mirrors `docs/`** — see [LegalDocument] for the
@@ -9,9 +10,9 @@ import 'legal_document.dart';
 const LegalDocument medicalDisclaimer = LegalDocument(
   title: 'Medical disclaimer',
   lead:
-      'Runio provides general fitness and training information and generates '
-      'running training plans. It is not medical advice and is not a '
-      'substitute for professional medical care.',
+      '$kProductName provides general fitness and training information and '
+      'generates running training plans. It is not medical advice and is '
+      'not a substitute for professional medical care.',
   sections: <LegalSection>[
     LegalSection(
       bullets: <String>[
@@ -31,9 +32,9 @@ const LegalDocument medicalDisclaimer = LegalDocument(
     ),
   ],
   footnote:
-      'By using Runio you acknowledge that you exercise at your own risk and '
-      'that MGKCodes Ltd is not liable for injury or health issues arising '
-      'from use of the app.',
+      'By using the app you acknowledge that you exercise at your own risk '
+      'and that MGKCodes Ltd is not liable for injury or health issues '
+      'arising from use of the app.',
 );
 
 /// `docs/privacy-policy.md`. Reachable from the legal screen, and required to be
@@ -41,11 +42,11 @@ const LegalDocument medicalDisclaimer = LegalDocument(
 const LegalDocument privacyPolicy = LegalDocument(
   title: 'Privacy policy',
   lead:
-      'Runio is a running coach. Your runs and plans live on your phone; '
-      'backing them up to our servers is optional and off until you ask. To '
-      'coach you it sends your training context, and what you say in the '
-      'conversation, to an AI provider. We do not sell your data. You can '
-      'delete everything at any time.',
+      '$kProductName is a running coach. Your runs and plans live on your '
+      'phone; backing them up to our servers is optional and off until you '
+      'ask. To coach you it sends your training context, and what you say '
+      'in the conversation, to an AI provider. We do not sell your data. '
+      'You can delete everything at any time.',
   sections: <LegalSection>[
     LegalSection(
       heading: 'What we collect',
@@ -117,7 +118,7 @@ const LegalDocument privacyPolicy = LegalDocument(
       heading: 'Where data is stored',
       paragraphs: <String>[
         'Your runs, plans and conversations live on your device, which is the '
-            'copy Runio actually works from — the app records, reads and plans '
+            'copy the app actually works from — it records, reads and plans '
             'with no network at all. Data in transit is encrypted with '
             'HTTPS/TLS.',
       ],
@@ -148,14 +149,15 @@ const LegalDocument privacyPolicy = LegalDocument(
             'and withdraw consent. Turning off Back up my data withdraws '
             'consent to storing your data on our servers and deletes what is '
             'already there; your phone keeps its copy. Delete account removes '
-            'every Runio record we hold for you — runs, route points, splits, '
+            'every record we hold for you — runs, route points, splits, '
             'plans, sessions, your runner profile, your coach conversations and '
             'your usage records.',
-        'Your Runio login is a shared MGKCodes fitness account, also usable by '
-            'Liftio. If the account holds no Liftio data, deletion removes the '
-            'login itself. If it does, we delete all of your Runio data and '
-            'keep only the login, so your Liftio data survives — email '
-            'hello@mgkcodes.com to remove the login as well.',
+        'Your login is your $kPlatformName profile, shared with '
+            '$kPlatformName: Lift. If the profile holds no data from Lift, '
+            'deletion removes the profile itself. If it does, we delete '
+            'everything this app holds and keep only the profile, so your '
+            'data in Lift survives — email hello@mgkcodes.com to remove the '
+            'profile as well.',
       ],
     ),
     LegalSection(
@@ -175,7 +177,7 @@ const LegalDocument privacyPolicy = LegalDocument(
     LegalSection(
       heading: 'Children',
       paragraphs: <String>[
-        'Runio is not directed at children under 16 and we do not knowingly '
+        'The app is not directed at children under 16 and we do not knowingly '
             'collect their data.',
       ],
     ),

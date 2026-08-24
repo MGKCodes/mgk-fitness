@@ -12,11 +12,15 @@ import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
 /// It also records the last credentials passed to [signIn] / [signUp], handy
 /// for asserting the quick-sign-in buttons.
 class FakeAuthRepository extends AuthRepository {
-  FakeAuthRepository({bool signedIn = false, String? email, String? name})
-    : _signedIn = signedIn,
-      _email = email,
-      _name = name,
-      super();
+  FakeAuthRepository({
+    bool signedIn = false,
+    String? email,
+    String? name,
+    this.metCoach = true,
+  }) : _signedIn = signedIn,
+       _email = email,
+       _name = name,
+       super();
 
   bool _signedIn;
   String? _email;
@@ -71,6 +75,23 @@ class FakeAuthRepository extends AuthRepository {
 
   @override
   String? get currentName => _name;
+
+  /// Whether the opening conversation has been had. Settable, so a test can
+  /// stand up a runner who is signed in and has never seen it - which is what
+  /// arriving from Lift looks like.
+  bool metCoach;
+
+  @override
+  bool get hasMetCoach => metCoach;
+
+  /// How many times the fact was written. A test asserts it is written once.
+  int coachMarks = 0;
+
+  @override
+  Future<void> markCoachMet() async {
+    coachMarks++;
+    metCoach = true;
+  }
 
   /// Mirrors the real repository: blank clears rather than storing empty, so a
   /// runner who would rather not be named has a reachable answer.

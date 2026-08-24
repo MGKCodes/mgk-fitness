@@ -1,3 +1,4 @@
+import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -72,7 +73,7 @@ class LegalPreviewApp extends StatelessWidget {
     final key = Uri.base.queryParameters['screen'];
     final builder = legalPreviewScreens[key];
     return MaterialApp(
-      title: 'Runio Legal Preview',
+      title: '$kProductName legal preview',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: Builder(
@@ -92,7 +93,7 @@ class _Index extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Runio · legal preview')),
+      appBar: AppBar(title: Text('$kProductName · legal preview')),
       body: ListView(
         children: <Widget>[
           const Padding(
