@@ -52,6 +52,31 @@ class FakeSessionRecorder implements SessionRecorder {
   }
 
   @override
+  Future<Session> fillFromLibrary({
+    required String workoutId,
+    required String name,
+    required List<String> movements,
+  }) async {
+    final s = _require();
+    return _session = Session(
+      id: s.id,
+      name: name,
+      startedAt: s.startedAt,
+      endedAt: s.endedAt,
+      notes: s.notes,
+      exercises: <SessionExercise>[
+        ...s.exercises,
+        for (var i = 0; i < movements.length; i++)
+          SessionExercise(
+            id: _nextId,
+            name: movements[i],
+            orderIndex: s.exercises.length + i,
+          ),
+      ],
+    );
+  }
+
+  @override
   Future<Session> addSet(String exerciseId) async {
     final s = _require();
     return _session = _copy(s, <SessionExercise>[

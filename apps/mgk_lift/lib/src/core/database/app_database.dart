@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +54,16 @@ class AppDatabase extends _$AppDatabase {
         // right: nothing has ever been uploaded, so everything is pending.
         await m.addColumn(workouts, workouts.syncedAt);
         await m.createTable(syncMeta);
+      }
+      if (from < 5) {
+        // Where a saved workout came from, when it came from one of the
+        // fifteen. Null on every existing row and that is correct — nothing in
+        // the app has ever written a template, so no row can have an origin.
+        //
+        // Deliberately landed *before* the write path rather than after it. A
+        // column added later would need a backfill guessing which meaning each
+        // existing `templateId` carried; added now there is nothing to guess.
+        await m.addColumn(workouts, workouts.premadeId);
       }
       // The slot rule, as an index rather than a table constraint: drift's
       // `customConstraints` replaces the generated ones wholesale, and a

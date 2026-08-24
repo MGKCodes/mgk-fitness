@@ -39,6 +39,15 @@ class FakeRecorder implements SessionRecorder {
     ]);
   }
 
+  /// Not exercised here — a planned session and a saved workout are two
+  /// different ways of filling one, and this fake exists for the first.
+  @override
+  Future<Session> fillFromLibrary({
+    required String workoutId,
+    required String name,
+    required List<String> movements,
+  }) async => throw UnimplementedError();
+
   @override
   Future<Session> addSet(String exerciseId) async {
     final s = _session!;

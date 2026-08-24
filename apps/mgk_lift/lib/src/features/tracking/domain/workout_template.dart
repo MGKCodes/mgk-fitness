@@ -30,16 +30,23 @@ class WorkoutTemplate {
   /// Movement names, in the order they should be done.
   final List<String> exercises;
 
-  /// Whether this one is offered in the picker.
+  /// Whether this one leads the list a lifter browses.
   ///
   /// **All of them are the coach's raw material; a few of them are a menu.**
   /// The full fifteen are what the coach composes from — it knows what a push
   /// day contains and in what order, so it never has to invent a session from
   /// nothing. But fifteen is a lot to choose between with no coach and no
   /// plan, and the body-part splits among them are for somebody who already
-  /// knows what they are doing. So the picker offers the six that answer
-  /// "what should I do today" for a person who has just opened a tracker, and
-  /// the rest stay available to the coach.
+  /// knows what they are doing. So these six are the ones that answer "what
+  /// should I do today" for a person who has just opened a tracker.
+  ///
+  /// **It orders rather than filters, and it used to do the opposite.** The
+  /// template picker showed only these six, because it started a session
+  /// directly and that is a decision made standing up in a hurry. That picker
+  /// is gone — see `PremadeLibrarySheet`, which adds to the lifter's library
+  /// instead. Curating a library is the opposite kind of decision, made once
+  /// and sitting down, so hiding nine of the fifteen there would be the app
+  /// withholding something for no reason it could give.
   ///
   /// This is a display rule, not a tier: tracking is free and stays free, and
   /// nothing here is withheld to sell anything.

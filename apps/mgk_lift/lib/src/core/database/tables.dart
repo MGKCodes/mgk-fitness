@@ -37,10 +37,37 @@ class Workouts extends Table {
   /// A saved routine rather than a session that happened. Templates carry no
   /// date remotely (`date = 0`), which is why they must never reach the
   /// activity feed.
+  ///
+  /// **A template is outside the started/ended axis entirely.** It keeps a
+  /// `startedAt` only because the column is not nullable — the value is when it
+  /// was saved and means nothing else — and its `endedAt` stays null forever,
+  /// which is the same shape as a session in progress. Anything asking "is
+  /// there a session open" therefore has to exclude templates as well as
+  /// finished rows; `DriftSessionRecorder.current()` does, and it is the one
+  /// query where getting this wrong would hand a lifter their own template as
+  /// a workout to resume.
   BoolColumn get isTemplate => boolean().withDefault(const Constant(false))();
 
-  /// The template this session was started from, if any.
+  /// The saved workout this session was started from, if any. Set on a
+  /// **session** row; null on a template.
   TextColumn get templateId => text().nullable()();
+
+  /// The app-provided premade this template was added from, if any. Set on a
+  /// **template** row; null on a session.
+  ///
+  /// **A second column rather than one field doing both jobs.** The two answer
+  /// different questions about different rows — "which of my saved workouts did
+  /// this session come from" and "which of the fifteen did this saved workout
+  /// come from" — and `isTemplate` would have been the only thing separating
+  /// them, so every reader would have had to check a flag before it could know
+  /// what the string it was holding meant.
+  ///
+  /// It costs nothing to have both: `lift.workouts.premade_id` has existed
+  /// remotely since the Liftio baseline, so this needs no Supabase migration
+  /// and never will. The local migration is one `addColumn` now; after the
+  /// write path ships it would be the same migration plus a backfill that has
+  /// to guess which of the two meanings each existing value carried.
+  TextColumn get premadeId => text().nullable()();
 
   /// Soft delete. Kept rather than hard-deleted so a delete syncs to other
   /// devices instead of the row simply reappearing from the backup.

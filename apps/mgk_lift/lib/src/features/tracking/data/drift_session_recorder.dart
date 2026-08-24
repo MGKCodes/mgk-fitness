@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/row_id.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import 'session_hydration.dart';
@@ -14,7 +15,7 @@ import 'session_hydration.dart';
 /// there is only ever one of them.
 class DriftSessionRecorder implements SessionRecorder {
   DriftSessionRecorder(this._db, {String Function()? idFactory})
-    : _newId = idFactory ?? _uuid;
+    : _newId = idFactory ?? newRowId;
 
   final AppDatabase _db;
   final String Function() _newId;
@@ -23,7 +24,19 @@ class DriftSessionRecorder implements SessionRecorder {
   Future<Session?> current() async {
     final row =
         await (_db.select(_db.workouts)
-              ..where((w) => w.endedAt.isNull() & w.deletedAt.isNull())
+              // **Three conditions, and the template one is load-bearing.** A
+              // saved workout is stored as a workout row that has never ended,
+              // so on `endedAt` alone it is indistinguishable from a session
+              // somebody force-quit out of — and the moment the library had
+              // anything in it, "Resume session" would have offered the
+              // lifter their own routine and finishing it would have filed a
+              // workout they never did. See `Workouts.isTemplate`.
+              ..where(
+                (w) =>
+                    w.endedAt.isNull() &
+                    w.deletedAt.isNull() &
+                    w.isTemplate.equals(false),
+              )
               ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
               ..limit(1))
             .getSingleOrNull();
@@ -62,6 +75,39 @@ class DriftSessionRecorder implements SessionRecorder {
             cardioMode: Value(cardioMode),
           ),
         );
+    return _touch(session.id);
+  }
+
+  @override
+  Future<Session> fillFromLibrary({
+    required String workoutId,
+    required String name,
+    required List<String> movements,
+  }) async {
+    final session = await _requireCurrent();
+
+    // The name and the back-reference together, in one write. `templateId` is
+    // what a "how often do I actually run this" figure would later be counted
+    // on, so a session filled from the library without it would simply be
+    // missing from its own workout's history.
+    await (_db.update(
+      _db.workouts,
+    )..where((w) => w.id.equals(session.id))).write(
+      WorkoutsCompanion(name: Value(name), templateId: Value(workoutId)),
+    );
+
+    for (var i = 0; i < movements.length; i++) {
+      await _db
+          .into(_db.exercises)
+          .insert(
+            ExercisesCompanion.insert(
+              id: _newId(),
+              workoutId: session.id,
+              name: movements[i],
+              orderIndex: Value(session.exercises.length + i),
+            ),
+          );
+    }
     return _touch(session.id);
   }
 
@@ -195,12 +241,4 @@ class DriftSessionRecorder implements SessionRecorder {
     if (at.hour < 17) return 'Afternoon session';
     return 'Evening session';
   }
-}
-
-/// Small, dependency-free id. Not a real UUID and does not need to be — it only
-/// has to be unique within one account's rows, and the database enforces that.
-String _uuid() {
-  final now = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
-  final salt = identityHashCode(Object()).toRadixString(36);
-  return '$now-$salt';
 }

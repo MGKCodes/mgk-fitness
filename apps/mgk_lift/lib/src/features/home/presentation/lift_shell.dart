@@ -26,6 +26,7 @@ import '../../sync/domain/sync_status.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
+import '../../tracking/domain/workout_library.dart';
 import '../../tracking/presentation/track_controller.dart';
 import '../../tracking/presentation/track_surface.dart';
 
@@ -52,6 +53,7 @@ class LiftShell extends StatefulWidget {
   const LiftShell({
     super.key,
     this.recorder,
+    this.library,
     this.units,
     this.history,
     this.coach,
@@ -72,6 +74,13 @@ class LiftShell extends StatefulWidget {
   /// which is the right behaviour for a build with no on-device database — the
   /// app still runs and the action reads as unavailable rather than erroring.
   final SessionRecorder? recorder;
+
+  /// The lifter's saved workouts, which a session's empty state offers and a
+  /// finished session can be added to. **Null hides both**, which is the right
+  /// behaviour for a build with no on-device database — the same rule
+  /// [recorder] follows, and for the same reason: the two are stored in the
+  /// same three tables.
+  final WorkoutLibrary? library;
 
   /// Where the lifter's chosen units come from. Null keeps them for the session
   /// at the defaults, which is what tests and previews want.
@@ -573,7 +582,7 @@ class _LiftShellState extends State<LiftShell> {
     final slots = plan.slots[day] ?? const <MovementSlot>[];
     if (slots.isEmpty) return;
 
-    await TrackController(recorder).openPlanned(
+    await TrackController(recorder, library: widget.library).openPlanned(
       context,
       day,
       SessionPrescription.forDay(slots),
@@ -596,7 +605,7 @@ class _LiftShellState extends State<LiftShell> {
   Future<void> _openSession() async {
     final recorder = widget.recorder;
     if (recorder == null) return;
-    await TrackController(recorder).openSession(
+    await TrackController(recorder, library: widget.library).openSession(
       context,
       massUnit: _units.mass,
       planner: widget.planner,

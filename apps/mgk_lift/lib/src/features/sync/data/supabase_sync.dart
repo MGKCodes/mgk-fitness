@@ -20,6 +20,31 @@ import 'sync_queue.dart';
 /// into the cross-app feed). Uploading it would also mean two devices both
 /// think they own the same live session.
 ///
+/// ## Templates go down but not up, and that is deliberate
+///
+/// The workout library is stored as workout rows with `isTemplate` set, and
+/// **nothing here uploads one**. The push writes `started_at` unconditionally,
+/// and `workouts_template_has_no_date` requires a template to have none — so a
+/// template reaching this code as it stands would be rejected by the server,
+/// and because [_push] walks the dirty rows in a loop, one rejected row would
+/// stop every real session behind it from going up too. That is a poisoned
+/// queue for a feature nobody has yet lost anything by not having, so the rule
+/// is stated in `SyncQueue.dirtyWorkouts` instead and templates stay on the
+/// device that made them.
+///
+/// **The limit, plainly: a library built on this phone does not survive losing
+/// this phone.** Lifting it is a branch in the upsert below rather than a
+/// migration — `lift.workouts.premade_id` and the nullable `started_at` are
+/// both already there — but it is a change that can only be proved against the
+/// live server, so it is not made blind.
+///
+/// The *pull* is the other way round, and has to be: `lift.workouts` has held
+/// 47 template rows with a null `started_at` since the Liftio baseline (see
+/// `20260806150000_lift_schema_modernise.sql`). Reading them is how somebody's
+/// old library comes back on a new phone — and until [_applyRemote] learned
+/// about them, a null `started_at` threw on the cast and took the whole pull
+/// with it.
+///
 /// ## Change detection
 ///
 /// `updatedAt > syncedAt` on the workout, and nothing else. `lift.exercises` and
@@ -204,8 +229,23 @@ class SupabaseSync implements BackupService {
         _db.exercises,
       )..where((e) => e.workoutId.equals(id))).go();
 
-      final started = DateTime.parse(raw['started_at'] as String).toLocal();
       final durationS = (raw['duration_s'] as num?)?.toInt() ?? 0;
+      final createdAt = _parse(raw['created_at']) ?? now;
+      final isTemplate = raw['is_template'] as bool? ?? false;
+
+      // **`started_at` is nullable remotely and is null on every template.**
+      // This used to be an unguarded `as String`, which threw on the first
+      // template the pull met and aborted the run — and there have been 47 of
+      // them in `lift.workouts` since the Liftio baseline, so the only reason
+      // it never fired is that nothing in this app had ever asked for them.
+      //
+      // Locally the column is not nullable, so a template borrows its
+      // `createdAt`. Nothing reads a template's `startedAt` as a date; see
+      // `Workouts.isTemplate`.
+      final startedRaw = raw['started_at'] as String?;
+      final started = startedRaw == null
+          ? createdAt
+          : DateTime.parse(startedRaw).toLocal();
 
       await _db
           .into(_db.workouts)
@@ -217,13 +257,24 @@ class SupabaseSync implements BackupService {
               // The remote schema has no `ended_at`; a finished session is one
               // with a duration, so it is reconstructed rather than stored.
               // Only finished sessions are ever uploaded, so this is total.
-              endedAt: started.add(Duration(seconds: durationS)),
+              //
+              // A template never ended, because it never happened. Giving it
+              // a reconstructed end date would file somebody's saved routine
+              // into their training log as a workout they did.
+              endedAt: isTemplate
+                  ? null
+                  : started.add(Duration(seconds: durationS)),
               durationS: durationS,
               notes: raw['notes'] as String?,
-              isTemplate: raw['is_template'] as bool? ?? false,
+              isTemplate: isTemplate,
               templateId: raw['template_id'] as String?,
+              // Which of the fifteen a saved workout was added from, for the
+              // browser to mark. Liftio wrote this column locally and never
+              // uploaded it, so it is null on everything already up there —
+              // an old library comes back unattributed rather than not at all.
+              premadeId: raw['premade_id'] as String?,
               deletedAt: _parse(raw['deleted_at']),
-              createdAt: _parse(raw['created_at']) ?? now,
+              createdAt: createdAt,
               updatedAt: _parse(raw['updated_at']) ?? now,
               syncedAt: now,
             ),

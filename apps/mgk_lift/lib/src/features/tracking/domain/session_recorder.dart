@@ -16,6 +16,12 @@ abstract interface class SessionRecorder {
   /// Non-null after a crash if one was interrupted — a workout row with no
   /// `endedAt`. Callers should offer it back rather than silently starting a
   /// second one over the top.
+  ///
+  /// **A saved workout is not an open session**, even though it is stored as a
+  /// workout row with no `endedAt` too. An implementation that reads only
+  /// `endedAt` will hand a lifter one of their own library entries to resume,
+  /// and finishing it would turn a routine into a session that never happened.
+  /// See `Workouts.isTemplate`.
   Future<Session?> current();
 
   /// Begins a session. Throws [SessionInProgress] if one is already open,
@@ -24,6 +30,32 @@ abstract interface class SessionRecorder {
 
   /// Adds a movement to the open session.
   Future<Session> addExercise(String name, {String? cardioMode});
+
+  /// Fills the open session from a saved workout: its name, its movements in
+  /// order, and a back-reference to where they came from.
+  ///
+  /// **Replaces the template shortcut it is named after.** `_useTemplate` used
+  /// to tip one of the fifteen premades straight into a blank session, which
+  /// made the app-provided list a start path — the thing the Knowledge decision
+  /// *"Lift templates are the coach's grounding layer, not a user-facing
+  /// library"* says it must not be. This does the same filling from the
+  /// lifter's own library instead, so the premades are reached by adding one to
+  /// that library first.
+  ///
+  /// Movements only. A saved workout says what to do, not what to lift — see
+  /// [SavedWorkout.movements]. A *planned* session is different and
+  /// deliberately so: `SessionFromPlan` fills in weights because the coach
+  /// derived them from this lifter's own logged sets.
+  ///
+  /// Takes primitives rather than a `SavedWorkout` so the recorder does not
+  /// have to know the library exists. It has one caller — the empty state of a
+  /// session that has just been started — and it renames the session on the
+  /// assumption that nothing has been logged into it yet.
+  Future<Session> fillFromLibrary({
+    required String workoutId,
+    required String name,
+    required List<String> movements,
+  });
 
   /// Adds a set to a movement, carrying the previous set's numbers forward.
   ///

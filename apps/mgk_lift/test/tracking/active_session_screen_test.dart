@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
 import 'package:mgk_lift/src/features/tracking/data/drift_session_recorder.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
+import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/active_session_screen.dart';
 // Prefixed: drift generates its own `SetRow` for the sets table, which collides
 // with the widget of the same name.
@@ -24,13 +25,17 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<Widget> screen({MassUnit unit = MassUnit.kilograms}) async {
+  Future<Widget> screen({
+    MassUnit unit = MassUnit.kilograms,
+    WorkoutLibrary? withLibrary,
+  }) async {
     final session = await recorder.current() ?? await recorder.start();
     return MaterialApp(
       home: ActiveSessionScreen(
         recorder: recorder,
         session: session,
         massUnit: unit,
+        library: withLibrary,
       ),
     );
   }
@@ -170,28 +175,41 @@ void main() {
     expect(find.text('Your own movement'), findsOneWidget);
   });
 
-  testWidgets('an empty session offers a template before a blank card', (
+  testWidgets('an empty session offers the library before a blank card', (
     WidgetTester tester,
   ) async {
     // The first session is otherwise the hardest: a blank list asks someone to
     // remember what a push day is before they can log anything.
+    //
+    // **What the second action opens changed and the reason for having one did
+    // not.** It used to be `Use a template`, straight into the fifteen
+    // app-provided premades — the thing "Lift templates are the coach's
+    // grounding layer, not a user-facing library" rules out. It is now the
+    // lifter's own saved workouts, with the premades one step further in as
+    // something you add to that list. See workout_library_surface_test.dart.
     await recorder.start();
 
-    await tester.pumpWidget(await screen());
+    await tester.pumpWidget(
+      await screen(withLibrary: InMemoryWorkoutLibrary()),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Use a template'), findsOneWidget);
+    expect(find.text('Your workouts'), findsOneWidget);
+    expect(find.text('Use a template'), findsNothing);
     expect(find.text('Add exercise'), findsOneWidget);
   });
 
-  testWidgets('a template adds its movements and no numbers', (
+  testWidgets('a saved workout adds its movements and no numbers', (
     WidgetTester tester,
   ) async {
-    // A template says what to do, not what to lift. Pre-filling weights would
-    // be the app asserting something only the lifter knows.
+    // A saved workout says what to do, not what to lift. Pre-filling weights
+    // would be the app asserting something only the lifter knows.
     await recorder.start();
-    await recorder.addExercise('Barbell Bench Press');
-    await recorder.addExercise('Dumbbell Shoulder Press');
+    await recorder.fillFromLibrary(
+      workoutId: 'saved-1',
+      name: 'Push',
+      movements: <String>['Barbell Bench Press', 'Dumbbell Shoulder Press'],
+    );
 
     final session = await recorder.current();
     expect(session!.exercises, hasLength(2));

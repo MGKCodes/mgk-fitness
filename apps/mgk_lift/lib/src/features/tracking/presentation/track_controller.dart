@@ -6,6 +6,7 @@ import '../../planning/domain/planned_movement.dart';
 import '../../planning/domain/session_from_plan.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
+import '../domain/workout_library.dart';
 import 'active_session_screen.dart';
 
 /// Starts or resumes a session and puts the active screen on top.
@@ -18,9 +19,14 @@ import 'active_session_screen.dart';
 /// who force-quit mid-workout would tap "Start" and get an exception. What they
 /// should get is the session they were already in.
 class TrackController {
-  const TrackController(this.recorder);
+  const TrackController(this.recorder, {this.library});
 
   final SessionRecorder recorder;
+
+  /// The lifter's saved workouts, handed to the session screen so its empty
+  /// state can offer them. Null is a build with no on-device database, and the
+  /// screen hides the action rather than showing one that cannot work.
+  final WorkoutLibrary? library;
 
   /// Resumes the open session if there is one, otherwise starts a fresh one.
   Future<void> openSession(
@@ -39,6 +45,7 @@ class TrackController {
           recorder: recorder,
           session: session,
           massUnit: massUnit,
+          library: library,
           onFinished: onDone,
           planner: planner,
           log: log,
@@ -76,6 +83,7 @@ class TrackController {
           recorder: recorder,
           session: session,
           massUnit: massUnit,
+          library: library,
           onFinished: onDone,
           planner: planner,
           log: log,

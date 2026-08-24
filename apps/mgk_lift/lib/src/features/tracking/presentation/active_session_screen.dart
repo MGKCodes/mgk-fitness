@@ -12,10 +12,11 @@ import '../../planning/domain/planned_movement.dart';
 import '../../planning/presentation/swap_sheet.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
+import '../domain/workout_library.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'rest_bar.dart';
-import 'template_picker_sheet.dart';
+import 'workout_library_sheet.dart';
 
 /// The screen you are looking at while standing at a rack.
 ///
@@ -32,6 +33,7 @@ class ActiveSessionScreen extends StatefulWidget {
     required this.session,
     this.massUnit = MassUnit.kilograms,
     this.lookup,
+    this.library,
     this.onFinished,
     this.planner,
     this.log = const <Session>[],
@@ -52,6 +54,12 @@ class ActiveSessionScreen extends StatefulWidget {
   /// The 266-movement catalogue, for form images and muscle groups. Injected so
   /// a test can pass a small one instead of loading the lot.
   final ExerciseLookup? lookup;
+
+  /// The lifter's saved workouts. **Null hides both library actions** rather
+  /// than showing ones that cannot work — the same rule every other optional
+  /// dependency in this app follows, and the honest state for a build with no
+  /// on-device database.
+  final WorkoutLibrary? library;
 
   /// Called after a session is finished or discarded, so the caller can reload.
   final VoidCallback? onFinished;
@@ -115,6 +123,28 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// How long the next rest runs for. Starts at the default and follows the
   /// lifter's adjustments — see [_adjustRest].
   Duration _restLength = RestTimer.defaultRest;
+
+  /// Whether this session has already been saved to the library.
+  ///
+  /// Suppresses the finish-time offer, which would otherwise ask a lifter to
+  /// save something they saved two minutes ago from the button in the list.
+  bool _savedToLibrary = false;
+
+  /// Whether this session was filled **from** the library.
+  ///
+  /// Also suppresses the finish-time offer: they already have this workout,
+  /// and offering them a copy of something they picked off a list ninety
+  /// minutes ago is the app not paying attention.
+  ///
+  /// Screen state rather than a read of the row's `templateId`. Both flags are
+  /// only about what to ask on the way out of *this* visit, the screen never
+  /// loads `templateId`, and a session cannot reach the end twice — so storing
+  /// them would be storing something with no second reader.
+  bool _filledFromLibrary = false;
+
+  /// The name field of the save dialog. See [_askForName] for why it is owned
+  /// here rather than built with the dialog.
+  final TextEditingController _nameField = TextEditingController();
 
   /// Exercises the lifter has opened or closed **by hand**, keyed by id.
   ///
@@ -206,6 +236,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   @override
   void dispose() {
     _clock?.cancel();
+    _nameField.dispose();
     super.dispose();
   }
 
@@ -242,7 +273,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 child: _session.exercises.isEmpty
                     ? _EmptyState(
                         onAdd: _addExercise,
-                        onUseTemplate: _useTemplate,
+                        onOpenLibrary: widget.library == null
+                            ? null
+                            : _openLibrary,
                         onDiscard: _confirmDiscard,
                       )
                     : ListView(
@@ -328,6 +361,19 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                             label: const Text('Add exercise'),
                           ),
                           const SizedBox(height: AppSpacing.xl),
+                          // Here rather than in the header, because saving is
+                          // something you decide about the shape of a session
+                          // after seeing it — and the list is where the shape
+                          // is. It also keeps the header to one action, which
+                          // is what stops Finish from having a rival.
+                          if (widget.library != null)
+                            Center(
+                              child: AppTextButton(
+                                label: 'Save to your workouts',
+                                onPressed: _saveToLibrary,
+                              ),
+                            ),
+                          const SizedBox(height: AppSpacing.sm),
                           // Destructive, so it sits at the bottom of the list
                           // rather than in the chrome — you have to go looking
                           // for it, and you pass everything you would lose on
@@ -362,23 +408,133 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  /// Fills an empty session from a ready-made one.
+  /// Fills an empty session from one of the lifter's saved workouts.
   ///
-  /// Adds the movements and stops there — no sets, no numbers. A template says
-  /// what to do, not what to lift, and pre-filling weights would be the app
-  /// asserting something only the lifter knows.
+  /// **This replaced `_useTemplate`, and only one of them can exist.** That one
+  /// opened the fifteen app-provided premades and tipped the chosen one's
+  /// movements straight in, which made the app's own list a start path — the
+  /// thing the Knowledge decision *"Lift templates are the coach's grounding
+  /// layer, not a user-facing library"* rules out. The premades are still
+  /// reachable from the sheet this opens; they are just one step further in,
+  /// as something you add to your library rather than something you start
+  /// from. Leaving both would have left the shortcut the library exists to
+  /// remove.
+  ///
+  /// Adds the movements and stops there — no sets, no numbers. A saved workout
+  /// says what to do, not what to lift, and pre-filling weights would be the
+  /// app asserting something only the lifter knows.
   ///
   /// **A planned session is different, and deliberately so.** `SessionFromPlan`
   /// does fill in the weights, because those came from this lifter's own logged
   /// sets rather than from a list written for nobody in particular — and where
   /// the coach could not derive one, it leaves the field blank exactly as this
   /// does. Both rules hold; they are about different things.
-  Future<void> _useTemplate() async {
-    final template = await TemplatePickerSheet.show(context);
-    if (template == null) return;
-    for (final name in template.exercises) {
-      await _apply(() => widget.recorder.addExercise(name));
+  Future<void> _openLibrary() async {
+    final library = widget.library;
+    if (library == null) return;
+    final workout = await WorkoutLibrarySheet.show(
+      context,
+      library: library,
+      lookup: _lookup,
+    );
+    if (workout == null || !mounted) return;
+    setState(() => _filledFromLibrary = true);
+    await _apply(
+      () => widget.recorder.fillFromLibrary(
+        workoutId: workout.id,
+        name: workout.name,
+        movements: workout.movements,
+      ),
+    );
+  }
+
+  /// Saves what is on screen to the library, under a name the lifter confirms.
+  ///
+  /// **The path that needs no decision in advance**, and therefore the one most
+  /// people will use. The other two ways into the library — adding a premade,
+  /// building one by hand — both ask somebody to design a session before they
+  /// have done it. This asks nothing: they trained, it worked, keep it.
+  ///
+  /// It is the same action for a session they improvised and one the coach
+  /// prescribed, because by the time it is on this screen the two are the same
+  /// thing: an ordered list of movements. A coach-generated session can
+  /// therefore be kept without being performed first, which is the case the
+  /// finish-time offer below cannot cover.
+  ///
+  /// Movement names only, and duplicates collapsed — a session where the lifter
+  /// came back to the bench at the end is one workout with bench in it, not one
+  /// with bench in it twice.
+  Future<void> _saveToLibrary() async {
+    final library = widget.library;
+    if (library == null || _session.exercises.isEmpty) return;
+
+    final movements = <String>[];
+    for (final e in _session.exercises) {
+      if (!movements.contains(e.name)) movements.add(e.name);
     }
+
+    final name = await _askForName(_session.name);
+    if (name == null || !mounted) return;
+
+    await library.save(name: name, movements: movements);
+    setState(() => _savedToLibrary = true);
+    if (!mounted) return;
+    await AppHaptics.commit();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$name is in your workouts.')));
+  }
+
+  /// The one field a save needs, in a dialog rather than a screen.
+  ///
+  /// Pre-filled with the session's name and selected, so the common answer is
+  /// one tap and the less common one is typing over the top rather than
+  /// clearing a field first.
+  ///
+  /// **The controller belongs to the screen, not to the dialog.** Creating one
+  /// here and disposing it after the `await` looks right and is not: the await
+  /// returns the moment `pop` is called, while the dialog is still animating
+  /// out, and the field rebuilds at least once against a controller that has
+  /// already been disposed. Owning it for the life of the screen also means
+  /// the second save of a session opens on the field the first one left.
+  Future<String?> _askForName(String initial) {
+    _nameField
+      ..text = initial
+      ..selection = TextSelection(baseOffset: 0, extentOffset: initial.length);
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        // Not the same words as the button that opened it. Two widgets reading
+        // "Save to your workouts" on screen at once is one thing said twice,
+        // and the louder of them is no longer the one you can act on.
+        title: const Text('Name this workout'),
+        content: TextField(
+          controller: _nameField,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Name'),
+          onSubmitted: (value) => Navigator.of(
+            dialogContext,
+          ).pop(value.trim().isEmpty ? null : value.trim()),
+        ),
+        actions: <Widget>[
+          AppTextButton(
+            label: 'Cancel',
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+          FilledButton(
+            onPressed: () {
+              final typed = _nameField.text.trim();
+              Navigator.of(dialogContext).pop(typed.isEmpty ? null : typed);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Asks the coach for something else, and applies what the lifter picks.
@@ -429,9 +585,35 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     await _apply(() => widget.recorder.addExercise(name.trim()));
   }
 
+  /// Ends the session, and offers to keep its shape.
+  ///
+  /// **Asked here rather than anywhere else**, because this is the only moment
+  /// the app knows a session worked. A lifter who has just done a good session
+  /// is the one person qualified to say it is worth repeating, and they are
+  /// standing there with the phone already in their hand.
+  ///
+  /// Only when there is something to save and nothing already saved:
+  ///
+  ///   * an empty session has no shape to keep;
+  ///   * one started **from** the library already has its workout — see
+  ///     [_filledFromLibrary];
+  ///   * one already saved from the button in the list has been asked once —
+  ///     see [_savedToLibrary].
+  ///
+  /// The prompt runs **after** the session is finished and before the screen
+  /// pops. Declining it costs one tap and loses nothing.
   Future<void> _finish() async {
     await widget.recorder.finish();
     if (!mounted) return;
+
+    if (widget.library != null &&
+        !_savedToLibrary &&
+        !_filledFromLibrary &&
+        _session.exercises.isNotEmpty) {
+      await _saveToLibrary();
+    }
+    if (!mounted) return;
+
     widget.onFinished?.call();
     Navigator.of(context).pop();
   }
@@ -644,16 +826,21 @@ class _Header extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.onAdd,
-    required this.onUseTemplate,
+    required this.onOpenLibrary,
     required this.onDiscard,
   });
 
   final VoidCallback onAdd;
 
-  /// Fills the session from a ready-made one. The first session is the hardest
-  /// — a blank card list asks someone to remember what a push day is before
-  /// they can log anything.
-  final VoidCallback onUseTemplate;
+  /// Fills the session from one of the lifter's saved workouts. The first
+  /// session is the hardest — a blank card list asks someone to remember what a
+  /// push day is before they can log anything.
+  ///
+  /// **Null when there is no library**, which is a build with no on-device
+  /// database rather than a lifter with nothing saved. Somebody with an empty
+  /// library still wants this action: the sheet behind it is where they add
+  /// their first workout.
+  final VoidCallback? onOpenLibrary;
 
   /// Discard has to be reachable **here too**, not only from the populated
   /// list. Without it, a session started by accident had no exit: Finish is
@@ -684,19 +871,21 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xl),
-            // **Adding a movement is the primary, not the template picker.**
-            // These were the other way round, which made the loudest action on
-            // a blank session the one the "Lift templates are the coach's
-            // grounding layer, not a user-facing library" decision says should
-            // not be a user-facing library at all. Loudness is the half of that
-            // decision this screen owns; whether the picker survives is item 3
-            // of docs/roadmap.md and is not settled here.
+            // **Adding a movement is still the primary.** These were once the
+            // other way round, with the app's own premade list as the loudest
+            // action on a blank session — which the "Lift templates are the
+            // coach's grounding layer, not a user-facing library" decision
+            // rules out. The quieter action is now the lifter's own library
+            // rather than that list, so the decision is upheld on both counts:
+            // what is loud, and what the second button even opens.
             PrimaryButton(label: 'Add exercise', onPressed: onAdd),
-            const SizedBox(height: AppSpacing.sm),
-            OutlinedButton(
-              onPressed: onUseTemplate,
-              child: const Text('Use a template'),
-            ),
+            if (onOpenLibrary != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: onOpenLibrary,
+                child: const Text('Your workouts'),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             AppTextButton(
               label: 'Discard session',

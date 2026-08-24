@@ -19,6 +19,7 @@ import 'src/features/settings/data/unit_preferences_repository.dart';
 import 'src/features/stats/data/drift_session_history.dart';
 import 'src/features/sync/data/supabase_sync.dart';
 import 'src/features/tracking/data/drift_session_recorder.dart';
+import 'src/features/tracking/data/drift_workout_library.dart';
 
 /// Lift — the Flutter rewrite of Liftio.
 ///
@@ -77,6 +78,7 @@ class MgkLiftApp extends StatelessWidget {
       theme: AppTheme.dark,
       home: LiftShell(
         recorder: db == null ? null : DriftSessionRecorder(db),
+        library: db == null ? null : DriftWorkoutLibrary(db),
         history: db == null ? null : DriftSessionHistory(db),
         // Device first, account when it can answer. The account half is what
         // makes units agree with Run; the device half is what makes them
