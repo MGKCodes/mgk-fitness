@@ -44,7 +44,8 @@ class ExerciseCard extends StatelessWidget {
     required this.onRemove,
     required this.onToggle,
     required this.onEdit,
-    this.onToggleWarmup,
+    this.onCycleSetType,
+    this.onRemoveSet,
     this.onSwap,
     this.isCollapsed = false,
     this.onToggleCollapsed,
@@ -65,7 +66,14 @@ class ExerciseCard extends StatelessWidget {
 
   /// Switches a set between working and warm-up. Null leaves the markers
   /// read-only.
-  final void Function(SessionSet set)? onToggleWarmup;
+  /// Advances a set to the next [SetType]. Null makes the marker read-only,
+  /// which is right for anything showing a finished session.
+  final void Function(SessionSet set)? onCycleSetType;
+
+  /// Removes one set. Null hides the gesture entirely rather than leaving a
+  /// swipe that springs back — the same absent-rather-than-inert rule the
+  /// coach mark follows.
+  final void Function(SessionSet set)? onRemoveSet;
 
   /// Asks the coach for something else instead of this movement. **Null hides
   /// the action entirely** rather than showing one that opens a sheet with
@@ -163,15 +171,58 @@ class ExerciseCard extends StatelessWidget {
               _ColumnHeaders(massUnit: massUnit),
               const SizedBox(height: AppSpacing.xs),
               for (final set in exercise.sets)
-                SetRow(
-                  set: set,
-                  massUnit: massUnit,
-                  onToggle: () => onToggle(set),
-                  onEdit: (reps, weight) => onEdit(set, reps, weight),
-                  onToggleWarmup: onToggleWarmup == null
-                      ? null
-                      : () => onToggleWarmup!(set),
-                ),
+                if (onRemoveSet == null)
+                  SetRow(
+                    set: set,
+                    massUnit: massUnit,
+                    onToggle: () => onToggle(set),
+                    onEdit: (reps, weight) => onEdit(set, reps, weight),
+                    onCycleSetType: onCycleSetType == null
+                        ? null
+                        : () => onCycleSetType!(set),
+                  )
+                else
+                  // **Swipe to remove, which is how the shipped app did it.**
+                  // The row is already four controls wide — a marker, two
+                  // number fields and a tick — and a fifth would have to steal
+                  // width from the numbers, which are the point of the row.
+                  //
+                  // End-to-start only. A set is removed by pulling it away, and
+                  // a gesture that fires in both directions on a row this dense
+                  // goes off by accident while scrolling a long session.
+                  //
+                  // **Known limit, and it did not survive the port intact.**
+                  // Liftio wrapped the same row in ReanimatedSwipeable and the
+                  // whole row was draggable, because React Native's TextInput
+                  // does not claim a horizontal pan. Flutter's TextField does,
+                  // for text selection, so a drag started over the weight or
+                  // reps field never reaches this Dismissible — proven by a
+                  // test, and true under a real thumb for the same reason. The
+                  // reliable start zone is the marker column at the leading
+                  // edge. Starting over the tick at the trailing edge hangs
+                  // pumpAndSettle outright, which is PressScale and Dismissible
+                  // interacting and is not understood yet.
+                  //
+                  // So this is usable but narrower than it looks, and it has
+                  // NOT been tried on a phone. If it proves fiddly there, the
+                  // fallback is a long-press on the marker rather than a wider
+                  // swipe, because there is no neutral width on this row to
+                  // widen into.
+                  Dismissible(
+                    key: ValueKey<String>(set.id),
+                    direction: DismissDirection.endToStart,
+                    onDismissed: (_) => onRemoveSet!(set),
+                    background: const _RemoveSetBackground(),
+                    child: SetRow(
+                      set: set,
+                      massUnit: massUnit,
+                      onToggle: () => onToggle(set),
+                      onEdit: (reps, weight) => onEdit(set, reps, weight),
+                      onCycleSetType: onCycleSetType == null
+                          ? null
+                          : () => onCycleSetType!(set),
+                    ),
+                  ),
             ],
             const SizedBox(height: AppSpacing.xs),
             Align(
@@ -305,6 +356,43 @@ class _ColumnHeaders extends StatelessWidget {
   }
 }
 
+/// What shows behind a set row as it is pulled away.
+///
+/// Danger-coloured and captioned. A bare red panel says something destructive
+/// is about to happen without saying what, and on a screen where the adjacent
+/// gesture edits a number, "what" is the part worth spelling out.
+class _RemoveSetBackground extends StatelessWidget {
+  const _RemoveSetBackground();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    alignment: Alignment.centerRight,
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    decoration: BoxDecoration(
+      color: AppColors.danger,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          'Remove',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        const Icon(
+          Icons.delete_outline,
+          size: 18,
+          color: AppColors.textPrimary,
+        ),
+      ],
+    ),
+  );
+}
+
 /// One working set. The tick is the primary control: weight and reps are
 /// already carried forward, so the common path between sets is a single tap.
 class SetRow extends StatelessWidget {
@@ -314,16 +402,16 @@ class SetRow extends StatelessWidget {
     required this.massUnit,
     required this.onToggle,
     required this.onEdit,
-    this.onToggleWarmup,
+    this.onCycleSetType,
   });
 
   final SessionSet set;
   final MassUnit massUnit;
   final VoidCallback onToggle;
 
-  /// Switches the set between working and warm-up. Null makes the marker
-  /// read-only, which is right for anything showing a finished session.
-  final VoidCallback? onToggleWarmup;
+  /// Advances the set to the next [SetType]. Null makes the marker read-only,
+  /// which is right for anything showing a finished session.
+  final VoidCallback? onCycleSetType;
 
   /// Reports the weight back in **kilograms**, whatever the lifter typed.
   /// Conversion happens here, the one point where a typed number becomes a
@@ -359,24 +447,25 @@ class SetRow extends StatelessWidget {
               SizedBox(
                 width: 28,
                 child: InkWell(
-                  onTap: onToggleWarmup,
+                  onTap: onCycleSetType,
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                   child: Tooltip(
-                    message: set.isWarmup
-                        ? 'Count this set'
-                        : 'Mark as a warm-up',
+                    message: 'Mark this as ${set.setType.next.label}',
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: AppSpacing.sm,
                       ),
                       child: Text(
-                        set.isWarmup ? 'W' : '${set.setNumber}',
+                        set.setType.marker ?? '${set.setNumber}',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AppColors.textTertiary,
-                          fontWeight: set.isWarmup
-                              ? FontWeight.w700
-                              : FontWeight.w400,
+                          // Bold for anything that is not an ordinary working
+                          // set, so a marked set is findable by weight rather
+                          // than by reading each letter.
+                          fontWeight: set.setType == SetType.working
+                              ? FontWeight.w400
+                              : FontWeight.w700,
                         ),
                       ),
                     ),

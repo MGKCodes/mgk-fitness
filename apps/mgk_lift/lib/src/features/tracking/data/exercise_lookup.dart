@@ -51,8 +51,9 @@ class ExerciseLookup {
   /// Catalogue entries whose name or muscle group contains [query].
   List<Exercise> search(String query) {
     final q = query.trim().toLowerCase();
-    if (q.isEmpty)
+    if (q.isEmpty) {
       return all.toList()..sort((a, b) => a.name.compareTo(b.name));
+    }
     return all
         .where(
           (e) =>

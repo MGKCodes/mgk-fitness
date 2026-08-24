@@ -179,12 +179,21 @@ class ExerciseSets extends Table {
   /// when they tick it off.
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
 
-  /// `working` | `warmup`.
+  /// `working` | `warmup` | `dropset` | `failure`.
   ///
   /// Warm-ups are excluded from volume and from every personal best. Counting
   /// them inflates the one number people actually care about — three empty-bar
   /// sets before a heavy single would read as a bigger session than the single.
   /// Defaults to `working`, so a set is only ever discounted deliberately.
+  ///
+  /// **Drop sets and failure sets count**, which is what the shipped app did.
+  /// They are training that happened at a real load; the type records how it
+  /// was performed, not whether it was worth anything. Only the warm-up is
+  /// discounted, because only the warm-up was not the work.
+  ///
+  /// A plain text column rather than an enum, so a value written by a client
+  /// this one has never heard of round-trips instead of failing. [SetType]
+  /// reads anything unrecognised as `working`.
   TextColumn get setType => text().withDefault(const Constant('working'))();
 
   /// For cardio movements only.

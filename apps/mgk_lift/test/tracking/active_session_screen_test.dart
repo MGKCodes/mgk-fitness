@@ -412,9 +412,14 @@ void main() {
       expect(stored.isCompleted, isTrue);
     });
 
-    testWidgets('and tapping it again puts the set back', (
+    testWidgets('the marker cycles working, warm-up, drop set, failure', (
       WidgetTester tester,
     ) async {
+      // This test used to be "tapping it again puts the set back", from when
+      // there were two types. It kept passing after the other two were
+      // restored, which is why it is written out in full now: tapping W gives
+      // a drop set, a drop set counts toward volume, so both of its assertions
+      // still held while its name had become false.
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
@@ -430,11 +435,115 @@ void main() {
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('W'));
+      Future<void> tapMarker(String marker) async {
+        await tester.tap(
+          find.descendant(
+            of: find.byType(card.SetRow),
+            matching: find.text(marker),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await tapMarker('W');
+      expect(find.text('D'), findsOneWidget);
+      // A drop set is training that happened at a real load, so it counts.
+      expect(find.text('600 kg'), findsOneWidget);
+
+      await tapMarker('D');
+      expect(find.text('F'), findsOneWidget);
+      expect(find.text('600 kg'), findsOneWidget);
+
+      await tapMarker('F');
+      expect(find.text('W'), findsNothing);
+      expect(find.text('D'), findsNothing);
+      expect(find.text('F'), findsNothing);
+      expect(find.text('600 kg'), findsOneWidget);
+    });
+
+    testWidgets('a drop set and a failure set survive a round trip', (
+      WidgetTester tester,
+    ) async {
+      // The reason this matters is not the UI. `SetType.fromStored` mapped
+      // every unrecognised value to `working`, so the `dropset` and `failure`
+      // rows the shipped app already wrote to the cloud were being read back
+      // as ordinary working sets. This pins the mapping in both directions.
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet('id-3', setType: SetType.dropSet);
+
+      final stored = await (db.select(
+        db.exerciseSets,
+      )..where((s) => s.id.equals('id-3'))).getSingle();
+      expect(stored.setType, 'dropset');
+
+      expect(SetType.fromStored('dropset'), SetType.dropSet);
+      expect(SetType.fromStored('failure'), SetType.failure);
+      expect(SetType.fromStored('warmup'), SetType.warmup);
+      expect(SetType.fromStored(null), SetType.working);
+      // Anything a future client invents reads as working rather than
+      // vanishing from the lifter's totals.
+      expect(SetType.fromStored('superset'), SetType.working);
+
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+      expect(find.text('D'), findsOneWidget);
+    });
+  });
+
+  group('removing a set', () {
+    testWidgets('swiping a set away removes it, and only it', (
+      WidgetTester tester,
+    ) async {
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet(
+        'id-3',
+        reps: 10,
+        weightKg: 60,
+        isCompleted: true,
+      );
+      await recorder.addSet('id-2');
+
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+      expect(find.byType(card.SetRow), findsNWidgets(2));
+
+      // From the marker column, not the middle of the row. The two number
+      // fields are TextFields and win a horizontal drag in the gesture arena
+      // for text selection, so a drag started over them never reaches the
+      // Dismissible — which is also true under a real thumb.
+      await _swipeRowAway(tester, 0);
+
+      expect(find.byType(card.SetRow), findsOneWidget);
+      final left = await db.select(db.exerciseSets).get();
+      expect(left.length, 1);
+      expect(left.single.id, isNot('id-3'));
+    });
+
+    testWidgets('a swipe the other way does not remove anything', (
+      WidgetTester tester,
+    ) async {
+      // The gesture is end-to-start only. A row this dense sits inside a
+      // scrolling session, and one that fires both ways goes off by accident.
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+
+      await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      expect(find.text('W'), findsNothing);
-      expect(find.text('600 kg'), findsOneWidget);
+      final row = find.byType(card.SetRow).first;
+      await tester.dragFrom(
+        tester.getTopLeft(row) + const Offset(14, 18),
+        const Offset(500, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(card.SetRow), findsOneWidget);
+      expect((await db.select(db.exerciseSets).get()).length, 1);
     });
   });
 
@@ -611,4 +720,19 @@ void navigationTests() {
     // why a back affordance has to exist independently of it.
     expect(find.byIcon(Icons.arrow_back), findsOneWidget);
   });
+}
+
+/// Swipes the set row at [index] away, starting the drag over the marker
+/// column.
+///
+/// The row's middle two controls are `TextField`s, which claim a horizontal
+/// drag for text selection before the `Dismissible` ever sees it. The marker is
+/// 28px wide and sits at the left edge, so 14px in is over it.
+Future<void> _swipeRowAway(WidgetTester tester, int index) async {
+  final row = find.byType(card.SetRow).at(index);
+  await tester.dragFrom(
+    tester.getTopLeft(row) + const Offset(14, 18),
+    const Offset(-500, 0),
+  );
+  await tester.pumpAndSettle();
 }

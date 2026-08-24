@@ -167,16 +167,52 @@ class SessionSet {
 }
 
 /// What a set was for.
+///
+/// **All four of Liftio's, and the stored strings are Liftio's too.** The port
+/// carried the interaction — tap the set number to change its type — and only
+/// two of the four types, which had a consequence nobody had spotted:
+/// `fromStored` mapped every unrecognised value to [working], so the
+/// `dropset` and `failure` rows already sitting in the cloud from the shipped
+/// app were being read back as ordinary working sets. Restoring the types is
+/// therefore a data-fidelity fix as much as a feature.
+///
+/// Liftio wrote `null` for a working set and this app writes `'working'`; both
+/// read back as [working], so the two are compatible in either direction
+/// without a migration.
 enum SetType {
-  working('working'),
-  warmup('warmup');
+  working('working', marker: null, label: 'a working set'),
+  warmup('warmup', marker: 'W', label: 'a warm-up'),
+  dropSet('dropset', marker: 'D', label: 'a drop set'),
+  failure('failure', marker: 'F', label: 'taken to failure');
 
-  const SetType(this.stored);
+  const SetType(this.stored, {required this.marker, required this.label});
 
   /// The value in the database. Unknown values read as [working], so a set is
   /// only ever discounted from a lifter's totals deliberately.
   final String stored;
 
-  static SetType fromStored(String? value) =>
-      value == 'warmup' ? SetType.warmup : SetType.working;
+  /// The single letter shown in place of the set number, or null for a working
+  /// set, which shows its number. One character because the column is 28px
+  /// wide and shares its row with two number fields and a tick.
+  final String? marker;
+
+  /// How a tooltip names it, in a sentence reading "Mark this as …".
+  final String label;
+
+  /// The next type in the cycle, since the control is one tap target rather
+  /// than a menu — which is how Liftio did it, and how this app already did
+  /// it for the two types it had.
+  SetType get next => switch (this) {
+    SetType.working => SetType.warmup,
+    SetType.warmup => SetType.dropSet,
+    SetType.dropSet => SetType.failure,
+    SetType.failure => SetType.working,
+  };
+
+  static SetType fromStored(String? value) => switch (value) {
+    'warmup' => SetType.warmup,
+    'dropset' => SetType.dropSet,
+    'failure' => SetType.failure,
+    _ => SetType.working,
+  };
 }

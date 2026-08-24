@@ -293,13 +293,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                                     ),
                                   );
                                 },
-                                onToggleWarmup: (set) => _apply(
+                                onCycleSetType: (set) => _apply(
                                   () => widget.recorder.updateSet(
                                     set.id,
-                                    setType: set.isWarmup
-                                        ? SetType.working
-                                        : SetType.warmup,
+                                    setType: set.setType.next,
                                   ),
+                                ),
+                                onRemoveSet: (set) => _apply(
+                                  () => widget.recorder.removeSet(set.id),
                                 ),
                                 onEdit: (set, reps, weight) => _apply(
                                   () => widget.recorder.updateSet(
