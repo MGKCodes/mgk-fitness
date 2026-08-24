@@ -168,14 +168,12 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          suffixIcon: IconButton(
+                          suffixIcon: AppIconButton(
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
+                            icon: _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
                             tooltip: _obscure
                                 ? 'Show password'
                                 : 'Hide password',
@@ -236,7 +234,10 @@ class _SignInScreenState extends State<SignInScreen> {
                           onPressed: _submit,
                         ),
                       const SizedBox(height: AppSpacing.sm),
-                      TextButton(
+                      AppTextButton(
+                        label: _creating
+                            ? 'I already have an account'
+                            : 'Create an account',
                         onPressed: _busy
                             ? null
                             : () => setState(() {
@@ -244,19 +245,14 @@ class _SignInScreenState extends State<SignInScreen> {
                                 _error = null;
                                 _notice = null;
                               }),
-                        child: Text(
-                          _creating
-                              ? 'I already have an account'
-                              : 'Create an account',
-                        ),
                       ),
                       if (!_creating)
-                        TextButton(
+                        AppTextButton(
+                          label: 'Forgot your password?',
                           onPressed: _busy ? null : _resetPassword,
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
                           ),
-                          child: const Text('Forgot your password?'),
                         ),
 
                       const SizedBox(height: AppSpacing.lg),

@@ -72,6 +72,9 @@ class AppIconButton extends StatelessWidget {
     required this.tooltip,
     this.size,
     this.color,
+    this.visualDensity,
+    this.padding,
+    this.constraints,
   });
 
   final IconData icon;
@@ -81,6 +84,19 @@ class AppIconButton extends StatelessWidget {
 
   /// Passed straight through, for the same reason [AppTextButton.style] is.
   final Color? color;
+
+  /// Also passed straight through, and for the same reason — these three
+  /// arrived when Lift's controls were converted. A row of three icons in a
+  /// card header is laid out at `VisualDensity.compact` with a hand-set hit
+  /// box, and without a way to say so the conversion would have had to choose
+  /// between the acknowledgement and the layout. That is a false choice: the
+  /// point of these wrappers is to *add* the press feel, not to relitigate
+  /// spacing that was already deliberate.
+  final VisualDensity? visualDensity;
+
+  final EdgeInsetsGeometry? padding;
+
+  final BoxConstraints? constraints;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +109,9 @@ class AppIconButton extends StatelessWidget {
         icon: Icon(icon, size: size),
         tooltip: tooltip,
         color: color,
+        visualDensity: visualDensity,
+        padding: padding,
+        constraints: constraints,
         onPressed: onPressed,
       ),
     );

@@ -131,24 +131,27 @@ class ExerciseCard extends StatelessWidget {
                   ),
                 ),
                 if (onToggleCollapsed != null && exercise.sets.isNotEmpty)
-                  IconButton(
+                  AppIconButton(
                     onPressed: onToggleCollapsed,
-                    icon: const Icon(Icons.expand_less, size: 20),
+                    icon: Icons.expand_less,
+                    size: 20,
                     color: AppColors.textTertiary,
                     tooltip: 'Collapse ${exercise.name}',
                     visualDensity: VisualDensity.compact,
                   ),
                 if (onSwap != null)
-                  IconButton(
+                  AppIconButton(
                     onPressed: onSwap,
-                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    icon: Icons.swap_horiz,
+                    size: 18,
                     color: AppColors.textTertiary,
                     tooltip: 'Swap this out',
                     visualDensity: VisualDensity.compact,
                   ),
-                IconButton(
+                AppIconButton(
                   onPressed: onRemove,
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: Icons.close,
+                  size: 18,
                   color: AppColors.textTertiary,
                   tooltip: 'Remove ${exercise.name}',
                   visualDensity: VisualDensity.compact,
@@ -405,12 +408,10 @@ class SetRow extends StatelessWidget {
               ),
               SizedBox(
                 width: 44,
-                child: IconButton(
+                child: AppIconButton(
                   onPressed: onToggle,
-                  icon: Icon(
-                    done ? Icons.check_circle : Icons.circle_outlined,
-                    size: 24,
-                  ),
+                  icon: done ? Icons.check_circle : Icons.circle_outlined,
+                  size: 24,
                   color: done ? AppColors.success : AppColors.textTertiary,
                   tooltip: done ? 'Mark not done' : 'Mark done',
                   visualDensity: VisualDensity.compact,

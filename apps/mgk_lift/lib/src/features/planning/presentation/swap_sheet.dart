@@ -6,7 +6,7 @@ import '../../tracking/domain/session.dart';
 import '../domain/coach_planner.dart';
 import '../domain/swap_validator.dart';
 import '../domain/planned_movement.dart';
-import 'coach_sheet.dart';
+import 'ask_coach_sheet.dart';
 
 /// "I don't like barbell bench press, can we swap it out."
 ///
@@ -116,7 +116,7 @@ class _SwapSheetState extends State<SwapSheet> {
     final theme = Theme.of(context);
     final verdict = _verdict;
 
-    return CoachSheet(
+    return AskCoachSheet(
       // Names its subject: you are told what you are changing rather than
       // asked to remember.
       title: 'Instead of ${widget.movement}',

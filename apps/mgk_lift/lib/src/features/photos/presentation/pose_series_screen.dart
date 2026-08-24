@@ -95,7 +95,7 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
           ],
         ),
         actions: <Widget>[
-          IconButton(
+          AppIconButton(
             // Two is the minimum for a comparison. One photo played back is a
             // photo, and offering it would be the app pretending.
             onPressed: canPlay
@@ -105,7 +105,7 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
                     ),
                   )
                 : null,
-            icon: const Icon(Icons.play_circle_outline),
+            icon: Icons.play_circle_outline,
             tooltip: canPlay
                 ? 'Play the sequence'
                 : 'Two photos are needed to compare',
@@ -239,9 +239,9 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
           'It is only on this device, so this cannot be undone.',
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Keep it',
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep it'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),

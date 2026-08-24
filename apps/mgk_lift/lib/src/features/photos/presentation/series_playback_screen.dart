@@ -207,14 +207,16 @@ class _SpeedButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final next = _steps[(_steps.indexOf(speed) + 1) % _steps.length];
-    return TextButton(
-      onPressed: () => onChanged(next),
-      style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-      // Labelled with the current speed, which is what a lifter needs to read
-      // mid-playback; the tooltip carries what tapping does.
-      child: Tooltip(
-        message: 'Switch to ${_label(next)}',
-        child: Text(_label(speed)),
+    // Labelled with the current speed, which is what a lifter needs to read
+    // mid-playback; the tooltip carries what tapping does. The tooltip wraps
+    // the button rather than the label, because AppTextButton owns its own
+    // Text — which is the trade for the press feel, and a fair one here.
+    return Tooltip(
+      message: 'Switch to ${_label(next)}',
+      child: AppTextButton(
+        label: _label(speed),
+        onPressed: () => onChanged(next),
+        style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
       ),
     );
   }

@@ -307,7 +307,7 @@ class _ThisWeek extends StatelessWidget {
             ),
           ),
           if (onFinish != null)
-            TextButton(onPressed: onFinish, child: const Text('Finish it')),
+            AppTextButton(label: 'Finish it', onPressed: onFinish),
         ],
       ),
     );
@@ -384,11 +384,9 @@ class _PoseCard extends StatelessWidget {
                     ),
                   ),
                   if (needsThisWeek && onAdd != null)
-                    TextButton(
+                    AppTextButton(
+                      label: series.photos.isEmpty ? 'Start' : 'This week',
                       onPressed: onAdd,
-                      child: Text(
-                        series.photos.isEmpty ? 'Start' : 'This week',
-                      ),
                     ),
                 ],
               ),

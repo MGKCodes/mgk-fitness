@@ -74,9 +74,9 @@ class ProfileSurface extends StatelessWidget {
             Row(
               children: <Widget>[
                 const Expanded(child: SectionLabel('Profile')),
-                IconButton(
+                AppIconButton(
                   onPressed: onOpenSettings,
-                  icon: const Icon(Icons.settings_outlined),
+                  icon: Icons.settings_outlined,
                   color: AppColors.textSecondary,
                   tooltip: 'Settings',
                 ),
@@ -163,11 +163,7 @@ class ProfileSurface extends StatelessWidget {
               const SectionLabel('Recent sessions'),
               const SizedBox(height: AppSpacing.md),
               for (final session in log.take(5))
-                _SessionRow(
-                  session: session,
-                  stats: stats,
-                  massUnit: massUnit,
-                ),
+                _SessionRow(session: session, stats: stats, massUnit: massUnit),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 // Says where the numbers come from. Cross-app awareness is the
@@ -199,10 +195,7 @@ class _HeadlineStats extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: StatBlock(
-                  label: 'Sessions',
-                  value: '${stats.sessions}',
-                ),
+                child: StatBlock(label: 'Sessions', value: '${stats.sessions}'),
               ),
               Expanded(
                 child: StatBlock(
@@ -463,10 +456,7 @@ class _Empty extends StatelessWidget {
           ),
           if (onOpenTrack != null) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
-            TextButton(
-              onPressed: onOpenTrack,
-              child: const Text('Log a session'),
-            ),
+            AppTextButton(label: 'Log a session', onPressed: onOpenTrack),
           ],
         ],
       ),

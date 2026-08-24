@@ -71,13 +71,13 @@ class _CoachMemoryScreenState extends State<CoachMemoryScreen> {
           'It starts learning again from your next conversation.',
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Keep it',
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep it'),
           ),
-          TextButton(
+          AppTextButton(
+            label: 'Forget',
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Forget'),
           ),
         ],
       ),
@@ -221,7 +221,7 @@ class _Message extends StatelessWidget {
         ),
         if (onRetry != null) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
-          TextButton(onPressed: onRetry, child: const Text('Try again')),
+          AppTextButton(label: 'Try again', onPressed: onRetry),
         ],
       ],
     );

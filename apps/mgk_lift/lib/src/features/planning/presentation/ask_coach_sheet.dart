@@ -3,6 +3,12 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 /// The shell every "ask the coach to change something" sheet shares.
 ///
+/// **Not `CoachSheet` in `coaching/presentation`, which is the coach itself.** Both were called
+/// `CoachSheet` and nothing imported both, so the collision never failed a
+/// build — it just made every doc reference ambiguous, including two that
+/// already pointed the wrong way. This one is the frame around a request; the
+/// other is the conversation.
+///
 /// **Written because the two that existed had already drifted after a day.**
 /// Swapping a movement and changing the week are the same interaction — say
 /// what you want, read what is proposed, take it or leave it — and they had
@@ -14,8 +20,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 /// What it does NOT unify is the body. Picking one replacement and ticking
 /// several changes are genuinely different selection models, and forcing them
 /// into one widget would be coherence for its own sake.
-class CoachSheet extends StatelessWidget {
-  const CoachSheet({
+class AskCoachSheet extends StatelessWidget {
+  const AskCoachSheet({
     super.key,
     required this.title,
     required this.hint,

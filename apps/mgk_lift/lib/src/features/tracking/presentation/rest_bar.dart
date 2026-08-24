@@ -14,6 +14,12 @@ import '../domain/rest_timer.dart';
 /// It is also not a phase the app enforces. There is no "rest" mode to leave:
 /// tick the next set and the timer restarts, ignore it and it sits there. The
 /// clock is information, not a gate.
+///
+/// **It draws its own shape from `mgk_ui`'s tokens, not from a number.** This
+/// bar shipped to TestFlight with no shape at all — a bare `Material` on a
+/// square edge — while `AppRadius` sat in the package this file already
+/// imports. That is the same defect as the coach mark, and it was found the
+/// same way: by looking at it on a phone.
 class RestBar extends StatelessWidget {
   const RestBar({
     super.key,
@@ -42,6 +48,17 @@ class RestBar extends StatelessWidget {
 
     return Material(
       color: AppColors.surface,
+      // Top corners only, because it is pinned to the bottom edge — rounding
+      // all four would float it off a surface it is attached to. The token
+      // rather than a number: `exercise_picker_sheet.dart` already rounds its
+      // top by exactly this, and the two rise from the same edge.
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppRadius.sheet),
+      ),
+      // Without this the progress indicator, which is the first child and sits
+      // flush with the top edge, keeps its square corners and pokes through the
+      // rounding.
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
         child: Column(
@@ -106,9 +123,9 @@ class RestBar extends StatelessWidget {
                       onTap: () => onAdjust(const Duration(seconds: 30)),
                     ),
                   ],
-                  TextButton(
+                  AppTextButton(
+                    label: done ? 'Done' : 'Skip',
                     onPressed: onDismiss,
-                    child: Text(done ? 'Done' : 'Skip'),
                   ),
                 ],
               ),
@@ -127,13 +144,13 @@ class _Adjust extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => TextButton(
+  Widget build(BuildContext context) => AppTextButton(
+    label: label,
     onPressed: onTap,
     style: TextButton.styleFrom(
       foregroundColor: AppColors.textSecondary,
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
     ),
-    child: Text(label),
   );
 }

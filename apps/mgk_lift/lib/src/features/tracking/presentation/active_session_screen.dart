@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
@@ -157,7 +156,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final rest = _rest;
     if (rest == null || _restAlerted || !rest.isDoneAt(_now)) return;
     _restAlerted = true;
-    unawaited(HapticFeedback.mediumImpact());
+    // The one occasion in this app that earns AppHaptics' stated exception:
+    // something the app did on its own, for somebody who cannot look. The
+    // vocabulary existed and this call site predated it — it was the only raw
+    // HapticFeedback left in either app.
+    unawaited(AppHaptics.milestone());
   }
 
   /// Starts rest, from now.
@@ -319,12 +322,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                           // for it, and you pass everything you would lose on
                           // the way.
                           Center(
-                            child: TextButton(
+                            child: AppTextButton(
+                              label: 'Discard session',
                               onPressed: _confirmDiscard,
                               style: TextButton.styleFrom(
                                 foregroundColor: AppColors.danger,
                               ),
-                              child: const Text('Discard session'),
                             ),
                           ),
                         ],
@@ -432,9 +435,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           'Everything you have logged in it is deleted. This cannot be undone.',
         ),
         actions: <Widget>[
-          TextButton(
+          AppTextButton(
+            label: 'Keep going',
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep going'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -511,9 +514,9 @@ class _Header extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              IconButton(
+              AppIconButton(
                 onPressed: onBack,
-                icon: const Icon(Icons.arrow_back),
+                icon: Icons.arrow_back,
                 color: AppColors.textSecondary,
                 tooltip: 'Back — the session stays open',
                 visualDensity: VisualDensity.compact,
@@ -650,10 +653,10 @@ class _EmptyState extends StatelessWidget {
               child: const Text('Use a template'),
             ),
             const SizedBox(height: AppSpacing.sm),
-            TextButton(
+            AppTextButton(
+              label: 'Discard session',
               onPressed: onDiscard,
               style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-              child: const Text('Discard session'),
             ),
           ],
         ),

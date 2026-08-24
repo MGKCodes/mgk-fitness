@@ -415,13 +415,13 @@ class _DayDetail extends StatelessWidget {
                   // on the slot that has actually gone stale is a
                   // recommendation.
                   if (onSwap != null && s.hasStalled)
-                    TextButton(
+                    AppTextButton(
+                      label: 'Swap',
                       onPressed: () => onSwap!(s),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
                         visualDensity: VisualDensity.compact,
                       ),
-                      child: const Text('Swap'),
                     ),
                 ],
               ),

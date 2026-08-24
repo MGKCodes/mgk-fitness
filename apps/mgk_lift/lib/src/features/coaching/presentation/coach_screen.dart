@@ -601,10 +601,10 @@ class _TopBar extends StatelessWidget {
                     StepProgress(step: progress!.$1, total: progress!.$2),
                     const SizedBox(width: AppSpacing.md),
                   ],
-                  IconButton(
+                  AppIconButton(
                     onPressed: onClose,
-                    icon: const Icon(Icons.close),
-                    iconSize: 20,
+                    icon: Icons.close,
+                    size: 20,
                     color: AppColors.textSecondary,
                     tooltip: 'Close',
                     visualDensity: VisualDensity.compact,
