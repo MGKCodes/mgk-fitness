@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../stats/domain/activity_window.dart';
 import '../../stats/domain/training_stats.dart';
 import '../../tracking/data/exercise_lookup.dart';
 import '../../tracking/domain/exercise.dart';
 import '../../tracking/domain/session.dart';
+import 'year_activity_grid.dart';
 
 /// **Profile** — the long view, and where settings live.
 ///
@@ -17,6 +19,16 @@ import '../../tracking/domain/session.dart';
 /// Everything here is a fold over the log rather than a stored counter. Nothing
 /// to migrate, nothing to get out of step, and deleting a session corrects every
 /// figure at once.
+///
+/// ## An empty log does not empty the screen
+///
+/// This used to swap the whole surface for a single "nothing logged yet" card,
+/// so the one lifter who most needed to know what the app tracks — the one who
+/// has not started — was the only one who could not see it. Now the real layout
+/// renders either way, with dashes standing in for figures that have no value
+/// yet, and one call to action at the top. The labels are the point: `VOLUME`,
+/// `STREAK`, `PERSONAL BESTS` and a year of empty squares say what this becomes
+/// far better than a sentence promising it.
 class ProfileSurface extends StatelessWidget {
   const ProfileSurface({
     super.key,
@@ -38,7 +50,8 @@ class ProfileSurface extends StatelessWidget {
   final MassUnit massUnit;
 
   /// Injected so a test can pin the clock — a streak that reads `DateTime.now()`
-  /// internally cannot be tested.
+  /// internally cannot be tested. The activity grid needs it for the same
+  /// reason: its right-hand edge is today.
   final DateTime? now;
 
   final ExerciseLookup? lookup;
@@ -51,12 +64,24 @@ class ProfileSurface extends StatelessWidget {
   /// one — the same rule the coach mark follows.
   final VoidCallback? onOpenPhotos;
 
+  /// How many rows a section stands up before there is anything to put in them.
+  ///
+  /// Three rather than five: enough for the section to read as a list rather
+  /// than as a single stray line, without turning the empty screen into a page
+  /// of dashes.
+  static const int _ghostRows = 3;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final clock = now ?? DateTime.now();
+    final empty = log.isEmpty;
+
     final stats = TrainingStats.from(log, now: clock);
-    final frequent = TrainingStats.byFrequency(log).take(5).toList();
+    final window = ActivityWindow.from(log, now: clock);
+    final movements = TrainingStats.byFrequency(log);
+    final frequent = movements.take(5).toList();
+    final bests = _bests(movements);
     final catalogue = lookup ?? ExerciseLookup();
 
     return PhotoBackdrop(
@@ -84,108 +109,234 @@ class ProfileSurface extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
 
-            if (log.isEmpty)
-              _Empty(onOpenTrack: onOpenTrack)
-            else ...<Widget>[
-              _HeadlineStats(stats: stats, massUnit: massUnit),
+            // The one call to action, and only while it has a job. Everything
+            // below it is the same layout a lifter with ten years of log sees.
+            if (empty) ...<Widget>[
+              _StartHere(onOpenTrack: onOpenTrack),
               const SizedBox(height: AppSpacing.xl),
-              _Consistency(stats: stats),
-              if (frequent.isNotEmpty) ...<Widget>[
-                const SizedBox(height: AppSpacing.xl),
-                Row(
+            ],
+
+            _HeadlineStats(
+              stats: stats,
+              massUnit: massUnit,
+              placeholder: empty,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            const SectionLabel('Last 52 weeks'),
+            const SizedBox(height: AppSpacing.md),
+            YearActivityGrid(window: window),
+            const SizedBox(height: AppSpacing.xl),
+
+            _Consistency(stats: stats, placeholder: empty),
+            const SizedBox(height: AppSpacing.xl),
+
+            Row(
+              children: <Widget>[
+                const Expanded(child: SectionLabel('Personal bests')),
+                // The number needs its unit and its caveat in the same breath:
+                // an estimate, not a tested max. The footnote below the list
+                // carries the rest of it.
+                const SectionLabel(
+                  'Est. 1RM',
+                  emphasis: LabelEmphasis.stat,
+                  color: AppColors.textTertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (empty)
+              for (var i = 0; i < _ghostRows; i++)
+                const _GhostRow(subtitle: true)
+            else if (bests.isEmpty)
+              // A real state, not an error. `estimateOneRepMax` refuses
+              // anything over 12 reps or without load, so a lifter doing
+              // bodyweight work and high-rep accessories has a full log and no
+              // estimate anywhere in it. Saying so beats an empty gap.
+              Text(
+                'No estimate yet. One comes from a working set of 12 reps or '
+                'fewer with weight on the bar.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              )
+            else
+              for (final best in bests)
+                _BestRow(best: best, massUnit: massUnit),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              // Stated every time, not only when a movement is missing. It is
+              // the reason a lift someone is proud of might not be on this
+              // list, and a lifter should not have to work that out.
+              'Estimated with Epley from your best working set — not a tested '
+              'max. Nothing over 12 reps counts, because past that the formula '
+              'is guessing.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            Row(
+              children: <Widget>[
+                const Expanded(child: SectionLabel('Most trained')),
+                // The count needs a unit. A bare "3" beside a movement name
+                // could be sessions, sets or kilos; the same column-header
+                // fix the set rows needed.
+                const SectionLabel(
+                  'Sessions',
+                  emphasis: LabelEmphasis.stat,
+                  color: AppColors.textTertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // `frequent`, not `empty`: a log of sessions that carry no
+            // movements — an in-progress one, or a session finished before an
+            // exercise was added — has nothing to rank either, and the header
+            // standing over nothing is the gap this state exists to fill.
+            if (frequent.isEmpty)
+              for (var i = 0; i < _ghostRows; i++) const _GhostRow()
+            else
+              for (final row in frequent)
+                _FrequencyRow(
+                  row: row,
+                  catalogue: catalogue.find(row.name),
+                  max: frequent.first.sessions,
+                  // A bar is a comparison. When everything shown has the same
+                  // count — which is the normal case for a short log, where
+                  // every movement has been done once — every bar is full,
+                  // and five identical full-width rules read as dividers
+                  // rather than as data. Nothing to compare, so no bars.
+                  showBars: frequent.first.sessions != frequent.last.sessions,
+                ),
+
+            if (onOpenPhotos != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.xl),
+              AppCard(
+                onTap: onOpenPhotos,
+                child: Row(
                   children: <Widget>[
-                    const Expanded(child: SectionLabel('Most trained')),
-                    // The count needs a unit. A bare "3" beside a movement name
-                    // could be sessions, sets or kilos; the same column-header
-                    // fix the set rows needed.
-                    const SectionLabel(
-                      'Sessions',
-                      emphasis: LabelEmphasis.stat,
+                    const Icon(
+                      Icons.photo_camera_outlined,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            'Progress photos',
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'One a week, same spot, same light',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 20,
                       color: AppColors.textTertiary,
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                for (final row in frequent)
-                  _FrequencyRow(
-                    row: row,
-                    catalogue: catalogue.find(row.name),
-                    max: frequent.first.sessions,
-                    // A bar is a comparison. When everything shown has the same
-                    // count — which is the normal case for a short log, where
-                    // every movement has been done once — every bar is full,
-                    // and five identical full-width rules read as dividers
-                    // rather than as data. Nothing to compare, so no bars.
-                    showBars: frequent.first.sessions != frequent.last.sessions,
-                  ),
-              ],
-              if (onOpenPhotos != null) ...<Widget>[
-                const SizedBox(height: AppSpacing.xl),
-                AppCard(
-                  onTap: onOpenPhotos,
-                  child: Row(
-                    children: <Widget>[
-                      const Icon(
-                        Icons.photo_camera_outlined,
-                        size: 20,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Text(
-                              'Progress photos',
-                              style: theme.textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'One a week, same spot, same light',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: AppColors.textTertiary,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            ],
+
+            // The only section that stays hidden while the log is empty.
+            // "Most trained" and "Personal bests" name things the app works
+            // out for a lifter, which is worth advertising; a list of the
+            // sessions they have not done yet only repeats the card at the top.
+            if (!empty) ...<Widget>[
               const SizedBox(height: AppSpacing.xl),
               const SectionLabel('Recent sessions'),
               const SizedBox(height: AppSpacing.md),
               for (final session in log.take(5))
                 _SessionRow(session: session, stats: stats, massUnit: massUnit),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                // Says where the numbers come from. Cross-app awareness is the
-                // point of the suite, and this is where a lifter meets it.
-                'Runs you log in Run appear here too.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-              ),
             ],
+
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              // Says where the numbers come from. Cross-app awareness is the
+              // point of the suite, and this is where a lifter meets it. Shown
+              // on an empty log too — it is one more thing this screen becomes.
+              'Runs you log in Run appear here too.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  /// The best estimated one-rep max per movement, heaviest first, top five.
+  ///
+  /// **Ranked by the estimate, not by how often the movement is trained.** A
+  /// personal-best board is a ladder — the question it answers is "what are my
+  /// biggest lifts", and ordering it by frequency would put whichever accessory
+  /// a lifter does most at the top of a list of their heaviest work.
+  ///
+  /// Movements with no qualifying set simply do not appear. They are not
+  /// failures to report per row: an unloaded or high-rep movement has no
+  /// estimate to be missing, and a column of "no estimate" rows would bury the
+  /// lifts that do have one. When *nothing* qualifies the section says so in
+  /// one line instead — see the call site.
+  ///
+  /// One scan of the log per movement, which is [TrainingStats.bestOneRepMax]'s
+  /// shape rather than this one's choice. It runs on a tab switch and on a unit
+  /// change, not per frame, and folding it into a single pass would mean
+  /// changing the stats layer for a screen that does not otherwise need to.
+  List<_MovementBest> _bests(List<ExerciseCount> movements) {
+    final found = <_MovementBest>[];
+    for (final movement in movements) {
+      final best = TrainingStats.bestOneRepMax(log, movement.name);
+      if (best != null) {
+        found.add(_MovementBest(name: movement.name, best: best));
+      }
+    }
+    found.sort(
+      (a, b) => b.best.estimate.kilograms.compareTo(a.best.estimate.kilograms),
+    );
+    return found.take(5).toList();
+  }
+}
+
+/// A movement and its best estimated one-rep max.
+class _MovementBest {
+  const _MovementBest({required this.name, required this.best});
+
+  final String name;
+  final OneRepMax best;
 }
 
 class _HeadlineStats extends StatelessWidget {
-  const _HeadlineStats({required this.stats, required this.massUnit});
+  const _HeadlineStats({
+    required this.stats,
+    required this.massUnit,
+    this.placeholder = false,
+  });
 
   final TrainingStats stats;
   final MassUnit massUnit;
+
+  /// Draws every figure as a dash.
+  ///
+  /// A dash rather than a zero. Six blocks reading `0` is a screen reporting
+  /// six results, and a lifter who has not trained has not scored zero — they
+  /// have not started. The dash says "no value yet" while the label above it
+  /// still says what the value will be, which is the whole job of this state.
+  final bool placeholder;
 
   @override
   Widget build(BuildContext context) {
@@ -195,17 +346,23 @@ class _HeadlineStats extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: StatBlock(label: 'Sessions', value: '${stats.sessions}'),
+                child: StatBlock(
+                  label: 'Sessions',
+                  value: _or('${stats.sessions}'),
+                ),
               ),
               Expanded(
                 child: StatBlock(
                   label: 'Volume',
-                  value: compactVolume(stats.totalVolume, massUnit),
+                  value: _or(compactVolume(stats.totalVolume, massUnit)),
                   shrinkToFit: true,
                 ),
               ),
               Expanded(
-                child: StatBlock(label: 'Sets', value: '${stats.totalSets}'),
+                child: StatBlock(
+                  label: 'Sets',
+                  value: _or('${stats.totalSets}'),
+                ),
               ),
             ],
           ),
@@ -215,20 +372,20 @@ class _HeadlineStats extends StatelessWidget {
               Expanded(
                 child: StatBlock(
                   label: 'Time',
-                  value: _compactDuration(stats.totalTime),
+                  value: _or(_compactDuration(stats.totalTime)),
                   shrinkToFit: true,
                 ),
               ),
               Expanded(
                 child: StatBlock(
                   label: 'Per week',
-                  value: stats.sessionsPerWeek.toStringAsFixed(1),
+                  value: _or(stats.sessionsPerWeek.toStringAsFixed(1)),
                 ),
               ),
               Expanded(
                 child: StatBlock(
                   label: 'Streak',
-                  value: '${stats.currentWeekStreak}w',
+                  value: _or('${stats.currentWeekStreak}w'),
                 ),
               ),
             ],
@@ -237,6 +394,8 @@ class _HeadlineStats extends StatelessWidget {
       ),
     );
   }
+
+  String _or(String value) => placeholder ? _dash : value;
 
   /// Tonnes past four figures. `47,500 kg` is a number you read; `47.5 t` is one
   /// you take in.
@@ -274,9 +433,10 @@ class _HeadlineStats extends StatelessWidget {
 }
 
 class _Consistency extends StatelessWidget {
-  const _Consistency({required this.stats});
+  const _Consistency({required this.stats, this.placeholder = false});
 
   final TrainingStats stats;
+  final bool placeholder;
 
   @override
   Widget build(BuildContext context) {
@@ -300,10 +460,84 @@ class _Consistency extends StatelessWidget {
             current == 0
                 ? 'Train this week to start one. A week counts from Monday.'
                 : current >= best
-                ? 'Your best run yet.'
-                : 'Your best is $best.',
+                ? 'Your best run yet. A week counts from Monday.'
+                : 'A week counts from Monday, so a Sunday session still '
+                      'counts toward it.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // `longestWeekStreak` was computed on every build and shown nowhere.
+          // It belongs beside the current one, because a streak number on its
+          // own has no scale: three weeks is either the best a lifter has ever
+          // managed or a quarter of it, and only the pair says which.
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: StatBlock(
+                  label: 'This run',
+                  value: placeholder ? _dash : '${current}w',
+                ),
+              ),
+              Expanded(
+                child: StatBlock(
+                  label: 'Longest',
+                  value: placeholder ? _dash : '${best}w',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BestRow extends StatelessWidget {
+  const _BestRow({required this.best, required this.massUnit});
+
+  final _MovementBest best;
+  final MassUnit massUnit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final record = best.best;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  best.name,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                record.estimate.label(massUnit),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontFeatures: const <FontFeature>[
+                    FontFeature.tabularFigures(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          // The set behind the estimate, not just the estimate. A lifter can
+          // check the arithmetic against a session they remember, and a number
+          // they can trace is a number they will believe.
+          Text(
+            '${record.weight.label(massUnit)} × ${record.reps} · '
+            '${_shortDate(record.on)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textTertiary,
             ),
           ),
         ],
@@ -402,7 +636,8 @@ class _SessionRow extends StatelessWidget {
               children: <Widget>[
                 Text(session.name, style: theme.textTheme.bodyMedium),
                 Text(
-                  '${_date(session.startedAt)} · ${session.exercises.length} '
+                  '${_shortDate(session.startedAt)} · '
+                  '${session.exercises.length} '
                   'movement${session.exercises.length == 1 ? '' : 's'} · '
                   '${session.completedSets} '
                   'set${session.completedSets == 1 ? '' : 's'}',
@@ -414,7 +649,7 @@ class _SessionRow extends StatelessWidget {
             ),
           ),
           Text(
-            volume.kilograms == 0 ? '—' : volume.label(massUnit),
+            volume.kilograms == 0 ? _dash : volume.label(massUnit),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -423,18 +658,60 @@ class _SessionRow extends StatelessWidget {
       ),
     );
   }
+}
 
-  static String _date(DateTime d) {
-    const months = <String>[
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${d.day} ${months[d.month - 1]}';
+/// A row with a real row's shape and dashes where its numbers go.
+///
+/// The alternative — leaving a section out until it has content — is what this
+/// screen used to do, and it hid the answer to "what does this app track" from
+/// the only person still asking.
+class _GhostRow extends StatelessWidget {
+  const _GhostRow({this.subtitle = false});
+
+  /// Whether the real row carries a second line under it, as a personal best
+  /// does. The placeholder matches the shape it is standing in for, or it
+  /// stops being a preview of the layout and becomes its own layout.
+  final bool subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final line = theme.textTheme.bodyMedium?.copyWith(
+      color: AppColors.textTertiary,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(child: Text(_dash, style: line)),
+              Text(_dash, style: line),
+            ],
+          ),
+          if (subtitle) ...<Widget>[
+            const SizedBox(height: 2),
+            Text(
+              _dash,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({this.onOpenTrack});
+/// The one thing to do on an empty Profile.
+///
+/// One button, at the top, and then the rest of the screen showing what filling
+/// it produces. Two calls to action on a screen with no data is one too many —
+/// there is only one next step, and it is the same one from every angle.
+class _StartHere extends StatelessWidget {
+  const _StartHere({this.onOpenTrack});
 
   final VoidCallback? onOpenTrack;
 
@@ -448,8 +725,8 @@ class _Empty extends StatelessWidget {
           Text('Nothing logged yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Your totals, streaks and personal bests build up here as you '
-            'train — and so do your runs, if you use Run.',
+            'Everything below fills in from your sessions — totals, streaks, '
+            'personal bests and a year of squares.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -462,4 +739,19 @@ class _Empty extends StatelessWidget {
       ),
     );
   }
+}
+
+/// An em dash, standing for "no value yet".
+///
+/// One constant rather than a literal per call site, because this screen now
+/// uses it in five places and a stray en dash among them would read as two
+/// different states.
+const String _dash = '—';
+
+String _shortDate(DateTime d) {
+  const months = <String>[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return '${d.day} ${months[d.month - 1]}';
 }
