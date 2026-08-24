@@ -15,9 +15,20 @@ import 'chat_entry.dart';
 ///
 /// **The brief is written per turn, not once.** It is a snapshot of what the app
 /// knows — the plan, the last runs, the projections — and a run recorded between
-/// two questions must change the answer to the second. Asking for it lazily also
-/// keeps the controller free of the repository: it takes a function, so a test
-/// hands it a string and the shell hands it `CoachBrief.write`.
+/// two questions must change the answer to the second. It is handed the message
+/// being sent, because the recall tier of the coach's memory needs a question to
+/// answer. Asking for it lazily also keeps the controller free of the
+/// repository: it takes a function, so a test hands it a string and the shell
+/// hands it `CoachBrief.write`.
+///
+/// **A conversation is a session, not a lifetime.** It ends when
+/// [sessionWindow] passes with nothing said, which is what makes reopening the
+/// app the next morning a new conversation instead of the eleventh page of the
+/// last one. This is the fix for a real answer from the first field test: asked
+/// to look at a previous run, the coach said *"You ran 10 km in 60 minutes
+/// yesterday"* about a run logged through this chat a week earlier. Nothing was
+/// invented — there was only ever one transcript, so week-old context was still
+/// in front of the model and read as current. See ADR-0025.
 ///
 /// **An intent is handed over, never acted on.** When the coach comes back
 /// wanting to change the week, this calls [onAdaptRequest] with the request in
@@ -41,13 +52,15 @@ import 'chat_entry.dart';
 /// **Memory is tiered, and this is where both tiers are written.** Every turn
 /// is appended to the verbatim transcript as it happens, so a force-quit
 /// mid-sentence keeps what was said. The small rolling summary is rewritten
-/// only when a conversation *ends* — it costs a model call against an
-/// allowance of six an hour, and summarising per turn would both spend that
-/// in ten minutes and produce a copy of a copy.
+/// when the sheet closes — it costs a model call against an allowance of six an
+/// hour, and summarising per turn would both spend that in ten minutes and
+/// produce a copy of a copy. Closing the sheet is a *fold*, not the end of the
+/// conversation: reopening it two minutes later carries on where it left off,
+/// and only the turns since the last fold are ever handed to the summariser.
 class ChatController extends ChangeNotifier {
   ChatController({
     required CoachChatClient client,
-    required Future<String> Function() brief,
+    required Future<String> Function(String message) brief,
     this.onAdaptRequest,
     this.onLogRunRequest,
     this.onEditRunRequest,
@@ -55,6 +68,7 @@ class ChatController extends ChangeNotifier {
     this.onApplyRun,
     this.onApplyRevision,
     this.onApplyGoal,
+    this.sessionWindow = coachSessionWindow,
     DateTime Function()? now,
     CoachMemoryRepository? memory,
     CoachSummariseClient? summariser,
@@ -69,7 +83,7 @@ class ChatController extends ChangeNotifier {
            (() => 'coach-${DateTime.now().microsecondsSinceEpoch}');
 
   final CoachChatClient _client;
-  final Future<String> Function() _brief;
+  final Future<String> Function(String message) _brief;
 
   /// Where the transcript and the rolling summary live. Null keeps the
   /// conversation to this session, which is what a build with no database does.
@@ -79,6 +93,10 @@ class ChatController extends ChangeNotifier {
   /// have a coach that talks without one that remembers.
   final CoachSummariseClient? _summariser;
 
+  /// How long a conversation stays open with nothing said in it. Injected so a
+  /// test can make a session lapse without waiting half an hour.
+  final Duration sessionWindow;
+
   final String Function() _newConversationId;
   final DateTime Function() _now;
 
@@ -87,9 +105,25 @@ class ChatController extends ChangeNotifier {
   /// an empty conversation behind.
   String? _conversationId;
 
+  /// The conversation currently being written to, or null before anything has
+  /// been said in this session. Read by the brief, which drops this
+  /// conversation's own turns from recall rather than handing the coach what it
+  /// is already being sent as history.
+  String? get conversationId => _conversationId;
+
+  /// When the last turn landed, in this session or in the one restored from
+  /// disk. What [endStaleConversation] measures the session window against, and
+  /// held here rather than re-read so returning to the foreground costs no
+  /// query.
+  DateTime? _lastTurnAt;
+
   /// Turns appended since the summary was last rewritten. Guards the model call
   /// at the end: nothing new means nothing to summarise, and paying to be told
   /// the memory is unchanged is the one thing the surface refuses anyway.
+  ///
+  /// Also the *slice*: the unfolded turns are the last [_unsummarised] of the
+  /// conversation, which is how a fold can happen twice in one conversation
+  /// without handing the summariser anything it has already seen.
   int _unsummarised = 0;
 
   /// True while a summary is being written, so two closes cannot race into two
@@ -173,10 +207,90 @@ class ChatController extends ChangeNotifier {
   final ValueNotifier<int> openRequests = ValueNotifier<int>(0);
 
   /// Opens the conversation and asks [text] — the hand-off from a surface that
-  /// has said everything it can deterministically and needs judgement next.
+  /// has said everything it can deterministically and needs judgement next, and
+  /// the path a tapped suggestion takes.
+  ///
+  /// **Always a new session**, regardless of the window. A question the runner
+  /// did not type is a question a *surface* raised — a session brief, a chip
+  /// under an empty transcript, a run just finished — and it arrives with its
+  /// own subject rather than as the next line of whatever was being discussed.
+  /// Continuing into it is how a half-finished conversation about a sore calf
+  /// becomes the context for "how has my training been going".
   Future<void> ask(String text) async {
     openRequests.value++;
+    await startNewSession();
     await send(text);
+  }
+
+  /// Ends the current conversation and clears the dock, so the next thing said
+  /// starts a new one.
+  ///
+  /// Folds what has been said into the rolling summary first, so a session
+  /// boundary does not lose the memory of the conversation it closes. If that
+  /// fold fails, the boundary still happens and those turns are simply never
+  /// folded — they are still in the transcript and still reachable through
+  /// recall, so the cost is a stale summary rather than lost words. A boundary
+  /// that waited for a summariser to come back would be a boundary the network
+  /// could veto.
+  Future<void> startNewSession() async {
+    await endConversation();
+    if (_entries.isEmpty && _conversationId == null) return;
+    _entries.clear();
+    _conversationId = null;
+    _unsummarised = 0;
+    _lastTurnAt = null;
+    notifyListeners();
+  }
+
+  /// Ends the conversation if [sessionWindow] has passed since the last thing
+  /// said. Returns whether it did.
+  ///
+  /// Called when the app comes back to the foreground. The gap is what decides,
+  /// not the fact of having been away: ten seconds in the notification centre is
+  /// not a new conversation, and half an hour on the school run is.
+  Future<bool> endStaleConversation() async {
+    final last = _lastTurnAt;
+    if (last == null) return false;
+    if (_now().difference(last) <= sessionWindow) return false;
+    await startNewSession();
+    return true;
+  }
+
+  /// The conversations before this one, newest first — what the "previous
+  /// chats" list draws.
+  ///
+  /// The live conversation is excluded: "previous" means previous, and it is
+  /// already on screen. Empty for a build with no memory, which is a list with
+  /// nothing in it rather than an error.
+  Future<List<CoachConversationSummary>> pastConversations({
+    int limit = 20,
+  }) async {
+    final memory = _memory;
+    if (memory == null) return const <CoachConversationSummary>[];
+    try {
+      final all = await memory.conversations(limit: limit + 1);
+      return <CoachConversationSummary>[
+        for (final c in all)
+          if (c.id != _conversationId) c,
+      ].take(limit).toList();
+    } catch (_) {
+      return const <CoachConversationSummary>[];
+    }
+  }
+
+  /// One past conversation, read back in the order it was spoken.
+  ///
+  /// Read-only by construction: it returns turns rather than loading them into
+  /// [entries], because reopening an old conversation to write into it is the
+  /// endless transcript this feature exists to end.
+  Future<List<CoachTurn>> readBack(String conversationId) async {
+    final memory = _memory;
+    if (memory == null) return const <CoachTurn>[];
+    try {
+      return await memory.transcript(conversationId);
+    } catch (_) {
+      return const <CoachTurn>[];
+    }
   }
 
   /// Opens the conversation **on something the coach has already said**.
@@ -206,21 +320,39 @@ class ChatController extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Loads the last conversation back into the dock.
+  /// Picks up a conversation that is **still open** — one whose last turn is
+  /// within [sessionWindow].
   ///
-  /// Without this the coach forgot the runner every launch: the summary told it
-  /// *about* them, but the runner opened a blank transcript and could not see
-  /// what they had already been told. Best-effort — a memory that will not load
-  /// is an empty dock, never a broken one.
+  /// This used to call `lastConversationId()` and restore whatever was last
+  /// spoken in, unconditionally. That one line was the endless chat: a
+  /// transcript from last Tuesday came back on Thursday, kept being appended
+  /// to, and went to the model as though every word of it were current. The
+  /// coach then answered *"You ran 10 km in 60 minutes yesterday"* about a run
+  /// logged a week earlier — a true memory in the wrong week.
+  ///
+  /// The window is what keeps the good half of the old behaviour. A runner who
+  /// force-quits the app and comes straight back, or who steps out to a
+  /// notification, still opens on what they were saying; a runner who comes
+  /// back tomorrow opens on nothing, and finds yesterday under Previous
+  /// conversations. Best-effort — a memory that will not load is an empty dock,
+  /// never a broken one.
   Future<void> restore() async {
     final memory = _memory;
     if (memory == null || _entries.isNotEmpty) return;
     try {
-      final id = await memory.lastConversationId();
+      final id = await memory.openConversationId(window: sessionWindow);
       if (id == null) return;
       final turns = await memory.transcript(id);
       if (turns.isEmpty) return;
       _conversationId = id;
+      _lastTurnAt = turns.last.at;
+      // Restored turns count as already folded. The common path into a restore
+      // is close the sheet (which folds), then a relaunch — re-folding them
+      // would hand the summariser a copy of what it has just written, which is
+      // the lossy re-encode `replaceSummary` exists to refuse. The rarer path,
+      // a force-quit mid-conversation, costs one summary refresh; the words
+      // themselves stay in the transcript either way.
+      _unsummarised = 0;
       // Proposals are deliberately not restored. A revision offered last week
       // was validated against a week that has since been lived; re-offering it
       // would hand the runner a stale change to approve. The words stay, the
@@ -241,12 +373,23 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  /// Ends the conversation: rewrites the rolling summary from what was said,
-  /// then starts a fresh transcript for whatever is asked next.
+  /// Folds what has been said since the last fold into the rolling summary.
   ///
-  /// Called when the dock closes and on dispose. **Idempotent and silent** —
-  /// housekeeping the runner did not ask for, so a failure leaves the existing
-  /// summary standing and says nothing.
+  /// Called when the sheet closes and at a session boundary. **Idempotent and
+  /// silent** — housekeeping the runner did not ask for, so a failure leaves
+  /// the existing summary standing and says nothing.
+  ///
+  /// It no longer ends the conversation, and the distinction is the point. The
+  /// sheet has several ways out and a runner who closes it and reopens it two
+  /// minutes later has not changed the subject; ending the conversation there
+  /// meant the visible transcript and the stored one stopped being the same
+  /// thing. What ends a conversation is [startNewSession] — the window lapsing,
+  /// or a surface handing over a question of its own.
+  ///
+  /// Only the **unfolded** turns are handed over, so folding twice in one
+  /// conversation never shows the summariser a turn it has already seen. That
+  /// was previously true only as a side effect of resetting the conversation
+  /// id, which is exactly the thing that no longer happens here.
   Future<void> endConversation() async {
     final memory = _memory;
     final summariser = _summariser;
@@ -259,12 +402,18 @@ class ChatController extends ChangeNotifier {
     try {
       final previous = await memory.summary();
       final transcript = await memory.transcript(id);
-      if (transcript.isEmpty) return;
+      // The last `covered` turns are the ones written since the previous fold.
+      // `skip` on a negative count is an error, so the slice is clamped rather
+      // than trusted — a prune between the append and the fold can leave the
+      // transcript shorter than the count of what was appended to it.
+      final from = transcript.length - covered;
+      final unfolded = transcript.skip(from < 0 ? 0 : from).toList();
+      if (unfolded.isEmpty) return;
 
       final rewritten = await summariser.summarise(
         previous: previous?.text,
         transcript: <ChatMessage>[
-          for (final t in transcript)
+          for (final t in unfolded)
             t.role == CoachRole.user
                 ? ChatMessage.user(t.text)
                 : ChatMessage.coach(t.text),
@@ -277,9 +426,6 @@ class ChatController extends ChangeNotifier {
 
       await memory.replaceSummary(rewritten.trim(), turnsCovered: covered);
       _unsummarised = 0;
-      // What is said next starts a new conversation, so the summariser is never
-      // handed turns it has already folded in.
-      _conversationId = null;
     } catch (_) {
       // Silent on purpose: nothing the runner did failed.
     } finally {
@@ -308,7 +454,9 @@ class ChatController extends ChangeNotifier {
     CoachIntent? intent;
     try {
       final turn = await _client.chat(
-        brief: await _writeBrief(),
+        // The message goes to the brief as well as to the coach: the recall
+        // tier of the memory is a search, and a search needs a query.
+        brief: await _writeBrief(trimmed),
         history: history,
         message: trimmed,
       );
@@ -560,6 +708,11 @@ class ChatController extends ChangeNotifier {
   /// the millisecond. Failures are swallowed — losing a line of history must
   /// never cost the runner their conversation.
   Future<void> _remember(CoachRole role, String text) async {
+    // Stamped before the store is even consulted, and whether or not the write
+    // lands: it is what the session window is measured against, and a build
+    // with no database still has sessions. A coach that cannot remember should
+    // not also lose the boundary that keeps last week out of this morning.
+    _lastTurnAt = _now();
     final memory = _memory;
     if (memory == null) return;
     try {
@@ -576,9 +729,9 @@ class ChatController extends ChangeNotifier {
   /// A brief is context, not a precondition. Failing the whole turn because the
   /// plan store hiccuped would take the coach away at the moment a runner is
   /// most likely to be asking about it; the model simply answers with less.
-  Future<String> _writeBrief() async {
+  Future<String> _writeBrief(String message) async {
     try {
-      return await _brief();
+      return await _brief(message);
     } catch (_) {
       return '';
     }

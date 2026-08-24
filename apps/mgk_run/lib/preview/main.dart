@@ -818,13 +818,20 @@ class _ChatPreviewState extends State<_ChatPreview> {
         : widget.client!;
     _chat = ChatController(
       client: client,
-      brief: () async => CoachBrief.write(
+      brief: (String message) async => CoachBrief.write(
         recentRuns: _demoRuns(),
         plan: widget.withPlan ? _plan : null,
         profile: _profile,
         // The always-loaded tier. Read from the store rather than hard-coded so
         // the preview exercises the same path the app does.
         rollingSummary: (await _memory.summary())?.text,
+        // And the on-demand tier, wired the same way the shell wires it, so the
+        // harness shows what a recollection actually looks like in a brief
+        // rather than a brief that never has one.
+        recalled: recollectionsFrom(
+          await _memory.recall(message),
+          exceptConversation: _chat?.conversationId,
+        ),
       ).text,
       onAdaptRequest: widget.adapt ? _propose : null,
       onApplyRevision: widget.adapt ? _apply : null,

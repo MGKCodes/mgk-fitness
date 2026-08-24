@@ -385,21 +385,48 @@ every decimal formatter is faithfully reporting it.
 Currently every message lands in one transcript forever. Closing and reopening
 the app continues it; there is no notion of a conversation that ended.
 
-- [ ] **A new session** when the app is reopened, and when a runner taps a
-      suggested question.
-- [ ] **Previous chats** kept and readable.
-- [ ] **Old sessions feed the coach's memory but are not in its context by
-      default** — retrieved when relevant rather than replayed wholesale. This
-      is the part with a known problem and it needs designing before it is
-      built.
-- [ ] **A recalled run needs its real date.** The coach placed a week-old run
-      "yesterday" because nothing in one endless transcript distinguishes them.
-      Sessions fix the mechanism; the brief should also carry when a run
-      actually happened, so a recollection cannot drift forward in time.
-- [ ] **A coach with no run data has to say it has none.** Not a live bug — the
-      10 km answer was a real memory — but the empty-log path is untested and
-      the failure mode is confabulation. Assert it: a brief built from an empty
-      log declines rather than invents.
+Settled in [ADR-0025](decisions/0025-a-coach-conversation-is-a-session.md).
+**The boundary is silence, not a lifecycle event**: a conversation ends when
+nothing has been said in it for 30 minutes, measured from `lastTurnAt`. One rule
+covers the cold start, the resume from background, and the runner who never
+closed the app — and a runner who checks a notification and comes back in ten
+seconds keeps their conversation, which is the case that ruled out "any
+background → foreground transition". "Cold start only" was ruled out because an
+iOS process survives for days, which is the bug.
+
+- [x] **A new session** when the app is reopened, and when a runner taps a
+      suggested question. `restore()` now asks `openConversationId(window:)`
+      rather than `lastConversationId()`, which was the one line that made the
+      chat endless. A tapped chip goes through `ask()`, which starts a session
+      regardless of the window.
+- [x] **Previous chats** kept and readable — a history button in the
+      conversation sheet, listing by `lastTurnAt` with the opening line, and a
+      read-only page per conversation. Read-only on purpose: reopening an old
+      transcript to write into it is the thing this phase ends.
+- [x] **Old sessions feed the coach's memory but are not in its context by
+      default.** `recall()` existed, was documented as the on-demand tier, and
+      had no caller; it has one now. Four constraints on it, each narrowing:
+      queried with the message rather than replayed, the live conversation
+      excluded, **only the runner's own turns** (the coach's past replies are
+      conclusions derived from a brief that is rebuilt every turn, so
+      re-injecting one launders a stale derivation into the context), and every
+      line dated under a paragraph that says what it is *before* it says any of
+      it. Semantic search is still the `CoachMemoryRecall` seam's job and was
+      deliberately not built here.
+- [x] **A recalled run needs its real date.** Both halves: recalled turns carry
+      their own relative date, and `_recent` now names the runs before the
+      latest with theirs, plus an instruction not to describe a run as more
+      recent than its date or to describe one that is not listed.
+- [x] **A coach with no run data has to say it has none.** The brief now carries
+      an explicit refusal naming the exact case — a run mentioned in
+      conversation and never logged — and it is asserted, including a test that
+      reconstructs the field-test answer from an empty log plus a week-old turn.
+
+Still open, and recorded as a cost on the ADR rather than done here: a
+conversation abandoned by force-quitting the app mid-sentence is folded into the
+rolling summary by nothing. Closing that means a model call on the launch path,
+against the per-hour allowance in
+[ADR-0015](decisions/0015-spend-is-capped-over-three-windows.md).
 
 ---
 

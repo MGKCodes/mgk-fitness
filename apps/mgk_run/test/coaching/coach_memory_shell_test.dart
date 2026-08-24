@@ -81,16 +81,21 @@ void main() {
   // The wiring test. The controller's own loop is covered in
   // coach_memory_loop_test; this proves the shell actually hands it a memory,
   // which is the part that was missing while every piece existed.
-  testWidgets('a conversation survives a relaunch', (tester) async {
+  testWidgets('a conversation survives a relaunch inside the session window', (
+    tester,
+  ) async {
     final store = InMemoryCoachMemoryStore();
 
     await pump(tester, store, _RememberingCoach());
     await say(tester, 'I work nights, so I run before dawn.');
     expect(find.text('Understood.'), findsOneWidget);
 
-    // A second shell over the same store is a relaunch. The dock says as much
-    // before it is even opened: a restored conversation offers to be picked
-    // back up rather than introducing the coach again.
+    // A second shell over the same store is a relaunch — and it happens
+    // milliseconds later, so it is a force-quit and a restart rather than a new
+    // day. That conversation is still open and is picked back up.
+    //
+    // The other side of this rule, a relaunch after the window has lapsed, is
+    // in coach_sessions_test.
     await pump(tester, store, _RememberingCoach());
     await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
@@ -112,7 +117,8 @@ void main() {
     await pump(tester, store, first);
     await say(tester, 'I work nights.');
 
-    // Closing the sheet is what ends a conversation.
+    // Closing the sheet is what folds what was said into the rolling summary.
+    // It no longer ends the conversation — that is the session window's job.
     await tester.tap(find.byTooltip('Close the conversation'));
     await tester.pumpAndSettle();
     expect(first.summaries, 1);

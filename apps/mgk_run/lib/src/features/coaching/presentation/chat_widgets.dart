@@ -402,9 +402,14 @@ class _Outcome extends StatelessWidget {
 
 /// A day boundary in the transcript.
 ///
-/// Only worth drawing because conversations now survive a relaunch. Without it,
-/// a question asked last Tuesday sits directly above one asked this morning and
-/// the transcript reads as one long conversation nobody had.
+/// It earns its place mostly in a conversation read back from the history
+/// sheet, which can be long and can cross midnight. In the live sheet it is now
+/// nearly unreachable — a conversation ends after half an hour of silence
+/// (ADR-0025), so it can only span two days by being had across midnight. That
+/// is a deliberate consequence rather than dead code: without a divider, a
+/// question asked last Tuesday sitting directly above one asked this morning
+/// reads as one long conversation nobody had, which is precisely the confusion
+/// sessions exist to prevent.
 class DayDivider extends StatelessWidget {
   const DayDivider({super.key, required this.label});
 

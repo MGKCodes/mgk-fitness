@@ -144,6 +144,58 @@ class DriftCoachMemoryStore implements CoachMemoryStore {
     return <CoachTurn>[for (final row in rows) _turnFrom(row)];
   }
 
+  @override
+  Future<List<CoachConversationSummary>> recentConversations({
+    int limit = 20,
+  }) async {
+    // The read `lastTurnAt` was denormalised for: `limit` rows off the small
+    // table, ordered by an indexed column, with no aggregate over the
+    // transcript.
+    final conversations =
+        await (_db.select(_db.coachConversations)
+              ..orderBy([(c) => OrderingTerm.desc(c.lastTurnAt)])
+              ..limit(limit < 0 ? 0 : limit))
+            .get();
+    if (conversations.isEmpty) return const <CoachConversationSummary>[];
+
+    // The opening line and the turn count in one further query rather than one
+    // per conversation. A list of twenty dates is not a list anybody can
+    // recognise themselves in, and the first thing said is what makes it one.
+    //
+    // It reads the turns rather than aggregating in SQL, and that is a choice:
+    // the earliest *surviving* turn is what should open a conversation, and a
+    // `seq = 0` filter would leave a pruned conversation with no opening at
+    // all. The read is bounded by retention — `maxTurns` caps the whole
+    // transcript at 1000 narrow rows — and only happens when the list is
+    // opened.
+    final ids = <String>[for (final c in conversations) c.id];
+    final turns = await (_db.select(
+      _db.coachTurns,
+    )..where((t) => t.conversationId.isIn(ids))).get();
+
+    final counts = <String, int>{};
+    final openings = <String, CoachTurnRow>{};
+    for (final turn in turns) {
+      counts[turn.conversationId] = (counts[turn.conversationId] ?? 0) + 1;
+      final current = openings[turn.conversationId];
+      if (current == null || turn.seq < current.seq) {
+        openings[turn.conversationId] = turn;
+      }
+    }
+
+    return <CoachConversationSummary>[
+      for (final row in conversations)
+        CoachConversationSummary(
+          id: row.id,
+          kind: row.kind,
+          startedAt: row.startedAt,
+          lastTurnAt: row.lastTurnAt,
+          turns: counts[row.id] ?? 0,
+          opening: openings[row.id]?.body,
+        ),
+    ];
+  }
+
   // --- retention --------------------------------------------------------------
 
   @override

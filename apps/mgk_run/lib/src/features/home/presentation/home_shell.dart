@@ -156,7 +156,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late int _index = widget.initialTab;
 
   /// The Plan tab, by name rather than by literal — a re-order that moved it
@@ -258,6 +258,10 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    // Watched for the coach's session boundary, and only for that: a
+    // conversation that has been left alone for longer than the window is over,
+    // whether the app was killed in between or merely put down. See ADR-0025.
+    WidgetsBinding.instance.addObserver(this);
     // Best-effort: ensure the shared profile row exists (covers a restored
     // session, not just a fresh sign-in).
     unawaited(widget.auth.ensureProfile());
@@ -279,11 +283,28 @@ class _HomeShellState extends State<HomeShell> {
         memory: _memory,
         summariser: _summariser,
       );
-      // The transcript is the runner's, not the launch's. Without this the
-      // coach knew *about* them from the summary and they opened a blank
-      // conversation unable to see what they had been told.
+      // Picks a conversation back up only if it is still open — within the
+      // session window. A launch after longer than that opens on nothing, and
+      // what was said is under Previous conversations rather than in front of
+      // the model as though it were this morning.
       unawaited(_chat!.restore());
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Resumed only. The gap is what decides, not the fact of having been away:
+    // a runner who checks a notification and comes straight back keeps their
+    // conversation, and one who comes back after the school run does not.
+    if (state != AppLifecycleState.resumed) return;
+    unawaited(_chat?.endStaleConversation() ?? Future<bool>.value(false));
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   /// The edit-run seam, when the injected coach can do it.
@@ -326,9 +347,14 @@ class _HomeShellState extends State<HomeShell> {
   /// recorded on the Home tab a minute ago must be in the next answer, and the
   /// stored plan is the one on disk rather than the one this screen last drew.
   ///
+  /// [message] is what the runner has just asked, and it is here for one
+  /// reason: the on-demand tier of the coach's memory is a *search*, and a
+  /// search needs a query. `recall` has existed since the memory was built and
+  /// nothing called it — this is the call.
+  ///
   /// Never throws. A brief is context, and losing it should cost the coach some
   /// detail, not cost the runner their question.
-  Future<String> _writeCoachBrief() async {
+  Future<String> _writeCoachBrief(String message) async {
     List<RunSummary> runs;
     try {
       runs = <RunSummary>[
@@ -357,10 +383,30 @@ class _HomeShellState extends State<HomeShell> {
       remembered = null; // A brief is context, not a precondition.
     }
 
+    // The on-demand tier: past turns that match what is being asked, rather
+    // than a whole past transcript riding along. Which is the difference
+    // between the coach knowing the runner has mentioned a sore calf before and
+    // the coach reading last Tuesday as though it were this morning — the
+    // failure that produced "you ran 10 km in 60 minutes yesterday" about a run
+    // logged a week earlier.
+    //
+    // The current conversation is excluded because it is already the history
+    // the coach is sent; the filtering rules are in `recollectionsFrom`.
+    List<CoachTurn> recalled;
+    try {
+      recalled = recollectionsFrom(
+        await _memory.recall(message),
+        exceptConversation: _chat?.conversationId,
+      );
+    } catch (_) {
+      recalled = const <CoachTurn>[];
+    }
+
     return CoachBrief.write(
       recentRuns: runs,
       plan: plan,
       profile: plan?.profile,
+      recalled: recalled,
       // Read off the session every turn rather than cached: it costs nothing,
       // and a name that arrived on a later device should not wait for a
       // restart to be used.
@@ -1366,7 +1412,7 @@ class _PlanTab extends StatefulWidget {
   /// coach's memory to this session.
   final CoachMemoryRepository? memory;
 
-  /// Rewrites the rolling summary when a conversation ends.
+  /// Rewrites the rolling summary when the conversation sheet closes.
   final CoachSummariseClient? summariser;
 
   /// Opens the conversation with an opener already written — the hand-off from

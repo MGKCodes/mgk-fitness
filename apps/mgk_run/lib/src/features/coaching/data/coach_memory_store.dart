@@ -49,6 +49,14 @@ abstract interface class CoachMemoryStore {
   /// something a caller should be able to ask for by accident.
   Future<List<CoachTurn>> recentTurns({int limit = 300});
 
+  /// The conversations spoken in most recently, newest first — what the
+  /// "previous chats" list draws.
+  ///
+  /// Ordered by `lastTurnAt`, which is denormalised onto the conversation row
+  /// for exactly this: the list is one bounded read of the small table, not an
+  /// aggregate over the transcript.
+  Future<List<CoachConversationSummary>> recentConversations({int limit = 20});
+
   /// Applies [policy], deleting the turns that fall outside it and any
   /// conversation left with none. Returns what was removed, newest first.
   ///
@@ -186,6 +194,39 @@ class InMemoryCoachMemoryStore implements CoachMemoryStore {
   Future<List<CoachTurn>> recentTurns({int limit = 300}) async {
     final all = <CoachTurn>[..._turns]..sort(newestTurnFirst);
     return all.take(limit).toList();
+  }
+
+  @override
+  Future<List<CoachConversationSummary>> recentConversations({
+    int limit = 20,
+  }) async {
+    // Folded from the turns because that is all this store holds; the Drift
+    // store reads the denormalised `lastTurnAt` off the conversation row
+    // instead. Both answer the same question in the same order, which is the
+    // property that matters — a preview and a phone disagreeing about which
+    // conversation is "the last one" would be close to unfindable.
+    final byId = <String, List<CoachTurn>>{};
+    for (final turn in _turns) {
+      (byId[turn.conversationId] ??= <CoachTurn>[]).add(turn);
+    }
+
+    final summaries = <CoachConversationSummary>[
+      for (final entry in byId.entries)
+        () {
+          final turns = <CoachTurn>[...entry.value]
+            ..sort((a, b) => a.seq.compareTo(b.seq));
+          return CoachConversationSummary(
+            id: entry.key,
+            kind: _kinds[entry.key] ?? coachConversationKindDefault,
+            startedAt: turns.first.at,
+            lastTurnAt: turns.last.at,
+            turns: turns.length,
+            opening: turns.first.text,
+          );
+        }(),
+    ]..sort((a, b) => b.lastTurnAt.compareTo(a.lastTurnAt));
+
+    return summaries.take(limit < 0 ? 0 : limit).toList();
   }
 
   @override

@@ -52,6 +52,25 @@ been on a store, so everything Runio does is still listed here.
 - Effort briefs and pace bands computed locally, so they render with no signal.
 - Weekly adaptation: a week can be adjusted or swapped, and the plan reconciles
   every missed week rather than only the latest.
+- **A conversation is a session, not one endless transcript.** It ends after
+  30 minutes of silence, whether the app was closed in between or merely put
+  down, and a suggested question always starts its own. Reopening the app the
+  next morning opens on nothing rather than on yesterday. Before this, the dock
+  restored whatever was last spoken in — which is how the coach came to answer
+  "You ran 10 km in 60 minutes yesterday" about a run logged a week earlier
+  (ADR-0025).
+- **Previous conversations are kept and readable**, from a history button in the
+  conversation sheet. Read-only: saying something new starts a new conversation.
+- **Past conversations reach the coach by recall, not by replay.** A few of the
+  runner's own turns that match what is being asked, each rendered with when it
+  was said and under a paragraph saying they are recollections rather than the
+  current picture. `recall()` had been built with the memory and called by
+  nothing; this is its first caller.
+- **Every run in the coach's brief carries when it happened**, and the brief
+  tells the coach not to describe a run as more recent than its date, or to
+  describe one that is not in the log.
+- **A coach with no runs logged is told to say so** rather than describe one,
+  including the case where a run was mentioned in conversation and never logged.
 
 **Elsewhere**
 - Home, Plan and Profile tabs, with lifetime totals, records, training standing

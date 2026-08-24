@@ -89,21 +89,38 @@ makes the memory affordable.
 
 | | Written | Read |
 |---|---|---|
-| `coach_turns` | every turn, as it happens | on launch (restore the dock) and on recall |
-| `coach_summaries` | when a **conversation ends** | into every brief |
+| `coach_turns` | every turn, as it happens | on launch (only if the conversation is still open), on recall, and in the Previous conversations list |
+| `coach_summaries` | when the conversation sheet closes | into every brief |
+
+**A conversation is a session**, ended by 30 minutes of silence rather than by
+anything the runner presses — see
+[ADR-0025](../decisions/0025-a-coach-conversation-is-a-session.md). On launch
+the dock picks a conversation back up only if its `last_turn_at` is inside that
+window, which is what `last_turn_at` being denormalised onto the conversation
+row makes cheap. Anything older is kept and readable under Previous
+conversations, and reaches the coach through `recall` rather than by being
+replayed into the context.
 
 **A turn is stored before the model is called**, not after it answers. A
 question asked in a tunnel is still a question the runner asked, and the
 repository's contract is that the write completes on disk — so a force-quit
 mid-sentence keeps it.
 
-**The summary is rewritten only when the conversation ends** — when the dock is
-closed, or the tab is disposed. Not per turn: the summarise surface is rate
-limited to six an hour, so a rewrite per turn would spend the allowance in ten
-minutes, and it would produce a copy of a copy besides (the surface is
-regenerate-only for the same reason `coach_summaries` is keyed on `user_id`).
-The rewrite is guarded on there being unsummarised turns, so closing a dock
-nobody spoke into costs nothing.
+**The summary is rewritten when the conversation sheet closes**, and at a
+session boundary. Not per turn: the summarise surface is rate limited to six an
+hour, so a rewrite per turn would spend the allowance in ten minutes, and it
+would produce a copy of a copy besides (the surface is regenerate-only for the
+same reason `coach_summaries` is keyed on `user_id`). The rewrite is guarded on
+there being unsummarised turns, so closing a sheet nobody spoke into costs
+nothing.
+
+Closing the sheet is a **fold**, not the end of the conversation. Only the turns
+said since the last fold are handed to the summariser, so a runner who shuts the
+sheet and reopens it two minutes later carries on in the same stored
+conversation and the summariser never sees a turn twice. One gap this leaves,
+recorded on ADR-0025 rather than closed: a conversation abandoned by
+force-quitting the app mid-sentence is folded by nothing, so its turns may never
+reach the summary. They stay in the transcript and stay reachable by recall.
 
 **A failed rewrite is not a forgotten runner.** The summariser returns null when
 it could not run — dead network, spent allowance — and null means *keep what you
@@ -118,6 +135,14 @@ the summary last, in the runner's own terms. The summary therefore holds only
 what a schema cannot: shift work, a knee that complains on hills, a route they
 will not run in the dark. Anything typed would be a second source of truth that
 eventually disagrees with the first.
+
+**The transcript is what is loaded on demand.** `CoachMemoryRepository.recall`
+searches it with the message being sent and returns at most four of the
+runner's own past turns, each rendered with when it was said and fenced behind a
+paragraph saying they are recollections rather than the current picture. The
+coach's own past replies are excluded: they were derived from a brief rebuilt
+every turn, so re-injecting one would launder a stale derivation back in as if
+it were a fact.
 
 ## Notes
 

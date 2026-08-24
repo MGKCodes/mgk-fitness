@@ -7,7 +7,8 @@ specific to the running app.
 ## Current state
 
 **Built and working, not yet released anywhere.** Tracking, plan generation and
-the coach all run; 1113 tests pass. `lib/` holds ~173 Dart files.
+the coach all run; 1186 tests pass and 3 are skipped (they are `@Tags(['live'])`
+and hit the real backend). `lib/` holds ~181 Dart files.
 
 This was previously a standalone repo called Runio. It moved into the monorepo
 on 2026-08-06 and was repointed at `packages/mgk_ui`. If you find a doc here
@@ -78,7 +79,7 @@ schema, it is stale — say so rather than working around it.
 - `docs/product-spec.md` — the source-of-truth product definition.
 - `docs/architecture/` — run recording, plan generation, onboarding, LLM and
   secrets.
-- `docs/decisions/` — 23 ADRs (the *why*).
+- `docs/decisions/` — 25 ADRs (the *why*).
 - `docs/roadmap.md` — phased build order.
 - `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`.
 

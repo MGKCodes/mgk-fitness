@@ -36,3 +36,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0022](0022-the-in-run-map-is-north-up.md) | The in-run map is north-up | Accepted |
 | [0023](0023-the-log-is-read-from-the-phone.md) | The log is read from the phone | Accepted |
 | [0024](0024-elevation-is-barometric-or-absent.md) | Elevation is barometric or absent | Accepted |
+| [0025](0025-a-coach-conversation-is-a-session.md) | A coach conversation is a session, bounded by silence | Accepted |

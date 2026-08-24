@@ -57,10 +57,10 @@ void main() {
   var ids = 0;
   ChatController build({
     CoachSummariseClient? summarise,
-    Future<String> Function()? brief,
+    Future<String> Function(String message)? brief,
   }) => ChatController(
     client: chat,
-    brief: brief ?? () async => 'a brief',
+    brief: brief ?? (_) async => 'a brief',
     memory: memory,
     summariser: summarise ?? summariser,
     newConversationId: () => 'c${ids++}',
@@ -80,7 +80,7 @@ void main() {
 
     // A brand new controller — a relaunch — briefs the coach with it.
     final second = build(
-      brief: () async {
+      brief: (_) async {
         final remembered = await memory.summary();
         return 'a brief\n\n${remembered?.text ?? ''}';
       },
@@ -94,7 +94,7 @@ void main() {
     final controller = build();
     await controller.send('My calf is sore.');
 
-    final id = await memory.lastConversationId();
+    final id = await memory.openConversationId();
     final turns = await memory.transcript(id!);
     expect(turns.map((t) => t.role).toList(), <CoachRole>[
       CoachRole.user,
@@ -154,20 +154,24 @@ void main() {
       expect(summariser.calls, 1);
     });
 
-    test('the next conversation is summarised on its own turns', () async {
-      final controller = build();
-      await controller.send('One.');
-      await controller.endConversation();
-      await controller.send('Two.');
-      await controller.endConversation();
+    test(
+      'a second fold is handed only what was said since the first',
+      () async {
+        final controller = build();
+        await controller.send('One.');
+        await controller.endConversation();
+        await controller.send('Two.');
+        await controller.endConversation();
 
-      expect(summariser.calls, 2);
-      expect(
-        summariser.transcripts.last.map((m) => m.text),
-        isNot(contains('One.')),
-        reason: 'a turn already folded into the memory is not folded in twice',
-      );
-    });
+        expect(summariser.calls, 2);
+        expect(
+          summariser.transcripts.last.map((m) => m.text),
+          isNot(contains('One.')),
+          reason:
+              'a turn already folded into the memory is not folded in twice',
+        );
+      },
+    );
   });
 
   group('a failed rewrite keeps what is already known', () {
@@ -211,7 +215,7 @@ void main() {
     'opening the coach and saying nothing creates no conversation',
     () async {
       build();
-      expect(await memory.lastConversationId(), isNull);
+      expect(await memory.openConversationId(), isNull);
     },
   );
 
@@ -232,7 +236,7 @@ void main() {
 
       // Persisted, so a reply next launch is not stranded above the thing it
       // replies to.
-      final id = await memory.lastConversationId();
+      final id = await memory.openConversationId();
       expect((await memory.transcript(id!)).single.text, contains('Longest'));
     });
 
