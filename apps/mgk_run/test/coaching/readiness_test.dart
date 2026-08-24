@@ -150,7 +150,14 @@ void main() {
       expect(headline.position, isNot(contains('no date set')));
     });
 
-    test('the card asks the question once they are ready', () {
+    // Written for the Plan tab's block card, which has since been dropped as a
+    // second plan competing with the week. The outlook it produced now heads
+    // the block screen — which has the plan but not the run log, so it asks for
+    // no readiness and this branch is currently unreached on screen. The rule
+    // is still the rule: the question is only ever asked of someone who could
+    // actually answer it. The short form of the same fact ("ready for it now")
+    // survives on the goal strip, which does read the log.
+    test('the outlook asks the question once they are ready', () {
       final profile = horizon(weekly: 70000, longest: 33000);
       final outlook = planOutlook(
         planFor(profile),

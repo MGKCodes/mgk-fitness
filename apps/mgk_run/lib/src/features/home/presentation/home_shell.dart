@@ -51,6 +51,7 @@ import '../../history/domain/run_draft.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../history/presentation/run_form_screen.dart';
+import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../recording/presentation/run_summary_screen.dart';
 
 /// The authenticated app: Home / Coach / Profile tabs.
@@ -906,17 +907,10 @@ class _HomeShellState extends State<HomeShell> {
   // for them, which is a thing the runner said rather than a button they
   // tapped (ADR-0017).
 
-  /// Metres run in the week in progress.
-  ///
-  /// Read off the volume series rather than recomputed, so the in-run panel and
-  /// Home's weekly chart can never disagree about the same week. Null when the
-  /// series has no current week yet — a fresh install, before anything is run.
-  double? get _currentWeekMeters {
-    for (final week in _volumes) {
-      if (week.isCurrent) return week.meters;
-    }
-    return null;
-  }
+  // No `_currentWeekMeters` here any more. It read the week in progress off the
+  // volume series for the in-run screen's THIS WEEK band; the band went, and a
+  // getter computing an argument nothing takes is how a screen ends up with
+  // dead parameters. Home's chart still folds the same series.
 
   /// Starts a run from Home. Recording is an action here, not a tab.
   void _startRun(BuildContext context) {
@@ -928,9 +922,15 @@ class _HomeShellState extends State<HomeShell> {
       return;
     }
     final profile = _planProfile;
+    // Read before the recorder exists, and kept for after it is gone: this is
+    // how the finished run is found again. A run that ends from here on is the
+    // run this screen recorded, and nothing else is — see
+    // [RunDetailSource.runFinishedSince] for why it is not simply "the newest
+    // run in the log".
+    final openedAt = DateTime.now();
     Navigator.of(context)
-        .push(
-          MaterialPageRoute<void>(
+        .push<bool>(
+          MaterialPageRoute<bool>(
             builder: (routeContext) => RecordingScreen(
               recorder: factory(),
               unit: _unit,
@@ -944,17 +944,56 @@ class _HomeShellState extends State<HomeShell> {
               // from the profile's time trial and null without one, which the
               // screen renders as no verdict rather than a guessed one.
               paces: profile == null ? null : pacesFor(profile),
-              // Where this run sits in the week. A plan is about a block, and
-              // this is the only surface mid-effort that says so.
-              weekDoneMeters: _currentWeekMeters,
-              weekTargetMeters: _thisWeek?.volumeMeters,
-              onFinish: () => Navigator.of(routeContext).pop(),
-              onCancel: () => Navigator.of(routeContext).pop(),
+              // **Finished and discarded are not the same exit.** They both
+              // used to pop with nothing, so the shell could not tell an hour
+              // of running from a mistap on the close button — which is part of
+              // why finishing led nowhere. The result says which happened.
+              onFinish: () => Navigator.of(routeContext).pop(true),
+              onCancel: () => Navigator.of(routeContext).pop(false),
             ),
           ),
         )
         // A finished run changes the log, the note and possibly today's status.
-        .then((_) => _refreshHome());
+        // Refreshed first either way, so the summary opens over a Home that
+        // already knows about the run behind it.
+        .then((finished) async {
+          await _refreshHome();
+          if (finished == true && mounted) await _showFinishedRun(openedAt);
+        });
+  }
+
+  /// The run just recorded, on the screen built to receive it.
+  ///
+  /// **This is the whole of what Phase 1 was about.** `onFinish` popped, so an
+  /// hour of effort ended with the display going away and the runner back on
+  /// Home with nothing to look at — the first field test's own words for it
+  /// were that the run "was recorded, displayed, and then disappeared".
+  ///
+  /// Read back out of the database rather than handed along in memory, which is
+  /// deliberate and is the cheap end-to-end check ADR-0023 says the log stopped
+  /// being: if the write path is broken, the completion screen is the first
+  /// thing to say so, in front of the person who just ran.
+  ///
+  /// Silent when there is nothing to show. A recorder that never started —
+  /// permission refused, location off — finishes without a run, and there is no
+  /// summary to open for a run that did not happen.
+  Future<void> _showFinishedRun(DateTime openedAt) async {
+    final reads = _runDetails;
+    RunSummary? run;
+    if (reads != null) {
+      try {
+        run = await reads.runFinishedSince(openedAt);
+      } catch (_) {
+        run = null; // Handled below, along with "there was no run".
+      }
+    }
+    // No detail source — a build with no editor, which is the preview and most
+    // widget tests. The log has just been reloaded, so fall back to it, still
+    // asking the same question: a run that started before this screen opened is
+    // not the run that was recorded on it.
+    run ??= _allRuns.where((r) => !r.startedAt.isBefore(openedAt)).firstOrNull;
+    if (run == null || !mounted) return;
+    await _openSummary(run, justFinished: true);
   }
 
   /// Takes a question from Profile to the coach.
@@ -962,20 +1001,96 @@ class _HomeShellState extends State<HomeShell> {
   /// Opens one run's summary. Shared by Home's recent list and the Profile
   /// tab's log: both hand the whole log along, because the summary's note has
   /// to compare the run against everything to call it a record.
-  void _openRun(RunSummary run) {
-    Navigator.of(context).push(
+  void _openRun(RunSummary run) => unawaited(_openSummary(run));
+
+  /// The summary screen, for a run from the log or a run just finished.
+  ///
+  /// One method for both, because it is one screen: the difference is
+  /// [RunSummaryScreen.justFinished] and what there is to do afterwards.
+  Future<void> _openSummary(RunSummary run, {bool justFinished = false}) async {
+    // The trace, when it is not already loaded. A run opened from the log has
+    // only ever been a summary — `fetchRuns` reads the columns and leaves the
+    // thousands of trace rows alone, which is right for a list — so the map on
+    // the screen below had nothing to draw. Loaded on the way in rather than
+    // inside the screen, so the route is there in the first frame instead of
+    // appearing under the reader a moment later.
+    final full = run.hasRoute ? run : await _withTrace(run);
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => RunSummaryScreen(
-          summary: run,
+        builder: (routeContext) => RunSummaryScreen(
+          summary: full,
           unit: _unit,
           history: _allRuns,
+          justFinished: justFinished,
+          // What was asked for on the day, so the coach's note can say whether
+          // this was the session. Only on the run just finished: an older run
+          // needs the week it fell in, and only this week's is loaded.
+          plannedSession: justFinished
+              ? _thisWeek?.runOn(full.startedAt.weekday)
+              : null,
+          // Somewhere for it to go, which is the rule this button already had:
+          // a summary opened from the log is dismissed with back, and its Done
+          // was a dead control.
+          onDone: justFinished ? () => Navigator.of(routeContext).pop() : null,
           // No id means nothing to edit: a summary built from a recording in
           // progress or from seeded demo data is not a row yet.
-          onEdit: widget.runEditor == null || run.id == null
+          onEdit: widget.runEditor == null || full.id == null
               ? null
-              : () => _editRun(run),
+              : () => _editRun(full),
+          onAskCoach: _chat == null
+              ? null
+              : () => _askAboutRun(full, justFinished: justFinished),
         ),
       ),
+    );
+  }
+
+  /// One run in full, or the summary unchanged when the trace cannot be had.
+  ///
+  /// Failure here costs a map and nothing else: every figure on the screen came
+  /// from the row that is already loaded, so a summary without its route is a
+  /// poorer screen rather than a broken one — the same call the log makes when
+  /// it cannot read (`_refreshHome`), for the same reason.
+  Future<RunSummary> _withTrace(RunSummary run) async {
+    final reads = _runDetails;
+    final id = run.id;
+    if (reads == null || id == null) return run;
+    try {
+      return await reads.runDetail(id) ?? run;
+    } catch (_) {
+      return run;
+    }
+  }
+
+  /// Reading one run in full, when the injected editor can also do it.
+  ///
+  /// Found by cast, the same way the coach's seams are: `RunEditor` implements
+  /// it and the preview's stand-ins do not, so a build without a database gets
+  /// null and the screens fall back to what they were handed rather than to an
+  /// error.
+  RunDetailSource? get _runDetails {
+    final editor = widget.runEditor;
+    return editor is RunDetailSource ? editor as RunDetailSource : null;
+  }
+
+  /// Takes the run on screen to the coach.
+  ///
+  /// The sentence carries the run's own numbers and, for a run out of the log,
+  /// **the day it happened on**. The coach is never told a run's id and reads
+  /// one endless transcript, which is how it once answered a question about a
+  /// week-old 10 km by placing it yesterday. Naming the date in the question is
+  /// the cheap half of that fix, and it costs nothing while the other half —
+  /// conversations with ends, Phase 4 of the 1.0.0 plan — is unbuilt.
+  void _askAboutRun(RunSummary run, {required bool justFinished}) {
+    final distance = Distance.meters(run.distanceMeters).format(_unit);
+    final time = run.duration.hoursMinutesSeconds;
+    _askCoach(
+      justFinished
+          ? 'I have just finished a run: $distance in $time. '
+                'What do you make of it?'
+          : 'About my run on ${shortRunDate(run.startedAt)} — '
+                '$distance in $time. What do you make of it?',
     );
   }
 
@@ -1035,102 +1150,102 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  /// Vertical room the floating coach mark needs at the foot of a tab.
-  ///
-  /// Matches Lift's shell. Spent only when there is a coach to show — an app
-  /// without one would otherwise carry a strip of dead space above the nav bar
-  /// for a button that is not there.
-  static const double _coachMarkReserve = 64;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
-          // The room the floating coach mark needs, reserved by the widget
-          // that knows whether there is one — the same fix Lift's shell
-          // already carries. Without it the mark sits on top of whatever the
-          // tab has scrolled to its floor: on Profile that is the last run in
-          // the log, whose tap target it covers, so tapping the run opens the
-          // coach instead.
+          // **No bottom reserve injected here, and there never should have
+          // been one.**
           //
-          // Reserved here rather than as padding inside each tab, because
-          // three tabs each remembering it is three places to forget, and
-          // every one of them would have to know whether a coach exists.
-          MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              padding: MediaQuery.of(
-                context,
-              ).padding.copyWith(bottom: _chat == null ? 0 : _coachMarkReserve),
-            ),
-            child: IndexedStack(
-              index: _index,
-              children: <Widget>[
-                HomeTab(
-                  onRecord: () => _startRun(context),
-                  // Two destinations, not one. These were a single
-                  // `onOpenCoach` that switched to the tab — so the coach's own
-                  // note opened a plan screen, and the button offering to talk
-                  // to a coach did too. Only one of them was ever about the
-                  // plan (ADR-0017).
-                  onOpenPlan: () => setState(() => _index = _planTab),
-                  onOpenCoach: _chat == null ? null : _openCoach,
-                  today: _todayView,
-                  thisWeek: _thisWeek,
-                  headline: _headline,
-                  note: _note,
-                  outcomes: _outcomes,
-                  volumes: _volumes,
-                  consistency: _consistency,
-                  standing: _standing,
-                  hasRuns: _allRuns.isNotEmpty,
-                  missed: _missed,
-                  onAskCoach: _chat == null ? null : _askCoach,
-                  // Only with a plan to bend and a coach to bend it.
-                  onAdjustWeek: widget.planClient == null || _todayView == null
-                      ? null
-                      : _adjustThisWeek,
-                  unit: _unit,
-                ),
-                _PlanTab(
-                  plans: _plans,
-                  coach: widget.coach,
-                  chat: _chatClient,
-                  runs: widget.historySource,
-                  planClient: widget.planClient,
-                  memory: _memory,
-                  summariser: _summariser,
-                  unit: _unit,
-                  onPlanChanged: _refreshHome,
-                  onAskCoach: _askCoach,
-                  runnerName: widget.auth.currentName,
-                ),
-                // The runner and their record, on one page: totals, bests, the goal,
-                // then every run. Reads the shell's own log rather than calling the
-                // source again, so the totals and the rows they come from are always
-                // the same load.
-                ProfileScreen(
-                  stats: RunnerStats.from(_allRuns),
-                  profile: _planProfile,
-                  // Derived here rather than cached, exactly like the stats above:
-                  // it reads the display unit, and a stored copy stayed in kilometres
-                  // after the runner switched to miles. Both are a fold over the log,
-                  // which is cheaper than a staleness bug.
-                  //
-                  // No plan goes in. Where they are in a block is the Plan tab's
-                  // subject and today is Home's; this is the long view of the runner.
-                  standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
-                  // Past plans only — the current one is the Coach tab's subject.
-                  pastPlans: _pastPlans,
-                  runs: _allRuns,
-                  unit: _unit,
-                  onOpenRun: _openRun,
-                  onAddRun: widget.runEditor == null ? null : _addRun,
-                  onAskCoach: _chatClient == null ? null : _askCoach,
-                  onOpenSettings: _openSettings,
-                ),
-              ],
-            ),
+          // The shell used to add 64pt of fake `MediaQuery` bottom padding
+          // around this stack, to stop the floating mark sitting on whatever a
+          // tab had scrolled to its floor. That job was already done, in the
+          // one place that can do it: every tab pads the foot of its own scroll
+          // by `kCoachMarkClearance`, which is the mark's own size plus its
+          // margins and predates the reserve. So the 64 was a second mechanism
+          // for a solved problem — and on two of the three tabs it did nothing
+          // at all, because a `ListView` with explicit padding and a
+          // `CustomScrollView` both ignore `MediaQuery.padding` outright.
+          //
+          // The one widget that read it was Plan's `SafeArea`, which does not
+          // opt out of the bottom. There it was not scroll padding at all: it
+          // shortened the scroll **viewport** by 64pt, so the last card was
+          // sliced through mid-row and the strip below it showed the photo
+          // backdrop's own foot — nearly opaque under `ScrimStrength.grounded`
+          // — as a full-width black band above the nav bar, beside the mark
+          // (IMG_4700). Home, whose `SafeArea` passes `bottom: false`, has no
+          // band; Profile, which has no `SafeArea`, has none either. That is
+          // the whole difference between the three screenshots.
+          //
+          // Verified by reading, not on a device: nobody here has an iPhone.
+          IndexedStack(
+            index: _index,
+            children: <Widget>[
+              HomeTab(
+                onRecord: () => _startRun(context),
+                // Two destinations, not one. These were a single
+                // `onOpenCoach` that switched to the tab — so the coach's own
+                // note opened a plan screen, and the button offering to talk
+                // to a coach did too. Only one of them was ever about the
+                // plan (ADR-0017).
+                onOpenPlan: () => setState(() => _index = _planTab),
+                onOpenCoach: _chat == null ? null : _openCoach,
+                today: _todayView,
+                thisWeek: _thisWeek,
+                headline: _headline,
+                note: _note,
+                outcomes: _outcomes,
+                volumes: _volumes,
+                consistency: _consistency,
+                standing: _standing,
+                hasRuns: _allRuns.isNotEmpty,
+                missed: _missed,
+                onAskCoach: _chat == null ? null : _askCoach,
+                // Only with a plan to bend and a coach to bend it.
+                onAdjustWeek: widget.planClient == null || _todayView == null
+                    ? null
+                    : _adjustThisWeek,
+                unit: _unit,
+              ),
+              _PlanTab(
+                plans: _plans,
+                coach: widget.coach,
+                chat: _chatClient,
+                runs: widget.historySource,
+                planClient: widget.planClient,
+                memory: _memory,
+                summariser: _summariser,
+                unit: _unit,
+                onPlanChanged: _refreshHome,
+                onAskCoach: _askCoach,
+                runnerName: widget.auth.currentName,
+              ),
+              // The runner and their record, on one page: totals, bests, the goal,
+              // then every run. Reads the shell's own log rather than calling the
+              // source again, so the totals and the rows they come from are always
+              // the same load.
+              ProfileScreen(
+                stats: RunnerStats.from(_allRuns),
+                profile: _planProfile,
+                // Derived here rather than cached, exactly like the stats above:
+                // it reads the display unit, and a stored copy stayed in kilometres
+                // after the runner switched to miles. Both are a fold over the log,
+                // which is cheaper than a staleness bug.
+                //
+                // No plan goes in. Where they are in a block is the Plan tab's
+                // subject and today is Home's; this is the long view of the runner.
+                standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
+                // Past plans only — the current one is the Coach tab's subject.
+                pastPlans: _pastPlans,
+                runs: _allRuns,
+                unit: _unit,
+                onOpenRun: _openRun,
+                onAddRun: widget.runEditor == null ? null : _addRun,
+                onAskCoach: _chatClient == null ? null : _askCoach,
+                onOpenSettings: _openSettings,
+              ),
+            ],
           ),
           // Floating over every tab, which is the whole point of it: the dock
           // this replaces could only exist on the Plan tab, so the coach was
@@ -1509,7 +1624,20 @@ class _PlanTabState extends State<_PlanTab> {
       ),
       onOpenBlock: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => PlanBlockScreen(plan: plan, unit: widget.unit),
+          builder: (_) => PlanBlockScreen(
+            plan: plan,
+            unit: widget.unit,
+            // The shell is the side that holds the log, so it is the side that
+            // can answer this. Read here rather than inside the screen for the
+            // reason the screen's own comment gives: readiness is a fact about
+            // what the runner has actually done, and a screen handed only a
+            // plan would have to fall back on the profile, which ages.
+            readiness: assessReadiness(
+              plan.profile,
+              _runLog,
+              now: DateTime.now(),
+            ),
+          ),
         ),
       ),
     );

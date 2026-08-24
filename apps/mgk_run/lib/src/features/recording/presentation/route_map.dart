@@ -4,8 +4,10 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_config.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
+import '../domain/split_marker.dart';
 
 /// How much of the basemap shows through, over the app's charcoal base.
 ///
@@ -43,6 +45,7 @@ class RouteMap extends StatefulWidget {
   const RouteMap({
     super.key,
     required this.points,
+    this.splitMarkers = const <SplitMarker>[],
     this.strokeWidth = 4,
     this.interactive = true,
     this.followZoom = 16,
@@ -56,6 +59,17 @@ class RouteMap extends StatefulWidget {
        _attribution = attribution;
 
   final List<RunPoint> points;
+
+  /// Where each kilometre turned over, pinned on the route.
+  ///
+  /// **Empty in-run, and that is the point.** A runner mid-effort is looking at
+  /// a number, not reading their own route back; pins would be ten pieces of
+  /// furniture on the one part of the screen that is meant to just show where
+  /// they are. Afterwards they are the whole reason to look at the map at all —
+  /// which kilometre was the hill, where the run came apart — so the finished
+  /// run's map passes them and the live one does not.
+  final List<SplitMarker> splitMarkers;
+
   final double strokeWidth;
   final bool interactive;
 
@@ -226,6 +240,9 @@ class _RouteMapState extends State<RouteMap> {
             if (hasRoute)
               MarkerLayer(
                 markers: <Marker>[
+                  // Under the endpoints, so a kilometre that happens to turn
+                  // over on the start line does not hide where the run began.
+                  for (final marker in widget.splitMarkers) _split(marker),
                   _endpoint(all.first, filled: false), // start (outlined)
                   if (widget.showPosition)
                     _position(all.last)
@@ -246,6 +263,47 @@ class _RouteMapState extends State<RouteMap> {
       ],
     );
   }
+
+  /// A kilometre, pinned where it turned over and labelled with its number.
+  ///
+  /// **The number is on the map and the time is one press away.** Ten pins each
+  /// carrying a number and a clock reading is a route you cannot see for the
+  /// labels on it, and on a loop the later kilometres would sit on top of the
+  /// early ones. The index alone is enough to read the shape of the run — where
+  /// four was, how far apart six and seven fell — and the crossing time is on
+  /// the tooltip for the one somebody actually wants to know about.
+  ///
+  /// Both times, because they answer different questions: the clock says when
+  /// they were there, the elapsed figure says how far into the run that was.
+  Marker _split(SplitMarker marker) => Marker(
+    point: LatLng(marker.latitude, marker.longitude),
+    width: 22,
+    height: 22,
+    child: Tooltip(
+      message:
+          '${marker.index} km · ${_clock(marker.at)} · '
+          '${marker.elapsed.hoursMinutesSeconds} elapsed',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.textPrimary, width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            '${marker.index}',
+            style: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 11,
+              height: 1,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Marker _endpoint(LatLng at, {required bool filled}) => Marker(
     point: at,
@@ -336,3 +394,12 @@ class _Attribution extends StatelessWidget {
     );
   }
 }
+
+/// A wall-clock time of day, for a split marker's tooltip.
+///
+/// Hours and minutes only. A kilometre is not a stopwatch reading — the second
+/// it turned over on is in the elapsed figure beside it, where it means
+/// something.
+String _clock(DateTime at) =>
+    '${at.hour.toString().padLeft(2, '0')}:'
+    '${at.minute.toString().padLeft(2, '0')}';

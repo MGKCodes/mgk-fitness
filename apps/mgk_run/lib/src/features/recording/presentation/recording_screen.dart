@@ -9,8 +9,10 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../coaching/domain/pace_model.dart';
+import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/training_plan.dart';
+import '../../coaching/presentation/session_labels.dart';
 import '../domain/live_metrics.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
@@ -28,9 +30,9 @@ const double _heroSize = 96;
 /// a fraction — 0.42 — and that is only ever correct on the one phone it was
 /// tuned against: the panel's contents have a fixed intrinsic height, so a
 /// fraction of a *shorter* screen is a smaller box holding the same thing. At
-/// 375x667 that put Lap, Pause and Finish below the fold, and at 320x568 the
-/// pace meter went with them. A runner who cannot reach Finish without
-/// scrolling has a broken screen, not a cramped one.
+/// 375x667 that put the controls below the fold, and at 320x568 the pace meter
+/// went with them. A runner who cannot reach Pause without scrolling has a
+/// broken screen, not a cramped one.
 ///
 /// Summed from the parts rather than written as one number so that changing
 /// [_heroSize] moves it, instead of silently invalidating it.
@@ -58,7 +60,11 @@ const Duration kVerdictWarmUpTime = Duration(minutes: 3);
 /// Its prose is capped at two lines up here for the same reason this whole sum
 /// exists: the detent is computed, not measured, and a third line would push
 /// the controls off the bottom of a small phone.
-const double _briefBlockHeight = AppSpacing.lg + 14 + 6 + 41;
+///
+/// Two lines of prose and the gap above them, and nothing else. It used to
+/// carry an `RPE n` label as well, which is where the missing 14 + 6 went — the
+/// sum shrank with the thing it was measuring.
+const double _briefBlockHeight = AppSpacing.lg + 41;
 
 /// A problem message and, where one helps, the Settings button under it. Only
 /// present when recording has actually failed — but when it is, it pushes the
@@ -82,7 +88,7 @@ double _panelContentHeight({
     (hasBrief ? _briefBlockHeight : 0) +
     (hasProblem ? _problemBlockHeight : 0) +
     AppSpacing.xl + // gap
-    48 + // Lap / Pause / Finish
+    48 + // the control row — two buttons, whichever pair is showing
     AppSpacing.lg; // bottom padding
 
 /// The most of the screen the collapsed panel may take *because of the brief*.
@@ -158,7 +164,7 @@ double collapsedFractionFor(
 /// fail was that the readout had nowhere to live, not that the map was big.
 ///
 /// The panel rests in two places: collapsed it is the figures read mid-stride,
-/// opened it is the splits, the session brief and the week, none of which
+/// opened it is the session brief, the laps and the splits, none of which
 /// anybody reads while moving. Its collapsed height is derived from its own
 /// content, not from a fraction of the screen — see [collapsedFractionFor].
 ///
@@ -182,8 +188,6 @@ class RecordingScreen extends StatefulWidget {
     this.onCancel,
     this.plannedSession,
     this.paces,
-    this.weekDoneMeters,
-    this.weekTargetMeters,
   });
 
   final RunRecorder recorder;
@@ -199,11 +203,10 @@ class RecordingScreen extends StatefulWidget {
   /// attached — an absent judgement rather than a guessed one.
   final TrainingPaces? paces;
 
-  /// Kilometres already run this week, and what the week asks for — so a single
-  /// run reads as part of a block rather than as an isolated effort. Null when
-  /// there is no plan to be a fraction of.
-  final double? weekDoneMeters;
-  final double? weekTargetMeters;
+  // No week here. This screen took `weekDoneMeters` and `weekTargetMeters` for
+  // a THIS WEEK band below the fold; the band went (weekly load is a dashboard
+  // question, not a mid-run one) and the two parameters went with it rather
+  // than being left as arguments the shell computes and nothing reads.
 
   @override
   State<RecordingScreen> createState() => _RecordingScreenState();
@@ -756,8 +759,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 session: widget.plannedSession,
                 climbMeters: climbMeters(_points),
                 laps: _laps,
-                weekDoneMeters: widget.weekDoneMeters,
-                weekTargetMeters: widget.weekTargetMeters,
                 problem: _problem,
                 onAskAgain: _askAgain,
                 recording: _recording,
@@ -894,8 +895,6 @@ class _Panel extends StatelessWidget {
     required this.session,
     required this.climbMeters,
     required this.laps,
-    required this.weekDoneMeters,
-    required this.weekTargetMeters,
     required this.problem,
     required this.onAskAgain,
     required this.recording,
@@ -932,8 +931,6 @@ class _Panel extends StatelessWidget {
   final PlannedSession? session;
   final double? climbMeters;
   final List<RunSplit> laps;
-  final double? weekDoneMeters;
-  final double? weekTargetMeters;
   final RecorderProblem? problem;
 
   /// Re-requests location. Only reachable from the refusal that can be
@@ -1064,13 +1061,23 @@ class _Panel extends StatelessWidget {
                           value: averagePace,
                           absent: averagePace == dashes || averageStale,
                         )
-                      : StatBlock(
-                          label: 'TO GO ${unit.distanceSuffix}',
-                          value: _remaining(session!, distanceM, unit),
-                          size: StatSize.hero,
-                          align: CrossAxisAlignment.center,
-                          valueWeight: FontWeight.w400,
-                          shrinkToFit: true,
+                      : Builder(
+                          builder: (context) {
+                            // Label and figure from one call, so they cannot
+                            // disagree about which side of the prescription the
+                            // runner is on — a `TO GO` heading over a count
+                            // going back up is the exact failure this column
+                            // already had once.
+                            final left = _remaining(session!, distanceM, unit);
+                            return StatBlock(
+                              label: left.label,
+                              value: left.value,
+                              size: StatSize.hero,
+                              align: CrossAxisAlignment.center,
+                              valueWeight: FontWeight.w400,
+                              shrinkToFit: true,
+                            );
+                          },
                         ),
                 ),
               ],
@@ -1128,32 +1135,56 @@ class _Panel extends StatelessWidget {
             ],
 
             const SizedBox(height: AppSpacing.xl),
+            // **Finishing is two acts, and only the first is on this row while
+            // the runner is running.**
+            //
+            // Lap, Pause and Finish used to sit side by side with Finish as the
+            // filled one — the loudest control on the screen, the one a thumb
+            // finds without looking, and the only one of the three that cannot
+            // be undone. An hour of effort was one mistap from over, and the
+            // mistap was the *easy* target. Nothing about that is fixable by
+            // adding a confirmation dialog to it: the answer is that a run
+            // cannot end from the running state at all.
+            //
+            // So: Pause and Lap while moving, Resume and Finish once stopped.
+            // Two buttons either way, so the row keeps one height and the
+            // collapsed detent's sum stays true — and the filled one is always
+            // the reversible one, because that is the button being aimed at.
             Row(
               children: <Widget>[
-                // Lap sits with the other two rather than below the fold: it is
-                // the one control that is useless unless it is under the thumb
-                // at the moment the runner crests the hill.
-                Expanded(
-                  child: _ControlButton(
-                    label: 'Lap',
-                    onPressed: recording ? onLap : null,
+                if (recording) ...<Widget>[
+                  // Lap is on the row rather than below the fold: it is the one
+                  // control that is useless unless it is under the thumb at the
+                  // moment the runner crests the hill. It goes when paused,
+                  // where there is no lap being run to cut.
+                  Expanded(
+                    child: _ControlButton(label: 'Lap', onPressed: onLap),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _ControlButton(
-                    label: recording ? 'Pause' : 'Resume',
-                    onPressed: onTogglePause,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _ControlButton(
+                      label: 'Pause',
+                      filled: true,
+                      onPressed: onTogglePause,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _ControlButton(
-                    label: 'Finish',
-                    filled: true,
-                    onPressed: onFinish,
+                ] else ...<Widget>[
+                  // Resume is filled and Finish is not, which inverts the old
+                  // row on purpose: a runner who paused at a crossing is far
+                  // more likely to be carrying on than stopping, and the button
+                  // that ends the run should be the one they have to look for.
+                  Expanded(
+                    child: _ControlButton(
+                      label: 'Resume',
+                      filled: true,
+                      onPressed: onTogglePause,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _ControlButton(label: 'Finish', onPressed: onFinish),
+                  ),
+                ],
               ],
             ),
 
@@ -1202,22 +1233,15 @@ class _Panel extends StatelessWidget {
               ),
             ],
 
-            // Where this run sits in the week. A plan is about a block, not a
-            // run, and this is the only place mid-effort that says so — the
-            // difference between "I did 5k" and "that is the week done".
-            if (weekDoneMeters != null && weekTargetMeters != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.xxl),
-              TargetBand(
-                eyebrow: 'THIS WEEK',
-                title: 'Including this run',
-                unit: unit,
-                // The run in progress counts toward the week as it happens,
-                // which is the whole reason to show it here rather than after.
-                doneMeters: weekDoneMeters! + distanceM,
-                targetMeters: weekTargetMeters!,
-              ),
-            ],
-
+            // No weekly load here any more.
+            //
+            // A THIS WEEK band carried "including this run" against the week's
+            // target, on the argument that a plan is about a block rather than
+            // a run. True, and it is a dashboard's argument: nobody eight
+            // kilometres into a Sunday long run needs to be told what Thursday
+            // looks like, and it was drawn on the one screen where every pixel
+            // is either the run in front of them or noise. Home is where the
+            // week is answered.
             if (laps.isNotEmpty) ...<Widget>[
               const SizedBox(height: AppSpacing.xxl),
               const SectionLabel('LAPS'),
@@ -1238,13 +1262,15 @@ class _Panel extends StatelessWidget {
   }
 }
 
-/// One of the three in-run controls.
+/// One of the in-run controls.
 ///
-/// **The label never wraps.** Three buttons across a 320pt screen leave about
-/// 88pt each once padding is taken out, and the default button padding pushed
-/// "Pause" and "Finish" onto two lines — a control that reads `Finis` over `h`
-/// looks broken in the exact moment a runner is reaching for it. Tighter
-/// padding, a single line, and scale-down as the last resort.
+/// **The label never wraps**, and this survives the row going from three
+/// buttons to two. Three across a 320pt screen left about 88pt each once
+/// padding was taken out, and the default button padding pushed "Pause" and
+/// "Finish" onto two lines — a control that reads `Finis` over `h` looks broken
+/// in the exact moment a runner is reaching for it. Two buttons have room to
+/// spare, but the guard costs nothing and the row has been three before:
+/// tighter padding, a single line, and scale-down as the last resort.
 class _ControlButton extends StatelessWidget {
   const _ControlButton({
     required this.label,
@@ -1360,12 +1386,21 @@ class _EffortBrief extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        // No effort label here. It sat directly under the session title and
-        // repeated it — "Easy run" followed by "EASY" — two lines one word
-        // apart saying the same thing. The RPE is the part the title does not
-        // already carry.
-        SectionLabel('RPE ${effort.rpe}', emphasis: LabelEmphasis.stat),
-        const SizedBox(height: 6),
+        // **No RPE here, and no effort label either.**
+        //
+        // The label went first: it sat under the session title and repeated it
+        // — "Easy run" followed by "EASY" — two lines one word apart saying the
+        // same thing. `RPE 3` replaced it and lasted until the first real run,
+        // where it turned out to be the same mistake one level down. A number
+        // on a ten-point scale is a thing to convert before it is a thing to
+        // act on, and nobody eight kilometres in is doing arithmetic about how
+        // hard this is meant to feel. The sentence below already says it in
+        // words, which is the form that survives being read at a glance while
+        // moving.
+        //
+        // It is not gone from the app — `SessionEffort.rpe` is the scale
+        // runners are taught, and it belongs on a session brief, read sitting
+        // down, before the run.
         Text(
           effort.feel,
           maxLines: maxLines,
@@ -1380,34 +1415,55 @@ class _EffortBrief extends StatelessWidget {
   }
 }
 
-/// What is left of today's session, in the runner's unit, never below zero.
+/// The third column on a planned day: what is left of today's session, or how
+/// far past it the runner has gone.
 ///
-/// Clamped rather than allowed to go negative: past the target the session is
-/// done, and `-0.42` is not a thing a runner needs told while still running.
-String _remaining(PlannedSession session, double doneM, UnitSystem unit) {
-  final remaining = (session.distanceMeters - doneM).clamp(
-    0.0,
-    double.infinity,
+/// **Counted against what the runner was told, not against what is stored.**
+/// The stored number is metric and on a whole-kilometre grid; a miles runner
+/// reads "4 mi" on Plan, which is 6,437 m, and a countdown against the stored
+/// 7,000 m opened at 4.35 under a heading that said 4. Two numbers for one
+/// session, and the one on the screen they are holding mid-run is the wrong
+/// one. [prescribedMeters] is exactly this conversion and `fulfils` has always
+/// judged the session by it — see `prescribed_distance.dart`, ADR-0011.
+///
+/// **And it goes past zero.** It used to clamp, which meant the column froze at
+/// `0.00` under a label still reading TO GO: a prescription rendered as a meter
+/// that fills and then stops, so running further read as either done or as
+/// nothing at all. A prescription is a suggestion, never a floor and never a
+/// ceiling (ADR-0011), and a runner who keeps going has made a decision rather
+/// than overrun a target. So the label changes and the figure counts up again.
+({String label, String value}) _remaining(
+  PlannedSession session,
+  double doneM,
+  UnitSystem unit,
+) {
+  final prescribed = prescribedMeters(session.distanceMeters, unit);
+  final remaining = prescribed - doneM;
+  final past = remaining < 0;
+  return (
+    label: '${past ? 'PAST' : 'TO GO'} ${unit.distanceSuffix}',
+    value: Distance.meters(
+      remaining.abs(),
+    ).inDisplayUnit(unit).toStringAsFixed(2),
   );
-  return Distance.meters(remaining).inDisplayUnit(unit).toStringAsFixed(2);
 }
 
 /// What today's session is called — the runner's own word for it when they have
 /// one, the kind's name otherwise. Never the bare weekday: "Today" under a
 /// section label already reading TODAY says nothing twice.
-String _sessionTitle(PlannedSession session) {
-  if (session.label != null) return session.label!;
-  return switch (session.kind) {
-    SessionKind.recovery => 'Recovery run',
-    SessionKind.easy => 'Easy run',
-    SessionKind.long => 'Long run',
-    SessionKind.marathonPace => 'Marathon pace',
-    SessionKind.threshold => 'Threshold',
-    SessionKind.interval => 'Intervals',
-    SessionKind.timeTrial => 'Time trial',
-    SessionKind.rest || SessionKind.strength => 'Today',
-  };
-}
+/// What the session running right now is called.
+///
+/// This was a private fourth copy of the naming table, and it had already
+/// drifted: it said "Marathon pace" and "Threshold" where every other surface
+/// now says "Marathon pace run" and "Threshold run", so the same session had
+/// two names depending on whether the runner was looking at the plan or doing
+/// it. That is the exact failure [sessionName] exists to prevent, reintroduced
+/// by a copy made before it did.
+///
+/// No time-of-day prefix, even though this is the one surface that certainly
+/// knows the hour. The runner is *in* the run; telling them it is the afternoon
+/// is a fact they are currently standing in.
+String _sessionTitle(PlannedSession session) => sessionName(session);
 
 /// A problem, stated on the panel rather than as a banner over the map.
 class _ProblemLine extends StatelessWidget {

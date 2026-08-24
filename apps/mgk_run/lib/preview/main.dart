@@ -241,8 +241,8 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
     planClient: FakePlanClient(),
   ),
   // The in-run screen on a planned day, with the coach's numbers behind it:
-  // a real session, real derived zones and the week so far, so the live pace
-  // band is computed the way it is on device rather than mocked.
+  // a real session and real derived zones, so the live pace band is computed
+  // the way it is on device rather than mocked.
   'recording': (context) => RecordingScreen(
     recorder: FakeRunRecorder(),
     plannedSession: const PlannedSession(
@@ -254,8 +254,6 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
       Distance.meters(5000),
       const Duration(minutes: 24, seconds: 30),
     ),
-    weekDoneMeters: 26800,
-    weekTargetMeters: 42000,
     onCancel: () => ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Run discarded.'))),

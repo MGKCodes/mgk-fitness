@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import '../domain/plan_headline.dart';
+import '../domain/readiness.dart';
 import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
 import 'block_arc.dart';
@@ -17,17 +19,37 @@ import 'session_labels.dart';
 /// Every week here is a *shape*, never a session list. Sessions firm up about a
 /// week ahead (see `kPlannedWeekHorizon`), so putting a Tuesday threshold on
 /// week nine would present a guess as a commitment.
+///
+/// **This is now the only place the shape of the plan is drawn.** It used to
+/// have a card of its own on the Plan tab, an arc and a sentence under the
+/// heading "The whole block" — which sat beneath the week reading as a second,
+/// competing plan. The week is the plan; this is the background to it, and it
+/// is reached by tapping the goal at the top of the Plan tab, which is the line
+/// that raises the question ("week 3 of 9") in the first place. The arc and the
+/// sentence came with it, so nothing the card said was lost — only the claim
+/// that it was a plan in its own right.
 class PlanBlockScreen extends StatelessWidget {
   const PlanBlockScreen({
     super.key,
     required this.plan,
     this.now,
     this.unit = UnitSystem.metric,
+    this.readiness,
   });
 
   final StoredPlan plan;
   final DateTime? now;
   final UnitSystem unit;
+
+  /// How ready the runner already is for what they are training towards, read
+  /// from the run log rather than from the profile they typed months ago.
+  ///
+  /// Optional because this screen is perfectly coherent without it, and null is
+  /// what a caller with no log to read should pass rather than a guess. When it
+  /// is here, [planOutlook] can ask the question the old card asked — a horizon
+  /// runner who could already run the distance is told so, and asked whether it
+  /// is worth entering something.
+  final Readiness? readiness;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +60,24 @@ class PlanBlockScreen extends StatelessWidget {
         .map((w) => w.volumeMeters)
         .reduce((a, b) => a > b ? a : b);
     final groups = _group(weeks);
+    // Written in the domain, because a rhythm has no peak and nothing to taper
+    // into. This screen used to be headed "The whole block" whatever it was
+    // showing, which is block vocabulary over a parkrunner's flat arc — the
+    // same leak [planOutlook] was written to stop on the card it used to head.
+    //
+    // Readiness is handed in rather than derived, because it is read from the
+    // run log and this screen is given a plan. That is the right way round: a
+    // profile ages and the log does not, so the caller that holds the log is
+    // the one that can answer it. It briefly was not passed at all, and the
+    // cost was a horizon runner's "you could run a marathon now — worth
+    // finding one to enter?" going missing entirely; the shorter form on the
+    // goal strip on the Plan tab still says "ready for it now" in the line
+    // above the tap that gets here, but the invitation only exists on this
+    // screen and a short form is not a substitute for it.
+    final outlook = planOutlook(plan, unit: unit, readiness: readiness);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('The whole block')),
+      appBar: AppBar(title: Text(outlook.title)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -53,16 +90,31 @@ class PlanBlockScreen extends StatelessWidget {
             Entrance(
               child: BlockArc(weeks: weeks, currentIndex: current, height: 72),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.sm),
+            // What the arc is doing, in a sentence — "peaks at 76 km in week
+            // 12, then tapers". It travelled here with the arc when the Plan
+            // tab's card was dropped, because an arc without it is a shape
+            // nobody has to read the same way twice.
             Entrance(
               index: 1,
+              child: Text(
+                outlook.caption,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Entrance(
+              index: 2,
               child: _Summary(plan: plan, today: today, unit: unit),
             ),
             const SizedBox(height: AppSpacing.xl),
 
             for (var g = 0; g < groups.length; g++) ...<Widget>[
               Entrance(
-                index: 2 + g,
+                index: 3 + g,
                 child: _PhaseGroup(
                   group: groups[g],
                   peak: peak,

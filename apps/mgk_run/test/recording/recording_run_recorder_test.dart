@@ -464,6 +464,79 @@ void main() {
     expect(recorder.status, RecorderStatus.stopped);
   });
 
+  group('the splits go down with the run', () {
+    // **They used to be computed and thrown away.** The recorder cut them on
+    // every fix for the in-run readout and stored none, so `run_splits` was
+    // filled only by a restore — a run finished on this phone had ten splits
+    // until the screen closed and none afterwards, and the summary it was
+    // meant to be sent to could only ever show an empty list (ADR-0023).
+
+    /// A straight run east along the equator, where 0.001 degrees of longitude
+    /// is ~111.19 m. Twenty-one hops is ~2,335 m: two whole kilometres and a
+    /// short remainder.
+    Future<void> recordTwoAndABitKilometres() async {
+      final start = clock;
+      await recorder.start();
+      for (var i = 0; i <= 21; i++) {
+        source.emit(
+          _fix(0, i * 0.001, at: start.add(Duration(seconds: i * 5))),
+        );
+      }
+      await pumpEventQueue();
+      clock = clock.add(const Duration(minutes: 12));
+    }
+
+    test('stop writes them, so a finished run has splits to show', () async {
+      await recordTwoAndABitKilometres();
+      await recorder.stop();
+
+      final splits = await db.splitsForRun('run-1');
+      expect(splits, hasLength(3));
+      expect(splits[0].seq, 1);
+      expect(splits[0].distanceM, closeTo(1000, 0.5));
+      expect(splits[1].seq, 2);
+      expect(splits[1].distanceM, closeTo(1000, 0.5));
+      // The trailing partial is kept and is honestly short — the same rule the
+      // splits list already renders.
+      expect(splits[2].distanceM, lessThan(1000));
+      expect(splits.every((s) => s.durationS > 0), isTrue);
+    });
+
+    test('and they are written before the mirror reads them back', () async {
+      // `pushTrace` selects the splits out of the database, so writing them
+      // after the push would mirror a run with none.
+      await recordTwoAndABitKilometres();
+      await recorder.stop();
+
+      expect(await db.splitsForRun('run-1'), hasLength(3));
+    });
+
+    test('finishing twice replaces them rather than doubling them', () async {
+      await recordTwoAndABitKilometres();
+      await recorder.stop();
+      await recorder.stop();
+
+      expect(await db.splitsForRun('run-1'), hasLength(3));
+    });
+
+    test('a run with no trace stores no splits, which is not a gap', () async {
+      await recorder.start();
+      clock = clock.add(const Duration(minutes: 3));
+      await recorder.stop();
+
+      expect(await db.splitsForRun('run-1'), isEmpty);
+    });
+
+    test('a discarded run takes its splits with it', () async {
+      await recordTwoAndABitKilometres();
+      await recorder.stop();
+      expect(await db.splitsForRun('run-1'), isNotEmpty);
+
+      await recorder.discard();
+      expect(await db.splitsForRun('run-1'), isEmpty);
+    });
+  });
+
   test('an interrupted run (no stop) stays recoverable from storage', () async {
     await recorder.start();
     source.emit(_fix(0, 0));

@@ -187,7 +187,7 @@ class _DayRow extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              sessionLabel(run),
+                              sessionName(run),
                               style: TextStyle(
                                 color: ink,
                                 fontSize: 14,

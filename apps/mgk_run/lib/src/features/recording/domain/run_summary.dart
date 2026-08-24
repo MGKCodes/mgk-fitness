@@ -18,6 +18,7 @@ class RunSummary {
     this.avgHr,
     this.maxHr,
     this.caloriesEst,
+    this.steps,
     this.type = 'outdoor',
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
@@ -41,6 +42,17 @@ class RunSummary {
 
   /// A derived estimate — always labelled as such in the UI, never a measurement.
   final double? caloriesEst;
+
+  /// Steps taken, when Health has them.
+  ///
+  /// **Nothing writes this yet**, and the summary is honest about that by
+  /// simply not drawing the tile: absent is absent, never a zero and never an
+  /// error (CLAUDE.md rule 6 — a denied Health read is indistinguishable from
+  /// no data). It is here so the shape of the summary is settled before the
+  /// read that fills it lands, which is Phase 2 of the 1.0.0 plan; storing it
+  /// will want a `runs.steps` column, which this field deliberately does not
+  /// invent.
+  final int? steps;
 
   /// `outdoor` | `treadmill` | `manual`.
   final String type;

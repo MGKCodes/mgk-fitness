@@ -3,6 +3,7 @@ import 'package:mgk_units/mgk_units.dart';
 import 'route_metrics.dart';
 import 'run_point.dart';
 import 'run_split.dart';
+import 'split_marker.dart';
 
 /// How much of the recent trace a live pace is measured over.
 ///
@@ -106,23 +107,48 @@ Pace? rollingPace(
   return Pace.from(Distance.meters(meters), elapsed);
 }
 
-/// The run so far, cut into splits of [splitMeters].
+/// A run's splits and the boundaries between them, from **one** walk over the
+/// trace.
+///
+/// One rule, two consumers — the arrangement [traceSegments] already uses, for
+/// the same reason. The splits list and the per-kilometre pins on a finished
+/// run's map are two views of one set of crossings, and walking the trace twice
+/// would be a bug with a delay on it: the day the jitter rule or the gap rule
+/// moved in one walk and not the other, the third kilometre's pin would sit
+/// somewhere the third kilometre's row said it did not.
+class RunSplitting {
+  const RunSplitting({required this.splits, required this.markers});
+
+  /// The splits in order, including the trailing partial when one was asked
+  /// for.
+  final List<RunSplit> splits;
+
+  /// One per **completed** boundary. A partial split closes nothing, so it gets
+  /// no marker — there is no point on the ground where it turned over.
+  final List<SplitMarker> markers;
+}
+
+/// The run so far, cut into splits of [splitMeters], with the crossings kept.
 ///
 /// The trailing partial split is included and flagged by its distance being
 /// short — a runner 600 m into their fourth kilometre wants to see that, and
 /// the summary already renders a short final split the same way.
 ///
-/// Timing is interpolated within the fix that crosses each boundary, because a
-/// fix lands every second or so and a whole second of error per split
-/// accumulates visibly over a long run.
-List<RunSplit> splitsFor(
+/// Timing **and position** are interpolated within the fix that crosses each
+/// boundary, because a fix lands every second or so. A whole second of error
+/// per split accumulates visibly over a long run, and a pin dropped on the
+/// nearest fix rather than on the boundary sits a stride's worth of road away
+/// from where the kilometre actually turned over.
+RunSplitting splitRun(
   List<RunPoint> points, {
   double splitMeters = 1000,
   bool includePartial = true,
 }) {
   final splits = <RunSplit>[];
+  final markers = <SplitMarker>[];
   var index = 1;
   var covered = 0.0; // metres into the current split
+  var elapsed = Duration.zero; // the run's clock at the last crossing
   DateTime? splitStart;
   RunPoint? anchor;
   DateTime? lastSeen;
@@ -166,19 +192,40 @@ List<RunSplit> splitsFor(
       var spent = 0.0;
       while (covered + (hop - spent) >= splitMeters) {
         spent += splitMeters - covered;
-        // Constant speed across the hop, so the crossing time is the fraction
-        // of the hop consumed. A whole second of error per split is visible
-        // over a long run, which is why this interpolates at all.
+        // Constant speed across the hop, so the crossing is the fraction of the
+        // hop consumed — in time and in position alike. A whole second of error
+        // per split is visible over a long run, which is why this interpolates
+        // at all.
+        final fraction = spent / hop;
         final crossedAt = anchor.timestamp.add(
-          Duration(milliseconds: (hopMs * (spent / hop)).round()),
+          Duration(milliseconds: (hopMs * fraction).round()),
         );
+        final duration = crossedAt.difference(splitStart!);
+        elapsed += duration;
         splits.add(
           RunSplit(
-            index: index++,
+            index: index,
             distanceMeters: splitMeters,
-            duration: crossedAt.difference(splitStart!),
+            duration: duration,
           ),
         );
+        markers.add(
+          SplitMarker(
+            index: index,
+            // Straight-line interpolation between two fixes a second or so
+            // apart. Over that gap the difference between a great circle and a
+            // straight line is far inside GPS noise, and the pin is being put
+            // on a route somebody recognises rather than surveyed.
+            latitude:
+                anchor.latitude + (point.latitude - anchor.latitude) * fraction,
+            longitude:
+                anchor.longitude +
+                (point.longitude - anchor.longitude) * fraction,
+            at: crossedAt,
+            elapsed: elapsed,
+          ),
+        );
+        index++;
         splitStart = crossedAt;
         covered = 0;
       }
@@ -199,5 +246,23 @@ List<RunSplit> splitsFor(
     );
   }
 
-  return splits;
+  return RunSplitting(splits: splits, markers: markers);
 }
+
+/// The run so far, cut into splits of [splitMeters] — see [splitRun].
+List<RunSplit> splitsFor(
+  List<RunPoint> points, {
+  double splitMeters = 1000,
+  bool includePartial = true,
+}) => splitRun(
+  points,
+  splitMeters: splitMeters,
+  includePartial: includePartial,
+).splits;
+
+/// Where each whole split turned over, for the pins on a finished run's map —
+/// see [splitRun].
+List<SplitMarker> splitMarkersFor(
+  List<RunPoint> points, {
+  double splitMeters = 1000,
+}) => splitRun(points, splitMeters: splitMeters).markers;

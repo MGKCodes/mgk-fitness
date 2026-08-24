@@ -69,7 +69,7 @@ class RunTile extends StatelessWidget {
   }
 
   String _subtitle(RunSummary run) {
-    final date = _shortDate(run.startedAt);
+    final date = shortRunDate(run.startedAt);
     final time = run.duration.hoursMinutesSeconds;
     final pace = _pace(run)?.format(unit);
     return <String>[date, time, ?pace].join('  ·  ');
@@ -103,4 +103,10 @@ const List<String> _months = <String>[
   'Dec',
 ];
 
-String _shortDate(DateTime at) => '${at.day} ${_months[at.month - 1]}';
+/// "23 Aug" — a run's day, as the log row writes it.
+///
+/// Public so that anything naming a run in a sentence names it the same way the
+/// row the runner tapped did. The coach in particular: a question about "my run
+/// on 23 Aug" has to match what they were looking at, or the two are about
+/// different runs as far as the reader is concerned.
+String shortRunDate(DateTime at) => '${at.day} ${_months[at.month - 1]}';

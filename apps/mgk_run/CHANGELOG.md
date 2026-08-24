@@ -54,8 +54,54 @@ been on a store, so everything Runio does is still listed here.
 - Health integration designed for absence: a denied read is indistinguishable
   from no data, so it is never an error state.
 
+**After the finish line**
+- **A run completed screen.** Pressing Finish now arrives somewhere: the run
+  summary, headed *Run complete* and dated *Just now*, with the route, the
+  numbers, the coach's read of them and the splits. It used to pop the screen —
+  an hour of effort ended with the display going away.
+- **The route with a pin per kilometre**, each carrying the time it turned over
+  and how far into the run that was. The pins and the splits list come from one
+  walk over the trace, so a pin and its row can never disagree.
+- **Splits are kept.** They were computed live for the in-run readout and stored
+  nowhere, so a finished run had none; they are written to the device when the
+  run finishes, alongside its distance and time.
+- **A run opened from the log brings its trace with it**, which is what lets the
+  summary draw a route for a run that was not just recorded.
+- **A word from the coach on the run, and a way to keep asking** — the note is
+  one true sentence by design, and *Ask your coach about this run* is the way
+  past that, at the moment the answer is worth the most.
+- Elevation and steps have a place on the summary, shown when there is something
+  to show. Nothing fills them yet.
+
 ### Changed
 
+- **A session is named for the activity, not the physiology — and dated only
+  where the app knows the date.** "Threshold", "Easy" and "Recovery" name an
+  intensity; on their own they tell a runner how hard and never what they are
+  doing. Every kind now reads as something a person does — *Easy run*,
+  *Threshold run*, *Long run* — and where the hour is genuinely known, on
+  today's session and on a run already recorded, it is named as an occasion:
+  *Afternoon easy run*. A planned Wednesday four days out gets no time of day,
+  because it does not have one yet. The runner's own word for a session still
+  beats all of it.
+- **The Plan tab is the week, and nothing beside it claiming to be the plan.**
+  The card headed "The whole block" sat under the week at the same weight and
+  read as a second, competing plan. The block view survives — it is still the
+  only place the shape of nine or sixteen weeks can be seen — and is now reached
+  by tapping the goal at the top of the tab, which is the line ("week 3 of 9")
+  that raises the question. Its arc and the sentence describing it moved onto
+  that screen, and it is no longer headed with block vocabulary for runners on
+  plans that have no block.
+- **A profile with no runs on it shows what it is going to say, not that it has
+  nothing to say.** The page collapsed to a single "No runs yet" card over bare
+  background, which reads as an app that is broken rather than one that is new.
+  The lifetime figure, the runs / time / streak row, both records, the coach's
+  read and the log now all render before the first run, with their figures held
+  open as dashes rather than filled in with zeroes — a zero is a claim, a dash
+  is an absence. The one sentence worth keeping moved into the lifetime card,
+  where it captions the totals it was always describing, and *Add a run* is
+  reachable from an empty log instead of being hidden behind having already
+  recorded one (ADR-0019).
 - **The in-run screen leads with the numbers, and the map earns its area.**
   During the first 400 m — or three minutes, whichever comes first — the panel
   carries the session's effort brief, and hands that height back to the map once
@@ -76,6 +122,19 @@ been on a store, so everything Runio does is still listed here.
   screens arrive rather than appear, and both pages move through a transition.
 - A kilometre turning over, and the signal dropping, are felt as well as shown —
   the two things that matter to somebody who cannot look at the screen.
+- **A run cannot be ended from the running state.** Lap, Pause and Finish sat
+  side by side with Finish as the filled one — the loudest, most findable
+  control on the screen, and the only one of the three that cannot be undone.
+  While the run is going there is Lap and Pause; Finish appears once the runner
+  has paused, and Resume is the prominent one when it does.
+- **The RPE figure is gone from the in-run screen.** A number on a ten-point
+  scale is a thing to convert before it is a thing to act on. The sentence
+  underneath already says how the session should feel, in words that survive
+  being read at a glance while moving; the scale itself belongs on a session
+  brief, read before the run.
+- **The weekly load block is gone from the in-run screen.** Nobody eight
+  kilometres into a Sunday long run needs to know what Thursday looks like.
+  Where the week stands is Home's question.
 
 ### Fixed
 
@@ -109,5 +168,20 @@ been on a store, so everything Runio does is still listed here.
 - Button labels are set in Inter, like the rest of the app, instead of falling
   back to the platform's own font.
 - Autopause was removed: it stopped runs that had not stopped.
+- **The in-run countdown counts against what the runner was told.** A 7 km
+  session reads as "4 mi" on Plan, and the third column converted the stored
+  number instead — so the same session opened at 4.35 under a plan that said 4.
+- **And it goes past the prescription instead of stopping at it.** The figure
+  clamped at zero under a heading still reading TO GO, so running further froze
+  it at `0.00` and a suggestion read as done-or-failed. The label changes to
+  PAST and the figure counts up again, because a prescription is a suggestion
+  and running past one is a decision rather than an overrun.
+- **The black band at the foot of the Plan tab.** The shell reserved 64pt of
+  bottom padding for the floating coach mark, on top of the room every tab
+  already leaves for it. Home and Profile ignored the reserve outright; Plan's
+  `SafeArea` spent it as a viewport inset, so the last card was cut through
+  mid-row and the strip beneath it showed the backdrop's near-opaque foot as a
+  full-width band. The reserve is gone; the per-tab clearance that was always
+  doing the work stays.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main

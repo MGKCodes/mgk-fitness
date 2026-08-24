@@ -245,6 +245,20 @@ nagging.
   also not true by default: backup is opt-in and off until asked for
   ([ADR-0012](0012-backup-is-consented-restore-only-adds.md)), so the promise
   outran the product. It now says what the account is actually for.
+- **The counter-signal fired, and not from the plan side.** The cost function
+  above watches for a plan-shaped hole; what appeared was a run-shaped one. A
+  runner with nothing recorded opened Profile to a single "No runs yet" card
+  over bare background — every other section on the page hidden behind an
+  `isEmpty` guard, including the coach's own read of them. Read against this
+  ADR that is the same failure with a different noun: a free screen announcing
+  its own emptiness instead of showing what the free product does. Fixed
+  2026-08-24 by giving each section an empty state rather than a fork, with
+  every figure held open as a dash. The general rule it leaves behind, for the
+  next screen somebody builds for a runner on day one: **a screen with no data
+  states its structure, and a dash is an absence where a zero would be a
+  claim.** Hiding a section is only right when the section is about something
+  that may never exist — past plans, for instance, which a runner on their
+  first has not got and is not waiting for.
 - The entitlement work that gates moment two is not decided here. It needs a
   verified App Store transaction rather than anything the client can assert
   ([ADR-0014](0014-model-is-chosen-per-surface-and-per-tier.md)), and it wants

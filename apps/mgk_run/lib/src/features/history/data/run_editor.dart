@@ -2,8 +2,10 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/ids.dart';
+import '../../recording/domain/run_summary.dart';
 import '../domain/run_draft.dart';
 import '../domain/run_writer.dart';
+import 'drift_run_repository.dart';
 import 'run_backup.dart';
 
 /// Adds and corrects runs — the write half of "the log is the runner's, not the
@@ -19,7 +21,7 @@ import 'run_backup.dart';
 /// that silently fixes things is a validator whose failures are invisible, and
 /// the confirmation step the coach shows the runner is only meaningful if what
 /// they confirmed is what gets written.
-class RunEditor implements RunWriter {
+class RunEditor implements RunWriter, RunDetailSource {
   RunEditor({
     required AppDatabase db,
     RunBackup? backup,
@@ -150,6 +152,24 @@ class RunEditor implements RunWriter {
       return 0;
     }
   }
+
+  /// The read half of [RunDetailSource], delegated rather than implemented.
+  ///
+  /// Reading a run is not this class's business — the queries belong beside the
+  /// log's, in [DriftRunRepository], and that is where they are. What this adds
+  /// is reach: the shell is handed `historySource` as a bare tear-off of one
+  /// query, so the editor is the only injected object left that still knows
+  /// which database to ask. Delegating is the smaller of two wrongs against
+  /// duplicating the queries here, and it stops the moment the shell is given a
+  /// repository of its own.
+  late final DriftRunRepository _reads = DriftRunRepository(_db);
+
+  @override
+  Future<RunSummary?> runDetail(String runId) => _reads.runDetail(runId);
+
+  @override
+  Future<RunSummary?> runFinishedSince(DateTime since) =>
+      _reads.runFinishedSince(since);
 
   /// The stored run as a draft, for a form or a confirmation to start from.
   @override

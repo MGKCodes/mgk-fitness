@@ -7,6 +7,7 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart' show CoachLetter;
+import '../domain/live_metrics.dart';
 import '../domain/run_summary.dart';
 import 'recording_readout.dart';
 import 'route_map.dart';
@@ -16,6 +17,15 @@ import 'route_map.dart';
 /// no HR, treadmill/manual) is simply not shown — never an error state, and the
 /// coach's note is no different: a run there is nothing true to say about shows
 /// nothing.
+///
+/// **Two arrivals at one screen, and only one of them is an arrival.** Opened
+/// from the log it is a record being looked up. Reached by pressing Finish it
+/// is the end of the thing the run was, and the first field test found out what
+/// happens when that is not distinguished: the screen was not reached at all —
+/// `_finish()` popped — so an hour of effort ended with the display going away.
+/// [justFinished] is what separates the two, and it is deliberately small: the
+/// title, the date line, and a Done that has somewhere to go. Everything else
+/// is the same screen because it is the same run.
 class RunSummaryScreen extends StatelessWidget {
   const RunSummaryScreen({
     super.key,
@@ -23,8 +33,10 @@ class RunSummaryScreen extends StatelessWidget {
     this.unit = UnitSystem.metric,
     this.onDone,
     this.onEdit,
+    this.onAskCoach,
     this.history = const <RunSummary>[],
     this.plannedSession,
+    this.justFinished = false,
   });
 
   final RunSummary summary;
@@ -32,8 +44,21 @@ class RunSummaryScreen extends StatelessWidget {
   /// Corrects this run's numbers. Null hides the action. The route is never
   /// touched — see `AppDatabase.updateRunDetails`.
   final VoidCallback? onEdit;
+
+  /// Takes the run to the coach. Null in a build with no coach behind it, and
+  /// then the affordance is simply absent rather than inert.
+  ///
+  /// **The point of a note is that there is more to ask.** `RunNote` says one
+  /// true thing and stops — that is its whole design, a coach who says five
+  /// things about one run is not coaching — and this is the way past that
+  /// ceiling, at the moment the runner cares most about the answer.
+  final VoidCallback? onAskCoach;
+
   final UnitSystem unit;
   final VoidCallback? onDone;
+
+  /// Whether this run was finished seconds ago rather than looked up.
+  final bool justFinished;
 
   /// The runner's other runs, which is what lets the coach say anything
   /// comparative about this one. Passing the whole history is fine — this run
@@ -60,7 +85,10 @@ class RunSummaryScreen extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             backgroundColor: AppColors.bg,
-            title: const Text('Run summary'),
+            // "Run complete", not "Run summary", when the run finished seconds
+            // ago. A summary is something you go and look at; this is the thing
+            // arriving, and the title is the cheapest place to say so.
+            title: Text(justFinished ? 'Run complete' : 'Run summary'),
             actions: <Widget>[
               if (onEdit != null)
                 AppIconButton(
@@ -77,7 +105,14 @@ class RunSummaryScreen extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    RouteMap(points: summary.points),
+                    RouteMap(
+                      points: summary.points,
+                      // Derived here rather than stored: the trace already
+                      // carries every crossing, and the splits below come from
+                      // the same walk, so the pin on the map and the row in the
+                      // list can never disagree about kilometre four.
+                      splitMarkers: splitMarkersFor(summary.points),
+                    ),
                     // The headline reads over the route it describes rather than
                     // below it — the map is the texture the glass needs.
                     Positioned(
@@ -94,6 +129,7 @@ class RunSummaryScreen extends StatelessWidget {
                           summary: summary,
                           unit: unit,
                           theme: theme,
+                          justFinished: justFinished,
                         ),
                       ),
                     ),
@@ -123,6 +159,7 @@ class RunSummaryScreen extends StatelessWidget {
                       summary: summary,
                       unit: unit,
                       theme: theme,
+                      justFinished: justFinished,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -131,9 +168,19 @@ class RunSummaryScreen extends StatelessWidget {
                 // The numbers first — that is what the screen is for — then the
                 // coach's read of them, above the splits a pacing note refers
                 // to.
-                if (note != null) ...<Widget>[
+                //
+                // Present when there is a note, and also when there is only a
+                // way in. Silence is a normal output of [RunNote] — most runs
+                // are ordinary and the coach says nothing about them — but a
+                // runner who wants to know what their coach makes of an
+                // ordinary run should not have to go and find the conversation
+                // to ask.
+                if (note != null || onAskCoach != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.xxl),
-                  Entrance(index: 2, child: _RunNoteCard(note: note)),
+                  Entrance(
+                    index: 2,
+                    child: _CoachBlock(note: note, onAsk: onAskCoach),
+                  ),
                 ],
                 if (summary.splits.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 32),
@@ -186,6 +233,17 @@ class RunSummaryScreen extends StatelessWidget {
     );
   }
 
+  /// The grid, built from what this run actually has.
+  ///
+  /// **Every tile here is conditional, and that is the extension point.** The
+  /// measures Strava carried for the same 10 km and Runio did not — elevation
+  /// gain, steps — arrive as a value on [RunSummary] and a line in this list;
+  /// nothing about the layout has to change, because the grid wraps whatever it
+  /// is given. Elevation and steps are wired and simply never non-null yet: the
+  /// barometer and the Health read that fill them are Phase 2. That is the
+  /// designed-for state, not a gap — a denied Health read looks exactly like no
+  /// data, so absence renders as an absent tile rather than as a zero or an
+  /// error (CLAUDE.md rule 6).
   List<_Tile> _tiles() {
     final tiles = <_Tile>[_Tile('TIME', summary.duration.hoursMinutesSeconds)];
     final pace = _avgPace();
@@ -194,6 +252,9 @@ class RunSummaryScreen extends StatelessWidget {
       tiles.add(
         _Tile('ELEVATION', '${summary.elevationGainMeters!.round()} m'),
       );
+    }
+    if (summary.steps != null) {
+      tiles.add(_Tile('STEPS', _grouped(summary.steps!)));
     }
     if (summary.avgHr != null) {
       tiles.add(_Tile('AVG HR', '${summary.avgHr} bpm'));
@@ -226,6 +287,21 @@ class _Tile {
   final String value;
 }
 
+/// Thousands separated, because a step count is the one figure on this screen
+/// that runs to five digits and `12468` is not a number anybody reads at a
+/// glance. Written out rather than pulled from `intl`: the app carries no
+/// locale machinery, and inventing one for a single comma would be a
+/// dependency for a punctuation mark.
+String _grouped(int value) {
+  final digits = value.abs().toString();
+  final out = StringBuffer(value < 0 ? '-' : '');
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
+    out.write(digits[i]);
+  }
+  return out.toString();
+}
+
 class _StatGrid extends StatelessWidget {
   const _StatGrid({required this.tiles});
 
@@ -255,56 +331,87 @@ class _StatGrid extends StatelessWidget {
   }
 }
 
-/// What the coach makes of this run.
+/// What the coach makes of this run, and the way to keep asking.
 ///
 /// The same treatment Home gives a [RunNote]'s sibling, `CoachNote` — card,
-/// spark icon, headline over evidence — so one voice reads the same wherever it
-/// speaks. Without the chevron and the tap: this note is about the run already
-/// on screen, so there is nowhere for it to lead.
-class _RunNoteCard extends StatelessWidget {
-  const _RunNoteCard({required this.note});
+/// coach mark, headline over evidence — so one voice reads the same wherever it
+/// speaks. The card itself still does not lead anywhere on tap: the note is
+/// about the run already on screen, and a card that opened the coach would make
+/// the observation a link rather than a remark.
+///
+/// The button underneath is a different claim, and it says so in its own words.
+/// A [RunNote] is one sentence and then silence by design; "Ask your coach"
+/// is the acknowledgement that a runner may well have a second question about
+/// the run they are looking at, and this is the moment it is worth the most.
+class _CoachBlock extends StatelessWidget {
+  const _CoachBlock({required this.note, required this.onAsk});
 
-  final RunNote note;
+  /// Null when there is nothing true to say about this run — which is most
+  /// runs. The card goes; the way in stays.
+  final RunNote? note;
+  final VoidCallback? onAsk;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: CoachLetter(size: 16, color: AppColors.textSecondary),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
+    final said = note;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (said != null)
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  note.headline,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Center(
+                    child: CoachLetter(
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  note.detail,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.4,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        said.headline,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        said.detail,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        if (onAsk != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppTextButton(
+              // "About this run", not a bare "Ask your coach": the mark
+              // floating over every tab already offers a conversation, and this
+              // one opens with the run on screen as its subject.
+              label: 'Ask your coach about this run',
+              onPressed: onAsk,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -343,11 +450,23 @@ class _Headline extends StatelessWidget {
     required this.summary,
     required this.unit,
     required this.theme,
+    this.justFinished = false,
   });
 
   final RunSummary summary;
   final UnitSystem unit;
   final ThemeData theme;
+  final bool justFinished;
+
+  /// "Just now" on a run that has this second stopped, and the date otherwise.
+  ///
+  /// Stamping `24 Aug 2026, 15:00` on a run somebody finished thirty seconds
+  /// ago is filing it before they have looked at it — the sentence a log entry
+  /// needs, on the one occasion the reader already knows the answer. It reverts
+  /// to the date the moment this run is opened again from the log, which is
+  /// where a date is worth having.
+  String get _when =>
+      justFinished ? 'Just now' : _formatDate(summary.startedAt);
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +475,7 @@ class _Headline extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          '${_formatDate(summary.startedAt)}  ·  ${_typeLabel(summary.type)}',
+          '$_when  ·  ${_typeLabel(summary.type)}',
           style: theme.textTheme.labelMedium?.copyWith(
             color: AppColors.textSecondary,
             letterSpacing: 1,

@@ -22,10 +22,19 @@ class TodayCard extends StatelessWidget {
     this.onSkip,
     this.onReset,
     this.unit = UnitSystem.metric,
+    this.now,
   });
 
   /// Today's run, or null for a rest day.
   final PlannedSession? session;
+
+  /// The clock, injected so the card's name for the session is testable.
+  ///
+  /// This card is the one place in the plan that knows *when* — everything it
+  /// shows is happening today — which is what lets it call the session
+  /// "Afternoon easy run" where a week list, seven days of no particular hour,
+  /// can only say "Easy run" (see [sessionNameAt]).
+  final DateTime? now;
   final Phase phase;
   final SessionStatus status;
   final TrainingPaces? paces;
@@ -83,7 +92,7 @@ class TodayCard extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Text(
-              kindLabel(s.kind),
+              sessionNameAt(s, now ?? DateTime.now()),
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),

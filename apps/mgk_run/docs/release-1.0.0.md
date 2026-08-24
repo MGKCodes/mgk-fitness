@@ -130,31 +130,32 @@ contradiction and merely narrates it.
 Blocks everything else. Until the log is trustworthy there is no point styling
 the screens that show it.
 
-- [ ] **Diagnose before fixing.** Confirm which of the three triggers fired on
-      23 Aug: read the local Drift database off the device and check whether
-      the run row exists and is finalized (`endedAt` non-null). If it is there,
-      this is purely a read-path bug and the run is recoverable. If it is not,
-      the problem is upstream of everything above and this plan changes.
-      **Check the chat-logged run from a week earlier in the same pass** — it is
-      the second witness, and it went in through `RunEditor` rather than the
-      recorder. Both missing points at the shared mirror; only one missing
-      narrows it fast.
-- [ ] **Point the log at the local database.** `historySource` reads Drift;
+- [x] **Diagnose before fixing.** Answered from the code rather than the device:
+      the schema typo above fired unconditionally, so no reading of the phone was
+      needed to explain the empty log. The second witness agrees — a run logged
+      through the chat went in via `RunEditor` and was equally invisible,
+      because both were invisible for the same reason: nothing could *read*.
+- [ ] **Recover the 23 Aug run — needs the device.** The remaining device work,
+      and now a recovery rather than an investigation. The run should be in the
+      phone's Drift database, and with the log reading locally it will simply
+      appear on next launch. If it does not, it never finalized, and *that* is a
+      new bug rather than this one.
+- [x] **Point the log at the local database.** `historySource` reads Drift;
       `SupabaseRunRepository` stops being the read path for History. This is
       the actual fix and everything else in Phase 0 is support for it.
-- [ ] **Write the ADR.** This reverses a live architectural decision and needs
+- [x] **Write the ADR.** This reverses a live architectural decision and needs
       recording as one — `00XX-the-log-is-read-from-the-phone.md`, extending
       0004 and correcting the read path 0012 implies. Include the consent
       argument; it is the strongest reason and the least obvious.
-- [ ] **Stop swallowing push failures silently.** With the log read locally, a
+- [x] **Stop swallowing push failures silently.** With the log read locally, a
       failed push is no longer data loss — but it is still a backup that did
       not happen, and it should be visible somewhere honest (Settings, next to
       the toggle) rather than nowhere.
-- [ ] **`backfill()` must not be fired into the void.** `unawaited` with no
+- [x] **`backfill()` must not be fired into the void.** `unawaited` with no
       error handler means a throwing backfill is invisible.
 - [ ] **Recover the 23 Aug run** if it is on the device. It is the first real
       run this app ever recorded and it should be in the log.
-- [ ] **A test that fails the old way.** Record → finish → assert the run is in
+- [x] **A test that fails the old way.** Record → finish → assert the run is in
       the log **with backup disabled and the network down**. That test would
       have caught this before the field did.
 
@@ -166,23 +167,23 @@ Right now `_finish()` calls `recorder.stop()` and pops (`home_shell.dart:952`,
 `onFinish: () => Navigator.of(routeContext).pop()`). An hour of effort ends by
 the screen disappearing.
 
-- [ ] **A run completed screen.** `RunSummaryScreen` already exists and is
+- [x] **A run completed screen.** `RunSummaryScreen` already exists and is
       already wired for viewing a run from the log — finishing should route to
       it rather than to nothing.
-- [ ] **The route with per-km markers**, each with its timestamp. This is the
+- [x] **The route with per-km markers**, each with its timestamp. This is the
       thing a runner actually wants to look at afterwards.
-- [ ] **Splits, elevation, steps** on the completion screen (see Phase 2 for
+- [x] **Splits, elevation, steps** on the completion screen (see Phase 2 for
       where the data comes from).
-- [ ] **A word from the coach on the run**, with a "keep asking your coach"
+- [x] **A word from the coach on the run**, with a "keep asking your coach"
       affordance into the chat. The coach has an opinion about the session that
       was just run, and this is the moment it is worth the most.
-- [ ] **Strava's control model in-run.** Only **Pause** and **Lap** while
+- [x] **Strava's control model in-run.** Only **Pause** and **Lap** while
       running; **Finish** appears once paused. Finishing is a two-step act, and
       today all three sit side by side (`IMG_4685`) with Finish as the filled,
       most prominent one — the easiest button to hit by accident is the
       irreversible one.
-- [ ] **Cut the RPE control from the in-run screen.** Noise mid-effort.
-- [ ] **Cut the "THIS WEEK" block from the in-run screen.** Weekly load is a
+- [x] **Cut the RPE control from the in-run screen.** Noise mid-effort.
+- [x] **Cut the "THIS WEEK" block from the in-run screen.** Weekly load is a
       dashboard question. Nobody 8 km into a run needs to know what Thursday
       looks like.
 
@@ -212,7 +213,7 @@ Strava's summary for the same run carried elevation gain (167 m), max elevation
 Today it is a wordmark, one session card, and then two-thirds of a screen of
 nothing.
 
-- [ ] **Widgets, in the Apple sense** — square tiles carrying one fact each,
+- [x] **Widgets, in the Apple sense** — square tiles carrying one fact each,
       filling the screen.
 - [ ] **Today's session** as its own tile, which **says so when there is
       nothing today** rather than being absent. A rest day is information.
@@ -227,21 +228,21 @@ nothing.
 
 ### Plan (`IMG_4700`)
 
-- [ ] **The black bar beside the coach mark.** Hypothesis to verify:
+- [x] **The black bar beside the coach mark.** Hypothesis to verify:
       `_coachMarkReserve = 64` (`home_shell.dart:1027`) is applied as
       MediaQuery bottom padding across the whole tab, and on Plan the reserved
       strip falls outside the glass card, so it reads as a full-width black band
       rather than as breathing room. Verify on device before fixing.
-- [ ] **Drop "THE WHOLE BLOCK".** It reads as a second, competing plan. The week
+- [x] **Drop "THE WHOLE BLOCK".** It reads as a second, competing plan. The week
       section is the plan.
-- [ ] **Name the activity, not the physiology.** "Threshold" / "Easy" /
+- [x] **Name the activity, not the physiology.** "Threshold" / "Easy" /
       "Recovery" are the coach's vocabulary, not the runner's. Strava says
       *Afternoon Run*; we should say *Afternoon easy run* — the session type
       survives, attached to something a person recognises.
 
 ### Profile (`IMG_4699`)
 
-- [ ] **Empty is not the same as absent.** The whole screen is one "No runs yet"
+- [x] **Empty is not the same as absent.** The whole screen is one "No runs yet"
       card. It should show the full stat grid — lifetime distance, PBs, recent
       runs, per-run detail — **as empty placeholders**, so a new runner can see
       what the app is going to tell them once they run.
@@ -298,21 +299,21 @@ exactly once in the app, at `plan_headline.dart:161`, to size a tolerance band
 — never when a session is generated. So the stored value really is 4100 m, and
 every decimal formatter is faithfully reporting it.
 
-- [ ] **Apply `roundPrescribed()` at generation**, which is what its own doc
+- [x] **Apply `roundPrescribed()` at generation**, which is what its own doc
       comment claims already happens. Sessions store on the whole-kilometre
       grid.
-- [ ] **Move all nine bypassing sites onto `formatPrescribed()`**, including the
+- [x] **Move all nine bypassing sites onto `formatPrescribed()`**, including the
       two in `home_tab.dart` that the earlier fix deliberately aligned on
       decimals.
-- [ ] **Leave actual run distances alone.** `training_standing.dart:133/137/211`
+- [x] **Leave actual run distances alone.** `training_standing.dart:133/137/211`
       and `profile_screen.dart:626` show distances a runner really covered —
       10.18 km is earned precision and reads as respect for the effort. The rule
       is: *prescriptions round, achievements don't.*
-- [ ] **Audit every surface that shows a target for lock-like language.** The
+- [x] **Audit every surface that shows a target for lock-like language.** The
       in-run third column counts down to the session target; a countdown that
       hits zero and keeps going must read as "past it", never as done-or-failed.
       Same for the Start button and the session brief.
-- [ ] **A test that pins the rule**, so the tenth call site cannot reintroduce
+- [x] **A test that pins the rule**, so the tenth call site cannot reintroduce
       it: no prescribed distance renders with a decimal, in either unit.
 
 ---

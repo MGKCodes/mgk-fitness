@@ -186,4 +186,99 @@ void main() {
       expect(splitsFor(<RunPoint>[_p(0, 0)]), isEmpty);
     });
   });
+
+  group('the markers and the splits come from one walk', () {
+    // The pins on a finished run's map and the rows under it are two views of
+    // the same crossings. Walking the trace twice would be a bug with a delay
+    // on it — the day the jitter or gap rule moved in one walk and not the
+    // other, kilometre three's pin would sit somewhere its row said it did not.
+
+    test('one marker per whole split, and none for the partial', () {
+      // 2500 m: two whole kilometres and a 500 m remainder.
+      final points = _steady(metresPerSecond: 5, seconds: 500);
+      final walk = splitRun(points);
+
+      expect(walk.splits, hasLength(3));
+      expect(
+        walk.markers,
+        hasLength(2),
+        reason: 'a partial split closes nothing, so there is nowhere to pin it',
+      );
+      expect(walk.markers.map((m) => m.index), <int>[1, 2]);
+      expect(splitMarkersFor(points), hasLength(2));
+    });
+
+    test('a marker carries the time the runner crossed it', () {
+      // 5 m/s, so the first kilometre lands at 200 s and the second at 400 s.
+      final walk = splitRun(_steady(metresPerSecond: 5, seconds: 500));
+
+      expect(
+        walk.markers.first.at.difference(_start).inSeconds,
+        closeTo(200, 2),
+      );
+      expect(
+        walk.markers.last.at.difference(_start).inSeconds,
+        closeTo(400, 2),
+      );
+    });
+
+    test('and the run clock at the crossing, not the wall clock', () {
+      // The distinction only shows up across a gap. 800 m, ten minutes of
+      // nothing, then 400 m: the kilometre turns over 200 m into the second
+      // stretch, at a wall-clock time twelve minutes after the start and a
+      // running time of about 250 s. A pin claiming twelve minutes would
+      // contradict the split row printed beside it.
+      final points = <RunPoint>[
+        ..._steady(metresPerSecond: 4, seconds: 200),
+        ..._steady(
+          metresPerSecond: 4,
+          seconds: 100,
+          from: const Duration(minutes: 10, seconds: 200),
+        ),
+      ];
+      final marker = splitRun(points).markers.single;
+
+      expect(marker.elapsed.inSeconds, closeTo(250, 8));
+      expect(
+        marker.at.difference(_start).inSeconds,
+        greaterThan(600),
+        reason: 'the wall clock did keep running — that is the point',
+      );
+    });
+
+    test('elapsed accumulates across splits', () {
+      final walk = splitRun(_steady(metresPerSecond: 5, seconds: 500));
+
+      expect(walk.markers[0].elapsed.inSeconds, closeTo(200, 2));
+      expect(walk.markers[1].elapsed.inSeconds, closeTo(400, 2));
+      expect(
+        walk.markers[1].elapsed,
+        walk.splits[0].duration + walk.splits[1].duration,
+      );
+    });
+
+    test('a marker sits on the boundary, not on the nearest fix', () {
+      // 5 m/s with a fix a second means the kilometre falls exactly on a fix,
+      // so make it miss: 3 m/s puts the boundary at 333.3 s, a third of the way
+      // between two fixes. The pin has to be interpolated there or it lands up
+      // to a stride's worth of road away from where the kilometre turned over.
+      final points = _steady(metresPerSecond: 3, seconds: 400);
+      final marker = splitRun(points).markers.single;
+
+      // 1000 m north of the start, in degrees of latitude.
+      expect(marker.latitude, closeTo(1000 / 111190, 1 / 111190));
+      expect(marker.longitude, 0);
+      // And not sitting on either of the fixes that straddle it.
+      final fixes = points.map((p) => p.latitude);
+      expect(fixes.contains(marker.latitude), isFalse);
+    });
+
+    test('a run that never completes a kilometre has no markers', () {
+      expect(
+        splitMarkersFor(_steady(metresPerSecond: 3, seconds: 60)),
+        isEmpty,
+      );
+      expect(splitMarkersFor(const <RunPoint>[]), isEmpty);
+    });
+  });
 }

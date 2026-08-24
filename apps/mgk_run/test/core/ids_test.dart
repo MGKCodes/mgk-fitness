@@ -30,12 +30,15 @@ void main() {
     expect(ids, hasLength(5000));
   });
 
-  test('ids still lead with the clock, so they sort and read chronologically', () {
-    // The timestamp was worth keeping; it was only ever wrong as the *whole*
-    // identity. A reader should still be able to tell which run is older.
-    final first = newLocalId();
-    final second = newLocalId();
-    int stampOf(String id) => int.parse(id.split('-').first);
-    expect(stampOf(second), greaterThanOrEqualTo(stampOf(first)));
-  });
+  test(
+    'ids still lead with the clock, so they sort and read chronologically',
+    () {
+      // The timestamp was worth keeping; it was only ever wrong as the *whole*
+      // identity. A reader should still be able to tell which run is older.
+      final first = newLocalId();
+      final second = newLocalId();
+      int stampOf(String id) => int.parse(id.split('-').first);
+      expect(stampOf(second), greaterThanOrEqualTo(stampOf(first)));
+    },
+  );
 }

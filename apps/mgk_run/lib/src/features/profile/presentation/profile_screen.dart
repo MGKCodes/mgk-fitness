@@ -9,7 +9,9 @@ import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
 import '../../coaching/domain/training_standing.dart';
 import '../../coaching/presentation/coach_button.dart';
+import '../../history/presentation/route_thumbnail.dart';
 import '../../history/presentation/run_tile.dart';
+import '../../recording/domain/run_point.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/runner_stats.dart';
 
@@ -26,8 +28,23 @@ import '../domain/runner_stats.dart';
 /// training, and led the page with administration; both live in Settings now.
 ///
 /// Everything shown is derived from data already on the device — no new storage,
-/// nothing to keep in sync. A runner with no history gets an honest empty state
-/// rather than a wall of zeroes.
+/// nothing to keep in sync.
+///
+/// **A runner with no history sees this same page, held open.** The sections do
+/// not vanish when there is nothing in them yet: the lifetime card, the coach's
+/// read, the records and the log all render with their figures as dashes, so
+/// somebody who has not run yet can see what the page will tell them once they
+/// have. The page used to collapse to a single "No runs yet" card over bare
+/// background, which reads as broken rather than as new — the counter-signal
+/// [ADR-0019](../../../../docs/decisions/0019-onboarding-is-two-moments.md)
+/// names for a free surface, arrived at from the run side instead of the plan
+/// side.
+///
+/// The rule the empty tiles follow: **a dash is an absence, a zero is a claim.**
+/// `0.0 km` and `0:00 /km` are numbers this app has not earned, and a runner
+/// cannot tell an unearned number from a wrong one. The unit is stated once, on
+/// the lifetime figure, where a distance with no unit promises nothing; the
+/// tiles below it are labelled and can stay quiet.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
     super.key,
@@ -174,23 +191,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 delegate: SliverChildListDelegate(<Widget>[
                   // The lifetime total leads. It is the number the page is
                   // about, and it says more about a runner than their address
-                  // did.
-                  if (stats.isEmpty)
-                    const Entrance(child: _NoRuns())
-                  else
-                    Entrance(
-                      child: _Lifetime(stats: stats, unit: widget.unit),
-                    ),
+                  // did. It leads on an empty log too, holding that figure open
+                  // at a dash, with the invitation to record a first run sitting
+                  // under the totals it is describing.
+                  Entrance(
+                    child: _Lifetime(stats: stats, unit: widget.unit),
+                  ),
 
-                  // Not on an empty log. The card directly above already says
-                  // "No runs yet — record your first run", and the standing's
-                  // own empty copy says "record a run… there is nothing to
-                  // compare you against": the same sentence twice, the second
-                  // one an empty state explaining why it has nothing to say.
+                  // Shown on an empty log as well, which reverses the decision
+                  // this comment used to record. The old reasoning was that the
+                  // standing's empty copy — "record a run… there is nothing to
+                  // compare you against" — only repeated the card above it, and
+                  // on the old screen that was true: those two sentences *were*
+                  // the whole page, one of them an empty state explaining why it
+                  // had nothing to say.
                   //
-                  // The coach is not lost with it — the mark floats over every
-                  // tab, which is the whole reason it floats.
-                  if (widget.standing != null && !stats.isEmpty) ...<Widget>[
+                  // What changed is what sits between them. The runner now
+                  // arrives at this card having read their lifetime figures held
+                  // open above it, so it is no longer a second apology; it is
+                  // the coach claiming a place on the page from day one. Hiding
+                  // it meant a new runner could not tell that anybody was going
+                  // to look at their training at all — the profile of a runner
+                  // with no runs said nothing about them and promised nothing
+                  // either, and a screen that only announces its own emptiness
+                  // is the thing ADR-0019 is trying to keep off a free surface.
+                  //
+                  // Null still hides it, for the reason the field documents: a
+                  // caller that has not worked out a standing, rather than a
+                  // runner without one.
+                  if (widget.standing != null) ...<Widget>[
                     const SizedBox(height: AppSpacing.xl),
                     Entrance(
                       index: 1,
@@ -201,13 +230,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
 
-                  if (!stats.isEmpty) ...<Widget>[
-                    const SizedBox(height: AppSpacing.xl),
-                    Entrance(
-                      index: 2,
-                      child: _Records(stats: stats, unit: widget.unit),
-                    ),
-                  ],
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(
+                    index: 2,
+                    child: _Records(stats: stats, unit: widget.unit),
+                  ),
 
                   if (widget.profile != null) ...<Widget>[
                     const SizedBox(height: AppSpacing.xl),
@@ -235,17 +262,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
 
-                  if (runs.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: AppSpacing.xl),
-                    Entrance(
-                      index: 5,
-                      child: _LogHeader(
-                        count: runs.length,
-                        onAdd: widget.onAddRun,
-                      ),
+                  // The log heads itself even when it is empty. A runner who
+                  // has not run has still come to a page about their runs, and
+                  // an unheaded gap at the bottom of it is the thing that made
+                  // the old screen trail off into background.
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(
+                    index: 5,
+                    child: _LogHeader(
+                      count: runs.length,
+                      onAdd: widget.onAddRun,
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Two rows in the shape a run takes, so the promise reaches
+                  // the level a runner actually reads their training at: not
+                  // "totals will appear" but "each run lands here, with its
+                  // route, its date, how long it took and how fast it was".
+                  if (runs.isEmpty)
+                    const Entrance(index: 6, child: _LogPlaceholder()),
                 ]),
               ),
             ),
@@ -292,6 +328,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 /// The eyebrow over the training log, with the count beside it and the order
 /// stated — a list of runs with no stated order invites the runner to guess.
+///
+/// With nothing in the log it names the section instead of counting it. "0 runs"
+/// is the zero this screen refuses everywhere else, and "newest first" is a
+/// claim about an order that has nothing in it to order; the heading's job on an
+/// empty log is simply to say what the rows below it are going to be.
+///
+/// *Add a run* survives the empty case, and is the one control that matters
+/// most there: somebody who ran this morning without the app has a run to put
+/// in, and until now the only affordance for it was hidden behind having
+/// already recorded one.
 class _LogHeader extends StatelessWidget {
   const _LogHeader({required this.count, this.onAdd});
 
@@ -304,15 +350,12 @@ class _LogHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
-        SectionLabel(count == 1 ? '1 run' : '$count runs'),
-        if (onAdd == null)
-          Text(
-            'Newest first',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          )
-        else
+        SectionLabel(switch (count) {
+          0 => 'Your runs',
+          1 => '1 run',
+          _ => '$count runs',
+        }),
+        if (onAdd != null)
           TextButton.icon(
             onPressed: onAdd,
             icon: const Icon(Icons.add, size: 18),
@@ -321,6 +364,13 @@ class _LogHeader extends StatelessWidget {
               foregroundColor: AppColors.textSecondary,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               visualDensity: VisualDensity.compact,
+            ),
+          )
+        else if (count > 0)
+          Text(
+            'Newest first',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: AppColors.textTertiary,
             ),
           ),
       ],
@@ -432,6 +482,18 @@ class _Standing extends StatelessWidget {
 
 /// Lifetime totals. The distance counts up — it is the number the screen is
 /// about, and watching it climb is the point of having it.
+///
+/// **Before there is a first run this card is the empty state**, rather than
+/// being swapped out for one. Four figures the runner is going to watch — the
+/// lifetime distance, how many runs it took, how long they spent and how many
+/// weeks in a row — held open as dashes, with the sentence that used to be the
+/// whole screen sitting underneath them. That sentence names totals, records
+/// and streak, which is now a caption for placeholders the runner can see
+/// rather than a description of a page they cannot.
+///
+/// The figure does not count up to nothing. [CountUp] animating 0.0 → 0.0 is a
+/// flourish over an absence, and the unit is carried on the dash instead: a
+/// blank where a distance goes promises nothing, `— km` promises kilometres.
 class _Lifetime extends StatelessWidget {
   const _Lifetime({required this.stats, required this.unit});
 
@@ -441,6 +503,19 @@ class _Lifetime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final empty = stats.isEmpty;
+
+    // Placeholders sit a step back from real figures. A dash rendered at full
+    // strength beside a live number would read as a value that had gone wrong;
+    // dimmed, the whole card reads as waiting, which is what it is doing.
+    final waiting = empty ? AppColors.textTertiary : null;
+
+    final heroStyle = theme.textTheme.displayMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      height: 1,
+      color: waiting,
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    );
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -449,37 +524,56 @@ class _Lifetime extends StatelessWidget {
         children: <Widget>[
           const SectionLabel('Lifetime', emphasis: LabelEmphasis.stat),
           const SizedBox(height: AppSpacing.sm),
-          CountUp(
-            value: Distance.meters(stats.totalMeters).inDisplayUnit(unit),
-            format: (v) => '${v.toStringAsFixed(1)} ${unit.distanceSuffix}',
-            style: theme.textTheme.displayMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              height: 1,
-              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+          if (empty)
+            Text('— ${unit.distanceSuffix}', style: heroStyle)
+          else
+            CountUp(
+              value: Distance.meters(stats.totalMeters).inDisplayUnit(unit),
+              format: (v) => '${v.toStringAsFixed(1)} ${unit.distanceSuffix}',
+              style: heroStyle,
             ),
-          ),
           const SizedBox(height: AppSpacing.lg),
           Row(
             children: <Widget>[
               Expanded(
-                child: StatBlock(label: 'Runs', value: '${stats.runCount}'),
+                child: StatBlock(
+                  label: 'Runs',
+                  value: empty ? '—' : '${stats.runCount}',
+                  valueColor: waiting,
+                ),
               ),
               Expanded(
                 child: StatBlock(
                   label: 'Time',
-                  value: stats.totalDuration.hoursMinutesSeconds,
+                  value: empty ? '—' : stats.totalDuration.hoursMinutesSeconds,
+                  valueColor: waiting,
                 ),
               ),
               Expanded(
                 child: StatBlock(
                   label: 'Streak',
+                  // A dash here on a log that *does* have runs is a lapsed
+                  // streak rather than a placeholder, and keeps its full
+                  // strength: it is a fact about this runner, not a slot.
                   value: stats.currentStreakWeeks <= 0
                       ? '—'
                       : '${stats.currentStreakWeeks} wk',
+                  valueColor: waiting,
                 ),
               ),
             ],
           ),
+          if (empty) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Record your first run and your totals, records and streak will '
+              'build here.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -596,7 +690,18 @@ class _OutcomeMark extends StatelessWidget {
   };
 }
 
-/// Personal bests. Absent ones are simply not shown.
+/// Personal bests.
+///
+/// A record a runner has runs but no figure for — every run under a kilometre,
+/// so no pace qualifies — is still simply not shown. That is a gap in a real
+/// record, and inventing a slot for it would be reporting on a thing that has
+/// not happened yet in the middle of things that have.
+///
+/// **Both absent is a different case**, and it is only ever the empty log:
+/// anybody with one run has a longest one. So the section holds both bests open
+/// instead of disappearing, because "what does this app consider a record" is
+/// exactly what a runner with nothing recorded wants to know, and the answer is
+/// worth more before the first run than after it.
 class _Records extends StatelessWidget {
   const _Records({required this.stats, required this.unit});
 
@@ -607,7 +712,8 @@ class _Records extends StatelessWidget {
   Widget build(BuildContext context) {
     final longest = stats.longestRunMeters;
     final fastest = stats.fastestPaceSecondsPerKm;
-    if (longest == null && fastest == null) return const SizedBox.shrink();
+    final empty = longest == null && fastest == null;
+    final waiting = empty ? AppColors.textTertiary : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,28 +722,35 @@ class _Records extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Row(
           children: <Widget>[
-            if (longest != null)
+            if (longest != null || empty)
               Expanded(
                 child: AppCard(
                   child: StatBlock(
                     label: 'Longest run',
-                    value: Distance.meters(
-                      longest,
-                    ).format(unit, fractionDigits: 1),
+                    value: longest == null
+                        ? '—'
+                        : Distance.meters(
+                            longest,
+                          ).format(unit, fractionDigits: 1),
+                    valueColor: waiting,
                   ),
                 ),
               ),
-            if (longest != null && fastest != null)
-              const SizedBox(width: AppSpacing.md),
-            if (fastest != null)
+            if (fastest != null || empty) ...<Widget>[
+              if (longest != null || empty)
+                const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: AppCard(
                   child: StatBlock(
                     label: 'Fastest pace',
-                    value: Pace.secondsPerKilometer(fastest).format(unit),
+                    value: fastest == null
+                        ? '—'
+                        : Pace.secondsPerKilometer(fastest).format(unit),
+                    valueColor: waiting,
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ],
@@ -702,30 +815,78 @@ class _Goal extends StatelessWidget {
   }
 }
 
-/// Nothing recorded yet — an invitation, not an error.
-class _NoRuns extends StatelessWidget {
-  const _NoRuns();
+/// The shape a run takes in the log, before there is one to put in it.
+///
+/// Two rows rather than one, because one row is an item and two are a list —
+/// and the list is the promise. They carry the same furniture a real
+/// [RunTile] does: the route sketch on the left, the distance as the headline,
+/// and the three things underneath it named rather than blanked, so the row
+/// reads as a legend for what a run is going to say about itself.
+///
+/// **No chevron, and nothing to tap.** A real row opens the run behind it; a
+/// placeholder with an arrow on it is a control that does nothing, which is a
+/// worse first impression than an empty page. The card that used to be the
+/// whole empty state — "No runs yet" over its invitation — is gone from here on
+/// purpose: its one useful sentence moved up into the lifetime card, where it
+/// captions the figures it was always talking about, and the headline over it
+/// was the sentence that made the screen read as broken.
+class _LogPlaceholder extends StatelessWidget {
+  const _LogPlaceholder();
+
+  /// The second row is quieter than the first, so the log reads as a list that
+  /// carries on rather than as exactly two empty slots waiting to be filled.
+  static const List<double> _fade = <double>[1, 0.55];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('No runs yet', style: theme.textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Record your first run and your totals, records and streak will '
-            'build here.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.4,
+
+    return Column(
+      children: <Widget>[
+        for (final (i, opacity) in _fade.indexed)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: i == _fade.length - 1 ? 0 : AppSpacing.sm,
+            ),
+            child: Opacity(
+              opacity: opacity,
+              child: AppCard(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: <Widget>[
+                    // The real thumbnail, given the route it does not have. It
+                    // draws its own "no route" state — the same one a treadmill
+                    // run gets — so the placeholder is the component rather than
+                    // a drawing of the component.
+                    const RouteThumbnail(points: <RunPoint>[], size: 52),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '—',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'Date  ·  time  ·  pace',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

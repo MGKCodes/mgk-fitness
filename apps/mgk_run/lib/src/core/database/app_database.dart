@@ -174,6 +174,30 @@ class AppDatabase extends _$AppDatabase {
   Future<void> addRunPoint(RunPointsCompanion point) =>
       into(runPoints).insert(point);
 
+  /// Writes a run's splits, replacing whatever was there.
+  ///
+  /// **Splits used to be computed and thrown away.** The recorder cut them live
+  /// for the in-run readout and stored none, so `run_splits` was only ever
+  /// filled by a restore pulling somebody else's copy back down — which meant a
+  /// run finished on this phone had splits until the screen closed and none
+  /// afterwards (ADR-0023 names this as one of the gaps local reads made
+  /// visible). They are written on stop now, alongside the finalised summary.
+  ///
+  /// Replace rather than insert, so finishing the same run twice cannot leave
+  /// two overlapping sets behind: the splits are a function of the trace, and
+  /// the last walk over it is the answer. One transaction, so a crash part-way
+  /// leaves the previous splits rather than half of the new ones.
+  ///
+  /// Not reachable from [updateRunDetails], and deliberately: splits are what
+  /// the device observed, and correcting a run's summary does not rewrite what
+  /// happened on the road (ADR-0016).
+  Future<void> replaceRunSplits(String runId, List<RunSplitsCompanion> rows) =>
+      transaction(() async {
+        await (delete(runSplits)..where((s) => s.runId.equals(runId))).go();
+        if (rows.isEmpty) return;
+        await batch((b) => b.insertAll(runSplits, rows));
+      });
+
   // --- Restore ---------------------------------------------------------------
   //
   // Every write here is **insert-or-ignore**, which is the whole contract of

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value;
 import '../../../core/database/app_database.dart';
 import '../../../core/ids.dart';
 import '../../history/data/run_backup.dart';
+import '../domain/live_metrics.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/run_recorder.dart';
@@ -370,8 +371,9 @@ class RecordingRunRecorder implements RunRecorder {
     // smoother, so the stored total matches what the screen displayed and isn't
     // inflated by jitter (the live [_distanceM] is a raw running estimate).
     final rows = await _db.pointsForRun(runId);
+    final trace = <RunPoint>[for (final row in rows) _rowToPoint(row)];
     final distanceM = processedDistanceMeters(
-      rows.map(_rowToPoint),
+      trace,
       maxAccuracyM: _distanceAccuracyM,
     );
     final ended = _now();
@@ -389,6 +391,27 @@ class RecordingRunRecorder implements RunRecorder {
       distanceM: distanceM,
       avgPaceSPerKm: avgPace,
     );
+    // **The splits go down with the run**, from the same walk over the same
+    // persisted trace the distance just came from.
+    //
+    // They were computed on every fix for the in-run readout and then dropped
+    // on the floor: `run_splits` was written only by a restore, so the ten
+    // splits a runner watched turn over disappeared the moment the screen did,
+    // and the summary they were sent to could only ever show an empty list.
+    // Points have always been persisted as they arrive (rule 1); this is the
+    // derived half of the same run finally being kept.
+    //
+    // Written before the mirror, because `pushTrace` reads the splits back out
+    // of the database — pushing first would mirror a run with none.
+    await _db.replaceRunSplits(runId, <RunSplitsCompanion>[
+      for (final split in splitsFor(trace))
+        RunSplitsCompanion.insert(
+          runId: runId,
+          seq: split.index,
+          distanceM: split.distanceMeters,
+          durationS: split.duration.inSeconds,
+        ),
+    ]);
     // The run is safe on the phone at this point, and that is now the whole of
     // what "safe" requires (rule 1): the log is read from Drift, so the run is
     // in it the moment the line above returns. Mirroring is a mirror.
