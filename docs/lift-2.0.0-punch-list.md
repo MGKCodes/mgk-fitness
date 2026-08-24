@@ -56,15 +56,31 @@ doubt.
 - [ ] **Re-cut a build before judging parity.** See above. Everything else in
       this phase can proceed without waiting for it; only the *verification* of
       parity needs it.
-- [ ] **Rest timer corner radius.** `rest_bar.dart` has no shape at all. Give it
+- [x] **Rest timer corner radius.** `rest_bar.dart` has no shape at all. Give it
       the shared token rather than a number — `AppRadius.sheet` is what a
       bottom-anchored surface uses elsewhere. **Verified:** grep of the file
       returns exactly one styling line, `color: AppColors.surface`.
-- [ ] **Sweep the rest of the presentation layer.** Every container, radius,
+- [x] **Sweep the rest of the presentation layer.** Done, and it found
+      something felt rather than seen. Lift had 29 raw `TextButton`s and
+      `IconButton`s and zero of the shared ones; Run has 4 and 32. Those
+      wrappers exist because Material's `Feedback.forTap` is a haptic on
+      Android and **nothing on iOS**, so every cancel, close and back arrow in
+      Lift was dead under the finger on the platform shipping first. All 29
+      converted; the 4 left raw are `OutlinedButton`s, which have no shared
+      variant — exactly the 4 Run kept.
+
+      Hardcoded radii were *not* the problem: Lift had one, Run has eighteen.
+      On that axis Lift was the cleaner app and the rest timer was the outlier.
+
+      Original scope: Every container, radius,
       button and surface in `apps/mgk_lift/lib/src/features/*/presentation/`
       that `mgk_ui` already owns. Do it by rendering screens, not by reading —
       that is how both known instances were found.
-- [ ] **Two `coach_sheet.dart` files.** One in `coaching/presentation/`, one in
+- [x] **Two `coach_sheet.dart` files.** Not duplicates — one is the coach as a
+      sheet, one is the shell that "ask the coach to change something" sheets
+      share. Nothing imported both, so the collision never failed a build; it
+      just made every doc reference ambiguous, including two that pointed the
+      wrong way. The planning one is now `AskCoachSheet`. Original scope: One in `coaching/presentation/`, one in
       `planning/presentation/`. Establish whether they are duplicates, and if so
       which one is the considered version. Same shape of problem one layer up
       from the coach mark, and worth checking *before* the sweep so the sweep
@@ -72,11 +88,19 @@ doubt.
 
 ## Phase B — the active session
 
-- [ ] **A set cannot be removed.** `exercise_card.dart` has `onRemove`, but its
+- [x] **A set cannot be removed.** Needed no new plumbing:
+      `SessionRecorder.removeSet` has existed and been implemented since the
+      beginning and only the UI was missing. Swipe to remove, as Liftio did —
+      but see the code for a limit that did not survive the port.
+      Original finding: `exercise_card.dart` has `onRemove`, but its
       tooltip is `Remove ${exercise.name}` — it removes the whole movement.
       Nothing removes a single set. **Verified:** confirmed gap, not a wiring
       fault.
-- [ ] **Set types: two of the four this app used to have.** Tapping the set
+- [x] **Set types: two of the four this app used to have.** Turned out to be a
+      data-fidelity fix as much as a feature — `fromStored` mapped every
+      unrecognised value to `working`, so the `dropset` and `failure` rows the
+      shipped app already wrote to the cloud were being read back as ordinary
+      working sets. Original finding: Tapping the set
       number toggles warm-up and the cell renders `W` or the set number.
       Liftio had **the same interaction** with four types — Normal, Warm-up
       (`W`), Drop Set (`D`), Failure (`F`) — see
@@ -92,10 +116,10 @@ doubt.
       number, as Liftio did. Warm-ups stay out of volume and PB tracking; drop
       sets and failure sets count, which is what Liftio did and what the
       `workingSets` split already implements.
-- [ ] **The top bar is a strip, not a widget.** `_Header` takes name, elapsed,
+- [x] **The top bar is a strip, not a widget.** `_Header` takes name, elapsed,
       volume, completed sets and the finish button and compresses them into a
       row. Wanted: something that reads as a card carrying the session's state.
-- [ ] **Previous stat.** *"What you did on this movement last time"* is the
+- [x] **Previous stat.** *"What you did on this movement last time"* is the
       number you actually want mid-set. Note this is **per-movement**, so it
       belongs on the exercise card rather than the session header — the two
       items above are adjacent but not the same job. **Settled 2026-08-24: the
@@ -151,7 +175,7 @@ on the workouts table and in `supabase_sync.dart`, and the remote constraint
 
 The largest phase, and the one with an existing design to work from.
 
-- [ ] **The surface collapses when the log is empty.** `profile_surface.dart`
+- [x] **The surface collapses when the log is empty.** `profile_surface.dart`
       line 87: `if (log.isEmpty) _Empty(onOpenTrack:)` replaces the entire
       contents. A new lifter sees one empty-state widget and learns nothing
       about what the app will track for them.
@@ -159,7 +183,7 @@ The largest phase, and the one with an existing design to work from.
       Wanted: the real layout, with placeholder grids, so the screen advertises
       lifetime volume, PBs, streak and history rather than hiding them until
       they have values.
-- [ ] **Surface what the domain layer already computes.** This is presentation
+- [x] **Surface what the domain layer already computes.** This is presentation
       work, not modelling work. `TrainingStats` already returns `sessions`,
       `totalVolume`, `totalSets`, `totalTime`, `currentWeekStreak`,
       `longestWeekStreak` and `sessionsPerWeek`, plus `byFrequency` and
@@ -170,7 +194,7 @@ The largest phase, and the one with an existing design to work from.
       **12 reps**, returning null above that. Liftio capped at 30. The cap was
       tightened on purpose — *"a confidently wrong PB is worse than no PB"* —
       so a PB surface has to render "no estimate yet" as a real state.
-- [ ] **Port the year activity grid.** Source:
+- [x] **Port the year activity grid.** Source:
       `Liftio/components/shared/YearActivityGrid.tsx`, used at
       `app/(tabs)/logs.tsx:132`.
 
@@ -183,18 +207,50 @@ The largest phase, and the one with an existing design to work from.
       readable whether someone trains twice a week or six times — a fixed scale
       makes a light trainer's year uniformly pale and a heavy one uniformly
       solid, and in both cases the grid stops carrying information.
-- [ ] **PBs, lifetime totals, per-movement history.** The remaining half of what
+- [x] **PBs, lifetime totals, per-movement history.** The remaining half of what
       the report describes as "just thrown in there". Scope this after the grid
       lands, since the grid establishes the surface's layout.
 
 ## Phase D — the coach remembers, but the screen does not
 
-- [ ] **Resumable transcript on open.** Already carried on
-      [release-2.0.0.md](release-2.0.0.md) Phase 5, written before this build
-      was tested: *"the memory survives and the screen does not, which reads as
-      amnesia even though it isn't."* The report confirms it from the phone.
-      **Verified:** `CoachMemoryStore` and `coach_memory_screen.dart` both
-      exist, so the coach genuinely does remember.
+- [ ] **Resumable transcript on open — already built, and failing anyway.**
+      This is the one item on the list that is not a gap in the code, and it
+      needs a dashboard check rather than a commit.
+
+      `CoachScreen._resume()` reads the transcript and replays it.
+      `main.dart:105` wires `SupabaseCoachTranscript` in production. The
+      feature landed in `3c35200` on 2026-08-19, which **is** an ancestor of
+      the build that was tested. So it shipped, and the report says it did not
+      work.
+
+      Two candidate causes were checked and one was eliminated. The
+      conversation id is a contract shared between the client and the Edge
+      Function; both derive `'<app>:<userId>'` (`supabase_coach.dart` against
+      `conversationId()` in `coach_memory.ts`), so they agree. Grants are also
+      right: `grant select, insert, delete on coach.turns to authenticated`,
+      with an `own_turns` RLS policy.
+
+      What remains is **PostgREST's exposed-schema list**, which
+      `20260806130000_restructure_schemas.sql` warns about in its own header:
+      *"PostgREST's exposed-schema list is project configuration, not SQL …
+      must be set in the dashboard (Settings → API → Exposed schemas) or EVERY
+      client gets 404."* If `coach` is missing from it, `.schema('coach')`
+      404s, and `SupabaseCoachTranscript.read()` swallows every error into an
+      empty list **by design** — so a configuration fault is indistinguishable
+      on screen from "you have never spoken to the coach". Meanwhile the coach
+      itself keeps remembering, because the Edge Function writes server-side
+      and never goes through PostgREST. That is exactly the reported symptom.
+
+      **Action: check Settings → API → Exposed schemas contains `coach`.**
+      Not fixable from the repo, and not verified from here.
+
+      The deeper lesson is about the silent catch. Its reasoning is sound — an
+      error banner over a working composer would be the app complaining about
+      its own history — but as written it also hides a total failure of the
+      feature. Worth distinguishing "empty" from "could not load" so the next
+      one of these is diagnosable without a git archaeology session. Left
+      unchanged for now because the behaviour under a real failure has not been
+      observed, only inferred.
 - [ ] **Sessions, with history.** Beyond the Phase 5 item: closing the app, or
       tapping a suggested question, starts a *new* conversation, and the old one
       is kept as a readable "previous chats" list that the coach still draws on
