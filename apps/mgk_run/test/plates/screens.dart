@@ -14,6 +14,9 @@ import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
 import 'package:mgk_run/src/features/home/presentation/home_tab.dart';
 import 'package:mgk_run/src/features/profile/domain/runner_stats.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
+import 'package:mgk_run/src/features/profile/presentation/year_grid.dart';
+import 'package:mgk_ui/mgk_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -154,6 +157,19 @@ void main() {
     ],
   );
 
+  /// A year of running, thinning out in winter and building through summer —
+  /// the shape the year grid exists to show, and one a flat fixture cannot.
+  final year = <RunSummary>[
+    for (var d = 0; d < 360; d++)
+      if (<int>[1, 3, 5, 7][d % 4] != 7 || d % 7 == 6)
+        if ((d ~/ 30) % 5 != 0 || d % 3 == 0)
+          run(
+            at: DateTime(2026, 8, 24).subtract(Duration(days: d)),
+            meters: 4200 + (d % 30) * 520.0 + (d % 7 == 6 ? 9000 : 0),
+            duration: Duration(minutes: 26 + (d % 30)),
+          ),
+  ];
+
   final log = <RunSummary>[
     run(
       at: DateTime(2026, 8, 22),
@@ -262,8 +278,9 @@ void main() {
       tester,
       'profile-with-log',
       ProfileScreen(
-        stats: RunnerStats.from(log, now: monday),
-        runs: log,
+        stats: RunnerStats.from(year, now: monday),
+        runs: year,
+        now: monday,
         onAddRun: () {},
         onOpenSettings: () {},
       ),
@@ -277,6 +294,7 @@ void main() {
       'profile-empty',
       ProfileScreen(
         stats: RunnerStats.from(const <RunSummary>[], now: monday),
+        now: monday,
         onAddRun: () {},
         onOpenSettings: () {},
       ),
@@ -354,6 +372,44 @@ void main() {
         onOpenBlock: () {},
       ),
       pixelRatio: 2,
+    );
+  });
+
+  testWidgets('the year grid, on its own', (tester) async {
+    await plate(
+      tester,
+      'year-grid',
+      Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: YearGrid(weeks: runYear(runs: year, now: monday)),
+          ),
+        ),
+      ),
+      size: const Size(393, 340),
+      pixelRatio: 3,
+    );
+  });
+
+  testWidgets('the year grid, before the first run', (tester) async {
+    await plate(
+      tester,
+      'year-grid-empty',
+      Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: YearGrid(
+              weeks: runYear(runs: const <RunSummary>[], now: monday),
+            ),
+          ),
+        ),
+      ),
+      size: const Size(393, 340),
+      pixelRatio: 3,
     );
   });
 }

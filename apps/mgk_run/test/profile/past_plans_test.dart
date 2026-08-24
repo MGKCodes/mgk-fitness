@@ -40,6 +40,12 @@ void main() {
     final labelled = labelPlans(
       history,
     ).where((p) => !p.record.isActive).toList();
+    // Tall enough to build the whole page. Past plans sit near the foot of a
+    // screen that has grown a year grid above them, and a lazy sliver on the
+    // default 800pt surface simply never builds them — which reads as the
+    // section being absent rather than as the viewport being short.
+    await tester.binding.setSurfaceSize(const Size(430, 3400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,

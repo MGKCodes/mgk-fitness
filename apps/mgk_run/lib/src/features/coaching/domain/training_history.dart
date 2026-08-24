@@ -76,6 +76,80 @@ enum RunDay {
   future,
 }
 
+/// One day of the year view: the date, and how far was run on it.
+///
+/// Carries **metres rather than a yes/no**, which is the whole difference
+/// between this and [RunDay]. Over eight weeks "did you turn up" is the
+/// question; over a year it is not enough, because a year of 5 km Tuesdays and
+/// a year of building to a marathon draw an identical grid otherwise, and the
+/// second one is a story.
+class RunYearDay {
+  const RunYearDay({
+    required this.date,
+    this.meters = 0,
+    this.isToday = false,
+    this.isFuture = false,
+  });
+
+  final DateTime date;
+
+  /// Everything run on this day, summed. Two runs in a day is a real thing —
+  /// a double, or a commute either side of a working day — and showing only
+  /// the longer of them would quietly under-report the week.
+  final double meters;
+
+  final bool isToday;
+
+  /// True only for the tail of the current week. A year view ends on today, so
+  /// the last column is usually part-drawn, and those days are not absences.
+  final bool isFuture;
+
+  bool get ran => meters > 0;
+}
+
+/// The last [weeks] weeks as **columns** of seven days, oldest week first, each
+/// column running Monday to Sunday.
+///
+/// Columns rather than rows, which is the layout GitHub's contribution graph
+/// uses and the reason it works at this length: fifty-two rows of seven is a
+/// list nobody scrolls, and seven rows of fifty-two is a shape you take in at
+/// once. [consistencyGrid] stays row-major because eight rows is a block rather
+/// than a list, and the two surfaces want opposite things.
+List<List<RunYearDay>> runYear({
+  required List<RunSummary> runs,
+  required DateTime now,
+  int weeks = 53,
+}) {
+  final first = addDays(mondayOf(now), -(weeks - 1) * 7);
+
+  // Summed into buckets in one pass, for the reason the sibling gives: a runner
+  // with years of history would otherwise be walked 371 times over.
+  final metres = <int, double>{};
+  for (final run in runs) {
+    final day = daysBetweenDates(first, run.startedAt);
+    if (day >= 0 && day < weeks * 7) {
+      metres[day] = (metres[day] ?? 0) + run.distanceMeters;
+    }
+  }
+
+  final todayIndex = daysBetweenDates(first, now);
+  return <List<RunYearDay>>[
+    for (var w = 0; w < weeks; w++)
+      <RunYearDay>[
+        for (var d = 0; d < 7; d++)
+          () {
+            final index = w * 7 + d;
+            return RunYearDay(
+              date: addDays(first, index),
+              meters: metres[index] ?? 0,
+              isToday: index == todayIndex,
+              isFuture: index > todayIndex,
+            );
+          }(),
+      ],
+  ];
+}
+
 /// The last [weeks] weeks as rows of seven days, oldest week first, each row
 /// running Monday to Sunday.
 ///

@@ -7,8 +7,10 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/plan_history.dart';
 import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
+import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/training_standing.dart';
 import '../../coaching/presentation/coach_button.dart';
+import 'year_grid.dart';
 import '../../history/presentation/route_thumbnail.dart';
 import '../../history/presentation/run_tile.dart';
 import '../../recording/domain/run_point.dart';
@@ -53,6 +55,7 @@ class ProfileScreen extends StatefulWidget {
     this.profile,
     this.standing,
     this.runs = const <RunSummary>[],
+    this.now,
     this.unit = UnitSystem.metric,
     this.onOpenRun,
     this.onAddRun,
@@ -61,6 +64,11 @@ class ProfileScreen extends StatefulWidget {
   });
 
   final RunnerStats stats;
+
+  /// The clock the year view is drawn against. Injected rather than read here
+  /// so a plate and a test can stand on a fixed day — a grid whose last column
+  /// moves with the calendar is a grid no assertion can pin.
+  final DateTime? now;
 
   /// Plans the runner has finished with, oldest first, already labelled.
   ///
@@ -107,6 +115,10 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ScrollController _scroll = ScrollController();
   double _offset = 0;
+
+  /// Read once per build rather than per use, so the year grid's last column
+  /// and its "today" square cannot disagree inside one frame.
+  DateTime get _now => widget.now ?? DateTime.now();
 
   @override
   void initState() {
@@ -234,6 +246,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Entrance(
                     index: 2,
                     child: _Records(stats: stats, unit: widget.unit),
+                  ),
+
+                  // The long view, and the reason it is here rather than on
+                  // Home: a year is a fact about the runner, and Home is about
+                  // this week. It is drawn on an empty log too — the shape of
+                  // the year is the promise, and a runner who has recorded
+                  // nothing is exactly the person deciding whether the promise
+                  // is worth anything.
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(
+                    index: 3,
+                    child: YearGrid(
+                      weeks: runYear(runs: widget.runs, now: _now),
+                      unit: widget.unit,
+                    ),
                   ),
 
                   if (widget.profile != null) ...<Widget>[
