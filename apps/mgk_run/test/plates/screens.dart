@@ -1,5 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
+import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
+import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
+import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
+import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_history.dart';
@@ -8,6 +14,8 @@ import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
 import 'package:mgk_run/src/features/home/presentation/home_tab.dart';
 import 'package:mgk_run/src/features/profile/domain/runner_stats.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
+import 'package:mgk_run/src/features/recording/domain/run_point.dart';
+import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.dart';
 
@@ -79,6 +87,72 @@ void main() {
     double meters = 8400,
     Duration duration = const Duration(minutes: 48, seconds: 12),
   }) => RunSummary(startedAt: at, duration: duration, distanceMeters: meters);
+
+  /// A loop around South Park, Reigate — roughly the 23 Aug test run.
+  ///
+  /// **A plate is only as honest as what it is fed.** The first version of this
+  /// file built the finished run out of three required fields, so the screen
+  /// drew no route, no splits, no steps and no elevation — and the board
+  /// reported that as the screen being empty rather than as the fixture being
+  /// thin. `plate.dart` already says a plate drawn at a size no runner holds is
+  /// worse than no plate because it looks like evidence; data is the same
+  /// argument, and this is the shape it takes.
+  List<RunPoint> loop() {
+    const lat = 51.2300, lng = -0.2050;
+    return <RunPoint>[
+      for (var i = 0; i <= 120; i++)
+        RunPoint(
+          // A closed, slightly lopsided loop rather than a circle — a real
+          // route doubles back, and a marker cluster on a doubled-back leg is
+          // exactly what this plate exists to let somebody judge.
+          latitude: lat + 0.011 * math.sin(i / 120 * 2 * math.pi),
+          longitude:
+              lng +
+              0.017 * math.cos(i / 120 * 2 * math.pi) +
+              0.003 * math.sin(i / 120 * 6 * math.pi),
+          accuracyMeters: 6,
+          timestamp: DateTime(
+            2026,
+            8,
+            23,
+            14,
+            2,
+          ).add(Duration(seconds: i * 29)),
+        ),
+    ];
+  }
+
+  /// The splits the 23 Aug run actually turned over, from `IMG_4685`.
+  const splitSeconds = <int>[307, 311, 323, 367, 291, 359, 325, 437, 380, 339];
+
+  final finished = RunSummary(
+    id: 'plate-run',
+    startedAt: DateTime(2026, 8, 23, 14, 2),
+    duration: const Duration(minutes: 58, seconds: 28),
+    distanceMeters: 10180,
+    avgPaceSecondsPerKm: 345,
+    // Both present here on purpose, and both routinely absent in the field:
+    // elevation needs a barometer the app does not yet have (ADR-0024) and
+    // steps need a granted Health read. The plate shows the screen with its
+    // data so the layout can be judged; the absence is judged on the sibling.
+    elevationGainMeters: 167,
+    elevationMaxMeters: 111,
+    steps: 8468,
+    points: loop(),
+    splits: <RunSplit>[
+      for (var i = 0; i < splitSeconds.length; i++)
+        RunSplit(
+          index: i + 1,
+          distanceMeters: 1000,
+          duration: Duration(seconds: splitSeconds[i]),
+        ),
+      const RunSplit(
+        index: 11,
+        distanceMeters: 180,
+        duration: Duration(seconds: 57),
+      ),
+    ],
+  );
 
   final log = <RunSummary>[
     run(
@@ -217,11 +291,7 @@ void main() {
       tester,
       'run-complete',
       RunSummaryScreen(
-        summary: run(
-          at: DateTime(2026, 8, 23, 14, 2),
-          meters: 10180,
-          duration: const Duration(minutes: 58, seconds: 28),
-        ),
+        summary: finished,
         history: log,
         justFinished: true,
         onDone: () {},
@@ -238,14 +308,50 @@ void main() {
       tester,
       'run-from-log',
       RunSummaryScreen(
-        summary: run(
-          at: DateTime(2026, 8, 23, 14, 2),
-          meters: 10180,
-          duration: const Duration(minutes: 58, seconds: 28),
-        ),
+        summary: finished,
         history: log,
         onEdit: () {},
         onAskCoach: () {},
+      ),
+      pixelRatio: 2,
+    );
+  });
+
+  // --- The plan ---------------------------------------------------------------
+
+  testWidgets('plan — the week, and the block behind it', (tester) async {
+    final planNow = DateTime(2026, 7, 25);
+    final profile = RunnerProfile(
+      goalDistanceMeters: 42195,
+      eventDate: DateTime(2026, 11, 1),
+      currentWeeklyMeters: 40000,
+      longestRecentMeters: 18000,
+      daysPerWeek: 5,
+      availableWeekdays: const <int>{1, 2, 4, 6, 7},
+      timeTrialDistanceMeters: 5000,
+      timeTrialDuration: const Duration(minutes: 22),
+    );
+    final skeleton = buildSkeleton(profile, now: planNow);
+    final stored = StoredPlan(
+      id: 'plate-plan',
+      profile: profile,
+      skeleton: skeleton,
+      startDate: mondayOf(planNow),
+    );
+    await plate(
+      tester,
+      'plan-week',
+      PlanScreen(
+        plan: stored,
+        weeks: <int, TrainingWeek>{
+          1: buildFallbackWeek(skeleton.weeks[0], profile),
+          2: buildFallbackWeek(skeleton.weeks[1], profile),
+        },
+        now: planNow,
+        statusFor: (_) => SessionStatus.planned,
+        onOpenWeek: (_, _) {},
+        onOpenCalendar: () {},
+        onOpenBlock: () {},
       ),
       pixelRatio: 2,
     );
