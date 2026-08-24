@@ -5,7 +5,6 @@ import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_errors.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_controller.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 
 /// A chat backend under the test's control: it records what it was asked and
 /// answers with whatever the test queued.

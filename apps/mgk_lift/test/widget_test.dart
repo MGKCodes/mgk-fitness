@@ -63,11 +63,11 @@ void main() {
     // open anything is worse than no mark, so this is asserted rather than left
     // to reviewer memory.
     await tester.pumpWidget(const MaterialApp(home: LiftShell()));
-    expect(find.byType(CoachMark), findsNothing);
+    expect(find.byType(CoachButton), findsNothing);
 
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
-    expect(find.byType(CoachMark), findsOneWidget);
+    expect(find.byType(CoachButton), findsOneWidget);
   });
 
   testWidgets('the coach mark does not compete with the screen\'s own action', (
@@ -78,13 +78,13 @@ void main() {
     // eye could not tell which one was the point of the screen. The coach is
     // permanently available; it is not what you came here to do.
     //
-    // Now a circle, which cannot compete on width — so the assertion is a
-    // quarter rather than a half, and it is the letter dropping the label that
-    // is really being pinned here.
+    // Now the shared mark from mgk_ui — a 44px rounded square, which cannot
+    // compete on width — so the assertion is a quarter rather than a half, and
+    // it is the letter dropping the label that is really being pinned here.
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
 
-    final markWidth = tester.getSize(find.byType(CoachMark)).width;
+    final markWidth = tester.getSize(find.byType(CoachButton)).width;
     final screenWidth = tester.getSize(find.byType(LiftShell)).width;
     expect(markWidth, lessThan(screenWidth / 4));
   });
@@ -102,7 +102,7 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
       expect(
-        find.byType(CoachMark),
+        find.byType(CoachButton),
         findsOneWidget,
         reason: 'the coach mark vanished on $tab',
       );
@@ -125,7 +125,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
     expect(find.byType(CoachSheet), findsOneWidget);
   });
@@ -143,7 +143,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
 
     expect(find.byType(CoachSheet), findsNothing);
@@ -165,7 +165,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
 
     expect(find.byType(CoachSheet), findsNothing);
