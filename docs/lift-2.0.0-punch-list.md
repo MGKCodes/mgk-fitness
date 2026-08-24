@@ -286,44 +286,48 @@ The largest phase, and the one with an existing design to work from.
 
 ## Phase D — the coach remembers, but the screen does not
 
-- [ ] **Resumable transcript on open — already built, and failing anyway.**
-      This is the one item on the list that is not a gap in the code, and it
-      needs a dashboard check rather than a commit.
+- [ ] **Resumable transcript on open — built, and never once exercised.**
+      Not a gap in the code, and the earlier diagnosis in this file was wrong.
+      It is corrected here rather than deleted, because the way it was wrong is
+      the useful part.
 
-      `CoachScreen._resume()` reads the transcript and replays it.
-      `main.dart:105` wires `SupabaseCoachTranscript` in production. The
-      feature landed in `3c35200` on 2026-08-19, which **is** an ancestor of
-      the build that was tested. So it shipped, and the report says it did not
-      work.
+      `CoachScreen._resume()` reads the transcript and replays it, `main.dart`
+      wires `SupabaseCoachTranscript`, and the feature landed in `3c35200` on
+      2026-08-19 — an ancestor of the build that was tested. This file then
+      reasoned that it must be failing at runtime and pointed at PostgREST's
+      exposed-schema list.
 
-      Two candidate causes were checked and one was eliminated. The
-      conversation id is a contract shared between the client and the Edge
-      Function; both derive `'<app>:<userId>'` (`supabase_coach.dart` against
-      `conversationId()` in `coach_memory.ts`), so they agree. Grants are also
-      right: `grant select, insert, delete on coach.turns to authenticated`,
-      with an `own_turns` RLS policy.
+      **Checked against production, and that was wrong on both counts.** The
+      whole `coach.turns` table holds one conversation,
+      `coach-1786397895824351`, and it is `app = 'run'`. There has never been a
+      single `lift:` conversation. Nothing was failing to load; there was
+      nothing to load.
 
-      What remains is **PostgREST's exposed-schema list**, which
-      `20260806130000_restructure_schemas.sql` warns about in its own header:
-      *"PostgREST's exposed-schema list is project configuration, not SQL …
-      must be set in the dashboard (Settings → API → Exposed schemas) or EVERY
-      client gets 404."* If `coach` is missing from it, `.schema('coach')`
-      404s, and `SupabaseCoachTranscript.read()` swallows every error into an
-      empty list **by design** — so a configuration fault is indistinguishable
-      on screen from "you have never spoken to the coach". Meanwhile the coach
-      itself keeps remembering, because the Edge Function writes server-side
-      and never goes through PostgREST. That is exactly the reported symptom.
+      The reason is one row that does not exist. `core.entitlements` is
+      **empty** — zero rows, for anybody. The deployed coach function gates on
+      it (`EntitlementStore`, `tierFor`), and the decision *"Tracking is never
+      gated; the coach is the paid half"* is enforced there. So every Lift
+      coach request in production has been refused, the paid half of the app
+      has never run, and the transcript is empty because the conversation never
+      happened.
 
-      **Action: check Settings → API → Exposed schemas contains `coach`.**
-      Not fixable from the repo, and not verified from here.
+      `testflight-2.0.0-test-sheet.md` opens with the fix — a one-row `insert
+      into core.entitlements` under "Before you start", with the warning that
+      *"without a row you will test the free half of the app and conclude the
+      paid half is broken"*. That is exactly what happened.
 
-      The deeper lesson is about the silent catch. Its reasoning is sound — an
-      error banner over a working composer would be the app complaining about
-      its own history — but as written it also hides a total failure of the
-      feature. Worth distinguishing "empty" from "could not load" so the next
-      one of these is diagnosable without a git archaeology session. Left
-      unchanged for now because the behaviour under a real failure has not been
-      observed, only inferred.
+      **Action: grant the entitlement and re-test the coach and the plan.**
+      Every observation of Lift's paid half so far was of a gated app, and this
+      item cannot be judged until then.
+
+      Two things fall out of it. The silent catch in
+      `SupabaseCoachTranscript.read()` did not cause this, but it is why the
+      investigation took a database query rather than a glance — "empty" and
+      "could not load" render identically. And a reminder that a hypothesis
+      written down confidently reads exactly like a finding three commits
+      later; this one survived a commit before anybody checked it against the
+      server it was about.
+
 - [ ] **Sessions, with history.** Beyond the Phase 5 item: closing the app, or
       tapping a suggested question, starts a *new* conversation, and the old one
       is kept as a readable "previous chats" list that the coach still draws on
