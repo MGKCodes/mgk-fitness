@@ -17,12 +17,22 @@ will test the free half of the app and conclude the paid half is broken. Run
 this once against production, with your own email:
 
 ```sql
-insert into core.entitlements (user_id, app, product, status, platform)
-select id, 'lift', 'paid', 'active', 'manual'
+insert into core.entitlements (user_id, app, product, status)
+select id, 'lift', 'paid', 'active'
 from auth.users where email = 'you@example.com'
 on conflict (user_id, app) do update
   set product = 'paid', status = 'active';
 ```
+
+**`platform` is left out on purpose, and this used to be wrong.** The line said
+`'manual'`, which `entitlements_platform_check` rejects outright — it allows
+only `apple` or `google`. So this block failed for anybody who ran it, and the
+grant it exists to make never happened. That was found on 2026-08-24 by running
+it: `core.entitlements` was **empty**, every Lift coach request in production
+had been refused since the app existed, and the paid half had never once run.
+The column is nullable, and null is the honest value for a hand grant that no
+store ever charged for.
+
 
 Only `status = 'active'` grants anything, and an unknown `product` falls back to
 the free tier rather than the dear one — so both fields have to be right.
