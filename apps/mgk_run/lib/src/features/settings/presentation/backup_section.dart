@@ -128,8 +128,10 @@ class BackupSection extends StatelessWidget {
   /// discoverable, not so that a bad afternoon of signal reads as a crisis.
   String? get _lastAttempt {
     if (health.isFailing) {
+      // "the app" rather than the product name — docs/naming.md retired Runio
+      // as a user-facing name, and a bare "Run" reads as the noun.
       return 'The last backup did not go through. Your runs are safe on this '
-          'phone, and Runio will try again next time you open it.';
+          'phone, and the app will try again next time you open it.';
     }
     final at = health.lastSucceededAt;
     if (at == null) return null;

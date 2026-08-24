@@ -385,7 +385,11 @@ class _NoPlanDay extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           run == null
-              ? 'Press start and Runio tracks the route, the splits and the '
+              // "the app", not the product name and not a bare "Run" — see
+              // docs/naming.md. Runio was retired as a user-facing name on
+              // 2026-08-21, and a bare "Run" is worse than either, because
+              // "your Run data" and "your run data" are the same sentence.
+              ? 'Press start and the app tracks the route, the splits and the '
                     'pace.'
               : _describe(run, unit),
           style: theme.textTheme.bodyMedium?.copyWith(
