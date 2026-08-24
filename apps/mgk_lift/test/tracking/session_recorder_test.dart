@@ -65,7 +65,8 @@ void main() {
     expect(
       sets[1].isCompleted,
       isFalse,
-      reason: 'a set must not arrive already ticked — the tick is the claim '
+      reason:
+          'a set must not arrive already ticked — the tick is the claim '
           'that it actually happened',
     );
     expect(sets[1].setNumber, 2);

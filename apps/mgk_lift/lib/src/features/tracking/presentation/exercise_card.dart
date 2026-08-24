@@ -4,6 +4,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../domain/exercise.dart';
+import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import 'exercise_thumb.dart';
 
@@ -47,6 +48,7 @@ class ExerciseCard extends StatelessWidget {
     this.onCycleSetType,
     this.onRemoveSet,
     this.onSwap,
+    this.previous,
     this.isCollapsed = false,
     this.onToggleCollapsed,
   });
@@ -57,6 +59,13 @@ class ExerciseCard extends StatelessWidget {
   /// for something the lifter typed themselves, which is a first-class case:
   /// the card simply carries no image and no subtitle.
   final Exercise? catalogue;
+
+  /// What they did on this movement last time, or null if they never have.
+  ///
+  /// Null renders nothing rather than "no history" — a first session should
+  /// not be a screen full of blanks telling somebody what they have not done
+  /// yet.
+  final PreviousPerformance? previous;
 
   final MassUnit massUnit;
   final VoidCallback onAddSet;
@@ -135,6 +144,17 @@ class ExerciseCard extends StatelessWidget {
                           color: AppColors.textTertiary,
                         ),
                       ),
+                      if (previous != null) ...<Widget>[
+                        const SizedBox(height: 2),
+                        Text(
+                          _previousLabel(previous!, massUnit),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -594,3 +614,34 @@ class _NumberFieldState extends State<_NumberField> {
     );
   }
 }
+
+/// "Last time · 12 Aug · 60 kg × 10, 8, 8"
+///
+/// The weight is stated once and then only when it changes, which is the
+/// shorthand every lifting log uses and the reason the line stays scannable at
+/// a glance. Spelling the unit out on every set turns three sets into a
+/// sentence nobody reads mid-rack.
+///
+/// Capped at four sets. Past that the line is longer than the card is wide and
+/// the ellipsis is doing the work anyway; the full history belongs on Profile.
+String _previousLabel(PreviousPerformance previous, MassUnit unit) {
+  final parts = <String>[];
+  double? last;
+  for (final set in previous.sets.take(4)) {
+    if (set.weightKg == last) {
+      parts.add('${set.reps}');
+    } else {
+      parts.add('${Mass.kilograms(set.weightKg).label(unit)} × ${set.reps}');
+      last = set.weightKg;
+    }
+  }
+  final more = previous.sets.length > 4 ? '…' : '';
+  return 'Last time · ${_shortDate(previous.on)} · ${parts.join(', ')}$more';
+}
+
+String _shortDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+
+const List<String> _months = <String>[
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];

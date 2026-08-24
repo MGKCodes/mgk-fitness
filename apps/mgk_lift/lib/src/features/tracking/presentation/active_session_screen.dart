@@ -5,6 +5,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../data/exercise_lookup.dart';
+import '../domain/previous_performance.dart';
 import '../domain/rest_timer.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/planned_movement.dart';
@@ -233,6 +234,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 volumeKg: _session.volumeKg,
                 massUnit: widget.massUnit,
                 completedSets: _session.completedSets,
+                movements: _session.exercises.length,
                 canFinish: canFinish,
                 onFinish: _finish,
               ),
@@ -265,6 +267,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                                 exercise: exercise,
                                 catalogue: _lookup.find(exercise.name),
                                 massUnit: widget.massUnit,
+                                // Excludes the session in progress, or the
+                                // first set logged today would immediately
+                                // become "last time".
+                                previous: PreviousPerformance.of(
+                                  widget.log,
+                                  exercise.name,
+                                  excludeSessionId: _session.id,
+                                ),
                                 isCollapsed: _isCollapsed(exercise),
                                 onToggleCollapsed: () =>
                                     _toggleCollapsed(exercise),
@@ -471,6 +481,7 @@ class _Header extends StatelessWidget {
     required this.volumeKg,
     required this.massUnit,
     required this.completedSets,
+    required this.movements,
     required this.canFinish,
     required this.onFinish,
   });
@@ -497,6 +508,12 @@ class _Header extends StatelessWidget {
 
   final MassUnit massUnit;
   final int completedSets;
+
+  /// How many movements are in the session. The only figure here that is not
+  /// purely retrospective — it is the one a lifter reads to judge what is
+  /// left rather than what is done.
+  final int movements;
+
   final bool canFinish;
   final VoidCallback onFinish;
 
@@ -558,31 +575,58 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatBlock(
-                  label: 'Elapsed',
-                  value: _clock(elapsed),
-                  // Crosses an hour and gains two characters. A Text in a
-                  // bounded Expanded clips silently, so the session would
-                  // simply appear to lose its hours.
-                  shrinkToFit: true,
+          // **A card, not a strip.** These three sat directly on the
+          // background under the title, and read as a compressed row of
+          // numbers rather than as the session's state — nothing grouped them,
+          // so they competed with the movement cards below instead of
+          // introducing them. On its own ground the block says "this is the
+          // session so far", which is what it is.
+          //
+          // Movements joins them because three figures in a card looks like a
+          // card missing one, and because it is the figure that answers "how
+          // much is left" — the other three only say what has happened.
+          AppCard(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: StatBlock(
+                    label: 'Elapsed',
+                    value: _clock(elapsed),
+                    // Crosses an hour and gains two characters. A Text in a
+                    // bounded Expanded clips silently, so the session would
+                    // simply appear to lose its hours.
+                    shrinkToFit: true,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: StatBlock(
-                  label: 'Volume',
-                  value: volumeKg == 0
-                      ? '—'
-                      : Mass.kilograms(volumeKg).label(massUnit),
-                  shrinkToFit: true,
+                Expanded(
+                  child: StatBlock(
+                    label: 'Volume',
+                    value: volumeKg == 0
+                        ? '—'
+                        : Mass.kilograms(volumeKg).label(massUnit),
+                    shrinkToFit: true,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: StatBlock(label: 'Sets', value: '$completedSets'),
-              ),
-            ],
+                Expanded(
+                  child: StatBlock(
+                    label: 'Sets',
+                    value: '$completedSets',
+                    shrinkToFit: true,
+                  ),
+                ),
+                Expanded(
+                  child: StatBlock(
+                    label: 'Movements',
+                    value: '$movements',
+                    shrinkToFit: true,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
