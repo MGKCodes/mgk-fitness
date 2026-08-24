@@ -24,6 +24,11 @@ import '../src/features/planning/presentation/plan_intake_screen.dart';
 import '../src/features/planning/presentation/standing_plan_surface.dart';
 import '../src/features/planning/presentation/swap_sheet.dart';
 import '../src/features/home/presentation/lift_shell.dart';
+import '../src/features/tracking/domain/workout_library.dart';
+import '../src/features/tracking/presentation/workout_library_sheet.dart';
+import '../src/features/tracking/presentation/premade_library_sheet.dart';
+import '../src/features/tracking/presentation/workout_builder_screen.dart';
+import '../src/features/tracking/data/exercise_lookup.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
 import '../src/features/photos/domain/progress_photo.dart';
 import '../src/features/photos/presentation/photos_surface.dart';
@@ -154,6 +159,40 @@ class PreviewApp extends StatelessWidget {
         opener:
             'What are you training for, and which days can you get to the '
             'gym?',
+      ),
+      // The library, which the harness could not photograph until these
+      // existed. Same structural blindness the coach mark hit: a surface with
+      // no entry here is a surface nobody looks at, and the whole point of the
+      // harness is that a screen either renders or the page fails.
+      'workout-library': (_) => _SheetHost(
+        open: (context) => WorkoutLibrarySheet.show(
+          context,
+          library: InMemoryWorkoutLibrary(_savedWorkouts()),
+          lookup: ExerciseLookup(),
+        ),
+      ),
+      'workout-library-empty': (_) => _SheetHost(
+        open: (context) => WorkoutLibrarySheet.show(
+          context,
+          library: InMemoryWorkoutLibrary(),
+          lookup: ExerciseLookup(),
+        ),
+      ),
+      'premade-library': (_) => _SheetHost(
+        open: (context) => PremadeLibrarySheet.show(
+          context,
+          library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        ),
+      ),
+      'workout-builder': (_) => WorkoutBuilderScreen(
+        library: InMemoryWorkoutLibrary(),
+        lookup: ExerciseLookup(),
+        initialName: 'Wednesday push',
+        initialMovements: const <String>[
+          'Barbell Bench Press',
+          'Dumbbell Shoulder Press',
+          'Cable Tricep Pushdown',
+        ],
       ),
       'swap-sheet': (_) => _SheetHost(
         open: (context) => SwapSheet.show(
@@ -1094,3 +1133,38 @@ class _SheetHostState extends State<_SheetHost> {
   Widget build(BuildContext context) =>
       const Scaffold(backgroundColor: AppColors.bg, body: SizedBox.expand());
 }
+
+/// Three saved workouts, one of them added from a premade.
+///
+/// Enough to show the list, the movement summary line and the premade
+/// back-reference without being a wall of identical rows.
+List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
+  SavedWorkout(
+    id: 'w1',
+    name: 'Wednesday push',
+    movements: const <String>[
+      'Barbell Bench Press',
+      'Dumbbell Shoulder Press',
+      'Cable Fly',
+      'Cable Tricep Pushdown',
+    ],
+    savedAt: previewNow.subtract(const Duration(days: 2)),
+  ),
+  SavedWorkout(
+    id: 'w2',
+    name: 'Pull',
+    movements: const <String>[
+      'Barbell Bent Over Row',
+      'Lat Pulldown',
+      'Dumbbell Bicep Curl',
+    ],
+    savedAt: previewNow.subtract(const Duration(days: 9)),
+    premadeId: 'pull',
+  ),
+  SavedWorkout(
+    id: 'w3',
+    name: 'Legs, short',
+    movements: const <String>['Barbell Squat', 'Leg Press', 'Standing Calf Raise'],
+    savedAt: previewNow.subtract(const Duration(days: 16)),
+  ),
+];
