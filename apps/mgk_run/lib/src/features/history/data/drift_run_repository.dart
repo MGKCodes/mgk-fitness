@@ -123,9 +123,14 @@ RunSummary runSummaryFromLocal(
   distanceMeters: row.distanceM,
   avgPaceSecondsPerKm: row.avgPaceSPerKm,
   elevationGainMeters: row.elevationGainM,
+  elevationMaxMeters: row.elevationMaxM,
   avgHr: row.avgHr,
   maxHr: row.maxHr,
   caloriesEst: row.caloriesEst,
+  // Null for every run recorded before the Health read existed, and for every
+  // runner who declined it. The screen draws no tile rather than a zero, so a
+  // column that is mostly empty is the designed state and not a gap.
+  steps: row.steps,
   type: row.type,
   points: points,
   splits: splits,

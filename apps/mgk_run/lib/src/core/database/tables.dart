@@ -19,9 +19,24 @@ class Runs extends Table {
   RealColumn get distanceM => real()();
   RealColumn get avgPaceSPerKm => real().nullable()();
   RealColumn get elevationGainM => real().nullable()();
+
+  /// The highest point on the route, in metres above sea level.
+  ///
+  /// Distinct from [elevationGainM], which is the sum of every climb: a runner
+  /// doing hill repeats has enormous gain and an unremarkable maximum, and a
+  /// runner going up one mountain has the opposite. Strava shows both for the
+  /// same reason.
+  RealColumn get elevationMaxM => real().nullable()();
   IntColumn get avgHr => integer().nullable()();
   IntColumn get maxHr => integer().nullable()();
   IntColumn get cadence => integer().nullable()();
+
+  /// Steps taken, read from Health rather than counted here.
+  ///
+  /// Nullable and expected to be null often: a runner who declined the Health
+  /// read is indistinguishable from one whose phone recorded nothing, and both
+  /// are shown as absent rather than as zero.
+  IntColumn get steps => integer().nullable()();
   RealColumn get caloriesEst => real().nullable()();
 
   /// `gps` | `healthkit` | `manual`.

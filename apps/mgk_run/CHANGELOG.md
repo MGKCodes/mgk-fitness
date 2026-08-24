@@ -26,8 +26,14 @@ been on a store, so everything Runio does is still listed here.
 - Two accuracy gates rather than one — 50 m to draw a point on the map, 20 m
   before it is allowed to affect distance.
 - Live route map, automatic kilometre splits, and manual laps.
-- Barometric climb on devices with a barometer, reported as absent rather than
-  guessed from GPS altitude.
+- Climb and high point computed from the trace and stored with the run, and
+  reported as absent rather than guessed from GPS altitude. **Absent is what
+  they always are today** — see the note under *After the finish line* below.
+  This line previously claimed "barometric climb on devices with a barometer",
+  which the app has never had: `altitudeMeters` is written null on every fix,
+  and the `CMAltimeter` channel the code's own comments referred to was never
+  built. The refusal to substitute GPS altitude was real; the barometer behind
+  it was not.
 - An in-run screen built as one surface: a full-bleed map with the numbers on a
   glass panel over it, distance as a hero numeral, and two resting positions for
   the panel rather than three.
@@ -70,11 +76,75 @@ been on a store, so everything Runio does is still listed here.
 - **A word from the coach on the run, and a way to keep asking** — the note is
   one true sentence by design, and *Ask your coach about this run* is the way
   past that, at the moment the answer is worth the most.
-- Elevation and steps have a place on the summary, shown when there is something
-  to show. Nothing fills them yet.
+- **Steps on the summary, read from Health.** A GPS trace cannot count steps, so
+  nothing did — Strava's summary for the same 10 km said 8,468 and ours said
+  nothing. The run's own window is asked of Health when the run finishes, after
+  the run is already safe on the phone, so a slow or refusing Health store costs
+  a pause on the Finish button and nothing more. Absent far more often than not,
+  and absent is drawn as no tile: a denied read is indistinguishable from no
+  data, and `0` would be a claim that somebody who just ran 10 km took no steps.
+- **Elevation gain is kept, and the route's high point is kept beside it.**
+  Climb was computed on every fix for the in-run readout and stored nowhere —
+  the splits' bug exactly — so an hour of watching it tick up ended with a
+  summary that had no column to read it back from. It is written when the run
+  finishes now, from the same walk over the trace as the distance and the
+  splits. The maximum sits beside it because it answers a different question:
+  hill repeats are enormous gain over an unremarkable high point, and one long
+  climb is the reverse. The two elevation tiles are named apart for the same
+  reason. **Both stay empty for now**, and honestly so: elevation comes from a
+  barometer or it does not come at all (ADR-0024), and the app has no barometric
+  source yet — GPS altitude is wrong by enough to invent a few hundred metres of
+  climb on a flat run, so it is not substituted. Everything from the trace to
+  the tile is built and waiting on `CMAltimeter`.
+- Health is asked once, in onboarding, for everything the app reads — workouts
+  and now steps. A permission sheet arriving at the end of a first run, in front
+  of somebody who has just stopped and wants their numbers, is the version of
+  this that does not ship.
+
+**Home**
+- **Home is a grid of tiles, each carrying one fact.** It was a wordmark, one
+  session card and then two-thirds of a screen of nothing. It now holds today,
+  the week, four squares of the runner's own record — last run, runs logged,
+  longest run, fastest pace — and a note from the coach, in that order, over the
+  charts that were already there.
+- **A week tile**, with the seven days across the top and two figures under
+  them. With a plan those are sessions done and distance covered, and it ends by
+  naming the next session and the day it falls on. The *Next ·* line moved here
+  off the rest-day card, where it was the only place in the app that said it.
+- **A tile for the coach that is always on the page.** It used to be dropped
+  whenever the coach had nothing notable to say — which is exactly the state a
+  runner on day one is in, so the one surface saying anybody is paying attention
+  was missing from the screen somebody decides on. It is held open now, saying
+  what will land there, and it claims nothing about training it has not read.
+- **The last run, the furthest and the quickest are on the front page**, one
+  figure each rather than the three-row log Profile already owns properly.
+  Tapping the last run opens it.
 
 ### Changed
 
+- **A runner with no plan gets a Home about their running, not about the plan
+  they have not bought.** Free Home was a plan Home with the contents taken out:
+  a card headed *No plan yet* over an empty screen, which is the counter-signal
+  [ADR-0019](docs/decisions/0019-onboarding-is-two-moments.md) names for its own
+  reversal, in as few words as it is possible to put it. Every permanent tile
+  now answers off the run log when there is no plan behind it — today is the run
+  they have done or the one they have not, and the week counts runs where a plan
+  would have counted sessions. Same tiles, different facts, no outline of
+  something they were never offered.
+- **Home's empty state states its structure.** Following the Profile tab: every
+  figure is held open at a dash with a line saying what will fill it, because a
+  dash is an absence where `0.0 km` would be a claim.
+- **"TODAY" over "Threshold" was two headings and no sentence.** The eyebrow is
+  a date now — *TODAY · MONDAY 24 AUG* — and the line under it names the
+  activity with the hour on it: *Afternoon threshold run*. The Start button
+  keeps the plain name, because "Start · 9 km afternoon threshold run" is
+  nobody's sentence.
+- **One clock for the whole of Home.** The header carried a private copy of
+  `timeOfDayName` with the same three words and the same two boundaries, kept in
+  step by hand — two answers to "what time of day is it" in one app, waiting for
+  somebody to move one boundary and give a header reading *Evening* over a card
+  reading *Afternoon easy run*. There is one function and one reading of the
+  clock per build.
 - **A session is named for the activity, not the physiology — and dated only
   where the app knows the date.** "Threshold", "Easy" and "Recovery" name an
   intensity; on their own they tell a runner how hard and never what they are

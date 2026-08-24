@@ -128,7 +128,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No plan yet'), findsOneWidget);
+    // **No plan-shaped hole.** This used to assert `No plan yet` was the
+    // headline of the today card, which was the counter-signal ADR-0019 names
+    // in as few words as it is possible to put it: a free screen headed with
+    // the name of the thing the runner has not bought. Today is answered off
+    // the log now — they last ran two days ago, so today has no run in it yet.
+    expect(find.text('No plan yet'), findsNothing);
+    expect(find.text('No run yet today'), findsOneWidget);
     expect(find.text('A plan built round your week'), findsNothing);
   });
 

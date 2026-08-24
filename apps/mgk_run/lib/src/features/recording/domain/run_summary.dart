@@ -15,6 +15,7 @@ class RunSummary {
     required this.distanceMeters,
     this.avgPaceSecondsPerKm,
     this.elevationGainMeters,
+    this.elevationMaxMeters,
     this.avgHr,
     this.maxHr,
     this.caloriesEst,
@@ -36,7 +37,21 @@ class RunSummary {
   final double distanceMeters;
 
   final double? avgPaceSecondsPerKm;
+
+  /// Total ascent — the sum of every rise on the route.
   final double? elevationGainMeters;
+
+  /// The route's high point, in metres above sea level.
+  ///
+  /// Separate from [elevationGainMeters] because they answer different
+  /// questions and routinely disagree: hill repeats are enormous gain over an
+  /// unremarkable maximum, one long climb is the reverse.
+  ///
+  /// The two absences differ too. Null gain beside a real maximum is a flat
+  /// run; both null is a trace with no barometric altitude, which is every
+  /// trace this app currently records (ADR-0024).
+  final double? elevationMaxMeters;
+
   final int? avgHr;
   final int? maxHr;
 
@@ -45,13 +60,12 @@ class RunSummary {
 
   /// Steps taken, when Health has them.
   ///
-  /// **Nothing writes this yet**, and the summary is honest about that by
-  /// simply not drawing the tile: absent is absent, never a zero and never an
-  /// error (CLAUDE.md rule 6 — a denied Health read is indistinguishable from
-  /// no data). It is here so the shape of the summary is settled before the
-  /// read that fills it lands, which is Phase 2 of the 1.0.0 plan; storing it
-  /// will want a `runs.steps` column, which this field deliberately does not
-  /// invent.
+  /// Read from HealthKit over the run's window when the run finishes, and
+  /// stored in `runs.steps`. Null far more often than not, and every one of the
+  /// reasons is ordinary: the runner declined the Health read, the phone was
+  /// not on them, the store answered too slowly, the run predates the column.
+  /// A denied read is indistinguishable from no data (CLAUDE.md rule 6), so all
+  /// of it renders as an absent tile — never a zero, never an error.
   final int? steps;
 
   /// `outdoor` | `treadmill` | `manual`.

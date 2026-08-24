@@ -6,18 +6,46 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_headline.dart';
-import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/training_history.dart';
-import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/presentation/session_labels.dart';
-import '../../coaching/presentation/week_ribbon.dart';
+import '../../history/presentation/run_tile.dart' show shortRunDate;
+import '../../profile/domain/runner_stats.dart';
+import '../../recording/domain/run_summary.dart';
+import 'home_tiles.dart';
+import 'home_today_tile.dart';
+import 'home_week_tile.dart';
 import 'training_charts.dart';
 
-/// The app's front page: what's on today, what the coach has noticed, the last
-/// few runs, and the way into a new one.
+/// The app's front page, as **a grid of tiles each carrying one fact**: what is
+/// on today, where the week stands, what the runner's own log says about them,
+/// and what the coach has noticed.
+///
+/// ## Why it is a grid
+///
+/// It was a wordmark, one session card, and then two-thirds of a screen of
+/// nothing (IMG_4702). That is a thin front page for a runner in a block and an
+/// actively misleading one for a runner without a plan, who saw a card headed
+/// *No plan yet* and very little else — a paid screen with the contents taken
+/// out, which is the counter-signal
+/// [ADR-0019](../../../../docs/decisions/0019-onboarding-is-two-moments.md)
+/// names for its own reversal.
+///
+/// ## What decides whether a tile exists
+///
+/// **A tile earns its place by being true for every runner every day.** Today
+/// is always a day; the week is always a week; a runner always has a log, even
+/// an empty one, and a coach who has read it. Everything on the permanent part
+/// of this page answers one of those, and none of them needs a plan to have an
+/// answer. What a runner with a plan gets is *more in the same tiles* — the day
+/// named as a session rather than as a run, the week counted in prescriptions
+/// rather than in runs — not extra tiles a free runner sees the outline of.
+///
+/// Sections that are genuinely about something a runner may never have stay
+/// conditional: the missed-session card needs a plan to have missed anything,
+/// and the charts need a history to plot.
 ///
 /// Deliberately **not** the record screen. Recording is one thing a runner does
 /// here, so it gets a prominent action rather than the whole surface — the home
@@ -40,11 +68,15 @@ class HomeTab extends StatelessWidget {
     this.volumes = const <WeekVolume>[],
     this.consistency = const <List<RunDay>>[],
     this.standing,
+    this.stats = RunnerStats.empty,
+    this.lastRun,
     this.hasRuns = false,
     this.missed,
     this.onAskCoach,
     this.onAdjustWeek,
+    this.onOpenRun,
     this.unit = UnitSystem.metric,
+    this.now,
   });
 
   /// Starts tracking a run — the one input that cannot be a sentence, and so
@@ -63,8 +95,8 @@ class HomeTab extends StatelessWidget {
   /// Today's prescribed session, when a plan exists.
   final TodayView? today;
 
-  /// This week's sessions, drawn as a ribbon above today so the runner can see
-  /// where in the week they are without leaving Home.
+  /// This week's sessions, drawn as a ribbon inside the week tile so the runner
+  /// can see where in the week they are without leaving Home.
   final TrainingWeek? thisWeek;
 
   /// What the runner is working on and where they are in it, already resolved
@@ -72,7 +104,8 @@ class HomeTab extends StatelessWidget {
   /// where a greeting is the most useful thing this space can hold.
   final PlanHeadline? headline;
 
-  /// The coach's current observation, if there is an honest one to make.
+  /// The coach's current observation, if there is an honest one to make. Null
+  /// no longer hides the tile — see [_CoachTile].
   final CoachNote? note;
 
   /// What became of each prescribed day this week, derived from the run log.
@@ -81,16 +114,25 @@ class HomeTab extends StatelessWidget {
   /// Weekly distance for the volume chart, oldest first.
   final List<WeekVolume> volumes;
 
-  /// Did-you-run, by day, for the consistency grid.
+  /// Did-you-run, by day, for the consistency grid. Its **last row is the
+  /// current week**, which is what the week tile draws for a runner with no
+  /// plan — the same derivation serving both, rather than a second one that
+  /// could disagree with the grid a few hundred pixels below it.
   final List<List<RunDay>> consistency;
 
   /// Where this week stands against what was asked.
   final WeekStanding? standing;
 
-  /// Whether the runner has ever recorded a run. Only used to decide whether
-  /// they are new enough to want the explainer — it went on "no recent runs on
-  /// screen" until the recent-runs list was removed, which showed a runner with
-  /// ten runs and no plan a page telling them what the app is for.
+  /// Lifetime totals and bests, for the tiles that hold them open.
+  final RunnerStats stats;
+
+  /// The newest run on record. Drives "have they run today" and the last-run
+  /// tile; null for a runner who has not recorded one.
+  final RunSummary? lastRun;
+
+  /// Whether the runner has ever recorded a run. Decides whether they are new
+  /// enough to want the explainer, and whether the charts have anything to
+  /// plot.
   final bool hasRuns;
 
   /// What to raise about days that went by without a run, if anything.
@@ -105,11 +147,27 @@ class HomeTab extends StatelessWidget {
   /// when there is no plan to bend or no coach to bend it.
   final VoidCallback? onAdjustWeek;
 
+  /// Opens a recorded run. Null hides the tap on the last-run tile rather than
+  /// offering a target that does nothing.
+  final void Function(RunSummary run)? onOpenRun;
+
   final UnitSystem unit;
+
+  /// The clock, injectable so a test can pin the hour.
+  ///
+  /// One reading of it for the whole page, for the reason the shell gives about
+  /// its own: an eyebrow and a session name that disagree about the time of day
+  /// are worse than either being absent, and this page holds three surfaces
+  /// that each used to call `DateTime.now()` for themselves.
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final at = now ?? DateTime.now();
+    final thisWeeksDays = consistency.isEmpty
+        ? const <RunDay>[]
+        : consistency.last;
 
     return Scaffold(
       body: PhotoBackdrop(
@@ -133,31 +191,33 @@ class HomeTab extends StatelessWidget {
             ),
             children: <Widget>[
               Entrance(
-                child: _Header(theme: theme, headline: headline),
+                child: _Header(theme: theme, headline: headline, at: at),
               ),
               const SizedBox(height: AppSpacing.xl),
 
               // Today leads, because it is the question a runner opens the app
-              // to answer — and it now carries the action as well as the
-              // answer, rather than describing the session and leaving a
-              // generic button underneath to ignore it.
+              // to answer — and it carries the action as well as the answer,
+              // rather than describing the session and leaving a generic button
+              // underneath to ignore it.
               Entrance(
                 index: 1,
-                child: _Today(
-                  today: today,
-                  thisWeek: thisWeek,
-                  outcomes: outcomes,
+                child: HomeTodayTile(
+                  now: at,
                   unit: unit,
+                  today: today,
+                  lastRun: lastRun,
+                  outcomes: outcomes,
+                  onRecord: onRecord,
                   onOpenPlan: onOpenPlan,
                   onOpenCoach: onOpenCoach,
-                  onRecord: onRecord,
                   onAdjustWeek: onAdjustWeek,
                 ),
               ),
 
               // Raised, never silently absorbed — and both answers are
               // sentences handed to the coach rather than buttons that write
-              // training state (ADR-0017).
+              // training state (ADR-0017). Directly under today because it is
+              // about a day that has already gone by.
               if (missed != null && onAskCoach != null) ...<Widget>[
                 const SizedBox(height: AppSpacing.md),
                 Entrance(
@@ -166,52 +226,80 @@ class HomeTab extends StatelessWidget {
                 ),
               ],
 
-              // A runner with nothing yet used to get one text link out of
-              // here and then a photograph. That was defensible while every
-              // runner was on their way to a plan; it is not now that a plan is
+              const SizedBox(height: AppSpacing.md),
+              Entrance(
+                index: 3,
+                child: HomeWeekTile(
+                  now: at,
+                  unit: unit,
+                  week: thisWeek,
+                  outcomes: outcomes,
+                  standing: standing,
+                  runDays: thisWeeksDays,
+                  onOpenPlan: onOpenPlan,
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.xl),
+              Entrance(
+                index: 4,
+                child: _RunningGrid(
+                  stats: stats,
+                  lastRun: lastRun,
+                  unit: unit,
+                  onOpenRun: onOpenRun,
+                ),
+              ),
+
+              // A runner with nothing yet used to get one text link out of here
+              // and then a photograph. That was defensible while every runner
+              // was on their way to a plan; it is not now that a plan is
               // something you opt into and most of this screen's visitors will
-              // never have one (ADR-0019). This is the screen somebody decides
-              // on, and it was showing them an empty version of a product they
-              // had not been offered.
+              // never have one (ADR-0019).
               //
-              // So: what Runio does with a run, before there is one to show.
-              // Not a third way in — recording and talking are the only two
-              // (ADR-0017), and both are already on the card above.
+              // It sits directly under the grid it explains: those four tiles
+              // are what "totals, records and your whole history" looks like,
+              // and the card names the one promise they cannot show — the route
+              // and the splits, which live inside a run.
+              //
+              // Not a third way in. There are exactly two ways into Runio —
+              // press start, or say something to the coach (ADR-0017) — and
+              // both are already above this.
               if (today == null && !hasRuns) ...<Widget>[
                 const SizedBox(height: AppSpacing.md),
-                Entrance(index: 3, child: _FirstRun(onOpenPlan: onOpenPlan)),
+                Entrance(index: 5, child: _FirstRun(onOpenPlan: onOpenPlan)),
               ],
 
               // No explainer here. "How this works" moved to the Plan tab,
               // where the runner it is written for actually is: someone with no
               // plan opens Plan to get one, and that screen had nothing on it
               // but a photograph and a button.
-              if (note != null) ...<Widget>[
-                const SizedBox(height: AppSpacing.xl),
-                Entrance(
-                  index: 4,
-                  child: _CoachNoteCard(
-                    note: note!,
-                    // The coach's own observation opens the coach. It used to
-                    // open the Plan tab, which is a different thing wearing the
-                    // same callback.
-                    onTap: onOpenCoach ?? onOpenPlan,
-                  ),
+              const SizedBox(height: AppSpacing.xl),
+              Entrance(
+                index: 6,
+                child: _CoachTile(
+                  note: note,
+                  hasRuns: hasRuns,
+                  // The coach's own observation opens the coach. It used to
+                  // open the Plan tab, which is a different thing wearing the
+                  // same callback.
+                  onTap: onOpenCoach ?? onOpenPlan,
                 ),
-              ],
+              ),
 
-              // The long view, under the day. Recents was three rows of the
-              // four facts Profile already owns; these answer questions Profile
-              // does not — am I building, and have I been turning up.
+              // The long view, under the day. These answer questions the tiles
+              // above do not — am I building, and have I been turning up.
               //
               // Both are absent until there is something to plot. A chart of
               // one week is a bar, and a grid of nothing is a scorecard the
-              // runner has not had a chance to fill in yet.
+              // runner has not had a chance to fill in yet. That is not the
+              // empty-state rule being broken: the tiles above state the page's
+              // structure, and these two are the depth behind it.
               if (hasRuns) ...<Widget>[
                 if (volumes.isNotEmpty && standing != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.xl),
                   Entrance(
-                    index: 5,
+                    index: 7,
                     child: VolumeChart(
                       weeks: volumes,
                       standing: standing!,
@@ -221,7 +309,7 @@ class HomeTab extends StatelessWidget {
                 ],
                 if (consistency.isNotEmpty) ...<Widget>[
                   const SizedBox(height: AppSpacing.md),
-                  Entrance(index: 6, child: ConsistencyGrid(grid: consistency)),
+                  Entrance(index: 8, child: ConsistencyGrid(grid: consistency)),
                 ],
               ],
             ],
@@ -248,9 +336,10 @@ class HomeTab extends StatelessWidget {
 /// space can hold — a runner with no plan, where there is genuinely nothing to
 /// count down to and a blank would be colder than a hello.
 class _Header extends StatelessWidget {
-  const _Header({required this.theme, this.headline});
+  const _Header({required this.theme, required this.at, this.headline});
 
   final ThemeData theme;
+  final DateTime at;
   final PlanHeadline? headline;
 
   @override
@@ -268,7 +357,13 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          plan?.goal ?? _greeting(),
+          // [timeOfDayName], not a private copy of it. This header had its own
+          // `_greeting()` with the same three words and the same two
+          // boundaries, kept in step by hand — two answers to "what time of day
+          // is it" in one app, waiting for somebody to move one boundary and
+          // give a header reading "Evening" over a card reading "Afternoon easy
+          // run".
+          plan?.goal ?? timeOfDayName(at),
           style: theme.textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.w700,
             height: 1.05,
@@ -286,324 +381,205 @@ class _Header extends StatelessWidget {
       ],
     );
   }
+}
 
-  static String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Morning';
-    return hour < 18 ? 'Afternoon' : 'Evening';
+/// Four squares of the runner's own record: the last run, how many there have
+/// been, and the two bests.
+///
+/// **This is the tile block that makes Home work without a plan**, and it is
+/// also the one a runner in week nine of a marathon block looks at. Nothing in
+/// it needs a plan to have an answer; all four are folds over the log.
+///
+/// It is not the training log. Profile owns that, four facts a row, for as long
+/// as the runner has been running. This is one figure each — a last run, a
+/// count, a furthest, a quickest — which is what a tile is for, and the reason
+/// the old three-row "recents" list on Home was removed rather than restyled.
+///
+/// Every tile is held open when there is nothing in it yet: a dash and a line
+/// saying what will land there. Following the Profile tab, which was given the
+/// same treatment for the same reason — **a screen with no data states its
+/// structure, and a dash is an absence where a zero would be a claim.**
+class _RunningGrid extends StatelessWidget {
+  const _RunningGrid({
+    required this.stats,
+    required this.unit,
+    this.lastRun,
+    this.onOpenRun,
+  });
+
+  final RunnerStats stats;
+  final UnitSystem unit;
+  final RunSummary? lastRun;
+  final void Function(RunSummary run)? onOpenRun;
+
+  @override
+  Widget build(BuildContext context) {
+    final last = lastRun;
+    final longest = stats.longestRunMeters;
+    final fastest = stats.fastestPaceSecondsPerKm;
+    final first = stats.firstRunAt;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SectionLabel('Your running'),
+        const SizedBox(height: AppSpacing.md),
+        HomeTileRow(
+          left: HomeStatTile(
+            label: 'Last run',
+            // A distance the runner covered, to a decimal. 10.18 km is earned
+            // precision, and rounding it would tell somebody their run was
+            // smaller than it was.
+            value: last == null
+                ? '—'
+                : Distance.meters(
+                    last.distanceMeters,
+                  ).format(unit, fractionDigits: 1),
+            caption: last == null
+                ? 'Your latest run lands here'
+                : '${shortRunDate(last.startedAt)}  ·  '
+                      '${last.duration.hoursMinutesSeconds}',
+            waiting: last == null,
+            onTap: last == null || onOpenRun == null
+                ? null
+                : () => onOpenRun!(last),
+          ),
+          right: HomeStatTile(
+            label: 'Runs logged',
+            value: stats.isEmpty ? '—' : '${stats.runCount}',
+            caption: first == null
+                ? 'Every run you record'
+                : 'Since ${monthShortName(first.month)} ${first.year}',
+            waiting: stats.isEmpty,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        HomeTileRow(
+          left: HomeStatTile(
+            label: 'Longest run',
+            value: longest == null
+                ? '—'
+                : Distance.meters(longest).format(unit, fractionDigits: 1),
+            caption: 'Your furthest yet',
+            waiting: longest == null,
+          ),
+          right: HomeStatTile(
+            label: 'Fastest pace',
+            value: fastest == null
+                ? '—'
+                : Pace.secondsPerKilometer(fastest).format(unit),
+            caption: 'Your quickest yet',
+            waiting: fastest == null,
+          ),
+        ),
+      ],
+    );
   }
 }
 
-/// What's on today — a prescribed session, a rest day, or an invitation to get
-/// a plan. Glass, because it sits over the photograph.
-class _Today extends StatelessWidget {
-  const _Today({
-    required this.today,
-    required this.thisWeek,
-    required this.outcomes,
-    required this.unit,
-    required this.onOpenPlan,
-    required this.onRecord,
-    this.onOpenCoach,
-    this.onAdjustWeek,
+/// What the coach has noticed, as a way into the conversation.
+///
+/// **The tile is always here, and that is the change.** It used to be dropped
+/// whenever [CoachNote.forRuns] had nothing honest to say — which is exactly
+/// the state a new runner is in — so the one surface on Home that says anybody
+/// is paying attention was missing from the screen somebody decides on. Held
+/// open instead, saying what it is for.
+///
+/// Distinct from the chat, which is the point of it existing at all: the
+/// conversation is where a runner asks, this is where the coach volunteers.
+/// And distinct from Profile's standing card, which answers "how am I doing"
+/// over a whole history; this answers "what just happened".
+///
+/// The note itself is derived in Dart rather than generated, for the reason
+/// [CoachNote] gives at length: a remark about somebody's training has to be
+/// true, and computing it from their runs is the cheapest way to guarantee
+/// that. The empty copy here claims nothing about their training at all.
+class _CoachTile extends StatelessWidget {
+  const _CoachTile({
+    required this.note,
+    required this.hasRuns,
+    required this.onTap,
   });
 
-  final TodayView? today;
-  final TrainingWeek? thisWeek;
-  final Map<int, DayOutcome> outcomes;
-  final UnitSystem unit;
-  final VoidCallback onOpenPlan;
-  final VoidCallback onRecord;
-  final VoidCallback? onOpenCoach;
-  final VoidCallback? onAdjustWeek;
+  final CoachNote? note;
+  final bool hasRuns;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final session = today;
+    final observation = note;
 
-    return GlassSurface(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      tintOpacity: 0.12,
-      child: Column(
+    final String headline;
+    final String detail;
+    if (observation != null) {
+      headline = observation.headline;
+      detail = observation.detail;
+    } else if (!hasRuns) {
+      // Nothing recorded: the tile says what will appear here, without
+      // pretending to an opinion about a log with nothing in it.
+      headline = 'Nothing to go on yet.';
+      detail =
+          'Record a run and your coach will have something to say about it. '
+          'Ask them anything in the meantime.';
+    } else {
+      // Runs, but nothing this coach thinks is worth a remark. Neutral on
+      // purpose — "steady work" would be a claim about training this tile has
+      // not checked.
+      headline = 'Nothing new to flag.';
+      detail =
+          'Your coach has read every run you have logged. Ask them anything '
+          'about your training.';
+    }
+
+    return HomeTile(
+      label: 'From your coach',
+      onTap: onTap,
+      trailing: const Icon(
+        Icons.chevron_right,
+        size: 20,
+        color: AppColors.textTertiary,
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // Resolved by the repository, not branched on here: a phase is block
-          // vocabulary, and this card must not know which shapes have one
-          // (ADR-0011).
-          SectionLabel(
-            session == null ? 'Today' : session.heading,
-            emphasis: LabelEmphasis.stat,
+          // The coach's own mark rather than a speech bubble, so the thing the
+          // app is named for is recognisable before it has said anything.
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: Center(
+              child: CoachLetter(size: 16, color: AppColors.textSecondary),
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          if (thisWeek != null) ...<Widget>[
-            // Outcomes for the whole week, derived from the log. It used to get
-            // a status for today and nothing else, so six of the seven cells
-            // could only say "there is a session here".
-            WeekRibbon(
-              week: thisWeek!,
-              today: DateTime.now(),
-              outcomes: outcomes,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-          if (session == null || session.session == null) ...<Widget>[
-            Text(
-              session == null
-                  ? 'No plan yet'
-                  : session.support == null
-                  ? 'Rest day'
-                  : kindLabel(session.support!.kind),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              session == null
-                  ? 'Run whenever you like — or let the coach build a plan '
-                        'around a goal.'
-                  // A day carrying strength is not a rest day, and saying
-                  // "nothing scheduled" over one contradicted the Plan tab
-                  // reading the same week. What is *in* the session is Liftio's
-                  // to say, not Runio's (ADR-0010) — so this says when, and
-                  // stops.
-                  : session.support == null
-                  ? 'Nothing scheduled. Rest is part of the plan.'
-                  // Dashed rather than a second sentence: the cues are written
-                  // lowercase for the week list, where they trail a session
-                  // name, so a full stop in front of one reads as a typo.
-                  : 'No run today — ${effortFor(session.support!.kind).cue}.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            // What is coming, so a rest day is a position in a week rather
-            // than a blank. Only when the rest of the week actually holds
-            // something — on a Sunday it says nothing rather than reaching into
-            // next week, which is not generated yet.
-            if (session != null && thisWeek != null) ...<Widget>[
-              Builder(
-                builder: (context) {
-                  final next = nextRunAfter(thisWeek!, DateTime.now().weekday);
-                  if (next == null) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.sm),
-                    child: Text(
-                      'Next · ${sessionName(next).toLowerCase()} '
-                      '${formatPrescribed(next.distanceMeters, unit)}'
-                      ' on ${weekdayLongName(next.weekday)}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            // **The same button in every state.** Recording is what this app is
-            // for, so it keeps one shape and one place — the label is the only
-            // thing that changes with the day. A previous pass made the
-            // contextual version prominent and demoted the generic one to a
-            // text link, which meant the core action of a running app vanished
-            // on every day the plan did not ask for a run.
-            _StartButton(label: 'Record a run', onTap: onRecord),
-            const SizedBox(height: AppSpacing.sm),
-            // Two different destinations that shared one callback until now:
-            // a runner with no plan wants the coach, a runner on a rest day
-            // wants the plan.
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTextButton(
-                label: session == null ? 'Talk to your coach' : 'See the week',
-                onPressed: session == null
-                    ? (onOpenCoach ?? onOpenPlan)
-                    : onOpenPlan,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                  ),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ),
-          ] else ...<Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Expanded(
-                  child: Text(
-                    sessionName(session.session!),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  headline,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  formatPrescribed(session.session!.distanceMeters, unit),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  detail,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
-            // How to run it, not just how far. "Easy 9 km" is the half of a
-            // prescription a runner can act on without opening anything; the
-            // other half — that easy means conversational the whole way — was
-            // two taps into the Plan tab. The effort rather than a pace, for
-            // the reason the week list gives: a target pace tells a runner what
-            // their watch should say, an effort tells them how the run should
-            // feel (ADR-0011's sibling in session_effort.dart).
-            const SizedBox(height: 2),
-            Text(
-              effortFor(session.session!.kind).cue,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            // The action *is* today's session. There is no "Mark done" beside
-            // it: a session is complete when a run exists on the day, which the
-            // app can see for itself, and a button asserting otherwise wrote a
-            // status no run backed (ADR-0017).
-            //
-            // Already run today? Then the ribbon says so and this reads as an
-            // offer of a second run rather than an instruction.
-            if (outcomes[session.session!.weekday] == DayOutcome.done)
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.check_circle,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      'Run recorded today.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  AppTextButton(label: 'Record another', onPressed: onRecord),
-                ],
-              )
-            else
-              _StartButton(
-                label:
-                    'Start · '
-                    // The same formatter as the figure directly above it, and
-                    // as the Plan tab. They used to disagree — "Easy 6.2 km"
-                    // over "Start · 6 km easy" — and two numbers for one
-                    // session eight pixels apart reads as a bug whichever is
-                    // right. An earlier pass settled that by moving this line
-                    // onto the decimal; the settlement went the wrong way. A
-                    // prescription is a whole number everywhere it appears, so
-                    // both lines go through [formatPrescribed] instead.
-                    '${formatPrescribed(session.session!.distanceMeters, unit)} '
-                    '${sessionName(session.session!).toLowerCase()}',
-                onTap: onRecord,
-              ),
-          ],
-
-          // Under everything and quiet, but on Home rather than three taps into
-          // the Plan tab. A plan that will not bend is this category's loudest
-          // complaint, and the runner who needs to bend it is ill, sore or
-          // already behind — not in the mood to compose a paragraph at a chat
-          // box, which was the only way in.
-          //
-          // On a rest day too: "I'm ill" is not a thing that waits for a
-          // session to be scheduled before it is true.
-          if (onAdjustWeek != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTextButton(
-                label: 'Not feeling it? Adjust this week',
-                onPressed: onAdjustWeek,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                  ),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// The one physical action on Home: start tracking.
-///
-/// It used to be a full-width slab beneath the Today card reading "Record a
-/// run" — generic, in the one place the app knows exactly what the runner is
-/// meant to be doing, and the loudest thing on screen on a rest day. It carries
-/// the session now and lives inside the card, so the prescription and the button
-/// that starts it are one object rather than two strangers.
-class _StartButton extends StatelessWidget {
-  const _StartButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: AppColors.primary,
-      borderRadius: AppRadius.cardAll,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Icon(
-                Icons.play_arrow_rounded,
-                color: AppColors.onPrimary,
-                size: 24,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Flexible(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.onPrimary,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A day that went by without a run, and the two things the runner can say
-/// about it.
-///
-/// **Both answers are sentences, not writes.** The card asks what a coach asks
-/// first — did you actually miss it? — and hands either answer to the
-/// conversation, where the `log_run` and adaptation surfaces already live. Home
-/// changes nothing itself (ADR-0017).
 /// What Runio does with a run, shown to somebody who has not done one yet.
 ///
 /// ## Why this exists
@@ -618,9 +594,9 @@ class _StartButton extends StatelessWidget {
 /// ## Why it is not a list of buttons
 ///
 /// There are exactly two ways into Runio — press start, or say something to the
-/// coach — and both are already on the card above this one. Adding a third here
-/// would be the counter-signal ADR-0017 names for its own reversal. So every
-/// line below describes what *happens*, and none of them is tappable.
+/// coach — and both are already on the tiles above this one. Adding a third
+/// here would be the counter-signal ADR-0017 names for its own reversal. So
+/// every line below describes what *happens*, and none of them is tappable.
 ///
 /// Everything named here is free. A runner reading it has not been offered a
 /// plan and must not be shown one as though it were included; the only mention
@@ -711,6 +687,13 @@ class _FirstRunLine extends StatelessWidget {
   }
 }
 
+/// A day that went by without a run, and the two things the runner can say
+/// about it.
+///
+/// **Both answers are sentences, not writes.** The card asks what a coach asks
+/// first — did you actually miss it? — and hands either answer to the
+/// conversation, where the `log_run` and adaptation surfaces already live. Home
+/// changes nothing itself (ADR-0017).
 class _MissedCard extends StatelessWidget {
   const _MissedCard({required this.prompt, required this.onAsk});
 
@@ -761,64 +744,6 @@ class _MissedCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The coach's current observation, as a way into the conversation.
-class _CoachNoteCard extends StatelessWidget {
-  const _CoachNoteCard({required this.note, required this.onTap});
-
-  final CoachNote note;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          // The coach's own mark, boxed at the size the icon used to occupy so
-          // the row's rhythm is unchanged.
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: CoachLetter(size: 16, color: AppColors.textSecondary),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  note.headline,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  note.detail,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right,
-            size: 20,
-            color: AppColors.textTertiary,
           ),
         ],
       ),

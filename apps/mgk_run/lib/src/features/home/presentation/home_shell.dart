@@ -1152,6 +1152,11 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // One fold over the log for the whole shell. Home's tiles and Profile's
+    // lifetime card are the same figures at two depths, and deriving them twice
+    // is how they end up disagreeing.
+    final stats = RunnerStats.from(_allRuns);
+
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -1199,8 +1204,17 @@ class _HomeShellState extends State<HomeShell> {
                 volumes: _volumes,
                 consistency: _consistency,
                 standing: _standing,
+                // The same fold Profile is given below, computed once here so
+                // the two tabs cannot report different lifetime figures for the
+                // same log.
+                stats: stats,
+                // Newest first — the shell sorts the log on load, so the head
+                // of it is the last run. Home reads it to answer "have they run
+                // today" and to fill the last-run tile.
+                lastRun: _allRuns.firstOrNull,
                 hasRuns: _allRuns.isNotEmpty,
                 missed: _missed,
+                onOpenRun: _openRun,
                 onAskCoach: _chat == null ? null : _askCoach,
                 // Only with a plan to bend and a coach to bend it.
                 onAdjustWeek: widget.planClient == null || _todayView == null
@@ -1226,7 +1240,7 @@ class _HomeShellState extends State<HomeShell> {
               // source again, so the totals and the rows they come from are always
               // the same load.
               ProfileScreen(
-                stats: RunnerStats.from(_allRuns),
+                stats: stats,
                 profile: _planProfile,
                 // Derived here rather than cached, exactly like the stats above:
                 // it reads the display unit, and a stored copy stayed in kilometres

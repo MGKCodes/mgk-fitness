@@ -53,6 +53,27 @@ class SupabaseRunBackup implements RunBackup {
   /// after and separately: a run whose summary is safe but whose points failed
   /// is a far better outcome than neither, and the summary is what the log,
   /// the standing and the coach's brief are all built from.
+  ///
+  /// **Two local columns are missing from this map on purpose: `elevation_max_m`
+  /// and `steps`.** The device grew both in schema version 8 and `run.runs` in
+  /// Postgres has neither, so listing them here would fail the whole upsert and
+  /// take the run's summary down with them — the map is enumerated rather than
+  /// generated precisely so a local column cannot silently become a remote
+  /// write. The schema is not in this app (see `apps/mgk_run/CLAUDE.md`: it
+  /// lives in `supabase/` at the repo root and migrations do not belong under
+  /// this directory), so closing the gap is a `db/` change and not one this
+  /// lane can make.
+  ///
+  /// Until it is closed, **a run's high point and step count are local-only**:
+  /// they are on the phone that recorded the run and a restore onto a new phone
+  /// will bring the run back without them. Nothing renders wrongly as a result
+  /// — an unrestored figure is absent, and absent is already the normal state
+  /// for both (CLAUDE.md rule 6) — but a runner who changes phone loses them,
+  /// silently, which is the part worth knowing. Elevation *gain* is unaffected:
+  /// `elevation_gain_m` has always been in this map.
+  ///
+  /// When the Postgres columns land, two lines here and the two matching reads
+  /// in `SupabaseRestore` are the whole of the change.
   @override
   Future<bool> pushRun(String runId) async {
     final userId = _userId;

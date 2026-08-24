@@ -199,7 +199,9 @@ void main() {
   });
 
   group('the measures a running app tracks', () {
-    testWidgets('steps get a tile when there are steps', (tester) async {
+    testWidgets('the figures Strava had and we did not', (tester) async {
+      // The 23 Aug 10 km, as Strava summarised it: 167 m of gain, a 111 m high
+      // point, 8,468 steps. Ours showed none of the three.
       _useTallPhone(tester);
       await tester.pumpWidget(
         MaterialApp(
@@ -210,6 +212,7 @@ void main() {
               duration: const Duration(minutes: 57, seconds: 47),
               distanceMeters: 10010,
               elevationGainMeters: 167,
+              elevationMaxMeters: 111,
               steps: 8468,
             ),
           ),
@@ -220,23 +223,62 @@ void main() {
       // Grouped, because a step count is the one figure here that runs to five
       // digits and `8468` is not a number anybody reads at a glance.
       expect(find.text('8,468'), findsOneWidget);
-      expect(find.text('ELEVATION'), findsOneWidget);
+      // Named apart. A bare "ELEVATION" was unambiguous while gain was the only
+      // elevation figure on the screen; beside a high point it is not.
+      expect(find.text('ELEVATION GAIN'), findsOneWidget);
       expect(find.text('167 m'), findsOneWidget);
+      expect(find.text('MAX ELEVATION'), findsOneWidget);
+      expect(find.text('111 m'), findsOneWidget);
+    });
+
+    testWidgets('a flat run shows a high point and no gain', (tester) async {
+      // Two absences that do not mean the same thing: no gain worth reporting
+      // is a flat run, and it still has a summit.
+      _useTallPhone(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RunSummaryScreen(
+            summary: RunSummary(
+              startedAt: DateTime(2026, 7, 21, 7, 32),
+              duration: const Duration(minutes: 27),
+              distanceMeters: 5230,
+              elevationMaxMeters: 18,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('ELEVATION GAIN'), findsNothing);
+      expect(find.text('MAX ELEVATION'), findsOneWidget);
+      expect(find.text('18 m'), findsOneWidget);
     });
 
     testWidgets('and no tile at all when there are none', (tester) async {
       // A denied Health read is indistinguishable from no data, so absence is
       // an absent tile — never a zero and never an error (CLAUDE.md rule 6).
+      // The same rule covers the elevation pair, which is absent on every run
+      // this app records until there is a barometer to ask (ADR-0024).
       _useTallPhone(tester);
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
-          home: RunSummaryScreen(summary: withData),
+          home: RunSummaryScreen(
+            summary: RunSummary(
+              startedAt: DateTime(2026, 7, 21, 7, 32),
+              duration: const Duration(minutes: 27, seconds: 45),
+              distanceMeters: 5230,
+              avgHr: 148,
+            ),
+          ),
         ),
       );
 
       expect(find.text('STEPS'), findsNothing);
+      expect(find.text('ELEVATION GAIN'), findsNothing);
+      expect(find.text('MAX ELEVATION'), findsNothing);
       expect(find.text('0'), findsNothing);
+      expect(find.text('0 m'), findsNothing);
     });
   });
 

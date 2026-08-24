@@ -188,7 +188,11 @@ void main() {
     await settle(tester, 8);
 
     expect(find.byType(RunSummaryScreen), findsNothing);
-    expect(find.text('Record a run'), findsWidgets);
+    // "Record **another** run", because Home has noticed the run that just
+    // finished. This read "Record a run" until Home's today tile learned to
+    // answer off the log for a runner with no plan — the offer of a second run
+    // is the tile agreeing with the log behind it.
+    expect(find.text('Record another run'), findsWidgets);
   });
 
   testWidgets('the coach can be asked about the run on screen', (tester) async {

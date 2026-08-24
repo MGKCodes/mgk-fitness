@@ -35,3 +35,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0021](0021-android-is-a-target.md) | Android is a target, and recording must survive Doze | Accepted |
 | [0022](0022-the-in-run-map-is-north-up.md) | The in-run map is north-up | Accepted |
 | [0023](0023-the-log-is-read-from-the-phone.md) | The log is read from the phone | Accepted |
+| [0024](0024-elevation-is-barometric-or-absent.md) | Elevation is barometric or absent | Accepted |

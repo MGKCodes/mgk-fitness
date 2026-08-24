@@ -237,20 +237,35 @@ class RunSummaryScreen extends StatelessWidget {
   ///
   /// **Every tile here is conditional, and that is the extension point.** The
   /// measures Strava carried for the same 10 km and Runio did not — elevation
-  /// gain, steps — arrive as a value on [RunSummary] and a line in this list;
-  /// nothing about the layout has to change, because the grid wraps whatever it
-  /// is given. Elevation and steps are wired and simply never non-null yet: the
-  /// barometer and the Health read that fill them are Phase 2. That is the
-  /// designed-for state, not a gap — a denied Health read looks exactly like no
-  /// data, so absence renders as an absent tile rather than as a zero or an
-  /// error (CLAUDE.md rule 6).
+  /// gain, max elevation, steps — arrive as a value on [RunSummary] and a line
+  /// in this list; nothing about the layout has to change, because the grid
+  /// wraps whatever it is given.
+  ///
+  /// **Absence is the common case, not the broken one.** Steps come from
+  /// Health, where a denied read is indistinguishable from no data, and the
+  /// elevation pair comes from barometric altitude that this app does not yet
+  /// have a source for at all (ADR-0024). Every one of those renders as an
+  /// absent tile — never a zero, which would be a claim, and never an error,
+  /// which would scold a runner for a permission they were entitled to withhold
+  /// (CLAUDE.md rule 6).
   List<_Tile> _tiles() {
     final tiles = <_Tile>[_Tile('TIME', summary.duration.hoursMinutesSeconds)];
     final pace = _avgPace();
     if (pace != null) tiles.add(_Tile('AVG PACE', pace.format(unit)));
+    // **Two elevation figures, named apart.** A bare "ELEVATION" was
+    // unambiguous while it was the only one; beside a high point it is not, and
+    // 167 m of gain over a 111 m maximum is a pair of numbers that has to say
+    // which is which. The in-run readout still says CLIMB, correctly: there is
+    // only ever one elevation figure mid-run and nothing for it to be confused
+    // with.
     if (summary.elevationGainMeters != null) {
       tiles.add(
-        _Tile('ELEVATION', '${summary.elevationGainMeters!.round()} m'),
+        _Tile('ELEVATION GAIN', '${summary.elevationGainMeters!.round()} m'),
+      );
+    }
+    if (summary.elevationMaxMeters != null) {
+      tiles.add(
+        _Tile('MAX ELEVATION', '${summary.elevationMaxMeters!.round()} m'),
       );
     }
     if (summary.steps != null) {

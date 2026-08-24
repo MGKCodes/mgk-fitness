@@ -153,8 +153,6 @@ the screens that show it.
       the toggle) rather than nowhere.
 - [x] **`backfill()` must not be fired into the void.** `unawaited` with no
       error handler means a throwing backfill is invisible.
-- [ ] **Recover the 23 Aug run** if it is on the device. It is the first real
-      run this app ever recorded and it should be in the log.
 - [x] **A test that fails the old way.** Record → finish → assert the run is in
       the log **with backup disabled and the network down**. That test would
       have caught this before the field did.
@@ -194,15 +192,76 @@ the screen disappearing.
 Strava's summary for the same run carried elevation gain (167 m), max elevation
 (111 m) and steps (8,468). Ours carried none of them.
 
-- [ ] **Elevation gain and max elevation.** Barometric where the device has it
-      — the recorder already reports climb as absent rather than guessing it
-      from GPS altitude, which is the right call and stays.
-- [ ] **Steps**, read from Health.
-- [ ] **Audit what else Health offers** that belongs on a run summary. Heart
-      rate is already read; cadence and energy are the obvious next two.
-- [ ] Each new metric needs a rule for its absence. A denied Health read is
+- [x] **Elevation gain and max elevation — built end to end, and permanently
+      empty.** Corrected 2026-08-24: this item said "the recorder already
+      reports climb". **There is no barometric source and never has been.**
+      `GeolocatorLocationSource._toRunPoint` writes `altitudeMeters: null`
+      unconditionally, and the `CMAltimeter` channel that several doc comments
+      referred to was never built — so `run_points.altitude_m` has been null for
+      every point of every run this app has ever recorded. The refusal to
+      substitute GPS altitude was real and is kept; the barometer behind it was
+      imaginary. Everything from the trace to the tile now exists and waits on
+      native code under `ios/` and `android/`, which is not this lane.
+      The CHANGELOG had been advertising the barometer as a shipped feature.
+- [x] **Steps**, read from Health. The one metric here that genuinely arrives.
+- [x] **Audit what else Health offers.** Corrected: this item said "heart rate
+      is already read". **It is not** — `HealthDataType.HEART_RATE` appears
+      nowhere in the app; `runs.avg_hr` is written only by the manual-entry form
+      and by a Supabase restore, so the `AVG HR` tile has only ever shown
+      hand-typed data. What the audit found is recorded in ADR-0024 and
+      summarised under *Deliberately not built* below.
+- [x] Each new metric needs a rule for its absence. A denied Health read is
       indistinguishable from no data, so every one of these renders as "not
-      recorded" rather than as zero or as an error.
+      recorded" rather than as zero or as an error. Health returning `0` steps
+      counts as absent too — that is a phone on a desk, not a runner who took no
+      steps.
+
+### Deliberately not built, and why
+
+- **Heart rate.** Buildable and stopped on purpose. HR only exists if the runner
+  wore a watch — and a runner with a watch also has a HealthKit workout for the
+  same run that the import path already dedupes against ours. Reading HR onto
+  our run *and* importing the watch's copy are two answers to one question and
+  need designing together. It also means pulling several hundred raw
+  special-category samples across a channel per run.
+- **Cadence.** Cannot be read: the `health` plugin exposes no cadence type. It
+  could be derived as steps ÷ moving minutes, one line now that steps exist —
+  but `runs.cadence` is also written by a restore from a watch's *measured*
+  cadence, and mixing a derivation into a measured column is a decision rather
+  than a chore.
+- **Active energy.** Readable, but `RunSummary.caloriesEst` is documented as a
+  derived estimate rather than a measurement, and iOS active energy for a
+  phone-only run is poor. Same double-count risk as HR; decide them together.
+- **`FLIGHTS_CLIMBED`** — the interesting one. The iPhone barometer *does* feed
+  HealthKit, and flights climbed is the only barometric signal reachable without
+  native code. But Apple's ~3 m per flight would turn "12 flights" into "36 m of
+  climb", which is exactly the plausible-wrong-number ADR-0024 exists to refuse.
+  Showable as flights; never as metres.
+
+### Still open after Phase 2
+
+- [ ] **A barometric source** — `CMAltimeter` on iOS, `Sensor.TYPE_PRESSURE` on
+      Android. Native, and the only thing standing between the elevation tiles
+      and real data. Note for whoever builds it: `CMAltimeter`'s *relative*
+      stream gives gain but is useless for a maximum, since it starts at zero
+      wherever you set off. Store gain and leave the maximum null unless
+      `CMAbsoluteAltitudeData` is wired.
+- [ ] **`NSHealthShareUsageDescription`** in `ios/Runner/Info.plist` says the app
+      "reads your workouts from Health". It now also reads steps, and that string
+      has to say so before submission. An App Store review item, not a nicety.
+- [ ] **`steps` and `elevation_max_m` are local-only.** The mirror enumerates its
+      columns and `run.runs` has neither, so a restore onto a new phone silently
+      drops them. Two lines here plus a Postgres migration in `supabase/` — a
+      `db/` lane change.
+- [ ] **Elevation renders in metres everywhere**, in an app whose rule 4 is
+      "store metric, convert at display". `mgk_units` has `Distance`, `Pace` and
+      `Mass` and no elevation type. Adding a local feet conversion on one screen
+      while the in-run readout kept metres would be the two-numbers-for-one-thing
+      bug this document complains about elsewhere, so it needs an `Elevation`
+      type in `packages/mgk_units`.
+- [ ] **Widening the Health request will re-prompt existing installs** for Steps.
+      Untested, and it sits awkwardly beside the onboarding doc's claim that
+      neither permission can be asked twice.
 
 ---
 
@@ -215,15 +274,15 @@ nothing.
 
 - [x] **Widgets, in the Apple sense** — square tiles carrying one fact each,
       filling the screen.
-- [ ] **Today's session** as its own tile, which **says so when there is
+- [x] **Today's session** as its own tile, which **says so when there is
       nothing today** rather than being absent. A rest day is information.
-- [ ] **The rest of the week** as a tile.
-- [ ] **A note from the coach**, distinct from the chat surface.
-- [ ] **Recent runs / PBs** as a tile.
-- [ ] **"TODAY" over "Threshold" reads as two headings and no sentence.** The
+- [x] **The rest of the week** as a tile.
+- [x] **A note from the coach**, distinct from the chat surface.
+- [x] **Recent runs / PBs** as a tile.
+- [x] **"TODAY" over "Threshold" reads as two headings and no sentence.** The
       card needs to say what the runner is doing today in words a person would
       use — the same fix as the naming item under Plan.
-- [ ] Home says **4.1 km** where Plan says **4 km** for the same Monday
+- [x] Home says **4.1 km** where Plan says **4 km** for the same Monday
       session — see the section below, which is where that fix belongs.
 
 ### Plan (`IMG_4700`)
@@ -246,10 +305,13 @@ nothing.
       card. It should show the full stat grid — lifetime distance, PBs, recent
       runs, per-run detail — **as empty placeholders**, so a new runner can see
       what the app is going to tell them once they run.
-- [ ] This is the counter-signal
+- [x] This is the counter-signal
       [ADR-0019](decisions/0019-onboarding-is-two-moments.md) names: a
       plan-shaped hole on a free screen. A profile that says only "No runs yet"
-      reads as broken rather than as new.
+      reads as broken rather than as new. Recorded as a consequence on that ADR,
+      with the general rule it leaves behind: a screen with no data states its
+      structure, and hiding a section is only right when it is about something
+      that may never exist at all.
 
 ---
 

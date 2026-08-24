@@ -267,6 +267,12 @@ class SupabaseRestore implements DataRestore {
     ),
     avgPaceSPerKm: Value((r['avg_pace_s_per_km'] as num?)?.toDouble()),
     elevationGainM: Value((r['elevation_gain_m'] as num?)?.toDouble()),
+    // No `elevation_max_m` and no `steps`, because `run.runs` has neither: both
+    // are local columns from schema version 8 and the Postgres side is a `db/`
+    // change this app cannot make (`apps/mgk_run/CLAUDE.md` — the schema is not
+    // here). So a run restored onto a new phone comes back without its high
+    // point and its step count, which read as absent rather than wrong. See
+    // `SupabaseRunBackup.pushRun` for the other half of the same seam.
     avgHr: Value((r['avg_hr'] as num?)?.toInt()),
     maxHr: Value((r['max_hr'] as num?)?.toInt()),
     cadence: Value((r['cadence'] as num?)?.toInt()),

@@ -33,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +74,15 @@ class AppDatabase extends _$AppDatabase {
         // written before this had no label to lose, and reads back as the kind
         // it always displayed as.
         await m.addColumn(planSessions, planSessions.label);
+      }
+      if (from < 8) {
+        // Steps and the route's high point, so a summary can say what Strava
+        // says. Nullable and additive, and deliberately not backfilled: a run
+        // recorded before this genuinely has no step count, and inventing one
+        // from distance and an assumed stride would be the app making up a
+        // number it is about to display as measured.
+        await m.addColumn(runs, runs.elevationMaxM);
+        await m.addColumn(runs, runs.steps);
       }
     },
   );
@@ -153,20 +162,53 @@ class AppDatabase extends _$AppDatabase {
   );
 
   /// Marks a run finished and writes its computed summary.
+  ///
+  /// **The elevation figures go down with the run**, from the same walk over
+  /// the same persisted trace the distance comes from. Climb was computed on
+  /// every fix for the in-run readout and then dropped on the floor, exactly
+  /// the way the splits were: a runner watched a climb figure tick up for an
+  /// hour and the summary afterwards had nowhere to read it from.
+  ///
+  /// Both are nullable and both are *usually* null, which is the designed-for
+  /// state rather than a gap — `climbMeters` and `maxElevationMeters` answer
+  /// null on a trace with no barometric altitude, and a null here renders as an
+  /// absent tile rather than as `0 m`.
   Future<void> finalizeRun({
     required String runId,
     required DateTime endedAt,
     required int durationS,
     required double distanceM,
     double? avgPaceSPerKm,
+    double? elevationGainM,
+    double? elevationMaxM,
   }) => (update(runs)..where((r) => r.id.equals(runId))).write(
     RunsCompanion(
       endedAt: Value(endedAt),
       durationS: Value(durationS),
       distanceM: Value(distanceM),
       avgPaceSPerKm: Value(avgPaceSPerKm),
+      elevationGainM: Value(elevationGainM),
+      elevationMaxM: Value(elevationMaxM),
     ),
   );
+
+  /// Writes what Health said about a finished run.
+  ///
+  /// **Separate from [finalizeRun], because it happens later and might not
+  /// happen at all.** The Health read is a platform round trip behind a
+  /// permission the runner may have declined; making it part of finalising
+  /// would put the run's own numbers behind somebody else's daemon. The run
+  /// commits first and this arrives after, or never.
+  ///
+  /// Only ever called with a value. There is no "clear the steps" here on
+  /// purpose: a read that came back with nothing must not overwrite a figure
+  /// already stored, because "Health told us nothing this time" and "this run
+  /// had no steps" are the same answer and only one of them is worth writing
+  /// down (CLAUDE.md rule 6).
+  Future<void> recordRunSteps({required String runId, required int steps}) =>
+      (update(runs)..where((r) => r.id.equals(runId))).write(
+        RunsCompanion(steps: Value(steps)),
+      );
 
   // --- Points (persisted as they arrive) -------------------------------------
 
