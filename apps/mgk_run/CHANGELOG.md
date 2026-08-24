@@ -79,6 +79,24 @@ been on a store, so everything Runio does is still listed here.
 
 ### Fixed
 
+- **A prescribed distance is a whole number, on every screen that shows one.**
+  Plan said "4 km" and Home said "4.1 km" for the same Tuesday, because nine
+  surfaces formatted the session by hand instead of going through the one
+  function that decides what a prescription reads like. Underneath, the
+  whole-kilometre grid the plan documented was never applied when a session was
+  generated, so the stored number really was 4,137 m. Sessions are now generated
+  onto the grid and every surface reads it the same way. Distances a runner
+  actually covered keep their decimal — a 10.18 km run is not a 10 km run.
+- **The training log is read from the phone, not from the backup.** A recorded
+  run appeared only if it had been successfully mirrored to Supabase, so a run
+  that was complete and correct on the device was shown nowhere if the runner
+  had declined backup, if the push failed, or if the read itself failed — and
+  none of the three said so. The first real 10 km run recorded with this app
+  vanished overnight that way. History now reads the on-device database, which
+  was the source of truth all along, and Supabase is the mirror ADR-0012 always
+  described (ADR-0023).
+- A backup that fails is written down and reported in Settings, next to the
+  switch that offered it, instead of being swallowed by a `catch` and forgotten.
 - The live pace no longer survives the fixes it was computed from: when the
   signal goes, it dashes instead of holding its last value beside a distance
   that has stopped growing.

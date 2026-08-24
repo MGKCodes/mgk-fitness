@@ -707,7 +707,23 @@ class _HomeShellState extends State<HomeShell> {
     // Then send anything this phone has that the backup does not: runs from
     // before the mirror existed, or from a spell with backup switched off.
     // After the restore, so a run that just came down is not pushed back up.
-    unawaited(widget.runEditor?.backfill() ?? Future<void>.value());
+    //
+    // Not awaited — it pushes every run the server is missing, and Home has no
+    // business waiting behind that — but not fired into the void either. This
+    // was a bare `unawaited(...)` with no error handler, which makes a throwing
+    // backfill an unhandled async error: nobody catches it, nothing records it,
+    // and the runner is simply never backed up (ADR-0023 counts this as one of
+    // the three ways a run used to go missing in silence).
+    //
+    // Nothing is reported from here because there is nothing left to report by
+    // the time it arrives: every push inside a backfill goes through
+    // `ReportedRunBackup`, so the failure is already written down where
+    // Settings will show it. This handler exists so the error ends somewhere
+    // deliberate rather than in the zone.
+    unawaited(
+      widget.runEditor?.backfill().catchError((Object _) => 0) ??
+          Future<int>.value(0),
+    );
     if (mounted) await _refreshHome();
   }
 

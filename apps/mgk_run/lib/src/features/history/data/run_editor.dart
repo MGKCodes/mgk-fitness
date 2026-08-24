@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/ids.dart';
 import '../domain/run_draft.dart';
 import '../domain/run_writer.dart';
 import 'run_backup.dart';
@@ -37,11 +38,13 @@ class RunEditor implements RunWriter {
   final DateTime Function() _now;
   final String Function() _newId;
 
-  /// Client-generated, matching the convention `runio.runs.id` is built on: the
+  /// Client-generated, matching the convention `run.runs.id` is built on: the
   /// device owns the identity so a run is the same row on the phone and in the
   /// backup, with no round trip to find out what it is called.
-  static String _defaultId() =>
-      'manual-${DateTime.now().microsecondsSinceEpoch}';
+  ///
+  /// The `manual-` prefix is kept for the runs a person typed, but the identity
+  /// is no longer the clock — see [newLocalId] for the collision that cost.
+  static String _defaultId() => newLocalId('manual-');
 
   /// Writes a new hand-entered run, returning its id.
   ///
@@ -106,6 +109,12 @@ class RunEditor implements RunWriter {
   /// Mirrors a run, swallowing any failure. A dropped push shows up as a run
   /// that is on the phone and not yet in the backup, which the next push of
   /// that run repairs — the upsert is keyed on the run's id.
+  ///
+  /// Swallowed for the caller, not for everybody: the backup this is handed is
+  /// wrapped in `ReportedRunBackup`, which writes the outcome down before the
+  /// exception reaches here. Adding a run must not fail because a server was
+  /// unreachable, and a backup that has been failing all month must not look
+  /// identical to one that is working.
   Future<void> _push(String runId) async {
     final backup = _backup;
     if (backup == null) return;
@@ -123,6 +132,13 @@ class RunEditor implements RunWriter {
   /// second route to the mirror is a second place to forget the consent gate.
   ///
   /// Returns 0 with no backup configured, which is the local-only build.
+  ///
+  /// **Never throws**, and callers may rely on that. A backfill runs at launch
+  /// over a connection nobody promised, from a caller that does not wait for
+  /// it, so a throw here would surface as an unhandled async error with nothing
+  /// to catch it — which is precisely how a failing backfill used to go
+  /// unnoticed. The failure is recorded by `ReportedRunBackup` instead, where
+  /// something can be done with it.
   @override
   Future<int> backfill() async {
     final backup = _backup;

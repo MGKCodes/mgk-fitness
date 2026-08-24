@@ -15,7 +15,9 @@ import '../../../dev/dev_coach_model_controls.dart';
 import '../../../dev/dev_persona_controls.dart';
 import '../data/backup_consent_factory.dart';
 import '../data/backup_eraser.dart';
+import '../data/backup_health_factory.dart';
 import '../domain/backup_consent.dart';
+import '../domain/backup_health.dart';
 import '../../health/domain/workout_source.dart';
 import 'backup_section.dart';
 import 'permissions_section.dart';
@@ -51,6 +53,7 @@ class SettingsScreen extends StatefulWidget {
     this.auth = const AuthRepository(),
     this.deleter = const AccountDeletionService(),
     this.consentStore,
+    this.backupHealthStore,
     this.eraser,
     this.health,
   });
@@ -86,6 +89,15 @@ class SettingsScreen extends StatefulWidget {
   /// Where the backup answer lives. Defaults to the platform store.
   final BackupConsentStore? consentStore;
 
+  /// Where the last push's outcome was written down. Defaults to the platform
+  /// store, which is the same file `main.dart` hands the backup — this screen
+  /// and the push path find it through the factory rather than by being wired
+  /// to each other, exactly as they already do for consent. Naming it
+  /// `backupHealthStore` rather than `healthStore` because [health] on this
+  /// screen is HealthKit, and two unrelated meanings of "health" one field
+  /// apart is a trap.
+  final BackupHealthStore? backupHealthStore;
+
   /// Removes what is already stored when consent is withdrawn. Null skips the
   /// erase, which is what the preview harness wants.
   final BackupEraser? eraser;
@@ -108,15 +120,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   BackupConsent _consent = BackupConsent.unknown;
   bool _consentBusy = false;
 
+  late final BackupHealthStore _backupHealthStore =
+      widget.backupHealthStore ?? createBackupHealthStore();
+  BackupHealth _backupHealth = const BackupHealth();
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadConsent());
+    unawaited(_loadBackupHealth());
   }
 
   Future<void> _loadConsent() async {
     final value = await _consentStore.read();
     if (mounted) setState(() => _consent = value);
+  }
+
+  /// Read once on open rather than watched. The backup writes this file from
+  /// the push path, which does not run while somebody is sitting on Settings,
+  /// so there is nothing to keep up with.
+  Future<void> _loadBackupHealth() async {
+    final value = await _backupHealthStore.read();
+    if (mounted) setState(() => _backupHealth = value);
   }
 
   /// Granting starts the mirror. Withdrawing stops it AND removes what is
@@ -449,6 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               index: 4,
               child: BackupSection(
                 consent: _consent,
+                health: _backupHealth,
                 busy: _consentBusy,
                 onChanged: _setConsent,
               ),

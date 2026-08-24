@@ -34,3 +34,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0020](0020-codemagic-is-the-build-path.md) | Codemagic is the build and submit path | Accepted |
 | [0021](0021-android-is-a-target.md) | Android is a target, and recording must survive Doze | Accepted |
 | [0022](0022-the-in-run-map-is-north-up.md) | The in-run map is north-up | Accepted |
+| [0023](0023-the-log-is-read-from-the-phone.md) | The log is read from the phone | Accepted |

@@ -5,7 +5,7 @@ import '../domain/training_plan.dart';
 
 /// Pure JSON ⇄ domain mapping for the coach `skeleton` and `week` surfaces —
 /// the request context sent up, and the model's proposal parsed back. Kept free
-/// of Supabase so it is testable without a network (the `run_mappers` pattern).
+/// of Supabase so it is testable without a network (the same split as `coach_mappers`).
 ///
 /// Response parsing is **tolerant**: anything malformed returns `null`, which
 /// the orchestrator treats as a failed attempt (and ultimately falls back to

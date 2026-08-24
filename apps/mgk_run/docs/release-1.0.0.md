@@ -70,6 +70,42 @@ So there are three independent ways for a recorded run to become invisible, and
 | Backup consent off | `pushRun` returns false | "No runs yet" |
 | Offline / RLS / auth error at finish | `catch (_)` swallows it | "No runs yet" |
 | `backfill()` throws at launch | `unawaited`, unhandled | "No runs yet" |
+| **A typo in a schema name** | **PostgREST `PGRST106`, caught and dropped** | **"No runs yet"** |
+
+### The fourth one is the one that fired — 2026-08-24
+
+Found while implementing the fix, and it is not a race or a consent path. It
+fired on **every launch, for every runner, unconditionally**:
+
+```dart
+// supabase_run_repository.dart, now deleted
+line 25:  .schema('runSchema')                     // fetchRuns      — BROKEN
+line 36:  final runSchema = _client.schema('run');  // fetchRunDetail — correct
+```
+
+A find-replace during the move into the monorepo renamed the *local variable*
+at line 36 correctly and corrupted the *string literal* eleven lines above it.
+`fetchRuns` — the single function behind the entire log — asked PostgREST for a
+schema that does not exist. PostgREST answered `PGRST106`, and
+`home_shell.dart:752` reads history inside a bare `catch (_)`, so the error
+became an empty list.
+
+**The 23 Aug run was never lost.** It was recorded, finalized, and very possibly
+mirrored to Supabase exactly as designed. The log simply could not load, and had
+not been able to since the rename. That retires the open question about whether
+consent was on — the answer does not matter, because no setting would have shown
+that run.
+
+Two things follow, and the second is the reason this document leads with
+architecture rather than with the typo:
+
+- **A one-word typo caused total, silent, permanent data invisibility.** That is
+  only possible because the log had a single remote read path with no local
+  fallback and a swallowing catch around it. Fix the typo alone and the same
+  class of bug returns with the next rename.
+- **The bare `catch (_)` is the real defect.** It converted a loud, specific,
+  immediately-diagnosable backend error into the app's own empty state. An error
+  that renders as "you have not done anything yet" is worse than a crash.
 
 This contradicts
 [ADR-0004](decisions/0004-offline-first-local-source-of-truth.md) directly. The

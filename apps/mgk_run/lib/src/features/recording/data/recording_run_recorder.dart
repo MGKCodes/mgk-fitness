@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 
 import '../../../core/database/app_database.dart';
+import '../../../core/ids.dart';
 import '../../history/data/run_backup.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
@@ -56,6 +57,15 @@ class RecordingRunRecorder implements RunRecorder {
 
   /// Runs [push] only when there is a backup, and never lets it fail the
   /// caller: the run has already committed locally.
+  ///
+  /// The catch is deliberate and always was, but for a while it was the *only*
+  /// thing that happened to a failed push, which is how a backup that had been
+  /// broken for weeks could look exactly like one that was working. Finishing a
+  /// run must not fail because a server was unreachable; it must also not be
+  /// the last anybody hears of it. The reporting is done by the wrapper the
+  /// backup is built with (`ReportedRunBackup` in `main.dart`) rather than
+  /// here, so the recorder keeps knowing nothing about backups beyond this
+  /// seam — and so the editor and the backfill get it too.
   Future<void> _backup(Future<void> Function(RunBackup) push) async {
     final backup = _runBackup;
     if (backup == null) return;
@@ -63,7 +73,8 @@ class RecordingRunRecorder implements RunRecorder {
       await push(backup);
     } catch (_) {
       // Deliberate — a lost push is a run on the phone and not yet in the
-      // backup, which the next push repairs.
+      // backup, which the next push repairs. Recorded on the way past; see
+      // above.
     }
   }
 
@@ -378,9 +389,14 @@ class RecordingRunRecorder implements RunRecorder {
       distanceM: distanceM,
       avgPaceSPerKm: avgPace,
     );
-    // The run is safe on the phone at this point (rule 1). Mirroring it is
-    // what makes it appear in the log at all, because History reads Supabase —
-    // before this existed, a recorded run was written here and seen nowhere.
+    // The run is safe on the phone at this point, and that is now the whole of
+    // what "safe" requires (rule 1): the log is read from Drift, so the run is
+    // in it the moment the line above returns. Mirroring is a mirror.
+    //
+    // It used to be more than that — the log was read from Supabase, so this
+    // push was what made a run appear at all, and a runner who had declined
+    // backup finished a 10 km run and was shown "No runs yet". ADR-0023 has
+    // the argument; the code that changed is one line in `main.dart`.
     await _backup((backup) async {
       await backup.pushRun(runId);
       await backup.pushTrace(runId);
@@ -413,4 +429,10 @@ class RecordingRunRecorder implements RunRecorder {
   );
 }
 
-String _defaultId() => DateTime.now().microsecondsSinceEpoch.toString();
+/// A recorded run's identity. Not the clock — see [newLocalId].
+///
+/// Starting two runs inside one microsecond is not a thing a person does, so
+/// this generator was the safer of the two that shared the bug. It is fixed
+/// anyway: "the caller happens not to race" is a property of today's callers,
+/// and the recorder already writes from a stream.
+String _defaultId() => newLocalId();

@@ -4,7 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/supabase/paged_select.dart';
 import 'run_backup.dart';
 
-/// Mirrors runs to the shared Supabase platform (the `runSchema` schema) so they
+/// Mirrors runs to the shared Supabase platform (the `run` schema) so they
 /// survive losing the phone.
 ///
 /// This closes a hole rather than adding a feature. Plans, coach memory,
@@ -12,10 +12,18 @@ import 'run_backup.dart';
 /// from Supabase — so a recorded run was written to Drift, pushed nowhere, and
 /// never appeared in the log. The only runs anyone saw were seeded ones.
 ///
+/// **That second half is no longer true, and the difference matters here.** The
+/// log is read from Drift now (ADR-0023), so this is a mirror and only a mirror:
+/// nothing a runner can see on their own phone depends on a push landing. It
+/// was carrying two jobs — surviving a lost phone, and making runs visible at
+/// all — and it is left with the one it was built for.
+///
 /// A **backup, not the source of truth** (CLAUDE.md rule 1), and the same
 /// contract as [SupabasePlanBackup]: push-only, never on a read path, called
 /// after the local write has already committed, and every failure is a no-op
-/// for the caller. A run that fails to push is still a run on the phone.
+/// for the caller. A run that fails to push is still a run on the phone — and
+/// the failure is recorded by `ReportedRunBackup` on the way past, because a
+/// no-op for the caller should not mean invisible to everybody.
 ///
 /// RLS scopes every table to `auth.uid()`, so nothing here filters by user —
 /// but rows carry `user_id` because the policies check it on write.

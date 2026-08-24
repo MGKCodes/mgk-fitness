@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import '../domain/backup_consent.dart';
+import '../domain/backup_health.dart';
 
 /// The backup switch, and the only place a runner is asked for the consent that
 /// everything leaving the device depends on.
@@ -11,15 +12,26 @@ import '../domain/backup_consent.dart';
 /// product setting they are being sold. Under UK GDPR the first is what consent
 /// to processing special-category data has to look like: specific, informed,
 /// and as easy to withdraw as it was to give.
+///
+/// It is also where the backup answers for itself. A switch that says "On" and
+/// means "on, and silently failing since the 3rd" is making a promise the app
+/// is not keeping, and this is the one screen where a runner has come to ask
+/// the question.
 class BackupSection extends StatelessWidget {
   const BackupSection({
     super.key,
     required this.consent,
     required this.onChanged,
+    this.health = const BackupHealth(),
     this.busy = false,
   });
 
   final BackupConsent consent;
+
+  /// What the last push did. Shown only while backup is on: a runner who
+  /// declined has no backup to report on, and telling them one failed would be
+  /// reporting a promise nobody made.
+  final BackupHealth health;
 
   /// Called with the new answer. Granting starts the mirror; withdrawing stops
   /// it and offers to remove what is already stored.
@@ -82,8 +94,46 @@ class BackupSection extends StatelessWidget {
             ),
           ),
         ),
+        if (consent.allowsBackup && _lastAttempt != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              0,
+              AppSpacing.xl,
+              AppSpacing.sm,
+            ),
+            child: Text(
+              _lastAttempt!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                // Tinted only when something is wrong, which is the sanctioned
+                // use of colour (ADR-0009): a destructive or failed state. A
+                // successful backup is a fact, not an event.
+                color: health.isFailing
+                    ? AppColors.danger
+                    : AppColors.textTertiary,
+                height: 1.4,
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  /// What to say about the last push, or null when there is nothing to say.
+  ///
+  /// **The failure line is deliberately calm.** Nothing was lost — the run is
+  /// on the phone and the log reads the phone (ADR-0023) — and there is nothing
+  /// for the runner to do except be online at some point, which the next launch
+  /// takes care of. It is here so that a backup which has stopped working is
+  /// discoverable, not so that a bad afternoon of signal reads as a crisis.
+  String? get _lastAttempt {
+    if (health.isFailing) {
+      return 'The last backup did not go through. Your runs are safe on this '
+          'phone, and Runio will try again next time you open it.';
+    }
+    final at = health.lastSucceededAt;
+    if (at == null) return null;
+    return 'Last backed up ${_shortDate(at)}.';
   }
 
   String get _subtitle => switch (consent) {
@@ -97,3 +147,23 @@ class BackupSection extends StatelessWidget {
       'Off. This phone is the only copy — an uninstall loses everything.',
   };
 }
+
+/// Abbreviated, matching the log's own dates (`RunTile`) rather than the full
+/// month names the account block above uses — this is a supporting line, not a
+/// heading.
+const List<String> _months = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+String _shortDate(DateTime at) => '${at.day} ${_months[at.month - 1]}';
