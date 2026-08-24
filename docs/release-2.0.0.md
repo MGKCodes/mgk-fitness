@@ -1,7 +1,7 @@
-# Release 2.0.0 — Liftio, rewritten
+# Release 2.0.0 — Lift, rewritten
 
-The plan to put `apps/mgk_lift` on the App Store and Google Play as **Liftio
-2.0.0**, replacing the shipped Expo build at 1.4.0.
+The plan to put `apps/mgk_lift` on the App Store and Google Play as
+**MGKFitness: Lift** 2.0.0, replacing the shipped Expo build at 1.4.0.
 
 Written 2026-08-17. Tick items as they land; when something is settled
 differently from how it is written here, change the item and say why — the
@@ -11,6 +11,13 @@ reasoning is worth more than the checkbox, which is the lesson
 ---
 
 ## The decisions this plan rests on
+
+**The name Liftio is retired, but the app record is not.** Since this plan was
+written, Liftio and Runio were dropped as user-facing names (2026-08-21) — the
+app ships as **MGKFitness: Lift**, labelled `Lift` on the home screen, with
+`MGKFitness` a placeholder for a consumer name that does not exist yet. See
+[naming.md](naming.md). Everywhere below, "Liftio" now means the shipped 1.4.0
+Expo app and the store record it left behind, never the thing being released.
 
 **It replaces Liftio rather than launching beside it.** The App Store listing
 (`6759969740`) and its ratings stay; the bundle id `com.mgkcodes.liftio` stays;
@@ -57,8 +64,15 @@ Blocks everything else: signing, store records and product ids all key off these
       and the comment explaining why it was 0.1.0 — it says the app claims a
       real number "when it can replace what is shipped today", and this plan is
       that. Build numbers must strictly increase within the 2.0.0 train.
-- [x] Display names: `CFBundleDisplayName` is `Mgk Lift` and `android:label` is
-      `mgk_lift`. Both are dev placeholders. Both become **Liftio**.
+- [x] Display names: `CFBundleDisplayName` and `android:label` were the dev
+      placeholders `Mgk Lift` and `mgk_lift`. This plan said both become
+      **Liftio**; they became **`Lift`** instead, because the name was retired
+      before the item landed. The store listing carries the full
+      `MGKFitness: Lift` and the phone carries only `Lift` — iOS truncates an
+      icon label at about twelve characters, so both apps in the suite would
+      have rendered as `MGKFitness:…` and become indistinguishable side by
+      side. `kAppName` in `lib/src/core/brand.dart` must stay identical to
+      both, since copy sends people to *Settings › Lift*.
 - [x] **Record the bundle-id decision** —
       [ADR-0001](../apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md),
       the first in Lift's own `docs/decisions/`. It turned out to **reverse** a
@@ -265,7 +279,10 @@ app cannot leave broken.
 - [ ] Screenshots for both stores at current required sizes. Liftio's
       `v1.4.0 app screenshots` folder shows the previous set.
 - [ ] App Store metadata: description, keywords, what's new for 2.0.0. Say
-      plainly that this is a rewrite.
+      plainly that this is a rewrite. The listing name changes from `Liftio` to
+      `MGKFitness: Lift` in the same submission — existing users see the icon
+      label change, so the release notes should say so rather than let it look
+      like a different app installed itself.
 - [ ] Privacy nutrition labels (iOS) consistent with the Data safety form
       (Android) and with what the app actually sends.
 - [ ] Submit iOS. Submit Android internal → production.
