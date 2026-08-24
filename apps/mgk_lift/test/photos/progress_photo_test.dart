@@ -17,10 +17,7 @@ void main() {
       // A photo and a session on the same Sunday evening must land in the same
       // week, or Profile tells two different stories about one day.
       final evening = DateTime(2026, 8, 9, 21, 30);
-      expect(
-        ProgressPhoto.weekOf(evening),
-        TrainingStats.startOfWeek(evening),
-      );
+      expect(ProgressPhoto.weekOf(evening), TrainingStats.startOfWeek(evening));
     });
   });
 

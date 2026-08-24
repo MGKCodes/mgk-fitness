@@ -19,16 +19,18 @@ void main() {
     DateTime? endedAt,
     DateTime? syncedAt,
     DateTime? updatedAt,
-  }) => db.into(db.workouts).insert(
-    WorkoutsCompanion.insert(
-      id: id,
-      name: 'Session',
-      startedAt: DateTime(2026, 8, 3),
-      endedAt: Value(endedAt),
-      syncedAt: Value(syncedAt),
-      updatedAt: Value(updatedAt ?? DateTime(2026, 8, 3, 12)),
-    ),
-  );
+  }) => db
+      .into(db.workouts)
+      .insert(
+        WorkoutsCompanion.insert(
+          id: id,
+          name: 'Session',
+          startedAt: DateTime(2026, 8, 3),
+          endedAt: Value(endedAt),
+          syncedAt: Value(syncedAt),
+          updatedAt: Value(updatedAt ?? DateTime(2026, 8, 3, 12)),
+        ),
+      );
 
   group('what needs uploading', () {
     test('a finished session that has never been uploaded', () async {

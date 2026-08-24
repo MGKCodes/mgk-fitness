@@ -13,7 +13,9 @@ Future<void> pump(
   tester.view.devicePixelRatio = 2.625;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MaterialApp(home: SignInScreen(auth: auth, pendingWorkouts: pending)),
+    MaterialApp(
+      home: SignInScreen(auth: auth, pendingWorkouts: pending),
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -113,7 +115,10 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await tester.pumpAndSettle();
 
-      expect(find.text('That email and password do not match.'), findsOneWidget);
+      expect(
+        find.text('That email and password do not match.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('needing confirmation reads as a next step, not an error', (

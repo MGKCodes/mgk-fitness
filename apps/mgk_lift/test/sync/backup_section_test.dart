@@ -86,9 +86,7 @@ void main() {
           BackupSection(
             pending: SyncPending(
               workouts: 0,
-              lastSyncedAt: DateTime.now().subtract(
-                const Duration(minutes: 3),
-              ),
+              lastSyncedAt: DateTime.now().subtract(const Duration(minutes: 3)),
             ),
             isSignedIn: true,
           ),
@@ -157,9 +155,7 @@ void main() {
         ),
       );
 
-      final button = tester.widget<OutlinedButton>(
-        find.byType(OutlinedButton),
-      );
+      final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
       expect(button.onPressed, isNull);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
