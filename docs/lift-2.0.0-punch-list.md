@@ -155,21 +155,94 @@ on the workouts table and in `supabase_sync.dart`, and the remote constraint
 `workouts_template_has_no_date` already enforces that a template carries no
 `started_at`. **Nothing in the app writes `isTemplate = true` today.**
 
-- [ ] **Save a workout to the library.** From a finished session, from a
+- [x] **Save a workout to the library.** From a finished session, from a
       coach-generated one, and from scratch. This is the write path nothing
       currently exercises.
-- [ ] **The library surface.** Your saved workouts, and starting a session from
+
+      **Landed as one write method, not three.** `WorkoutLibrary.save` takes a
+      name and an ordered list of movement names, because all three ways in
+      reduce to exactly that — the session screen reads them off the session,
+      the premade browser reads them off the premade, the builder collects them
+      one at a time. Three methods would have been three chances to write a
+      half-formed row.
+
+      Two entry points on the active session, deliberately: a footer button
+      that works at any point (which is how a *coach-generated* session gets
+      kept without being performed first), and an offer at Finish (which is the
+      only moment the app knows a session actually worked). The Finish offer is
+      suppressed for a session that came from the library or was already saved.
+- [x] **The library surface.** Your saved workouts, and starting a session from
       one. Replaces `Use a template` in the empty state.
-- [ ] **Adding a premade to your library.** Browse the fifteen and the eight
+- [x] **Adding a premade to your library.** Browse the fifteen and the eight
       splits, add to your own list. Liftio's `WorkoutLibrarySlideUp` is the
       reference. Keeps the empty-state problem `workout_template.dart` was
       written to solve, without making the premades a start path.
-- [ ] **Decide the back-reference.** Liftio had both `template_id` and
+
+      **All fifteen and all eight, so `offered` now orders rather than
+      filters.** The flag existed to keep the *picker* to six, because starting
+      a session is a decision made standing up in a hurry. Curating a library is
+      the opposite kind of decision, so hiding nine of the fifteen there would
+      be withholding for no reason the app could give. The six still lead the
+      list. See `WorkoutTemplate.offered`.
+- [x] **Decide the back-reference.** Liftio had both `template_id` and
       `premade_id`; the Flutter schema has only `templateId`. Either add the
       second column or accept one field doing both jobs — but decide it before
       the write path lands, because it is a migration afterwards.
-- [ ] **Retire `_useTemplate`.** The straight-to-session shortcut goes once the
+
+      **Settled: add the column.** `premadeId` on `Workouts`, schemaVersion
+      4 → 5, one `addColumn` and no backfill. Three reasons, in order of
+      weight:
+
+      1. **It needs no Supabase migration and never will.**
+         `lift.workouts.premade_id` has existed remotely since the Liftio
+         baseline (`20260806120000_baseline.sql:148`). The fear that made this
+         a decide-first item was a remote migration, and there isn't one.
+      2. **The two fields answer different questions about different rows** —
+         `templateId` on a *session* means "the saved workout this came from",
+         `premadeId` on a *template* means "which of the fifteen this was added
+         from". One column doing both would be disambiguated only by
+         `isTemplate`, so every reader would have to check a flag before it
+         could know what the string it was holding meant.
+      3. **Now is strictly cheaper than later**, which is the item's own
+         argument: after the write path ships, the same migration also needs a
+         backfill guessing which meaning each existing value carried.
+- [x] **Retire `_useTemplate`.** The straight-to-session shortcut goes once the
       library replaces it. Do not leave both.
+
+      Gone, and `template_picker_sheet.dart` with it — it had exactly one
+      caller. Its split-tile visual survives in `premade_library_sheet.dart`,
+      where a tap *adds* rather than starts.
+
+### What the library work turned up
+
+Two things worth carrying, found while building the above.
+
+- **A template row is indistinguishable from an interrupted session on
+  `endedAt` alone.** Both are workout rows that never ended.
+  `DriftSessionRecorder.current()` checked only `endedAt` and `deletedAt`, so
+  the moment the library had anything in it, "Resume session" would have
+  offered the lifter one of their own routines — and finishing it would have
+  filed a workout they never did. Fixed with an explicit `isTemplate` clause;
+  `SyncQueue.dirtyWorkouts` gained the same clause for the same reason, rather
+  than relying on the `endedAt` rule to exclude templates by coincidence.
+
+- **The pull could not read a template, and there are 47 of them up there.**
+  `supabase_sync._applyRemote` did `raw['started_at'] as String`, and
+  `workouts_template_has_no_date` requires a template's `started_at` to be
+  null — `20260806150000_lift_schema_modernise.sql` records that `date = 0`
+  held for "exactly the 47 templates". The cast would have thrown and taken the
+  whole pull with it. It never fired only because nothing in this app had ever
+  asked for a template. Now guarded, and a remote template maps to a local one,
+  so an old Liftio library comes back on a new phone.
+
+**Templates go down but not up, for now, and that is a stated limit rather than
+an oversight.** The push writes `started_at` unconditionally, which the remote
+constraint forbids for a template — and `_push` walks the dirty rows in a loop,
+so one server-rejected row would block every real session queued behind it.
+Lifting this is a branch in the upsert, not a migration (the nullable
+`started_at` and `premade_id` are both already remote), but it is a change only
+the live server can prove, so it is not made blind. **The limit in plain words:
+a library built on this phone does not survive losing this phone.**
 
 ## Phase C — Profile
 
@@ -282,8 +355,11 @@ rather than deleted, because the reasoning is the part worth having later.
 ## Still open
 
 - **Nothing blocks Phases A or C.** Both can start now.
-- Phase B's library work needs the back-reference column decided before the
-  write path lands.
+- ~~Phase B's library work needs the back-reference column decided before the
+  write path lands.~~ Settled and landed: `premadeId` is a second column, and
+  the write path went in behind it. What remains open is **uploading a
+  template**, which wants a live-server change rather than a decision — see
+  *What the library work turned up* above.
 - Phase D is blocked on the run app, by choice.
 
 ## Not in this plan
