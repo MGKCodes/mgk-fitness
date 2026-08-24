@@ -104,16 +104,16 @@ class DriftSessionRecorder implements SessionRecorder {
     double? distanceM,
   }) async {
     final session = await _requireCurrent();
-    await (_db.update(_db.exerciseSets)..where((s) => s.id.equals(setId))).write(
+    await (_db.update(
+      _db.exerciseSets,
+    )..where((s) => s.id.equals(setId))).write(
       ExerciseSetsCompanion(
         reps: reps == null ? const Value.absent() : Value(reps),
         weightKg: weightKg == null ? const Value.absent() : Value(weightKg),
         isCompleted: isCompleted == null
             ? const Value.absent()
             : Value(isCompleted),
-        setType: setType == null
-            ? const Value.absent()
-            : Value(setType.stored),
+        setType: setType == null ? const Value.absent() : Value(setType.stored),
         durationS: durationS == null ? const Value.absent() : Value(durationS),
         distanceM: distanceM == null ? const Value.absent() : Value(distanceM),
       ),
@@ -133,7 +133,9 @@ class DriftSessionRecorder implements SessionRecorder {
     final session = await _requireCurrent();
     // Sets go with it via ON DELETE CASCADE, which is enabled in
     // AppDatabase.migration — without that pragma these would be orphaned.
-    await (_db.delete(_db.exercises)..where((e) => e.id.equals(exerciseId))).go();
+    await (_db.delete(
+      _db.exercises,
+    )..where((e) => e.id.equals(exerciseId))).go();
     return _touch(session.id);
   }
 
@@ -141,7 +143,9 @@ class DriftSessionRecorder implements SessionRecorder {
   Future<Session> finish({DateTime? at}) async {
     final session = await _requireCurrent();
     final ended = at ?? DateTime.now();
-    await (_db.update(_db.workouts)..where((w) => w.id.equals(session.id))).write(
+    await (_db.update(
+      _db.workouts,
+    )..where((w) => w.id.equals(session.id))).write(
       WorkoutsCompanion(
         endedAt: Value(ended),
         durationS: Value(ended.difference(session.startedAt).inSeconds.abs()),
@@ -161,7 +165,9 @@ class DriftSessionRecorder implements SessionRecorder {
     // Hard delete: an abandoned session is not training that happened, so it
     // must not sync or appear in a log. Deleting a *finished* session is a soft
     // delete, which is a different operation entirely.
-    await (_db.delete(_db.workouts)..where((w) => w.id.equals(session.id))).go();
+    await (_db.delete(
+      _db.workouts,
+    )..where((w) => w.id.equals(session.id))).go();
   }
 
   Future<Session> _requireCurrent() async {

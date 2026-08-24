@@ -93,7 +93,8 @@ class SupabaseAuth implements AuthService {
   /// falls through to the honest catch-all rather than being shown raw.
   static AuthFailure _map(sb.AuthException e, {required bool signingUp}) {
     final m = e.message.toLowerCase();
-    if (m.contains('already registered') || m.contains('already been registered')) {
+    if (m.contains('already registered') ||
+        m.contains('already been registered')) {
       return AuthFailure.emailTaken;
     }
     if (m.contains('invalid') && m.contains('email')) {

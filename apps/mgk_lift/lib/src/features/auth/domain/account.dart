@@ -41,8 +41,7 @@ enum AuthFailure {
     emailTaken => 'There is already an account with that email.',
     invalidEmail => 'That does not look like an email address.',
     weakPassword => 'Use at least 8 characters.',
-    needsConfirmation =>
-      'Check your email and follow the link, then sign in.',
+    needsConfirmation => 'Check your email and follow the link, then sign in.',
     unavailable =>
       'Could not reach the server. Your training is safe on this device.',
   };

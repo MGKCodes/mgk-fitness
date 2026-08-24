@@ -48,9 +48,7 @@ class BackupSection extends StatelessWidget {
             Row(
               children: <Widget>[
                 Icon(
-                  isSignedIn
-                      ? Icons.cloud_outlined
-                      : Icons.cloud_off_outlined,
+                  isSignedIn ? Icons.cloud_outlined : Icons.cloud_off_outlined,
                   size: 20,
                   color: AppColors.textSecondary,
                 ),

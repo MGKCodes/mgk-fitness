@@ -306,11 +306,13 @@ const List<Exercise> exerciseCatalogue = <Exercise>[
     secondaryMuscles: <String>[],
   ),
   Exercise(
-    name: 'Biceps Curl With Overhead Extension Using Dumbbells On Stability Ball',
+    name:
+        'Biceps Curl With Overhead Extension Using Dumbbells On Stability Ball',
     category: 'Dumbbell',
     muscleGroup: 'Biceps',
     equipment: 'Dumbbell',
-    imageKey: 'biceps-curl-with-overhead-extension-using-dumbbells-on-stability-ball',
+    imageKey:
+        'biceps-curl-with-overhead-extension-using-dumbbells-on-stability-ball',
     secondaryMuscles: <String>['Triceps'],
   ),
   Exercise(

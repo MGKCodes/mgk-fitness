@@ -185,8 +185,7 @@ class ExerciseSets extends Table {
   /// them inflates the one number people actually care about — three empty-bar
   /// sets before a heavy single would read as a bigger session than the single.
   /// Defaults to `working`, so a set is only ever discounted deliberately.
-  TextColumn get setType =>
-      text().withDefault(const Constant('working'))();
+  TextColumn get setType => text().withDefault(const Constant('working'))();
 
   /// For cardio movements only.
   IntColumn get durationS => integer().nullable()();

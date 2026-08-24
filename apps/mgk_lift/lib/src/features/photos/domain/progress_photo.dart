@@ -21,10 +21,8 @@ enum Pose {
 
   /// Unknown values read as [front] rather than throwing. A photo with a pose
   /// this build does not recognise is still the lifter's photo.
-  static Pose fromStored(String? value) => values.firstWhere(
-    (p) => p.stored == value,
-    orElse: () => Pose.front,
-  );
+  static Pose fromStored(String? value) =>
+      values.firstWhere((p) => p.stored == value, orElse: () => Pose.front);
 
   /// What a new account tracks. Two, not four: the front and back cover most of
   /// what changes visibly, and asking for four every week is how a weekly habit

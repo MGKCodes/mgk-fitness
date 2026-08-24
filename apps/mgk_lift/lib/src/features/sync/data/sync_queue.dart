@@ -43,8 +43,9 @@ class SyncQueue {
   /// Marks a workout as uploaded **without touching `updatedAt`**, which would
   /// immediately make it dirty again — a sync that never converges.
   Future<void> markSynced(String id, DateTime at) =>
-      (_db.update(_db.workouts)..where((w) => w.id.equals(id)))
-          .write(WorkoutsCompanion(syncedAt: Value(at)));
+      (_db.update(_db.workouts)..where((w) => w.id.equals(id))).write(
+        WorkoutsCompanion(syncedAt: Value(at)),
+      );
 
   Future<DateTime?> lastPull() async {
     final row = await (_db.select(

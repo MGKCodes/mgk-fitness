@@ -93,8 +93,7 @@ class SessionExercise {
   /// nothing left to do on it.
   ///
   /// A movement with no sets is **not** complete: it has not been started.
-  bool get isComplete =>
-      sets.isNotEmpty && sets.every((s) => s.isCompleted);
+  bool get isComplete => sets.isNotEmpty && sets.every((s) => s.isCompleted);
 
   bool get isCardio => cardioMode != null;
 

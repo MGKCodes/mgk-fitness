@@ -109,10 +109,9 @@ class SupabaseSync implements BackupService {
       // what makes a locally removed set actually disappear from the server.
       await _lift.from('exercises').delete().eq('workout_id', workout.id);
 
-      final exercises =
-          await (_db.select(_db.exercises)
-                ..where((e) => e.workoutId.equals(workout.id)))
-              .get();
+      final exercises = await (_db.select(
+        _db.exercises,
+      )..where((e) => e.workoutId.equals(workout.id))).get();
       if (exercises.isEmpty) continue;
 
       await _lift.from('exercises').insert(<Map<String, Object?>>[
@@ -128,11 +127,9 @@ class SupabaseSync implements BackupService {
           },
       ]);
 
-      final sets =
-          await (_db.select(_db.exerciseSets)..where(
-                (s) => s.exerciseId.isIn(exercises.map((e) => e.id)),
-              ))
-              .get();
+      final sets = await (_db.select(
+        _db.exerciseSets,
+      )..where((s) => s.exerciseId.isIn(exercises.map((e) => e.id)))).get();
       if (sets.isNotEmpty) {
         await _lift.from('sets').insert(<Map<String, Object?>>[
           for (final s in sets)
@@ -203,8 +200,9 @@ class SupabaseSync implements BackupService {
     await _db.transaction(() async {
       // Children first, and by delete-then-insert for the same reason the push
       // does it: nothing on the remote children says which of them went away.
-      await (_db.delete(_db.exercises)..where((e) => e.workoutId.equals(id)))
-          .go();
+      await (_db.delete(
+        _db.exercises,
+      )..where((e) => e.workoutId.equals(id))).go();
 
       final started = DateTime.parse(raw['started_at'] as String).toLocal();
       final durationS = (raw['duration_s'] as num?)?.toInt() ?? 0;
@@ -231,38 +229,44 @@ class SupabaseSync implements BackupService {
             ),
           );
 
-      for (final e in (raw['exercises'] as List<dynamic>? ?? <dynamic>[])
-          .cast<Map<String, dynamic>>()) {
-        await _db.into(_db.exercises).insertOnConflictUpdate(
-          ExerciseRow(
-            id: e['id'] as String,
-            workoutId: id,
-            name: e['name'] as String? ?? '',
-            orderIndex: (e['order_index'] as num?)?.toInt() ?? 0,
-            notes: e['notes'] as String?,
-            cardioMode: e['cardio_mode'] as String?,
-            createdAt: _parse(e['created_at']) ?? now,
-          ),
-        );
+      for (final e
+          in (raw['exercises'] as List<dynamic>? ?? <dynamic>[])
+              .cast<Map<String, dynamic>>()) {
+        await _db
+            .into(_db.exercises)
+            .insertOnConflictUpdate(
+              ExerciseRow(
+                id: e['id'] as String,
+                workoutId: id,
+                name: e['name'] as String? ?? '',
+                orderIndex: (e['order_index'] as num?)?.toInt() ?? 0,
+                notes: e['notes'] as String?,
+                cardioMode: e['cardio_mode'] as String?,
+                createdAt: _parse(e['created_at']) ?? now,
+              ),
+            );
 
-        for (final s in (e['sets'] as List<dynamic>? ?? <dynamic>[])
-            .cast<Map<String, dynamic>>()) {
-          await _db.into(_db.exerciseSets).insertOnConflictUpdate(
-            SetRow(
-              id: s['id'] as String,
-              exerciseId: e['id'] as String,
-              setNumber: (s['set_number'] as num?)?.toInt() ?? 1,
-              reps: (s['reps'] as num?)?.toInt() ?? 0,
-              weightKg: (s['weight_kg'] as num?)?.toDouble() ?? 0,
-              isCompleted: s['is_completed'] as bool? ?? false,
-              // Anything unrecognised reads as a working set, so a lifter's
-              // totals are only ever reduced deliberately.
-              setType: s['set_type'] as String? ?? 'working',
-              durationS: (s['duration_s'] as num?)?.toInt(),
-              distanceM: (s['distance_m'] as num?)?.toDouble(),
-              createdAt: _parse(s['created_at']) ?? now,
-            ),
-          );
+        for (final s
+            in (e['sets'] as List<dynamic>? ?? <dynamic>[])
+                .cast<Map<String, dynamic>>()) {
+          await _db
+              .into(_db.exerciseSets)
+              .insertOnConflictUpdate(
+                SetRow(
+                  id: s['id'] as String,
+                  exerciseId: e['id'] as String,
+                  setNumber: (s['set_number'] as num?)?.toInt() ?? 1,
+                  reps: (s['reps'] as num?)?.toInt() ?? 0,
+                  weightKg: (s['weight_kg'] as num?)?.toDouble() ?? 0,
+                  isCompleted: s['is_completed'] as bool? ?? false,
+                  // Anything unrecognised reads as a working set, so a lifter's
+                  // totals are only ever reduced deliberately.
+                  setType: s['set_type'] as String? ?? 'working',
+                  durationS: (s['duration_s'] as num?)?.toInt(),
+                  distanceM: (s['distance_m'] as num?)?.toDouble(),
+                  createdAt: _parse(s['created_at']) ?? now,
+                ),
+              );
         }
       }
     });
@@ -270,6 +274,4 @@ class SupabaseSync implements BackupService {
 
   static DateTime? _parse(Object? value) =>
       value is String ? DateTime.parse(value).toLocal() : null;
-
 }
-
