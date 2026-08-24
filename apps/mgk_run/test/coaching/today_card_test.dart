@@ -39,7 +39,10 @@ void main() {
     );
 
     expect(find.text('Threshold'), findsOneWidget);
-    expect(find.text('8.0 km'), findsOneWidget);
+    // "8 km", not "8.0 km": a prescription is a whole number wherever it is
+    // shown, and this card used to be one of the surfaces bypassing the
+    // formatter that says so.
+    expect(find.text('8 km'), findsOneWidget);
     expect(find.textContaining('target'), findsOneWidget);
 
     await tester.tap(find.text('Mark done'));

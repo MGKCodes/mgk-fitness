@@ -6,6 +6,7 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_headline.dart';
+import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/week_progress.dart';
@@ -391,7 +392,7 @@ class _Today extends StatelessWidget {
                     padding: const EdgeInsets.only(top: AppSpacing.sm),
                     child: Text(
                       'Next · ${sessionName(next).toLowerCase()} '
-                      '${Distance.meters(next.distanceMeters).format(unit, fractionDigits: 1)}'
+                      '${formatPrescribed(next.distanceMeters, unit)}'
                       ' on ${weekdayLongName(next.weekday)}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: AppColors.textTertiary,
@@ -442,9 +443,7 @@ class _Today extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  Distance.meters(
-                    session.session!.distanceMeters,
-                  ).format(unit, fractionDigits: 1),
+                  formatPrescribed(session.session!.distanceMeters, unit),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -498,11 +497,15 @@ class _Today extends StatelessWidget {
               _StartButton(
                 label:
                     'Start · '
-                    // One decimal, matching the figure directly above it. They
-                    // disagreed — "Easy 6.2 km" over "Start · 6 km easy" — and
-                    // two numbers for one session eight pixels apart reads as a
-                    // bug whichever is right.
-                    '${Distance.meters(session.session!.distanceMeters).format(unit, fractionDigits: 1)} '
+                    // The same formatter as the figure directly above it, and
+                    // as the Plan tab. They used to disagree — "Easy 6.2 km"
+                    // over "Start · 6 km easy" — and two numbers for one
+                    // session eight pixels apart reads as a bug whichever is
+                    // right. An earlier pass settled that by moving this line
+                    // onto the decimal; the settlement went the wrong way. A
+                    // prescription is a whole number everywhere it appears, so
+                    // both lines go through [formatPrescribed] instead.
+                    '${formatPrescribed(session.session!.distanceMeters, unit)} '
                     '${sessionName(session.session!).toLowerCase()}',
                 onTap: onRecord,
               ),

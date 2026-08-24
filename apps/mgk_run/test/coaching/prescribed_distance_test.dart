@@ -29,6 +29,53 @@ void main() {
       expect(roundPrescribed(0), 0);
     });
 
+    group('a week goes on the grid without losing kilometres', () {
+      test('the total survives, where rounding each session would not', () {
+        // Seven days of 1.14 km. Rounded one at a time each falls to 1 km and
+        // an 8 km week arrives as 7; apportioned, the leftover kilometre is
+        // handed out and the week is still 8. That is the difference between a
+        // display decision and deleting an eighth of somebody's training.
+        final week = List<double>.filled(7, 8000 / 7);
+        expect(week.map(roundPrescribed).reduce((a, b) => a + b), 7000);
+        expect(prescribeAcross(week).reduce((a, b) => a + b), 8000);
+      });
+
+      test('every session is still a whole number, and none is zero', () {
+        final out = prescribeAcross(<double>[4137, 200, 8900, 12480]);
+        expect(out.every((m) => m % 1000 == 0), isTrue);
+        expect(out.every((m) => m >= 1000), isTrue);
+      });
+
+      test('the longer session never comes back the shorter one', () {
+        // What the largest-remainder order buys: with equal whole parts the
+        // bigger raw number also has the bigger remainder, so it is served
+        // first and cannot be overtaken by the day beneath it.
+        final raw = <double>[13580, 13100, 9400, 4137, 2600];
+        final out = prescribeAcross(raw);
+        for (var i = 1; i < raw.length; i++) {
+          expect(
+            out[i],
+            lessThanOrEqualTo(out[i - 1]),
+            reason: 'raw $raw came back as $out',
+          );
+        }
+      });
+
+      test('a total too small for a kilometre each keeps the kilometres', () {
+        // The one case the week cannot be held: three sessions and 1.2 km
+        // between them. Nothing rounds away to nothing wins over the total.
+        expect(prescribeAcross(<double>[400, 400, 400]), <double>[
+          1000,
+          1000,
+          1000,
+        ]);
+      });
+
+      test('nothing to apportion is not an error', () {
+        expect(prescribeAcross(const <double>[]), isEmpty);
+      });
+    });
+
     // The bug this exists for: a plan that says "run 6.8 km" is claiming a
     // precision it does not have, and invites the runner to chase it.
     test('every session in every week reads as a whole number', () {
@@ -50,35 +97,71 @@ void main() {
       }
     });
 
-    test('the working is kept, not thrown away', () {
-      // 6.8 km is what the plan computed, and it is what explains why the
-      // runner was shown 7. Rounding at generation would lose it.
-      final p = profile();
-      final exact = <double>[
-        for (final slot in buildSkeleton(p, now: now).weeks)
-          for (final s in buildFallbackWeek(slot, p).runs) s.distanceMeters,
-      ];
-      expect(
-        exact.any((m) => m % 1000 != 0),
-        isTrue,
-        reason: 'every stored distance landed on a round number by itself',
-      );
-    });
-
-    test("the week still copies the arc's long run exactly", () {
-      final p = profile();
-      for (final slot in buildSkeleton(p, now: now).weeks) {
-        expect(buildFallbackWeek(slot, p).longRunMeters, slot.longRunMeters);
+    test('a stored session is already on the grid, not rounded on the way out', () {
+      // The bug behind the bug. `roundPrescribed` documented a whole-kilometre
+      // stored grid that nothing ever applied, so a session really was 4,137 m
+      // and every formatter in the app was faithfully reporting it — which made
+      // "4 km on Plan, 4.1 km on Home" a difference of opinion between call
+      // sites rather than something one function decided.
+      for (var days = 3; days <= 7; days++) {
+        for (final weekly in <double>[15000, 40000, 90000]) {
+          final p = profile(days: days, weekly: weekly);
+          for (final slot in buildSkeleton(p, now: now).weeks) {
+            for (final s in buildFallbackWeek(slot, p).runs) {
+              expect(
+                s.distanceMeters % 1000,
+                0,
+                reason:
+                    'days=$days weekly=$weekly week=${slot.index}: stored '
+                    '${s.distanceMeters} m',
+              );
+            }
+          }
+        }
       }
     });
 
-    test('the long run is always the longest session stored', () {
-      // Two rows *displaying* the same rounded number is accepted, and cannot
-      // reasonably be prevented: guaranteeing it needs a full display unit of
-      // clearance — a mile, on the coarser grid — and with three running days
-      // an even split is already 32.5% of the week against a long run at 35%.
-      // Those days really are nearly as long as the long run. What must never
-      // tie is the stored order, because that is what picks the long run.
+    test('the working is kept — in the arc, which is where it belongs', () {
+      // 6.8 km is what the plan computed, and it is what explains why the
+      // runner was shown 7. The skeleton keeps it. The week does not need it:
+      // a week is what the runner is asked to run, and nobody is asked to run
+      // 6.8 km.
+      final p = profile();
+      final arc = buildSkeleton(p, now: now).weeks;
+      expect(
+        arc.any((w) => w.longRunMeters % 1000 != 0),
+        isTrue,
+        reason: 'the arc rounded its own long runs away',
+      );
+      expect(
+        arc.any((w) => w.volumeMeters % 1000 != 0),
+        isTrue,
+        reason: 'the arc rounded its own weekly volumes away',
+      );
+    });
+
+    test("the week prescribes the arc's long run, on the grid", () {
+      // Not a re-derivation: the filler once recomputed the long run at 38% of
+      // volume against the skeleton's 35%, and the arc and the week detail
+      // showed two different long runs for the same week. It still takes the
+      // arc's number — it just states it in whole kilometres.
+      final p = profile();
+      for (final slot in buildSkeleton(p, now: now).weeks) {
+        expect(
+          buildFallbackWeek(slot, p).longRunMeters,
+          roundPrescribed(slot.longRunMeters),
+        );
+      }
+    });
+
+    test('no session is ever longer than the long run', () {
+      // Ties are accepted, and cannot reasonably be prevented: keeping the long
+      // run clear needs a full grid step of clearance — a whole kilometre — and
+      // with three running days an even split is already 32.5% of the week
+      // against a long run at 35%. Those days really are nearly as long as the
+      // long run. What must hold is that nothing *exceeds* it, and that the
+      // week's `longRunMeters` is still the long run's own number, because that
+      // is the figure the arc and the week have to agree on.
       for (var days = 3; days <= 7; days++) {
         final p = profile(days: days);
         for (final slot in buildSkeleton(p, now: now).weeks) {
@@ -88,10 +171,15 @@ void main() {
             if (identical(s, long)) continue;
             expect(
               s.distanceMeters,
-              lessThan(long.distanceMeters),
+              lessThanOrEqualTo(long.distanceMeters),
               reason: 'days=$days week=${slot.index}',
             );
           }
+          expect(
+            week.longRunMeters,
+            long.distanceMeters,
+            reason: 'days=$days week=${slot.index}',
+          );
         }
       }
     });

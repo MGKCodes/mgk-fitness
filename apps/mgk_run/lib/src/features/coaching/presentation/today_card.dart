@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/pace_model.dart';
+import '../domain/prescribed_distance.dart';
 import '../domain/session_status.dart';
 import '../domain/training_plan.dart';
 import 'session_labels.dart';
@@ -89,7 +90,7 @@ class TodayCard extends StatelessWidget {
             ),
           ),
           Text(
-            Distance.meters(s.distanceMeters).format(unit, fractionDigits: 1),
+            formatPrescribed(s.distanceMeters, unit),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),

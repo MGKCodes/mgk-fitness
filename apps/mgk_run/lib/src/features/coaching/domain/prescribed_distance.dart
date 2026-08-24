@@ -12,16 +12,101 @@ import 'training_plan.dart';
 /// going — which is the same mistake as prescribing a pace to the second.
 ///
 /// So the plan rounds, and then accepts a range around what it asked for.
+///
+/// **Prescriptions round; achievements do not.** Everything here is for a
+/// number the plan *asked* for. A distance the runner actually covered is not a
+/// prescription and never comes through these functions: 10.18 km is earned
+/// precision, and flattening it to "10 km" tells someone their run was smaller
+/// than it was. The test is whose number it is — the plan's, or the runner's.
 
 /// Prescribed distances are stored on a whole-kilometre grid, never below one.
 ///
-/// This is the *stored* rounding, and it exists so the plan's own arithmetic
-/// stays clean: the long run cannot tie with a Tuesday, and the arc and the
-/// week cannot disagree about the same session. What the runner **reads** is
-/// rounded again, in their own unit — see [prescribedValue].
+/// This is the *stored* rounding, applied when a session is generated
+/// (`plan_builder.dart`), and it exists so the plan's own arithmetic stays
+/// clean: the arc and the week cannot disagree about the same session, and
+/// nothing downstream has to re-derive a round number from 4,137 m. What the
+/// runner **reads** is rounded again, in their own unit — see [prescribedValue].
+///
+/// It does not, on its own, keep the long run clear of a Tuesday. A whole
+/// kilometre is a coarser step than the clearance the week shape can deliver
+/// (`_underLongRun` in `plan_builder.dart` explains why it cannot be widened),
+/// so on a low-volume week the long run and the hardest easy day land on the
+/// same stored number. A tie is harmless — the long run is the session whose
+/// kind says so, never the biggest number in the week. Being *passed* is not,
+/// and the builder caps the rest of the week at the long run rather than
+/// expecting this to sort it out.
 double roundPrescribed(double meters) {
   if (meters <= 0) return 0;
   return math.max(1000, (meters / 1000).round() * 1000).toDouble();
+}
+
+/// The furthest [roundPrescribed] can move a number: half a kilometre.
+///
+/// Anything comparing a stored session against a figure the plan worked out
+/// exactly — the skeleton's own long run, say — has to allow for this, or it is
+/// reporting the grid as a discrepancy.
+const double prescribedGridSlackMeters = 500;
+
+/// Puts a set of sessions on the grid **without losing the week**.
+///
+/// Rounding each session on its own is the obvious thing and it quietly deletes
+/// training: seven days of 1.14 km each fall to 1 km, and an 8 km week comes
+/// back as 7 — an eighth of the runner's volume gone to a display decision. The
+/// validator catches it as `week_volume`, which is the right complaint about
+/// the wrong culprit.
+///
+/// So the kilometres are apportioned rather than rounded one by one. Every
+/// session takes the whole kilometres it has earned, and the ones left over go
+/// to the sessions that came closest to earning another — the largest-remainder
+/// method, the same one used to turn vote shares into seats. The total survives,
+/// which is the only reason the grid is safe to apply at all.
+///
+/// Order survives *within one call*: a session with a bigger raw number never
+/// ends up with fewer kilometres than a smaller one, because with equal whole
+/// parts the bigger number also has the bigger remainder and is served first.
+/// It says nothing about a number rounded somewhere else — a caller mixing this
+/// with [roundPrescribed] on the same week has two roundings that can go
+/// opposite ways, and has to keep the order itself.
+List<double> prescribeAcross(Iterable<double> meters) {
+  final raw = meters.toList(growable: false);
+  if (raw.isEmpty) return const <double>[];
+
+  // Never fewer whole kilometres than there are sessions: nothing rounds away
+  // to nothing, so a week of five sessions is at least five kilometres however
+  // little was asked for.
+  final total = raw.fold<double>(0, (sum, m) => sum + math.max(0, m));
+  final target = math.max(raw.length, (total / 1000).round());
+
+  final km = <int>[for (final m in raw) math.max(1, (m / 1000).floor())];
+  final byRemainder = List<int>.generate(raw.length, (i) => i)
+    ..sort((a, b) {
+      final remainderA = raw[a] / 1000 - (raw[a] / 1000).floor();
+      final remainderB = raw[b] / 1000 - (raw[b] / 1000).floor();
+      final byFraction = remainderB.compareTo(remainderA);
+      return byFraction != 0 ? byFraction : raw[b].compareTo(raw[a]);
+    });
+
+  var spare = target - km.fold<int>(0, (sum, k) => sum + k);
+  for (var i = 0; spare > 0; i++) {
+    km[byRemainder[i % byRemainder.length]]++;
+    spare--;
+  }
+  // Or hand back, taking from the sessions that earned least first. Stops when
+  // every session is at the floor, which is the one case where the week cannot
+  // be held: a total so small that a kilometre each already overshoots it.
+  while (spare < 0) {
+    final before = spare;
+    for (final i in byRemainder.reversed) {
+      if (spare == 0) break;
+      if (km[i] > 1) {
+        km[i]--;
+        spare++;
+      }
+    }
+    if (spare == before) break;
+  }
+
+  return <double>[for (final k in km) k * 1000.0];
 }
 
 /// The prescription as the runner reads it: a whole number in **their** unit.
@@ -30,11 +115,12 @@ double roundPrescribed(double meters) {
 /// use, and a number that is round in a unit the runner does not think in is not
 /// round to them.
 ///
-/// **Rounded at display, not at generation.** The stored plan stays exact metric
-/// so that switching units in Settings re-reads the same plan rather than
-/// rewriting it — a toggle must never mutate someone's training. It also means
-/// two runners on the same plan are on the same plan; only the sentence they are
-/// shown differs.
+/// **The unit rounding happens at display, and only at display.** The stored
+/// plan is metric — on the whole-kilometre grid [roundPrescribed] puts it on,
+/// but metric — so that switching units in Settings re-reads the same plan
+/// rather than rewriting it. A toggle must never mutate someone's training. It
+/// also means two runners on the same plan are on the same plan; only the
+/// sentence they are shown differs.
 double prescribedValue(double meters, UnitSystem unit) {
   if (meters <= 0) return 0;
   final raw = unit.isMetric
