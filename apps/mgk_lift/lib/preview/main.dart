@@ -40,6 +40,7 @@ import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/track_surface.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
+import '../src/features/tracking/presentation/session_summary_screen.dart';
 import 'fakes.dart';
 
 /// A harness for reviewing screens one at a time.
@@ -251,6 +252,44 @@ class PreviewApp extends StatelessWidget {
           now: previewNow,
         );
       },
+      // ---- The summary, which is what finishing now opens -------------------
+      //
+      // Three, because the interesting variation is not the layout — it is
+      // what the screen has to say when there is nothing to celebrate. All
+      // three carry a library so the save offer renders, and a coach so the
+      // conversation does; both are absent in a free build and both draw
+      // nothing when they are.
+      //
+      // The ordinary session: worked hard, beat nothing. `_finishedSession`
+      // is pitched against `sampleLog` so the bench, the shoulder press and
+      // the pushdown all land at or under the best already in the log —
+      // matching a best is not setting one.
+      'session-summary': (_) => SessionSummaryScreen(
+        session: _finishedSession(),
+        log: sampleLog(previewNow),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        onOpenCoach: () {},
+      ),
+      // The same session with 95 on the bench instead of 85, which is the only
+      // difference between these two screens: 95 × 5 estimates at 110.8 kg
+      // against the 105 kg already in the log.
+      'session-summary-pb': (_) => SessionSummaryScreen(
+        session: _finishedSession(benchTopKg: 95),
+        log: sampleLog(previewNow),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        onOpenCoach: () {},
+      ),
+      // A short first session, and the two states that are easiest to get
+      // wrong: nothing in the log to compare against, and nothing that can be
+      // estimated from — fifteens are above Epley's cap, so the screen has to
+      // say it cannot tell rather than say nothing moved. The second movement
+      // was added and never worked, which is the only case where the movement
+      // count is larger than the list of sets explains.
+      'session-summary-short': (_) => SessionSummaryScreen(
+        session: _shortSession(),
+        library: InMemoryWorkoutLibrary(),
+        onOpenCoach: () {},
+      ),
       'photos': (_) => const _PhotosPreview(),
       'photo-series': (_) => const _PhotosPreview(openSeries: true),
       'photos-empty': (_) => PhotosSurface(
@@ -859,6 +898,102 @@ Session _openSession() => Session(
   ],
 );
 
+/// The same push day, finished — every set ticked and an `endedAt` stamped.
+///
+/// **Finished is not optional here.** `TrainingStats` reads finished sessions
+/// only, so a fixture left open would render a summary with no personal bests
+/// however it was loaded, and the screen would look correct while being blind.
+///
+/// [benchTopKg] is the one knob, and it is the whole difference between the
+/// two summary previews: at 85 the session beats nothing in `sampleLog`, at 95
+/// it takes the bench.
+Session _finishedSession({double benchTopKg = 85}) {
+  SessionSet done(String id, int n, double kg, int reps, {SetType? type}) =>
+      SessionSet(
+        id: id,
+        setNumber: n,
+        weightKg: kg,
+        reps: reps,
+        isCompleted: true,
+        setType: type ?? SetType.working,
+      );
+
+  return Session(
+    id: 'finished',
+    name: 'Push',
+    startedAt: previewNow.subtract(const Duration(minutes: 58)),
+    endedAt: previewNow,
+    exercises: <SessionExercise>[
+      SessionExercise(
+        id: 'f1',
+        name: 'Barbell Bench Press',
+        orderIndex: 0,
+        sets: <SessionSet>[
+          // A warm-up, so the breakdown shows the `W` marker and the header
+          // shows a set count that is one lower than the rows above it.
+          done('f1s1', 1, 60, 10, type: SetType.warmup),
+          done('f1s2', 2, 80, 8),
+          done('f1s3', 3, benchTopKg, 5),
+        ],
+      ),
+      SessionExercise(
+        id: 'f2',
+        name: 'Dumbbell Shoulder Press',
+        orderIndex: 1,
+        sets: <SessionSet>[done('f2s1', 1, 26, 10), done('f2s2', 2, 26, 9)],
+      ),
+      SessionExercise(
+        id: 'f3',
+        name: 'Cable Tricep Pushdown',
+        orderIndex: 2,
+        sets: <SessionSet>[done('f3s1', 1, 32, 12), done('f3s2', 2, 32, 11)],
+      ),
+    ],
+  );
+}
+
+/// Twenty minutes, one movement worked and one abandoned, and nothing behind
+/// it. The first session somebody ever logs looks like this.
+Session _shortSession() => Session(
+  id: 'short',
+  name: 'Evening session',
+  startedAt: previewNow.subtract(const Duration(minutes: 21)),
+  endedAt: previewNow,
+  exercises: const <SessionExercise>[
+    SessionExercise(
+      id: 'q1',
+      name: 'Dumbbell Bicep Curl',
+      orderIndex: 0,
+      sets: <SessionSet>[
+        // Fifteens: above Epley's cap, so there is no estimate to compare and
+        // the screen has to say so.
+        SessionSet(
+          id: 'q1s1',
+          setNumber: 1,
+          weightKg: 14,
+          reps: 15,
+          isCompleted: true,
+        ),
+        SessionSet(
+          id: 'q1s2',
+          setNumber: 2,
+          weightKg: 14,
+          reps: 15,
+          isCompleted: true,
+        ),
+      ],
+    ),
+    SessionExercise(
+      id: 'q2',
+      name: 'Cable Fly',
+      orderIndex: 1,
+      // Added, then not done. It counts as a movement and has no sets to
+      // show, which is the one place the two numbers legitimately disagree.
+      sets: <SessionSet>[SessionSet(id: 'q2s1', setNumber: 1, weightKg: 20)],
+    ),
+  ],
+);
+
 /// A push day most of the way through: three movements done, one in progress,
 /// two not started.
 Session _longSession() {
@@ -1164,7 +1299,11 @@ List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
   SavedWorkout(
     id: 'w3',
     name: 'Legs, short',
-    movements: const <String>['Barbell Squat', 'Leg Press', 'Standing Calf Raise'],
+    movements: const <String>[
+      'Barbell Squat',
+      'Leg Press',
+      'Standing Calf Raise',
+    ],
     savedAt: previewNow.subtract(const Duration(days: 16)),
   ),
 ];

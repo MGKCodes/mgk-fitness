@@ -35,6 +35,7 @@ inside one tab would make the coach available on a third of the app.
 | Screen | In | Out | In flight |
 |---|---|---|---|
 | Active session | Track's primary button | **back arrow** (session stays open), Finish, Discard | back is safe — every change is already persisted |
+| Session summary | Finish, which **replaces** the session screen | back arrow, "Back to Track", or the coach | nothing is in flight — the session is already written |
 | Coach | coach mark | app bar back | a reply in flight is abandoned; the turn is charged either way |
 | Plan intake | Plan → Build a plan | app bar back, or "Build my plan" | **blocked** while a turn is in flight |
 | Plan review | after generation | app bar back (draft is kept), or Start this plan | generation has already finished |

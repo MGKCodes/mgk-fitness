@@ -589,6 +589,9 @@ class _LiftShellState extends State<LiftShell> {
       massUnit: _units.mass,
       planner: widget.planner,
       log: _log,
+      // The summary the session ends on offers the conversation; the shell
+      // still owns what opening the coach means, including both gates.
+      onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
         // Recording what the session did to each slot -- the top set and
         // whether it moved -- is the post-session review, and is the next
@@ -610,6 +613,7 @@ class _LiftShellState extends State<LiftShell> {
       massUnit: _units.mass,
       planner: widget.planner,
       log: _log,
+      onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
         unawaited(_refreshSession());
         unawaited(_refreshLog());

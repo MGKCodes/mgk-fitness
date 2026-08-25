@@ -35,6 +35,7 @@ class TrackController {
     VoidCallback? onDone,
     CoachPlanner? planner,
     List<Session> log = const <Session>[],
+    VoidCallback? onOpenCoach,
   }) async {
     final Session session = await recorder.current() ?? await recorder.start();
 
@@ -49,6 +50,7 @@ class TrackController {
           onFinished: onDone,
           planner: planner,
           log: log,
+          onOpenCoach: onOpenCoach,
         ),
       ),
     );
@@ -70,6 +72,7 @@ class TrackController {
     CoachPlanner? planner,
     List<Session> log = const <Session>[],
     void Function(String replaced, PlannedMovement with_)? onSwapped,
+    VoidCallback? onOpenCoach,
   }) async {
     final open = await recorder.current();
     final session =
@@ -88,6 +91,7 @@ class TrackController {
           planner: planner,
           log: log,
           onSwapped: onSwapped,
+          onOpenCoach: onOpenCoach,
         ),
       ),
     );

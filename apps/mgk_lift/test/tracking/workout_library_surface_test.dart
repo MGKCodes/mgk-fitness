@@ -243,7 +243,9 @@ void main() {
       ]);
     });
 
-    testWidgets('finishing a session offers to keep it', (tester) async {
+    testWidgets('finishing a session offers to keep it, on the summary', (
+      tester,
+    ) async {
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
@@ -256,10 +258,15 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
       await tester.pumpAndSettle();
 
-      // The only moment the app knows a session worked, and the lifter is
-      // standing there with the phone in their hand.
-      expect(find.text('Name this workout'), findsOneWidget);
+      // Still the only moment the app knows a session worked — but the offer
+      // is now a button on the summary rather than a dialog fired in front of
+      // it. Saving is something you decide about the shape of a session after
+      // seeing it, and until the summary existed there was nowhere to see it.
+      expect(find.text('Name this workout'), findsNothing);
+      await tester.tap(find.text('Save to your workouts'));
+      await tester.pumpAndSettle();
 
+      expect(find.text('Name this workout'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
@@ -294,8 +301,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // They already have this workout. Offering them a copy of something they
-      // picked off a list ninety minutes ago is the app not paying attention.
+      // picked off a list ninety minutes ago is the app not paying attention —
+      // which is why the summary is handed no library at all rather than
+      // deciding for itself.
       expect(find.text('Name this workout'), findsNothing);
+      expect(find.text('Save to your workouts'), findsNothing);
       expect(await library.all(), hasLength(1));
     });
   });

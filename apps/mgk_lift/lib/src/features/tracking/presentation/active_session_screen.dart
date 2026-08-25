@@ -16,6 +16,8 @@ import '../domain/workout_library.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'rest_bar.dart';
+import 'save_workout_prompt.dart';
+import 'session_summary_screen.dart';
 import 'workout_library_sheet.dart';
 
 /// The screen you are looking at while standing at a rack.
@@ -38,6 +40,7 @@ class ActiveSessionScreen extends StatefulWidget {
     this.planner,
     this.log = const <Session>[],
     this.onSwapped,
+    this.onOpenCoach,
     this.startRestOnOpen = false,
     this.now,
   });
@@ -75,6 +78,20 @@ class ActiveSessionScreen extends StatefulWidget {
   /// something other than what it asked for. Without this the plan would go on
   /// claiming a movement they replaced.
   final void Function(String replaced, PlannedMovement with_)? onSwapped;
+
+  /// Opens the coach, from the summary this screen ends on.
+  ///
+  /// Nothing on the *running* screen uses it: mid-session the coach is reached
+  /// from the mark floating over the shell, exactly as it is everywhere else,
+  /// and a second entry point here would be a second answer to a question that
+  /// already has one. It is carried through so the summary can offer the
+  /// post-session conversation — the one moment the coach has something
+  /// specific to read (docs/plan-model.md).
+  ///
+  /// **Null hides the action**, which is the same rule [planner] and [library]
+  /// follow: a free or offline build has no coach, and an inert button is worse
+  /// than no button.
+  final VoidCallback? onOpenCoach;
 
   /// Opens already resting. **For the preview harness only** — rest is never
   /// restored from disk, so a screenshot of the bar is otherwise unreachable
@@ -142,8 +159,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// them would be storing something with no second reader.
   bool _filledFromLibrary = false;
 
-  /// The name field of the save dialog. See [_askForName] for why it is owned
-  /// here rather than built with the dialog.
+  /// The name field of the save dialog. See [promptToSaveWorkout] for why it is
+  /// owned here rather than built with the dialog.
   final TextEditingController _nameField = TextEditingController();
 
   /// Exercises the lifter has opened or closed **by hand**, keyed by id.
@@ -459,82 +476,26 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// prescribed, because by the time it is on this screen the two are the same
   /// thing: an ordered list of movements. A coach-generated session can
   /// therefore be kept without being performed first, which is the case the
-  /// finish-time offer below cannot cover.
+  /// offer on the summary cannot cover — that one only exists once a session
+  /// has been finished.
   ///
-  /// Movement names only, and duplicates collapsed — a session where the lifter
-  /// came back to the bench at the end is one workout with bench in it, not one
-  /// with bench in it twice.
+  /// The dialog and the write are [promptToSaveWorkout]'s, because the same
+  /// offer is made again on the summary once the session has ended — and two
+  /// copies of a naming dialog is exactly how the two moments would drift
+  /// apart.
   Future<void> _saveToLibrary() async {
     final library = widget.library;
     if (library == null || _session.exercises.isEmpty) return;
 
-    final movements = <String>[];
-    for (final e in _session.exercises) {
-      if (!movements.contains(e.name)) movements.add(e.name);
-    }
-
-    final name = await _askForName(_session.name);
-    if (name == null || !mounted) return;
-
-    await library.save(name: name, movements: movements);
-    setState(() => _savedToLibrary = true);
-    if (!mounted) return;
-    await AppHaptics.commit();
-    if (!mounted) return;
-    ScaffoldMessenger.of(
+    final name = await promptToSaveWorkout(
       context,
-    ).showSnackBar(SnackBar(content: Text('$name is in your workouts.')));
-  }
-
-  /// The one field a save needs, in a dialog rather than a screen.
-  ///
-  /// Pre-filled with the session's name and selected, so the common answer is
-  /// one tap and the less common one is typing over the top rather than
-  /// clearing a field first.
-  ///
-  /// **The controller belongs to the screen, not to the dialog.** Creating one
-  /// here and disposing it after the `await` looks right and is not: the await
-  /// returns the moment `pop` is called, while the dialog is still animating
-  /// out, and the field rebuilds at least once against a controller that has
-  /// already been disposed. Owning it for the life of the screen also means
-  /// the second save of a session opens on the field the first one left.
-  Future<String?> _askForName(String initial) {
-    _nameField
-      ..text = initial
-      ..selection = TextSelection(baseOffset: 0, extentOffset: initial.length);
-
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        // Not the same words as the button that opened it. Two widgets reading
-        // "Save to your workouts" on screen at once is one thing said twice,
-        // and the louder of them is no longer the one you can act on.
-        title: const Text('Name this workout'),
-        content: TextField(
-          controller: _nameField,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Name'),
-          onSubmitted: (value) => Navigator.of(
-            dialogContext,
-          ).pop(value.trim().isEmpty ? null : value.trim()),
-        ),
-        actions: <Widget>[
-          AppTextButton(
-            label: 'Cancel',
-            onPressed: () => Navigator.of(dialogContext).pop(),
-          ),
-          FilledButton(
-            onPressed: () {
-              final typed = _nameField.text.trim();
-              Navigator.of(dialogContext).pop(typed.isEmpty ? null : typed);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      library: library,
+      field: _nameField,
+      suggestedName: _session.name,
+      movements: workoutMovementsOf(_session),
     );
+    if (name == null || !mounted) return;
+    setState(() => _savedToLibrary = true);
   }
 
   /// Asks the coach for something else, and applies what the lifter picks.
@@ -585,37 +546,62 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     await _apply(() => widget.recorder.addExercise(name.trim()));
   }
 
-  /// Ends the session, and offers to keep its shape.
+  /// Ends the session and shows what it was.
   ///
-  /// **Asked here rather than anywhere else**, because this is the only moment
-  /// the app knows a session worked. A lifter who has just done a good session
-  /// is the one person qualified to say it is worth repeating, and they are
-  /// standing there with the phone already in their hand.
+  /// **The finished session is what `finish()` returns, and it is the only
+  /// honest source for the summary.** It was discarded here for a long time
+  /// and the screen simply popped, so the last thing a lifter saw of an hour's
+  /// work was the button that ended it. `_session` is not a substitute: it is
+  /// the open session as this screen last saw it, with no `endedAt` — so every
+  /// duration derived from it would be wrong, and `TrainingStats` would skip it
+  /// as still in progress and report no personal bests at all.
   ///
-  /// Only when there is something to save and nothing already saved:
+  /// **`pushReplacement`, not `push`.** Leaving this screen underneath would
+  /// leave a session that no longer exists on the stack: its clock would keep
+  /// ticking and its Finish button would call `finish()` on a recorder with
+  /// nothing open. Replacing it means backing out of the summary lands on
+  /// Track, which is where the lifter was going.
   ///
-  ///   * an empty session has no shape to keep;
-  ///   * one started **from** the library already has its workout — see
-  ///     [_filledFromLibrary];
-  ///   * one already saved from the button in the list has been asked once —
-  ///     see [_savedToLibrary].
+  /// [onFinished] fires **before** the summary opens rather than after it, so
+  /// Track and Profile are already correct behind it. Nothing about the summary
+  /// depends on that refresh — it is handed the log as it stood before this
+  /// session, which is exactly what a personal best has to be compared against.
   ///
-  /// The prompt runs **after** the session is finished and before the screen
-  /// pops. Declining it costs one tap and loses nothing.
+  /// The offer to keep the session's shape moves to the summary with
+  /// everything else; see [SessionSummaryScreen] for why it is a button there
+  /// rather than a dialog here.
   Future<void> _finish() async {
-    await widget.recorder.finish();
-    if (!mounted) return;
-
-    if (widget.library != null &&
-        !_savedToLibrary &&
-        !_filledFromLibrary &&
-        _session.exercises.isNotEmpty) {
-      await _saveToLibrary();
-    }
+    final finished = await widget.recorder.finish();
     if (!mounted) return;
 
     widget.onFinished?.call();
-    Navigator.of(context).pop();
+
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionSummaryScreen(
+          session: finished,
+          massUnit: widget.massUnit,
+          log: widget.log,
+          // The four reasons not to offer a save are decided here, where the
+          // flags live, and passed as an absent library — so the summary has
+          // no rule of its own to keep in step with this one:
+          //
+          //   * no library at all — a build with no on-device database;
+          //   * an empty session, which has no shape to keep;
+          //   * one started **from** the library, which already has its
+          //     workout — see [_filledFromLibrary];
+          //   * one already saved from the button in the list, which has been
+          //     asked once — see [_savedToLibrary].
+          library:
+              _savedToLibrary ||
+                  _filledFromLibrary ||
+                  _session.exercises.isEmpty
+              ? null
+              : widget.library,
+          onOpenCoach: widget.onOpenCoach,
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmDiscard() async {
