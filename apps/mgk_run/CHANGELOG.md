@@ -121,6 +121,18 @@ been on a store, so everything Runio does is still listed here.
   this that does not ship.
 
 **Home**
+- **The last run is read against the session it answered.** For a runner paying
+  for a coach, Home shows what was asked for beside what was done — 9 km
+  threshold at 5:10, against 8.6 km at 5:22 — and says whether the session was
+  answered rather than whether the runner did well. The interpretation is the
+  coach’s job and it has a conversation to do it in.
+- **The free product keeps every number that is the runner’s own.** Distance,
+  pace, time, history and the year are never gated: a tracker that hides your
+  own pace behind a paywall is not a tracker. What is bought is the coach’s
+  reading of them, which only exists when a coach set the session — so a
+  runner with no plan is never shown a lock at all.
+- **Longest run, fastest pace and runs logged left Home for Profile.** They are
+  facts about a career on the screen a runner opens to find out about a day.
 - **Home is a grid of tiles, each carrying one fact.** It was a wordmark, one
   session card and then two-thirds of a screen of nothing. It now holds today,
   the week, four squares of the runner's own record — last run, runs logged,

@@ -190,6 +190,48 @@ The counter-signal is a plan-shaped hole appearing on a free screen: an empty
 week ribbon, a disabled Plan tab, a "no plan yet" placeholder where a card
 should be. Each one is the old assumption growing back.
 
+### Amendment, 2026-08-25 — a locked stat is not a hole, if it is a stat you never had
+
+This section, read literally, forbids the thing Home now does: a greyed
+*Upgrade to see this stat* block, on a free screen, where a card would be. That
+reading is too broad, and the line it was drawing needs restating rather than
+enforcing.
+
+**What the counter-signal is actually about is subtraction.** Every example it
+gives is a thing the runner *has* — their week, their plan tab, their own
+training — presented as an absence in order to sell it back. A free Home that
+is a paid Home with the contents removed teaches a runner that they are using a
+crippled product, and that is what makes the split administrative.
+
+The comparison against a coach's session is not that. It is not the runner's
+data with something taken out; it is **a second reading laid on top**, and it
+does not exist at all unless a coach set the session. So the rule the two cases
+separate on:
+
+| | Free shows | Locked |
+|---|---|---|
+| The runner's own numbers — distance, pace, time, history, the year | Everything | Nothing, ever |
+| The coach's reading of them — asked versus ran | — | The whole comparison |
+
+**A tracker that hides your own pace behind a paywall is not a tracker**, and
+nothing in the free product is a preview of a better one. What is sold is the
+coach, which is what [ADR-0014](0014-model-is-chosen-per-surface-and-per-tier.md)
+and this ADR's own consequences already say the subscription buys.
+
+Two rules keep this honest, and both are asserted in `test/home/last_run_test.dart`:
+
+- **A runner with no plan is never shown the lock.** With no session there is no
+  comparison to sell, and an upgrade prompt on that screen would be an advert
+  where a fact should be — which *is* the counter-signal above, exactly.
+- **The lock states what is behind it.** The rows are drawn in the shape they
+  will take, dimmed, with the offer named. A blurred rectangle tells a runner
+  they are missing something without telling them what of, which is a worse
+  offer and a ruder one.
+
+Nothing sets the paid value yet. `CoachAccess` defaults to `free` and resolves
+every unknown answer to `free`, for the reason ADR-0014 gives about tier
+parsing, applied to the client: a bug must not hand out what nobody bought.
+
 ## Disconfirming condition
 
 Reverse this if runners create accounts and never reach moment two. The whole

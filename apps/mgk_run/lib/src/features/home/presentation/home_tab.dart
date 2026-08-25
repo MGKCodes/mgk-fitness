@@ -11,12 +11,13 @@ import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/presentation/session_labels.dart';
-import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../profile/domain/runner_stats.dart';
 import '../../recording/domain/run_summary.dart';
 import 'home_tiles.dart';
 import 'home_today_tile.dart';
 import 'home_week_tile.dart';
+import '../../coaching/domain/coach_access.dart';
+import 'home_last_run.dart';
 import 'training_charts.dart';
 
 /// The app's front page, as **a grid of tiles each carrying one fact**: what is
@@ -67,6 +68,9 @@ class HomeTab extends StatelessWidget {
     this.outcomes = const <int, DayOutcome>{},
     this.volumes = const <WeekVolume>[],
     this.consistency = const <List<RunDay>>[],
+    this.lastRunAgainst,
+    this.access = CoachAccess.free,
+    this.onUpgrade,
     this.standing,
     this.stats = RunnerStats.empty,
     this.lastRun,
@@ -114,7 +118,23 @@ class HomeTab extends StatelessWidget {
   /// Weekly distance for the volume chart, oldest first.
   final List<WeekVolume> volumes;
 
-  /// Did-you-run, by day, for the consistency grid. Its **last row is the
+  /// What the coach asked for on the day of [lastRun], when it answered a
+  /// session. Null for an unplanned run, for a runner with no plan, and for a
+  /// run that matched nothing — and all three mean the same thing here: there
+  /// is no comparison to draw, bought or not.
+  final PlannedAgainst? lastRunAgainst;
+
+  /// Whether the coach's reading of a run is paid for.
+  ///
+  /// Defaults to [CoachAccess.free] because that is the direction a mistake
+  /// has to fall (ADR-0014), and because nothing sets the other value yet.
+  final CoachAccess access;
+
+  /// Opens whatever explains what a coach adds. Null hides the offer rather
+  /// than showing a control that does nothing.
+  final VoidCallback? onUpgrade;
+
+  /// Did-you-run, by day, for the week strip. Its **last row is the
   /// current week**, which is what the week tile draws for a runner with no
   /// plan — the same derivation serving both, rather than a second one that
   /// could disagree with the grid a few hundred pixels below it.
@@ -160,6 +180,16 @@ class HomeTab extends StatelessWidget {
   /// are worse than either being absent, and this page holds three surfaces
   /// that each used to call `DateTime.now()` for themselves.
   final DateTime? now;
+
+  /// Whether today's tile is already showing [run].
+  ///
+  /// True only with no plan and a run recorded today, which is exactly when
+  /// [HomeTodayTile] falls back to the log to answer the day.
+  bool _todayAlreadyShows(RunSummary? run, DateTime at) {
+    if (today != null || run == null) return false;
+    final d = run.startedAt;
+    return d.year == at.year && d.month == at.month && d.day == at.day;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -240,16 +270,28 @@ class HomeTab extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.xl),
-              Entrance(
-                index: 4,
-                child: _RunningGrid(
-                  stats: stats,
-                  lastRun: lastRun,
-                  unit: unit,
-                  onOpenRun: onOpenRun,
+              // Skipped when the tile above is already showing this run.
+              //
+              // A runner with no plan whose last run was today gets it named,
+              // measured and paced on the Today tile — the log is what answers
+              // "today" when no session does. Drawing it again immediately
+              // underneath is the same run twice on one screen, which reads as
+              // a bug however correct both copies are. With a plan there is no
+              // clash: Today is the session and this is the run.
+              if (!_todayAlreadyShows(lastRun, at)) ...<Widget>[
+                const SizedBox(height: AppSpacing.xl),
+                Entrance(
+                  index: 4,
+                  child: LastRunCard(
+                    run: lastRun,
+                    unit: unit,
+                    against: lastRunAgainst,
+                    access: access,
+                    onOpenRun: onOpenRun,
+                    onUpgrade: onUpgrade,
+                  ),
                 ),
-              ),
+              ],
 
               // A runner with nothing yet used to get one text link out of here
               // and then a photograph. That was defensible while every runner
@@ -306,10 +348,6 @@ class HomeTab extends StatelessWidget {
                       unit: unit,
                     ),
                   ),
-                ],
-                if (consistency.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: AppSpacing.md),
-                  Entrance(index: 8, child: ConsistencyGrid(grid: consistency)),
                 ],
               ],
             ],
@@ -383,117 +421,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Four squares of the runner's own record: the last run, how many there have
-/// been, and the two bests.
-///
-/// **This is the tile block that makes Home work without a plan**, and it is
-/// also the one a runner in week nine of a marathon block looks at. Nothing in
-/// it needs a plan to have an answer; all four are folds over the log.
-///
-/// It is not the training log. Profile owns that, four facts a row, for as long
-/// as the runner has been running. This is one figure each — a last run, a
-/// count, a furthest, a quickest — which is what a tile is for, and the reason
-/// the old three-row "recents" list on Home was removed rather than restyled.
-///
-/// Every tile is held open when there is nothing in it yet: a dash and a line
-/// saying what will land there. Following the Profile tab, which was given the
-/// same treatment for the same reason — **a screen with no data states its
-/// structure, and a dash is an absence where a zero would be a claim.**
-class _RunningGrid extends StatelessWidget {
-  const _RunningGrid({
-    required this.stats,
-    required this.unit,
-    this.lastRun,
-    this.onOpenRun,
-  });
-
-  final RunnerStats stats;
-  final UnitSystem unit;
-  final RunSummary? lastRun;
-  final void Function(RunSummary run)? onOpenRun;
-
-  @override
-  Widget build(BuildContext context) {
-    final last = lastRun;
-    final longest = stats.longestRunMeters;
-    final fastest = stats.fastestPaceSecondsPerKm;
-    final first = stats.firstRunAt;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        const SectionLabel('Your running'),
-        const SizedBox(height: AppSpacing.md),
-        HomeTileRow(
-          left: HomeStatTile(
-            label: 'Last run',
-            // A distance the runner covered, to a decimal. 10.18 km is earned
-            // precision, and rounding it would tell somebody their run was
-            // smaller than it was.
-            value: last == null
-                ? '—'
-                : Distance.meters(
-                    last.distanceMeters,
-                  ).format(unit, fractionDigits: 1),
-            caption: last == null
-                ? 'Your latest run lands here'
-                : '${shortRunDate(last.startedAt)}  ·  '
-                      '${last.duration.hoursMinutesSeconds}',
-            waiting: last == null,
-            onTap: last == null || onOpenRun == null
-                ? null
-                : () => onOpenRun!(last),
-          ),
-          right: HomeStatTile(
-            label: 'Runs logged',
-            value: stats.isEmpty ? '—' : '${stats.runCount}',
-            caption: first == null
-                ? 'Every run you record'
-                : 'Since ${monthShortName(first.month)} ${first.year}',
-            waiting: stats.isEmpty,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        HomeTileRow(
-          left: HomeStatTile(
-            label: 'Longest run',
-            value: longest == null
-                ? '—'
-                : Distance.meters(longest).format(unit, fractionDigits: 1),
-            caption: 'Your furthest yet',
-            waiting: longest == null,
-          ),
-          right: HomeStatTile(
-            label: 'Fastest pace',
-            value: fastest == null
-                ? '—'
-                : Pace.secondsPerKilometer(fastest).format(unit),
-            caption: 'Your quickest yet',
-            waiting: fastest == null,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// What the coach has noticed, as a way into the conversation.
-///
-/// **The tile is always here, and that is the change.** It used to be dropped
-/// whenever [CoachNote.forRuns] had nothing honest to say — which is exactly
-/// the state a new runner is in — so the one surface on Home that says anybody
-/// is paying attention was missing from the screen somebody decides on. Held
-/// open instead, saying what it is for.
-///
-/// Distinct from the chat, which is the point of it existing at all: the
-/// conversation is where a runner asks, this is where the coach volunteers.
-/// And distinct from Profile's standing card, which answers "how am I doing"
-/// over a whole history; this answers "what just happened".
-///
-/// The note itself is derived in Dart rather than generated, for the reason
-/// [CoachNote] gives at length: a remark about somebody's training has to be
-/// true, and computing it from their runs is the cheapest way to guarantee
-/// that. The empty copy here claims nothing about their training at all.
 class _CoachTile extends StatelessWidget {
   const _CoachTile({
     required this.note,

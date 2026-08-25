@@ -12,10 +12,13 @@ import 'package:mgk_run/src/features/coaching/domain/training_history.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
 import 'package:mgk_run/src/features/home/presentation/home_tab.dart';
+import 'package:mgk_run/src/features/home/presentation/home_last_run.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/profile/domain/runner_stats.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
 import 'package:mgk_run/src/features/profile/presentation/year_grid.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
@@ -384,7 +387,9 @@ void main() {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: YearGrid(weeks: runYear(runs: year, now: monday)),
+            child: YearGrid(
+              weeks: runYear(runs: year, now: monday),
+            ),
           ),
         ),
       ),
@@ -409,6 +414,58 @@ void main() {
         ),
       ),
       size: const Size(393, 340),
+      pixelRatio: 3,
+    );
+  });
+
+  // --- The paywall line -------------------------------------------------------
+
+  final ranThreshold = RunSummary(
+    startedAt: DateTime(2026, 8, 24, 6, 40),
+    duration: const Duration(minutes: 46, seconds: 12),
+    distanceMeters: 8600,
+    avgPaceSecondsPerKm: 322,
+  );
+
+  final against = PlannedAgainst(
+    session: threshold,
+    targetPace: Pace.secondsPerKilometer(310),
+  );
+
+  Widget lastRun(CoachAccess access) => Scaffold(
+    backgroundColor: AppColors.bg,
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: LastRunCard(
+          run: ranThreshold,
+          unit: UnitSystem.metric,
+          against: against,
+          access: access,
+          onUpgrade: () {},
+        ),
+      ),
+    ),
+  );
+
+  testWidgets('last run — paid, read against the session', (tester) async {
+    await plate(
+      tester,
+      'last-run-subscribed',
+      lastRun(CoachAccess.subscribed),
+      size: const Size(393, 420),
+      pixelRatio: 3,
+    );
+  });
+
+  testWidgets('last run — free, the comparison is the paid part', (
+    tester,
+  ) async {
+    await plate(
+      tester,
+      'last-run-free',
+      lastRun(CoachAccess.free),
+      size: const Size(393, 420),
       pixelRatio: 3,
     );
   });

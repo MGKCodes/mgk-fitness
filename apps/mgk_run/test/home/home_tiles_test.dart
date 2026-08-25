@@ -160,17 +160,23 @@ void main() {
       expect(find.textContaining('afternoon easy run'), findsNothing);
     });
 
-    testWidgets('and the runner’s own record is on the page too', (
-      tester,
-    ) async {
+    testWidgets('and the most recent run is on the page too', (tester) async {
       await pump(tester, planned_());
 
-      expect(find.text('YOUR RUNNING'), findsOneWidget);
+      // What replaced four lifetime tiles. Longest run, Fastest pace and Runs
+      // logged were facts about a career on the screen a runner opens to find
+      // out about a day; they live on Profile now, and Home keeps the plan and
+      // what just happened.
       expect(find.text('LAST RUN'), findsOneWidget);
-      expect(find.text('LONGEST RUN'), findsOneWidget);
-      expect(find.text('FASTEST PACE'), findsOneWidget);
-      expect(find.text('RUNS LOGGED'), findsOneWidget);
-      expect(find.text('2'), findsOneWidget);
+      // DISTANCE twice: the week tile carries one too, which is a different
+      // distance about a different span and is meant to.
+      expect(find.text('DISTANCE'), findsNWidgets(2));
+      expect(find.text('PACE'), findsOneWidget);
+      expect(find.text('TIME'), findsOneWidget);
+
+      expect(find.text('LONGEST RUN'), findsNothing);
+      expect(find.text('FASTEST PACE'), findsNothing);
+      expect(find.text('RUNS LOGGED'), findsNothing);
     });
   });
 
@@ -247,14 +253,16 @@ void main() {
       // the hour the runner happens to be reading this at.
       expect(find.text('Morning run'), findsOneWidget);
       expect(find.text('THIS WEEK'), findsOneWidget);
-      expect(find.text('YOUR RUNNING'), findsOneWidget);
+      // And exactly once. With no plan, today is answered off the log, so the
+      // Today tile is already showing this run — drawing the Last run card
+      // under it would be the same run twice on one screen.
+      expect(find.text('LAST RUN'), findsNothing);
       expect(find.text('FROM YOUR COACH'), findsOneWidget);
 
       // The week tile counts *runs*, because there are no sessions to count.
       expect(find.text('RUNS'), findsOneWidget);
       expect(find.text('SESSIONS'), findsNothing);
       expect(find.text('1'), findsOneWidget); // one run this week
-      expect(find.text('2'), findsOneWidget); // two in the log
       expect(find.text('8.4 km'), findsWidgets);
     });
 
@@ -302,17 +310,14 @@ void main() {
       // structure — the general rule ADR-0019 leaves behind, arrived at on the
       // Profile tab and applied here.
       expect(find.text('THIS WEEK'), findsOneWidget);
-      expect(find.text('YOUR RUNNING'), findsOneWidget);
+      expect(find.text('LAST RUN'), findsOneWidget);
       expect(find.text('FROM YOUR COACH'), findsOneWidget);
 
-      // A dash is an absence where a zero would be a claim. Four stat tiles
-      // plus both figures on the week tile.
-      expect(find.text('—'), findsNWidgets(6));
+      // A dash is an absence where a zero would be a claim.
       expect(find.textContaining('0.0 km'), findsNothing);
 
-      // And each dash is captioned with what will land on it.
-      expect(find.text('Your latest run lands here'), findsOneWidget);
-      expect(find.text('Every run you record'), findsOneWidget);
+      // And the empty tile says what will land on it rather than nothing.
+      expect(find.textContaining('Your latest run lands here'), findsOneWidget);
     });
 
     testWidgets('the coach keeps its place before it has anything to say', (

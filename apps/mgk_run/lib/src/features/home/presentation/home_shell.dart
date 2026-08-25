@@ -24,6 +24,8 @@ import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/goal_draft.dart';
 import '../../coaching/domain/plan_history.dart';
 import 'home_tab.dart';
+import 'home_last_run.dart';
+import '../../coaching/presentation/session_labels.dart';
 import '../../coaching/domain/pace_model.dart';
 import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
@@ -200,6 +202,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// This week's sessions, for Home's ribbon. Loaded here rather than derived
   /// in the widget so the ribbon and today's card can never disagree.
   TrainingWeek? _thisWeek;
+
+  /// The session the most recent run answered, or null.
+  ///
+  /// **Matched by the day the run happened on, and only inside the week the
+  /// plan currently holds.** A run from three weeks ago is not read against
+  /// this Tuesday just because it was also a Tuesday — that would compare an
+  /// effort to a session it was never set, and quietly, which is worse than
+  /// showing nothing. The shell holds this week and not the whole block, so
+  /// the honest range is exactly one week and anything older matches nothing.
+  ///
+  /// Null on all of: no plan, no runs, a rest day, and a run older than the
+  /// current week. Every one of those means the same thing to the card — there
+  /// is no comparison to draw — so they are one answer rather than four.
+  PlannedAgainst? get _againstLastRun {
+    final run = _allRuns.firstOrNull;
+    final week = _thisWeek;
+    if (run == null || week == null) return null;
+    final now = DateTime.now();
+    if (run.startedAt.isBefore(mondayOf(now))) return null;
+    final session = week.runOn(run.startedAt.weekday);
+    if (session == null) return null;
+    final profile = _planProfile;
+    // Derived in Dart from the profile's time trial, and null without one —
+    // `pacesFor` answers null for a profile that has never done one, and a
+    // pace row is dropped rather than guessed at.
+    final paces = profile == null ? null : pacesFor(profile);
+    return PlannedAgainst(
+      session: session,
+      targetPace: paces == null ? null : paceFor(session.kind, paces),
+    );
+  }
 
   /// What the runner is working on, for the top of Home. The same two lines the
   /// Plan tab is headed with — a countdown and a week number belong on the page
@@ -1258,6 +1291,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // of it is the last run. Home reads it to answer "have they run
                 // today" and to fill the last-run tile.
                 lastRun: _allRuns.firstOrNull,
+                // What that run was measured against, when it answered a
+                // session. Worked out here rather than on Home because it
+                // needs the plan and the log together, and Home is handed one
+                // of them.
+                lastRunAgainst: _againstLastRun,
                 hasRuns: _allRuns.isNotEmpty,
                 missed: _missed,
                 onOpenRun: _openRun,
