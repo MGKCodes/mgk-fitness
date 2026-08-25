@@ -62,6 +62,7 @@ import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/onboarding/presentation/welcome_screen.dart';
+import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
@@ -1158,6 +1159,15 @@ RunSummary _demoSummary() => RunSummary(
   maxHr: 167,
   caloriesEst: 358,
   points: demoRunTrace(),
+  bestEfforts: const <BestEffort>[
+    // 5 km inside a 5.23 km run, a little under its average — the shape a real
+    // record takes. See [_demoBests] for why these are written down rather than
+    // measured off the trace above.
+    BestEffort(
+      distanceMeters: 5000,
+      duration: Duration(minutes: 26, seconds: 25),
+    ),
+  ],
   splits: const <RunSplit>[
     RunSplit(
       index: 1,
@@ -1198,6 +1208,35 @@ RunSummary _demoSummary() => RunSummary(
   ],
 );
 
+/// The records a demo run of this shape would have set — every standard
+/// distance it contains, a shade under its own average pace.
+///
+/// **Invented rather than measured, and it has to be.** The real path is
+/// `bestEffortsFor(trace)` over the persisted points, but the one demo trace is
+/// a two-kilometre loop reused at four different stated distances, so measuring
+/// it would answer "no records" for a 10 km run. That is the fixture being thin
+/// rather than the feature being empty. The shade under average is the shape a
+/// real record takes: the fastest continuous 10 km inside a run is always
+/// quicker than the whole of it, which is the difference ADR-0026 exists over.
+///
+/// A run with no trace gets none, which is the rule and not a shortcut here.
+List<BestEffort> _demoBests(
+  double meters,
+  Duration duration, {
+  bool traced = true,
+}) => <BestEffort>[
+  if (traced)
+    for (final double distance in kRecordDistancesMeters)
+      if (meters >= distance)
+        BestEffort(
+          distanceMeters: distance,
+          duration: Duration(
+            milliseconds: (duration.inMilliseconds * (distance / meters) * 0.97)
+                .round(),
+          ),
+        ),
+];
+
 /// A canned training log for the history preview. Distinct thumbnails come from
 /// slicing/reversing the one demo trace; treadmill and manual runs have none.
 List<RunSummary> _demoRuns() {
@@ -1212,6 +1251,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 88,
       avgHr: 151,
       points: trace.reversed.toList(),
+      bestEfforts: _demoBests(10120, const Duration(minutes: 54, seconds: 12)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 14, 18, 20),
@@ -1221,6 +1261,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 55,
       avgHr: 165,
       points: trace.sublist(0, 250),
+      bestEfforts: _demoBests(8000, const Duration(minutes: 38, seconds: 2)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 10, 7),
@@ -1238,6 +1279,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 30,
       avgHr: 145,
       points: trace.sublist(120),
+      bestEfforts: _demoBests(6000, const Duration(minutes: 33, seconds: 30)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 5, 9),

@@ -242,3 +242,33 @@ class PlanSessions extends Table {
   @override
   Set<Column<Object>> get primaryKey => {planId, weekNumber, weekday};
 }
+
+/// A run's fastest continuous stretch at each of the standard distances —
+/// **searched for inside the run, not read off its summary**.
+///
+/// Rows here are derived from `run_points` at the moment the run finishes, from
+/// the same walk over the same trace the distance, the splits and the elevation
+/// figures come from. See `best_effort.dart` for the window itself, and
+/// ADR-0026 for why the whole run's time is not an acceptable substitute.
+///
+/// **Absence is the normal state and it carries meaning.** A run with no row
+/// for a distance did not contain that distance: it was too short, or it has no
+/// trace to search at all because it was typed in by hand or came from Health.
+/// Neither is a gap to be filled in later with the run's own time — that would
+/// put two different measurements in one column, and nothing reading it back
+/// could tell them apart.
+///
+/// Metric, like everything stored: 21,097.5 m is a half marathon, and the word
+/// for it belongs at the display layer (CLAUDE.md rule 4).
+@DataClassName('RunBestEffortRow')
+class RunBestEfforts extends Table {
+  TextColumn get runId => text().references(Runs, #id)();
+
+  /// The record distance, exactly — one of `kRecordDistancesMeters`.
+  RealColumn get distanceM => real()();
+
+  IntColumn get durationS => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {runId, distanceM};
+}

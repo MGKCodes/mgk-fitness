@@ -217,6 +217,18 @@ const List<({double meters, String name})> _namedDistances =
       (meters: 42195, name: 'Marathon'),
     ];
 
+/// The metres of [_namedDistances], shortest first.
+///
+/// Public so the records table can be checked against it. `best_effort.dart`
+/// keeps its own copy of these four numbers — it cannot import this file, since
+/// every feature depends on `recording/domain` and it depends on none of them —
+/// and a test asserts the two lists are identical. Adding a fifth named
+/// distance to one and not the other then fails loudly, instead of quietly
+/// producing a record with no name for it or a name with no record.
+final List<double> namedRaceDistanceMeters = List<double>.unmodifiable(<double>[
+  for (final race in _namedDistances) race.meters,
+]);
+
 /// How close a goal has to be to a named distance to be that distance. Fifty
 /// metres — enough for a profile that stored 21097 or 21098, nowhere near
 /// enough to swallow a genuinely different goal.

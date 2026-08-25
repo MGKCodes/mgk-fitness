@@ -7,6 +7,7 @@ import '../../../core/ids.dart';
 import '../../health/data/health_kit_run_metrics.dart';
 import '../../health/domain/run_health_metrics.dart';
 import '../../history/data/run_backup.dart';
+import '../domain/best_effort.dart';
 import '../domain/live_metrics.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
@@ -481,6 +482,30 @@ class RecordingRunRecorder implements RunRecorder {
           seq: split.index,
           distanceM: split.distanceMeters,
           durationS: split.duration.inSeconds,
+        ),
+    ]);
+    // **The records go down with the run too, and for the same reason the
+    // splits do: this is the only moment the trace is cheap to read.**
+    //
+    // A record is the fastest continuous stretch of 5 km, 10 km, a half or a
+    // full *inside* this run — searched for over the trace, never read off the
+    // summary. The 23 Aug run covered 10.18 km in 58:28 and its actual 10K was
+    // about 57:25; reporting the whole run's time as a 10K best understates the
+    // runner's own record by a minute and says nothing about doing so
+    // (ADR-0026).
+    //
+    // Computed here rather than when Profile opens, which is the same argument
+    // ADR-0023 makes about reads: the alternative is loading every point of
+    // every run in the log on every visit to a tab, over a log that only grows.
+    // Four numbers per run, written once, is the whole cost.
+    //
+    // Usually empty, and that is not a gap: most runs are shorter than 5 km.
+    await _db.replaceRunBestEfforts(runId, <RunBestEffortsCompanion>[
+      for (final effort in bestEffortsFor(trace))
+        RunBestEffortsCompanion.insert(
+          runId: runId,
+          distanceM: effort.distanceMeters,
+          durationS: effort.duration.inSeconds,
         ),
     ]);
     // **What the phone counted while the GPS was watching the road.**

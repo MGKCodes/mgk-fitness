@@ -20,6 +20,7 @@ import 'package:mgk_run/src/features/profile/presentation/year_grid.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:flutter/material.dart';
+import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -90,11 +91,40 @@ void main() {
     heading: 'Today',
   );
 
+  /// The records a run of this shape would have set — every standard distance
+  /// it contains, at a shade under its own average pace.
+  ///
+  /// **The shade is the fixture's whole point.** The fastest continuous 10 km
+  /// inside a run is always quicker than the whole run's average, and it is
+  /// that gap the records section exists to keep hold of: the 23 Aug run's
+  /// 10.18 km took 58:28 and its 10K took about 57:25. A plate whose records
+  /// were the runs' own times would draw the design decision out of the
+  /// picture.
+  List<BestEffort> bests(double meters, Duration duration) => <BestEffort>[
+    for (final double distance in kRecordDistancesMeters)
+      if (meters >= distance)
+        BestEffort(
+          distanceMeters: distance,
+          duration: Duration(
+            milliseconds: (duration.inMilliseconds * (distance / meters) * 0.97)
+                .round(),
+          ),
+        ),
+  ];
+
   RunSummary run({
     required DateTime at,
     double meters = 8400,
     Duration duration = const Duration(minutes: 48, seconds: 12),
-  }) => RunSummary(startedAt: at, duration: duration, distanceMeters: meters);
+    bool traced = true,
+  }) => RunSummary(
+    startedAt: at,
+    duration: duration,
+    distanceMeters: meters,
+    // A recorded run has a trace and therefore records; `traced: false` is the
+    // run somebody typed in, which has neither.
+    bestEfforts: traced ? bests(meters, duration) : const <BestEffort>[],
+  );
 
   /// A loop around South Park, Reigate — roughly the 23 Aug test run.
   ///
@@ -162,17 +192,32 @@ void main() {
     ],
   );
 
+  /// One day of the year fixture: a distance, and a duration that belongs to it.
+  ///
+  /// **The two used to vary independently**, and the profile plate reported a
+  /// lifetime fastest pace of 1:57/km over a 28 km run — a world record, on a
+  /// board whose whole purpose is to be judged by eye. Records did not cause
+  /// that but they made it unmissable: a 39:48 half marathon is harder to read
+  /// past than a pace tile. `plate.dart` says a plate drawn at a size no runner
+  /// holds is worse than no plate because it looks like evidence; a pace no
+  /// runner has run is the same argument.
+  RunSummary dayRun(int d) {
+    final meters = 4200 + (d % 30) * 520.0 + (d % 7 == 6 ? 9000 : 0);
+    // 5:15/km on a short quick day, easing out towards 6:20 on a long one.
+    final secondsPerKm = 315 + (d % 6) * 10 + (meters > 15000 ? 25 : 0);
+    return run(
+      at: DateTime(2026, 8, 24).subtract(Duration(days: d)),
+      meters: meters,
+      duration: Duration(seconds: (meters / 1000 * secondsPerKm).round()),
+    );
+  }
+
   /// A year of running, thinning out in winter and building through summer —
   /// the shape the year grid exists to show, and one a flat fixture cannot.
   final year = <RunSummary>[
     for (var d = 0; d < 360; d++)
       if (<int>[1, 3, 5, 7][d % 4] != 7 || d % 7 == 6)
-        if ((d ~/ 30) % 5 != 0 || d % 3 == 0)
-          run(
-            at: DateTime(2026, 8, 24).subtract(Duration(days: d)),
-            meters: 4200 + (d % 30) * 520.0 + (d % 7 == 6 ? 9000 : 0),
-            duration: Duration(minutes: 26 + (d % 30)),
-          ),
+        if ((d ~/ 30) % 5 != 0 || d % 3 == 0) dayRun(d),
   ];
 
   final log = <RunSummary>[
@@ -285,6 +330,49 @@ void main() {
       ProfileScreen(
         stats: RunnerStats.from(year, now: monday),
         runs: year,
+        now: monday,
+        onAddRun: () {},
+        onOpenSettings: () {},
+      ),
+      pixelRatio: 2,
+    );
+  });
+
+  testWidgets('profile — records off a log that was typed in', (tester) async {
+    // **The case the records section is most likely to be judged wrong on.**
+    // A runner who logs their races by hand has a marathon in the log and a
+    // dash beside "Marathon", because a record is the fastest stretch found
+    // inside a trace and a typed run has no trace (ADR-0026). The behaviour is
+    // right; whether the page explains it well enough to stop somebody
+    // concluding the app is broken is a design call, and this is the plate for
+    // making it.
+    final byHand = <RunSummary>[
+      run(
+        at: DateTime(2026, 4, 26),
+        meters: 42195,
+        duration: const Duration(hours: 3, minutes: 48, seconds: 11),
+        traced: false,
+      ),
+      run(
+        at: DateTime(2026, 3, 8),
+        meters: 21097.5,
+        duration: const Duration(hours: 1, minutes: 47, seconds: 3),
+        traced: false,
+      ),
+      run(
+        at: DateTime(2026, 8, 22),
+        meters: 10000,
+        duration: const Duration(minutes: 49, seconds: 30),
+        traced: false,
+      ),
+    ];
+
+    await plate(
+      tester,
+      'profile-records-by-hand',
+      ProfileScreen(
+        stats: RunnerStats.from(byHand, now: monday),
+        runs: byHand,
         now: monday,
         onAddRun: () {},
         onOpenSettings: () {},

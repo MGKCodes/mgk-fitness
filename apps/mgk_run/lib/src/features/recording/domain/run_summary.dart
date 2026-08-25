@@ -1,3 +1,4 @@
+import 'best_effort.dart';
 import 'run_point.dart';
 import 'run_split.dart';
 
@@ -23,6 +24,7 @@ class RunSummary {
     this.type = 'outdoor',
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
+    this.bestEfforts = const <BestEffort>[],
   });
 
   /// The stored run's id, when this summary came from a row.
@@ -73,6 +75,20 @@ class RunSummary {
 
   final List<RunPoint> points;
   final List<RunSplit> splits;
+
+  /// The standard distances this run holds a time for, shortest first —
+  /// the fastest continuous 5 km, 10 km, half or full **inside** it, not its
+  /// own time over its own distance (ADR-0026).
+  ///
+  /// Empty for nearly every run, and empty means the same two things it means
+  /// in storage: the run was shorter than 5 km, or it has no trace to search
+  /// because it was typed in by hand or arrived from Health. It is never a
+  /// stand-in for the whole-run time, which is a different measurement.
+  ///
+  /// Unlike [points] and [splits] this is carried by the log's read as well as
+  /// by a single run's, because the records a runner sees on Profile are a fold
+  /// over every run. Four numbers per run is affordable where a trace is not.
+  final List<BestEffort> bestEfforts;
 
   bool get hasRoute => points.length >= 2;
 }

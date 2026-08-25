@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../recording/domain/best_effort.dart';
 import '../../recording/domain/run_point.dart';
 import '../../recording/domain/run_split.dart';
 import '../../recording/domain/run_summary.dart';
@@ -40,13 +41,36 @@ class DriftRunRepository implements RunDetailSource {
   ///
   /// Summary fields only. The trace is thousands of rows per run and the log
   /// draws none of it, so it is left for whatever opens a single run.
+  ///
+  /// **The records are the one derived thing that does come along**, and the
+  /// exception is what makes Profile's records section possible at all. A
+  /// lifetime best is a fold over every run, so the alternative is walking the
+  /// trace of every run in the log every time a tab is opened — the read this
+  /// whole table exists to avoid (ADR-0026). Four rows per run at the very
+  /// most, and none for the majority, so the second select costs less than the
+  /// run rows above it.
   Future<List<RunSummary>> fetchRuns() async {
     final rows =
         await (_db.select(_db.runs)
               ..where((r) => r.endedAt.isNotNull())
               ..orderBy([(r) => OrderingTerm.desc(r.startedAt)]))
             .get();
-    return <RunSummary>[for (final row in rows) runSummaryFromLocal(row)];
+    final efforts = <String, List<BestEffort>>{};
+    for (final row in await _db.allBestEfforts()) {
+      efforts
+          .putIfAbsent(row.runId, () => <BestEffort>[])
+          .add(runBestEffortFromLocal(row));
+    }
+    for (final list in efforts.values) {
+      list.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    }
+    return <RunSummary>[
+      for (final row in rows)
+        runSummaryFromLocal(
+          row,
+          bestEfforts: efforts[row.id] ?? const <BestEffort>[],
+        ),
+    ];
   }
 
   /// One run in full — its summary, its trace and its splits.
@@ -100,10 +124,14 @@ class DriftRunRepository implements RunDetailSource {
   Future<RunSummary> _withTrace(RunRow row) async {
     final points = await _db.pointsForRun(row.id);
     final splits = await _db.splitsForRun(row.id);
+    final efforts = await _db.bestEffortsForRun(row.id);
     return runSummaryFromLocal(
       row,
       points: <RunPoint>[for (final p in points) runPointFromLocal(p)],
       splits: <RunSplit>[for (final s in splits) runSplitFromLocal(s)],
+      bestEfforts: <BestEffort>[
+        for (final e in efforts) runBestEffortFromLocal(e),
+      ],
     );
   }
 }
@@ -116,6 +144,7 @@ RunSummary runSummaryFromLocal(
   RunRow row, {
   List<RunPoint> points = const <RunPoint>[],
   List<RunSplit> splits = const <RunSplit>[],
+  List<BestEffort> bestEfforts = const <BestEffort>[],
 }) => RunSummary(
   id: row.id,
   startedAt: row.startedAt,
@@ -134,6 +163,7 @@ RunSummary runSummaryFromLocal(
   type: row.type,
   points: points,
   splits: splits,
+  bestEfforts: bestEfforts,
 );
 
 /// A stored fix as the map sees it. Public for the same reason as
@@ -153,4 +183,15 @@ RunSplit runSplitFromLocal(RunSplitRow row) => RunSplit(
   distanceMeters: row.distanceM,
   duration: Duration(seconds: row.durationS),
   avgHr: row.avgHr,
+);
+
+/// A stored record as the records section sees it.
+///
+/// Whole seconds, which is the resolution the column keeps and the resolution a
+/// runner reads a personal best at. The window that produced it works in
+/// milliseconds — interpolating the edges is the point — and that precision is
+/// spent on getting the second right rather than on being shown.
+BestEffort runBestEffortFromLocal(RunBestEffortRow row) => BestEffort(
+  distanceMeters: row.distanceM,
+  duration: Duration(seconds: row.durationS),
 );

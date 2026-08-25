@@ -79,7 +79,7 @@ schema, it is stale — say so rather than working around it.
 - `docs/product-spec.md` — the source-of-truth product definition.
 - `docs/architecture/` — run recording, plan generation, onboarding, LLM and
   secrets.
-- `docs/decisions/` — 25 ADRs (the *why*).
+- `docs/decisions/` — 26 ADRs (the *why*).
 - `docs/roadmap.md` — phased build order.
 - `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`.
 

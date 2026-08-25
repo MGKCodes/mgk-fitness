@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/plan_history.dart';
+import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
 import '../../coaching/domain/training_history.dart';
@@ -13,6 +14,7 @@ import '../../coaching/presentation/coach_button.dart';
 import 'year_grid.dart';
 import '../../history/presentation/route_thumbnail.dart';
 import '../../history/presentation/run_tile.dart';
+import '../../recording/domain/best_effort.dart';
 import '../../recording/domain/run_point.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/runner_stats.dart';
@@ -561,6 +563,11 @@ class _Lifetime extends StatelessWidget {
             ),
           const SizedBox(height: AppSpacing.lg),
           Row(
+            // Labels on one line. The default centres the three columns against
+            // each other, so the moment one of them shrinks to fit — see the
+            // note on TIME below — its eyebrow drops a few pixels and the row
+            // stops reading as a row.
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Expanded(
                 child: StatBlock(
@@ -574,6 +581,13 @@ class _Lifetime extends StatelessWidget {
                   label: 'Time',
                   value: empty ? '—' : stats.totalDuration.hoursMinutesSeconds,
                   valueColor: waiting,
+                  // The one figure on this card with no upper bound. A lifetime
+                  // total crosses a hundred hours and gains a character, and a
+                  // `Text` in a tight `Expanded` clips **silently** — there is
+                  // no overflow stripe inside a bounded box — so "157:12:00"
+                  // was drawing straight through the streak beside it. This is
+                  // the case `StatBlock.shrinkToFit` documents itself for.
+                  shrinkToFit: true,
                 ),
               ),
               Expanded(
@@ -719,16 +733,32 @@ class _OutcomeMark extends StatelessWidget {
 
 /// Personal bests.
 ///
-/// A record a runner has runs but no figure for — every run under a kilometre,
-/// so no pace qualifies — is still simply not shown. That is a gap in a real
-/// record, and inventing a slot for it would be reporting on a thing that has
-/// not happened yet in the middle of things that have.
+/// Two kinds of record, kept visibly apart because they are read off different
+/// things. The two cards are facts about **whole runs** — the longest one, and
+/// the best average pace over one. The table under them is the fastest
+/// continuous 5 km, 10 km, half or full found **inside** a run, cut from the
+/// trace when the run finished (ADR-0026). Putting a 10K time in a card beside
+/// "longest run" would invite the reading the whole design exists to refuse:
+/// that a 10.18 km run's 58:28 is a 10K record. It is not; the 10K inside it
+/// was about a minute quicker.
 ///
-/// **Both absent is a different case**, and it is only ever the empty log:
-/// anybody with one run has a longest one. So the section holds both bests open
-/// instead of disappearing, because "what does this app consider a record" is
-/// exactly what a runner with nothing recorded wants to know, and the answer is
-/// worth more before the first run than after it.
+/// A record a runner has runs but no figure for — every run under a kilometre,
+/// so no pace qualifies — is still simply not shown among the cards. That is a
+/// gap in a real record, and inventing a slot for it would be reporting on a
+/// thing that has not happened yet in the middle of things that have.
+///
+/// **The four race rows are different: they are always all there.** Somebody
+/// who has never run 10 km sees the 10K row with a dash in it, and that is the
+/// point — the row is naming a distance, not claiming a time. It is what makes
+/// the section legible to a runner with nothing in it yet, which is the rule
+/// this whole page lives by: a screen with no data states its structure, and a
+/// dash is an absence where a zero would be a claim.
+///
+/// **Both cards absent is a different case**, and it is only ever the empty
+/// log: anybody with one run has a longest one. So the section holds both bests
+/// open instead of disappearing, because "what does this app consider a record"
+/// is exactly what a runner with nothing recorded wants to know, and the answer
+/// is worth more before the first run than after it.
 class _Records extends StatelessWidget {
   const _Records({required this.stats, required this.unit});
 
@@ -737,6 +767,7 @@ class _Records extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final longest = stats.longestRunMeters;
     final fastest = stats.fastestPaceSecondsPerKm;
     final empty = longest == null && fastest == null;
@@ -779,6 +810,92 @@ class _Records extends StatelessWidget {
               ),
             ],
           ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // One card holding four rows rather than four more cards. A PB table is
+        // how runners already read these — a column of distances against a
+        // column of times — and four extra cards would push the year grid off
+        // the fold to say the same thing at three times the height.
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              for (var i = 0; i < kRecordDistancesMeters.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpacing.md),
+                  child: _RaceRecord(
+                    meters: kRecordDistancesMeters[i],
+                    best: stats.bestEffortAt(kRecordDistancesMeters[i]),
+                  ),
+                ),
+              // Only for the runner it could bite. A record is read off a
+              // trace, so a race typed in by hand sets none — and the runner
+              // who does that is looking at a marathon in their log and a dash
+              // beside "Marathon", with no way to work out why.
+              if (stats.hasRecordlessRuns) ...<Widget>[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Read from the route, so a record is the fastest unbroken '
+                  'stretch inside a run — not the run’s own time. A run '
+                  'without a route sets none.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One row of the race table: the distance as runners say it, and the time.
+///
+/// The name comes from `raceName`, which exists for exactly this — "Half
+/// marathon" is both shorter and more accurate than "21 km", which is a
+/// rounding of 21.0975, or than "13 mi", which is a rounding of 13.1.
+///
+/// The name is rendered as a label rather than as a value, and that is not only
+/// styling: it is what makes "5K" on an empty profile a heading rather than a
+/// number the app has not earned.
+class _RaceRecord extends StatelessWidget {
+  const _RaceRecord({required this.meters, required this.best});
+
+  final double meters;
+  final Duration? best;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final time = best;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: <Widget>[
+        Expanded(
+          child: SectionLabel(
+            // Never null for these four — they are the distances `raceName`
+            // was written for — but the fallback is a distance rather than a
+            // crash if a fifth is ever added to one list and not the other.
+            raceName(meters) ?? formatPrescribed(meters, UnitSystem.metric),
+            emphasis: LabelEmphasis.stat,
+          ),
+        ),
+        Text(
+          time == null ? '—' : time.hoursMinutesSeconds,
+          style: theme.textTheme.titleMedium?.copyWith(
+            // A dash sits a step back, the way the held-open figures above it
+            // do: at full strength beside a real time it reads as a value that
+            // has gone wrong rather than as one not set yet.
+            color: time == null ? AppColors.textTertiary : null,
+            fontFeatures: const <ui.FontFeature>[
+              ui.FontFeature.tabularFigures(),
+            ],
+          ),
         ),
       ],
     );

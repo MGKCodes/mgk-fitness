@@ -75,6 +75,33 @@ been on a store, so everything Runio does is still listed here.
 **Elsewhere**
 - Home, Plan and Profile tabs, with lifetime totals, records, training standing
   and the full run log.
+- **Personal bests at 5K, 10K, half marathon and marathon**, on Profile beside
+  the longest run and the fastest pace. A best is the fastest *continuous
+  stretch of that distance inside a run*, found by sliding a window over the
+  trace — never the whole run's time. The 23 Aug test run covered 10.18 km in
+  58:28 and its real 10K was about 57:25, so the easy version would have
+  understated a runner's own record by a minute and said nothing about doing it
+  (ADR-0026). Both window edges are interpolated, and a window never spans a
+  gap in the trace: the straight line across a hole is a line nobody ran.
+- The window runs once, when the run finishes, beside the splits and the
+  elevation figures that come out of the same walk over the trace. Computing it
+  when Profile opened would mean reading every point of every run in the log on
+  every visit to a tab.
+- **A run with no route sets no record**, and the whole-run time is not
+  substituted for it — a hand-entered marathon and a measured one are different
+  kinds of evidence, and one records table cannot hold both. The records card
+  says so in a line, but only for a runner it could actually confuse: somebody
+  with a run long enough to have set a record that set none.
+- All four rows are on the page from the first launch, empty. A runner who has
+  never run 10 km sees the 10K row with a dash in it — the row names a distance,
+  it does not claim a time.
+- Records for runs recorded before this existed are computed on upgrade, from
+  traces already on the phone. Unlike the step count in the version before, this
+  is not the app inventing a figure: it is the same window over the same
+  evidence, so the answer is the record rather than an estimate of it.
+- The lifetime **time** figure scales to fit instead of clipping. Past a hundred
+  hours it gained a character and drew straight through the streak beside it,
+  and a `Text` inside a bounded box clips in silence.
 - Account deletion scoped to the app asking, with an export beforehand.
 - Health integration designed for absence: a denied read is indistinguishable
   from no data, so it is never an error state.

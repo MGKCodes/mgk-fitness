@@ -107,6 +107,21 @@ class SupabaseRunBackup implements RunBackup {
   /// Pushes a run's trace, in batches. Safe to repeat: the primary key is
   /// `(run_id, seq)`, so a re-push of a point already there is a no-op rather
   /// than a duplicate.
+  ///
+  /// **The points and the splits go up; `run_best_efforts` does not.** The
+  /// device grew that table in schema version 9 and there is no matching table
+  /// in the `run` schema, so a run's records are local-only in exactly the way
+  /// `elevation_max_m` and `steps` are, and for the same reason: the schema is
+  /// not this app's to change.
+  ///
+  /// It is the cheapest of the three gaps to live with, and worth saying why
+  /// rather than leaving somebody to work it out. The records are a pure
+  /// function of the trace, and the trace *is* mirrored — so a restore onto a
+  /// new phone brings back everything needed to recompute them, and the day a
+  /// backfill runs over restored runs (`AppDatabase.backfillBestEfforts` is
+  /// already that walk) the records come back identical rather than
+  /// approximated. Until something calls it after a restore, a runner who
+  /// changes phone sees their records rebuild from new runs only.
   @override
   Future<void> pushTrace(String runId) async {
     final userId = _userId;

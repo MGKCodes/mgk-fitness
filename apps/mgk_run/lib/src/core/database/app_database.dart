@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../features/recording/domain/best_effort.dart';
+import '../../features/recording/domain/run_point.dart';
 import 'coach_memory_tables.dart';
 import 'tables.dart';
 
@@ -13,11 +15,23 @@ part 'app_database.g.dart';
 /// The on-device database — the offline-first source of truth for a run in
 /// progress. Supabase is a backup and cross-device store, not the authority
 /// for live recording (see docs/architecture/data-model.md).
+///
+/// **The two imports above are the only place `core/` reaches into
+/// `features/`, and they are deliberate.** `run_point.dart` and
+/// `best_effort.dart` are dependency-free value types and pure functions;
+/// neither knows this file exists, so nothing here is circular. They are needed
+/// because schema 9's migration backfills the records table from traces already
+/// on the phone, and the alternative was worse in both directions: a migration
+/// that creates a table it cannot fill, and a backfill fired from the
+/// composition root that would need a new column purely to remember whether it
+/// had already run. Exactly-once is what a schema version *is* — borrowing a
+/// pure function is cheaper than building a second mechanism to say it again.
 @DriftDatabase(
   tables: [
     Runs,
     RunPoints,
     RunSplits,
+    RunBestEfforts,
     Plans,
     PlanWeeks,
     PlanSessions,
@@ -33,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -84,6 +98,32 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(runs, runs.elevationMaxM);
         await m.addColumn(runs, runs.steps);
       }
+      if (from < 9) {
+        // Personal bests at the standard distances, cut from the trace the way
+        // the splits are. Additive: a new table, and nothing already stored
+        // changes meaning.
+        await m.createTable(runBestEfforts);
+        // **And backfilled, which the previous migration deliberately was
+        // not.** Schema 8 refused to invent a step count for an old run, and
+        // was right to: there was no evidence on the phone that could produce
+        // one, so a backfill there would have been the app making up a number
+        // it was about to display as measured. That argument does not reach
+        // this table. The evidence is already here — `run_points` holds every
+        // fix of every run — and [backfillBestEfforts] runs exactly the same
+        // window over exactly the same trace the recorder would have run at
+        // the finish line. The answer is not an estimate of the record; it is
+        // the record. Leaving it out would mean a runner with a year of
+        // recorded running opened Records and saw four dashes, over a database
+        // that could answer all four.
+        //
+        // The cost is bounded by construction, which is the only reason it is
+        // safe to do here rather than off the critical path. This runs once,
+        // on a database that predates schema 9 — that is, one built during the
+        // app's pre-release life. Every run recorded from here on gets its
+        // efforts written at `stop()`, so no future log ever reaches this line,
+        // however long it grows.
+        await backfillBestEfforts();
+      }
     },
   );
 
@@ -120,6 +160,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteRun(String id) => transaction(() async {
     await (delete(runPoints)..where((pt) => pt.runId.equals(id))).go();
     await (delete(runSplits)..where((s) => s.runId.equals(id))).go();
+    await (delete(runBestEfforts)..where((e) => e.runId.equals(id))).go();
     await (delete(runs)..where((r) => r.id.equals(id))).go();
   });
 
@@ -239,6 +280,113 @@ class AppDatabase extends _$AppDatabase {
         if (rows.isEmpty) return;
         await batch((b) => b.insertAll(runSplits, rows));
       });
+
+  // --- Records ---------------------------------------------------------------
+
+  /// Writes a run's best efforts, replacing whatever was there.
+  ///
+  /// Replace rather than insert, for [replaceRunSplits]'s reason: the efforts
+  /// are a function of the trace, and the last walk over it is the answer.
+  /// Finishing the same run twice must not leave two sets behind, and an empty
+  /// list is a real answer — a run too short to hold a record — so it clears
+  /// the rows rather than skipping the write.
+  ///
+  /// Not reachable from [updateRunDetails], for the same reason splits are not:
+  /// a record is what the device observed, and correcting a run's summary does
+  /// not rewrite the road (ADR-0016). Correcting a GPS run's distance therefore
+  /// leaves its records saying what the trace said, which is intended.
+  Future<void> replaceRunBestEfforts(
+    String runId,
+    List<RunBestEffortsCompanion> rows,
+  ) => transaction(() async {
+    await (delete(runBestEfforts)..where((e) => e.runId.equals(runId))).go();
+    if (rows.isEmpty) return;
+    await batch((b) => b.insertAll(runBestEfforts, rows));
+  });
+
+  /// One run's records, shortest distance first. Empty is the ordinary answer:
+  /// most runs are shorter than 5 km, and a run with no trace has no interior
+  /// to have searched.
+  Future<List<RunBestEffortRow>> bestEffortsForRun(String runId) =>
+      (select(runBestEfforts)
+            ..where((e) => e.runId.equals(runId))
+            ..orderBy([(e) => OrderingTerm.asc(e.distanceM)]))
+          .get();
+
+  /// Every stored record, for folding a lifetime best out of.
+  ///
+  /// Four rows per run at the very most, and none at all for the majority —
+  /// which is what makes it safe to read the lot on the way to a screen. The
+  /// traces these came from are thousands of rows each and are never touched
+  /// again after the run that produced them (ADR-0026).
+  Future<List<RunBestEffortRow>> allBestEfforts() =>
+      select(runBestEfforts).get();
+
+  /// Computes and stores the records of every traced run that has none, and
+  /// answers how many runs it filled.
+  ///
+  /// **Called once, from schema 9's migration.** Runs recorded from then on get
+  /// their efforts written when they finish, so nothing reaches this afterwards
+  /// — but it is written to be safe to call twice: a run that already has rows
+  /// is skipped rather than recomputed.
+  ///
+  /// **The filter is "has a trace", and nothing else.** Skipping runs whose
+  /// stored `distanceM` is under 5 km would be faster and is wrong: a run's
+  /// distance is editable and its trace is not (ADR-0016), so a GPS run whose
+  /// summary was corrected down to 4 km can still hold a 5 km stretch of road,
+  /// and it is the road that a record is read off. A run with no points is
+  /// skipped because there is genuinely nothing to search.
+  ///
+  /// Plain inserts, no batch and no transaction. Both of drift's bulk helpers
+  /// open a transaction of their own, and this runs inside `onUpgrade`, where
+  /// nesting one is at best pointless. The write it replaces is four rows per
+  /// run.
+  Future<int> backfillBestEfforts() async {
+    final traced =
+        await (selectOnly(runPoints, distinct: true)
+              ..addColumns(<Expression<Object>>[runPoints.runId]))
+            .map((row) => row.read(runPoints.runId)!)
+            .get();
+    if (traced.isEmpty) return 0;
+
+    final done =
+        (await (selectOnly(runBestEfforts, distinct: true)
+                  ..addColumns(<Expression<Object>>[runBestEfforts.runId]))
+                .map((row) => row.read(runBestEfforts.runId)!)
+                .get())
+            .toSet();
+
+    var filled = 0;
+    for (final runId in traced) {
+      if (done.contains(runId)) continue;
+      // One run's trace at a time, so peak memory is one run rather than the
+      // whole log however long the log is.
+      final rows = await pointsForRun(runId);
+      final efforts = bestEffortsFor(<RunPoint>[
+        for (final row in rows)
+          RunPoint(
+            latitude: row.lat,
+            longitude: row.lng,
+            accuracyMeters: row.accuracyM,
+            altitudeMeters: row.altitudeM,
+            timestamp: row.timestamp,
+          ),
+      ]);
+      if (efforts.isEmpty) continue;
+      for (final effort in efforts) {
+        await into(runBestEfforts).insert(
+          RunBestEffortsCompanion.insert(
+            runId: runId,
+            distanceM: effort.distanceMeters,
+            durationS: effort.duration.inSeconds,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      }
+      filled++;
+    }
+    return filled;
+  }
 
   // --- Restore ---------------------------------------------------------------
   //
