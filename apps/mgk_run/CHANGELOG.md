@@ -107,6 +107,12 @@ been on a store, so everything Runio does is still listed here.
   from no data, so it is never an error state.
 
 **After the finish line**
+- **A record is called out where it was set.** “Fastest 10K yet”, above the
+  numbers that contain it, with the rule stated beside it — a best set inside
+  a longer run is otherwise surprising, since somebody who ran 12 km is not
+  expecting to be told about a 10K. Strictly faster than everything before it,
+  never on a tie, and one line however many were set at once: a marathon can
+  set three, and three banners would bury the run under its own confetti.
 - **The route draws itself on, and the distance counts up.** An hour of running
   arriving over a second, which is the one moment this screen has to be an
   arrival rather than a record. Only when a run has just finished — opening

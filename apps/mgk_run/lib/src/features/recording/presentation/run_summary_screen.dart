@@ -8,6 +8,8 @@ import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart' show CoachLetter;
 import '../domain/live_metrics.dart';
+import '../../coaching/domain/prescribed_distance.dart' show raceName;
+import '../domain/best_effort.dart';
 import '../domain/run_point.dart';
 import '../domain/split_marker.dart';
 import '../domain/run_summary.dart';
@@ -171,7 +173,17 @@ class RunSummaryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                 ],
-                Entrance(index: 1, child: _StatGrid(tiles: _tiles())),
+                // A record set, said once, above the numbers that contain it.
+                //
+                // The screen already had everything needed to know: the run
+                // carries its own best efforts, and `history` is the log to
+                // measure them against. Not saying it meant a runner could set
+                // their fastest 10K and find out by opening a different tab.
+                if (_records().isNotEmpty) ...<Widget>[
+                  Entrance(index: 1, child: _RecordBanner(records: _records())),
+                  const SizedBox(height: 16),
+                ],
+                Entrance(index: 2, child: _StatGrid(tiles: _tiles())),
                 // The numbers first — that is what the screen is for — then the
                 // coach's read of them, above the splits a pacing note refers
                 // to.
@@ -255,6 +267,35 @@ class RunSummaryScreen extends StatelessWidget {
   /// absent tile — never a zero, which would be a claim, and never an error,
   /// which would scold a runner for a permission they were entitled to withhold
   /// (CLAUDE.md rule 6).
+  /// The distances this run set a personal best over.
+  ///
+  /// **Strictly faster than everything before it, and never on a tie.** A
+  /// repeat of a time already held is not a new record, and saying it is
+  /// devalues the banner the one time it matters.
+  ///
+  /// Compared against [history] rather than a stored best, because the log is
+  /// what Profile reads a moment later and two sources would eventually
+  /// disagree. A run sharing this one's id is skipped: the log usually already
+  /// contains the run being shown, and a run cannot beat itself.
+  List<BestEffort> _records() {
+    if (summary.bestEfforts.isEmpty) return const <BestEffort>[];
+    final others = <RunSummary>[
+      for (final run in history)
+        if (run.id == null || run.id != summary.id) run,
+    ];
+    return <BestEffort>[
+      for (final effort in summary.bestEfforts)
+        if (others.every(
+          (run) => run.bestEfforts.every(
+            (prior) =>
+                prior.distanceMeters != effort.distanceMeters ||
+                prior.duration > effort.duration,
+          ),
+        ))
+          effort,
+    ];
+  }
+
   List<_Tile> _tiles() {
     final tiles = <_Tile>[_Tile('TIME', summary.duration.hoursMinutesSeconds)];
     final pace = _avgPace();
@@ -618,6 +659,74 @@ class _DrawnRouteState extends State<_DrawnRoute>
         points: widget.points,
         splitMarkers: widget.markers,
         reveal: _reveal.value,
+      ),
+    );
+  }
+}
+
+/// "Fastest 10K yet", on the screen where it happened.
+///
+/// One banner rather than a card per distance: a long run can set three at once
+/// — 5K, 10K and half all fall inside a marathon — and three of these would bury
+/// the run under its own confetti. Listed shortest first, which is the order
+/// they were run through.
+class _RecordBanner extends StatelessWidget {
+  const _RecordBanner({required this.records});
+
+  final List<BestEffort> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final named = <BestEffort>[
+      for (final r in records)
+        if (raceName(r.distanceMeters) != null) r,
+    ];
+    if (named.isEmpty) return const SizedBox.shrink();
+
+    final names = <String>[for (final r in named) raceName(r.distanceMeters)!];
+    final what = names.length == 1
+        ? names.single
+        : '${names.take(names.length - 1).join(', ')} and ${names.last}';
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Fastest $what yet',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  // States the rule rather than only the result. A record set
+                  // inside a longer run is otherwise surprising — somebody who
+                  // ran 12 km is not expecting to be told about a 10K.
+                  'Your fastest unbroken stretch of it, in any run so far.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // The shortest one's time. With several set at once the others are
+          // named above and read on Profile; a column of times here would be a
+          // table on a screen meant to say one thing.
+          Text(
+            named.first.duration.hoursMinutesSeconds,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

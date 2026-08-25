@@ -177,6 +177,10 @@ void main() {
     elevationMaxMeters: 111,
     steps: 8468,
     points: loop(),
+    // What the recorder would have written at the finish line, from the same
+    // walk. Present here so the plate shows the screen a runner actually gets;
+    // whether they read as *records* depends on the log it is shown beside.
+    bestEfforts: bests(10180, const Duration(minutes: 58, seconds: 28)),
     splits: <RunSplit>[
       for (var i = 0; i < splitSeconds.length; i++)
         RunSplit(
@@ -590,4 +594,22 @@ void main() {
       );
     });
   }
+
+  testWidgets('run complete — a record set', (tester) async {
+    await plate(
+      tester,
+      'run-complete-record',
+      RunSummaryScreen(
+        summary: finished,
+        // An empty log, which is what a first 10K actually looks like: nothing
+        // to beat is the commonest way to set a record and the one a new
+        // runner meets first.
+        history: const <RunSummary>[],
+        justFinished: true,
+        onDone: () {},
+        onAskCoach: () {},
+      ),
+      pixelRatio: 2,
+    );
+  });
 }
