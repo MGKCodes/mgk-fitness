@@ -76,6 +76,13 @@ doubt.
       button and surface in `apps/mgk_lift/lib/src/features/*/presentation/`
       that `mgk_ui` already owns. Do it by rendering screens, not by reading —
       that is how both known instances were found.
+- [x] **One heading convention, across both apps.** Added 2026-08-25, from the
+      Run/Lift screen comparison. Lift's Profile announced itself with a
+      `SectionLabel` — the same component its own subsections use — so the
+      screen title and its section headings were set identically and the
+      surface had no hierarchy. It was the only screen in either app
+      introducing itself the way it introduces its own parts. Now an eyebrow
+      and a headline, matching Lift's own Track and Run's app-bar title.
 - [x] **Two `coach_sheet.dart` files.** Not duplicates — one is the coach as a
       sheet, one is the shell that "ask the coach to change something" sheets
       share. Nothing imported both, so the collision never failed a build; it
@@ -125,6 +132,23 @@ doubt.
       items above are adjacent but not the same job. **Settled 2026-08-24: the
       exercise card**, at the point of use. The domain layer can already answer
       it (see Phase C).
+
+- [x] **A screen after you finish.** Added 2026-08-25, from the Run/Lift
+      comparison: Run has a summary, Lift finished a session and dropped you
+      back with nothing. Now the four figures, any personal bests, and the
+      movements with the sets actually logged.
+
+      The personal-best rules are decisions, not implementation. Strictly
+      greater, because matching a best is not setting one. A movement with **no
+      history is not a best** — there is nothing to have beaten, and counting
+      it would make a first session nothing but bests. The session is filtered
+      out of its own log by id. And "no estimate" is a separate fact from
+      "nothing beat your best", because Epley is capped at 12 reps.
+
+      Saving to the library moved here from a dialog on Finish. The reason was
+      already in the code it replaced: saving is a decision about the shape of a
+      session made *after* seeing it, and until this screen there was nowhere
+      to see it.
 
 ### A workout library, which is not what the picker is
 
@@ -341,6 +365,19 @@ The largest phase, and the one with an existing design to work from.
       revisit the choice.
 
 ---
+
+## Found by comparison, not by the report
+
+Two items on this list came from putting the two apps' screens side by side on
+2026-08-25 rather than from the phone. Both are ticked above: the heading
+convention, and the missing post-session screen. A third fault was found the
+same way and fixed in `1fd86d6` — the session header rendered `1410 kg3`,
+because four `StatBlock`s do not fit at 390pt and `shrinkToFit` cannot widen a
+box, only shrink what is in it.
+
+That is three layout faults in one week that neither `flutter analyze` nor 414
+tests could see, and all three surfaced by rendering a screen and looking at it.
+It is the cheapest review step available here and the easiest to skip.
 
 ## Settled, 2026-08-24
 
