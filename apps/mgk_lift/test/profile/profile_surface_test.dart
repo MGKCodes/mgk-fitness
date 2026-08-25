@@ -74,6 +74,28 @@ void main() {
       expect(find.byType(AppTextButton), findsOneWidget);
     });
 
+    testWidgets('the surface has a title, not a third section label', (
+      WidgetTester tester,
+    ) async {
+      // It used to announce itself with the same SectionLabel component its own
+      // subsections use, so the screen had no hierarchy: "Profile" and
+      // "Personal bests" were set identically. Every other surface in the suite
+      // pairs an eyebrow with a headline.
+      await tester.pumpWidget(
+        wrap(ProfileSurface(onOpenTrack: () {}, now: DateTime(2026, 8, 24))),
+      );
+      await tester.pumpAndSettle();
+
+      final title = tester.widget<Text>(find.text('Your training'));
+      final theme = Theme.of(
+        tester.element(find.text('Your training')),
+      ).textTheme;
+      expect(title.style, theme.headlineSmall);
+      // And it must not repeat the empty card's line, which is a fault this
+      // very screen shipped for about ten minutes.
+      expect(find.text('Nothing logged yet'), findsOneWidget);
+    });
+
     testWidgets('shows every heading it will fill', (
       WidgetTester tester,
     ) async {

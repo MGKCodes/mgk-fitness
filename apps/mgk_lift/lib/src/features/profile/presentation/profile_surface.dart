@@ -96,6 +96,17 @@ class ProfileSurface extends StatelessWidget {
             AppSpacing.xxl * 2,
           ),
           children: <Widget>[
+            // **An eyebrow and a headline, which is what every other surface
+            // in the suite does.** This was a bare `SectionLabel('Profile')`,
+            // the same component the sections below it use — so the screen's
+            // title and its section headings rendered identically and the
+            // surface had no hierarchy at all. Track has carried
+            // eyebrow-plus-headline since it was written; Run's profile puts
+            // its title in an app bar. This screen was the only one in either
+            // app announcing itself in the same voice as its own subsections.
+            //
+            // Found by photographing the two apps side by side, which is also
+            // how the last three layout faults here were found.
             Row(
               children: <Widget>[
                 const Expanded(child: SectionLabel('Profile')),
@@ -108,6 +119,17 @@ class ProfileSurface extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
+            Text(
+              // Deliberately NOT stateful, unlike Track's. The first attempt
+              // read "Nothing logged yet" on an empty log, which is already
+              // what the card immediately below says — the screen announced
+              // the same fact twice in two sizes, and a test that pins the
+              // empty-state copy to one widget caught it. The card owns that
+              // message; this is the title.
+              'Your training',
+              style: theme.textTheme.headlineSmall,
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
             // The one call to action, and only while it has a job. Everything
             // below it is the same layout a lifter with ten years of log sees.
