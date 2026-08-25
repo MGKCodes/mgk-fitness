@@ -46,6 +46,7 @@ class RouteMap extends StatefulWidget {
     super.key,
     required this.points,
     this.splitMarkers = const <SplitMarker>[],
+    this.reveal = 1,
     this.strokeWidth = 4,
     this.interactive = true,
     this.followZoom = 16,
@@ -69,6 +70,22 @@ class RouteMap extends StatefulWidget {
   /// which kilometre was the hill, where the run came apart — so the finished
   /// run's map passes them and the live one does not.
   final List<SplitMarker> splitMarkers;
+
+  /// How much of the route is drawn, 0 to 1.
+  ///
+  /// Exists so a finished run can draw itself on rather than appear finished:
+  /// the shape of an hour arriving over a second is the one moment this screen
+  /// has to feel like an arrival rather than a record. Kept as a plain fraction
+  /// rather than an animation so this widget stays still — the caller owns the
+  /// clock, which is also what lets a test pin the route half-drawn.
+  ///
+  /// **Markers follow the line rather than waiting for it.** A pin for a
+  /// kilometre the drawing has not reached yet is a pin on a route that does
+  /// not exist, and reads as a rendering fault rather than as an effect.
+  ///
+  /// 1 is the whole route and the default, so every existing caller — the
+  /// in-run map above all — is untouched.
+  final double reveal;
 
   final double strokeWidth;
   final bool interactive;
@@ -141,10 +158,56 @@ class _RouteMapState extends State<RouteMap> {
       ],
   ];
 
+  /// [_segments], cut to [RouteMap.reveal].
+  ///
+  /// Cut by **point count across the whole trace** rather than by distance:
+  /// fixes arrive at a steady cadence, so counting them draws at roughly the
+  /// speed the run was actually run at, and a runner watching their own route
+  /// appear sees their own pacing in it. Cutting by distance would draw a slow
+  /// hill at the same rate as a fast descent, which is a smoother animation and
+  /// a less true one.
+  List<List<LatLng>> get _drawnSegments {
+    final segments = _segments;
+    if (widget.reveal >= 1) return segments;
+    final total = segments.fold<int>(0, (n, s) => n + s.length);
+    var budget = (total * widget.reveal.clamp(0, 1)).round();
+    final out = <List<LatLng>>[];
+    for (final segment in segments) {
+      if (budget <= 0) break;
+      // Two points minimum, or the segment is a dot rather than a line.
+      out.add(
+        budget >= segment.length ? segment : segment.take(budget).toList(),
+      );
+      budget -= segment.length;
+    }
+    return <List<LatLng>>[
+      for (final s in out)
+        if (s.length > 1) s,
+    ];
+  }
+
+  /// The markers the drawing has reached.
+  List<SplitMarker> get _drawnMarkers {
+    if (widget.reveal >= 1) return widget.splitMarkers;
+    final total = widget.points.length;
+    if (total == 0) return const <SplitMarker>[];
+    final reached = total * widget.reveal.clamp(0, 1);
+    // A marker's position in the trace is its position in time, and the trace
+    // is ordered — so the marker index over the split count is the same
+    // fraction the line is drawn to, near enough for a one-second effect.
+    final count = widget.splitMarkers.length;
+    if (count == 0) return const <SplitMarker>[];
+    final show = (count * (reached / total)).floor();
+    return widget.splitMarkers.take(show).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final segments = _segments;
-    final drawn = segments.where((s) => s.length >= 2).toList();
+    // The line as far as it has been drawn; the bounds and the endpoints still
+    // come from the whole trace below, so the map does not pan and rescale
+    // while the route grows into it.
+    final drawn = _drawnSegments.where((s) => s.length >= 2).toList();
     final all = <LatLng>[for (final segment in segments) ...segment];
     final hasRoute = all.isNotEmpty;
 
@@ -242,12 +305,24 @@ class _RouteMapState extends State<RouteMap> {
                 markers: <Marker>[
                   // Under the endpoints, so a kilometre that happens to turn
                   // over on the start line does not hide where the run began.
-                  for (final marker in widget.splitMarkers) _split(marker),
+                  for (final marker in _drawnMarkers) _split(marker),
                   _endpoint(all.first, filled: false), // start (outlined)
                   if (widget.showPosition)
                     _position(all.last)
                   else
-                    _endpoint(all.last, filled: true), // end
+                    // The head of the line, not the end of the route.
+                    //
+                    // While the route is drawing itself these differ, and
+                    // pinning the true end would put a dot ahead of the line —
+                    // on a closed loop it hides under the start and on an
+                    // out-and-back it floats in open space, which reads as a
+                    // rendering fault rather than as an effect. Following the
+                    // head instead makes it the point being traced, and it
+                    // arrives at the real end exactly when the line does.
+                    _endpoint(
+                      drawn.isEmpty ? all.last : drawn.last.last,
+                      filled: true,
+                    ),
                 ],
               ),
           ],

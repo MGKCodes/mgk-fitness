@@ -24,6 +24,8 @@ import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.dart';
+import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
+import 'package:mgk_run/src/features/recording/domain/live_metrics.dart';
 
 import 'plate.dart';
 
@@ -469,4 +471,35 @@ void main() {
       pixelRatio: 3,
     );
   });
+
+  // --- The route drawing itself ----------------------------------------------
+
+  for (final (name, at) in const <(String, double)>[
+    ('route-draw-30', 0.30),
+    ('route-draw-65', 0.65),
+    ('route-draw-100', 1.0),
+  ]) {
+    testWidgets('the route at ${(at * 100).round()}%', (tester) async {
+      await plate(
+        tester,
+        name,
+        Scaffold(
+          backgroundColor: AppColors.bg,
+          body: Center(
+            child: SizedBox(
+              height: 300,
+              child: RouteMap(
+                points: finished.points,
+                splitMarkers: splitMarkersFor(finished.points),
+                reveal: at,
+                interactive: false,
+              ),
+            ),
+          ),
+        ),
+        size: const Size(393, 320),
+        pixelRatio: 2,
+      );
+    });
+  }
 }

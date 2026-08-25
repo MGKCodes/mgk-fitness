@@ -8,6 +8,8 @@ import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/coach_button.dart' show CoachLetter;
 import '../domain/live_metrics.dart';
+import '../domain/run_point.dart';
+import '../domain/split_marker.dart';
 import '../domain/run_summary.dart';
 import 'recording_readout.dart';
 import 'route_map.dart';
@@ -105,13 +107,18 @@ class RunSummaryScreen extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    RouteMap(
+                    _DrawnRoute(
                       points: summary.points,
                       // Derived here rather than stored: the trace already
                       // carries every crossing, and the splits below come from
                       // the same walk, so the pin on the map and the row in the
                       // list can never disagree about kilometre four.
-                      splitMarkers: splitMarkersFor(summary.points),
+                      markers: splitMarkersFor(summary.points),
+                      // Only on arrival. Opening a run from the log is looking
+                      // something up, and a route that insists on redrawing
+                      // itself every time you check last Tuesday is a flourish
+                      // that has outstayed the moment it was for.
+                      animate: justFinished,
                     ),
                     // The headline reads over the route it describes rather than
                     // below it — the map is the texture the glass needs.
@@ -497,13 +504,121 @@ class _Headline extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          Distance.meters(summary.distanceMeters).format(unit),
-          style: theme.textTheme.displayMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+        // Counts up on arrival. ADR-0009 asks for hero numerals that count,
+        // and it matters most here: with no accent colour the number *is* the
+        // interface, and a distance that lands rather than appears is the
+        // difference between a screen that congratulates you and a receipt.
+        //
+        // Only when just finished. Opening last Tuesday from the log is looking
+        // something up, and a number that insists on counting itself out every
+        // time is a flourish that has outstayed the moment it was for — the
+        // same rule the route below follows.
+        if (justFinished)
+          CountUp(
+            value: summary.distanceMeters,
+            format: (m) => Distance.meters(m).format(unit),
+            style: theme.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          )
+        else
+          Text(
+            Distance.meters(summary.distanceMeters).format(unit),
+            style: theme.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+/// The route, drawing itself on.
+///
+/// **The one moment this screen has to be an arrival rather than a record.**
+/// An hour of running appearing over a second is the shape of the effort played
+/// back, and it is the difference between a screen that says well done and a
+/// screen that files something.
+///
+/// Owns its own controller so [RunSummaryScreen] stays stateless and
+/// [RouteMap] stays still. The map takes a plain fraction and has no clock of
+/// its own, which is also what lets a test pin the route half-drawn rather than
+/// wait for it.
+///
+/// **Off unless the run just finished.** Opening last Tuesday from the log is
+/// looking something up, and a route that redraws itself every time is a
+/// flourish that has outstayed the moment it was for.
+///
+/// It also jumps straight to the finished state when the platform asks for
+/// reduced motion — vestibular disorders make motion a genuine barrier, and
+/// this is a large moving object — which is the same rule, and the same call,
+/// `Entrance` makes. That is what keeps `pumpAndSettle` from waiting on it too.
+class _DrawnRoute extends StatefulWidget {
+  const _DrawnRoute({
+    required this.points,
+    required this.markers,
+    required this.animate,
+  });
+
+  final List<RunPoint> points;
+  final List<SplitMarker> markers;
+  final bool animate;
+
+  @override
+  State<_DrawnRoute> createState() => _DrawnRouteState();
+}
+
+class _DrawnRouteState extends State<_DrawnRoute>
+    with SingleTickerProviderStateMixin {
+  /// Long enough to read as a route being traced, short enough that nobody
+  /// waiting to see their splits resents it. A run is an hour; this is not a
+  /// replay of it.
+  static const Duration _draw = Duration(milliseconds: 1100);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _draw,
+    // A run opened from the log starts finished, so there is nothing to skip.
+    value: widget.animate ? 0 : 1,
+  );
+
+  late final Animation<double> _reveal = CurvedAnimation(
+    parent: _controller,
+    // Out rather than in-out: the line should set off at once and ease into the
+    // finish, which is the shape of arriving somewhere rather than of a machine
+    // moving a slider.
+    curve: Curves.easeOutCubic,
+  );
+
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started || !widget.animate) return;
+    _started = true;
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _controller.value = 1;
+      return;
+    }
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _reveal,
+      builder: (context, _) => RouteMap(
+        points: widget.points,
+        splitMarkers: widget.markers,
+        reveal: _reveal.value,
+      ),
     );
   }
 }

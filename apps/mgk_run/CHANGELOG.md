@@ -80,6 +80,16 @@ been on a store, so everything Runio does is still listed here.
   from no data, so it is never an error state.
 
 **After the finish line**
+- **The route draws itself on, and the distance counts up.** An hour of running
+  arriving over a second, which is the one moment this screen has to be an
+  arrival rather than a record. Only when a run has just finished — opening
+  last Tuesday from the log is looking something up, and a route that redraws
+  itself every time is a flourish that has outstayed its moment. Both jump
+  straight to the finished state when the platform asks for reduced motion.
+- Everything follows the head of the line while it draws: a kilometre pin the
+  line has not reached, or an endpoint at a finish not yet drawn, is a mark on
+  a route that does not exist. On a closed loop that mistake hides under the
+  start marker, so it is asserted rather than left to the eye.
 - **A run completed screen.** Pressing Finish now arrives somewhere: the run
   summary, headed *Run complete* and dated *Just now*, with the route, the
   numbers, the coach's read of them and the splits. It used to pop the screen —
