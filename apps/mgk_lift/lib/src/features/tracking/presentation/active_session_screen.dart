@@ -757,55 +757,73 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          // **A card, not a strip.** These three sat directly on the
+          // **A card, not a strip.**  These three sat directly on the
           // background under the title, and read as a compressed row of
           // numbers rather than as the session's state — nothing grouped them,
           // so they competed with the movement cards below instead of
           // introducing them. On its own ground the block says "this is the
           // session so far", which is what it is.
           //
-          // Movements joins them because three figures in a card looks like a
-          // card missing one, and because it is the figure that answers "how
-          // much is left" — the other three only say what has happened.
+          // **Two by two, not four across.** Four in a row was the first
+          // attempt and it collided: at 390pt "1410 kg" and the set count
+          // shared a cell and rendered as `1410 kg3`. `shrinkToFit` shrinks a
+          // value to fit its own box and cannot help when the box itself is
+          // too narrow, so the fix is the grid rather than the type. Found by
+          // photographing the screen next to Run's, which is the only way this
+          // class of fault shows up — no test asserts that two numbers do not
+          // touch.
+          //
+          // Movements earns its place because it is the only figure here that
+          // is not purely retrospective: the other three say what has
+          // happened, and this is the one a lifter reads to judge what is left.
           AppCard(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.md,
             ),
-            child: Row(
+            child: Column(
               children: <Widget>[
-                Expanded(
-                  child: StatBlock(
-                    label: 'Elapsed',
-                    value: _clock(elapsed),
-                    // Crosses an hour and gains two characters. A Text in a
-                    // bounded Expanded clips silently, so the session would
-                    // simply appear to lose its hours.
-                    shrinkToFit: true,
-                  ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: StatBlock(
+                        label: 'Elapsed',
+                        value: _clock(elapsed),
+                        // Crosses an hour and gains two characters. A Text in a
+                        // bounded Expanded clips silently, so the session would
+                        // simply appear to lose its hours.
+                        shrinkToFit: true,
+                      ),
+                    ),
+                    Expanded(
+                      child: StatBlock(
+                        label: 'Volume',
+                        value: volumeKg == 0
+                            ? '—'
+                            : Mass.kilograms(volumeKg).label(massUnit),
+                        shrinkToFit: true,
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: StatBlock(
-                    label: 'Volume',
-                    value: volumeKg == 0
-                        ? '—'
-                        : Mass.kilograms(volumeKg).label(massUnit),
-                    shrinkToFit: true,
-                  ),
-                ),
-                Expanded(
-                  child: StatBlock(
-                    label: 'Sets',
-                    value: '$completedSets',
-                    shrinkToFit: true,
-                  ),
-                ),
-                Expanded(
-                  child: StatBlock(
-                    label: 'Movements',
-                    value: '$movements',
-                    shrinkToFit: true,
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: StatBlock(
+                        label: 'Sets',
+                        value: '$completedSets',
+                        shrinkToFit: true,
+                      ),
+                    ),
+                    Expanded(
+                      child: StatBlock(
+                        label: 'Movements',
+                        value: '$movements',
+                        shrinkToFit: true,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
