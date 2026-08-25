@@ -41,6 +41,16 @@ Dart:
 6. `apps/mgk_run/docs/privacy-policy.md` and `medical-disclaimer.md`, **and
    whatever is published at the policy URL** — the in-app copy mirrors these
    word for word, and a reviewer does check that they match
+7. **The Notion second brain** — the Products rows and any Knowledge entry whose
+   title names the living product. Added on 2026-08-25, after the first six
+   proved insufficient in the way that matters: the rename landed on 08-21, and
+   four days later a session opened, loaded that database to orient itself, and
+   started from product rows still called Runio and Liftio. A stale name there
+   is worse than a stale name in a string, because it seeds a session's
+   assumptions *before* any code is read.
+
+   Entries recording the **frozen React Native app** keep their names and must
+   not be swept — that history is what they are for.
 
 Items 1–4 only change if the *app* half changes. Renaming only the platform
 leaves the phone alone entirely — see below.
