@@ -139,19 +139,23 @@ class HomeTodayTile extends StatelessWidget {
               onRecord: onFreeRun,
             ),
 
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerLeft,
-            // Two different destinations that shared one callback until they
-            // were split: a runner with no plan wants the coach, a runner on a
-            // rest day wants the plan.
-            child: _QuietLink(
-              label: session == null ? 'Talk to your coach' : 'See the week',
-              onPressed: session == null
-                  ? (onOpenCoach ?? onOpenPlan)
-                  : onOpenPlan,
+          // Only with a plan, and only into the plan.
+          //
+          // This line used to read "Talk to your coach" for a runner without
+          // one. The coach already has a way in that is on every tab and never
+          // spends a line of the card: the mark in the corner, which speaks
+          // when it has something to say and rests when it does not
+          // ([CoachReveal]). A second door to the same room, on the one card
+          // that is supposed to be about today, was the card advertising rather
+          // than informing — and advertising a coach to somebody who has not
+          // bought one at that.
+          if (session != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _QuietLink(label: 'See the week', onPressed: onOpenPlan),
             ),
-          ),
+          ],
 
           // Under everything and quiet, but on Home rather than three taps into
           // the Plan tab. A plan that will not bend is this category's loudest

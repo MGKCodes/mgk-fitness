@@ -298,12 +298,6 @@ class HomeTab extends StatelessWidget {
                     access: access,
                     onOpenRun: onOpenRun,
                     onUpgrade: onUpgrade,
-                    // Only with a plan. The coach is what a subscription buys
-                    // (ADR-0019), so a runner without one is not shown a space
-                    // where one would be — that is an advert on a screen meant
-                    // to be a whole free product.
-                    note: today == null ? null : note,
-                    onOpenCoach: onOpenCoach,
                   ),
                 ),
               ],

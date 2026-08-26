@@ -6,6 +6,7 @@ import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
+import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_history.dart';
@@ -613,6 +614,62 @@ void main() {
         onAskCoach: () {},
       ),
       pixelRatio: 2,
+    );
+  });
+
+  // --- The coach, which the tab plates cannot show --------------------------
+  //
+  // **Every other plate here is a tab without its shell.** The nav bar and the
+  // floating mark are drawn by `HomeShell`, so a board made of tabs omits them
+  // from all forty pictures at once — which is how the coach came to look
+  // absent from a design that has always had it. These two put it back.
+
+  const observation = CoachNote(
+    headline: 'Two easy weeks in a row is the build working.',
+    detail:
+        '31 km last week against 29 the week before, both inside the band '
+        'the plan asked for.',
+  );
+
+  testWidgets('the coach says its piece', (tester) async {
+    await plate(
+      tester,
+      'coach-speaking',
+      const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: CoachReveal(note: observation, hasUnread: true),
+          ),
+        ),
+      ),
+      size: const Size(393, 240),
+      pixelRatio: 3,
+      // Caught mid-reveal rather than settled: the line types itself and then
+      // retracts, so both ends of the animation are the mark and only the
+      // middle is the thing worth looking at.
+      drive: (t) => t.pump(const Duration(milliseconds: 1400)),
+    );
+  });
+
+  testWidgets('and then goes back to its corner', (tester) async {
+    await plate(
+      tester,
+      'coach-resting',
+      const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: CoachReveal(note: null),
+          ),
+        ),
+      ),
+      size: const Size(393, 240),
+      pixelRatio: 3,
     );
   });
 }
