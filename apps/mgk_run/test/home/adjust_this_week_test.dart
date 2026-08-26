@@ -104,7 +104,7 @@ void main() {
     availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
   );
 
-  final adjust = find.text('Not feeling it? Adjust this week');
+  final adjust = find.text('Adjust this week');
 
   Future<_RecordingChat> pumpHome(
     WidgetTester tester, {

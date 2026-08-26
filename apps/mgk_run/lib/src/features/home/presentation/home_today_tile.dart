@@ -139,23 +139,17 @@ class HomeTodayTile extends StatelessWidget {
               onRecord: onFreeRun,
             ),
 
-          // Only with a plan, and only into the plan.
+          // Nothing links out of here any more.
           //
-          // This line used to read "Talk to your coach" for a runner without
-          // one. The coach already has a way in that is on every tab and never
-          // spends a line of the card: the mark in the corner, which speaks
-          // when it has something to say and rests when it does not
-          // ([CoachReveal]). A second door to the same room, on the one card
-          // that is supposed to be about today, was the card advertising rather
-          // than informing — and advertising a coach to somebody who has not
-          // bought one at that.
-          if (session != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _QuietLink(label: 'See the week', onPressed: onOpenPlan),
-            ),
-          ],
+          // "Talk to your coach" went first: the coach has a way in on every
+          // tab that costs this card no space at all ([CoachReveal]), and
+          // offering one to a runner who has not bought one was the card
+          // advertising rather than informing.
+          //
+          // "See the week" went with it, for a plainer reason — the week tile
+          // is the next thing on the page. A control whose destination is
+          // already on screen is a line spent sending somebody somewhere they
+          // can see from where they are standing.
 
           // Under everything and quiet, but on Home rather than three taps into
           // the Plan tab. A plan that will not bend is this category's loudest
@@ -169,8 +163,12 @@ class HomeTodayTile extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,
-              child: _QuietLink(
-                label: 'Not feeling it? Adjust this week',
+              // A bordered control rather than a dimmed line. It does
+              // something — it opens the flow that rewrites the week — and a
+              // thing that does something should look like it can be pressed
+              // rather than like a sentence that happens to be tappable.
+              child: _SecondaryAction(
+                label: 'Adjust this week',
                 onPressed: onAdjustWeek,
               ),
             ),
@@ -257,32 +255,26 @@ class _PrescribedDay extends StatelessWidget {
               AppTextButton(label: 'Record another', onPressed: onFreeRun),
             ],
           )
-        else ...<Widget>[
-          // **Two starts, and they are not the same run.**
+        else
+          // **One button, because a prescription is not a rule.**
           //
-          // Starting the session hands the recorder today's prescription, so
-          // the in-run screen can count down what is left of it. Starting a
-          // free run deliberately does not — a runner who is going out for
-          // something other than what the plan asked should not spend the next
-          // half hour being measured against a session they chose not to do.
+          // This briefly had a second, quieter start beside it for a run with
+          // no session attached. It came out again on the argument that the
+          // plan is a suggestion and always was: pressing Start and then
+          // running five easy kilometres instead is already allowed, and the
+          // countdown that results reads as *you are short of the session*,
+          // which is true and is the sort of thing a runner might want to know.
+          // Spending the most valuable line on the screen letting somebody
+          // pre-declare that they are going off-plan buys nothing the app does
+          // not already do.
+          //
+          // [onFreeRun] stays, because a rest day and a runner with no plan
+          // both need it and neither has a session to attach.
           //
           // The plain word on the button. It used to read "Start · 9 km
           // threshold run", which restated the two lines directly above it and
           // was the longest thing on the card.
           StartRunButton(label: 'Start', onTap: onStartSession),
-          const SizedBox(height: 2),
-          // Quieter, and second, because the session is what today is. Present
-          // even with a plan on purpose: the alternative is a runner who wants
-          // an easy half hour either not recording it or recording it against
-          // a threshold session and reading a verdict that means nothing.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: AppTextButton(
-              label: 'Just go for a run',
-              onPressed: onFreeRun,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -589,22 +581,42 @@ class StartRunButton extends StatelessWidget {
   }
 }
 
-/// A text link that sits under a card's action without competing with it.
-class _QuietLink extends StatelessWidget {
-  const _QuietLink({required this.label, required this.onPressed});
+/// A bordered control for the second thing a card can do.
+///
+/// **An action looks like a control.** The quiet link this replaces was an
+/// `AppTextButton` dimmed and squeezed until it read as a sentence that
+/// happened to be tappable — which is exactly how a runner comes to miss it, or
+/// worse, to press it by accident while reading. A border costs eight pixels
+/// and answers "can I press this" without anybody having to try.
+///
+/// Still second: outlined rather than filled, so it never argues with the
+/// start button above it.
+class _SecondaryAction extends StatelessWidget {
+  const _SecondaryAction({required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return AppTextButton(
-      label: label,
+    final theme = Theme.of(context);
+    return OutlinedButton(
       onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.textSecondary,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textPrimary,
+        side: const BorderSide(color: AppColors.elevated),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
         visualDensity: VisualDensity.compact,
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

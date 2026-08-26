@@ -146,10 +146,15 @@ void main() {
         // The plain word. It used to restate the two lines above it and was
         // the longest thing on the card.
         expect(find.text('Start'), findsOneWidget);
-        // And the other way out, which is a real choice rather than an escape
-        // hatch: a runner who wants an easy half hour should not have to record
-        // it against a threshold session.
-        expect(find.text('Just go for a run'), findsOneWidget);
+        // And only that one. A second start for a run with no session
+        // attached came out again: the plan is a suggestion, so pressing Start
+        // and running something else is already allowed, and a line spent
+        // letting somebody pre-declare that buys nothing.
+        expect(find.text('Just go for a run'), findsNothing);
+        // Nor does the card link anywhere. The week tile is the next thing on
+        // the page and the coach is on every tab.
+        expect(find.text('See the week'), findsNothing);
+        expect(find.text('Talk to your coach'), findsNothing);
       },
     );
 
