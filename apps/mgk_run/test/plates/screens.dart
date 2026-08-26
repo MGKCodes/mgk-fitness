@@ -121,6 +121,9 @@ void main() {
     startedAt: at,
     duration: duration,
     distanceMeters: meters,
+    // Derived rather than omitted: a plate showing a dash where every real run
+    // has a pace is the fixture lying again.
+    avgPaceSecondsPerKm: duration.inSeconds / (meters / 1000),
     // A recorded run has a trace and therefore records; `traced: false` is the
     // run somebody typed in, which has neither.
     bestEfforts: traced ? bests(meters, duration) : const <BestEffort>[],

@@ -123,8 +123,13 @@ void main() {
       // "Afternoon threshold run", not "Threshold". The old card read TODAY
       // over Threshold — two headings, no sentence, and a physiological zone
       // where a runner wants the name of a thing they are about to go and do.
-      expect(find.text('Afternoon threshold run'), findsOneWidget);
+      // The distance is the instruction, so it is the headline. "Threshold"
+      // named a physiological zone rather than a thing to go and do, and the
+      // hour was never information — a runner opening this at seven does not
+      // need telling it is morning.
+      expect(find.text('9 km'), findsOneWidget);
       expect(find.text('Threshold'), findsNothing);
+      expect(find.textContaining('Afternoon threshold'), findsNothing);
 
       // And the eyebrow is a date, which cannot be mistaken for a second
       // heading. `SectionLabel` upper-cases what it is given.
@@ -138,7 +143,13 @@ void main() {
 
         // The headline names the occasion; the button names the thing. "Start ·
         // 9 km afternoon threshold run" is nobody's sentence.
-        expect(find.text('Start · 9 km threshold run'), findsOneWidget);
+        // The plain word. It used to restate the two lines above it and was
+        // the longest thing on the card.
+        expect(find.text('Start'), findsOneWidget);
+        // And the other way out, which is a real choice rather than an escape
+        // hatch: a runner who wants an easy half hour should not have to record
+        // it against a threshold session.
+        expect(find.text('Just go for a run'), findsOneWidget);
       },
     );
 
@@ -257,7 +268,7 @@ void main() {
       // Today tile is already showing this run — drawing the Last run card
       // under it would be the same run twice on one screen.
       expect(find.text('LAST RUN'), findsNothing);
-      expect(find.text('FROM YOUR COACH'), findsOneWidget);
+      expect(find.text('FROM YOUR COACH'), findsNothing);
 
       // The week tile counts *runs*, because there are no sessions to count.
       expect(find.text('RUNS'), findsOneWidget);
@@ -311,7 +322,7 @@ void main() {
       // Profile tab and applied here.
       expect(find.text('THIS WEEK'), findsOneWidget);
       expect(find.text('LAST RUN'), findsOneWidget);
-      expect(find.text('FROM YOUR COACH'), findsOneWidget);
+      expect(find.text('FROM YOUR COACH'), findsNothing);
 
       // A dash is an absence where a zero would be a claim.
       expect(find.textContaining('0.0 km'), findsNothing);
@@ -325,13 +336,16 @@ void main() {
     ) async {
       await pump(tester, blank());
 
-      // The tile used to be dropped whenever `CoachNote.forRuns` had nothing
-      // honest to say — which is exactly the state a new runner is in, so the
-      // one surface saying anybody is paying attention was missing from the
-      // screen somebody decides on.
-      expect(find.text('Nothing to go on yet.'), findsOneWidget);
+      // The coach has no section here any more. It reads the last run and
+      // lives inside that card, and a runner with no plan has not bought one
+      // at all — so an empty card headed FROM YOUR COACH would be an advert
+      // for something they have not got, on a screen that is supposed to be a
+      // whole free product (ADR-0019).
+      expect(find.text('FROM YOUR COACH'), findsNothing);
+      expect(find.text('Nothing to go on yet.'), findsNothing);
       expect(
-        find.textContaining('Record a run and your coach'),
+        // The invitation the empty last-run tile carries instead.
+        find.textContaining('lands here'),
         findsOneWidget,
       );
     });
@@ -378,10 +392,10 @@ void main() {
         ),
       );
 
-      // "Steady work" would be a claim about training this tile has not
-      // checked, and a second voice for a fact the charts below already draw
-      // (ADR-0017).
-      expect(find.text('Nothing new to flag.'), findsOneWidget);
+      // Silence draws nothing rather than a card saying nothing. The coach
+      // speaks under the run it is about or not at all — a placeholder for a
+      // remark that was never made is the app talking to itself.
+      expect(find.text('Nothing new to flag.'), findsNothing);
       expect(find.text('Nothing to go on yet.'), findsNothing);
     });
   });
@@ -406,7 +420,11 @@ void main() {
         ),
       );
 
-      expect(find.text('Evening threshold run'), findsOneWidget);
+      // The header still reads the hour, because a greeting is the one place
+      // it is the point. The session does not: it is a distance now, and the
+      // card carries no hour at all.
+      expect(find.text('9 km'), findsOneWidget);
+      expect(find.textContaining('Evening threshold'), findsNothing);
       expect(find.text('Afternoon threshold run'), findsNothing);
     });
 

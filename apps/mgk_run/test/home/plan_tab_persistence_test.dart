@@ -138,7 +138,7 @@ void main() {
     expect(find.text('No plan yet'), findsNothing);
     // Today's card came back with the plan, carrying its own action.
     expect(find.textContaining('TODAY'), findsWidgets);
-    expect(find.textContaining('Start · '), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
   });
 
   /// The three tests this replaces drove "Mark done", "Skip" and "Undo" and
@@ -156,7 +156,7 @@ void main() {
 
     expect(find.text('Run recorded today.'), findsOneWidget);
     expect(
-      find.textContaining('Start · '),
+      find.text('Start'),
       findsNothing,
       reason: 'a session already run is not still an instruction',
     );
@@ -179,7 +179,7 @@ void main() {
 
     await openPlan(tester, store);
 
-    expect(find.textContaining('Start · '), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
     expect(find.text('Run recorded today.'), findsNothing);
     // And nothing anywhere that writes completion by hand.
     expect(find.text('Mark done'), findsNothing);
@@ -206,7 +206,7 @@ void main() {
 
     // The shell still opens on Home, with the plan quietly loaded behind it —
     // and Home shows today's session from that plan rather than a coach prompt.
-    expect(find.textContaining('Start · '), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
     expect(find.textContaining('TODAY'), findsWidgets);
   });
 

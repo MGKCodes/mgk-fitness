@@ -3,6 +3,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../coaching/domain/coach_access.dart';
+import '../../coaching/domain/coach_note.dart';
+import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/session_labels.dart';
@@ -49,6 +51,8 @@ class LastRunCard extends StatelessWidget {
     this.access = CoachAccess.free,
     this.onOpenRun,
     this.onUpgrade,
+    this.note,
+    this.onOpenCoach,
   });
 
   final RunSummary? run;
@@ -58,6 +62,22 @@ class LastRunCard extends StatelessWidget {
   /// run, for a runner with no plan, and for a run that matched nothing — and
   /// in all three cases there is simply no comparison to draw, paid or not.
   final PlannedAgainst? against;
+
+  /// The coach's read of this run, when there is one.
+  ///
+  /// **It lives here rather than in a section of its own.** A note headed FROM
+  /// YOUR COACH floating above a chart was the coach talking near the runner
+  /// rather than to them: the remark is about a run, so it belongs under the
+  /// run's numbers where it can be checked against them. Silence is the normal
+  /// output — most runs are ordinary and the coach says nothing — and silence
+  /// draws nothing rather than an empty card.
+  ///
+  /// Null for a runner with no plan, decided by the caller: the subscription
+  /// buys a coach (ADR-0019), so a space where one would be is an advert on a
+  /// screen meant to be a whole free product.
+  final CoachNote? note;
+
+  final VoidCallback? onOpenCoach;
 
   final CoachAccess access;
   final void Function(RunSummary run)? onOpenRun;
@@ -132,6 +152,10 @@ class LastRunCard extends StatelessWidget {
                     _AgainstThePlan(against: against!, run: last, unit: unit)
                   else
                     _Locked(onUpgrade: onUpgrade),
+                ],
+                if (note != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.lg),
+                  _Note(note: note!, onOpenCoach: onOpenCoach),
                 ],
               ],
             ),
@@ -379,6 +403,52 @@ class _Locked extends StatelessWidget {
           AppTextButton(label: 'See what a coach adds', onPressed: onUpgrade),
         ],
       ],
+    );
+  }
+}
+
+/// The coach's remark, under the run it is about.
+class _Note extends StatelessWidget {
+  const _Note({required this.note, this.onOpenCoach});
+
+  final CoachNote note;
+  final VoidCallback? onOpenCoach;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onOpenCoach,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const CoachLetter(size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  note.headline,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  // The evidence behind it, so the remark is checkable rather
+                  // than flattering.
+                  note.detail,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

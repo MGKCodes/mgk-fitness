@@ -13,7 +13,6 @@ import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../profile/domain/runner_stats.dart';
 import '../../recording/domain/run_summary.dart';
-import 'home_tiles.dart';
 import 'home_today_tile.dart';
 import 'home_week_tile.dart';
 import '../../coaching/domain/coach_access.dart';
@@ -59,6 +58,7 @@ class HomeTab extends StatelessWidget {
   const HomeTab({
     super.key,
     required this.onRecord,
+    this.onStartSession,
     required this.onOpenPlan,
     this.onOpenCoach,
     this.today,
@@ -117,6 +117,14 @@ class HomeTab extends StatelessWidget {
 
   /// Weekly distance for the volume chart, oldest first.
   final List<WeekVolume> volumes;
+
+  /// Starts today's prescribed session, with the prescription attached so the
+  /// in-run screen can count down what is left of it.
+  ///
+  /// Null falls back to [onRecord], which is right for every caller that has no
+  /// plan to start: a free run and "the session" are the same run when there is
+  /// no session.
+  final VoidCallback? onStartSession;
 
   /// What the coach asked for on the day of [lastRun], when it answered a
   /// session. Null for an unplanned run, for a runner with no plan, and for a
@@ -237,7 +245,8 @@ class HomeTab extends StatelessWidget {
                   today: today,
                   lastRun: lastRun,
                   outcomes: outcomes,
-                  onRecord: onRecord,
+                  onFreeRun: onRecord,
+                  onStartSession: onStartSession ?? onRecord,
                   onOpenPlan: onOpenPlan,
                   onOpenCoach: onOpenCoach,
                   onAdjustWeek: onAdjustWeek,
@@ -289,6 +298,12 @@ class HomeTab extends StatelessWidget {
                     access: access,
                     onOpenRun: onOpenRun,
                     onUpgrade: onUpgrade,
+                    // Only with a plan. The coach is what a subscription buys
+                    // (ADR-0019), so a runner without one is not shown a space
+                    // where one would be — that is an advert on a screen meant
+                    // to be a whole free product.
+                    note: today == null ? null : note,
+                    onOpenCoach: onOpenCoach,
                   ),
                 ),
               ],
@@ -316,18 +331,15 @@ class HomeTab extends StatelessWidget {
               // where the runner it is written for actually is: someone with no
               // plan opens Plan to get one, and that screen had nothing on it
               // but a photograph and a button.
-              const SizedBox(height: AppSpacing.xl),
-              Entrance(
-                index: 6,
-                child: _CoachTile(
-                  note: note,
-                  hasRuns: hasRuns,
-                  // The coach's own observation opens the coach. It used to
-                  // open the Plan tab, which is a different thing wearing the
-                  // same callback.
-                  onTap: onOpenCoach ?? onOpenPlan,
-                ),
-              ),
+              // The coach's note is not a section any more. It reads the last
+              // run, so it lives inside that card, under the numbers it is
+              // about — see [LastRunCard]. A floating remark above a chart was
+              // the coach talking near the runner rather than to them.
+              //
+              // And a runner with no plan has no coach at all: the subscription
+              // buys one (ADR-0019), so an empty card headed FROM YOUR COACH is
+              // an advert for something they have not got, on a screen that is
+              // supposed to be a whole free product.
 
               // The long view, under the day. These answer questions the tiles
               // above do not — am I building, and have I been turning up.
@@ -358,15 +370,6 @@ class HomeTab extends StatelessWidget {
   }
 }
 
-/// The top of Home: the wordmark, then **what the runner is working on**.
-///
-/// The largest, first thing on the app's front page used to be the time of day.
-/// "Afternoon" is warm and it is also the one line on the screen that a runner
-/// already knew before they opened it — while the fact they came for, that
-/// there is a half marathon in 75 days and this is week 2 of 12, lived a tab
-/// away. The headline the Plan tab is topped with belongs here at least as
-/// much: this is the page opened every morning, that one is opened to plan.
-///
 /// No identity, still. An email address is an account fact and lives in
 /// Settings.
 ///
@@ -421,113 +424,18 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _CoachTile extends StatelessWidget {
-  const _CoachTile({
-    required this.note,
-    required this.hasRuns,
-    required this.onTap,
-  });
-
-  final CoachNote? note;
-  final bool hasRuns;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final observation = note;
-
-    final String headline;
-    final String detail;
-    if (observation != null) {
-      headline = observation.headline;
-      detail = observation.detail;
-    } else if (!hasRuns) {
-      // Nothing recorded: the tile says what will appear here, without
-      // pretending to an opinion about a log with nothing in it.
-      headline = 'Nothing to go on yet.';
-      detail =
-          'Record a run and your coach will have something to say about it. '
-          'Ask them anything in the meantime.';
-    } else {
-      // Runs, but nothing this coach thinks is worth a remark. Neutral on
-      // purpose — "steady work" would be a claim about training this tile has
-      // not checked.
-      headline = 'Nothing new to flag.';
-      detail =
-          'Your coach has read every run you have logged. Ask them anything '
-          'about your training.';
-    }
-
-    return HomeTile(
-      label: 'From your coach',
-      onTap: onTap,
-      trailing: const Icon(
-        Icons.chevron_right,
-        size: 20,
-        color: AppColors.textTertiary,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          // The coach's own mark rather than a speech bubble, so the thing the
-          // app is named for is recognisable before it has said anything.
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: CoachLetter(size: 16, color: AppColors.textSecondary),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  headline,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  detail,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// What Runio does with a run, shown to somebody who has not done one yet.
+/// The top of Home: the wordmark, then **what the runner is working on**.
 ///
-/// ## Why this exists
+/// The largest, first thing on the app's front page used to be the time of day.
+/// "Afternoon" is warm and it is also the one line on the screen that a runner
+/// already knew before they opened it — while the fact they came for, that
+/// there is a half marathon in 75 days and this is week 2 of 12, lived a tab
+/// away. The headline the Plan tab is topped with belongs here at least as
+/// much: this is the page opened every morning, that one is opened to plan.
 ///
-/// Home for a runner with no plan and no runs was a card, a text link and a
-/// photograph. That was fine while a plan was the assumed destination — the
-/// screen was a waiting room. Onboarding is two moments now (ADR-0019) and
-/// plenty of runners will stay on the free side indefinitely, so this stopped
-/// being a waiting room and became the product's front page while nobody was
-/// looking at it.
+/// No identity, still. An email address is an account fact and lives in
+/// Settings.
 ///
-/// ## Why it is not a list of buttons
-///
-/// There are exactly two ways into Runio — press start, or say something to the
-/// coach — and both are already on the tiles above this one. Adding a third
-/// here would be the counter-signal ADR-0017 names for its own reversal. So
-/// every line below describes what *happens*, and none of them is tappable.
-///
-/// Everything named here is free. A runner reading it has not been offered a
-/// plan and must not be shown one as though it were included; the only mention
-/// of a plan is the way out at the bottom, which goes to the tab that sells it.
 class _FirstRun extends StatelessWidget {
   const _FirstRun({required this.onOpenPlan});
 

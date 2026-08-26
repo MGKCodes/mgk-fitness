@@ -992,7 +992,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // dead parameters. Home's chart still folds the same series.
 
   /// Starts a run from Home. Recording is an action here, not a tab.
-  void _startRun(BuildContext context) {
+  /// Starts a run, with or without today's session attached.
+  ///
+  /// **The two are different runs and this is the seam.** A session start hands
+  /// the recorder the prescription, so the in-run screen counts down what is
+  /// left of it and the band judges the pace it asked for. A free start hands
+  /// it nothing — deliberately, because a runner who chose not to do today's
+  /// session should not spend the next half hour being measured against it, and
+  /// a countdown to a distance nobody agreed to is worse than no countdown.
+  void _startRun(BuildContext context, {bool withSession = true}) {
     final factory = widget.recorderFactory;
     if (factory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1017,7 +1025,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               // through the coach's session they are. Null on a rest day, an
               // unplanned day, or with no plan at all — and then the block is
               // simply absent rather than an empty one.
-              plannedSession: _thisWeek?.runOn(DateTime.now().weekday),
+              plannedSession: withSession
+                  ? _thisWeek?.runOn(DateTime.now().weekday)
+                  : null,
               // The coach's numbers, so the screen can say whether the runner
               // is inside the band today's session asked for. Derived in Dart
               // from the profile's time trial and null without one, which the
@@ -1267,7 +1277,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             index: _index,
             children: <Widget>[
               HomeTab(
-                onRecord: () => _startRun(context),
+                onRecord: () => _startRun(context, withSession: false),
+                onStartSession: () => _startRun(context),
                 // Two destinations, not one. These were a single
                 // `onOpenCoach` that switched to the tab — so the coach's own
                 // note opened a plan screen, and the button offering to talk

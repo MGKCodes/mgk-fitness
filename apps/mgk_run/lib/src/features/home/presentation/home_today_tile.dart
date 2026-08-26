@@ -41,7 +41,8 @@ class HomeTodayTile extends StatelessWidget {
     super.key,
     required this.now,
     required this.unit,
-    required this.onRecord,
+    required this.onFreeRun,
+    required this.onStartSession,
     required this.onOpenPlan,
     this.today,
     this.lastRun,
@@ -57,7 +58,17 @@ class HomeTodayTile extends StatelessWidget {
   final DateTime now;
 
   final UnitSystem unit;
-  final VoidCallback onRecord;
+
+  /// Starts a run with **no session attached**, so nothing counts down and
+  /// nothing is judged against a prescription the runner did not choose.
+  final VoidCallback onFreeRun;
+
+  /// Starts today's prescribed session, handing the recorder what was asked
+  /// for so the in-run screen can say what is left of it.
+  ///
+  /// Falls back to a free run where there is no session, which is what makes
+  /// the no-plan card work without a second code path.
+  final VoidCallback onStartSession;
   final VoidCallback onOpenPlan;
 
   /// Today's prescribed session, when a plan exists.
@@ -114,15 +125,18 @@ class HomeTodayTile extends StatelessWidget {
               now: now,
               unit: unit,
               ranToday: _ranToday,
-              onRecord: onRecord,
+              onFreeRun: onFreeRun,
+              onStartSession: onStartSession,
             )
           else if (session != null)
-            _RestDay(session: session, onRecord: onRecord)
+            // A rest day has no session to start, so both paths are the same
+            // run: whatever they go and do is unplanned by definition.
+            _RestDay(session: session, onRecord: onFreeRun)
           else
             _NoPlanDay(
               lastRun: _ranToday ? lastRun : null,
               unit: unit,
-              onRecord: onRecord,
+              onRecord: onFreeRun,
             ),
 
           const SizedBox(height: AppSpacing.sm),
@@ -170,14 +184,16 @@ class _PrescribedDay extends StatelessWidget {
     required this.now,
     required this.unit,
     required this.ranToday,
-    required this.onRecord,
+    required this.onFreeRun,
+    required this.onStartSession,
   });
 
   final PlannedSession session;
   final DateTime now;
   final UnitSystem unit;
   final bool ranToday;
-  final VoidCallback onRecord;
+  final VoidCallback onFreeRun;
+  final VoidCallback onStartSession;
 
   @override
   Widget build(BuildContext context) {
@@ -186,42 +202,28 @@ class _PrescribedDay extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                // "Afternoon easy run", not "Easy". The occasion is real here
-                // — this is today, off the clock — which is the one condition
-                // [sessionNameAt] exists for.
-                sessionNameAt(session, now),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              formatPrescribed(session.distanceMeters, unit),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        // How to run it, not just how far. "Easy 9 km" is the half of a
-        // prescription a runner can act on without opening anything; the other
-        // half — that easy means conversational the whole way — was two taps
-        // into the Plan tab. The effort rather than a pace, for the reason the
-        // week list gives: a target pace tells a runner what their watch should
-        // say, an effort tells them how the run should feel.
-        const SizedBox(height: 2),
+        // **The distance is the instruction, so it gets the size.**
+        //
+        // This used to lead with "Afternoon threshold run" and hang the figure
+        // off the end of it. Two things were wrong with that. The hour is not
+        // information — a runner opening this at seven in the morning does not
+        // need telling it is morning — and "threshold" is a physiological zone
+        // rather than an instruction: it names the adaptation being chased, not
+        // the thing to go and do. What a runner can act on without opening
+        // anything is *how far*.
+        //
+        // The effort has not gone, it has moved behind a tap. It is the answer
+        // to the second question rather than the first, and a card that answers
+        // both at once answers neither loudly.
         Text(
-          effortFor(session.kind).cue,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
+          formatPrescribed(session.distanceMeters, unit),
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.05,
           ),
         ),
+        const SizedBox(height: 4),
+        _EffortLine(kind: session.kind, session: session, unit: unit),
         const SizedBox(height: AppSpacing.lg),
         // The action *is* today's session. There is no "Mark done" beside it: a
         // session is complete when a run exists on the day, which the app can
@@ -248,26 +250,131 @@ class _PrescribedDay extends StatelessWidget {
                   ),
                 ),
               ),
-              AppTextButton(label: 'Record another', onPressed: onRecord),
+              AppTextButton(label: 'Record another', onPressed: onFreeRun),
             ],
           )
-        else
-          StartRunButton(
-            // [sessionName] here rather than [sessionNameAt], and the two are
-            // eight pixels apart on purpose. The headline names the occasion —
-            // "Afternoon threshold run" — because that is what today is; the
-            // button names the thing about to be started, and "Start · 4 km
-            // afternoon threshold run" is nobody's sentence.
-            label:
-                'Start · '
-                // The same formatter as the figure above it, and as the Plan
-                // tab. They used to disagree — "Easy 6.2 km" over "Start · 6 km
-                // easy" — and two numbers for one session eight pixels apart
-                // reads as a bug whichever is right.
-                '${formatPrescribed(session.distanceMeters, unit)} '
-                '${sessionName(session).toLowerCase()}',
-            onTap: onRecord,
+        else ...<Widget>[
+          // **Two starts, and they are not the same run.**
+          //
+          // Starting the session hands the recorder today's prescription, so
+          // the in-run screen can count down what is left of it. Starting a
+          // free run deliberately does not — a runner who is going out for
+          // something other than what the plan asked should not spend the next
+          // half hour being measured against a session they chose not to do.
+          //
+          // The plain word on the button. It used to read "Start · 9 km
+          // threshold run", which restated the two lines directly above it and
+          // was the longest thing on the card.
+          StartRunButton(label: 'Start', onTap: onStartSession),
+          const SizedBox(height: 2),
+          // Quieter, and second, because the session is what today is. Present
+          // even with a plan on purpose: the alternative is a runner who wants
+          // an easy half hour either not recording it or recording it against
+          // a threshold session and reading a verdict that means nothing.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppTextButton(
+              label: 'Just go for a run',
+              onPressed: onFreeRun,
+            ),
           ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The effort cue, with the rest of it behind a tap.
+///
+/// A cue — "comfortably hard" — is what a runner needs at the door. The rest
+/// (what the session is for, the RPE it should sit at, how it should feel) is
+/// what they want when they are deciding whether they can face it, which is a
+/// different moment and does not belong on the same line.
+///
+/// Expanded in place rather than pushed as a sheet: the question is "what does
+/// that mean", and an answer that replaces the screen it was asked on makes the
+/// runner navigate back to where they already were.
+class _EffortLine extends StatefulWidget {
+  const _EffortLine({
+    required this.kind,
+    required this.session,
+    required this.unit,
+  });
+
+  final SessionKind kind;
+  final PlannedSession session;
+  final UnitSystem unit;
+
+  @override
+  State<_EffortLine> createState() => _EffortLineState();
+}
+
+class _EffortLineState extends State<_EffortLine> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final effort = effortFor(widget.kind);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Semantics(
+          button: true,
+          expanded: _open,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _open = !_open),
+            child: Row(
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    effort.cue,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  _open ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: AppColors.textTertiary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_open) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            effort.feel,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            // What it is for. A session a runner understands the point of is a
+            // session they are more likely to run as asked.
+            effort.purpose,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            // The number the runner asked for. Stated as the range it is, not
+            // a single figure: an effort is a band and pretending otherwise is
+            // the same mistake as prescribing a pace to the second.
+            'Effort ${effort.rpeLow}–${effort.rpeHigh} out of 10',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ],
     );
   }
