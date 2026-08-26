@@ -8,6 +8,7 @@ import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
+import 'package:mgk_run/src/features/coaching/domain/plan_headline.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_history.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
@@ -280,6 +281,14 @@ void main() {
           plannedMeters: 15149,
           done: 0,
           sessions: 2,
+        ),
+        // **The header is the goal, not the greeting.** It falls back to the
+        // time of day only when there is no plan — and this fixture had never
+        // passed one, so every Home plate showed "Afternoon" and the design
+        // decision underneath it was invisible on the board.
+        headline: const PlanHeadline(
+          goal: 'Half marathon',
+          position: '48 days · week 3 of 9',
         ),
         stats: RunnerStats.from(log, now: monday),
         lastRun: log.first,
