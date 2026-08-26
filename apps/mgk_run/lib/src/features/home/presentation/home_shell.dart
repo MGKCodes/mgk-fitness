@@ -16,7 +16,6 @@ import '../../coaching/data/plan_service.dart';
 import '../../coaching/data/plan_store.dart';
 import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
-import '../../coaching/domain/plan_headline.dart';
 import '../../coaching/domain/plan_shape.dart';
 import '../../coaching/domain/race_day.dart';
 import '../../coaching/domain/readiness.dart';
@@ -236,11 +235,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       targetPace: paces == null ? null : paceFor(session.kind, paces),
     );
   }
-
-  /// What the runner is working on, for the top of Home. The same two lines the
-  /// Plan tab is headed with — a countdown and a week number belong on the page
-  /// opened every morning at least as much as on the one opened to plan.
-  PlanHeadline? _headline;
 
   /// What became of each prescribed day this week, derived from the run log.
   /// Held here for the same reason [_thisWeek] is: the ribbon and today's card
@@ -906,7 +900,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     TodayView? today;
     TrainingWeek? thisWeek;
     RunnerProfile? planProfile;
-    PlanHeadline? headline;
     var outcomes = const <int, DayOutcome>{};
     MissedPrompt? missed;
     WeekStanding? standing;
@@ -932,14 +925,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         thisWeek = await _plans.weekFor(plan, today.slot);
         // Computed here rather than in the widget, like every other line that
         // depends on the plan's shape (ADR-0011). Home takes two strings.
-        headline = planHeadline(
-          plan,
-          now,
-          unit: _unit,
-          completedThisPlan: turnedUpCount(plan, sorted, now: now),
-          readiness: assessReadiness(plan.profile, sorted, now: now),
-        );
-
         // What actually became of the week, read off the run log rather than
         // off anything the runner asserted by tapping (ADR-0017).
         final weekStart = plan.dateFor(
@@ -997,7 +982,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       today = null; // Home still stands without a plan.
       thisWeek = null;
       planProfile = null; // As does Profile — a goal is optional there.
-      headline = null;
       outcomes = const <int, DayOutcome>{};
       missed = null;
       standing = null;
@@ -1039,7 +1023,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _todayView = today;
       _thisWeek = thisWeek;
       _planProfile = planProfile;
-      _headline = headline;
       _outcomes = outcomes;
       _missed = missed;
       _volumes = volumes;
@@ -1379,7 +1362,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onOpenCoach: _chat == null ? null : _openCoach,
                 today: _todayView,
                 thisWeek: _thisWeek,
-                headline: _headline,
                 note: _note,
                 outcomes: _outcomes,
                 volumes: _volumes,

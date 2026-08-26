@@ -66,31 +66,41 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('a runner in a block is headed with the block', (tester) async {
-    await pump(tester, profile: marathoner());
-
-    // One line now, at caption weight: the goal is the word that makes the
-    // countdown mean something, but "Marathon" does not change for sixteen
-    // weeks and had no business being the largest thing on the page.
-    expect(find.textContaining('Marathon'), findsOneWidget);
-    // "112 days · week 1 of 16" — the countdown and the position, not the hour.
-    expect(find.textContaining('days · week'), findsOneWidget);
-    for (final greeting in greetings) {
-      expect(
-        find.text(greeting),
-        findsNothing,
-        reason: 'the hour is not the most useful thing this space can hold',
-      );
-    }
-  });
-
-  testWidgets('a rhythm is headed with what the runner calls it', (
+  testWidgets('Home does not repeat the heading the Plan tab carries', (
     tester,
   ) async {
+    await pump(tester, profile: marathoner());
+
+    // The goal, the countdown and the week number are the Plan tab's heading,
+    // word for word, one tap away — and there they are load-bearing, because
+    // tapping them opens the block. Here they were repetition.
+    //
+    // Three versions of this header tried to make that fact earn its place:
+    // the goal at display size, then goal-countdown-position on one quiet
+    // line. What none of them noticed is that the fact was not the problem.
+    expect(find.textContaining('Marathon'), findsNothing);
+    expect(find.textContaining('days · week'), findsNothing);
+
+    // What Home says instead. Nothing about where the runner stands is lost:
+    // today's card carries the date and the week tile carries the week.
+    expect(
+      greetings.where((g) => find.text(g).evaluate().isNotEmpty),
+      hasLength(1),
+    );
+  });
+
+  testWidgets("and it does not repeat a rhythm's heading either", (
+    tester,
+  ) async {
+    // A parkrunner has no countdown, so the old header read "Your parkrun
+    // week" — which is also exactly what the Plan tab says.
     await pump(tester, profile: parkrunner());
 
-    expect(find.textContaining('Your parkrun week'), findsOneWidget);
-    expect(find.textContaining('1 run a week'), findsOneWidget);
+    expect(find.textContaining('Your parkrun week'), findsNothing);
+    expect(
+      greetings.where((g) => find.text(g).evaluate().isNotEmpty),
+      hasLength(1),
+    );
   });
 
   testWidgets('with no plan there is genuinely nothing to count down to', (

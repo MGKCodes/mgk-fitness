@@ -5,7 +5,6 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/coach_note.dart';
-import '../../coaching/domain/plan_headline.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
@@ -63,7 +62,6 @@ class HomeTab extends StatelessWidget {
     this.onOpenCoach,
     this.today,
     this.thisWeek,
-    this.headline,
     this.note,
     this.outcomes = const <int, DayOutcome>{},
     this.volumes = const <WeekVolume>[],
@@ -103,11 +101,6 @@ class HomeTab extends StatelessWidget {
   /// This week's sessions, drawn as a ribbon inside the week tile so the runner
   /// can see where in the week they are without leaving Home.
   final TrainingWeek? thisWeek;
-
-  /// What the runner is working on and where they are in it, already resolved
-  /// for the plan's shape. Null when there is no plan, which is the only case
-  /// where a greeting is the most useful thing this space can hold.
-  final PlanHeadline? headline;
 
   /// The coach's current observation, if there is an honest one to make. Null
   /// no longer hides the tile — see [_CoachTile].
@@ -234,7 +227,7 @@ class HomeTab extends StatelessWidget {
             ),
             children: <Widget>[
               Entrance(
-                child: _Header(theme: theme, headline: headline, at: at),
+                child: _Header(theme: theme, at: at),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -377,15 +370,13 @@ class HomeTab extends StatelessWidget {
 /// space can hold — a runner with no plan, where there is genuinely nothing to
 /// count down to and a blank would be colder than a hello.
 class _Header extends StatelessWidget {
-  const _Header({required this.theme, required this.at, this.headline});
+  const _Header({required this.theme, required this.at});
 
   final ThemeData theme;
   final DateTime at;
-  final PlanHeadline? headline;
 
   @override
   Widget build(BuildContext context) {
-    final plan = headline;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -396,64 +387,38 @@ class _Header extends StatelessWidget {
             letterSpacing: 3,
           ),
         ),
-        // **One quiet line, or none.**
+        // **The greeting, and nothing else.**
         //
-        // Three versions of this have now been wrong in three different ways.
-        // It was the time of day, which is warm and is also the one thing a
-        // runner knew before they opened the app. It became the goal at display
-        // size — which fixed that, and introduced a worse fault: "Marathon" is a
-        // static noun that does not change for sixteen weeks, so the largest
-        // thing on the front page became the least alive.
+        // Four versions of this line have now been wrong. It was the time of
+        // day, which a runner already knew. It became the goal at display size,
+        // which fixed that and made the largest thing on the front page a noun
+        // that does not change for sixteen weeks. It became goal, countdown and
+        // position on one quiet line — better, and still wrong for a reason
+        // none of the three noticed: **the Plan tab already says exactly that,
+        // word for word, one tap away.** Its version is load-bearing there, as
+        // the way into the block; this one was repetition.
         //
-        // What actually earns space is the part that moves. `112 days` is
-        // different tomorrow and `week 1 of 16` is different next Monday, and
-        // the goal is the word that makes them mean anything — so all three sit
-        // together at the weight of a caption rather than one of them being a
-        // headline. The size goes back to today's card, which is what the page
-        // is for.
-        //
-        // **The greeting survives where nothing is competing with it.** With no
-        // plan there is no countdown, no position and no goal — and a blank
-        // here is colder than a hello. It keeps its size there, because it is
-        // then the only thing this space has to say rather than the least
-        // interesting of three.
+        // So the space goes back to the greeting. Home already carries the date
+        // on today's card and the week in the tile below it, so nothing about
+        // where the runner stands is lost by not restating the header of
+        // another screen.
         const SizedBox(height: AppSpacing.sm),
-        if (plan == null)
-          Text(
-            // [timeOfDayName], not a private copy of it. This header had its
-            // own `_greeting()` with the same three words and the same two
-            // boundaries, kept in step by hand — two answers to "what time of
-            // day is it" in one app, waiting for somebody to move one boundary.
-            timeOfDayName(at),
-            style: theme.textTheme.displaySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              height: 1.05,
-            ),
-          )
-        else
-          Text(
-            '${plan.goal}  ·  ${plan.position}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
+        Text(
+          // [timeOfDayName], not a private copy of it. This header had its own
+          // `_greeting()` with the same three words and the same two
+          // boundaries, kept in step by hand — two answers to "what time of day
+          // is it" in one app, waiting for somebody to move one boundary.
+          timeOfDayName(at),
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.05,
           ),
+        ),
       ],
     );
   }
 }
 
-/// The top of Home: the wordmark, then **what the runner is working on**.
-///
-/// The largest, first thing on the app's front page used to be the time of day.
-/// "Afternoon" is warm and it is also the one line on the screen that a runner
-/// already knew before they opened it — while the fact they came for, that
-/// there is a half marathon in 75 days and this is week 2 of 12, lived a tab
-/// away. The headline the Plan tab is topped with belongs here at least as
-/// much: this is the page opened every morning, that one is opened to plan.
-///
-/// No identity, still. An email address is an account fact and lives in
-/// Settings.
-///
 class _FirstRun extends StatelessWidget {
   const _FirstRun({required this.onOpenPlan});
 
