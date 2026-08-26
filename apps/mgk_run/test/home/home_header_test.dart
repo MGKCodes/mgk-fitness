@@ -69,7 +69,10 @@ void main() {
   testWidgets('a runner in a block is headed with the block', (tester) async {
     await pump(tester, profile: marathoner());
 
-    expect(find.text('Marathon'), findsOneWidget);
+    // One line now, at caption weight: the goal is the word that makes the
+    // countdown mean something, but "Marathon" does not change for sixteen
+    // weeks and had no business being the largest thing on the page.
+    expect(find.textContaining('Marathon'), findsOneWidget);
     // "112 days · week 1 of 16" — the countdown and the position, not the hour.
     expect(find.textContaining('days · week'), findsOneWidget);
     for (final greeting in greetings) {
@@ -86,7 +89,7 @@ void main() {
   ) async {
     await pump(tester, profile: parkrunner());
 
-    expect(find.text('Your parkrun week'), findsOneWidget);
+    expect(find.textContaining('Your parkrun week'), findsOneWidget);
     expect(find.textContaining('1 run a week'), findsOneWidget);
   });
 

@@ -390,29 +390,47 @@ class _Header extends StatelessWidget {
             letterSpacing: 3,
           ),
         ),
+        // **One quiet line, or none.**
+        //
+        // Three versions of this have now been wrong in three different ways.
+        // It was the time of day, which is warm and is also the one thing a
+        // runner knew before they opened the app. It became the goal at display
+        // size — which fixed that, and introduced a worse fault: "Marathon" is a
+        // static noun that does not change for sixteen weeks, so the largest
+        // thing on the front page became the least alive.
+        //
+        // What actually earns space is the part that moves. `112 days` is
+        // different tomorrow and `week 1 of 16` is different next Monday, and
+        // the goal is the word that makes them mean anything — so all three sit
+        // together at the weight of a caption rather than one of them being a
+        // headline. The size goes back to today's card, which is what the page
+        // is for.
+        //
+        // **The greeting survives where nothing is competing with it.** With no
+        // plan there is no countdown, no position and no goal — and a blank
+        // here is colder than a hello. It keeps its size there, because it is
+        // then the only thing this space has to say rather than the least
+        // interesting of three.
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          // [timeOfDayName], not a private copy of it. This header had its own
-          // `_greeting()` with the same three words and the same two
-          // boundaries, kept in step by hand — two answers to "what time of day
-          // is it" in one app, waiting for somebody to move one boundary and
-          // give a header reading "Evening" over a card reading "Afternoon easy
-          // run".
-          plan?.goal ?? timeOfDayName(at),
-          style: theme.textTheme.displaySmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            height: 1.05,
-          ),
-        ),
-        if (plan != null) ...<Widget>[
-          const SizedBox(height: AppSpacing.xs),
+        if (plan == null)
           Text(
-            plan.position,
+            // [timeOfDayName], not a private copy of it. This header had its
+            // own `_greeting()` with the same three words and the same two
+            // boundaries, kept in step by hand — two answers to "what time of
+            // day is it" in one app, waiting for somebody to move one boundary.
+            timeOfDayName(at),
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
+          )
+        else
+          Text(
+            '${plan.goal}  ·  ${plan.position}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
-        ],
       ],
     );
   }
