@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_theme.dart';
 import 'section_label.dart';
 
 /// A value chosen by spinning a drum, the way iOS asks for a date.
@@ -168,6 +169,18 @@ class _WheelPickerState extends State<WheelPicker> {
                     child: Text(
                       format(v),
                       style: TextStyle(
+                        // **Named, because Cupertino overrides it otherwise.**
+                        // [CupertinoPicker] wraps its children in a
+                        // `DefaultTextStyle` carrying the Cupertino theme's
+                        // `.SF Pro Text`, so an unnamed family here does not
+                        // inherit Inter from the app — it inherits San
+                        // Francisco, and the one control in the suite made of
+                        // nothing but numerals was drawn in a different
+                        // typeface from every other numeral on the screen.
+                        // Invisible on an iPhone until the two are put side by
+                        // side; a column of placeholder boxes anywhere the
+                        // family is absent, which is how it was found.
+                        fontFamily: AppTheme.fontFamily,
                         color: selected
                             ? AppColors.textPrimary
                             : AppColors.textTertiary,

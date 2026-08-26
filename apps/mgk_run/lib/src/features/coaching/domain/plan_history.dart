@@ -12,9 +12,19 @@
 /// of plans knows every plan's end date without being told. Storing it would
 /// have been a second version of a fact the ordering already carries, and the
 /// two would eventually disagree.
+/// **One thing here is stored now, and it is the one nothing could derive.**
+/// A plan that reaches its own end writes a status and a `finished_at`
+/// (ADR-0027), because ordering can only ever say when a plan was *replaced* —
+/// a runner who ran their marathon and has not started anything since had, on
+/// the old derivation, a plan indistinguishable from the one they are on. The
+/// rest of this file is unchanged: nothing else here is stored, and the ending
+/// is read rather than inferred only where it genuinely was recorded.
 library;
 
+import 'package:mgk_units/mgk_units.dart';
+
 import 'plan_shape.dart';
+import 'race_day.dart';
 
 /// How a plan ended, as far as the record can tell.
 enum PlanOutcome {
@@ -22,13 +32,21 @@ enum PlanOutcome {
   current,
 
   /// Race day arrived while this was their plan. The strongest thing the record
-  /// can say — it does not know whether they ran it, only that they got there
-  /// still on the plan, which is most of what a coach wants to know.
+  /// can say when it is only *inferred* — from a plan closed out it is not an
+  /// inference at all, because the runner said so.
   raced,
 
   /// Replaced before its race. Not a judgement: changing your mind about a race
   /// is ordinary, and so is getting injured.
   leftEarly,
+
+  /// Race day came and they did not run it, and they said so.
+  ///
+  /// Distinct from [leftEarly] because the runner did a different thing: they
+  /// stayed on the plan all the way to the date and then did not start. Kept
+  /// apart from [ended] because that means "there was nothing to arrive at",
+  /// which is the opposite situation.
+  didNotRace,
 
   /// Ended with nothing to end at — a horizon or a rhythm, which have no date
   /// to arrive at and so cannot be raced or abandoned.
@@ -49,6 +67,9 @@ class PlanRecord {
     this.goalDistanceMeters,
     this.eventDate,
     this.endedAt,
+    this.closure,
+    this.finishedAt,
+    this.raceTime,
   });
 
   final String id;
@@ -68,6 +89,19 @@ class PlanRecord {
   /// history that has not been superseded.
   final DateTime? endedAt;
 
+  /// How it ended, when it ended on its own terms rather than by being
+  /// replaced. Null for the current plan, for a superseded one, and for every
+  /// plan stored before ADR-0027 — none of which recorded an ending, so the
+  /// inference below is all there is for them.
+  final PlanClosure? closure;
+
+  /// When the runner closed it out. Null for anything [closure] is null for.
+  final DateTime? finishedAt;
+
+  /// What they ran on the day, when they told us. Null for a plan they did not
+  /// race, and null for one they raced without giving a time.
+  final Duration? raceTime;
+
   PlanShape get shape {
     if (goalDistanceMeters == null) return PlanShape.rhythm;
     return eventDate == null ? PlanShape.horizon : PlanShape.block;
@@ -75,6 +109,18 @@ class PlanRecord {
 
   PlanOutcome get outcome {
     if (isActive) return PlanOutcome.current;
+    // Said rather than inferred, where it was said. The inference below reads
+    // dates against each other and can only ever conclude that the runner
+    // *got to* race day still on the plan; a closed-out plan knows whether
+    // they started it.
+    switch (closure) {
+      case PlanClosure.raced:
+        return PlanOutcome.raced;
+      case PlanClosure.didNotRace:
+        return PlanOutcome.didNotRace;
+      case null:
+        break;
+    }
     final date = eventDate;
     // No date means nothing to arrive at, so neither raced nor abandoned.
     if (date == null) return PlanOutcome.ended;
@@ -90,7 +136,12 @@ class PlanRecord {
   /// which is the difference between a runner who has tried this before and one
   /// who has tried it before and stopped in the same place twice.
   int get weekReached {
-    final end = endedAt;
+    // A plan that was closed out ended when the runner closed it, whether or
+    // not anything replaced it afterwards. Without this a marathon block that
+    // ran its full course and was superseded a month later reported the week
+    // the *next* plan started, which is past the end of the arc and clamps to
+    // the last week by luck rather than by knowing.
+    final end = closure == null ? endedAt : (finishedAt ?? endedAt);
     if (end == null) return weeks;
     final days = end.difference(startDate).inDays;
     if (days < 0) return 1;
@@ -174,6 +225,30 @@ String? planHistoryLine(
     );
   }
 
+  // **The races they have actually run, with the times they ran them in.**
+  // This is the single most useful thing a coach can be told about a runner
+  // and it was the last thing added, because until a plan could end there was
+  // nothing to read: a finished marathon block looked exactly like an
+  // abandoned one. Newest first and capped at three, for the reason
+  // `CoachBrief` caps everything — a whole racing history recited back is a
+  // record in a prompt rather than knowledge to use.
+  final raced = <PlanRecord>[
+    for (final p in past.reversed)
+      if (p.record.outcome == PlanOutcome.raced && p.record.raceTime != null)
+        p.record,
+  ];
+  if (raced.isNotEmpty) {
+    final results = <String>[
+      for (final r in raced.take(3))
+        '${r.goalDistanceMeters == null ? 'a plan' : distance(r.goalDistanceMeters!)} '
+            'in ${_clock(r.raceTime!)}',
+    ];
+    parts.add(
+      'Races they have run: ${_joined(results)}. Those are their own reported '
+      'times.',
+    );
+  }
+
   // The specific one, when there is one worth naming. A runner who stopped
   // short is the case a coach should actually know about, and a week number is
   // what makes it usable rather than a shrug.
@@ -190,6 +265,14 @@ String? planHistoryLine(
 
   return parts.join(' ');
 }
+
+/// "3:42:18" — the same clock the run summary shows, so a time in the coach's
+/// mouth reads exactly as the runner saw it on the screen they confirmed it on.
+String _clock(Duration d) => d.hoursMinutesSeconds;
+
+String _joined(List<String> items) => items.length == 1
+    ? items.single
+    : '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';
 
 String _kindOf(PlanRecord record) {
   final goal = record.goalDistanceMeters;

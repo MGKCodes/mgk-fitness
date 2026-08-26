@@ -184,9 +184,20 @@ class _Summary extends StatelessWidget {
           ),
         ),
         Text(
-          days == null
-              ? 'no date set'
-              : (days < 0 ? 'Event passed' : '$days days to go'),
+          // Zero is a day rather than a quantity, the same way the headline
+          // says it. This screen draws the arc rather than the runner's
+          // position in it, so a date that has gone is stated flatly —
+          // "waiting on your result" belongs on the line that answers "where
+          // am I", not under a picture of sixteen weeks. And it says the date
+          // has passed rather than that the race was run, because until the
+          // runner says so the app does not know which.
+          switch (days) {
+            null => 'no date set',
+            0 => 'Race day',
+            1 => 'tomorrow',
+            < 0 => 'after race day',
+            _ => '$days days to go',
+          },
           style: theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textTertiary,
           ),

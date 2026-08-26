@@ -28,6 +28,7 @@ run_splits        run_id, seq, distance_m, duration_s, avg_hr
 
 plans             id, user_id, goal_distance_m, goal_time_s, event_date,
                   start_date, weeks, status, created_at,
+                  finished_at, race_time_s          (local only — see below)
                   + runner profile snapshot: current_weekly_m,
                     longest_recent_m, days_per_week, available_weekdays[],
                     time_trial_distance_m, time_trial_seconds, injury_notes
@@ -168,9 +169,22 @@ it were a fact.
   plan. `runner_profiles` remains the *current* profile; the snapshot is the one
   the plan was generated against.
 - **`plans.status`** is `active | superseded | completed | abandoned`, with a
-  partial unique index enforcing at most one `active` plan per user. Running the
-  coach again **supersedes** the previous plan rather than deleting it — a plan
-  is a record of what the runner committed to.
+  partial unique index enforcing at most one `active` plan per user. The four
+  divide two ways. Running the coach again **supersedes** the previous plan
+  rather than deleting it — a plan is a record of what the runner committed to,
+  and being replaced says nothing about how it went. `completed` and
+  `abandoned` are the other kind: the plan reached its **own** end, on race day,
+  and the runner either ran it or did not ([ADR-0027](../decisions/0027-a-plan-ends-on-race-day.md)).
+- **The end of a plan is local only.** Schema 10 added `finished_at` and
+  `race_time_s` to the Drift `plans` table; the `run` Postgres schema has
+  neither, and `SupabasePlanBackup` enumerates columns explicitly, so the mirror
+  does not carry them — and `status` is pushed as a literal `'active'`, so a
+  block that finished with a race reads on the server as merely superseded. Same
+  position as `runs.steps` and `runs.elevation_max_m`
+  ([ADR-0024](../decisions/0024-elevation-is-barometric-or-absent.md)), and the
+  most expensive of the three, because a race result is a fact the runner
+  confirmed rather than one anything on the phone could recompute. These are the
+  columns to add when the `run` schema next moves.
 - **`plan_sessions` has one row per *training* day**; a rest day is the *absence*
   of a row. `(plan_id, week_number, weekday)` is unique, so regenerating or
   adapting a week updates it in place instead of duplicating sessions. Statuses

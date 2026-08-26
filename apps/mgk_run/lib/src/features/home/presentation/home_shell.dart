@@ -18,6 +18,7 @@ import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_headline.dart';
 import '../../coaching/domain/plan_shape.dart';
+import '../../coaching/domain/race_day.dart';
 import '../../coaching/domain/readiness.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/week_progress.dart';
@@ -40,8 +41,10 @@ import '../../coaching/presentation/coach_conversation.dart';
 import '../../coaching/presentation/coach_reveal.dart';
 import '../../coaching/presentation/chat_entry.dart';
 import '../../coaching/presentation/coach_flow.dart';
+import '../../coaching/presentation/plan_finish_screen.dart';
 import '../../coaching/presentation/plan_screen.dart';
 import '../../coaching/presentation/plan_block_screen.dart';
+import '../../coaching/presentation/race_result_sheet.dart';
 import '../../coaching/presentation/plan_calendar_screen.dart';
 import '../../coaching/presentation/week_detail_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -510,6 +513,70 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _askCoach(request);
   }
 
+  /// The end of a block: what they ran, and the plan closing behind it.
+  ///
+  /// **The order matters and it is the runner's order, not the database's.**
+  /// They are asked what happened, the answer is written, and only then are
+  /// they shown the finish — so the screen that says the plan is over is
+  /// standing on a plan that is already over on disk. Doing it the other way
+  /// round would put a celebration in front of a write that might still fail.
+  ///
+  /// Backing out of the sheet changes nothing at all. The card keeps asking,
+  /// which is the point of it asking for [kRaceGraceDays] rather than once.
+  Future<void> _closeRace() async {
+    final race = _todayView?.race;
+    if (race == null) return;
+    final plan = await _loadedPlan();
+    if (plan == null || !mounted) return;
+
+    // What the log says, so the sheet opens with the answer already in it
+    // rather than with an empty form (ADR-0017 — completion is observed).
+    final observed = raceResultFor(plan, _allRuns);
+    final answer = await RaceResultSheet.show(
+      context,
+      race: race,
+      observed: observed,
+      unit: _unit,
+    );
+    if (answer == null || !mounted) return;
+
+    try {
+      await _plans.finish(plan, closure: answer.closure, raceTime: answer.time);
+    } on PlanStoreException {
+      // The plan could not be closed, so nothing is shown as though it had
+      // been. The card is still there and still asking, which is a better
+      // outcome than a finish screen over a plan that is still active.
+      return;
+    }
+
+    // Rebuilt from the answer rather than from the log, so the screen shows the
+    // figure the runner confirmed — including a chip time their phone
+    // disagrees with, which is exactly the case the override exists for.
+    final result = answer.closure == PlanClosure.raced
+        ? raceResultFor(plan, _allRuns, entered: answer.time)
+        : null;
+
+    await _refreshHome();
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => PlanFinishScreen(
+          plan: plan,
+          runs: _allRuns,
+          result: result,
+          unit: _unit,
+          onAskCoach: _chat == null
+              ? null
+              : (opener) {
+                  Navigator.of(routeContext).pop();
+                  _askCoach(opener);
+                },
+          onDone: () => Navigator.of(routeContext).pop(),
+        ),
+      ),
+    );
+  }
+
   /// A run the runner mentioned in conversation → a **validated** draft, handed
   /// back to the dock to confirm inside the conversation.
   ///
@@ -848,10 +915,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // disagree about the day are worse than either being absent.
     final now = DateTime.now();
     try {
-      final plan = await _plans.load();
+      var plan = await _plans.load();
+      // **The runner who never races.** A block whose race is long past and
+      // which nobody ever closed out is closed here, from the log, before
+      // anything is derived from it — otherwise Home would spend the rest of
+      // the year counting down to a marathon that happened in April. Done on
+      // the refresh rather than inside [PlanRepository.load] because a read
+      // that writes is a read nobody can reason about, and half a dozen other
+      // callers of `load` have no business closing anything.
+      if (plan != null && await _plans.closeIfOverdue(plan, sorted) != null) {
+        plan = null;
+      }
       if (plan != null) {
         planProfile = plan.profile;
-        today = await _plans.today(plan);
+        today = await _plans.today(plan, unit: _unit);
         thisWeek = await _plans.weekFor(plan, today.slot);
         // Computed here rather than in the widget, like every other line that
         // depends on the plan's shape (ADR-0011). Home takes two strings.
@@ -877,24 +954,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           runs: sorted,
           since: today.slot.index == 1 ? now : plan.startDate,
         );
-        missed = missedPromptFor(
-          week: thisWeek,
-          weekStart: weekStart,
-          now: now,
-          runs: sorted,
-          unit: _unit,
-          // **A plan cannot be behind on days that predate it**, and in its
-          // first week we cannot tell which those are: `startDate` is the
-          // *Monday week 1 aligns to*, not the day the runner committed, so a
-          // plan built on a Thursday claims Monday and then reports three days
-          // it was never asked about. Nothing is stored that would tell us
-          // which; until a creation timestamp exists, week 1 raises nothing.
-          //
-          // Under-reporting on purpose. A genuine week-1 miss waits until week
-          // 2 to be mentioned, which is a far smaller wrong than a brand-new
-          // plan opening with a list of failures.
-          since: today.slot.index == 1 ? now : plan.startDate,
-        );
+        // **Nothing is chased about during race week.** A taper is deliberately
+        // small and deliberately easy to skip, and the morning after a marathon
+        // is the single worst moment in the product to open with "3 sessions
+        // missed this week — Tuesday, Thursday, Saturday". It is technically
+        // true, it is about a week that ended at the finish line, and it sits
+        // directly under a card asking how the race went (ADR-0027).
+        //
+        // Gated on the race being in view rather than on the phase being a
+        // taper: `race` is null for a horizon, a rhythm and a log, and for
+        // every ordinary day of a block, so this suppresses exactly the ten
+        // days either side of a date and nothing else.
+        missed = today.race != null
+            ? null
+            : missedPromptFor(
+                week: thisWeek,
+                weekStart: weekStart,
+                now: now,
+                runs: sorted,
+                unit: _unit,
+                // **A plan cannot be behind on days that predate it**, and in
+                // its first week we cannot tell which those are: `startDate` is
+                // the *Monday week 1 aligns to*, not the day the runner
+                // committed, so a plan built on a Thursday claims Monday and
+                // then reports three days it was never asked about. Nothing is
+                // stored that would tell us which; until a creation timestamp
+                // exists, week 1 raises nothing.
+                //
+                // Under-reporting on purpose. A genuine week-1 miss waits until
+                // week 2 to be mentioned, which is a far smaller wrong than a
+                // brand-new plan opening with a list of failures.
+                since: today.slot.index == 1 ? now : plan.startDate,
+              );
         standing = weekStanding(
           week: thisWeek,
           weekStart: weekStart,
@@ -1315,6 +1406,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onAdjustWeek: widget.planClient == null || _todayView == null
                     ? null
                     : _adjustThisWeek,
+                // Only when there is a race in view at all; the card decides
+                // which of its states actually offers the door, since the run
+                // up to a race has nothing to close out yet. Needs no coach
+                // and no network behind it — a runner offline on the train
+                // home from their marathon can still record what they ran,
+                // because everything it writes is local (rule 1).
+                onCloseRace: _todayView?.race == null ? null : _closeRace,
                 unit: _unit,
               ),
               _PlanTab(

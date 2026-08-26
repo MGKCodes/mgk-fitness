@@ -78,6 +78,7 @@ class HomeTab extends StatelessWidget {
     this.missed,
     this.onAskCoach,
     this.onAdjustWeek,
+    this.onCloseRace,
     this.onOpenRun,
     this.unit = UnitSystem.metric,
     this.now,
@@ -175,6 +176,10 @@ class HomeTab extends StatelessWidget {
   /// when there is no plan to bend or no coach to bend it.
   final VoidCallback? onAdjustWeek;
 
+  /// Opens the flow that records what they ran on race day and ends the plan.
+  /// Null when the plan is not aimed at a date, or the race is not in view.
+  final VoidCallback? onCloseRace;
+
   /// Opens a recorded run. Null hides the tap on the last-run tile rather than
   /// offering a target that does nothing.
   final void Function(RunSummary run)? onOpenRun;
@@ -250,6 +255,7 @@ class HomeTab extends StatelessWidget {
                   onOpenPlan: onOpenPlan,
                   onOpenCoach: onOpenCoach,
                   onAdjustWeek: onAdjustWeek,
+                  onCloseRace: onCloseRace,
                 ),
               ),
 

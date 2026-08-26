@@ -1,4 +1,7 @@
+import '../../../core/database/app_database.dart'
+    show planStatusAbandoned, planStatusCompleted;
 import '../domain/plan_shape.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/session_status.dart';
 import '../domain/training_plan.dart';
@@ -131,6 +134,28 @@ SessionKind? sessionKindFromWire(Object? v) => switch (v) {
   'threshold' => SessionKind.threshold,
   'interval' => SessionKind.interval,
   _ => null,
+};
+
+/// How a plan's stored status reads as an ending, or null when it is not one.
+///
+/// Only two of the four statuses are endings. `active` is the plan the runner
+/// is on and `superseded` is one that was replaced mid-flight, which is a fact
+/// about the *next* plan rather than about this one — see [PlanClosure].
+///
+/// An unrecognised status answers null rather than throwing, unlike the strict
+/// decoding elsewhere in [DriftPlanStore]. A status this app does not know is
+/// still a plan the runner had, and refusing to list their own history over a
+/// vocabulary mismatch would lose the useful thing to protect a detail.
+PlanClosure? planClosureFromWire(Object? v) => switch (v) {
+  planStatusCompleted => PlanClosure.raced,
+  planStatusAbandoned => PlanClosure.didNotRace,
+  _ => null,
+};
+
+/// The stored status for an ending.
+String planClosureToWire(PlanClosure closure) => switch (closure) {
+  PlanClosure.raced => planStatusCompleted,
+  PlanClosure.didNotRace => planStatusAbandoned,
 };
 
 /// The same vocabulary as `plan_sessions.status` locally and in Postgres, so a

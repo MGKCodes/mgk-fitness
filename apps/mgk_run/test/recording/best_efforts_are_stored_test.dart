@@ -286,9 +286,14 @@ void main() {
       // drift's `batch` and `transaction` both open a transaction, and a
       // migration is already one.
       //
-      // Version 8 is faked by dropping the table schema 9 adds and winding
-      // `user_version` back — which is exactly the state a phone updating from
-      // the previous build is in.
+      // Version 8 is faked by undoing everything the migrations after it did
+      // and winding `user_version` back — which is exactly the state a phone
+      // updating from that build is in. Every additive step has to be undone,
+      // not just schema 9's: `onCreate` builds the *current* schema, so a
+      // database left with schema 10's columns and `user_version = 8` is not a
+      // version 8 database and the migration correctly refuses it with a
+      // duplicate column. Adding a column to `plans` without touching this is
+      // how that discovery gets made.
       // Two databases over one file is the whole point here, so drift's
       // (correct, in general) warning about it is noise in this one test.
       driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -326,6 +331,12 @@ void main() {
         );
       }
       await upgrading.customStatement('DROP TABLE run_best_efforts');
+      await upgrading.customStatement(
+        'ALTER TABLE plans DROP COLUMN finished_at',
+      );
+      await upgrading.customStatement(
+        'ALTER TABLE plans DROP COLUMN race_time_s',
+      );
       await upgrading.customStatement('PRAGMA user_version = 8');
       await upgrading.close();
 

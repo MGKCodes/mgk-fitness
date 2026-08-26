@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value;
 import '../../../core/database/app_database.dart';
 import '../domain/plan_history.dart';
 import '../domain/plan_shape.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
@@ -76,8 +77,39 @@ class DriftPlanStore implements PlanStore {
           // The next plan's creation is this plan's end. Null for the last row,
           // which is either the current plan or the newest a history has.
           endedAt: i + 1 < rows.length ? rows[i + 1].createdAt : null,
+          // Read rather than derived, and only where it was written. A plan
+          // stored before ADR-0027 has no ending recorded, so `closure` is
+          // null and [PlanRecord.outcome] falls back to reading the dates
+          // against each other exactly as it always did.
+          closure: planClosureFromWire(rows[i].status),
+          finishedAt: rows[i].finishedAt,
+          raceTime: rows[i].raceTimeS == null
+              ? null
+              : Duration(seconds: rows[i].raceTimeS!),
         ),
     ];
+  }
+
+  @override
+  Future<void> closePlan(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  }) async {
+    final changed = await _db.closePlan(
+      planId: plan.id,
+      status: planClosureToWire(closure),
+      finishedAt: DateTime.now(),
+      // A time can only belong to a race that happened. Enforced here as well
+      // as at the call site because this is the last place the two can be held
+      // apart before they are indistinguishable on disk.
+      raceTime: closure == PlanClosure.raced ? raceTime : null,
+    );
+    if (changed == 0) {
+      throw PlanStoreException(
+        'plan ${plan.id} is not on this device — refusing to report it closed',
+      );
+    }
   }
 
   @override

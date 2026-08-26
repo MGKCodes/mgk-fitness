@@ -71,6 +71,41 @@ been on a store, so everything Runio does is still listed here.
   describe one that is not in the log.
 - **A coach with no runs logged is told to say so** rather than describe one,
   including the case where a run was mentioned in conversation and never logged.
+- **The coach is told where the race is in plain words**, so a block past its
+  date no longer reads as "-2 days out from the event". On race day it is told
+  to keep it short; afterwards it is told to ask how it went, once, and to wait
+  for the answer. Races the runner has finished are carried in the brief with
+  the times they ran.
+
+**Race day, and the end of a plan** (ADR-0027)
+- **Race day is its own moment.** The Today card reads "Race day" over the
+  distance and a Start button that says what it starts, rather than the same
+  prescription-and-effort-cue it draws on a Tuesday. From ten days out the card
+  carries a countdown above the session — a taper week that says why it is
+  small — and the day before is named rather than counted.
+- **A result, read from the log and confirmed by the runner.** A run recorded on
+  the day fills the sheet in; the time can be corrected before it is confirmed,
+  because a chip time and a GPS time disagreeing is normal rather than an error.
+  Both are kept and shown, and the race distance is the distance entered — a
+  marathon is 42.195 km however far the weaving added.
+- **The plan ends.** Something finally writes `plans.status = 'completed'`,
+  which the schema has documented since it was written and nothing had ever
+  produced: a block used to end by being quietly superseded the next time
+  somebody built a plan.
+- **A runner who never races does not carry the plan forever.** Race day passing
+  leaves the card asking for fourteen days; after that the app closes the plan
+  itself from the run log. Injury, a cancelled event and an entry never made all
+  land here, and no screen uses the word "abandoned".
+- **A finish screen**, assembled from what already existed: the result laid out
+  the way a finished run is, the block arc drawn complete for the first time,
+  the weeks and runs and distance inside the plan's own window, and one line
+  from the coach — derived in Dart, with the conversation a tap away for the
+  part that needs judgement.
+- Past plans on Profile carry the time they were for.
+- Schema 10 adds `plans.finished_at` and `plans.race_time_s`, nullable and not
+  backfilled. Neither has a counterpart in the `run` Postgres schema, so the
+  Supabase mirror does not carry them — the gap is documented at the seam,
+  beside the ones `runs.steps` and `elevation_max_m` already leave.
 
 **Elsewhere**
 - Home, Plan and Profile tabs, with lifetime totals, records, training standing
@@ -282,6 +317,17 @@ been on a store, so everything Runio does is still listed here.
 
 ### Fixed
 
+- **The countdown stops being a countdown at zero.** The Plan header read
+  "0 days · week 16 of 16" on race day and "Event passed" after it — a
+  subtraction carried all the way to the screen, and a shrug at the most
+  significant day in the block. Both now say what the day is.
+- **The wheel picker's numerals are Inter.** `CupertinoPicker` wraps its
+  children in a `DefaultTextStyle` carrying San Francisco, so the one control in
+  the suite made of nothing but numbers was drawn in a different typeface from
+  every other number on the screen. Invisible on an iPhone until the two are put
+  side by side; a column of placeholder boxes anywhere the family is absent,
+  which is how it was found. Fixed in `packages/mgk_ui`, so Liftio's coach
+  screen gets it too.
 - **A prescribed distance is a whole number, on every screen that shows one.**
   Plan said "4 km" and Home said "4.1 km" for the same Tuesday, because nine
   surfaces formatted the session by hand instead of going through the one

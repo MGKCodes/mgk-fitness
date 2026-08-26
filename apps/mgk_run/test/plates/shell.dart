@@ -49,9 +49,13 @@ void main() {
   /// a session — the plate would otherwise show a rest day about half the time
   /// it was regenerated, which is a board that changes what it claims depending
   /// on when you look at it.
-  RunnerProfile profile() => RunnerProfile(
+  ///
+  /// [racingIn] moves race day relative to today, which is the whole of what
+  /// separates an ordinary Tuesday from the taper, the day itself and the
+  /// morning after (ADR-0027). Everything downstream is derived by the app.
+  RunnerProfile profile({int racingIn = 112}) => RunnerProfile(
     goalDistanceMeters: 42195,
-    eventDate: DateTime.now().add(const Duration(days: 112)),
+    eventDate: _dateOnly(DateTime.now().add(Duration(days: racingIn))),
     currentWeeklyMeters: 40000,
     longestRecentMeters: 18000,
     daysPerWeek: 7,
@@ -155,4 +159,124 @@ void main() {
       drive: settle,
     );
   });
+
+  /// Home for a runner whose race is [racingIn] days away, with [extra] runs on
+  /// top of the ordinary log.
+  ///
+  /// One helper for four plates, because the *only* thing that differs between
+  /// them is the date on the plan — which is the claim ADR-0027's design rests
+  /// on, and a board built four separate ways could not make it.
+  Future<void> raceDayPlate(
+    WidgetTester tester,
+    String name, {
+    required int racingIn,
+    List<RunSummary> extra = const <RunSummary>[],
+    Future<void> Function(WidgetTester tester)? drive,
+  }) async {
+    final store = DriftPlanStore(db);
+    // **Built as though the runner started twelve weeks ago**, by winding the
+    // repository's clock back — otherwise `create` anchors week 1 to this
+    // Monday and the finish screen totals a block three days long. That is
+    // exactly the thin-fixture failure this file's header is about: the screen
+    // would be correct and the plate would still misrepresent it.
+    final startedOn = _dateOnly(
+      DateTime.now().add(Duration(days: racingIn - 7 * 12)),
+    );
+    await PlanRepository(
+      store: store,
+      now: () => startedOn,
+    ).create(profile(racingIn: racingIn));
+    // The ordinary log is pushed back behind the race, so the marathon is the
+    // newest run rather than sharing a day with a routine 7 km — the plate
+    // would otherwise show a runner who did a marathon and then went out again
+    // that afternoon, which is a picture of nothing that happens.
+    final runs = <RunSummary>[
+      ...extra,
+      for (final run in log())
+        if (extra.isEmpty ||
+            DateTime.now().difference(run.startedAt).inDays >= 3)
+          run,
+    ];
+
+    await plate(
+      tester,
+      name,
+      HomeShell(
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+      ),
+      pixelRatio: 2,
+      drive: drive ?? settle,
+    );
+  }
+
+  testWidgets('the taper week, three days out', (tester) async {
+    await raceDayPlate(tester, 'shell-race-run-up', racingIn: 3);
+  });
+
+  testWidgets('race day itself', (tester) async {
+    await raceDayPlate(tester, 'shell-race-day', racingIn: 0);
+  });
+
+  testWidgets('the morning after, with the result still untold', (
+    tester,
+  ) async {
+    await raceDayPlate(
+      tester,
+      'shell-race-after',
+      racingIn: -1,
+      extra: <RunSummary>[_theRace()],
+    );
+  });
+
+  testWidgets('the sheet that reads the result off the log', (tester) async {
+    await raceDayPlate(
+      tester,
+      'shell-race-result-sheet',
+      racingIn: -1,
+      extra: <RunSummary>[_theRace()],
+      drive: (tester) async {
+        await settle(tester);
+        await tester.tap(find.text('Add your result'));
+        await settle(tester);
+      },
+    );
+  });
+
+  testWidgets('and the end of sixteen weeks', (tester) async {
+    await raceDayPlate(
+      tester,
+      'shell-plan-finish',
+      racingIn: -1,
+      extra: <RunSummary>[_theRace()],
+      // Driven all the way through rather than pushed directly. The finish
+      // screen is only ever reached by confirming a result, and a plate that
+      // constructed one by hand would be the thin-fixture mistake this file
+      // exists to avoid — it would not prove the plan had actually closed.
+      drive: (tester) async {
+        await settle(tester);
+        await tester.tap(find.text('Add your result'));
+        await settle(tester);
+        await tester.tap(find.textContaining('That was my time'));
+        await settle(tester);
+      },
+    );
+  });
 }
+
+/// The marathon, as the phone recorded it: 42.61 km, because a marathon on a
+/// GPS is always a little long.
+RunSummary _theRace() {
+  final yesterday = DateTime.now().subtract(const Duration(days: 1));
+  return RunSummary(
+    id: 'the-race',
+    startedAt: DateTime(yesterday.year, yesterday.month, yesterday.day, 9),
+    duration: const Duration(hours: 3, minutes: 42, seconds: 18),
+    distanceMeters: 42610,
+    avgPaceSecondsPerKm: 313,
+  );
+}
+
+DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

@@ -682,8 +682,15 @@ class _PastPlans extends StatelessWidget {
   ///
   /// A week number only when they stopped short. "Week 16 of 16" is a strange
   /// way to say they finished, and the tick beside it already says it.
+  ///
+  /// **The time takes the line where there is one**, because it is the answer
+  /// to what the plan was for. "Aug 2026 · 16 weeks" describes the process; a
+  /// runner reading their own history wants the result, and the process is the
+  /// thing they already remember.
   String _describe(PlanRecord record) {
     final when = _monthYear(record.startDate);
+    final time = record.raceTime;
+    if (time != null) return '$when · ${time.hoursMinutesSeconds}';
     if (record.wasSeenThrough) return '$when · ${record.weeks} weeks';
     return '$when · stopped at week ${record.weekReached} of ${record.weeks}';
   }
@@ -723,8 +730,12 @@ class _OutcomeMark extends StatelessWidget {
       size: 18,
       color: AppColors.textSecondary,
     ),
-    // Nothing at all for the rest. An absent mark reads as "no verdict", which
-    // is the truth: the record does not know why they stopped.
+    // Nothing at all for the rest, **including a race they did not start.**
+    // An absent mark reads as "no verdict", which is the truth even now that
+    // the record knows: a runner who did not race got injured, or the event
+    // was cancelled, or they changed their mind, and none of those is a thing
+    // to put a symbol beside on someone's own history.
+    PlanOutcome.didNotRace ||
     PlanOutcome.leftEarly ||
     PlanOutcome.ended ||
     PlanOutcome.current => const SizedBox.shrink(),

@@ -38,3 +38,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0024](0024-elevation-is-barometric-or-absent.md) | Elevation is barometric or absent | Accepted |
 | [0025](0025-a-coach-conversation-is-a-session.md) | A coach conversation is a session, bounded by silence | Accepted |
 | [0026](0026-a-record-is-a-window-in-a-trace.md) | A record is a window in a trace, not a run's own time | Accepted |
+| [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted |

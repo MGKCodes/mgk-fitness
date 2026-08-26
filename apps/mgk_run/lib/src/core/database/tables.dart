@@ -127,7 +127,38 @@ class Plans extends Table {
 
   /// `active` | `superseded` | `completed` | `abandoned`. Running the coach
   /// again supersedes the previous plan rather than deleting it.
+  ///
+  /// `completed` and `abandoned` are the two ways a plan reaches its **own**
+  /// end rather than being replaced: the runner got to race day and ran it, or
+  /// race day came and went without them (ADR-0027). Both were documented here
+  /// from the day the table was written and neither was ever produced, which is
+  /// how a sixteen-week block came to end by being quietly superseded.
   TextColumn get status => text().withDefault(const Constant('active'))();
+
+  /// When the plan was closed out. Null while it is still running.
+  ///
+  /// **Its presence is what makes an ending knowable.** A plan's end was
+  /// otherwise derived from the creation date of whatever replaced it
+  /// (`plan_history.dart`), which is exactly right for a plan that *was*
+  /// replaced and says nothing at all about one that simply finished — a runner
+  /// who ran their marathon and has not started anything since had a plan with
+  /// no end date and no way to tell it from the plan they are on.
+  DateTimeColumn get finishedAt => dateTime().nullable()();
+
+  /// The finish time the runner confirmed on race day, in seconds.
+  ///
+  /// **Stored rather than re-derived, and that is deliberate against the usual
+  /// rule here.** Most of what this app shows about a run is read back off the
+  /// log every time, because a second copy of a fact eventually disagrees with
+  /// the first. A race result is the exception: it is what the runner *agreed*
+  /// their race was, and the evidence underneath it is allowed to move without
+  /// taking it with them. A GPS run edited down to 41.8 km (ADR-0016 permits
+  /// exactly that), or deleted a year later, must not silently rewrite the
+  /// marathon time they tell people.
+  ///
+  /// Null with a `completed` status means they raced and the app does not know
+  /// the time — which happens, and is a better thing to store than a guess.
+  IntColumn get raceTimeS => integer().nullable()();
 
   // --- runner profile snapshot ---
   RealColumn get currentWeeklyM => real()();

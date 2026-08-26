@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -123,6 +123,31 @@ class AppDatabase extends _$AppDatabase {
         // efforts written at `stop()`, so no future log ever reaches this line,
         // however long it grows.
         await backfillBestEfforts();
+      }
+      if (from < 10) {
+        // A plan can now reach its own end rather than only being replaced
+        // (ADR-0027): when it was closed out, and what the runner ran on the
+        // day. Nullable and additive, and **not backfilled**, which puts this
+        // migration on schema 8's side of the line rather than schema 9's.
+        //
+        // The difference is once again the evidence. Schema 9 could recompute a
+        // record because `run_points` held every fix of every run, so the
+        // backfill produced the record rather than an estimate of it. Nothing
+        // on the phone can say whether a runner who has an old block on disk
+        // actually ran that race: a run on the day is suggestive and no run at
+        // all means nothing, since the phone may simply have stayed in the
+        // hotel. Writing `completed` on that basis would be the app filing a
+        // result on the runner's behalf for a race it did not see — and unlike
+        // a wrong step count, it would appear in their history as a race they
+        // ran and in the coach's brief as a block they saw through.
+        //
+        // So every plan already on disk keeps the status it has. The plans that
+        // predate this are pre-release ones belonging to this app's own
+        // testing, and [overdueClosureFor] closes any of them whose race is
+        // long past the next time the runner opens the app — from the log,
+        // which is the same evidence a runner would be shown before confirming.
+        await m.addColumn(plans, plans.finishedAt);
+        await m.addColumn(plans, plans.raceTimeS);
       }
     },
   );
@@ -540,6 +565,35 @@ class AppDatabase extends _$AppDatabase {
     }
   });
 
+  /// Closes a plan out: it reached its own end rather than being replaced.
+  ///
+  /// **Deliberately narrow.** It writes three columns and cannot reach the
+  /// skeleton, the sessions or the profile snapshot — a finished plan is still
+  /// the record of what the runner committed to, and closing it must not be a
+  /// door to editing it. It is the same restraint [updateRunDetails] applies to
+  /// a run's trace (ADR-0016), for the same reason.
+  ///
+  /// Scoped by id rather than by "the active plan", so closing one twice — a
+  /// double tap, or the auto-close racing the runner's own confirmation — is
+  /// idempotent rather than reaching whatever is active by then.
+  ///
+  /// Returns the number of rows changed, so a caller cannot mistake a write
+  /// against a plan that is no longer there for success.
+  Future<int> closePlan({
+    required String planId,
+    required String status,
+    required DateTime finishedAt,
+    Duration? raceTime,
+  }) => (update(plans)..where((p) => p.id.equals(planId))).write(
+    PlansCompanion(
+      status: Value(status),
+      finishedAt: Value(finishedAt),
+      // Written as an explicit null for a runner who did not race, so a plan
+      // closed twice cannot keep a time from the first attempt.
+      raceTimeS: Value(raceTime?.inSeconds),
+    ),
+  );
+
   /// The skeleton of a plan, in week order.
   Future<List<PlanWeekRow>> weeksForPlan(String planId) =>
       (select(planWeeks)
@@ -654,8 +708,17 @@ class AppDatabase extends _$AppDatabase {
 }
 
 /// Plan lifecycle states, shared with `runio.plans.status`.
+///
+/// Four, and they divide two ways. A plan is [planStatusSuperseded] when
+/// another plan takes its place, which can happen in week two and says nothing
+/// about how it went. It is [planStatusCompleted] or [planStatusAbandoned] when
+/// it reaches its **own** end — race day arrived, and the runner either ran it
+/// or did not (ADR-0027). The last two were documented from the day the table
+/// was written and nothing produced either of them for a year.
 const String planStatusActive = 'active';
 const String planStatusSuperseded = 'superseded';
+const String planStatusCompleted = 'completed';
+const String planStatusAbandoned = 'abandoned';
 
 /// The planned/completed/skipped wire value, shared with
 /// `runio.plan_sessions.status`.

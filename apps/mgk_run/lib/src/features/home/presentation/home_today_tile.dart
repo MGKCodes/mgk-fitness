@@ -4,6 +4,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/prescribed_distance.dart';
+import '../../coaching/domain/race_day.dart';
 import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/domain/week_progress.dart';
@@ -36,6 +37,17 @@ import '../../recording/domain/run_summary.dart';
 /// they get instead is a true fact about their own running today, which is
 /// either the run they have already done or the fact that they have not done
 /// one yet. Both are information; neither mentions a plan.
+///
+/// ## Race day
+///
+/// **The day a plan was aimed at does not read like a Tuesday.** It used to:
+/// race day was the last row of the last week, a distance and an effort cue,
+/// with nothing anywhere to say that sixteen weeks were about to conclude
+/// (ADR-0027). Three states now exist above the ordinary one — the run-up, the
+/// day, and the morning after — and every one of them arrives as a resolved
+/// [RaceOutlook] rather than as a question this card asks about the plan. Null
+/// is the ordinary day and is what a rhythm, a horizon and a log get on every
+/// day of their lives, so nothing here branches on a [PlanShape] (ADR-0011).
 class HomeTodayTile extends StatelessWidget {
   const HomeTodayTile({
     super.key,
@@ -49,6 +61,7 @@ class HomeTodayTile extends StatelessWidget {
     this.outcomes = const <int, DayOutcome>{},
     this.onOpenCoach,
     this.onAdjustWeek,
+    this.onCloseRace,
   });
 
   /// One reading of the clock for the whole card, handed down rather than taken
@@ -82,6 +95,14 @@ class HomeTodayTile extends StatelessWidget {
   final VoidCallback? onOpenCoach;
   final VoidCallback? onAdjustWeek;
 
+  /// Opens the flow that records what they ran and ends the plan.
+  ///
+  /// One callback for both answers — "here is my time" and "I did not race" —
+  /// because they are the same question and the sheet behind this asks it once.
+  /// Null hides the offer rather than showing a control that does nothing,
+  /// which is the same rule [onAdjustWeek] follows.
+  final VoidCallback? onCloseRace;
+
   /// Whether a run is already on record for today.
   ///
   /// Two sources because there are two kinds of runner. The outcome map is
@@ -100,6 +121,14 @@ class HomeTodayTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = today;
+    final race = session?.race;
+    // The two states where the race *is* the day. The run-up is not one of
+    // them: there is still a session to run on the Thursday before a Sunday
+    // marathon, and replacing it with a countdown would take the instruction
+    // off the one screen that carries it.
+    final racing =
+        race != null &&
+        (race.phase == RacePhase.today || race.phase == RacePhase.awaiting);
 
     return GlassSurface(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -119,7 +148,29 @@ class HomeTodayTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          if (session?.session != null)
+          // The taper week knowing what it is for. Above the session rather
+          // than instead of it — a runner three days out still has a run to do
+          // today, and the countdown is context for it.
+          if (race != null && race.phase == RacePhase.approaching) ...<Widget>[
+            _RaceStrip(race: race),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+
+          if (racing && race.phase == RacePhase.today)
+            _RaceDay(
+              race: race,
+              unit: unit,
+              ranToday: _ranToday,
+              onStart: onStartSession,
+              onCloseRace: onCloseRace,
+            )
+          else if (racing)
+            _AfterTheRace(
+              race: race,
+              onCloseRace: onCloseRace,
+              onRecord: onFreeRun,
+            )
+          else if (session?.session != null)
             _PrescribedDay(
               session: session!.session!,
               now: now,
@@ -159,7 +210,12 @@ class HomeTodayTile extends StatelessWidget {
           //
           // On a rest day too: "I'm ill" is not a thing that waits for a
           // session to be scheduled before it is true.
-          if (onAdjustWeek != null) ...<Widget>[
+          //
+          // Not on race day and not afterwards. There is nothing left to bend:
+          // the week the runner would be adjusting is the one they have
+          // already run, and the coach cannot move a session that has been the
+          // point of the whole block since January.
+          if (onAdjustWeek != null && !racing) ...<Widget>[
             const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,
@@ -175,6 +231,207 @@ class HomeTodayTile extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The race, on a day that is not it yet.
+///
+/// **A taper week that does not say why it is small is a plan that looks like
+/// it has given up.** The countdown is the reassurance: the volume has dropped
+/// because the work is finished, not because something went wrong. Both lines
+/// are written in the domain, so this draws two strings and asks nothing.
+class _RaceStrip extends StatelessWidget {
+  const _RaceStrip({required this.race});
+
+  final RaceOutlook race;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: AppColors.elevated),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.flag_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  race.headline,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  race.detail,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The day itself.
+///
+/// **The heading is the occasion, not the distance.** Every other day on this
+/// card leads with how far, because how far is the instruction and a runner
+/// opening the app at seven in the morning wants to know what to go and do.
+/// Today they already know: they have known since January. What they do not
+/// have is anyone saying the day has arrived, so that is the line, and the
+/// distance sits underneath where it has always been.
+///
+/// The result is offered here as well as tomorrow, because a runner who
+/// finishes at eleven and opens the app at noon should not be told to come back
+/// in the morning. It is a second action rather than the first, since the day's
+/// first job is still to start the race — and because a run already on record
+/// today might be the shakeout before the start rather than the race itself,
+/// which this card has no way to tell apart and does not try to.
+class _RaceDay extends StatelessWidget {
+  const _RaceDay({
+    required this.race,
+    required this.unit,
+    required this.ranToday,
+    required this.onStart,
+    this.onCloseRace,
+  });
+
+  final RaceOutlook race;
+  final UnitSystem unit;
+  final bool ranToday;
+  final VoidCallback onStart;
+  final VoidCallback? onCloseRace;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          race.headline,
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          // "Marathon · 42.2 km". The name and the number, because on this one
+          // day the runner wants both: the word is what they entered and the
+          // figure is what they are about to cover.
+          '${race.name} · '
+          '${Distance.meters(race.distanceMeters).format(unit, fractionDigits: 1)}',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          race.detail,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        StartRunButton(label: 'Start the race', onTap: onStart),
+        if (ranToday && onCloseRace != null) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _SecondaryAction(
+              label: 'Add your result',
+              onPressed: onCloseRace,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The morning after, and every morning until somebody says what happened.
+///
+/// **This card is the only thing that can end a plan on the runner's terms**,
+/// so it persists rather than appearing once and being missed. It stays for
+/// [kRaceGraceDays], after which the app closes the plan itself from the log
+/// ([overdueClosureFor]) — which is a worse ending than this one and exists
+/// only because the alternative is a marathon block that stays active forever.
+///
+/// Recording a run stays available underneath it. A runner who raced on Sunday
+/// and jogged on Wednesday should not find the app's core action missing
+/// because it is busy asking them a question.
+class _AfterTheRace extends StatelessWidget {
+  const _AfterTheRace({
+    required this.race,
+    required this.onRecord,
+    this.onCloseRace,
+  });
+
+  final RaceOutlook race;
+  final VoidCallback onRecord;
+  final VoidCallback? onCloseRace;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          race.headline,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          race.detail,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        if (onCloseRace != null) ...<Widget>[
+          // Filled, because for these few days it is the most useful thing on
+          // the screen — and because what is behind it is the end of sixteen
+          // weeks rather than a form.
+          PrimaryButton(label: 'Add your result', onPressed: onCloseRace),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _SecondaryAction(label: 'Record a run', onPressed: onRecord),
+        ),
+      ],
     );
   }
 }

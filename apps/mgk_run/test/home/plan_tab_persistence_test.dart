@@ -13,6 +13,7 @@ import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_history.dart';
+import 'package:mgk_run/src/features/coaching/domain/race_day.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
@@ -28,6 +29,16 @@ class _UnreadableStore implements PlanStore {
 
   @override
   Future<void> savePlan(StoredPlan plan) async {}
+
+  /// Refuses, like the reads. A store that cannot open the plan cannot say
+  /// what became of it either, and reporting a block closed on the strength of
+  /// a row nothing could decode would be worse than leaving it alone.
+  @override
+  Future<void> closePlan(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  }) async => throw const PlanStoreException('stored plan is unreadable');
 
   /// Fails like every other read here: a store that cannot open the active plan
   /// has no business claiming the runner never had one.

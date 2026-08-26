@@ -203,8 +203,25 @@ class CoachBrief {
     switch (shapeOf(plan.profile)) {
       case PlanShape.block:
         final days = daysBetweenDates(today, plan.profile.eventDate!);
-        return 'They are in week $week of $total of a $goal block, $days days '
-            'out from the event. This is $phase of about $volume.';
+        // **Race day is not "-2 days out from the event".** The countdown
+        // reads perfectly well until it goes negative, at which point it is
+        // arithmetic rather than a sentence, and a coach handed it will
+        // cheerfully tell somebody their marathon is in minus two days. The
+        // three cases below are the three things a block can be doing, and the
+        // last one is the coach's cue to ask a question the app cannot answer
+        // for itself.
+        final where = switch (days) {
+          0 =>
+            'Today is race day. There is nothing left to coach — wish them '
+                'well, keep it short, and answer what they ask.',
+          < 0 =>
+            'Race day was ${-days} ${days == -1 ? 'day' : 'days'} ago and they '
+                'have not told you how it went. Ask, once, and let them answer '
+                'before you say anything about what comes next.',
+          _ => 'They are $days days out from the event.',
+        };
+        return 'They are in week $week of $total of a $goal block. $where '
+            'This is $phase of about $volume.';
 
       case PlanShape.horizon:
         final assessment = readiness;
