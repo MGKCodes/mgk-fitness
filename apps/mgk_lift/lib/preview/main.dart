@@ -15,30 +15,33 @@ import '../src/features/coaching/domain/coach.dart';
 import '../src/features/coaching/domain/coach_memory.dart';
 import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_sheet.dart';
-import '../src/features/coaching/presentation/plan_surface.dart';
+import '../src/features/planning/domain/coach_planner.dart';
 import '../src/features/planning/domain/intake_flow.dart';
+import '../src/features/planning/domain/standing_plan_store.dart';
 import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/presentation/plan_intake_screen.dart';
-import '../src/features/planning/presentation/standing_plan_surface.dart';
 import '../src/features/planning/presentation/swap_sheet.dart';
 import '../src/features/home/presentation/lift_shell.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_sheet.dart';
+import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
 import '../src/features/tracking/presentation/premade_library_sheet.dart';
+import '../src/features/tracking/presentation/save_workout_prompt.dart';
 import '../src/features/tracking/presentation/workout_builder_screen.dart';
 import '../src/features/tracking/data/exercise_lookup.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
 import '../src/features/photos/domain/progress_photo.dart';
+import '../src/features/photos/presentation/photo_sheets.dart';
 import '../src/features/photos/presentation/photos_surface.dart';
 import '../src/features/photos/presentation/pose_series_screen.dart';
+import '../src/features/photos/presentation/series_playback_screen.dart';
 import '../src/features/settings/domain/unit_preferences.dart';
 import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/tracking/domain/session.dart';
-import '../src/features/tracking/presentation/track_surface.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
 import 'fakes.dart';
@@ -78,48 +81,65 @@ class PreviewApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screens = <String, WidgetBuilder>{
+      // **Every shell entry carries a coach**, because production does: main.dart
+      // passes one whenever Supabase is configured, and the shell draws the mark
+      // — and reserves the room above the nav bar for it — only when there is
+      // one. A shell preview without a coach is a screenshot of a build nobody
+      // ships, and it is missing two of the three permanent pieces of chrome.
+      //
+      // This was the standing fault in the harness until 2026-08-27: one entry
+      // rendered the mark and forty-odd rendered a nav bar with dead space where
+      // it should have been. Same class of blind spot as the back arrow in
+      // docs/navigation.md, found the same way — by trying to photograph it.
       'track': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
       ),
       'track-open': (_) => LiftShell(
         recorder: FakeSessionRecorder(_openSession()),
         history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
       ),
-      // **The only entry that renders the coach mark.** Every other shell entry
-      // omits `coach`, and the shell draws the mark only when there is one — so
-      // until this existed the harness could not show the mark at all, and no
-      // screenshot taken from it could tell a shell that has one from a shell
-      // that does not. Same class of blind spot as the back arrow in
-      // docs/navigation.md, found the same way: by trying to photograph it.
+      // The mark with something waiting on it. The only difference from `track`
+      // is the unread dot, which is the whole point of having both.
       'track-coach': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        today: previewNow,
         hasCoachNote: true,
       ),
       'plan': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
         initialTab: 1,
       ),
-      'plan-entitled': (_) =>
-          const Scaffold(body: PlanSurface(isEntitled: true)),
+      'plan-entitled': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
+        isEntitled: true,
+        initialTab: 1,
+      ),
       // Item 5: what Track shows when a plan has something for today, and
       // when somebody walked away mid-session.
-      'track-planned': (_) => Scaffold(
-        body: TrackSurface(
-          plan: _standingPlan(),
-          today: previewNow,
-          log: sampleLog(previewNow),
-          onStartPlanned: (_) {},
-        ),
+      'track-planned': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
+        isEntitled: true,
+        plans: InMemoryStandingPlanStore(_standingPlan()),
       ),
-      'track-interrupted': (_) => Scaffold(
-        body: TrackSurface(
-          today: previewNow,
-          log: sampleLog(previewNow),
-          openSession: Session(
+      'track-interrupted': (_) => LiftShell(
+        recorder: FakeSessionRecorder(
+          Session(
             id: 'open',
             name: 'Push',
             startedAt: previewNow.subtract(const Duration(days: 1)),
@@ -136,22 +156,18 @@ class PreviewApp extends StatelessWidget {
               ),
             ],
           ),
-          onStartSession: () {},
         ),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
       ),
-      // A live plan, reached the way the app reaches it: PlanSurface hands the
-      // entitled-with-a-plan case straight to StandingPlanSurface, so this is
-      // the paywall screen proving it gets out of the way.
-      'plan-active': (_) => Scaffold(
-        body: PlanSurface(
-          isEntitled: true,
-          plan: _standingPlan(),
-          today: previewNow,
-          onOpenSession: (_) {},
-          onSwapSlot: (_) {},
-          onBuildPlan: () {},
-        ),
-      ),
+      // `plan-active` used to sit here — entitled, with a plan, on a Thursday.
+      // Once it went through the shell it became `plan-standing` on a different
+      // weekday: the same widget in the same state, differing only in which day
+      // pill is ringed. Two frames for one screen is the fault a board is
+      // supposed to expose, not commit, so the day states are now exactly two:
+      // a training day and a rest day.
+
       // The three the harness could not reach, which is why nobody had
       // looked at them. A sheet needs something behind it, so these sit on a
       // plain scaffold and open themselves.
@@ -166,6 +182,7 @@ class PreviewApp extends StatelessWidget {
       // no entry here is a surface nobody looks at, and the whole point of the
       // harness is that a screen either renders or the page fails.
       'workout-library': (_) => _SheetHost(
+        behind: _emptySessionScreen(),
         open: (context) => WorkoutLibrarySheet.show(
           context,
           library: InMemoryWorkoutLibrary(_savedWorkouts()),
@@ -173,6 +190,7 @@ class PreviewApp extends StatelessWidget {
         ),
       ),
       'workout-library-empty': (_) => _SheetHost(
+        behind: _emptySessionScreen(),
         open: (context) => WorkoutLibrarySheet.show(
           context,
           library: InMemoryWorkoutLibrary(),
@@ -180,10 +198,19 @@ class PreviewApp extends StatelessWidget {
         ),
       ),
       'premade-library': (_) => _SheetHost(
+        behind: _emptySessionScreen(),
         open: (context) => PremadeLibrarySheet.show(
           context,
           library: InMemoryWorkoutLibrary(_savedWorkouts()),
         ),
+      ),
+      // Add a movement. Reached from the running session and from the builder,
+      // and never once photographed before today — a 266-row catalogue with
+      // form images on it, reviewed by nobody.
+      'exercise-picker': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
+        open: (context) =>
+            ExercisePickerSheet.show(context, lookup: ExerciseLookup()),
       ),
       'workout-builder': (_) => WorkoutBuilderScreen(
         library: InMemoryWorkoutLibrary(),
@@ -196,6 +223,7 @@ class PreviewApp extends StatelessWidget {
         ],
       ),
       'swap-sheet': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
         open: (context) => SwapSheet.show(
           context,
           planner: FakePlanner(),
@@ -207,11 +235,17 @@ class PreviewApp extends StatelessWidget {
       'profile': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: previewNow,
+        photos: InMemoryPhotoLibrary(),
         initialTab: 2,
       ),
       'profile-empty': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: const FakeHistory(<Session>[]),
+        coach: FakeCoach(),
+        today: previewNow,
+        photos: InMemoryPhotoLibrary(),
         initialTab: 2,
       ),
       // Every session screen pins `now` to previewNow. The fixtures start at
@@ -291,7 +325,11 @@ class PreviewApp extends StatelessWidget {
         onOpenCoach: () {},
       ),
       'photos': (_) => const _PhotosPreview(),
-      'photo-series': (_) => const _PhotosPreview(openSeries: true),
+      'photo-series': (_) => const _PhotosPreview(view: _PhotosView.series),
+      'photo-source': (_) => const _PhotosPreview(view: _PhotosView.source),
+      'photo-actions': (_) => const _PhotosPreview(view: _PhotosView.actions),
+      'photo-delete-confirm': (_) =>
+          const _PhotosPreview(view: _PhotosView.confirmDelete),
       'photos-empty': (_) => PhotosSurface(
         library: InMemoryPhotoLibrary(),
         source: FakePhotoSource(null),
@@ -300,12 +338,14 @@ class PreviewApp extends StatelessWidget {
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
+        now: previewNow,
       ),
       // The two states that matter: signed out with training that exists in
       // one place, and signed in with everything up to date.
       'settings-signed-in': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
+        now: previewNow,
         isSignedIn: true,
         email: 'matt@example.com',
         pending: const SyncPending(workouts: 0, lastSyncedAt: null),
@@ -316,12 +356,14 @@ class PreviewApp extends StatelessWidget {
       'backup-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
+        now: previewNow,
         pending: const SyncPending(workouts: 9, lastSyncedAt: null),
         onSignIn: () {},
       ),
       'backup-synced': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
+        now: previewNow,
         isSignedIn: true,
         pending: SyncPending(
           workouts: 0,
@@ -464,28 +506,33 @@ class PreviewApp extends StatelessWidget {
       // What "Show me the week" opens onto. No week number, no end date, no
       // completion -- those are marathon ideas, and "get stronger" has no week
       // 12. See planning/domain/standing_plan.dart.
-      'plan-standing': (_) => Scaffold(
-        backgroundColor: AppColors.bg,
-        body: StandingPlanSurface(
-          plan: _standingPlan(),
-          // A Monday: Upper.
-          today: DateTime(2026, 8, 17),
-          onStartToday: () {},
-          onSwap: (_) {},
-          onChangeSplit: () {},
-        ),
+      // Both go through the shell rather than mounting StandingPlanSurface
+      // bare. The surface is the Plan *tab*, so a screenshot of it without the
+      // nav bar is a screenshot of a screen that does not exist — and the two
+      // states worth having are days, not layouts.
+      'plan-standing': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        // A Monday: Upper.
+        today: DateTime(2026, 8, 17),
+        isEntitled: true,
+        plans: InMemoryStandingPlanStore(_standingPlan()),
+        planner: FakePlanner(),
+        initialTab: 1,
       ),
       // A rest day is an answer, not an empty state. Nothing owed, nothing
       // behind -- which is the whole point of deriving the week rather than
       // scheduling it.
-      'plan-standing-rest': (_) => Scaffold(
-        backgroundColor: AppColors.bg,
-        body: StandingPlanSurface(
-          plan: _standingPlan(),
-          today: DateTime(2026, 8, 19),
-          onSwap: (_) {},
-          onChangeSplit: () {},
-        ),
+      'plan-standing-rest': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: DateTime(2026, 8, 19),
+        isEntitled: true,
+        plans: InMemoryStandingPlanStore(_standingPlan()),
+        planner: FakePlanner(),
+        initialTab: 1,
       ),
       // After the session. The coach reads what happened, the lifter answers in
       // their own words, and THAT is what changes the next one -- rather than a
@@ -577,10 +624,13 @@ class PreviewApp extends StatelessWidget {
             updatedAt: previewNow.subtract(const Duration(days: 2)),
           ),
         ),
+        now: previewNow,
       ),
-      'coach-memory-empty': (_) => CoachMemoryScreen(store: FakeCoachMemory()),
+      'coach-memory-empty': (_) =>
+          CoachMemoryScreen(store: FakeCoachMemory(), now: previewNow),
       'coach-memory-error': (_) => CoachMemoryScreen(
         store: FakeCoachMemory(failWith: CoachMemoryFailure.unavailable),
+        now: previewNow,
       ),
       'coach-limit': (_) => _sheetOf(
         coach: FakeCoach(failWith: CoachFailure.limitReached),
@@ -590,11 +640,47 @@ class PreviewApp extends StatelessWidget {
       'sign-in-error': (_) =>
           SignInScreen(auth: FakeAuth(failWith: AuthFailure.wrongCredentials)),
       'credits': (_) => const CreditsScreen(),
-      'coach-mark': (_) => LiftShell(
-        recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
-        coach: FakeCoach(),
-        hasCoachNote: true,
+      // `coach-mark` used to sit here, and was character-for-character the same
+      // shell as `track-coach` — two entries, one screen, two frames on the
+      // board. It is gone rather than renamed: now that every shell entry
+      // carries a coach, the mark is in forty screenshots and does not need one
+      // of its own.
+
+      // ---- Reached from a screen, and never photographed --------------------
+      //
+      // Four surfaces the app has always had and the harness could not address.
+      // Three of them are the loudest controls on their host — add a movement,
+      // keep this workout, delete a photo — and the fourth is the only thing
+      // progress photos are for.
+      'save-workout': (_) => const _SaveWorkoutPreview(),
+      'series-playback': (_) => const _PhotosPreview(view: _PhotosView.playback),
+      // The intake as the app renders it, three answers in: a conversation with
+      // a composer, which is **not** what `intake-1-days` through
+      // `intake-10-swap` below show. See the note on those.
+      'plan-intake-answered': (_) => PlanIntakeScreen(
+        planner: FakePlanner(),
+        opener:
+            'What are you training for, and which days can you get to the '
+            'gym?',
+        initialTurns: <PlannerTurn>[
+          const PlannerTurn(
+            text: 'Four days, and I want to get my bench up.',
+            fromCoach: false,
+          ),
+          const PlannerTurn(
+            text:
+                'Four is a good number — everything twice a week without the '
+                'sessions running long. What have you got to train with?',
+            fromCoach: true,
+          ),
+          const PlannerTurn(text: 'Full gym.', fromCoach: false),
+          const PlannerTurn(
+            text:
+                'Anything I should train around? An injury, a movement that '
+                'hurts, something you have been told to avoid.',
+            fromCoach: true,
+          ),
+        ],
       ),
     };
 
@@ -1064,12 +1150,36 @@ Session _longSession() {
 /// missing-file placeholder, which is a state worth having but not the one to
 /// review the screen in. This writes a bundled asset out to the temp directory
 /// first, so the preview exercises the same `Image.file` path production does.
-class _PhotosPreview extends StatefulWidget {
-  const _PhotosPreview({this.openSeries = false});
+/// Which of the photo screens a preview wants, all off the same fixture.
+///
+/// Was a single `openSeries` bool, which was already one screen short of the
+/// feature: the sequence plays back, and the screen that plays it had no entry
+/// here at all.
+enum _PhotosView {
+  /// Every pose, this week first.
+  grid,
 
-  /// Opens straight into one pose's grid, which is the screen with the missed
-  /// weeks in it and the harder layout to get right.
-  final bool openSeries;
+  /// The grid, with the camera-or-gallery question open over it.
+  source,
+
+  /// One pose's grid — the screen with the missed weeks in it, and the harder
+  /// layout to get right.
+  series,
+
+  /// The sequence playing.
+  playback,
+
+  /// The series, with one photo's actions open over it.
+  actions,
+
+  /// The series, with the delete confirmation up.
+  confirmDelete,
+}
+
+class _PhotosPreview extends StatefulWidget {
+  const _PhotosPreview({this.view = _PhotosView.grid});
+
+  final _PhotosView view;
 
   @override
   State<_PhotosPreview> createState() => _PhotosPreviewState();
@@ -1111,12 +1221,14 @@ class _PhotosPreviewState extends State<_PhotosPreview> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final library = InMemoryPhotoLibrary(_samplePhotos(path));
-    if (!widget.openSeries) {
-      return PhotosSurface(
+    if (widget.view == _PhotosView.grid || widget.view == _PhotosView.source) {
+      final grid = PhotosSurface(
         library: library,
         source: FakePhotoSource(null),
         now: previewNow,
       );
+      if (widget.view == _PhotosView.grid) return grid;
+      return _SheetHost(behind: grid, open: showPhotoSourceSheet);
     }
     final week = ProgressPhoto.weekOf(previewNow);
     return FutureBuilder<List<ProgressPhoto>>(
@@ -1128,17 +1240,80 @@ class _PhotosPreviewState extends State<_PhotosPreview> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return PoseSeriesScreen(
-          series: PoseSeries(
-            pose: Pose.front,
-            photos: all.where((p) => p.pose == Pose.front).toList(),
-          ),
+        final front = all.where((p) => p.pose == Pose.front).toList();
+        final series = PoseSeries(pose: Pose.front, photos: front);
+        if (widget.view == _PhotosView.playback) {
+          return SeriesPlaybackScreen(series: series);
+        }
+        final screen = PoseSeriesScreen(
+          series: series,
           thisWeek: week,
           library: library,
         );
+        return switch (widget.view) {
+          // Over the series, because that is where they open from and half of
+          // what a sheet screenshot shows is the screen it did not cover.
+          _PhotosView.actions => _SheetHost(
+            behind: screen,
+            open: (context) =>
+                showPhotoActionsSheet(context, series.sequence.first),
+          ),
+          _PhotosView.confirmDelete => _SheetHost(
+            behind: screen,
+            open: confirmPhotoDelete,
+          ),
+          _ => screen,
+        };
       },
     );
   }
+}
+
+/// The save prompt, over the summary that offers it.
+///
+/// A widget rather than a `_SheetHost` closure because the dialog's field
+/// belongs to the calling screen — [promptToSaveWorkout] says so itself, and
+/// creating a controller that outlives nothing would reproduce exactly the bug
+/// its doc comment warns about.
+class _SaveWorkoutPreview extends StatefulWidget {
+  const _SaveWorkoutPreview();
+
+  @override
+  State<_SaveWorkoutPreview> createState() => _SaveWorkoutPreviewState();
+}
+
+class _SaveWorkoutPreviewState extends State<_SaveWorkoutPreview> {
+  final TextEditingController _field = TextEditingController();
+  late final Session _session = _finishedSession();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      promptToSaveWorkout(
+        context,
+        library: InMemoryWorkoutLibrary(),
+        field: _field,
+        suggestedName: _session.name,
+        movements: workoutMovementsOf(_session),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SessionSummaryScreen(
+    session: _session,
+    log: sampleLog(previewNow),
+    library: InMemoryWorkoutLibrary(_savedWorkouts()),
+    onOpenCoach: () {},
+  );
 }
 
 /// Twelve weeks of front and back shots, with two weeks missed in the middle.
@@ -1151,7 +1326,12 @@ List<ProgressPhoto> _samplePhotos(String path) {
     for (final pose in Pose.defaults) {
       photos.add(
         ProgressPhoto(
-          id: '\${pose.stored}-\$w',
+          // Interpolated, not escaped. Every photo in this fixture carried the
+          // same literal id — `${pose.stored}-$w`, dollars and all — which is
+          // fine while nothing reads an id and wrong the moment something does:
+          // the actions sheet deletes and excludes *by id*, so one tap would
+          // have acted on all forty.
+          id: '${pose.stored}-$w',
           weekStart: week,
           pose: pose,
           path: path,
@@ -1247,9 +1427,22 @@ class _Index extends StatelessWidget {
 /// Opens a sheet as soon as it is shown, so a modal is reviewable in a harness
 /// that addresses screens by name rather than by tapping.
 class _SheetHost extends StatefulWidget {
-  const _SheetHost({required this.open});
+  const _SheetHost({required this.open, this.behind});
 
   final Future<void> Function(BuildContext context) open;
+
+  /// The screen the sheet really opens from.
+  ///
+  /// **Not decoration.** A sheet is a partial cover, so what is behind it is
+  /// half the screenshot: how far down it starts, what it hides, and whether
+  /// the thing you were doing is still readable underneath are all properties
+  /// of the pair rather than of the sheet. Every sheet here used to open over
+  /// an empty charcoal rectangle, which answered none of that — and made the
+  /// library sheet, which covers a session, look identical to one that covers
+  /// nothing.
+  ///
+  /// Null keeps the old empty ground, for a sheet with no single host.
+  final Widget? behind;
 
   @override
   State<_SheetHost> createState() => _SheetHostState();
@@ -1266,7 +1459,33 @@ class _SheetHostState extends State<_SheetHost> {
 
   @override
   Widget build(BuildContext context) =>
+      widget.behind ??
       const Scaffold(backgroundColor: AppColors.bg, body: SizedBox.expand());
+}
+
+/// The session screen a sheet opens over, in its two useful states.
+///
+/// A session with nothing in it yet is what the two library sheets and the
+/// premade picker are offered from; a session in progress is what the exercise
+/// picker and the swap sheet are reached from. Naming them here rather than
+/// writing the constructor out at each call site keeps the fixture — and so the
+/// ground under every sheet screenshot — identical across all five.
+Widget _emptySessionScreen() {
+  final session = _emptySession();
+  return ActiveSessionScreen(
+    recorder: FakeSessionRecorder(session),
+    session: session,
+    now: previewNow,
+  );
+}
+
+Widget _runningSessionScreen() {
+  final session = _openSession();
+  return ActiveSessionScreen(
+    recorder: FakeSessionRecorder(session),
+    session: session,
+    now: previewNow,
+  );
 }
 
 /// Three saved workouts, one of them added from a premade.

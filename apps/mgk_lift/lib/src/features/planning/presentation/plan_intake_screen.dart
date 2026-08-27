@@ -15,12 +15,25 @@ import '../domain/coach_planner.dart';
 /// field, and a null means "not learned this turn" — treating it as "forget it"
 /// would erase an answer as soon as the next question was asked.
 class PlanIntakeScreen extends StatefulWidget {
-  const PlanIntakeScreen({super.key, required this.planner, this.opener});
+  const PlanIntakeScreen({
+    super.key,
+    required this.planner,
+    this.opener,
+    this.initialTurns = const <PlannerTurn>[],
+  });
 
   final CoachPlanner planner;
 
   /// The coach's first line, so the screen is not an empty box with a cursor.
   final String? opener;
+
+  /// Turns to start from, after [opener].
+  ///
+  /// For previews and tests, which otherwise can only photograph the empty
+  /// conversation — the state that is least like the one somebody is in when
+  /// this screen matters. Nothing in the app passes it: a real intake has no
+  /// history to restore, because an abandoned one is not resumed.
+  final List<PlannerTurn> initialTurns;
 
   @override
   State<PlanIntakeScreen> createState() => _PlanIntakeScreenState();
@@ -42,6 +55,7 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
     if (opener != null) {
       _turns.add(PlannerTurn(text: opener, fromCoach: true));
     }
+    _turns.addAll(widget.initialTurns);
   }
 
   @override

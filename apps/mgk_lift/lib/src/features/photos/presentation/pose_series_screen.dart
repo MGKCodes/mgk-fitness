@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../domain/progress_photo.dart';
+import 'photo_sheets.dart';
 import 'photos_surface.dart';
 import 'series_playback_screen.dart';
 
@@ -175,49 +176,7 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
   }
 
   Future<void> _actions(ProgressPhoto photo) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            // Load-bearing here more than anywhere: the loudest control on this
-            // sheet deletes a photo that cannot be retaken, and it opens on a
-            // tap. Somebody who mistapped needs to see a way out.
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.md),
-              child: SheetHandle(bottomSpacing: 0),
-            ),
-            ListTile(
-              leading: Icon(
-                photo.isExcluded
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-              title: Text(
-                photo.isExcluded
-                    ? 'Include in the sequence'
-                    : 'Skip in the sequence',
-              ),
-              subtitle: const Text('The photo is kept either way'),
-              onTap: () => Navigator.of(sheetContext).pop('exclude'),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.delete_outline,
-                color: AppColors.danger,
-              ),
-              title: const Text(
-                'Delete photo',
-                style: TextStyle(color: AppColors.danger),
-              ),
-              onTap: () => Navigator.of(sheetContext).pop('delete'),
-            ),
-          ],
-        ),
-      ),
-    );
+    final action = await showPhotoActionsSheet(context, photo);
 
     if (action == 'exclude') {
       await widget.library.setExcluded(photo.id, excluded: !photo.isExcluded);
@@ -228,29 +187,7 @@ class _PoseSeriesScreenState extends State<PoseSeriesScreen> {
   }
 
   Future<void> _confirmDelete(ProgressPhoto photo) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Delete this photo?'),
-        // Blunt on purpose. There is no copy anywhere else, and a photo of
-        // your own body from eight months ago cannot be retaken.
-        content: const Text(
-          'It is only on this device, so this cannot be undone.',
-        ),
-        actions: <Widget>[
-          AppTextButton(
-            label: 'Keep it',
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
+    final confirmed = await confirmPhotoDelete(context);
     if (confirmed != true) return;
     await widget.library.delete(photo.id);
     await _reload();

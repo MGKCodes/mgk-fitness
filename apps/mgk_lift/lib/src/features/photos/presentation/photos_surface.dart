@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../domain/progress_photo.dart';
+import 'photo_sheets.dart';
 import 'pose_series_screen.dart';
 
 /// **Progress photos** — one stream per pose, one photo per week.
@@ -102,35 +103,12 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
     await _load();
   }
 
-  /// Camera or gallery. Asked every time rather than remembered: the gallery is
-  /// how you backfill a photo you already took, and the camera is how you do
-  /// this week — both are normal and neither is the default.
+  /// Camera or gallery, then the path it produced.
+  ///
+  /// The sheet itself lives in [showPhotoSourceSheet]; what stays here is the
+  /// part that is this screen's business, which is what to do with the answer.
   Future<String?> _chooseSource(PhotoSource source) async {
-    final fromCamera = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.md),
-              child: SheetHandle(bottomSpacing: 0),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
-              onTap: () => Navigator.of(sheetContext).pop(true),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from photos'),
-              onTap: () => Navigator.of(sheetContext).pop(false),
-            ),
-          ],
-        ),
-      ),
-    );
+    final fromCamera = await showPhotoSourceSheet(context);
     if (fromCamera == null) return null;
     return fromCamera ? source.capture() : source.pickFromGallery();
   }

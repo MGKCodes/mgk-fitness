@@ -17,9 +17,16 @@ import '../domain/coach_memory.dart';
 /// keep. Erasing is the control that actually holds, so erasing is the control
 /// offered.
 class CoachMemoryScreen extends StatefulWidget {
-  const CoachMemoryScreen({super.key, required this.store});
+  const CoachMemoryScreen({super.key, required this.store, this.now});
 
   final CoachMemoryStore store;
+
+  /// What "updated" is measured against. Null is the wall clock.
+  ///
+  /// Only the preview passes one, and it has to: the fixture is pinned to a
+  /// fixed date, so without this the screen said "two days ago" on the day it
+  /// was written and drifts a day further from the truth every day after.
+  final DateTime? now;
 
   @override
   State<CoachMemoryScreen> createState() => _CoachMemoryScreenState();
@@ -161,7 +168,7 @@ class _CoachMemoryScreenState extends State<CoachMemoryScreen> {
                 Text(
                   // "When did it decide that" is the first question anyone asks
                   // about a sentence they disagree with.
-                  'Last updated ${_when(memory.updatedAt!)}',
+                  'Last updated ${_when(memory.updatedAt!, widget.now)}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textTertiary,
                   ),
@@ -191,8 +198,8 @@ class _CoachMemoryScreenState extends State<CoachMemoryScreen> {
 }
 
 /// A date a person would say out loud, not an ISO string.
-String _when(DateTime at) {
-  final days = DateTime.now().difference(at).inDays;
+String _when(DateTime at, DateTime? now) {
+  final days = (now ?? DateTime.now()).difference(at).inDays;
   if (days <= 0) return 'today';
   if (days == 1) return 'yesterday';
   if (days < 7) return '$days days ago';

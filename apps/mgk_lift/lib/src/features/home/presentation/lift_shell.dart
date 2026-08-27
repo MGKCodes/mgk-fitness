@@ -68,7 +68,20 @@ class LiftShell extends StatefulWidget {
     this.sync,
     this.auth,
     this.initialTab = 0,
+    this.today,
   });
+
+  /// What the three surfaces should treat as today. Null is the wall clock,
+  /// which is what the app wants and what every caller but one passes.
+  ///
+  /// The exception is the preview harness, and it is not a small one: all three
+  /// surfaces already took a date for exactly this reason, and the shell was the
+  /// one link in the chain that did not pass it on. That made every shell
+  /// screenshot drift with the day it was taken — a plan that has something for
+  /// today on Thursday and nothing on Saturday — so the harness rendered the
+  /// surfaces bare to keep them still, and lost the nav bar and the coach mark
+  /// doing it. One parameter buys back both.
+  final DateTime? today;
 
   /// Owns a session while it is happening. **Null disables starting one**,
   /// which is the right behaviour for a build with no on-device database — the
@@ -328,6 +341,7 @@ class _LiftShellState extends State<LiftShell> {
                   log: _log,
                   onStartSession: widget.recorder == null ? null : _openSession,
                   plan: _plan,
+                  today: widget.today,
                   unit: _units.mass,
                   onStartPlanned: widget.recorder == null
                       ? null
@@ -336,6 +350,7 @@ class _LiftShellState extends State<LiftShell> {
                 PlanSurface(
                   isEntitled: widget.isEntitled,
                   plan: _plan,
+                  today: widget.today,
                   unit: _units.mass,
                   onBuildPlan: _canPlan ? _buildPlan : null,
                   onOpenSession: widget.recorder == null
@@ -349,6 +364,7 @@ class _LiftShellState extends State<LiftShell> {
                 ),
                 ProfileSurface(
                   log: _log,
+                  now: widget.today,
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,

@@ -36,6 +36,7 @@ class SettingsScreen extends StatefulWidget {
     this.onSignIn,
     this.coachMemory,
     this.version = kAppVersion,
+    this.now,
   });
 
   /// What the shell already loaded. Passed in rather than re-read, so opening
@@ -71,6 +72,10 @@ class SettingsScreen extends StatefulWidget {
   final CoachMemoryStore? coachMemory;
 
   final String version;
+
+  /// What "last checked" is measured against, for the backup card. Null is the
+  /// wall clock, which is what the app passes and what a preview must not.
+  final DateTime? now;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -173,6 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               lastReport: widget.lastReport,
               onSyncNow: widget.onSyncNow,
               onSignIn: widget.onSignIn,
+              now: widget.now,
             ),
 
             if (widget.isSignedIn && widget.coachMemory != null) ...<Widget>[

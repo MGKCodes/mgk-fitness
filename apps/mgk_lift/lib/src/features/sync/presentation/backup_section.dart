@@ -20,6 +20,7 @@ class BackupSection extends StatelessWidget {
     this.lastReport,
     this.onSyncNow,
     this.onSignIn,
+    this.now,
   });
 
   final SyncPending? pending;
@@ -28,6 +29,15 @@ class BackupSection extends StatelessWidget {
   final SyncReport? lastReport;
   final VoidCallback? onSyncNow;
   final VoidCallback? onSignIn;
+
+  /// What to measure "last checked" against. Null is the wall clock.
+  ///
+  /// Injected for the same reason [ProfileSurface] injects its clock: without
+  /// it, a preview of a sync that happened three minutes ago reads "20d ago"
+  /// and gets worse every day, because the fixture is pinned and the clock is
+  /// not. Every other surface in the app already took one; this was the last
+  /// that did not.
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
@@ -144,13 +154,13 @@ class BackupSection extends StatelessWidget {
     final last = pending?.lastSyncedAt;
     return last == null
         ? 'Nothing has been backed up yet.'
-        : 'Everything is backed up. Last checked ${_ago(last)}.';
+        : 'Everything is backed up. Last checked ${_ago(last, now)}.';
   }
 
   /// Rough, and deliberately so. "3 minutes ago" is the answer to "did that
   /// work"; a timestamp to the second is not.
-  static String _ago(DateTime at) {
-    final d = DateTime.now().difference(at);
+  static String _ago(DateTime at, DateTime? now) {
+    final d = (now ?? DateTime.now()).difference(at);
     if (d.inMinutes < 1) return 'just now';
     if (d.inMinutes < 60) return '${d.inMinutes} min ago';
     if (d.inHours < 24) return '${d.inHours}h ago';
