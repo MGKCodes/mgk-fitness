@@ -14,6 +14,7 @@ import '../../coaching/data/plan_client.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/data/plan_service.dart';
 import '../../coaching/data/plan_store.dart';
+import '../../coaching/domain/coach_access.dart';
 import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_shape.dart';
@@ -84,6 +85,7 @@ class HomeShell extends StatefulWidget {
     this.consentStore,
     this.initialTab = 0,
     this.justSignedUp = false,
+    this.access = CoachAccess.free,
   });
 
   final AuthRepository auth;
@@ -145,6 +147,13 @@ class HomeShell extends StatefulWidget {
 
   /// Which tab to open on. Exists so the preview harness can address a tab by
   /// URL — Playwright cannot reliably tap Flutter's canvas to switch tabs.
+  /// Whether the coach's reading of a run is paid for.
+  ///
+  /// **Injected, and until now not passed at all.** `HomeTab` defaults it to
+  /// free and nothing in `lib/` ever constructed [CoachAccess.subscribed], so
+  /// the paid half of the last-run card could not be reached by any route.
+  final CoachAccess access;
+
   final int initialTab;
 
   /// True when this shell was reached by **creating an account** rather than by
@@ -1351,6 +1360,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             index: _index,
             children: <Widget>[
               HomeTab(
+                access: widget.access,
                 onRecord: () => _startRun(context, withSession: false),
                 onStartSession: () => _startRun(context),
                 // Two destinations, not one. These were a single
