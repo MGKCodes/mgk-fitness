@@ -13,16 +13,25 @@ import '../../coaching/domain/training_history.dart';
 /// seven rows of fifty-two is a shape you take in at a glance, which is why
 /// every contribution graph ever built is oriented this way.
 ///
-/// **Shade is distance, not attendance.** A year of 5 km Tuesdays and a year of
-/// building to a marathon draw the same grid if every square is the same grey,
-/// and the second one is a story the first one is not. The buckets are absolute
-/// rather than relative to the runner's own range: a scale that rescales itself
-/// makes every runner's best year look identical, and makes this year's squares
-/// change shade because of a run you did in March.
+/// **Attendance, not distance.** Squares are two-tone: white for a day with a
+/// run in it, and the empty grey for a day without. Nothing in between.
 ///
-/// The greys are the app's own ([ADR-0009](../../../../docs/decisions/0009-greyscale-design-language.md)),
-/// so distance reads as weight rather than as hue — which is also the one thing
-/// a colour-blind reader of a GitHub graph cannot do.
+/// This used to shade by distance across four buckets, on the argument that a
+/// year of 5 km Tuesdays and a year of building to a marathon should not draw
+/// the same grid. The argument was sound and the read was not: at eleven points
+/// across, four greys between #404040 and #C0C0C0 are four shades nobody can
+/// separate without the legend, and a reader who has to consult a legend to
+/// tell two squares apart is not taking anything in at a glance — which is the
+/// whole and only reason this grid is seven rows deep rather than fifty-two.
+///
+/// Distance did not lose its home; it was never this one. The readout under the
+/// grid gives the exact figure for the day you tap, to a tenth of a kilometre,
+/// which is a better answer than a shade was ever going to be.
+///
+/// The two tones are the app's own greys
+/// ([ADR-0009](../../../../docs/decisions/0009-greyscale-design-language.md)),
+/// and the distinction survives being printed, dimmed or read by somebody
+/// colour-blind — which a four-step ramp of one hue does not.
 class YearGrid extends StatefulWidget {
   const YearGrid({
     super.key,
@@ -272,30 +281,16 @@ class _YearCell extends StatelessWidget {
 
   /// Four steps of distance plus nothing at all.
   ///
-  /// Absolute kilometres rather than quantiles of this runner's own year — see
-  /// the class doc on [YearGrid]. The breaks are where a runner's own language
-  /// changes: under 5 is a short one, 5–10 is a normal one, 10–15 is a long
-  /// one, and past 15 is the weekend.
-  double get _weight {
-    final km = day.meters / 1000;
-    if (km <= 0) return 0;
-    if (km < 5) return 0.34;
-    if (km < 10) return 0.55;
-    if (km < 15) return 0.78;
-    return 1;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final weight = _weight;
     final Color fill;
     if (day.isFuture) {
       // Not an absence. Barely drawn, exactly as the eight-week grid treats it.
       fill = AppColors.elevated.withValues(alpha: 0.45);
-    } else if (weight == 0) {
-      fill = AppColors.elevated;
     } else {
-      fill = Color.lerp(AppColors.elevated, AppColors.primary, weight)!;
+      // Ran or did not. `ran` rather than `meters > 0`, so a run the phone
+      // logged without a distance still marks the day it happened on.
+      fill = day.ran ? AppColors.textPrimary : AppColors.elevated;
     }
 
     return Semantics(
@@ -353,37 +348,35 @@ class _Readout extends StatelessWidget {
     final theme = Theme.of(context);
     final day = picked;
     if (day == null) {
-      // The legend, which is only worth its line while nothing is selected.
+      // The key, which is only worth its line while nothing is selected.
+      //
+      // Two entries rather than a five-step ramp under "Less" and "More". A
+      // ramp is a legend you have to *use* — you look back at it to decide
+      // which of two greys a square is. This one is a caption: read once, and
+      // the grid never needs it again.
       return Row(
         children: <Widget>[
-          Text(
-            'Less',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
-          const SizedBox(width: 6),
-          for (final w in <double>[0, 0.34, 0.55, 0.78, 1])
-            Padding(
-              padding: const EdgeInsets.only(right: 3),
-              child: Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(
-                  color: w == 0
-                      ? AppColors.elevated
-                      : Color.lerp(AppColors.elevated, AppColors.primary, w),
-                  borderRadius: BorderRadius.circular(3),
-                ),
+          for (final (Color fill, String label) in <(Color, String)>[
+            (AppColors.textPrimary, 'Ran'),
+            (AppColors.elevated, 'Rest'),
+          ]) ...<Widget>[
+            Container(
+              width: 11,
+              height: 11,
+              decoration: BoxDecoration(
+                color: fill,
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
-          const SizedBox(width: 3),
-          Text(
-            'More',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.textTertiary,
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
             ),
-          ),
+            const SizedBox(width: 14),
+          ],
         ],
       );
     }

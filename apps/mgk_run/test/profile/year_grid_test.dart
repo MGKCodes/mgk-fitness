@@ -134,12 +134,17 @@ void main() {
       expect(find.textContaining('0 days'), findsNothing);
     });
 
-    testWidgets('carries a scale while nothing is selected', (tester) async {
+    testWidgets('carries a key while nothing is selected', (tester) async {
       await pump(tester, <RunSummary>[run(DateTime(2026, 8, 19), 8000)]);
 
-      // Shade means distance, which is not guessable — so it is stated.
-      expect(find.text('Less'), findsOneWidget);
-      expect(find.text('More'), findsOneWidget);
+      // Two tones, so two entries. This replaced a five-step "Less → More"
+      // ramp: four greys eleven points across were not separable without
+      // consulting the legend, and a grid you have to consult a legend to read
+      // is not one you take in at a glance.
+      expect(find.text('Ran'), findsOneWidget);
+      expect(find.text('Rest'), findsOneWidget);
+      expect(find.text('Less'), findsNothing);
+      expect(find.text('More'), findsNothing);
     });
   });
 }
