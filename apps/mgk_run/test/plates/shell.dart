@@ -1,15 +1,16 @@
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
-import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
-import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
+import 'fixture.dart';
 import 'plate.dart';
 
 /// **The app assembling its own screens, instead of me assembling them.**
@@ -45,70 +46,14 @@ void main() {
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  /// A runner training for a marathon, available every day so today always has
-  /// a session — the plate would otherwise show a rest day about half the time
-  /// it was regenerated, which is a board that changes what it claims depending
-  /// on when you look at it.
-  ///
-  /// [racingIn] moves race day relative to today, which is the whole of what
-  /// separates an ordinary Tuesday from the taper, the day itself and the
-  /// morning after (ADR-0027). Everything downstream is derived by the app.
-  RunnerProfile profile({int racingIn = 112}) => RunnerProfile(
-    goalDistanceMeters: 42195,
-    eventDate: _dateOnly(DateTime.now().add(Duration(days: racingIn))),
-    currentWeeklyMeters: 40000,
-    longestRecentMeters: 18000,
-    daysPerWeek: 7,
-    availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
-    timeTrialDistanceMeters: 5000,
-    timeTrialDuration: const Duration(minutes: 22),
-  );
-
-  /// Runs behind them, so the log, the records and the year all have something
-  /// real to draw rather than their empty states.
-  List<RunSummary> log() {
-    final now = DateTime.now();
-    return <RunSummary>[
-      for (var i = 1; i < 40; i++)
-        if (i % 2 == 1)
-          RunSummary(
-            id: 'plate-$i',
-            startedAt: now.subtract(Duration(days: i)),
-            duration: Duration(minutes: 28 + (i % 9) * 6),
-            distanceMeters: 5200 + (i % 9) * 1800,
-            avgPaceSecondsPerKm:
-                (28 + (i % 9) * 6) * 60 / ((5200 + (i % 9) * 1800) / 1000),
-            bestEfforts: <BestEffort>[
-              if (5200 + (i % 9) * 1800 >= 5000)
-                BestEffort(
-                  distanceMeters: 5000,
-                  duration: Duration(seconds: 1500 + (i % 7) * 20),
-                ),
-            ],
-          ),
-    ];
-  }
-
-  /// Pumps rather than settles.
-  ///
-  /// The shell loads its plan, its log and its coach asynchronously and then
-  /// the coach mark plays a 3.4-second reveal, so `pumpAndSettle` would either
-  /// hang on the animation or land on whichever frame it stopped at. Fixed
-  /// pumps put the picture at a chosen moment instead.
-  Future<void> settle(WidgetTester tester) async {
-    for (var i = 0; i < 12; i++) {
-      await tester.pump(const Duration(milliseconds: 120));
-    }
-  }
-
   testWidgets('home, as a runner on a plan actually sees it', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(profile());
-    final runs = log();
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
 
     await plate(
       tester,
-      'shell-home',
+      'home-with-plan',
       HomeShell(
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
@@ -122,8 +67,8 @@ void main() {
 
   testWidgets('the profile tab, under the same chrome', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(profile());
-    final runs = log();
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
 
     await plate(
       tester,
@@ -142,8 +87,8 @@ void main() {
 
   testWidgets('and the plan tab', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(profile());
-    final runs = log();
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
 
     await plate(
       tester,
@@ -158,6 +103,126 @@ void main() {
       pixelRatio: 2,
       drive: settle,
     );
+  });
+
+  /// **The same three tabs with the plan taken away** — which is the free
+  /// product, not the paid one with its contents removed (ADR-0019).
+  ///
+  /// The pair only means anything seen together, and until now only half of it
+  /// had chrome: `H2` and `H3` are tabs on a bare surface, so the nav bar and
+  /// the coach mark were missing from exactly the plates the bet is judged on.
+  /// A runner with no plan still has a coach and still has three tabs, and a
+  /// board that dropped both was quietly arguing the opposite case.
+  Future<void> freeShell(
+    WidgetTester tester,
+    String name, {
+    required bool hasRuns,
+    int initialTab = 0,
+  }) async {
+    // No `create` call: the store is empty, so the app decides for itself what
+    // a runner with no plan is shown. Nothing here says "empty state" — the
+    // screens work that out, which is the only way the plate can be evidence.
+    final store = DriftPlanStore(db);
+    final runs = hasRuns ? plateLog() : const <RunSummary>[];
+
+    await plate(
+      tester,
+      name,
+      HomeShell(
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        initialTab: initialTab,
+      ),
+      pixelRatio: 2,
+      drive: settle,
+    );
+  }
+
+  testWidgets('home with no plan, which is the whole free product', (
+    tester,
+  ) async {
+    await freeShell(tester, 'home-no-plan', hasRuns: true);
+  });
+
+  testWidgets('home on the first launch, before anything has happened', (
+    tester,
+  ) async {
+    await freeShell(tester, 'home-first-launch', hasRuns: false);
+  });
+
+  testWidgets('the Plan tab with no plan — where a plan is asked for', (
+    tester,
+  ) async {
+    await freeShell(tester, 'shell-plan-empty', hasRuns: true, initialTab: 1);
+  });
+
+  testWidgets('and a profile with nothing in it yet', (tester) async {
+    await freeShell(
+      tester,
+      'shell-profile-empty',
+      hasRuns: false,
+      initialTab: 2,
+    );
+  });
+
+  /// **The paywall line, in the screen it actually falls on.**
+  ///
+  /// These were card crops on a bare 393×420 surface, which is the one place
+  /// the line cannot be judged: what matters is whether a free runner reads
+  /// Home as a coherent app or as the paid one with a hole in it (ADR-0019),
+  /// and a cropped card cannot answer that. Scrolled to the card rather than
+  /// plated at the fold, because on a phone the card is the third thing down.
+  ///
+  /// [CoachAccess.subscribed] reaches the tab through the shell's new `access`
+  /// seam. Before it, nothing in `lib/` ever constructed the subscribed value,
+  /// so this state was unreachable in the running app and the plate that showed
+  /// it was drawing something no runner could get to.
+  Future<void> lastRunPlate(
+    WidgetTester tester,
+    String name, {
+    required CoachAccess access,
+  }) async {
+    final store = DriftPlanStore(db);
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      name,
+      HomeShell(
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        access: access,
+      ),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await tester.scrollUntilVisible(
+          find.text('AGAINST THE PLAN'),
+          220,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await settle(tester);
+      },
+    );
+  }
+
+  testWidgets('the last run, read against the session it answered', (
+    tester,
+  ) async {
+    await lastRunPlate(
+      tester,
+      'last-run-subscribed',
+      access: CoachAccess.subscribed,
+    );
+  });
+
+  testWidgets('and the same run without a coach behind it', (tester) async {
+    await lastRunPlate(tester, 'last-run-free', access: CoachAccess.free);
   });
 
   /// Home for a runner whose race is [racingIn] days away, with [extra] runs on
@@ -179,20 +244,20 @@ void main() {
     // Monday and the finish screen totals a block three days long. That is
     // exactly the thin-fixture failure this file's header is about: the screen
     // would be correct and the plate would still misrepresent it.
-    final startedOn = _dateOnly(
+    final startedOn = dateOnly(
       DateTime.now().add(Duration(days: racingIn - 7 * 12)),
     );
     await PlanRepository(
       store: store,
       now: () => startedOn,
-    ).create(profile(racingIn: racingIn));
+    ).create(plateProfile(racingIn: racingIn));
     // The ordinary log is pushed back behind the race, so the marathon is the
     // newest run rather than sharing a day with a routine 7 km — the plate
     // would otherwise show a runner who did a marathon and then went out again
     // that afternoon, which is a picture of nothing that happens.
     final runs = <RunSummary>[
       ...extra,
-      for (final run in log())
+      for (final run in plateLog())
         if (extra.isEmpty ||
             DateTime.now().difference(run.startedAt).inDays >= 3)
           run,
@@ -278,5 +343,3 @@ RunSummary _theRace() {
     avgPaceSecondsPerKm: 313,
   );
 }
-
-DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
@@ -11,15 +10,10 @@ import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_history.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
-import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
-import 'package:mgk_run/src/features/home/presentation/home_tab.dart';
-import 'package:mgk_run/src/features/home/presentation/home_last_run.dart';
-import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/profile/domain/runner_stats.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
 import 'package:mgk_run/src/features/profile/presentation/year_grid.dart';
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:mgk_units/mgk_units.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
@@ -29,6 +23,7 @@ import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.d
 import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
 import 'package:mgk_run/src/features/recording/domain/live_metrics.dart';
 
+import 'fixture.dart';
 import 'plate.dart';
 
 /// **The whole app, one screen per plate, on a surface a runner actually
@@ -64,33 +59,6 @@ void main() {
   /// three surfaces read the hour and a board where they disagree is a board
   /// that cannot be trusted.
   final monday = DateTime(2026, 8, 24, 15);
-
-  const threshold = PlannedSession(
-    weekday: DateTime.monday,
-    kind: SessionKind.threshold,
-    distanceMeters: 8900,
-  );
-  const friday = PlannedSession(
-    weekday: DateTime.friday,
-    kind: SessionKind.easy,
-    distanceMeters: 6249,
-  );
-  const week = TrainingWeek(
-    skeletonIndex: 3,
-    sessions: <PlannedSession>[threshold, friday],
-  );
-  const slot = SkeletonWeek(
-    index: 3,
-    phase: Phase.build,
-    volumeMeters: 31766,
-    longRunMeters: 12480,
-  );
-  const planned = TodayView(
-    slot: slot,
-    session: threshold,
-    status: SessionStatus.planned,
-    heading: 'Today',
-  );
 
   /// The records a run of this shape would have set — every standard distance
   /// it contains, at a shade under its own average pace.
@@ -128,6 +96,13 @@ void main() {
     // A recorded run has a trace and therefore records; `traced: false` is the
     // run somebody typed in, which has neither.
     bestEfforts: traced ? bests(meters, duration) : const <BestEffort>[],
+    // And a trace is what the log draws each row's thumbnail from, so every
+    // recorded run needs its own shape here or the list renders a column of
+    // identical glyphs and hides the feature. Seeded off the date, so a run
+    // keeps the same route every time the board is built.
+    points: traced
+        ? plateRoute(at.day + at.month, samples: 24)
+        : const <RunPoint>[],
   );
 
   /// A loop around South Park, Reigate — roughly the 23 Aug test run.
@@ -246,88 +221,6 @@ void main() {
       duration: const Duration(minutes: 27, seconds: 4),
     ),
   ];
-
-  List<List<RunDay>> gridWith(List<RunDay> thisWeek) => <List<RunDay>>[
-    for (var w = 0; w < 7; w++) List<RunDay>.filled(7, RunDay.none),
-    thisWeek,
-  ];
-
-  final thisWeekRan = gridWith(<RunDay>[
-    RunDay.none,
-    RunDay.none,
-    RunDay.none,
-    RunDay.none,
-    RunDay.ran,
-    RunDay.none,
-    RunDay.none,
-  ]);
-
-  // --- Home ------------------------------------------------------------------
-
-  testWidgets('home — with a plan', (tester) async {
-    await plate(
-      tester,
-      'home-with-plan',
-      HomeTab(
-        onRecord: () {},
-        onOpenPlan: () {},
-        now: monday,
-        today: planned,
-        thisWeek: week,
-        outcomes: const <int, DayOutcome>{DateTime.friday: DayOutcome.upcoming},
-        standing: const WeekStanding(
-          ranMeters: 14200,
-          plannedMeters: 15149,
-          done: 0,
-          sessions: 2,
-        ),
-        stats: RunnerStats.from(log, now: monday),
-        lastRun: log.first,
-        hasRuns: true,
-        consistency: thisWeekRan,
-        note: const CoachNote(
-          headline: 'Two easy weeks in a row is the build working.',
-          detail:
-              '31 km last week against 29 the week before, both inside the '
-              'band the plan asked for.',
-        ),
-      ),
-      pixelRatio: 2,
-    );
-  });
-
-  testWidgets('home — no plan, which is the free product', (tester) async {
-    await plate(
-      tester,
-      'home-no-plan',
-      HomeTab(
-        onRecord: () {},
-        onOpenPlan: () {},
-        now: monday,
-        stats: RunnerStats.from(log, now: monday),
-        lastRun: log.first,
-        hasRuns: true,
-        consistency: thisWeekRan,
-      ),
-      pixelRatio: 2,
-    );
-  });
-
-  testWidgets('home — nothing recorded yet', (tester) async {
-    await plate(
-      tester,
-      'home-first-launch',
-      HomeTab(
-        onRecord: () {},
-        onOpenPlan: () {},
-        now: monday,
-        stats: RunnerStats.from(const <RunSummary>[], now: monday),
-        hasRuns: false,
-        consistency: gridWith(List<RunDay>.filled(7, RunDay.none)),
-      ),
-      pixelRatio: 2,
-    );
-  });
 
   // --- Profile ---------------------------------------------------------------
 
@@ -512,58 +405,6 @@ void main() {
         ),
       ),
       size: const Size(393, 340),
-      pixelRatio: 3,
-    );
-  });
-
-  // --- The paywall line -------------------------------------------------------
-
-  final ranThreshold = RunSummary(
-    startedAt: DateTime(2026, 8, 24, 6, 40),
-    duration: const Duration(minutes: 46, seconds: 12),
-    distanceMeters: 8600,
-    avgPaceSecondsPerKm: 322,
-  );
-
-  final against = PlannedAgainst(
-    session: threshold,
-    targetPace: Pace.secondsPerKilometer(310),
-  );
-
-  Widget lastRun(CoachAccess access) => Scaffold(
-    backgroundColor: AppColors.bg,
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: LastRunCard(
-          run: ranThreshold,
-          unit: UnitSystem.metric,
-          against: against,
-          access: access,
-          onUpgrade: () {},
-        ),
-      ),
-    ),
-  );
-
-  testWidgets('last run — paid, read against the session', (tester) async {
-    await plate(
-      tester,
-      'last-run-subscribed',
-      lastRun(CoachAccess.subscribed),
-      size: const Size(393, 420),
-      pixelRatio: 3,
-    );
-  });
-
-  testWidgets('last run — free, the comparison is the paid part', (
-    tester,
-  ) async {
-    await plate(
-      tester,
-      'last-run-free',
-      lastRun(CoachAccess.free),
-      size: const Size(393, 420),
       pixelRatio: 3,
     );
   });
