@@ -1,11 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../auth/data/auth_repository.dart';
 import '../../coaching/presentation/scripted_conversation.dart';
 import '../data/intro_permission_requester.dart';
 import '../domain/intro_permission.dart';
@@ -45,36 +42,18 @@ class IntroAnswers {
 class IntroScreen extends StatefulWidget {
   const IntroScreen({
     super.key,
-    this.auth,
-    this.onSignUpIntent,
     this.onFinished,
     this.onBack,
     this.initial = const IntroAnswers(),
     this.requestPermission = requestIntroPermission,
   });
 
-  /// Where the profile is actually created.
+  /// The conversation is over, carrying whatever the runner said to call them.
   ///
-  /// The conversation makes the account itself rather than handing a form the
-  /// details to make it with. On success there is nothing to call back to:
-  /// `AuthGate` is listening to the auth stream and swaps this whole subtree
-  /// for the shell the moment a session exists.
-  ///
-  /// **Null runs the conversation without its account steps**, ending after the
-  /// last permission with [onFinished]. That is what Settings replays: the
-  /// runner is already signed in, and walking them to a sign-up would either
-  /// make a second profile or dead-end on an address already in use.
-  final AuthRepository? auth;
-
-  /// Called when a conversation with no [auth] reaches its end.
-  final VoidCallback? onFinished;
-
-  /// Reports that the session about to appear was reached by creating a
-  /// profile rather than signing back into one.
-  ///
-  /// Taken back if the sign-up does not produce a session, so a later sign-in
-  /// does not inherit a claim this screen made and failed to honour.
-  final ValueChanged<bool>? onSignUpIntent;
+  /// The name travels out rather than being stored by this screen, because the
+  /// intro no longer creates the account that used to hold it - see
+  /// [IntroStore]. Null when they skipped the question.
+  final void Function(String? name)? onFinished;
 
   /// What was already said, when the runner is coming *back* from the form.
   ///
@@ -97,13 +76,9 @@ class IntroScreen extends StatefulWidget {
 
 class _IntroScreenState extends State<IntroScreen> {
   final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
   final _scroll = ScrollController();
 
-  late IntroStep _step = widget.initial.isFromIntro && widget.auth != null
-      ? IntroStep.signUp
-      : IntroStep.greeting;
+  late IntroStep _step = IntroStep.greeting;
   late String? _answeredName = widget.initial.name;
 
   /// The name was known before a word was said.
@@ -125,13 +100,6 @@ class _IntroScreenState extends State<IntroScreen> {
   /// requests, which on Android surfaces as a prompt that will not dismiss.
   bool _asking = false;
 
-  /// The address they gave, once it looks like one. Shown back as their turn.
-  String? _answeredEmail;
-
-  /// The account is being created. Same reason as [_asking]: two taps must not
-  /// become two sign-ups.
-  bool _creating = false;
-
   /// The last thing that went wrong, in the coach's voice.
   ///
   /// It is a line in the transcript rather than red text under a field,
@@ -143,8 +111,6 @@ class _IntroScreenState extends State<IntroScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _email.dispose();
-    _password.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -188,90 +154,6 @@ class _IntroScreenState extends State<IntroScreen> {
     _afterPermission();
   }
 
-  /// **Deliberately permissive.** The only address this rejects is one that
-  /// cannot be an address at all, because the backend is the real authority on
-  /// what it will accept and a regex that is stricter than the server rejects
-  /// real people to no purpose.
-  static bool _looksLikeEmail(String value) {
-    final at = value.indexOf('@');
-    if (at <= 0 || at != value.lastIndexOf('@')) return false;
-    final domain = value.substring(at + 1);
-    return domain.contains('.') &&
-        !domain.startsWith('.') &&
-        !domain.endsWith('.') &&
-        !value.contains(' ');
-  }
-
-  void _submitEmail() {
-    final given = _email.text.trim();
-    if (!_looksLikeEmail(given)) {
-      setState(() => _trouble = introBadEmail);
-      _toEnd();
-      return;
-    }
-    setState(() {
-      _answeredEmail = given;
-      _trouble = null;
-      _step = IntroStep.password;
-    });
-    _toEnd();
-  }
-
-  Future<void> _createAccount() async {
-    if (_creating) return;
-    final password = _password.text;
-    if (password.length < kMinPasswordLength) {
-      setState(() => _trouble = introShortPassword);
-      _toEnd();
-      return;
-    }
-
-    setState(() {
-      _creating = true;
-      _trouble = null;
-    });
-    widget.onSignUpIntent?.call(true);
-
-    try {
-      final signedIn = await widget.auth!.signUp(
-        email: _answeredEmail!,
-        password: password,
-        name: _answeredName ?? '',
-      );
-      if (signedIn) {
-        // They have just had the conversation, so record it - otherwise the
-        // gate above would show it to them again on their next phone. Not
-        // awaited and not allowed to throw: the profile exists, and a failure
-        // here must not be reported as a failure to create it.
-        unawaited(widget.auth!.markCoachMet().catchError((_) {}));
-        // Tells iOS and Android the credentials that were just used are worth
-        // offering to save. Without it a password manager sees two fields in a
-        // conversation, no submitted form, and nothing to prompt about - which
-        // is the cost of moving a form into a chat, and it is paid here rather
-        // than discovered by somebody who cannot get back in.
-        TextInput.finishAutofillContext();
-        return;
-      }
-      // No session: the address needs confirming first. The claim goes back,
-      // because no shell is being built from this.
-      widget.onSignUpIntent?.call(false);
-      if (mounted) setState(() => _trouble = introConfirmEmail);
-    } on AuthException {
-      widget.onSignUpIntent?.call(false);
-      if (mounted) {
-        setState(() => _trouble = introTrouble(kSignUpCodeRefused));
-      }
-    } catch (_) {
-      widget.onSignUpIntent?.call(false);
-      if (mounted) {
-        setState(() => _trouble = introTrouble(kSignUpCodeUnreachable));
-      }
-    } finally {
-      if (mounted) setState(() => _creating = false);
-      _toEnd();
-    }
-  }
-
   Future<void> _ask() async {
     if (_asking) return;
     setState(() => _asking = true);
@@ -292,11 +174,17 @@ class _IntroScreenState extends State<IntroScreen> {
       _toEnd();
       return;
     }
-    if (widget.auth == null) {
-      widget.onFinished?.call();
-      return;
-    }
-    _advance(IntroStep.signUp);
+    // **The intro ends here, and no longer hands off to an account.**
+    //
+    // It used to ask for an address and a password as two more turns, on the
+    // reasoning that a conversation ending in a pushed form has not avoided the
+    // form. That reasoning was right about forms and wrong about the account:
+    // the cheapest sign-up is the one not asked for. Everything this screen
+    // exists to do - meet the coach, get the permissions a tracker needs - is
+    // done, and the app works from here with nothing signed in.
+    //
+    // An account is asked for where it buys something: a plan, and backup.
+    widget.onFinished?.call(_answeredName);
   }
 
   @override
@@ -378,12 +266,6 @@ class _IntroScreenState extends State<IntroScreen> {
                                 ),
                                 ..._permissionTranscript(),
                               ],
-                              if (reached >= IntroStep.signUp.index)
-                                Said(introPrompt(IntroStep.signUp)),
-                              if (_answeredEmail != null)
-                                Replied(_answeredEmail!),
-                              if (reached >= IntroStep.password.index)
-                                Said(introPrompt(IntroStep.password)),
                               if (_trouble != null) Said(_trouble!),
                             ],
                           ),
@@ -482,73 +364,5 @@ class _IntroScreenState extends State<IntroScreen> {
               onPressed: _ask,
             )
           : PrimaryButton(label: 'Continue', onPressed: _afterPermission),
-
-    // Asked in the conversation rather than on a form of its own.
-    //
-    // The seam for "continue with Apple" is here: a provider button above this
-    // field, which on success skips [IntroStep.password] entirely. It is not
-    // built yet because none of it can work until the capability is added in
-    // Xcode, a Service ID exists, and the provider is enabled in Supabase - and
-    // a button that cannot complete is worse than no button.
-    IntroStep.signUp => Row(
-      children: <Widget>[
-        Expanded(
-          child: TextField(
-            controller: _email,
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            autofillHints: const <String>[
-              AutofillHints.newUsername,
-              AutofillHints.email,
-            ],
-            onSubmitted: (_) => _submitEmail(),
-            decoration: const InputDecoration(
-              hintText: 'you@example.com',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        IconButton.filled(
-          onPressed: _submitEmail,
-          icon: const Icon(Icons.arrow_forward),
-          tooltip: 'Continue',
-        ),
-      ],
-    ),
-
-    IntroStep.password => Row(
-      children: <Widget>[
-        Expanded(
-          child: TextField(
-            controller: _password,
-            autofocus: true,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            textInputAction: TextInputAction.done,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            onSubmitted: (_) => _createAccount(),
-            decoration: const InputDecoration(
-              hintText: 'A password',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        IconButton.filled(
-          onPressed: _creating ? null : _createAccount,
-          icon: _creating
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          tooltip: 'Create my profile',
-        ),
-      ],
-    ),
   };
 }

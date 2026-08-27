@@ -5,6 +5,7 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/core/config/app_config.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
+import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 
 void main() {
   const devAccounts = <DevAccount>[
@@ -13,8 +14,15 @@ void main() {
 
   testWidgets('signed-out shows the welcome screen', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(home: AuthGate(auth: FakeAuthRepository())),
+      MaterialApp(
+        home: AuthGate(
+          introStore: InMemoryIntroStore(),
+          auth: FakeAuthRepository(),
+        ),
+      ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
 
     expect(find.text(kAppName.toUpperCase()), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
@@ -25,9 +33,15 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: AuthGate(auth: FakeAuthRepository(), devAccounts: devAccounts),
+        home: AuthGate(
+          introStore: InMemoryIntroStore(),
+          auth: FakeAuthRepository(),
+          devAccounts: devAccounts,
+        ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
 
     await tester.tap(find.text('I already have an account'));
     await tester.pumpAndSettle();
@@ -59,15 +73,19 @@ void main() {
   ) async {
     // Every step of the signed-out flow is a *state* of one widget rather than
     // a pushed route, so a back gesture finds nothing on the navigator to pop
-    // and goes straight past the app to the launcher. The conversation is now
-    // several questions deep - it ends by creating the profile rather than
-    // handing off to a form - so there is more of it to fall out of than there
-    // used to be, and the guard matters more, not less.
+    // and goes straight past the app to the launcher.
+    //
+    // The conversation is shorter than it was - it ends at the last permission
+    // now rather than by creating a profile - so this stops part way through
+    // rather than at the end. Running it to the end would land on Home, where
+    // there is no conversation left to back out of and the guard would be
+    // asserting nothing.
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: FakeAuthRepository(),
           devAccounts: devAccounts,
           // There is no platform here to grant anything, and the intro waits on
@@ -76,6 +94,8 @@ void main() {
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
 
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
@@ -84,15 +104,13 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Sam');
     await tester.tap(find.byTooltip('Continue'));
     await tester.pumpAndSettle();
-    for (final permission in introPermissions) {
-      await tester.tap(find.text(permission.cta));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-    }
+    // Answered, and deliberately not continued past: the next Continue is what
+    // ends the intro.
+    await tester.tap(find.text(introPermissions.first.cta));
+    await tester.pumpAndSettle();
 
-    // Deep in it: the address has been asked for, and no form was pushed to
-    // ask - which is the whole point of the change this guards.
+    // Deep in it, and no form was pushed to get here - which is the whole
+    // point of the change this guards.
     expect(find.text('Sam'), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);
 
@@ -117,9 +135,15 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: AuthGate(auth: FakeAuthRepository(), devAccounts: devAccounts),
+          home: AuthGate(
+            introStore: InMemoryIntroStore(),
+            auth: FakeAuthRepository(),
+            devAccounts: devAccounts,
+          ),
         ),
       );
+      // The gate reads its intro marker asynchronously, so frame one is blank.
+      await tester.pump();
 
       await tester.tap(find.text('I already have an account'));
       await tester.pumpAndSettle();
@@ -136,10 +160,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pump();
 
     expect(find.text('Record a run'), findsOneWidget);
@@ -157,10 +184,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Profile'));
@@ -195,9 +225,15 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         MaterialApp(
-          home: AuthGate(auth: FakeAuthRepository(), devAccounts: devAccounts),
+          home: AuthGate(
+            introStore: InMemoryIntroStore(),
+            auth: FakeAuthRepository(),
+            devAccounts: devAccounts,
+          ),
         ),
       );
+      // The gate reads its intro marker asynchronously, so frame one is blank.
+      await tester.pump();
 
       await tester.tap(find.text('Get started'));
       await tester.pumpAndSettle();

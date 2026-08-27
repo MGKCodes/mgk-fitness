@@ -1,4 +1,3 @@
-import 'package:mgk_run/src/core/brand.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_script.dart';
 
@@ -84,23 +83,31 @@ void main() {
       expect(said, isNotEmpty);
     });
 
-    test('the form is asked for as one profile across both apps', () {
-      // ADR-0008: the two apps share an identity. A runner finding that out
-      // later, from a delete-account screen, is finding it out too late.
-      final said = introPrompt(IntroStep.signUp);
-      expect(said, contains(kPlatformName));
-      expect(said, contains('Lift'));
-    });
-
-    test('and the account is not sold as a second phone', () {
-      // It used to say an account "keeps all of this yours on any phone",
-      // which is a sync pitch, and sync is not why anybody makes an account
-      // ninety seconds into a running app. Worse, it is not even true by
-      // default: backup is opt-in and off until asked for (ADR-0012).
-      expect(
-        introPrompt(IntroStep.signUp).toLowerCase(),
-        isNot(contains('any phone')),
-      );
+    test('the intro never asks for an account', () {
+      // **The rule this file exists to hold now.** The two account steps were
+      // removed: the app opens on a working tracker and asks for an account at
+      // the two moments one buys something - a plan, because the coach costs
+      // money to run, and backup, because that is what it is for (ADR-0019).
+      //
+      // Asserted on the whole script rather than on the absent steps, because
+      // the failure this guards against is the copy coming back before the
+      // steps do: a coach that mentions a profile it cannot make.
+      for (final step in IntroStep.values) {
+        final said = introPrompt(step, name: 'Sam').toLowerCase();
+        for (final word in <String>[
+          'email',
+          'password',
+          'profile',
+          'account',
+        ]) {
+          expect(
+            said,
+            isNot(contains(word)),
+            reason:
+                '$step says "$word", and the intro no longer signs anybody up',
+          );
+        }
+      }
     });
   });
 
