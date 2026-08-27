@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/data/adaptation_service.dart';
 import '../../coaching/data/coach_client.dart';
 import '../../coaching/data/coach_memory_repository.dart';
@@ -86,6 +87,7 @@ class HomeShell extends StatefulWidget {
     this.initialTab = 0,
     this.justSignedUp = false,
     this.access = CoachAccess.free,
+    this.runnerName,
   });
 
   final AuthRepository auth;
@@ -153,6 +155,15 @@ class HomeShell extends StatefulWidget {
   /// free and nothing in `lib/` ever constructed [CoachAccess.subscribed], so
   /// the paid half of the last-run card could not be reached by any route.
   final CoachAccess access;
+
+  /// What the coach calls this runner.
+  ///
+  /// Passed in rather than read off [auth], because the name no longer
+  /// necessarily lives on an account: the intro asks for it and the app does
+  /// not make an account at all until one buys something, so for a new runner
+  /// it lives in `IntroStore`. Null falls back to the profile, which is right
+  /// for anybody signed in.
+  final String? runnerName;
 
   final int initialTab;
 
@@ -1300,6 +1311,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (saved != null) await _refreshHome();
   }
 
+  /// Signs the runner in, or up, when something actually needs an account.
+  ///
+  /// Returns true if there is a session by the end. Pushed as a route rather
+  /// than swapping the subtree, because they are in the middle of doing
+  /// something and must land back where they were - `AuthGate` swapping the
+  /// shell out underneath them would lose the tab, the scroll and the intent.
+  Future<bool> _ensureAccount() async {
+    if (widget.auth.isSignedIn) return true;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => SignInScreen(
+          auth: widget.auth,
+          initialSignUp: true,
+          introName: widget.runnerName,
+          onBack: () => Navigator.of(routeContext).maybePop(),
+        ),
+      ),
+    );
+    if (!mounted) return false;
+    return widget.auth.isSignedIn;
+  }
+
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -1418,7 +1451,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 unit: _unit,
                 onPlanChanged: _refreshHome,
                 onAskCoach: _askCoach,
-                runnerName: widget.auth.currentName,
+                runnerName: widget.runnerName ?? widget.auth.currentName,
+                ensureAccount: _ensureAccount,
               ),
               // The runner and their record, on one page: totals, bests, the goal,
               // then every run. Reads the shell's own log rather than calling the
@@ -1523,7 +1557,13 @@ class _PlanTab extends StatefulWidget {
     this.summariser,
     this.onAskCoach,
     this.runnerName,
+    this.ensureAccount,
   });
+
+  /// Raises sign-up when a plan is asked for without an account, and reports
+  /// whether there is a session afterwards. Null means do not gate, which is
+  /// what a widget test wiring this tab directly wants.
+  final Future<bool> Function()? ensureAccount;
 
   final PlanRepository plans;
   final UnitSystem unit;
@@ -1663,9 +1703,27 @@ class _PlanTabState extends State<_PlanTab> {
     await _load();
   }
 
+  /// The plan flow, behind the one gate an account still has to sit at.
+  ///
+  /// **This is where an account earns itself.** The app opens on a working
+  /// tracker with nothing signed in, because the on-device database has always
+  /// been the source of truth and asking for credentials to use it was asking
+  /// for nothing in return. A plan is different: it is built by the coach, the
+  /// coach is an Edge Function calling a model, and that costs money per
+  /// request. There has to be somebody to attribute it to.
+  ///
+  /// So the ask lands here, where a runner has just said they want the thing it
+  /// pays for, rather than ninety seconds after install when they have not.
+  /// Backing out returns them to a Plan tab that still works.
   Future<void> _startCoaching() async {
     final coach = widget.coach;
     if (coach == null) return;
+    if (!await (widget.ensureAccount?.call() ?? Future<bool>.value(true))) {
+      return;
+    }
+    // The gate above pushed a route and awaited it, so this state may have gone
+    // away while somebody was signing up.
+    if (!mounted) return;
     // The flow builds the plan itself and hands it back built, so there is no
     // spinner to own here any more: the wait belongs to the screen that
     // explains it, and a plan that arrives on this tab unannounced was the

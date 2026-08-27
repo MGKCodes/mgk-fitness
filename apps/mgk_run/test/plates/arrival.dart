@@ -3,21 +3,24 @@
 /// Everything on the rest of the board belongs to a runner who already has an
 /// account, and most of it to one who already has a plan. Neither is true of
 /// anybody opening this for the first time, and the screens they *do* meet —
-/// the welcome, the coach's first conversation, each permission asked one at a
-/// time, the address and the password — had never been drawn anywhere.
+/// the welcome, the coach's first conversation and each permission asked one at
+/// a time — had never been drawn anywhere.
 ///
 /// **Walked, not assembled.** Every plate here comes out of the real
 /// [AuthGate] or the real [CoachFlow], driven by tapping the control a runner
 /// taps. Nothing is pushed onto a navigator by hand. That matters more here
 /// than anywhere else on the board: this is a *sequence*, and a sequence
 /// rebuilt screen by screen would show each step correctly while proving
-/// nothing about whether one leads to the next. Sign-up moved into the
-/// conversation itself (ADR-0018), so the only honest way to picture it is to
-/// have the conversation.
+/// nothing about whether one leads to the next.
 ///
-/// The two acts are two moments, and deliberately not one (ADR-0019): this ends
-/// with a free account and a working run tracker. A plan is somewhere a runner
-/// goes afterwards, not the toll for finishing sign-up.
+/// **It no longer ends in an account.** The intro used to ask for an address
+/// and a password as two more turns; the app now opens on a working tracker and
+/// asks for an account only where one buys something. So this act ends on Home,
+/// signed out, with everything living on the phone.
+///
+/// The two acts are two moments, and deliberately not one (ADR-0019): this one
+/// ends with a working run tracker and nothing signed in. A plan is somewhere a
+/// runner goes afterwards, not the toll for finishing sign-up.
 ///
 /// Regenerate with:
 ///
@@ -36,6 +39,7 @@ import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
+import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 
 import 'fixture.dart';
@@ -54,6 +58,10 @@ void main() {
   /// does not write a file into the repository every time the board is built.
   Widget cold() => AuthGate(
     auth: FakeAuthRepository(),
+    // In memory, not the real marker file. The gate reads this before it draws
+    // anything, and a plate that waits on a filesystem the test framework does
+    // not have would render a blank frame and call it the welcome screen.
+    introStore: InMemoryIntroStore(),
     coach: FakeCoachService(),
     consentStore: InMemoryBackupConsent(),
     historySource: () async => const [],
@@ -189,26 +197,9 @@ void main() {
     );
   });
 
-  testWidgets('the account is asked for in the conversation, not on a form', (
+  testWidgets('and it ends on a working app, with no account at all', (
     tester,
   ) async {
-    await plate(
-      tester,
-      'arrive-password',
-      cold(),
-      pixelRatio: 2,
-      drive: (tester) async {
-        await tester.pumpAndSettle();
-        await tapText(tester, 'Get started');
-        await tapText(tester, 'Sounds good');
-        await say(tester, 'Sam', 'Continue');
-        await throughPermissions(tester);
-        await say(tester, 'sam@example.com', 'Continue');
-      },
-    );
-  });
-
-  testWidgets('and it ends on a working app, not on a plan', (tester) async {
     await plate(
       tester,
       'arrive-home',
@@ -220,10 +211,6 @@ void main() {
         await tapText(tester, 'Sounds good');
         await say(tester, 'Sam', 'Continue');
         await throughPermissions(tester);
-        await say(tester, 'sam@example.com', 'Continue');
-        await tester.enterText(find.byType(TextField).last, 'password');
-        await tester.pumpAndSettle();
-        await tapTip(tester, 'Create my profile');
         // Fixed pumps from here: the shell it lands on plays the coach mark's
         // reveal on a timer, and `pumpAndSettle` would never come back.
         await settle(tester);
