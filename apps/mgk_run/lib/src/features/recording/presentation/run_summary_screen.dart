@@ -318,6 +318,29 @@ class RunSummaryScreen extends StatelessWidget {
     }
     if (summary.steps != null) {
       tiles.add(_Tile('STEPS', _grouped(summary.steps!)));
+      // **The sixth tile, and the one that closes the row.** Five tiles wrap to
+      // 3 + 2 and leave a hole in the bottom right that reads as a measure that
+      // failed to load rather than as the end of the list.
+      //
+      // Derived rather than sourced: cadence is steps over time, both of which
+      // are already here, so it costs no permission the runner has not already
+      // given and no field the recorder does not already write. It is the one
+      // measure on this screen that says something about *how* the run was run
+      // rather than how far or how high — two runners with the same 10 km and
+      // the same pace can be forty steps a minute apart.
+      //
+      // Elapsed rather than moving time, because moving time is not recorded.
+      // A long pause therefore drags it down; that is a real property of the
+      // figure and the reason it is labelled AVG.
+      final seconds = summary.duration.inSeconds;
+      if (seconds > 0) {
+        tiles.add(
+          _Tile(
+            'AVG CADENCE',
+            '${(summary.steps! / (seconds / 60)).round()} spm',
+          ),
+        );
+      }
     }
     if (summary.avgHr != null) {
       tiles.add(_Tile('AVG HR', '${summary.avgHr} bpm'));
