@@ -28,6 +28,7 @@ class RunnerStats {
     this.firstRunAt,
     this.currentStreakWeeks = 0,
     this.bestEfforts = const <double, Duration>{},
+    this.averageEfforts = const <double, Duration>{},
     this.hasRecordlessRuns = false,
   });
 
@@ -47,6 +48,21 @@ class RunnerStats {
   /// from `kRecordDistancesMeters`, so the keys and the lookups are literally
   /// the same constants.
   final Map<double, Duration> bestEfforts;
+
+  /// What each standard distance **usually** takes, keyed the same way as
+  /// [bestEfforts] — the mean of every qualifying stretch in the log, not the
+  /// quickest one.
+  ///
+  /// **A best is a worse answer to the question this page is asked.** A runner
+  /// looking at their own 5K wants to know what they run, and a lifetime best
+  /// is by construction the one day that was not typical — it is a single
+  /// sample, it never moves except downwards, and for most runners it was set
+  /// once and is now a number they cannot repeat. An average moves with the
+  /// training, which is the whole thing this app is for.
+  ///
+  /// The bests are still computed and still kept; they belong on a view that is
+  /// about records rather than in the row that says what a 5K is.
+  final Map<double, Duration> averageEfforts;
 
   /// True when the log holds at least one run long enough to have set a record
   /// that set none.
@@ -71,6 +87,9 @@ class RunnerStats {
   /// covered inside a run.
   Duration? bestEffortAt(double meters) => bestEfforts[meters];
 
+  /// What [meters] usually takes, or null if it has never been covered.
+  Duration? averageEffortAt(double meters) => averageEfforts[meters];
+
   bool get isEmpty => runCount == 0;
 
   static const RunnerStats empty = RunnerStats(
@@ -91,6 +110,8 @@ class RunnerStats {
     double? fastest;
     DateTime? first;
     final bests = <double, Duration>{};
+    final effortTotals = <double, int>{};
+    final effortCounts = <double, int>{};
     var recordless = false;
 
     // The shortest distance a record is kept at. A run under it was never going
@@ -108,6 +129,14 @@ class RunnerStats {
         if (standing == null || effort.duration < standing) {
           bests[effort.distanceMeters] = effort.duration;
         }
+        // Summed in microseconds rather than by folding `Duration`s, so the
+        // mean is one division at the end instead of a running average that
+        // drifts by a tick per run.
+        effortTotals[effort.distanceMeters] =
+            (effortTotals[effort.distanceMeters] ?? 0) +
+            effort.duration.inMicroseconds;
+        effortCounts[effort.distanceMeters] =
+            (effortCounts[effort.distanceMeters] ?? 0) + 1;
       }
       // Long enough to have held a record, and holding none. Judged on the
       // run's own distance rather than on its trace, because the log's read
@@ -143,6 +172,12 @@ class RunnerStats {
       firstRunAt: first,
       currentStreakWeeks: _streakWeeks(runs, now ?? DateTime.now()),
       bestEfforts: Map<double, Duration>.unmodifiable(bests),
+      averageEfforts: Map<double, Duration>.unmodifiable(<double, Duration>{
+        for (final MapEntry<double, int> entry in effortTotals.entries)
+          entry.key: Duration(
+            microseconds: entry.value ~/ effortCounts[entry.key]!,
+          ),
+      }),
       hasRecordlessRuns: recordless,
     );
   }

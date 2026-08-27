@@ -73,7 +73,18 @@ void main() {
 
     // The lifetime total leads the page; the account facts that used to head
     // it are in Settings now and must not have followed the log here.
-    expect(find.textContaining('15.2'), findsOneWidget); // 5.23 + 10 km
+    // `15 km`, not `15.2`: past ten the tenth is a hundred metres run some
+    // time last spring, and on a career it costs a glyph the column needs.
+    // Below ten the decimal is most of the number and stays.
+    // Scoped to the hero: the year summary underneath now reads the same
+    // figure the same way, which is the point of the rule and not a duplicate.
+    expect(
+      find.descendant(
+        of: find.byType(CountUp),
+        matching: find.textContaining('15 km'),
+      ),
+      findsOneWidget,
+    ); // 5.23 + 10 km
     expect(find.text('dev@runio.app'), findsNothing);
     expect(find.textContaining('since'), findsNothing);
 
@@ -277,9 +288,8 @@ void main() {
       expect(find.text('—'), findsNWidgets(2));
     });
 
-    testWidgets('the best of several runs at one distance is the one shown', (
-      tester,
-    ) async {
+    testWidgets('several runs at one distance average, rather than the best '
+        'standing alone', (tester) async {
       final slower = RunSummary(
         startedAt: DateTime(2026, 8, 10, 8),
         duration: const Duration(minutes: 30),
@@ -294,7 +304,14 @@ void main() {
 
       await pump(tester, log: <RunSummary>[tenK, slower], now: monday);
 
-      expect(find.text('27:41'), findsOneWidget);
+      // 27:41 and 28:03 average to 27:52. **The best is deliberately not the
+      // figure here.** A lifetime best is one day, by construction the
+      // untypical one, and for most runners a number set once and not
+      // repeatable — which makes it a poor answer to "what is my 5K". The
+      // average moves with the training, and the bests are still computed and
+      // still kept for a view that is about records.
+      expect(find.text('27:52'), findsOneWidget);
+      expect(find.text('27:41'), findsNothing);
       expect(find.text('28:03'), findsNothing);
     });
 
@@ -320,7 +337,10 @@ void main() {
       // run's own 3:48:00 is on the page in the log row below, and nowhere near
       // the marathon slot.
       expect(find.text('—'), findsNWidgets(4));
-      expect(find.textContaining('without a route sets none'), findsOneWidget);
+      expect(
+        find.textContaining('counts towards none of them'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('with nothing unexplained the explanation stays away', (

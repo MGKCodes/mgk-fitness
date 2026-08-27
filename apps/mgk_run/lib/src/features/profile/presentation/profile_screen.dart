@@ -546,22 +546,32 @@ class _Lifetime extends StatelessWidget {
       fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
     );
 
+    // Tightened from `xl` padding and `lg` gaps. Three figures and a headline
+    // were taking a third of the fold on the page that has the most to say, and
+    // the air was not doing any work — the card already reads as one block
+    // because it is a card.
     return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const SectionLabel('Lifetime', emphasis: LabelEmphasis.stat),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           if (empty)
             Text('— ${unit.distanceSuffix}', style: heroStyle)
           else
             CountUp(
               value: Distance.meters(stats.totalMeters).inDisplayUnit(unit),
-              format: (v) => '${v.toStringAsFixed(1)} ${unit.distanceSuffix}',
+              // A tenth of a kilometre is a real distinction on a single run
+              // and none at all on a career: `3119.8 km` spends two of its six
+              // glyphs on a hundred metres run some time in March. Below ten
+              // the decimal is most of the number, so it stays.
+              format: (v) => v >= 10
+                  ? '${v.round()} ${unit.distanceSuffix}'
+                  : '${v.toStringAsFixed(1)} ${unit.distanceSuffix}',
               style: heroStyle,
             ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           Row(
             // Labels on one line. The default centres the three columns against
             // each other, so the moment one of them shrinks to fit — see the
@@ -579,14 +589,16 @@ class _Lifetime extends StatelessWidget {
               Expanded(
                 child: StatBlock(
                   label: 'Time',
-                  value: empty ? '—' : stats.totalDuration.hoursMinutesSeconds,
+                  value: empty ? '—' : stats.totalDuration.totalHours,
                   valueColor: waiting,
-                  // The one figure on this card with no upper bound. A lifetime
-                  // total crosses a hundred hours and gains a character, and a
-                  // `Text` in a tight `Expanded` clips **silently** — there is
-                  // no overflow stripe inside a bounded box — so "157:12:00"
-                  // was drawing straight through the streak beside it. This is
-                  // the case `StatBlock.shrinkToFit` documents itself for.
+                  // `305 h`, not `305:32:23`. This column has no upper bound
+                  // and a `Text` in a tight `Expanded` clips **silently** — no
+                  // overflow stripe inside a bounded box — so the full reading
+                  // drew straight through the streak beside it and rendered
+                  // `305:32:2353 wk`. `shrinkToFit` was the first fix and it
+                  // only made an unreadable figure smaller; the seconds were
+                  // never worth a glyph on a career. See
+                  // [DurationFormat.totalHours].
                   shrinkToFit: true,
                 ),
               ),
@@ -822,8 +834,16 @@ class _Records extends StatelessWidget {
             ],
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
-        // One card holding four rows rather than four more cards. A PB table is
+        const SizedBox(height: AppSpacing.lg),
+        // **Labelled, because it stopped being a PB table.** These four rows
+        // used to sit unlabelled under "Records", which made them read as
+        // bests — and a best is the wrong answer to "what is my 5K": it is one
+        // day, by construction the untypical one, and for most runners a number
+        // they set once and cannot repeat. What moves with the training, and so
+        // what this page is for, is the average.
+        const SectionLabel('Typical', emphasis: LabelEmphasis.stat),
+        const SizedBox(height: AppSpacing.sm),
+        // One card holding four rows rather than four more cards. A table is
         // how runners already read these — a column of distances against a
         // column of times — and four extra cards would push the year grid off
         // the fold to say the same thing at three times the height.
@@ -836,7 +856,7 @@ class _Records extends StatelessWidget {
                   padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpacing.md),
                   child: _RaceRecord(
                     meters: kRecordDistancesMeters[i],
-                    best: stats.bestEffortAt(kRecordDistancesMeters[i]),
+                    typical: stats.averageEffortAt(kRecordDistancesMeters[i]),
                   ),
                 ),
               // Only for the runner it could bite. A record is read off a
@@ -846,9 +866,9 @@ class _Records extends StatelessWidget {
               if (stats.hasRecordlessRuns) ...<Widget>[
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Read from the route, so a record is the fastest unbroken '
-                  'stretch inside a run — not the run’s own time. A run '
-                  'without a route sets none.',
+                  'Averaged from your routes, over every unbroken stretch of '
+                  'each distance inside a run — not the runs’ own times. A '
+                  'run without a route counts towards none of them.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textTertiary,
                     height: 1.4,
@@ -863,7 +883,8 @@ class _Records extends StatelessWidget {
   }
 }
 
-/// One row of the race table: the distance as runners say it, and the time.
+/// One row of the table: the distance as runners say it, and what it usually
+/// takes.
 ///
 /// The name comes from `raceName`, which exists for exactly this — "Half
 /// marathon" is both shorter and more accurate than "21 km", which is a
@@ -873,15 +894,15 @@ class _Records extends StatelessWidget {
 /// styling: it is what makes "5K" on an empty profile a heading rather than a
 /// number the app has not earned.
 class _RaceRecord extends StatelessWidget {
-  const _RaceRecord({required this.meters, required this.best});
+  const _RaceRecord({required this.meters, required this.typical});
 
   final double meters;
-  final Duration? best;
+  final Duration? typical;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final time = best;
+    final time = typical;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
