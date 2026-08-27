@@ -56,10 +56,25 @@ affordance of its own", was wrong and is what let three sheets ship without one.
 
 | Sheet | In | Result |
 |---|---|---|
-| Template picker | Active session, empty state | a template, or nothing |
-| Exercise picker | Active session → Add | a movement name, or nothing |
+| Your workouts | Active session, empty state → Your workouts | a saved workout, or nothing |
+| Premade workouts | Your workouts → Add a ready-made one | a copy in your own library, or nothing |
+| Exercise picker | Active session → Add exercise, and the builder | a movement name, or nothing |
 | Swap | Active session → a movement's swap icon | a replacement movement, or nothing |
-| Adapt | Plan → "Something changed?" | the accepted changes, or nothing |
+| Coach | The mark, on any tab | a conversation |
+| Post-session review | after a session on a planned day | how it felt, and what changes next |
+| Photo source | Progress photos → add | camera or gallery, or nothing |
+| Photo actions | Pose series → a photo | skip, delete, or nothing |
+
+## Dialogs
+
+Three, and all three are the last word before something irreversible or worth
+naming. Each pairs a plain keep against the action, never "Cancel / OK".
+
+| Dialog | In | Buttons |
+|---|---|---|
+| Name this workout | Session or summary → Save to your workouts | Cancel / Save |
+| Discard this session? | Active session → Discard session | Keep going / Discard |
+| Delete this photo? | Photo actions → Delete photo | Keep it / Delete |
 
 Both coach-backed sheets ask on open or on submit and show the reply whatever
 happens to the options. Dismissing mid-request abandons the answer; the call is
@@ -138,6 +153,33 @@ credits, sign-in, coach, coach memory.
 
 > Check whether the tool can even express the fault before trusting it to report
 > the fault absent.
+
+## The board pass, 2026-08-27
+
+The same lesson again, one level up. This table was worked from the harness, so
+it could only ever be as complete as the harness — and **six screens had no
+entry in it at all**: the exercise picker, the save-workout dialog, the photo
+source sheet, the photo actions sheet, the delete confirmation, and series
+playback. Three of them are now in the tables above for the first time, and two
+of those are sheets the exit sweep had already caught shipping without a dismiss
+affordance. They were fixed by hand in August and photographed by nobody since.
+
+Two more things the harness could not say:
+
+- **The nav bar and the coach mark were absent from ten screenshots**, because
+  those entries mounted a surface bare rather than through `LiftShell`. Every
+  claim in "The shell" above was true and none of it was visible.
+- **`LiftShell` took no clock**, which is *why* they were mounted bare: through
+  the shell, a screenshot's content changed with the day it was taken. The
+  parameter exists now, and the whole board is pinned to `previewNow`.
+
+The screen board — `tool/build_screen_board.mjs`, from
+`tool/screen_board.json` — is the artefact this pass produced, and it fails its
+build rather than drifting: a screen in the harness with no entry in the data,
+or an entry naming a screen that is not captured, exits non-zero. This table and
+that file say the same things about the same screens, which is a duplication
+worth watching; if they disagree, the board is the one that was checked against
+an image.
 
 ## Known and accepted
 

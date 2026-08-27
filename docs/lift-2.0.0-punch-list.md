@@ -379,6 +379,74 @@ That is three layout faults in one week that neither `flutter analyze` nor 414
 tests could see, and all three surfaced by rendering a screen and looking at it.
 It is the cheapest review step available here and the easiest to skip.
 
+## Found by photographing every screen, 2026-08-27
+
+A second pass over the same ground, asking a narrower question of the harness
+rather than of the app: **is what this photographs the screen the app renders?**
+Six times it was not. The screen board (`tool/build_screen_board.mjs`) is the
+artefact; these are what building it turned up.
+
+- [x] **Ten screens were photographed without their chrome.** `plan-entitled`,
+      `track-planned`, `track-interrupted`, `plan-active`, `plan-standing` and
+      `plan-standing-rest` mounted `TrackSurface` / `PlanSurface` /
+      `StandingPlanSurface` bare on a `Scaffold`, and the rest of the shell
+      entries omitted `coach`. So the board showed **no nav bar and no coach
+      mark** on screens that have both, and one entry in fifty-seven rendered
+      the mark at all.
+
+      All of them now go through `LiftShell`, which needed one thing to make it
+      possible: **the shell took no clock**. All three surfaces already accepted
+      a date and the shell was the one link that did not pass it on, so a
+      shell-hosted screenshot drifted with the day it was taken — a plan with
+      something for today on Thursday and nothing on Saturday. That is why the
+      harness rendered them bare in the first place. One parameter buys back
+      both.
+
+- [x] **Six screens the harness could not address at all.** The exercise picker,
+      the save-workout dialog, the photo source sheet, the photo actions sheet,
+      the delete confirmation, and series playback. Between them: the primary
+      control on a running session, the only thing progress photos are *for*,
+      and **two of the three sheets the 2026-08-08 exit sweep caught shipping
+      with no dismiss affordance** — found by hand then, and never photographed
+      since.
+
+      The three photo ones were private methods on a `State`, so they are now
+      `photos/presentation/photo_sheets.dart` — extracted for no reason other
+      than that a screen the review tool cannot reach gets reviewed once, by
+      hand, and then never again.
+
+- [x] **Two frames were one screen, twice.** `coach-mark` was
+      character-for-character `track-coach`. `plan-active` turned out to be
+      `plan-standing` on a different weekday once both went through the shell.
+      Both are gone. A board that shows one screen twice is claiming coverage it
+      does not have, which is the fault it exists to expose.
+
+- [x] **Two screens still read the wall clock.** The backup card's "last
+      checked" and coach memory's "last updated" both measured against
+      `DateTime.now()` while their fixtures were pinned to `previewNow` — so the
+      board said a sync three minutes old was "20d ago", and got a day worse
+      every day. Both now take a `now`, which every other surface in the app
+      already did.
+
+- [x] **Every sample progress photo had the same id.** `'\${pose.stored}-\$w'`
+      in the preview fixture — escaped rather than interpolated, so all forty
+      carried the literal string. Harmless while nothing read an id, and not
+      harmless the moment the actions sheet was added: it excludes and deletes
+      *by id*.
+
+- [ ] **The plan intake has a designed flow and no UI for it.**
+      `planning/domain/intake_flow.dart` defines seven questions, each with its
+      own control and a step count, and it is imported by **its own test and the
+      preview harness — nothing else**. `PlanIntakeScreen` renders bubbles and a
+      composer: no chips, no progress bar, no stepping.
+
+      Ten frames on the board (`intake-1-days` … `intake-10-swap`) are that
+      design. They are flagged there, and `plan-intake-answered` was added
+      beside them as the honest counterpart. **This is the one item on this list
+      that is a decision rather than a fix**: either the questionnaire gets
+      built, or `intake_flow.dart` and its ten previews come out. Leaving both
+      is what produced a board that showed a screen the app has never had.
+
 ## Settled, 2026-08-24
 
 All four questions this plan opened were answered the day it was written. Kept
