@@ -1,25 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
-import '../domain/plan_intake.dart';
 import '../domain/coach_planner.dart';
+import '../domain/intake_flow.dart';
 
 /// The conversation that sets a block up.
 ///
 /// **A conversation rather than a form**, which is the point and also the
-/// harder thing to build: a form asks six questions in a fixed order and makes
+/// harder thing to build: a form asks its questions in a fixed order and makes
 /// somebody who answered three of them in one sentence answer them again. The
 /// coach batches, skips ahead, and stops when it has enough.
 ///
 /// What it gathers is merged, never replaced. Every intake turn returns every
 /// field, and a null means "not learned this turn" — treating it as "forget it"
 /// would erase an answer as soon as the next question was asked.
+///
+/// **The options under the newest turn do not make it a form.** [IntakeField]'s
+/// own argument is that a fixed-order script is the failure to avoid, and none
+/// of this is one: the composer stays live throughout, the chips answer
+/// whichever field is still missing rather than whichever comes next in a
+/// list, and the bar counts answers rather than position — so somebody who
+/// says "4 days, home gym, bad shoulder" moves it three and is never asked
+/// those again. The chips are there because tapping "3 days" standing in a gym
+/// is easier than typing it, not because the conversation has been replaced.
 class PlanIntakeScreen extends StatefulWidget {
   const PlanIntakeScreen({
     super.key,
     required this.planner,
     this.opener,
     this.initialTurns = const <PlannerTurn>[],
+    this.initialKnown = const IntakeProgress(),
   });
 
   final CoachPlanner planner;
@@ -35,6 +45,15 @@ class PlanIntakeScreen extends StatefulWidget {
   /// history to restore, because an abandoned one is not resumed.
   final List<PlannerTurn> initialTurns;
 
+  /// What those turns established, for the same reason.
+  ///
+  /// **Seeded rather than replayed.** What the lifter has answered comes back
+  /// from the coach's extraction, not from parsing the transcript, so a
+  /// preview that set only [initialTurns] would show three answers on screen
+  /// and a progress bar reading zero — and would offer the first question's
+  /// options underneath the fourth one.
+  final IntakeProgress initialKnown;
+
   @override
   State<PlanIntakeScreen> createState() => _PlanIntakeScreenState();
 }
@@ -44,9 +63,18 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
 
-  PlanIntake _known = const PlanIntake();
+  late IntakeProgress _known = widget.initialKnown;
   bool _waiting = false;
   PlanFailure? _failure;
+
+  /// The field the options under the newest bubble are answering: the first
+  /// still unknown, and only while the coach has the floor.
+  ///
+  /// **Null after the lifter speaks**, so options never hang under somebody's
+  /// own message waiting for a reply that has not arrived. Null when there is
+  /// nothing left to ask, which is the same moment "Build my plan" appears.
+  IntakeField? get _asking =>
+      _turns.isNotEmpty && _turns.last.fromCoach ? _known.next : null;
 
   @override
   void initState() {
@@ -67,11 +95,23 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
 
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty || _waiting) return;
+    if (text.isEmpty) return;
+    _input.clear();
+    await _sendText(text);
+  }
+
+  /// Send [text] as the lifter's turn.
+  ///
+  /// [declining] is the field a tapped skip closes. It is recorded **before**
+  /// the call rather than after it, because the point of declining is that the
+  /// question stops being asked — and the reply to this very turn is chosen
+  /// from what is still missing.
+  Future<void> _sendText(String text, {IntakeField? declining}) async {
+    if (_waiting) return;
 
     setState(() {
       _turns.add(PlannerTurn(text: text, fromCoach: false));
-      _input.clear();
+      if (declining != null) _known = _known.decline(declining);
       _waiting = true;
       _failure = null;
     });
@@ -79,7 +119,7 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
 
     try {
       final turn = await widget.planner.intake(
-        known: _known,
+        known: _known.plan,
         history: List<PlannerTurn>.unmodifiable(_turns),
       );
       if (!mounted) return;
@@ -125,7 +165,25 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
       canPop: !_waiting,
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        appBar: AppBar(title: const Text('Build a plan')),
+        appBar: AppBar(
+          title: const Text('Build a plan'),
+          // Chrome, not conversation — see StepProgress. A coach that says
+          // "question two of four" out loud is reading its own progress bar
+          // aloud; the count belongs in the frame around the talking.
+          actions: <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
+              child: Center(
+                child: StepProgress(
+                  // Answers, not position: the bar is the count of fields
+                  // settled, so one sentence covering three moves it three.
+                  step: _known.answered,
+                  total: _known.total,
+                ),
+              ),
+            ),
+          ],
+        ),
         body: SafeArea(
           child: Column(
             children: <Widget>[
@@ -133,11 +191,25 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
                 child: ConversationView(
                   controller: _scroll,
                   children: <Widget>[
-                    for (final turn in _turns)
+                    for (final turn in _turns) ...<Widget>[
                       ConversationBubble(
                         text: turn.text,
                         fromCoach: turn.fromCoach,
                       ),
+                      // Only under the newest turn, and only while the coach
+                      // is not mid-answer. Options under an older message
+                      // offer to answer a question that has been answered,
+                      // and tapping one would send it as the reply to the
+                      // latest thing said instead.
+                      if (turn == _turns.last && !_waiting && _asking != null)
+                        OptionStack(
+                          options: _asking!.offered,
+                          onSelected: (o) => _sendText(
+                            o,
+                            declining: o == _asking!.skip ? _asking : null,
+                          ),
+                        ),
+                    ],
                     if (_waiting) const ThinkingIndicator(),
                     if (_failure != null)
                       Padding(
@@ -170,7 +242,7 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
                     label: 'Build my plan',
                     onPressed: _waiting
                         ? null
-                        : () => Navigator.of(context).pop(_known),
+                        : () => Navigator.of(context).pop(_known.plan),
                   ),
                 ),
 

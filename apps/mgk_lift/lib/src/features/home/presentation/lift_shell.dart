@@ -9,6 +9,7 @@ import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
+import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/plan_intake.dart';
 import '../../planning/domain/plan_builder.dart';
 import '../../planning/domain/session_prescription.dart';
@@ -520,9 +521,12 @@ class _LiftShellState extends State<LiftShell> {
       MaterialPageRoute<PlanIntake>(
         builder: (_) => PlanIntakeScreen(
           planner: planner,
-          opener:
-              'What are you training for, and which days can you get to the '
-              'gym?',
+          // The flow's own first question, rather than a second copy of it
+          // written here. The hardcoded opener this replaces asked two things
+          // at once and led with the goal — which is the field with the least
+          // leverage over the block, and the flow orders by leverage on
+          // purpose. See planning/domain/intake_flow.dart.
+          opener: IntakeField.days.question,
         ),
       ),
     );

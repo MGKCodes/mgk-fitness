@@ -17,6 +17,7 @@ import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/planning/domain/coach_planner.dart';
 import '../src/features/planning/domain/intake_flow.dart';
+import '../src/features/planning/domain/plan_intake.dart';
 import '../src/features/planning/domain/standing_plan_store.dart';
 import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
@@ -58,7 +59,7 @@ import 'fakes.dart';
 /// "does this look right":
 ///
 ///     flutter run -d emulator-5554 -t lib/preview/main.dart \
-///       --dart-define=screen=plan-intake
+///       --dart-define=screen=intake-1-days
 ///     adb exec-out screencap -p > shot.png
 ///
 /// The URL form still works on web, and is what Playwright drives:
@@ -171,12 +172,6 @@ class PreviewApp extends StatelessWidget {
       // The three the harness could not reach, which is why nobody had
       // looked at them. A sheet needs something behind it, so these sit on a
       // plain scaffold and open themselves.
-      'plan-intake': (_) => PlanIntakeScreen(
-        planner: FakePlanner(),
-        opener:
-            'What are you training for, and which days can you get to the '
-            'gym?',
-      ),
       // The library, which the harness could not photograph until these
       // existed. Same structural blindness the coach mark hit: a surface with
       // no entry here is a surface nobody looks at, and the whole point of the
@@ -389,84 +384,26 @@ class PreviewApp extends StatelessWidget {
       // no first-run questionnaire, because a lifter who only ever tracks is
       // never asked any of it.
       //
+      // **These are the shipping screen**, which they were not until
+      // 2026-08-28: the four plates below were a fake transcript in a coach
+      // sheet, showing a questionnaire the app did not render. They now build
+      // PlanIntakeScreen itself, so what the board photographs is what a lifter
+      // gets. See planning/domain/intake_flow.dart.
+      //
       // Ordered by leverage rather than convention -- days decides the split
-      // outright, body metrics barely touch programming -- and every step
-      // carries the same chrome: one question, its own control, and a bar
-      // counting all seven. See planning/domain/intake_flow.dart.
-      'intake-1-days': (_) => _sheet(_ask(0, const <List<Object>>[])),
-      'intake-2-equipment': (_) => _sheet(
-        _ask(1, <List<Object>>[
-          [true, IntakeField.days.question],
-          [false, '4 days'],
-        ]),
-      ),
-      'intake-3-injuries': (_) => _sheet(
-        _ask(2, <List<Object>>[
-          [true, IntakeField.days.question],
-          [false, '4 days'],
-          [true, IntakeField.equipment.question],
-          [false, 'A full gym'],
-        ]),
-      ),
-      'intake-4-goal': (_) => _sheet(
-        _ask(3, <List<Object>>[
-          [true, IntakeField.equipment.question],
-          [false, 'A full gym'],
-          [true, IntakeField.injuries.question],
-          [false, 'Left shoulder on pressing'],
-        ]),
-      ),
-      'intake-5-year': (_) => _sheet(
-        _ask(4, <List<Object>>[
-          [true, IntakeField.injuries.question],
-          [false, 'Left shoulder on pressing'],
-          [true, IntakeField.goal.question],
-          [false, 'Get stronger'],
-        ]),
-      ),
-      'intake-6-height': (_) => _sheet(
-        _ask(5, <List<Object>>[
-          [true, IntakeField.goal.question],
-          [false, 'Get stronger'],
-          [true, IntakeField.yearOfBirth.question],
-          [false, '1994'],
-        ]),
-      ),
-      'intake-7-weight': (_) => _sheet(
-        _ask(6, <List<Object>>[
-          [true, IntakeField.yearOfBirth.question],
-          [false, '1994'],
-          [true, IntakeField.height.question],
-          [false, '180 cm'],
-        ]),
-      ),
-      // The one confirmation, at the end. Nothing was repeated back on the way
-      // through, so this is the first time the lifter sees it all together --
-      // which is what makes it worth reading rather than a tic.
-      'intake-8-summary': (_) => _sheet(
-        _talk(<List<Object>>[
-          [true, IntakeField.weight.question],
-          [false, '82 kg'],
-          [
-            true,
-            'Four days, a full gym, working around the left shoulder, training '
-                'to get stronger. Born 1994, 180 cm, 82 kg.',
-          ],
-          [
-            true,
-            'That right?',
-            <String>['That is right', 'Change something'],
-            7,
-          ],
-        ], total: 7),
-      ),
-      // The recommendation. The coach NAMES the split rather than writing a
-      // week out -- surfaces.ts forbids laying training out in chat, and this
-      // obeys it: the name comes from TrainingSplit.forDays, which is chosen by
-      // arithmetic and checked, and the day-by-day opens on the Plan surface.
+      // outright, and the goal moves rep ranges at the margin.
+      'intake-1-days': (_) => _intake(0),
+      'intake-2-equipment': (_) => _intake(1),
+      'intake-3-injuries': (_) => _intake(2),
+      'intake-4-goal': (_) => _intake(3),
+      // Nothing left to ask, so the options stop and the button appears. The
+      // bar is full, which is the only summary there is -- the read-back this
+      // slot used to show was never built, and a plate for it was a plate for
+      // a screen the app has never had.
+      'intake-11-ready': (_) => _intake(4),
       'intake-9-split': (_) => _sheet(
         _talk(<List<Object>>[
-          [false, 'That is right'],
+          [false, 'Get stronger'],
           [
             true,
             'Then I am putting you on ${TrainingSplit.upperLower.name}. '
@@ -653,35 +590,8 @@ class PreviewApp extends StatelessWidget {
       // keep this workout, delete a photo — and the fourth is the only thing
       // progress photos are for.
       'save-workout': (_) => const _SaveWorkoutPreview(),
-      'series-playback': (_) => const _PhotosPreview(view: _PhotosView.playback),
-      // The intake as the app renders it, three answers in: a conversation with
-      // a composer, which is **not** what `intake-1-days` through
-      // `intake-10-swap` below show. See the note on those.
-      'plan-intake-answered': (_) => PlanIntakeScreen(
-        planner: FakePlanner(),
-        opener:
-            'What are you training for, and which days can you get to the '
-            'gym?',
-        initialTurns: <PlannerTurn>[
-          const PlannerTurn(
-            text: 'Four days, and I want to get my bench up.',
-            fromCoach: false,
-          ),
-          const PlannerTurn(
-            text:
-                'Four is a good number — everything twice a week without the '
-                'sessions running long. What have you got to train with?',
-            fromCoach: true,
-          ),
-          const PlannerTurn(text: 'Full gym.', fromCoach: false),
-          const PlannerTurn(
-            text:
-                'Anything I should train around? An injury, a movement that '
-                'hurts, something you have been told to avoid.',
-            fromCoach: true,
-          ),
-        ],
-      ),
+      'series-playback': (_) =>
+          const _PhotosPreview(view: _PhotosView.playback),
     };
 
     // Three ways in, because the harness runs in three places.
@@ -813,27 +723,59 @@ StandingPlan _standingPlan() {
   );
 }
 
-/// The intake's opening line. Short, because the questions carry themselves
-/// and the bar in the chrome already says how many there are.
-const String _intakeOpener =
-    'I am your coach. Seven questions, most of them skippable, and then I will '
-    'build you a block.';
-
-/// One step of the intake: the turns so far, then the question at [index] with
-/// whatever control it wants and the bar at the right count.
+/// The intake at the point where [step] of its questions are settled.
 ///
-/// The opener is a turn of its own rather than being glued to the first
-/// question — run together they made one seven-line bubble, and the question
-/// somebody actually has to answer was buried at the bottom of it.
-FakeCoachTranscript _ask(int index, List<List<Object>> before) {
-  final f = IntakeField.values[index];
-  final control = f.ask ?? f.options;
-  return _talk(<List<Object>>[
-    if (index == 0) [true, _intakeOpener],
-    ...before,
-    [true, f.question, control, index + 1],
-  ], total: IntakeField.values.length);
+/// **Derived from [IntakeField], not written out.** The answers below are the
+/// only thing a preview supplies; the questions, their order and what is still
+/// missing all come from the same flow the screen asks from. So a plate cannot
+/// show a question the app does not ask, or a progress bar disagreeing with
+/// the conversation above it — which is exactly what the ten hand-written
+/// plates this replaces had drifted into.
+Widget _intake(int step) {
+  const answers = <String>[
+    '4 days',
+    'A full gym',
+    'Left shoulder on pressing',
+    'Get stronger',
+  ];
+
+  var known = const IntakeProgress();
+  final turns = <PlannerTurn>[];
+  for (var i = 0; i < step; i++) {
+    final f = IntakeField.values[i];
+    turns.add(PlannerTurn(text: answers[i], fromCoach: false));
+    known = known.merge(_extracted(f, answers[i]));
+    final next = known.next;
+    if (next != null) {
+      turns.add(PlannerTurn(text: next.question, fromCoach: true));
+    }
+  }
+  if (known.isComplete) {
+    turns.add(
+      const PlannerTurn(
+        text: 'That is everything I need. Want me to build it?',
+        fromCoach: true,
+      ),
+    );
+  }
+
+  return PlanIntakeScreen(
+    planner: FakePlanner(),
+    // The same opener the app uses — see LiftShell._buildPlan.
+    opener: IntakeField.days.question,
+    initialTurns: turns,
+    initialKnown: known,
+  );
 }
+
+/// What the coach would have pulled out of [answer], for the field it was
+/// answering. Stands in for the extraction the real planner does.
+PlanIntake _extracted(IntakeField f, String answer) => switch (f) {
+  IntakeField.days => const PlanIntake(daysPerWeek: 4),
+  IntakeField.equipment => PlanIntake(equipment: answer),
+  IntakeField.injuries => PlanIntake(injuryNotes: answer),
+  IntakeField.goal => PlanIntake(goal: answer),
+};
 
 /// The coach as it is actually presented: a sheet, over a photograph, in glass.
 ///

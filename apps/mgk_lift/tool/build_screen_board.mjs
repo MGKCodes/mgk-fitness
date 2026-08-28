@@ -791,10 +791,15 @@ ${acts}
     <li><span class="fn">05</span><p><b>Two screens still read the wall clock</b> — the backup card and coach memory —
       so a sync three minutes old read as "20d ago", and got a day worse every day. Both take a clock now, as every
       other surface already did.</p></li>
-    <li><span class="fn">06</span><p><b>The plan intake has a designed flow and no UI for it.</b> Act&nbsp;Q. This is the
-      one finding that is a decision rather than a fix: build the questionnaire, or take <code>intake_flow.dart</code>
-      and its ten previews out. Leaving both is what put a screen the app has never had onto a board that read as
-      coverage.</p></li>
+    <li><span class="fn">06</span><p><b>The plan intake had a designed flow and no UI for it.</b> Act&nbsp;Q, and the
+      one finding that was a decision rather than a fix: build the questionnaire, or take <code>intake_flow.dart</code>
+      and its ten previews out. <b>Settled by asking where the answers go.</b> Four of the seven questions land in
+      <code>PlanIntake</code>, which persists — those are built, and the four plates now photograph
+      <code>PlanIntakeScreen</code> itself instead of a fake transcript in a coach sheet. The other three are body facts
+      that <code>docs/coach-profile.md</code> puts in <code>core</code>, and <code>core</code> has nowhere to put them:
+      no <code>body_metrics</code>, no <code>height_cm</code>, no <code>year_of_birth</code> in any migration. They were
+      three plates of a conversation the backend could not record, so they are cut rather than rendered and discarded.
+      The wheel that asks them is built and shipping in the coach; what is missing is a table, not a control.</p></li>
   </ol>
 </section>
 

@@ -434,18 +434,69 @@ artefact; these are what building it turned up.
       harmless the moment the actions sheet was added: it excludes and deletes
       *by id*.
 
-- [ ] **The plan intake has a designed flow and no UI for it.**
-      `planning/domain/intake_flow.dart` defines seven questions, each with its
-      own control and a step count, and it is imported by **its own test and the
-      preview harness — nothing else**. `PlanIntakeScreen` renders bubbles and a
-      composer: no chips, no progress bar, no stepping.
+- [x] **The plan intake had a designed flow and no UI for it.**
+      `planning/domain/intake_flow.dart` defined seven questions, each with its
+      own control and a step count, and it was imported by **its own test and
+      the preview harness — nothing else**. `PlanIntakeScreen` rendered bubbles
+      and a composer: no chips, no progress bar, no stepping.
 
-      Ten frames on the board (`intake-1-days` … `intake-10-swap`) are that
-      design. They are flagged there, and `plan-intake-answered` was added
-      beside them as the honest counterpart. **This is the one item on this list
-      that is a decision rather than a fix**: either the questionnaire gets
-      built, or `intake_flow.dart` and its ten previews come out. Leaving both
-      is what produced a board that showed a screen the app has never had.
+      Ten frames on the board (`intake-1-days` … `intake-10-swap`) were that
+      design. They were flagged there, and `plan-intake-answered` was added
+      beside them as the honest counterpart. **This was the one item on this
+      list that was a decision rather than a fix**: either the questionnaire
+      gets built, or `intake_flow.dart` and its ten previews come out. Leaving
+      both is what produced a board that showed a screen the app has never had.
+
+      **Settled 2026-08-28 by asking where each answer goes.** Four of the seven
+      questions are built and three are cut, and the split is not a compromise —
+      it is the same line the schema already draws.
+
+      *The four that persist.* Days, equipment, injuries and goal all land in
+      `PlanIntake`, which the planner already reads and `LiftShell._buildPlan`
+      already consumes. `PlanIntakeScreen` now drives from `IntakeProgress`:
+      `OptionStack` under the newest coach turn for whichever field is still
+      missing, `StepProgress` in the app bar, and the composer live throughout.
+      Both widgets were already in `mgk_ui` and already shipping in the coach —
+      so this was wiring, not a new control.
+
+      *The three that were cut.* Year of birth, height and weight are body facts,
+      and [coach-profile.md](coach-profile.md) puts them in `core` so that Runio
+      gets them free. **`core` has nowhere to put them.** There is no
+      `core.body_metrics`, no `height_cm` and no `year_of_birth` in any
+      migration; that document opens by saying *"Nothing here is built."* So
+      three of the ten plates showed a conversation the backend could not
+      record, and asking a question whose answer is dropped on the floor is
+      worse than not asking it. They come back with the schema that stores
+      them, and `CoachAsk` and the coach screen's wheel are already built and
+      shipping — **what is missing is a table, not a control.**
+
+      Two faults fell out of the wiring, both of the same kind: two definitions
+      of one thing, disagreeing.
+
+      - **Two notions of "enough".** `PlanIntake.isComplete` gated the button
+        and required a goal that `IntakeField.required` calls skippable, plus
+        `availableWeekdays` — which has no question anywhere, and which
+        `LiftShell._buildPlan` already defaults to `[1, 2, 4, 5]` when absent.
+        So a lifter could answer every question the coach asked, watch the bar
+        fill, and never see "Build my plan". `isComplete` is gone;
+        `IntakeProgress` is the only gate. `PlanIntake.missing` stays, because
+        it does a different job — it tells the *coach* what to extract, and
+        weekdays genuinely do fall out of prose ("Mon, Wed, Fri") without being
+        asked.
+
+      - **Two copies of the opening question.** The shell passed a hardcoded
+        opener asking two things at once and leading with the goal — the field
+        with the *least* leverage over the block, in a flow that orders by
+        leverage on purpose. It now passes `IntakeField.days.question`.
+
+      The board follows: `intake-1-days` … `intake-4-goal` now photograph
+      `PlanIntakeScreen` itself rather than a fake transcript in a coach sheet,
+      `intake-11-ready` is the state where the options stop and the button
+      appears, and `plan-intake` / `plan-intake-answered` are deleted because
+      they had become the same screen twice — the exact fault the last pass
+      fixed in `coach-mark`. Q11 rather than Q5, because codes are pinned in the
+      data: the three cut questions held 5, 6 and 7, and nothing that survived
+      them moves.
 
 ## Settled, 2026-08-24
 

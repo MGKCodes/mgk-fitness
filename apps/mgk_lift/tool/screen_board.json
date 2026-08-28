@@ -58,7 +58,6 @@
       "lede": "The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. Past it: no week number, no end date, no completion. Those are marathon ideas, and \"get stronger\" has no week 12 — the week is derived from weekdays rather than scheduled into, which is why a rest day here is an answer and not a gap.",
       "racks": [
         { "title": "The offer", "screens": ["plan", "plan-entitled"] },
-        { "title": "Building one", "screens": ["plan-intake", "plan-intake-answered"] },
         { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest"] }
       ]
     },
@@ -75,12 +74,12 @@
     },
     {
       "letter": "Q",
-      "title": "The intake, as designed",
-      "sub": "Ten plates of a questionnaire the app does not render",
-      "lede": "Read this act with the flag on every plate in it. <code>planning/domain/intake_flow.dart</code> defines seven questions, each with its own control and a step count — and it is imported by its own test and the preview harness, <strong>nothing else</strong>. What ships is {{plan-intake-answered}}: bubbles and a composer, no chips, no progress bar, no stepping. The design is real and worth keeping on the board, because the gap is the point: either the questionnaire gets built or the domain and these ten previews come out. Leaving both is what put a screen the app has never had onto a board that read as coverage.",
+      "title": "The intake, end to end",
+      "sub": "Four questions behind the paywall, and what the coach does with them",
+      "lede": "This act carried a flag on every plate in it until 2026-08-28. <code>planning/domain/intake_flow.dart</code> defined seven questions with their own controls and a step count, and it was imported by its own test and the preview harness — <strong>nothing else</strong>. What shipped was bubbles and a composer. The gap is now closed in the direction the storage allowed. Four of the seven land in <code>PlanIntake</code>, which persists, and those are built — these plates are <code>PlanIntakeScreen</code> itself rather than a fake transcript in a coach sheet. The other three are body facts that <code>docs/coach-profile.md</code> puts in <code>core</code>, and <code>core</code> has nowhere to put them: no <code>body_metrics</code>, no <code>height_cm</code>, no <code>year_of_birth</code> in any migration. They were three plates of a conversation the backend could not record, so they are cut rather than rendered and discarded. The wheel that asks them is built and ships in the coach — what is missing is a table, not a control. The last two plates stay flagged, and say what for.",
       "racks": [
-        { "title": "Ordered by leverage, not by convention", "screens": ["intake-1-days", "intake-2-equipment", "intake-3-injuries", "intake-4-goal", "intake-5-year", "intake-6-height", "intake-7-weight"] },
-        { "title": "What it heard, and what it built", "screens": ["intake-8-summary", "intake-9-split", "intake-10-swap"] }
+        { "title": "Ordered by leverage, not by convention", "screens": ["intake-1-days", "intake-2-equipment", "intake-3-injuries", "intake-4-goal"] },
+        { "title": "Enough, and what follows", "screens": ["intake-11-ready", "intake-9-split", "intake-10-swap"] }
       ]
     },
     {
@@ -502,28 +501,6 @@
       "doc": "One action, because there is only one thing that can happen next — and the paywall is gone the moment the entitlement reads true, which is what this plate is here to prove.",
       "tags": ["paid"]
     },
-    "plan-intake": {
-      "code": "P3",
-      "title": "Build a plan — opening",
-      "host": "pushed",
-      "in": "{{plan-entitled}} › Build a plan",
-      "out": "App bar back — blocked while a turn is in flight",
-      "next": "Answer in your own words",
-      "note": "A conversation rather than a form, which is the harder thing to build.",
-      "doc": "A form asks six questions in a fixed order and makes somebody who answered three of them in one sentence answer them again. What this gathers is merged, never replaced: a null means \"not learned this turn\", and treating it as \"forget it\" would erase an answer as soon as the next question was asked.",
-      "tags": ["paid"]
-    },
-    "plan-intake-answered": {
-      "code": "P4",
-      "title": "Build a plan — three answers in",
-      "host": "pushed",
-      "in": "{{plan-intake}} › type an answer",
-      "out": "App bar back — blocked while a turn is in flight",
-      "next": "Build my plan, once enough is known",
-      "note": "The shipping intake. Compare it with act Q.",
-      "doc": "What the intake actually looks like once it is under way, and the plate this board was missing: bubbles and a composer. The ten plates in act Q show the same seven questions as a stepped questionnaire with option chips and a progress bar. That design lives in intake_flow.dart and nothing renders it.",
-      "tags": ["paid", "new"]
-    },
     "plan-standing": {
       "code": "P5",
       "title": "Plan — a training day",
@@ -733,98 +710,57 @@
     "intake-1-days": {
       "code": "Q1",
       "title": "Days a week",
-      "host": "sheet",
-      "in": "Designed: Plan › Build a plan",
-      "out": "Designed: back, at any step",
-      "next": "Answer, or skip",
+      "host": "pushed",
+      "in": "{{plan-entitled}} › Build a plan",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
       "note": "First, because it decides the split outright.",
-      "doc": "Days decides the split outright, which is why it leads. The order is by leverage rather than convention, and the body questions go last — which is also the polite order, since asking them after four answers gets better data than opening with them.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen — see the act note and {{plan-intake-answered}}."
+      "doc": "Days decides the split outright, which is why it leads — the order is by leverage rather than convention. It is also the one question with no way past it: a plan cannot be built without knowing how often somebody trains, so this is the only field the flow marks required.",
+      "tags": ["paid"]
     },
     "intake-2-equipment": {
       "code": "Q2",
       "title": "Equipment",
-      "host": "sheet",
-      "in": "Designed: after Q1",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
+      "host": "pushed",
+      "in": "{{intake-1-days}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
       "note": "Decides whether the movements are possible at all.",
-      "doc": "Second because it decides whether the movements are possible at all. Everything after this is a constraint on a plan that already has a shape.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "doc": "Second because it decides whether the movements are possible at all. Everything after this is a constraint on a plan that already has a shape. The last row is the way out, and it is a row rather than a separate control because declining is an answer — it goes into the transcript the coach reads back.",
+      "tags": ["paid"]
     },
     "intake-3-injuries": {
       "code": "Q3",
       "title": "Injuries",
-      "host": "sheet",
-      "in": "Designed: after Q2",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
-      "note": "A hard constraint, not a preference.",
-      "doc": "An injury removes movements from the catalogue before the plan is built, rather than being something the coach has to remember to work around.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "host": "pushed",
+      "in": "{{intake-2-equipment}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
+      "note": "A hard constraint, and its own way of being declined.",
+      "doc": "\"Nothing to work around\" is the only option offered, and it is the skip as well as an answer — a real reply rather than a refusal, so a \"prefer not to say\" underneath it would be two rows for one intention.",
+      "tags": ["paid"]
     },
     "intake-4-goal": {
       "code": "Q4",
       "title": "The goal",
-      "host": "sheet",
-      "in": "Designed: after Q3",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
+      "host": "pushed",
+      "in": "{{intake-3-injuries}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
       "note": "Fourth, because it moves rep ranges and little else.",
-      "doc": "Most apps open with this question and then do nothing with the answer. It moves rep ranges at the margin, which is worth exactly fourth place.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "doc": "Most apps open with this question and then do nothing with the answer. It moves rep ranges at the margin, which is worth exactly fourth place. Three options rather than six: \"lose weight\" and \"gain weight\" are nutrition goals whose training answer is the same block as \"build muscle\", so offering them separately costs a decision and buys nothing.",
+      "tags": ["paid"]
     },
-    "intake-5-year": {
-      "code": "Q5",
-      "title": "Year of birth",
-      "host": "sheet",
-      "in": "Designed: after Q4",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
-      "note": "The first of three that belong to the person, not the block.",
-      "doc": "The body facts go to core rather than to lift, so Run gets them free — one conversation to the lifter, split on the way out.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
-    },
-    "intake-6-height": {
-      "code": "Q6",
-      "title": "Height",
-      "host": "sheet",
-      "in": "Designed: after Q5",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
-      "note": "For tracking and load estimation, not programming.",
-      "doc": "Barely touches programming. Skippable, like every body question here.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
-    },
-    "intake-7-weight": {
-      "code": "Q7",
-      "title": "Weight",
-      "host": "sheet",
-      "in": "Designed: after Q6",
-      "out": "Designed: back",
-      "next": "Answer, or skip",
-      "note": "Asked as a starting point, not a number to get right.",
-      "doc": "The wording is doing work here, because this is the question people abandon onboarding over. It is asked as a starting point and tracked from there.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
-    },
-    "intake-8-summary": {
-      "code": "Q8",
-      "title": "What it heard",
-      "host": "sheet",
-      "in": "Designed: after the seven questions",
-      "out": "Designed: back",
+    "intake-11-ready": {
+      "code": "Q11",
+      "title": "Ready to build",
+      "host": "pushed",
+      "in": "{{intake-4-goal}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
       "next": "Build my plan",
-      "note": "The only step that is not a question.",
-      "doc": "Everything gathered, read back before anything is generated — and the only chance to correct an answer the coach merged wrongly.",
-      "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "note": "The options stop, because there is nothing left to ask.",
+      "doc": "Nothing left to ask, so the options stop and the button appears — which is the whole of the summary. It appears the moment a block could be built rather than when the coach decides the conversation is over, and there is one definition of \"enough\": every field answered or declined, in intake_flow.dart. PlanIntake carried a second one that disagreed in both directions, and it is gone. Q11 rather than Q5 because codes are pinned in the data — the three body questions that held 5, 6 and 7 were cut, and nothing that survived them moves.",
+      "tags": ["paid", "new"]
     },
     "intake-9-split": {
       "code": "Q9",
@@ -836,7 +772,7 @@
       "note": "Named by the coach with its reason attached.",
       "doc": "Not picked from a list of three: the app checks what a plan does, not what it is called, and the name arrives with the reasoning that produced it.",
       "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "flag": "The coach sheet is real; this conversation is not — the split is named on {{plan-standing}}, not in chat."
     },
     "intake-10-swap": {
       "code": "Q10",
@@ -848,7 +784,7 @@
       "note": "The capability is real; only this entry point is not.",
       "doc": "Changing a movement before the block begins, which in the shipping app happens afterwards from the plan screen's \"Change the split\".",
       "tags": ["paid", "flag"],
-      "flag": "Not the shipping screen."
+      "flag": "The coach sheet is real, and so is the swap — but it happens after the block starts, from {{plan-standing}}."
     },
 
     "profile": {
@@ -1166,9 +1102,7 @@
     { "from": "session-summary", "to": "track", "label": "Back to Track" },
 
     { "from": "plan", "to": "plan-entitled", "label": "entitlement reads true" },
-    { "from": "plan-entitled", "to": "plan-intake", "label": "Build a plan" },
-    { "from": "plan-intake", "to": "plan-intake-answered", "label": "answer" },
-    { "from": "plan-intake-answered", "to": "plan-standing", "label": "Build my plan" },
+    { "from": "plan-entitled", "to": "intake-1-days", "label": "Build a plan" },
     { "from": "plan-standing", "to": "plan-standing-rest", "label": "a rest day" },
     { "from": "plan-standing", "to": "swap-sheet", "label": "Change the split" },
     { "from": "plan-standing", "to": "track-planned", "label": "Track picks it up" },
@@ -1183,11 +1117,9 @@
     { "from": "intake-1-days", "to": "intake-2-equipment", "label": "" },
     { "from": "intake-2-equipment", "to": "intake-3-injuries", "label": "" },
     { "from": "intake-3-injuries", "to": "intake-4-goal", "label": "" },
-    { "from": "intake-4-goal", "to": "intake-5-year", "label": "" },
-    { "from": "intake-5-year", "to": "intake-6-height", "label": "" },
-    { "from": "intake-6-height", "to": "intake-7-weight", "label": "" },
-    { "from": "intake-7-weight", "to": "intake-8-summary", "label": "" },
-    { "from": "intake-8-summary", "to": "intake-9-split", "label": "" },
+    { "from": "intake-4-goal", "to": "intake-11-ready", "label": "" },
+    { "from": "intake-11-ready", "to": "plan-standing", "label": "Build my plan" },
+    { "from": "intake-11-ready", "to": "intake-9-split", "label": "" },
     { "from": "intake-9-split", "to": "intake-10-swap", "label": "" },
 
     { "from": "profile", "to": "profile-empty", "label": "nothing logged" },

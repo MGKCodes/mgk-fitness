@@ -9,6 +9,18 @@ Nothing here is built. It is written first because three of the decisions are
 hard to reverse once a migration lands, and one of them is a legal obligation
 rather than a preference.
 
+> **2026-08-28: still true, and it now costs something.** Lift's plan intake
+> was designed around seven questions — the four training ones, and the three
+> body facts below. The four shipped; the three were cut, because there is no
+> `core.body_metrics`, no `height_cm` and no `year_of_birth` for their answers
+> to land in, and asking a question whose answer is dropped on the floor is
+> worse than not asking it. The control is not the blocker: `CoachAsk` and the
+> coach screen's wheel already ask for all three, and ship. **What §1 is
+> waiting on is the table.** When it lands, `IntakeField` is where the three
+> questions go back, and `intake_flow_test.dart` has a test that fails when
+> they do.
+
+
 ---
 
 ## 1. The profile is the parent. The apps are children of it.
