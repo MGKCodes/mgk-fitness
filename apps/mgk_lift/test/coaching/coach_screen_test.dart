@@ -363,8 +363,24 @@ void main() {
 class _SlowTranscript implements CoachTranscript {
   final Completer<List<CoachTurn>> _done = Completer<List<CoachTurn>>();
 
-  void complete() => _done.complete(FakeCoachTranscript().read());
+  void complete() =>
+      _done.complete(FakeCoachTranscript().read('lift:test-open'));
 
   @override
-  Future<List<CoachTurn>> read() => _done.future;
+  Future<List<CoachTurn>> read(String conversationId) => _done.future;
+
+  /// Answers immediately: the delay under test is the transcript arriving, not
+  /// which conversation it belongs to.
+  @override
+  Future<String?> openConversationId({
+    Duration window = coachSessionWindow,
+  }) async => 'lift:test-open';
+
+  @override
+  Future<List<CoachConversationSummary>> conversations({
+    int limit = 20,
+  }) async => const <CoachConversationSummary>[];
+
+  @override
+  Future<List<CoachTurn>> fullTranscript(String conversationId) => _done.future;
 }

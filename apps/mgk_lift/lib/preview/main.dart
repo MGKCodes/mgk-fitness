@@ -13,6 +13,7 @@ import '../src/features/coaching/data/supabase_coach.dart';
 import '../src/features/coaching/data/supabase_coach_memory.dart';
 import '../src/features/coaching/domain/coach.dart';
 import '../src/features/coaching/domain/coach_memory.dart';
+import '../src/features/coaching/presentation/coach_history_sheet.dart';
 import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/planning/domain/coach_planner.dart';
@@ -375,6 +376,22 @@ class PreviewApp extends StatelessWidget {
       // returning lifter actually sees, and the one that did not exist before
       // the transcript was wired.
       'coach-resumed': (_) => _sheet(FakeCoachTranscript()),
+
+      // ---- Where last month's conversation went --------------------------------
+      //
+      // A conversation ends after thirty minutes of silence (ADR-0002), so the
+      // coach no longer opens on whatever was last said. These three are the
+      // other half of that: the transcript is kept, readable, and plainly over.
+      'coach-history': (_) => _history(_pastConversations()),
+      'coach-history-empty': (_) =>
+          _history(const <CoachConversationSummary>[]),
+      // Read back, and read-only. No composer, because reopening an old
+      // transcript to write into it is the endless chat sessions exist to end.
+      'coach-past': (_) => PastConversationScreen(
+        transcript: FakeCoachTranscript(),
+        summary: _pastConversations().first,
+        now: previewNow,
+      ),
 
       // ---- The plan intake, end to end ---------------------------------------
       //
@@ -776,6 +793,76 @@ PlanIntake _extracted(IntakeField f, String answer) => switch (f) {
   IntakeField.injuries => PlanIntake(injuryNotes: answer),
   IntakeField.goal => PlanIntake(goal: answer),
 };
+
+/// The previous-conversations sheet, over something, the way it opens.
+///
+/// [previewNow] rather than the wall clock: the rows say "Yesterday" and
+/// "Tuesday", and a plate that read `DateTime.now()` would say something
+/// different every day it was captured. That fault was found twice on this
+/// board already.
+Widget _history(List<CoachConversationSummary> past) => Scaffold(
+  backgroundColor: AppColors.bg,
+  body: Stack(
+    children: <Widget>[
+      const PhotoBackdrop(
+        image: 'assets/images/backgrounds/hero_home.webp',
+        scrim: ScrimStrength.balanced,
+        opacity: 0.5,
+      ),
+      const ColoredBox(color: Color(0x66000000), child: SizedBox.expand()),
+      Align(
+        alignment: Alignment.bottomCenter,
+        child: PastConversationsSheet(
+          transcript: FakeCoachTranscript(past: past),
+          liveConversationId: 'lift:live',
+          now: previewNow,
+        ),
+      ),
+    ],
+  ),
+);
+
+/// A history worth reading: recent enough to be named by weekday, old enough
+/// to have fallen back to a date, and one that is only a question.
+List<CoachConversationSummary> _pastConversations() {
+  CoachConversationSummary at(
+    String id,
+    Duration ago,
+    int turns,
+    String opening,
+  ) {
+    final last = previewNow.subtract(ago);
+    return CoachConversationSummary(
+      id: id,
+      startedAt: last.subtract(Duration(minutes: 4 * turns)),
+      lastTurnAt: last,
+      turns: turns,
+      opening: opening,
+    );
+  }
+
+  return <CoachConversationSummary>[
+    at(
+      'lift:c1',
+      const Duration(days: 1, hours: 3),
+      6,
+      'Why has my bench stalled? Six sessions at 85 and I am not moving.',
+    ),
+    at(
+      'lift:c2',
+      const Duration(days: 3),
+      4,
+      'My left shoulder is sore on pressing. Can we work around it?',
+    ),
+    at('lift:c3', const Duration(days: 5), 1, 'How many days should I train?'),
+    at(
+      'lift:c4',
+      const Duration(days: 12),
+      8,
+      'I am travelling for two weeks with a hotel gym. What do I do?',
+    ),
+  ];
+}
 
 /// The coach as it is actually presented: a sheet, over a photograph, in glass.
 ///

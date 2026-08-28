@@ -64,19 +64,6 @@ export const EMPTY_MEMORY: Memory = {
 };
 
 /**
- * One conversation per (person, app), addressed without a lookup.
- *
- * Runio gives each conversation its own client-generated id and keeps many.
- * Lift keeps one, because nothing in its design asks for a boundary: the
- * summary is what survives, the last N turns are what get replayed, and
- * neither is improved by knowing which visit a turn came from. One id that can
- * be computed rather than fetched also removes a round trip from every turn.
- */
-export function conversationId(app: App, userId: string): string {
-  return `${app}:${userId}`;
-}
-
-/**
  * Has the memory fallen far enough behind to be worth rewriting?
  *
  * `>=` rather than `>`, and guarded against a `turnsCovered` ahead of the
@@ -139,10 +126,10 @@ export class CoachMemory {
    * answer at all. The `total` of 0 that comes with it is the one part that
    * matters: [appendTurns] will not write against a count it did not read.
    */
-  async read(app: App, userId: string): Promise<Memory> {
+  async read(app: App, conversation: string): Promise<Memory> {
     const [summary, transcript] = await Promise.all([
       this.readSummary(app),
-      this.readTurns(app, userId),
+      this.readTurns(conversation),
     ]);
     return { ...summary, ...transcript };
   }
@@ -184,11 +171,10 @@ export class CoachMemory {
    * has fallen behind.
    */
   private async readTurns(
-    app: App,
-    userId: string,
+    conversation: string,
   ): Promise<{ turns: StoredTurn[]; total: number }> {
     try {
-      const id = encodeURIComponent(conversationId(app, userId));
+      const id = encodeURIComponent(conversation);
       const res = await this.get(
         `/rest/v1/turns?select=role,body&conversation_id=eq.${id}` +
           `&order=seq.desc&limit=${MEMORY_TURNS}`,
@@ -222,11 +208,11 @@ export class CoachMemory {
   async appendTurns(
     app: App,
     userId: string,
+    id: string,
     after: number,
     exchange: readonly StoredTurn[],
   ): Promise<void> {
     if (exchange.length === 0) return;
-    const id = conversationId(app, userId);
     const at = new Date().toISOString();
 
     try {

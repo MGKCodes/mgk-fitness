@@ -31,7 +31,7 @@ class SupabaseCoach implements CoachService {
   static const Duration requestTimeout = Duration(seconds: 90);
 
   @override
-  Future<String> ask(String message) async {
+  Future<String> ask(String message, {required String conversationId}) async {
     if (_client.auth.currentUser == null) {
       throw const CoachException(CoachFailure.signedOut);
     }
@@ -40,7 +40,11 @@ class SupabaseCoach implements CoachService {
       final res = await _client.functions
           .invoke(
             'coach',
-            body: <String, Object?>{'surface': _surface, 'message': message},
+            body: <String, Object?>{
+              'surface': _surface,
+              'message': message,
+              'conversation': conversationId,
+            },
           )
           // A provider that accepts the connection and then goes quiet would
           // otherwise leave the composer disabled forever, with no error and
@@ -92,11 +96,17 @@ class SupabaseCoach implements CoachService {
 /// already holds SELECT on `coach.turns` and the `own_turns` policy scopes it
 /// to the caller, so this needs nothing the function could add.
 ///
-/// The conversation is addressed rather than looked up. Lift keeps exactly one
-/// per person, and the function derives its id the same way — `lift:<user id>`
-/// — so finding it costs no round trip. That id is a contract shared with
-/// `supabase/functions/coach/coach_memory.ts`; changing it in one place
-/// silently orphans every turn written by the other.
+/// **The conversation id is the client's, and it is a session** (ADR-0002).
+/// This app used to address one conversation per person as `lift:<user id>`,
+/// computed rather than fetched, and the Edge Function derived the same string
+/// — so every turn ever said sat in one endless transcript and the last twenty
+/// of them were replayed to the model undated. That is how a month-old sentence
+/// gets read as this morning's.
+///
+/// Now the id is generated per session, sent with every turn, and the function
+/// uses what it is given rather than deriving anything. The derivation is
+/// deleted rather than kept beside this: two ways to answer "which
+/// conversation?" is how the wrong one gets reached for again.
 class SupabaseCoachTranscript implements CoachTranscript {
   SupabaseCoachTranscript(this._client);
 
@@ -119,9 +129,8 @@ class SupabaseCoachTranscript implements CoachTranscript {
   SupabaseQuerySchema get _coach => _client.schema('coach');
 
   @override
-  Future<List<CoachTurn>> read() async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return const <CoachTurn>[];
+  Future<List<CoachTurn>> read(String conversationId) async {
+    if (_client.auth.currentUser == null) return const <CoachTurn>[];
 
     try {
       // Newest first with a limit, then reversed — the last N turns, which is
@@ -129,7 +138,7 @@ class SupabaseCoachTranscript implements CoachTranscript {
       final rows = await _coach
           .from('turns')
           .select('id, role, body, created_at')
-          .eq('conversation_id', '$_app:$userId')
+          .eq('conversation_id', conversationId)
           .order('seq', ascending: false)
           .limit(window)
           .timeout(requestTimeout);
@@ -140,6 +149,122 @@ class SupabaseCoachTranscript implements CoachTranscript {
       // banner over a working screen would be the app complaining about its
       // own history rather than helping anyone train.
       return const <CoachTurn>[];
+    }
+  }
+
+  @override
+  Future<String?> openConversationId({
+    Duration window = coachSessionWindow,
+  }) async {
+    if (_client.auth.currentUser == null) return null;
+
+    try {
+      // One row: the most recent turn there is. Whether a conversation is still
+      // open is a question about when it was last spoken in, and that is the
+      // row that answers it. RLS scopes this to the caller, so no filter here
+      // is doing security work.
+      final rows = await _coach
+          .from('turns')
+          .select('conversation_id, created_at')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .timeout(requestTimeout);
+
+      if (rows.isEmpty) return null;
+      final at = DateTime.tryParse(rows.first['created_at'] as String? ?? '');
+      if (at == null) return null;
+      if (DateTime.now().difference(at.toLocal()) > window) return null;
+      return rows.first['conversation_id'] as String?;
+    } on Object {
+      // A session that cannot be established is a new one, which is the safe
+      // direction: the cost is a coach re-establishing context it had, and the
+      // cost of the other direction is the bug this exists to prevent.
+      return null;
+    }
+  }
+
+  @override
+  Future<List<CoachTurn>> fullTranscript(String conversationId) async {
+    if (_client.auth.currentUser == null) return const <CoachTurn>[];
+
+    try {
+      // Ascending with no limit: this is a conversation that has ended, so
+      // "all of it" is bounded by how long somebody talked rather than by
+      // anything that keeps growing.
+      final rows = await _coach
+          .from('turns')
+          .select('id, role, body, created_at')
+          .eq('conversation_id', conversationId)
+          .order('seq', ascending: true)
+          .timeout(requestTimeout);
+
+      return _parse(rows);
+    } on Object {
+      return const <CoachTurn>[];
+    }
+  }
+
+  @override
+  Future<List<CoachConversationSummary>> conversations({int limit = 20}) async {
+    if (_client.auth.currentUser == null) {
+      return const <CoachConversationSummary>[];
+    }
+
+    try {
+      final rows = await _coach
+          .from('conversations')
+          .select('id, started_at, last_turn_at')
+          .eq('app', _app)
+          .order('last_turn_at', ascending: false)
+          .limit(limit)
+          .timeout(requestTimeout);
+
+      final summaries = <CoachConversationSummary>[];
+      for (final row in rows) {
+        final id = row['id'] as String?;
+        if (id == null) continue;
+        final last = DateTime.tryParse(row['last_turn_at'] as String? ?? '');
+        if (last == null) continue;
+        final started =
+            DateTime.tryParse(row['started_at'] as String? ?? '') ?? last;
+
+        // The opening line and the count come from the turns, because
+        // `coach.conversations` stores neither. One read per conversation is
+        // affordable at this limit, and it is what makes the list recognisable
+        // rather than a column of dates.
+        final turns = await _coach
+            .from('turns')
+            .select('id, role, body, created_at')
+            .eq('conversation_id', id)
+            .order('seq', ascending: true)
+            .timeout(requestTimeout);
+
+        final parsed = _parse(turns);
+
+        // A conversation row with no readable turns is not a conversation
+        // anybody had. It is what a failed write leaves behind, and listing it
+        // offers to open an empty screen.
+        if (parsed.isEmpty) continue;
+
+        summaries.add(
+          CoachConversationSummary(
+            id: id,
+            startedAt: started.toLocal(),
+            lastTurnAt: last.toLocal(),
+            turns: parsed.length,
+            // What the lifter said, not what the coach opened with: the coach's
+            // first line is the same greeting every time, and would make every
+            // row in the list identical.
+            opening: parsed
+                .where((CoachTurn t) => !t.fromCoach)
+                .firstOrNull
+                ?.body,
+          ),
+        );
+      }
+      return summaries;
+    } on Object {
+      return const <CoachConversationSummary>[];
     }
   }
 
@@ -187,9 +312,14 @@ class FakeCoach implements CoachService {
   /// Everything asked of it, in order, so a test can assert what was sent.
   final List<String> asked = <String>[];
 
+  /// The conversation each of [asked] was sent in, so a test can assert that a
+  /// chip started a new session rather than continuing one.
+  final List<String> askedIn = <String>[];
+
   @override
-  Future<String> ask(String message) async {
+  Future<String> ask(String message, {required String conversationId}) async {
     asked.add(message);
+    askedIn.add(conversationId);
     final failure = failWith;
     if (failure != null) throw CoachException(failure);
     return reply;
@@ -198,17 +328,45 @@ class FakeCoach implements CoachService {
 
 /// A scripted transcript, for tests and the preview harness.
 class FakeCoachTranscript implements CoachTranscript {
-  FakeCoachTranscript({List<CoachTurn>? turns, this.empty = false})
-    : _turns = turns ?? _sample();
+  FakeCoachTranscript({
+    List<CoachTurn>? turns,
+    this.empty = false,
+    this.past = const <CoachConversationSummary>[],
+    this.openId = 'lift:preview-open',
+  }) : _turns = turns ?? _sample();
 
   final List<CoachTurn> _turns;
 
   /// Reads as a conversation that never happened. The real one answers this way
   /// on a failed read too, so a screen that handles this handles both.
+  ///
+  /// Also closes the session: nothing said means nothing open, which is the
+  /// state a lifter opening the coach for the first time is in.
   final bool empty;
 
+  /// What the "previous conversations" list finds. Empty by default, because
+  /// most previews are of one conversation rather than of a history.
+  final List<CoachConversationSummary> past;
+
+  /// The session [openConversationId] reports, when there is one.
+  final String openId;
+
   @override
-  Future<List<CoachTurn>> read() async => empty ? const <CoachTurn>[] : _turns;
+  Future<List<CoachTurn>> read(String conversationId) async =>
+      empty ? const <CoachTurn>[] : _turns;
+
+  @override
+  Future<String?> openConversationId({
+    Duration window = coachSessionWindow,
+  }) async => empty ? null : openId;
+
+  @override
+  Future<List<CoachConversationSummary>> conversations({
+    int limit = 20,
+  }) async => past.take(limit).toList();
+
+  @override
+  Future<List<CoachTurn>> fullTranscript(String conversationId) async => _turns;
 
   static List<CoachTurn> _sample() {
     final at = DateTime(2026, 8, 6, 18, 30);

@@ -457,6 +457,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const memoryStore = surface.app === "lift"
     ? new CoachMemory(supabaseUrl, anonKey, authHeader)
     : null;
+
+  // The session this turn belongs to, chosen by the client (ADR-0002). The
+  // function used to derive `lift:<user id>` and so had exactly one
+  // conversation per person, for ever — every turn ever said replayed to the
+  // model undated, which is how a month-old sentence gets read as this
+  // morning's. The derivation is gone rather than kept as a fallback: two ways
+  // to answer "which conversation?" is how the wrong one gets reached for.
+  //
+  // Not a trust boundary. The id only names a row; `user_id` is written from
+  // the verified JWT below, and RLS owns the rest — a client naming somebody
+  // else's conversation writes nothing.
+  const conversation = String(body.conversation ?? "").trim();
+  if (memoryStore && !conversation) {
+    return json({ error: "conversation required" }, 400);
+  }
   let memory: Memory = EMPTY_MEMORY;
 
   if (surfaceName === "lift_chat" && memoryStore) {
@@ -464,7 +479,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // the path of every turn.
     const [brief, loaded] = await Promise.all([
       new LiftLog(supabaseUrl, anonKey).recent(authHeader),
-      memoryStore.read("lift", userId),
+      memoryStore.read("lift", conversation),
     ]);
     memory = loaded;
     body.brief = brief;
@@ -489,7 +504,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ]);
     body.brief = brief;
     body.guidance = guidance;
-    body.memory = (await memoryStore!.read("lift", userId)).summary;
+    body.memory = (await memoryStore!.read("lift", conversation)).summary;
   }
 
   // 5. Spend tokens, then record what they cost. `record` runs for every
@@ -557,7 +572,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { role: "user", text: String(body.message ?? "").trim() },
       { role: "assistant", text: String(result.parsed.reply ?? "").trim() },
     ];
-    await memoryStore.appendTurns("lift", userId, memory.total, exchange);
+    await memoryStore.appendTurns(
+      "lift",
+      userId,
+      conversation,
+      memory.total,
+      exchange,
+    );
 
     const total = memory.total + exchange.length;
     if (shouldRegenerate(total, memory.turnsCovered)) {

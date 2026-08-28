@@ -352,17 +352,53 @@ The largest phase, and the one with an existing design to work from.
       later; this one survived a commit before anybody checked it against the
       server it was about.
 
-- [ ] **Sessions, with history.** Beyond the Phase 5 item: closing the app, or
-      tapping a suggested question, starts a *new* conversation, and the old one
-      is kept as a readable "previous chats" list that the coach still draws on
-      when relevant.
+- [x] **Sessions, with history.** Closing the app, or tapping a suggested
+      question, starts a *new* conversation, and the old ones are kept as a
+      readable list.
 
-      The run app is getting the same capability in separate work. **Settled
-      2026-08-24: wait and copy the run app's model.** Designing it twice is the
-      more expensive mistake, and this is a model that should be identical in
-      both apps. Phase D therefore blocks on work not visible from this
-      session — which is a reason to run Phases A to C first, not a reason to
-      revisit the choice.
+      The block was a choice, not a dependency: **wait and copy the run app's
+      model** rather than design it twice. That model landed as mgk_run's
+      ADR-0025, so the wait is over. Copied here as
+      [ADR-0002](../apps/mgk_lift/docs/decisions/0002-a-coach-conversation-is-a-session.md).
+
+      **The bug it fixes was live in lift.** Run found it in a field test: the
+      coach said *"You ran 10 km in 60 minutes yesterday"* over an empty log —
+      a real run, logged through chat a week earlier, read as current because a
+      model has no clock and undated context is dated by position. Lift had the
+      identical defect and said so in its own doc comment: *"Lift keeps exactly
+      one per person"*, addressing `conversation_id` as the constant
+      `lift:<user id>`. Lift's version would be a month-old shoulder complaint
+      read as this morning's.
+
+      What landed:
+
+      - **A conversation ends after 30 minutes of silence.** A gap rather than
+        a lifecycle event, so one rule covers the cold start, the return from
+        the background and the lifter who never closed the app.
+      - **The client owns the id and sends it; the function derives nothing.**
+        `conversationId(app, userId)` is deleted rather than kept as a
+        fallback — two ways to answer "which conversation?" is how the wrong
+        one gets reached for. A request with no `conversation` is a 400.
+      - **A tapped suggestion always starts a new one.** A chip is a subject
+        the screen raised. The wheel under a question is not: it answers what
+        was just asked.
+      - **Previous conversations are read, not replayed** — a sheet, and a
+        read-back screen with no composer.
+
+      **Why now was the only free moment.** The function's own comment warned
+      that changing the id *"silently orphans every turn written by the other"*.
+      There was nothing to orphan: `coach.turns` holds one conversation and it
+      is `app = 'run'`. There has never been a `lift:` conversation, because the
+      paid half has been gated by an empty `core.entitlements` since launch —
+      the same fact as the item above. After the first shipped build this
+      becomes a migration.
+
+      **One thing deliberately not copied.** Run also feeds old conversations
+      back through *recall* — queried not replayed, dated, the runner's own
+      words only. Lift has no recall, because `coach.turns` is read by the Edge
+      Function and a search over it is a function change with its own failure
+      modes. The rolling summary is what survives a boundary here. Named as a
+      limit rather than an omission, and the next thing to copy.
 
 ---
 
@@ -520,7 +556,10 @@ rather than deleted, because the reasoning is the part worth having later.
   the write path went in behind it. What remains open is **uploading a
   template**, which wants a live-server change rather than a decision — see
   *What the library work turned up* above.
-- Phase D is blocked on the run app, by choice.
+- ~~Phase D is blocked on the run app, by choice.~~ Unblocked and landed on
+  2026-08-28: run's model shipped as its ADR-0025 and is copied here as
+  ADR-0002. What is still open in Phase D is the entitlement grant, which is a
+  SQL statement against production rather than code.
 
 ## Not in this plan
 

@@ -68,6 +68,7 @@
       "lede": "The mark floats over all three tabs (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app. Opening it checks the account and the entitlement <em>before</em> the message rather than after, so a refusal never arrives on a screen with no route to the thing that would fix it. What opens is a sheet over the surface you were on — you can still see where you were, which is the difference between asking about this and leaving to go and ask.",
       "racks": [
         { "title": "The conversation", "screens": ["coach-empty", "coach", "coach-resumed", "coach-limit"] },
+        { "title": "Where a conversation goes when it ends", "screens": ["coach-history", "coach-history-empty", "coach-past"] },
         { "title": "Judged in a bubble, not in a table", "screens": ["coach-eval-jump", "coach-eval-joint-pain"] },
         { "title": "After a session", "screens": ["plan-review-after", "plan-review-answered"] }
       ]
@@ -651,6 +652,39 @@
       "doc": "Reopening on what was already said — the state a returning lifter is actually in, and the one that did not exist until the transcript was wired. Run's one live conversation is keyed by a legacy client-generated id rather than the one its client and edge function both use, and resume reads empty for exactly that reason.",
       "tags": ["paid"]
     },
+    "coach-history": {
+      "code": "C9",
+      "title": "Previous conversations",
+      "host": "sheet",
+      "in": "{{coach}} \u203a the history control",
+      "out": "Drag down, or Close",
+      "next": "Open one, read-only",
+      "note": "Where last month's conversation went.",
+      "doc": "A conversation ends after thirty minutes of silence (ADR-0002), so the coach no longer opens on whatever was last said however long ago \u2014 which is what let it read a month-old exchange as current. The cost is that a lifter stops finding last week's conversation waiting for them, so it is kept, and it is here: the same words, in a place that says plainly they are over. Rows lead with the opening line rather than the date, because a column of dates is a filing cabinet.",
+      "tags": ["paid", "new"]
+    },
+    "coach-history-empty": {
+      "code": "C10",
+      "title": "Nothing kept yet",
+      "host": "sheet",
+      "in": "{{coach-history}} \u203a before there is a history",
+      "out": "Drag down, or Close",
+      "next": "Talk to the coach",
+      "note": "Empty and loading are different states.",
+      "doc": "Says what will fill it rather than that it is empty. The distinction that matters here is against the loading state: a list that draws this message while the read is outstanding tells a lifter with ten conversations that they have none, which is why the two are separate rather than one falsy check.",
+      "tags": ["paid", "new"]
+    },
+    "coach-past": {
+      "code": "C11",
+      "title": "One, read back",
+      "host": "pushed",
+      "in": "{{coach-history}} \u203a a row",
+      "out": "App bar back",
+      "next": "Nothing \u2014 it has ended",
+      "note": "Read-only by construction: there is no composer.",
+      "doc": "The whole conversation, not the window {{coach-resumed}} shows \u2014 that one answers \"what does the coach still have in mind\", this one answers \"what was said\", and a read-back truncated at twenty turns would silently cut the thing somebody opened it to re-read. Nothing here loads it back into the live conversation: reopening an old transcript to write into it is exactly the endless chat sessions exist to end, and the footer says so rather than leaving somebody hunting for a box that is not there.",
+      "tags": ["paid", "new"]
+    },
     "coach-limit": {
       "code": "C4",
       "title": "Coach — out of turns",
@@ -1100,6 +1134,9 @@
     { "from": "session-summary", "to": "coach", "label": "Talk it over" },
     { "from": "session-summary", "to": "plan-review-after", "label": "after a planned day" },
     { "from": "session-summary", "to": "track", "label": "Back to Track" },
+
+    { "from": "coach", "to": "coach-history", "label": "history" },
+    { "from": "coach-history", "to": "coach-past", "label": "a row" },
 
     { "from": "plan", "to": "plan-entitled", "label": "entitlement reads true" },
     { "from": "plan-entitled", "to": "intake-1-days", "label": "Build a plan" },
