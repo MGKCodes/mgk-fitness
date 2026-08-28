@@ -19,6 +19,7 @@ import '../data/backup_health_factory.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
 import '../../health/domain/workout_source.dart';
+import '../../onboarding/domain/intro_store.dart';
 import 'backup_section.dart';
 import 'permissions_section.dart';
 import '../domain/unit_settings.dart';
@@ -56,6 +57,9 @@ class SettingsScreen extends StatefulWidget {
     this.backupHealthStore,
     this.eraser,
     this.health,
+    this.introStore,
+    this.onNameChanged,
+    this.ensureAccount,
   });
 
   /// Where workouts recorded elsewhere come from.
@@ -102,6 +106,38 @@ class SettingsScreen extends StatefulWidget {
   /// erase, which is what the preview harness wants.
   final BackupEraser? eraser;
 
+  /// The other home for the runner's name — the one that answers when there is
+  /// no account.
+  ///
+  /// **The name row used to write to auth metadata and nowhere else**, which
+  /// made it useless to exactly the people who had just supplied a name: a
+  /// runner with no account saw "Nothing in particular" under a heading that
+  /// only appeared if they had already been running, and any correction they
+  /// made went into a session that did not exist. The intro records the name
+  /// against the install; this is that same store, so the row reads and writes
+  /// what the coach is actually using.
+  ///
+  /// Null keeps an edit in memory for the session.
+  final IntroStore? introStore;
+
+  /// Reports a changed name upwards, so the shell that opened this screen stops
+  /// handing the coach the old one. Signed in, the auth stream would eventually
+  /// say so; signed out there is no stream to say anything.
+  final ValueChanged<String?>? onNameChanged;
+
+  /// Raises sign-up and resolves true once there is a session.
+  ///
+  /// **Backup is the second gate an account stands at**, alongside asking for a
+  /// plan. Everything else here works with nobody signed in, because the
+  /// on-device database is the source of truth (CLAUDE.md rule 1) — but a
+  /// backup switch is a promise to put this runner's data somewhere it can be
+  /// attributed to them, and with no account there is no such place. The switch
+  /// would have flipped on, written consent, and mirrored nothing.
+  ///
+  /// Null means the caller has already decided an account is not required —
+  /// the preview harness and tests that are not about this.
+  final Future<bool> Function()? ensureAccount;
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -113,7 +149,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// What the coach calls them. Held in state rather than read from the
   /// repository on every build so the row updates the moment it is changed,
   /// without waiting on an auth event to come back round.
+  ///
+  /// Seeded from the account, then topped up from the install store once that
+  /// read comes back — see [_loadName]. Starting from the account rather than
+  /// waiting for both means the row is right immediately for anybody signed in
+  /// and right one frame later for anybody not.
   late String? _name = widget.auth.currentName;
+
+  late final IntroStore _introStore =
+      widget.introStore ?? InMemoryIntroStore(done: true);
 
   late final BackupConsentStore _consentStore =
       widget.consentStore ?? createBackupConsentStore();
@@ -129,6 +173,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     unawaited(_loadConsent());
     unawaited(_loadBackupHealth());
+    unawaited(_loadName());
+  }
+
+  /// Fills in the name for a runner whose account does not hold one.
+  ///
+  /// The account wins where it has an answer: it is what travels between
+  /// devices and what every other reader consults. The install store answers
+  /// for the ordinary new case, where there is no account at all.
+  Future<void> _loadName() async {
+    if (_name != null) return;
+    final local = await _introStore.readName();
+    if (!mounted || local == null) return;
+    setState(() => _name = local);
   }
 
   Future<void> _loadConsent() async {
@@ -147,8 +204,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Granting starts the mirror. Withdrawing stops it AND removes what is
   /// already stored — a switch that only stopped future uploads would be a
   /// pause dressed up as a withdrawal.
+  ///
+  /// **Granting needs an account first.** The mirror writes rows attributed to
+  /// a user; with nobody signed in there is nothing to attribute them to, so
+  /// the switch would have read "On" while every push failed on a row-level
+  /// policy — the exact shape of promise this section exists to stop the app
+  /// making. Withdrawal is never gated: consent must be at least as easy to
+  /// take back as it was to give, and somebody who is not signed in has by
+  /// definition nothing left to withdraw anyway.
   Future<void> _setConsent(BackupConsent next) async {
     if (_consentBusy || next == _consent) return;
+
+    // Before the optimistic flip below, not after it. Asked afterwards, the
+    // switch would slide to On, raise a sign-up, and then have to slide back
+    // when it was refused — which reads as the app changing its mind.
+    if (next == BackupConsent.granted && !widget.auth.isSignedIn) {
+      final signedIn =
+          await (widget.ensureAccount?.call() ?? Future<bool>.value(true));
+      // The gate pushed a route and awaited it, so this screen may be gone.
+      if (!signedIn || !mounted) return;
+    }
+
     setState(() {
       _consent = next;
       _consentBusy = true;
@@ -244,9 +320,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // one means "changed my mind", the other means "no name, thanks".
     if (given == null || !mounted) return;
 
-    await widget.auth.updateName(given);
+    // **Both homes, every time.** The account is where a name travels from
+    // device to device; the install store is where it lives for the runner who
+    // has no account, which is now the ordinary one. Writing only the first is
+    // what made this row a no-op for most of the people who reach it. Writing
+    // only the second would drop the name on a second phone.
+    //
+    // `updateName` on a signed-out repository would be a round trip with no
+    // session behind it, so it is skipped rather than allowed to throw.
+    if (widget.auth.isSignedIn) await widget.auth.updateName(given);
+    await _introStore.writeName(given);
     if (!mounted) return;
-    setState(() => _name = widget.auth.currentName);
+
+    final trimmed = given.trim();
+    final next = trimmed.isEmpty ? null : trimmed;
+    setState(() => _name = next);
+    widget.onNameChanged?.call(next);
+  }
+
+  /// Signs the runner in, or up, from the account section.
+  ///
+  /// The same gate the backup switch and the plan flow raise, reached
+  /// deliberately rather than by walking into it. Somebody who has decided they
+  /// want an account should not have to flip a switch they may not want in
+  /// order to be offered one.
+  Future<void> _createAccount() async {
+    await (widget.ensureAccount?.call() ?? Future<bool>.value(false));
+    // Rebuilt either way: a completed sign-up changes every row in this
+    // section, and a refused one leaves them exactly as they were.
+    if (mounted) setState(() {});
   }
 
   Future<void> _signOut() async {
@@ -290,6 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final email = widget.auth.currentEmail;
+    final signedIn = widget.auth.isSignedIn;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -297,84 +400,182 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
           children: <Widget>[
-            // Who is signed in, and since when. Both moved off Profile: they
-            // are facts about the account, not about the training.
-            if (email != null || widget.memberSince != null)
-              Entrance(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    AppSpacing.sm,
-                    AppSpacing.xl,
-                    AppSpacing.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const SectionLabel('Account'),
-                      const SizedBox(height: AppSpacing.sm),
-                      if (email != null)
-                        Text(
-                          email,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      if (widget.memberSince != null) ...<Widget>[
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Running since '
-                          '${_monthYear(widget.memberSince!)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
+            // **The runner, before the account.**
+            //
+            // These two rows used to sit under an "Account" heading, behind a
+            // condition that hid them unless there was an email or a run on
+            // record. Neither is an account fact: the name is what the coach
+            // was told in a conversation that no longer ends in an account, and
+            // "running since" is read off the log on this phone. Under the old
+            // arrangement the ordinary new runner - introduced, signed out, no
+            // runs yet - opened Settings and found nothing about themselves at
+            // all, including the one thing they had actually been asked for.
+            Entrance(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const SectionLabel('You'),
+                    const SizedBox(height: AppSpacing.sm),
 
-                      // The only thing onboarding gathers, and until this
-                      // existed it was permanent: written once at sign-up and
-                      // read back forever.
-                      const SizedBox(height: AppSpacing.md),
-                      InkWell(
-                        onTap: _editName,
-                        borderRadius: AppRadius.cardAll,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.sm,
-                          ),
-                          child: Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Text(
-                                      'Coach calls you',
-                                      style: theme.textTheme.bodyMedium,
+                    // The only thing onboarding gathers, and until this
+                    // existed it was permanent: written once at sign-up and
+                    // read back forever.
+                    InkWell(
+                      onTap: _editName,
+                      borderRadius: AppRadius.cardAll,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Coach calls you',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    // Not "not set", which reads as an error.
+                                    // No name is a choice the coach handles.
+                                    _name ?? 'Nothing in particular',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textTertiary,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      // Not "not set", which reads as an error.
-                                      // No name is a choice the coach handles.
-                                      _name ?? 'Nothing in particular',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: AppColors.textTertiary,
-                                          ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              const Icon(
-                                Icons.chevron_right,
-                                color: AppColors.textTertiary,
-                              ),
-                            ],
-                          ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.textTertiary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (widget.memberSince != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Running since ${_monthYear(widget.memberSince!)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ),
+
+            // **The account, including when there is not one.**
+            //
+            // This section used to assume one existed: it printed an address,
+            // and offered Sign out and Delete account unconditionally. After
+            // the app stopped requiring an account, that left a runner who had
+            // never made one being offered a way to sign out of nothing and to
+            // delete an account that does not exist - two rows that could only
+            // fail, in the place somebody looks to find out where they stand.
+            Entrance(
+              index: 1,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                  AppSpacing.xl,
+                  AppSpacing.xs,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const SectionLabel('Account'),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (signedIn && email != null)
+                      Text(
+                        email,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    else if (!signedIn)
+                      Text(
+                        // States the position rather than selling the fix. The
+                        // row below says what an account is for; this says what
+                        // is true right now, which is the thing somebody came
+                        // to this screen to find out.
+                        'You do not have one. Everything you have recorded is '
+                        'on this phone, and only on this phone.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                          height: 1.4,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // **Immediately under the heading they belong to.**
+            //
+            // These rows have always been written after the unit picker, which
+            // was survivable while "Account" was a block of text at the top of
+            // the page. It stopped being survivable when it became a labelled
+            // section: the board drew ACCOUNT, then DISTANCE, then Sign out and
+            // Delete account — two account actions filed under distance, one
+            // heading away from their own.
+            if (signedIn) ...<Widget>[
+              Entrance(
+                index: 2,
+                child: SettingsTile(
+                  icon: Icons.logout,
+                  title: 'Sign out',
+                  subtitle: 'Your runs stay on this device',
+                  showChevron: false,
+                  onTap: _signOut,
+                ),
+              ),
+              // Also reachable inside Privacy & legal, which is where the law
+              // wants it. It is here too because this is where a runner looks
+              // for it — a deletion buried one screen deeper reads as hidden.
+              Entrance(
+                index: 3,
+                child: SettingsTile(
+                  icon: Icons.delete_outline,
+                  title: 'Delete account',
+                  subtitle: 'Permanently remove your runs, profile, and plans',
+                  tint: AppColors.danger,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DeleteAccountScreen(
+                        auth: widget.auth,
+                        deleter: widget.deleter,
+                      ),
+                    ),
                   ),
+                ),
+              ),
+            ]
+            // Exactly the two things an account buys, named as such — the same
+            // two gates the app actually raises one at (ADR-0019). Anything
+            // more would be selling it.
+            else
+              Entrance(
+                index: 2,
+                child: SettingsTile(
+                  icon: Icons.person_add_alt,
+                  title: 'Create an account',
+                  subtitle: 'Back up your training, and ask for a plan',
+                  onTap: _createAccount,
                 ),
               ),
 
@@ -431,37 +632,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textTertiary,
                   height: 1.4,
-                ),
-              ),
-            ),
-
-            Entrance(
-              index: 5,
-              child: SettingsTile(
-                icon: Icons.logout,
-                title: 'Sign out',
-                subtitle: 'Your runs stay on this device',
-                showChevron: false,
-                onTap: _signOut,
-              ),
-            ),
-            // Also reachable inside Privacy & legal, which is where the law
-            // wants it. It is here too because this is where a runner looks for
-            // it — a deletion buried one screen deeper reads as hidden.
-            Entrance(
-              index: 6,
-              child: SettingsTile(
-                icon: Icons.delete_outline,
-                title: 'Delete account',
-                subtitle: 'Permanently remove your runs, profile, and plans',
-                tint: AppColors.danger,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => DeleteAccountScreen(
-                      auth: widget.auth,
-                      deleter: widget.deleter,
-                    ),
-                  ),
                 ),
               ),
             ),

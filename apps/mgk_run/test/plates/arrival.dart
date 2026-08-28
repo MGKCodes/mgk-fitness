@@ -40,6 +40,7 @@ import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
+import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 
 import 'fixture.dart';
@@ -309,6 +310,75 @@ void main() {
         await untilReviewed(tester);
         await tapText(tester, 'Review details');
         await tapText(tester, 'Build my plan');
+      },
+    );
+  });
+
+  // --- Act three: where an account earns itself ------------------------------
+  //
+  // The third moment, and the last one that had never been drawn. Act one ends
+  // with a working tracker and nothing signed in; act two is a plan, which the
+  // runner goes and asks for. This is the other half of the bargain — the app
+  // asking *them* for something, once, at the point where it can say what the
+  // account is for and point at the thing it would protect.
+  //
+  // It belongs on this board rather than beside Settings because it is a
+  // sequence, like act one: a dialog, a sign-up, and a return to where they
+  // were. A plate of the dialog alone would show the ask without the cost.
+
+  /// A month-old install: introduced, signed out, and with runs on it.
+  ///
+  /// The consent store is unanswered, which is what makes the prompt due. Two
+  /// runs rather than the full fixture log, because the number is *in the copy*
+  /// — this is the moment it fires, not a picture of a runner who has been at
+  /// it for a year.
+  Widget settledIn() => AuthGate(
+    auth: FakeAuthRepository(),
+    introStore: InMemoryIntroStore(done: true, name: 'Sam'),
+    coach: FakeCoachService(),
+    consentStore: InMemoryBackupConsent(),
+    historySource: () async => <RunSummary>[
+      for (var i = 1; i <= 2; i++)
+        RunSummary(
+          id: 'run-$i',
+          startedAt: DateTime.now().subtract(Duration(days: i * 2)),
+          duration: const Duration(minutes: 31),
+          distanceMeters: 5400,
+          avgPaceSecondsPerKm: 344,
+          points: plateRoute(i),
+        ),
+    ],
+    requestPermission: (_) async => true,
+  );
+
+  testWidgets('the ask, once there is something worth keeping', (tester) async {
+    await plate(
+      tester,
+      'keep-runs-safe',
+      settledIn(),
+      pixelRatio: 2,
+      // Fixed pumps: the shell underneath plays the coach mark's reveal on a
+      // timer, so `pumpAndSettle` would never return even with a dialog up.
+      drive: (tester) async {
+        await settle(tester);
+        await settle(tester);
+      },
+    );
+  });
+
+  testWidgets('and the sign-up it raises, which already knows the name', (
+    tester,
+  ) async {
+    await plate(
+      tester,
+      'account-gate',
+      settledIn(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await settle(tester);
+        await tester.tap(find.text('Back them up'));
+        await settle(tester);
       },
     );
   });

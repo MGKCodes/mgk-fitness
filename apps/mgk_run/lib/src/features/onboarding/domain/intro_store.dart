@@ -45,6 +45,19 @@ abstract interface class IntroStore {
   /// What the runner said to call them, or null if they skipped it or the
   /// intro has not run. Must not throw.
   Future<String?> readName();
+
+  /// Changes the name without touching the marker.
+  ///
+  /// Settings needs this and [markDone] cannot serve it, for two reasons.
+  /// `markDone` asserts the intro has finished, which is not what editing a
+  /// name means; and it ignores a null name, so there would be no way to say
+  /// "stop using one" - the answer the name row is careful to keep reachable.
+  ///
+  /// Null or blank **clears** the name, matching `AuthRepository.updateName`.
+  /// Every reader already treats null as "say nothing".
+  ///
+  /// Must not throw. A failed write costs the runner an edit, not the app.
+  Future<void> writeName(String? name);
 }
 
 /// An [IntroStore] that forgets on restart. Used by widget tests and by the
@@ -72,5 +85,11 @@ class InMemoryIntroStore implements IntroStore {
     _done = true;
     if (name != null) _name = name;
     markCount++;
+  }
+
+  @override
+  Future<void> writeName(String? name) async {
+    final trimmed = name?.trim();
+    _name = trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

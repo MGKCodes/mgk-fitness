@@ -231,6 +231,31 @@ been on a store, so everything Runio does is still listed here.
 
 ### Changed
 
+- **The app opens without an account, and asks for one where it buys
+  something.** `AuthGate` used to return the signed-out flow whenever there was
+  no session, putting recording, the log, the year and Profile all behind an
+  email and a password — for nothing, since the on-device database has been the
+  source of truth since the scaffold. The intro is the door now, and it ends on
+  a working tracker with nothing signed in. An account is raised at exactly two
+  points: asking for a plan, because the coach costs money per request, and
+  turning on backup, because that is the entire thing an account does for a
+  database that already works offline
+  ([ADR-0019](docs/decisions/0019-onboarding-is-two-moments.md)).
+- **Backup after the first runs, rather than at a launch nobody asked for.** A
+  runner with no account is asked once, after their **second** recorded run,
+  when the phone holds a log they would mind losing. One run is a trial; asking
+  at launch would be asking permission to store data that does not exist, from
+  somebody who has not watched the app do anything. Saying yes raises sign-up —
+  the dialog says so before it is tapped — and an abandoned sign-up writes
+  nothing, so the question comes back rather than being counted as a refusal
+  ([ADR-0012](docs/decisions/0012-backup-is-consented-restore-only-adds.md)).
+- **Settings stops assuming there is an account.** It was written when every
+  runner had one. Now it leads with *You* — the name the coach was given, and
+  when the runner started — and the account section states the position instead
+  of printing an address that is not there. Sign out and Delete account appear
+  only when there is something to sign out of or delete; in their place is one
+  row naming the two things an account actually buys. The account actions also
+  moved up under their own heading, having sat below the unit picker.
 - **A runner with no plan gets a Home about their running, not about the plan
   they have not bought.** Free Home was a plan Home with the contents taken out:
   a card headed *No plan yet* over an empty screen, which is the counter-signal
@@ -317,6 +342,28 @@ been on a store, so everything Runio does is still listed here.
 
 ### Fixed
 
+- **The name the coach is given is not forgotten on the way to the first screen
+  that uses it.** Removing the account left the runner's name with two homes and
+  a wire between them that was built at both ends and joined at neither:
+  `AuthGate` read the name off the install store into a field it never passed
+  on, so the coach greeted a runner it had just been introduced to as a
+  stranger, and sign-up asked for a name they had given five minutes earlier.
+  The name is now read account-first and install-second, written to both
+  wherever it changes, and editable in Settings with no account at all — which
+  it was not, because that row read and wrote auth metadata only.
+- **A sign-up raised from inside the app dismisses itself.** `SignInScreen` was
+  written as a state of the signed-out flow, where a session swaps the whole
+  subtree for the shell and there is nothing left to close. Raised as a route
+  over a running shell — which is how the plan gate raises it — nothing popped
+  it: the runner completed the sign-up they had been asked for and sat on the
+  finished form, with the plan they wanted behind a back gesture nobody had
+  mentioned.
+- **Backup cannot be switched on without an account to attribute it to.** The
+  switch would have read "On" while every push failed on a row-level policy —
+  a promise the app could not keep, made by the one section whose whole job is
+  not making those. It raises sign-up first, and writes nothing if that is
+  refused. Withdrawal is never gated: consent has to be at least as easy to take
+  back as it was to give.
 - **The countdown stops being a countdown at zero.** The Plan header read
   "0 days · week 16 of 16" on race day and "Event passed" after it — a
   subtraction carried all the way to the screen, and a shrug at the most

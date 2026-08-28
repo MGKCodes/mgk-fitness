@@ -46,6 +46,11 @@ and the technical line are the same line, and onboarding was drawn across it.
 **Onboarding is two moments. The first is free and ends with an account. The
 second is entered only when a runner asks for a plan.**
 
+> **Superseded in part, 2026-08-27.** The first moment no longer ends with an
+> account — it ends on a working tracker with nothing signed in, and there are
+> now three moments rather than two. The split this ADR draws is unchanged and
+> is what the amendment builds on. See *there are three moments* below.
+
 ### Moment one — after install
 
 | Step | What happens |
@@ -53,7 +58,7 @@ second is entered only when a runner asks for a plan.**
 | Greeting | Hello, what it is (an AI, called Coach), and what the app does |
 | Name | What to call them. Anything accepted |
 | Permissions | One at a time: explained, then **the real OS dialog**, then answered |
-| Sign-up | The shared account |
+| ~~Sign-up~~ | ~~The shared account~~ — **retired 2026-08-27**, see the third amendment below |
 
 It ends on Home, with a working run tracker. Nothing in it asks what the runner
 is training for, and nothing in it mentions money, because neither is relevant
@@ -167,6 +172,60 @@ wrong than the thing it saves.
 Still open: Settings replays the intro to re-ask permissions and has no `auth`
 to hand, so it still asks for a name the profile already knows. Harmless, and
 the same skip applies once the section is given one.
+
+## Amendment, 2026-08-28 — there are three moments, and the first one does not end with an account
+
+The title of this ADR is now off by one, and the "Moment one" table above still
+lists **Sign-up — the shared account** as its last step. It is not one any more.
+An account is not the price of using the app: `AuthGate` used to return the
+signed-out flow whenever there was no session, which put recording, the log, the
+year and Profile all behind an email and a password, and nothing about that was
+load-bearing. The on-device database has been the source of truth since the
+scaffold ([ADR-0004](0004-offline-first-local-source-of-truth.md)) and Supabase
+has always been a backup rather than the store. The gate asked for an account
+because the only door in happened to be built out of one.
+
+So moment one now ends on the **last permission**, on Home, with a working
+tracker and nothing signed in. Its steps are greeting, name, permissions — and
+that is all.
+
+The account did not disappear; it moved to the points where it earns itself.
+This ADR's own reasoning is what puts it at exactly two of them:
+
+| Moment | Trigger | Why an account is needed here |
+|---|---|---|
+| One — arrival | Install | **No account.** Nothing it delivers needs one |
+| Two — a plan | The runner asks for one | The coach is a model behind an Edge Function and every request costs money, so there has to be somebody to attribute it to ([ADR-0015](0015-spend-is-capped-over-three-windows.md)) |
+| Three — backup | Their **second** recorded run | The mirror writes rows attributed to a user; there is nowhere to put them otherwise ([ADR-0012](0012-backup-is-consented-restore-only-adds.md)) |
+
+**Both gates are raised as a pushed route, never by swapping the shell.** The
+runner is mid-intent, so backing out has to return them to the tab, the scroll
+and the thing they were doing — and a satisfied gate has to dismiss itself, or
+they finish a sign-up and sit on the completed form with what they asked for
+behind a back gesture nobody mentioned.
+
+**Moment three is the runner's side of the same bargain.** Two and three are not
+the same kind of ask and should not be run together: two is the app selling
+something, three is the app protecting something the runner already has. Putting
+three at the second run rather than at launch is what makes that distinction
+legible — it can point at a real log while it asks.
+
+**What this costs, and why it is accepted.** A runner can now use the app for
+months with no account, which means no cross-device history and nothing to
+restore if they lose the phone. That is the correct trade for a tracker whose
+whole cheap claim is "press start and I track your run": it is answered by
+telling them plainly (moment three, and the account section in Settings, which
+states the position rather than selling the fix) rather than by demanding
+credentials up front from somebody who has not decided anything yet.
+
+**Consequence for every screen that assumed a session.** Settings was written
+when everybody was signed in and went on assuming it — the name row read and
+wrote auth metadata only, so it was useless to exactly the people who had just
+supplied a name, and Sign out and Delete account were offered unconditionally to
+runners with neither. **A screen that shows an account fact must ask whether
+there is an account**, and the runner's name is not one of those facts: it is
+kept against the install as well as the profile, because the conversation that
+gathers it no longer ends in an account.
 
 ## The obvious alternative
 

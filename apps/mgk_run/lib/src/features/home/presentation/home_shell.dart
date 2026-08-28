@@ -56,6 +56,7 @@ import '../../history/domain/run_writer.dart';
 import '../../history/domain/run_draft.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
+import '../../onboarding/domain/intro_store.dart';
 import '../../history/presentation/run_form_screen.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../recording/presentation/run_summary_screen.dart';
@@ -88,6 +89,7 @@ class HomeShell extends StatefulWidget {
     this.justSignedUp = false,
     this.access = CoachAccess.free,
     this.runnerName,
+    this.introStore,
   });
 
   final AuthRepository auth;
@@ -165,6 +167,17 @@ class HomeShell extends StatefulWidget {
   /// for anybody signed in.
   final String? runnerName;
 
+  /// Where that name is kept when there is no account to keep it on.
+  ///
+  /// Here so **Settings can change it**. The name row wrote to auth metadata
+  /// and nowhere else, which meant that for the ordinary new runner - no
+  /// account - it displayed nothing and saved nothing: the one thing the intro
+  /// gathers was uneditable by exactly the people who had just given it.
+  ///
+  /// Null keeps the edit in memory for the session, which is what the preview
+  /// harness and widget tests want.
+  final IntroStore? introStore;
+
   final int initialTab;
 
   /// True when this shell was reached by **creating an account** rather than by
@@ -182,6 +195,20 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late int _index = widget.initialTab;
+
+  /// What the coach calls this runner, live.
+  ///
+  /// Held in state rather than read straight off [HomeShell.runnerName]
+  /// because Settings can now change it, and for a runner with no account
+  /// that change fires no auth event — there is no session to emit one. The
+  /// gate above would go on passing the name it read at launch, and the coach
+  /// would keep using the one they had just corrected.
+  late String? _runnerName = widget.runnerName ?? widget.auth.currentName;
+
+  /// Where the name lives with no account. In memory when none is injected,
+  /// which keeps an edit for the session rather than losing it outright.
+  late final IntroStore _introStore =
+      widget.introStore ?? InMemoryIntroStore(done: true);
 
   /// The Plan tab, by name rather than by literal — a re-order that moved it
   /// would otherwise silently send a runner to the wrong page. Profile has no
@@ -338,6 +365,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // what was said is under Previous conversations rather than in front of
       // the model as though it were this morning.
       unawaited(_chat!.restore());
+    }
+  }
+
+  @override
+  void didUpdateWidget(HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The gate above re-reads the name whenever auth changes, so a rename that
+    // *did* travel through an account arrives this way. Adopted only when it
+    // actually changed, so a rebuild for any other reason cannot undo an edit
+    // this shell is holding for a runner who has no account to carry it.
+    if (widget.runnerName != oldWidget.runnerName) {
+      _runnerName = widget.runnerName ?? widget.auth.currentName;
     }
   }
 
@@ -891,12 +930,91 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _askConsentIfNeeded() async {
     final store = widget.consentStore;
     if (store == null) return;
+    // **Not asked of somebody with no account.** The question is what to do
+    // with data leaving the phone, and there is nowhere for it to go until
+    // there is a user to attribute it to — so a yes here could not be honoured,
+    // and honouring it would mean raising a sign-up at launch, which is the
+    // exact intrusion the app stopped making when it stopped requiring an
+    // account. They are asked by [_offerBackupIfEarned] instead, once they have
+    // something worth keeping.
+    if (!widget.auth.isSignedIn) return;
     if (!(await store.read()).needsAsking) return;
     if (!mounted) return;
     final answer = await askBackupConsent(context);
     // A null answer cannot happen (the dialog is not dismissible), but writing
     // only a real answer keeps "unknown" meaning "still unasked" if it ever does.
     if (answer != null) await store.write(answer);
+  }
+
+  /// How many recorded runs it takes before backup is worth raising.
+  ///
+  /// **Two, not one.** A single run is a trial — somebody walking to the end of
+  /// the road to see whether the app works — and interrupting it with a
+  /// consent dialog and a sign-up is how a tracker becomes a thing that wants
+  /// something. By the second run there is a log rather than an experiment, and
+  /// the sentence "lose the phone and they go with it" is about something the
+  /// runner would actually mind.
+  static const int _runsBeforeOfferingBackup = 2;
+
+  /// Whether this session has already put the question, so a refresh does not
+  /// raise it twice.
+  ///
+  /// The consent store is the durable record — a decline writes [BackupConsent
+  /// .declined] and `needsAsking` is false forever after — but the store is
+  /// written *after* the dialog closes, and [_refreshHome] can easily run again
+  /// while it is still open.
+  bool _offeredBackup = false;
+
+  /// Offers backup to a runner with no account, once they have a log worth
+  /// keeping.
+  ///
+  /// **This is the prompt the account removal left owing.** Taking the sign-in
+  /// wall down meant a runner could record for months with everything on one
+  /// phone and never be told, because the only consent question in the app was
+  /// asked at launch to people who were already signed in. The obligation did
+  /// not go away with the wall: ADR-0012 wants the question asked once the
+  /// runner has seen the app do something, and this is that moment.
+  ///
+  /// Saying yes raises sign-up, because the mirror needs somebody to attribute
+  /// rows to. Abandoning that sign-up writes nothing at all: the question stays
+  /// unanswered and is put again next time, which is right — they did not
+  /// decline, they were interrupted.
+  Future<void> _offerBackupIfEarned() async {
+    final store = widget.consentStore;
+    if (store == null || _offeredBackup) return;
+    if (widget.auth.isSignedIn) return;
+    if (_allRuns.length < _runsBeforeOfferingBackup) return;
+    if (!(await store.read()).needsAsking) return;
+    if (!mounted) return;
+
+    _offeredBackup = true;
+    final answer = await askKeepRunsSafe(context, runs: _allRuns.length);
+    if (answer == null || !mounted) return;
+
+    if (answer == BackupConsent.declined) {
+      // Recorded as the decision it is. "Not now" was never offered, so this
+      // is a considered no and must not come back next launch.
+      await store.write(answer);
+      return;
+    }
+
+    // Consent given; now the account it needs. Nothing is written unless one
+    // arrives — consent to store data somewhere that does not exist is not a
+    // state worth persisting, and it would leave the switch reading On.
+    if (!await _ensureAccount()) {
+      _offeredBackup = false;
+      return;
+    }
+    await store.write(BackupConsent.granted);
+    // The account is new, so this phone's runs are the only copy there is.
+    // Pushing them is the thing the runner just said yes to; without it the
+    // switch reads On and the server stays empty until the next launch.
+    if (!mounted) return;
+    unawaited(
+      widget.runEditor?.backfill().catchError((Object _) => 0) ??
+          Future<int>.value(0),
+    );
+    setState(() {});
   }
 
   /// Reloads everything Home displays. Called on open, and whenever the plan
@@ -1057,6 +1175,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // anything on screen — if it fails, or they are offline, the week is simply
     // still unwritten and whoever needs it next builds it in Dart.
     unawaited(_fillNextWeek());
+    // Here rather than in `_restoreThenLoad`, so it sees the log as it stands
+    // *now*: the moment worth asking at is the one just after a run is saved,
+    // which refreshes Home without going near the launch path.
+    unawaited(_offerBackupIfEarned());
   }
 
   /// Writes the coming week's sessions ahead of the runner reaching it.
@@ -1324,8 +1446,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         builder: (routeContext) => SignInScreen(
           auth: widget.auth,
           initialSignUp: true,
-          introName: widget.runnerName,
+          introName: _runnerName,
           onBack: () => Navigator.of(routeContext).maybePop(),
+          // **Nothing else would dismiss this.** In the signed-out flow the
+          // sign-in screen is a state of `AuthGate` and a session swaps the
+          // subtree for the shell; here the shell is already underneath and
+          // stays put, so the route has to close itself. Without it a runner
+          // signed up successfully and sat on the completed form, with the plan
+          // they asked for waiting behind a back gesture nobody mentioned.
+          onAuthenticated: () => Navigator.of(routeContext).maybePop(),
         ),
       ),
     );
@@ -1342,6 +1471,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           auth: widget.auth,
           // The first run on record: what "since" on the account means here.
           memberSince: RunnerStats.from(_allRuns).firstRunAt,
+          // The name row edits both homes through this, so it works for a
+          // runner with no account - which is now most of them.
+          introStore: _introStore,
+          onNameChanged: (name) {
+            if (!mounted) return;
+            setState(() => _runnerName = name);
+          },
+          // **The second gate an account sits at**, and the one this shell
+          // already owns for the first. Backup is the entire thing an account
+          // does for a database that already works offline, so switching it on
+          // with nobody signed in is a promise with no server behind it.
+          ensureAccount: _ensureAccount,
+          consentStore: widget.consentStore,
           onUnitChanged: (unit) {
             if (!mounted) return;
             setState(() => _unit = unit);
@@ -1451,7 +1593,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 unit: _unit,
                 onPlanChanged: _refreshHome,
                 onAskCoach: _askCoach,
-                runnerName: widget.runnerName ?? widget.auth.currentName,
+                runnerName: _runnerName,
                 ensureAccount: _ensureAccount,
               ),
               // The runner and their record, on one page: totals, bests, the goal,

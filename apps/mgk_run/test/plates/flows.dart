@@ -45,6 +45,7 @@ import 'package:mgk_run/src/features/coaching/presentation/plan_calendar_screen.
 import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.dart';
 import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
+import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
@@ -69,7 +70,16 @@ void main() {
     List<RunSummary> runs, {
     int initialTab = 0,
   }) => HomeShell(
-    auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+    // **With a name on it.** The fake defaults to none, so Settings correctly
+    // drew "Nothing in particular" against the one row on the page that is
+    // supposed to hold what the coach was told — the board reporting an empty
+    // state as the design, which is the exact failure `shell.dart`'s header
+    // catalogues four instances of.
+    auth: FakeAuthRepository(
+      signedIn: true,
+      email: 'runner@example.com',
+      name: 'Sam',
+    ),
     planStore: store,
     historySource: () async => runs,
     coach: FakeCoachService(),
@@ -210,6 +220,54 @@ void main() {
         // permissions, backup and the account, and a fixed drag would land
         // somewhere different the next time a section is added above it.
         await tester.ensureVisible(find.text('Delete account').last);
+        await settle(tester);
+      },
+    );
+  });
+
+  /// **The same screen for the runner who has no account — which is now most of
+  /// them — and the reason this pair belongs on a board rather than in a test.**
+  ///
+  /// Settings was written while everybody was signed in, and after the sign-in
+  /// wall came down it went on assuming one. The plate above could not show
+  /// that, because its fixture is signed in like every other fixture here: the
+  /// board was drawing the minority case and calling it the screen.
+  ///
+  /// Seen beside `settings`, three differences are the whole design question.
+  /// The name the coach was given is now under a heading about the runner
+  /// rather than under one about an account they do not have; the account
+  /// section states the position instead of printing an address that is not
+  /// there; and Sign out and Delete account are gone, replaced by the one row
+  /// that does something — both of the others could only have failed.
+  ///
+  /// No `consentStore` passed, deliberately. With one, this fixture's twenty
+  /// runs would trip the backup prompt and the plate would be a picture of a
+  /// dialog. That prompt has its own plate on the arrival board, where the
+  /// sequence it belongs to is.
+  testWidgets('and the same screen with no account behind it', (tester) async {
+    final store = await seeded();
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'settings-no-account',
+      HomeShell(
+        // Signed out, and introduced — the ordinary state of a runner who has
+        // been using the app for a month without ever making an account.
+        auth: FakeAuthRepository(),
+        introStore: InMemoryIntroStore(done: true, name: 'Sam'),
+        runnerName: 'Sam',
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        runEditor: RunEditor(db: db),
+        unitSettings: InMemoryUnitSettings(),
+        initialTab: 2,
+      ),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await tester.tap(find.byTooltip('Settings'));
         await settle(tester);
       },
     );

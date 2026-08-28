@@ -149,8 +149,30 @@ class _AuthGateState extends State<AuthGate> {
     // finished. The cost of losing it is that it is asked once more.
     try {
       await auth.markCoachMet();
+      // **And the name goes to the profile too, when there is one.**
+      //
+      // Only somebody arriving already signed in reaches this - from Lift, or
+      // on a second device - and the intro hands them their profile name to
+      // correct. Without this the correction was recorded locally and the
+      // profile kept the old one, so the two homes for a name disagreed from
+      // the first screen, and [_name] below had to pick a winner rather than
+      // just read the answer.
+      //
+      // A skipped question (null) leaves the profile alone rather than
+      // clearing it: not answering is not the same as asking to be unnamed,
+      // which is what the name row in Settings is for.
+      if (name != null && name.trim().isNotEmpty) await auth.updateName(name);
     } catch (_) {}
   }
+
+  /// What to call this runner, from whichever home has it.
+  ///
+  /// **The account first, the install second.** A profile name travels between
+  /// devices and is the one Settings edits, so it is the answer wherever it
+  /// exists; the local marker answers for the ordinary new case, where there is
+  /// no account at all. `_introFinished` writes both, so the two only disagree
+  /// while a profile has no name on it.
+  String? _name(AuthRepository auth) => auth.currentName ?? _localName;
 
   @override
   Widget build(BuildContext context) {
@@ -227,6 +249,16 @@ class _AuthGateState extends State<AuthGate> {
   Widget _shell(AuthRepository auth) => HomeShell(
     justSignedUp: _justSignedUp,
     auth: auth,
+    // **The wire the last change built both ends of and never joined.**
+    // `IntroStore` gained a name and `HomeShell` gained the parameter to take
+    // one, but nothing passed it, so `_localName` was written three times and
+    // read nowhere: a runner told the coach their name in the intro and the
+    // coach met them again as a stranger the moment they asked for a plan.
+    runnerName: _name(auth),
+    // Where the name is kept for somebody with no account, so Settings can
+    // change it. Passed rather than re-created there: this store is `_intro`,
+    // already open, and two stores over one marker file is a race.
+    introStore: _intro,
     recorderFactory: widget.recorderFactory,
     historySource: widget.historySource,
     runEditor: widget.runEditor,

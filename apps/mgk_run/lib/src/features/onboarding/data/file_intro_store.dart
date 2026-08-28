@@ -49,34 +49,68 @@ class FileIntroStore implements IntroStore {
   /// who skipped the question.
   @override
   Future<String?> readName() async {
+    final name = (await _read())['name'];
+    return name is String && name.isNotEmpty ? name : null;
+  }
+
+  /// The marker's contents, or an empty map when there is nothing readable
+  /// there — no file, a file written by an older build that held only a
+  /// timestamp, malformed JSON. Never throws; an unreadable marker means no
+  /// name, which is exactly what somebody who skipped the question has.
+  Future<Map<String, dynamic>> _read() async {
     try {
       final file = await _markerFile();
-      if (!await file.exists()) return null;
+      if (!await file.exists()) return <String, dynamic>{};
       final decoded = jsonDecode(await file.readAsString());
-      if (decoded is! Map<String, dynamic>) return null;
-      final name = decoded['name'];
-      return name is String && name.isNotEmpty ? name : null;
+      return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     } on Object {
-      return null;
+      return <String, dynamic>{};
+    }
+  }
+
+  /// Writes the marker whole. JSON rather than the bare timestamp this used to
+  /// hold, because it has a second thing to carry now.
+  Future<void> _write(Map<String, dynamic> contents) async {
+    try {
+      final file = await _markerFile();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode(contents));
+    } on Object {
+      // Nothing to recover: the intro is shown once more next launch, which is
+      // the safe direction, and a lost name costs one edit in Settings.
     }
   }
 
   @override
   Future<void> markDone({String? name}) async {
-    try {
-      final file = await _markerFile();
-      await file.parent.create(recursive: true);
-      // JSON rather than the bare timestamp this used to write, because it has
-      // a second thing to carry now. `readName` tolerates the old shape.
-      await file.writeAsString(
-        jsonEncode(<String, dynamic>{
-          'at': DateTime.now().toUtc().toIso8601String(),
-          if (name != null && name.isNotEmpty) 'name': name,
-        }),
-      );
-    } on Object {
-      // Nothing to recover: the intro is shown once more next launch, which is
-      // the safe direction.
-    }
+    final existing = await _read();
+    await _write(<String, dynamic>{
+      'at': DateTime.now().toUtc().toIso8601String(),
+      // A markDone that passes no name must not wipe one already recorded —
+      // the intro is finished once per install, but `IntroScreen` calls this
+      // with whatever it gathered, and skipping the name question is not the
+      // same as asking for the stored one to be forgotten.
+      if (name != null && name.isNotEmpty)
+        'name': name
+      else if (existing['name'] is String)
+        'name': existing['name'],
+    });
+  }
+
+  /// Rewrites just the name, leaving the marker itself alone.
+  ///
+  /// The `at` stamp is carried over rather than refreshed: it records when the
+  /// intro happened, and renaming yourself in Settings two months later is not
+  /// that. Where there is no marker to carry — Settings reached on an install
+  /// whose file never wrote — one is stamped now, which is honest enough: they
+  /// are demonstrably past the intro to be standing on this screen.
+  @override
+  Future<void> writeName(String? name) async {
+    final existing = await _read();
+    final trimmed = name?.trim();
+    await _write(<String, dynamic>{
+      'at': existing['at'] ?? DateTime.now().toUtc().toIso8601String(),
+      if (trimmed != null && trimmed.isNotEmpty) 'name': trimmed,
+    });
   }
 }
