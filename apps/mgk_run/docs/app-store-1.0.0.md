@@ -47,15 +47,29 @@ the device questions in Gate 1 are answered on TestFlight rather than here.
 
 ## Gate 1 — The TestFlight round
 
-Start it from the Codemagic UI: **Start new build** → branch
-`run/release-1.0.0` → workflow **`Run — iOS TestFlight`**. The branch is the
-step that matters; it defaults to `main`, where none of this exists.
+**Build 11 — version 1.0.0 — succeeded end to end on 2026-09-01**, six minutes,
+every step green including Publishing. Triggered against `run/release-1.0.0` on
+workflow `run-ios-release`; `run.ipa` at 26.1 MB.
 
-Two steps have failed before and are worth watching in the log: **Set up code
-signing** (the first build for this bundle id failed with "No matching profiles
-found" — an App ID is not a provisioning profile) and the **artifacts** globs (a
-pattern that matches nothing is ignored silently, and the failure mode is a
-green build with an empty TestFlight).
+Four things that were genuinely unknown before it, and are not now:
+
+- **`TARGETED_DEVICE_FAMILY = "1"` compiles.** It was an Xcode project edited
+  from Windows and unverifiable here.
+- **Code signing resolves for `com.mgkcodes.fitness.run`.** This is the step that
+  failed on the first ever build with "No matching profiles found"; the profile
+  created by hand in the Apple Developer portal is working.
+- **The artefact globs matched**, so the failure this file warns about at
+  length — a green build that publishes nothing and leaves TestFlight empty —
+  did not happen.
+- **An App Store Connect record already exists for the bundle id.** Publishing
+  succeeded, and `codemagic.yaml`'s own setup notes say the upload step fails
+  after a successful build when no listing exists. That answers a Gate 2 item
+  that was written as "needs confirming".
+
+`$PROJECT_BUILD_NUMBER` supplied build 11 and the pubspec's `1.0.0+1` was never
+touched, as designed.
+
+Re-trigger with the same settings when there is something new to test.
 
 What this round exists to prove — none of it can be answered from Windows:
 
@@ -127,11 +141,12 @@ App Store Connect will not accept a submission without these. None are code.
 
       Items 2 and 3 can change what the policy has to say, so everything else in
       this gate is cheaper to do after them than before.
-- [ ] **An App Store Connect app record for `com.mgkcodes.fitness.run`.** Lift
-      has one (id 6759969740). Whether Run does needs confirming — the
-      `codemagic.yaml` setup notes say the upload step fails after a *successful*
-      build when no listing exists, which is the expensive way to find out.
-      Listing name is `MGKFitness: Run`, per naming.md.
+- [x] **An App Store Connect app record exists for
+      `com.mgkcodes.fitness.run`** — proven by build 11 publishing successfully,
+      since the upload step fails after a successful build when no listing
+      exists. Still to check by eye: that the listing name is `MGKFitness: Run`
+      per naming.md, since the record existing says nothing about what it is
+      called.
 - [ ] **App Privacy ("nutrition labels").** Must match the sub-processor table
       in [compliance.md](compliance.md): Supabase, OpenRouter, MapTiler. Health
       and fitness data, location, and identifiers all get declared, along with
