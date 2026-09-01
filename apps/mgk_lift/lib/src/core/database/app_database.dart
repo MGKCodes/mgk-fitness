@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,6 +64,12 @@ class AppDatabase extends _$AppDatabase {
         // column added later would need a backfill guessing which meaning each
         // existing `templateId` carried; added now there is nothing to guess.
         await m.addColumn(workouts, workouts.premadeId);
+      }
+      if (from < 6) {
+        // Photos go to the bucket now. Null on every existing row, which is
+        // exactly right: nothing has ever been uploaded, so every photo a
+        // lifter already has counts as pending and goes up on the first run.
+        await m.addColumn(progressPhotos, progressPhotos.syncedAt);
       }
       // The slot rule, as an index rather than a table constraint: drift's
       // `customConstraints` replaces the generated ones wholesale, and a

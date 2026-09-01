@@ -88,14 +88,33 @@ void main() {
     });
 
     test('describes progress photos as they actually behave', () {
-      // The one claim in this policy that a code change can silently falsify:
-      // photos are local because nothing uploads them, not because anything
-      // enforces it. If a sync path ever reaches them, this sentence and the
-      // screen's own line have to change in the same commit.
+      // This test used to pin "Progress photos stay on this device", and it did
+      // its job: the commit that added the bucket could not land without coming
+      // through here. Now it pins what replaced it.
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
-        'Progress photos stay on this device.',
-        'backing up your training does not include them',
+        'Progress photos are part of the paid tier.',
+        'copied to a private storage bucket in our Supabase project',
+        'They are never sent to the coach or to any AI provider.',
+        'Delete account removes them from our servers along with everything '
+            'else, the picture files included.',
       ]);
+    });
+
+    test('no longer claims photos never leave the phone', () {
+      // The specific way this page could rot: a sentence that was true for
+      // three weeks and is now the opposite of what the code does. Naming the
+      // dead phrasing is cheaper than trusting a reader to notice its absence.
+      for (final stale in <String>[
+        'Progress photos stay on this device',
+        'They are not uploaded',
+        'backing up your training does not include them',
+      ]) {
+        expect(
+          app,
+          isNot(contains(stale)),
+          reason: 'the policy still says photos do not leave the phone: $stale',
+        );
+      }
     });
 
     test('says what deletion removes, and what an account is shared with', () {

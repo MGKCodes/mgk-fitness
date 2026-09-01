@@ -25,7 +25,7 @@ const LegalDocument privacyPolicy = LegalDocument(
             'Session and exercise notes are free text you wrote, so they hold '
             'whatever you chose to put there.',
         'Progress photos — the photos you take, the week and pose you filed '
-            'them under, and any note against them. These stay on your phone.',
+            'them under, and any note against them. Part of the paid tier.',
         'Plan data — the answers you give when you ask for a plan: your goal, '
             'how many weeks and days a week you can train, which days those '
             'are, the equipment you have, and your injury notes if you gave '
@@ -93,11 +93,18 @@ const LegalDocument privacyPolicy = LegalDocument(
     LegalSection(
       heading: 'Progress photos',
       paragraphs: <String>[
-        'Progress photos stay on this device. They are not uploaded, and '
-            'backing up your training does not include them. That means this '
-            'phone is the only copy and uninstalling the app loses them — the '
-            'trade we let you make rather than make for you, because a photo '
-            'of your body is the most personal thing this app holds.',
+        'Progress photos are part of the paid tier. They are stored on your '
+            'phone and copied to a private storage bucket in our Supabase '
+            'project, where only your account can read them.',
+        'They are never sent to the coach or to any AI provider. That is the '
+            'one promise on this page we would have to change code to break, '
+            'and it is the reason the photos and the coach are kept apart in '
+            'the first place.',
+        'Deleting a photo removes it from both, immediately. If your '
+            'subscription ends the photos you already have stay, and you can '
+            'still look at them and delete them; only taking new ones stops. '
+            'Delete account removes them from our servers along with '
+            'everything else, the picture files included.',
       ],
     ),
     LegalSection(

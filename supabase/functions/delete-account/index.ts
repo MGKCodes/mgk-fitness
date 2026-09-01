@@ -47,6 +47,81 @@ const CORS: Record<string, string> = {
 const KNOWN_APPS = ["lift", "run"] as const;
 type App = (typeof KNOWN_APPS)[number];
 
+/// Every object under `<user id>/` in the progress-photos bucket.
+///
+/// The prefix is the whole of the access control on that bucket
+/// (`(storage.foldername(name))[1] = auth.uid()`), which means it is also
+/// exactly the set of one person's photographs — there is no ambiguity about
+/// what belongs to whom.
+///
+/// Listed then removed rather than deleted by prefix, because the storage API
+/// has no delete-by-prefix. A page size of 100 is the API default; the loop is
+/// what makes this correct for somebody with three years of weekly photos
+/// rather than only for the first hundred.
+async function removeProgressPhotos(
+  supabaseUrl: string,
+  serviceKey: string,
+  userId: string,
+): Promise<void> {
+  const headers = {
+    "content-type": "application/json",
+    "apikey": serviceKey,
+    "Authorization": `Bearer ${serviceKey}`,
+  };
+
+  try {
+    for (let guard = 0; guard < 100; guard++) {
+      const listRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/list/progress-photos`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            prefix: `${userId}/`,
+            limit: 100,
+            offset: 0,
+          }),
+        },
+      );
+      if (!listRes.ok) {
+        console.error("progress photo list failed", listRes.status);
+        return;
+      }
+
+      const items = await listRes.json().catch(() => null);
+      if (!Array.isArray(items) || items.length === 0) return;
+
+      const names = items
+        .map((i: { name?: unknown }) => i?.name)
+        .filter((n: unknown): n is string => typeof n === "string")
+        .map((n: string) => `${userId}/${n}`);
+      if (names.length === 0) return;
+
+      const delRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/progress-photos`,
+        {
+          method: "DELETE",
+          headers,
+          body: JSON.stringify({ prefixes: names }),
+        },
+      );
+      if (!delRes.ok) {
+        console.error("progress photo delete failed", delRes.status);
+        return;
+      }
+
+      // Offset stays 0 on purpose: the page just removed is gone, so the next
+      // hundred have moved up into its place. Paging forward would skip them.
+      if (items.length < 100) return;
+    }
+    console.error("progress photo sweep hit its guard", userId.slice(0, 8));
+  } catch (e) {
+    // Never fails the deletion. The rows are gone either way, and a retry of
+    // something that has already mostly happened is worse than a log line.
+    console.error("progress photo sweep threw", String(e));
+  }
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -142,7 +217,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "delete_failed" }, 500);
   }
 
-  // 4. The login itself, but only if the sweep said it is safe. Uses the
+  // 4. Progress photos are two stores, and SQL can only reach one of them.
+  //
+  //    `core.delete_account` removes the rows; the JPEGs live in the
+  //    `progress-photos` bucket and no amount of `delete from` touches them.
+  //    Left alone they are the worst possible residue: photographs of somebody's
+  //    body, retained after they asked to be erased, invisible to every query
+  //    anybody would think to run.
+  //
+  //    Keyed off the same flag the row sweep uses, so the two cannot drift.
+  //    `shared_deleted` is true exactly when step 4 of the routine ran, which is
+  //    when `core.progress_photos` was emptied — a partial deletion leaves both
+  //    the rows and the objects, which is right while the account still exists.
+  //
+  //    Failure here is logged and does not fail the request. The rows are gone
+  //    and the objects are unreachable without them; reporting a deletion as
+  //    failed would invite a retry of something that has already mostly
+  //    happened. The log is what turns it into a support job.
+  if (summary.shared_deleted === true) {
+    await removeProgressPhotos(supabaseUrl, serviceKey, userId);
+  }
+
+  // 5. The login itself, but only if the sweep said it is safe. Uses the
   //    supported admin endpoint rather than deleting from `auth.users`
   //    directly, so Supabase's own bookkeeping (sessions, identities) is
   //    handled — and so the cascade is never what does the erasing.

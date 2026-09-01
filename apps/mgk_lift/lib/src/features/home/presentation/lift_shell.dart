@@ -22,6 +22,7 @@ import '../../planning/domain/standing_plan_store.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
+import '../../photos/domain/photo_backup.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -70,6 +71,7 @@ class LiftShell extends StatefulWidget {
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
+    this.photoBackup,
     this.sync,
     this.auth,
     this.initialTab = 0,
@@ -163,6 +165,16 @@ class LiftShell extends StatefulWidget {
   /// The camera. Null leaves photos readable but not addable, which is the
   /// honest state in a preview.
   final PhotoSource? photoSource;
+
+  /// Photos to the bucket and back. Null means this build cannot upload one,
+  /// which is the state with no server — and the state the screen describes
+  /// rather than hides.
+  ///
+  /// **Run separately from [sync], and only when entitled.** A photo is
+  /// megabytes over a storage API and a session is a few text rows; folding
+  /// them into one call would let a stalled image upload take the training
+  /// backup down with it, which is the wrong thing to sacrifice.
+  final PhotoBackup? photoBackup;
 
   /// Backup. **Null means this build has no server**, which Settings reports as
   /// "this device only" rather than hiding the section — somebody whose
@@ -308,6 +320,16 @@ class _LiftShellState extends State<LiftShell> {
     if (sync == null || _syncing) return;
     setState(() => _syncing = true);
     final report = await sync.run();
+
+    // Photos second, and only for an account that has them. The training log
+    // is the half that cannot be re-derived from anywhere, so it goes first
+    // and its result is the one Settings reports — a photo upload that stalls
+    // must not make a successful log backup look like a failure.
+    final photos = widget.photoBackup;
+    if (photos != null && widget.isEntitled && !report.isFailure) {
+      await photos.run();
+    }
+
     if (!mounted) return;
     setState(() {
       _syncing = false;

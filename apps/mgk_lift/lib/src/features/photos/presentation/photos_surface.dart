@@ -235,14 +235,20 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                             // server" is the first question anyone sensible
                             // asks about photographs of their own body.
                             //
-                            // **This sentence is a promise, and it is
-                            // load-bearing.** `core.progress_photos` and a
-                            // private storage bucket both exist server-side
-                            // already, so the day photos start syncing this
-                            // line becomes a lie. It must change in the same
-                            // commit that changes the behaviour, not after
-                            // somebody notices.
-                            'Photos stay on this device. Nothing is uploaded.',
+                            // **This sentence is a promise and it is
+                            // load-bearing.** It used to read "Photos stay on
+                            // this device. Nothing is uploaded", which was true
+                            // until the commit that added the bucket — and that
+                            // commit changed this line, the privacy policy and
+                            // the behaviour together, which is the whole reason
+                            // the note was here.
+                            //
+                            // The second sentence is the one that still costs
+                            // something to keep. `ai-disclosure.md` promises
+                            // the same thing from the other side.
+                            'Stored on this phone and in your $kPlatformName '
+                            'account. Never sent to the coach or any AI '
+                            'provider.',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: AppColors.textTertiary,
                             ),

@@ -14,6 +14,7 @@ import 'src/features/legal/data/account_deletion_service.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
+import 'src/features/photos/data/supabase_photo_sync.dart';
 import 'src/features/settings/data/local_coach_preference.dart';
 import 'src/features/settings/data/local_unit_preferences.dart';
 import 'src/features/settings/data/supabase_unit_preferences.dart';
@@ -97,6 +98,12 @@ class MgkLiftApp extends StatelessWidget {
         // that cannot save what it takes.
         photos: db == null ? null : DriftPhotoLibrary(db),
         photoSource: db == null ? null : CameraPhotoSource(),
+        // Needs both halves: the rows live in the local database and
+        // the JPEGs go to a bucket, so one without the other is a sync
+        // that can only ever do half a job.
+        photoBackup: (db == null || supabase == null)
+            ? null
+            : SupabasePhotoSync(db, supabase),
         auth: supabase == null ? null : SupabaseAuth(supabase),
         sync: (db == null || supabase == null)
             ? null

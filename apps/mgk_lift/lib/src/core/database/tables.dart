@@ -167,6 +167,14 @@ class ProgressPhotos extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// When this row last reached the bucket. Null means never.
+  ///
+  /// Same rule as `workouts.syncedAt`: dirty is `syncedAt is null or updatedAt
+  /// is later`, so there is no outbox to fall out of step with the rows it
+  /// describes. A tombstone is dirty too — that is what makes a delete
+  /// propagate rather than the photo coming back down on the next pull.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 

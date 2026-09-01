@@ -257,11 +257,42 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
       photo is the one thing in this app that cannot be recreated from anything
       else.
 
-      Still to come, and what this checkbox is waiting on: the upload and
-      restore paths, the deletion cascade, and the screen's own promise —
-      *"Photos stay on this device. Nothing is uploaded."* — changing in the
-      same commit as the behaviour, along with the privacy policy's photos
-      section.
+      **Sync landed 2026-09-01**, and the screen's promise changed in the same
+      commit as the behaviour, which is what the note on that string was for.
+      Photos now go to the `progress-photos` bucket under `<user id>/`, come
+      back on a new phone, and a delete propagates as a tombstone rather than
+      the photo reappearing on the next pull.
+
+      Three things it turned up, all of them the kind that only show up in the
+      wiring:
+
+      - **`core.progress_photos` had one timestamp and Lift needs two.**
+        `date` is when the shutter went; the week a photo is filed under is its
+        *identity*, and deriving it server-side is impossible — Monday depends
+        on the timezone the lifter was standing in. Hence a nullable
+        `week_start`, no backfill, and the client deriving it for the 2024-25
+        Liftio rows.
+      - **A retake pushes two rows for one slot** — a tombstone and its
+        replacement — and the new partial unique index rejects the replacement
+        while the original is still live. Deletions now push first. The wrong
+        order fails in a way that reads as a server problem.
+      - **Deleting an account did not delete the pictures.**
+        `core.delete_account` removes rows; the JPEGs live in storage and no
+        `delete from` reaches them. Photographs of somebody's body, retained
+        after they asked to be erased, invisible to every query anybody would
+        think to run. The Edge Function now sweeps the bucket prefix, keyed off
+        the same `shared_deleted` flag the row sweep uses.
+
+      **Not verified against the live server.** Everything here is proved by
+      unit tests and by reading; the upload, the download and the storage sweep
+      need a device and the real project, and there is no local Supabase in
+      this worktree. That is the first thing to exercise on the next build —
+      see the test sheet.
+
+      **Also open:** a lift-only deletion keeps the photos, because they live in
+      `core` and are shared with the account rather than owned by this app. That
+      is defensible while Run has no photo feature and is worth revisiting when
+      it does.
 
       **Settled 2026-09-01:** photos are part of the paid tier, which means
       £1 and up. The two paid tiers hold the same features and differ only in
