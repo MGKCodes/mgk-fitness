@@ -126,12 +126,15 @@ const LegalDocument privacyPolicy = LegalDocument(
             'for you — your sessions, exercises and sets, your plans, your '
             'coach conversations and your usage records. Your phone keeps its '
             'own copy until you uninstall.',
-        'Your login is your $kPlatformName profile, shared with '
-            '$kPlatformName: Run. If the profile holds no data from Run, '
-            'deletion removes the profile itself. If it does, we delete '
-            'everything this app holds and keep only the profile, so your data '
-            'in Run survives — email hello@mgkcodes.com to remove the profile '
-            'as well.',
+        'Deletion asks how much, because your login is your $kPlatformName '
+            'profile and it is shared with $kPlatformName: Run. Delete this '
+            'app only, and we erase everything this app holds; your profile '
+            'survives so Run keeps working. Delete your whole profile, and '
+            'everything Run holds goes too, along with the login itself.',
+        'One thing the narrow choice cannot promise: if Run holds no data, '
+            'there is nothing left for the profile to be for, so it is removed '
+            'as well. We tell you which happened rather than leaving you to '
+            'find out.',
       ],
     ),
     LegalSection(

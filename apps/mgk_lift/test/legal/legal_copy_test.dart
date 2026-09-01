@@ -105,6 +105,21 @@ void main() {
         'then pruned after 180 days',
       ]);
     });
+
+    test(
+      'says deletion is a choice, and what the narrow one cannot promise',
+      () {
+        // The policy describes a shape the screen has to keep. If deletion ever
+        // stops asking, or starts promising the profile survives, this is what
+        // notices.
+        bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
+          'Deletion asks how much',
+          'Delete this app only, and we erase everything this app holds',
+          'if Run holds no data, there is nothing left for the profile to be '
+              'for, so it is removed as well',
+        ]);
+      },
+    );
   });
 
   group('the terms match docs/terms-of-use.md', () {

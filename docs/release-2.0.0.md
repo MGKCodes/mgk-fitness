@@ -240,23 +240,51 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
 - [ ] **Progress photos: sync them, or change the copy.** The screen currently
       promises nothing is uploaded. Tables and bucket exist. Whichever way this
       goes, the sentence and the behaviour change in the same commit.
-- [ ] Update `getliftio.com` Terms — three files across `Liftio` and
-      `getliftio.com` still contradict the licence decision, and Liftio has no
-      credits screen. `mgk_lift`'s `credits_screen.dart` is the reference.
+- [ ] ~~Update `getliftio.com` Terms~~ — **superseded 2026-09-01.**
+      `getliftio.com` is being retired rather than corrected. The web presence
+      folds into the MGKCodes site as something like
+      `mgkfitness.mgkcodes.com`, one place for the suite instead of a domain
+      per app, which is the same consolidation the bundle names and the shared
+      profile already made.
+
+      So there is nothing to fix in three files across two repositories: what
+      is left is to publish the two documents this app now carries — the
+      [privacy policy](../apps/mgk_lift/docs/privacy-policy.md) and the
+      [terms](../apps/mgk_lift/docs/terms-of-use.md) — at the new address, and
+      point App Store Connect at it.
+
+      **A later segment, and not a blocker for TestFlight.** It is a blocker
+      for submission: App Store Connect requires a reachable privacy-policy
+      URL, and `getliftio.com` should not be that URL if it is going away.
 
 ## Found while working Phase 2, and not on it
 
 Two gaps this plan does not list, one of them a hard rejection.
 
-- [ ] **There is no way to delete an account.** Nothing in `apps/mgk_lift/lib`
-      references deletion at all — no screen, no service, no mention. The
+- [x] **There is no way to delete an account.** Nothing in `apps/mgk_lift/lib`
+      referenced deletion at all — no screen, no service, no mention. The
       `delete-account` Edge Function exists and is already app-aware
       (`{"app": "lift"}` erases `lift.*` and keeps the shared login when Run
       still holds data), and run has a full `DeleteAccountScreen` and
       `AccountDeletionService` to copy. **Guideline 5.1.1(v) requires in-app
-      deletion for any app that supports account creation**, so this is a
-      rejection rather than a nice-to-have, and the privacy policy currently
-      describes a deletion path the app does not have.
+      deletion for any app that supports account creation**, so this was a
+      rejection rather than a nice-to-have.
+
+      Landed 2026-09-01, and **it asks which deletion you mean.** One login
+      serves the whole suite (ADR-0008), so "delete my account" names two
+      different requests, and the function has always modelled both while no
+      client had offered the choice:
+
+      - *Delete my Lift data* — `{"app": "lift"}`. Erases `lift.*` and this
+        app's coach data; the profile survives so Run keeps working.
+      - *Delete my whole MGKFitness profile* — no `app`. Everything, in every
+        app, and the login.
+
+      It opens on the narrower one: a destructive screen should not arrive with
+      the widest option already chosen. The gate is a typed `DELETE`, and the
+      outcome screen says what actually happened — including the case where the
+      narrow choice still took the login because Run held nothing, which is
+      said before the tap as well as after it.
 
 - [ ] **Run's deletion is unscoped, and erases Lift's data.** Not this app's
       bug and not fixable from this branch, but found here and worth writing

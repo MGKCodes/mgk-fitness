@@ -4,6 +4,8 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
+import '../../auth/domain/account.dart';
+import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
@@ -40,6 +42,8 @@ class SettingsScreen extends StatefulWidget {
     this.coachMemory,
     this.useCoach,
     this.onUseCoachChanged,
+    this.auth,
+    this.deleter,
     this.version = kAppVersion,
     this.now,
   });
@@ -86,6 +90,11 @@ class SettingsScreen extends StatefulWidget {
   final bool? useCoach;
 
   final ValueChanged<bool>? onUseCoachChanged;
+
+  /// Passed through to the legal hub, which is where deletion lives. Held
+  /// here only because Settings is the route to that screen.
+  final AuthService? auth;
+  final AccountDeleter? deleter;
 
   final String version;
 
@@ -295,7 +304,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'Terms, privacy policy, how your coach uses AI',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => LegalScreen(email: widget.email),
+                  builder: (_) => LegalScreen(
+                    email: widget.email,
+                    auth: widget.auth,
+                    deleter: widget.deleter,
+                  ),
                 ),
               ),
             ),
@@ -413,12 +426,17 @@ class SettingsTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.showChevron = true,
+    this.tint,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
   final VoidCallback? onTap;
+
+  /// Colours the icon and title. Greyscale is the rule (ADR-0009) and status is
+  /// the sanctioned exception — a row that erases an account is status.
+  final Color? tint;
 
   /// A chevron promises another screen. Turn it off for a row that does not
   /// go anywhere.
@@ -433,11 +451,12 @@ class SettingsTile extends StatelessWidget {
         horizontal: AppSpacing.xl,
         vertical: AppSpacing.xs,
       ),
-      leading: Icon(icon, color: AppColors.textSecondary),
+      leading: Icon(icon, color: tint ?? AppColors.textSecondary),
       title: Text(
         title,
         style: theme.textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.w600,
+          color: tint,
         ),
       ),
       subtitle: subtitle == null

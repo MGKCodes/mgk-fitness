@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../auth/domain/account.dart';
 import '../../settings/presentation/settings_screen.dart' show SettingsTile;
+import '../domain/account_deleter.dart';
 import '../domain/legal_copy.dart';
+import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
 
 /// Privacy & legal: the one place the compliance surfaces are reachable from.
@@ -14,13 +17,29 @@ import 'legal_document_screen.dart';
 /// A self-contained route: push it from anywhere, take what it shows as
 /// parameters, so it renders against fakes in tests and in the preview.
 class LegalScreen extends StatelessWidget {
-  const LegalScreen({super.key, this.email});
+  const LegalScreen({
+    super.key,
+    this.email,
+    this.auth,
+    this.deleter,
+    this.onSignedOut,
+  });
 
   /// Shown at the top when signed in, so it is obvious which account the
   /// rights below apply to. Null when signed out, which is an ordinary state
   /// here — tracking works without an account, and the documents are readable
   /// before anybody has one.
   final String? email;
+
+  /// The two halves of deletion. **Both null hides the row**, which is the
+  /// honest state for a build with no server: an app that cannot delete an
+  /// account should not offer to, and Guideline 5.1.1(v) only applies where one
+  /// can be created in the first place.
+  final AuthService? auth;
+  final AccountDeleter? deleter;
+
+  /// Where to go once the account is gone and the session has ended.
+  final VoidCallback? onSignedOut;
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -81,6 +100,39 @@ class LegalScreen extends StatelessWidget {
                 const LegalDocumentScreen(document: aiDisclosure),
               ),
             ),
+
+            // Deletion is a data right, so it belongs with the documents that
+            // describe the others rather than under Account, where it would sit
+            // next to Sign out and be one mis-tap away from it.
+            if (auth case final AuthService service
+                when deleter != null && service.current != null) ...<Widget>[
+              const Divider(color: AppColors.elevated, height: AppSpacing.xxl),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                ),
+                child: SectionLabel('Your data', color: AppColors.textTertiary),
+              ),
+              SettingsTile(
+                icon: Icons.delete_outline,
+                title: 'Delete account',
+                // Says there is a choice, so the row is not read as the one
+                // irreversible thing it could have been.
+                subtitle: 'This app only, or your whole profile',
+                tint: AppColors.danger,
+                onTap: () => _push(
+                  context,
+                  DeleteAccountScreen(
+                    auth: service,
+                    deleter: deleter!,
+                    onSignedOut: onSignedOut,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

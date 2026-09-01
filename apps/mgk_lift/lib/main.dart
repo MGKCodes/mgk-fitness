@@ -10,6 +10,7 @@ import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/coaching/data/supabase_coach_memory.dart';
 import 'src/features/planning/data/supabase_coach_planner.dart';
 import 'src/features/planning/data/supabase_standing_plan_store.dart';
+import 'src/features/legal/data/account_deletion_service.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
@@ -115,6 +116,12 @@ class MgkLiftApp extends StatelessWidget {
         // Supabase has no coach to switch off, which the shell reads from
         // `coach` being null rather than from this.
         coachPreference: LocalCoachPreference(),
+        // Paired with `auth` rather than gated separately: deletion is
+        // meaningless without an account and impossible without a server,
+        // and both of those are the same `supabase` being non-null.
+        deleter: supabase == null
+            ? null
+            : AccountDeletionService(client: supabase),
         planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
         plans: supabase == null ? null : SupabaseStandingPlanStore(supabase),
       ),

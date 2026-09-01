@@ -9,6 +9,7 @@ import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
+import '../../legal/domain/account_deleter.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/plan_intake.dart';
@@ -62,6 +63,7 @@ class LiftShell extends StatefulWidget {
     this.transcript,
     this.coachMemory,
     this.coachPreference,
+    this.deleter,
     this.planner,
     this.plans,
     this.isEntitled = false,
@@ -127,6 +129,11 @@ class LiftShell extends StatefulWidget {
   /// with no store wired up should do: the toggle is a consent control, and
   /// one that cannot persist an answer is worse than none.
   final CoachPreferenceStore? coachPreference;
+
+  /// Erases the account. Null hides the deletion row — a build with no
+  /// server cannot delete anything, and offering to would be a button that
+  /// fails at the moment somebody most needs it to work.
+  final AccountDeleter? deleter;
 
   /// Builds and adapts plans. Null hides the entry point rather than showing
   /// one that cannot work — the same rule every other optional dependency here
@@ -489,6 +496,8 @@ class _LiftShellState extends State<LiftShell> {
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,
           coachMemory: widget.coachMemory,
+          auth: widget.auth,
+          deleter: widget.deleter,
           useCoach: widget.coachPreference == null ? null : _useCoach,
           onUseCoachChanged: widget.coachPreference == null
               ? null
