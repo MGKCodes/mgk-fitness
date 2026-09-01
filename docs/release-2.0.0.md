@@ -185,17 +185,52 @@ The soonest goal: TestFlight, off the live server, on a real device.
 
 Liftio's changelog is a list of rejections bought once. Do not buy them twice.
 
-- [ ] **Terms and Privacy links.** Nothing in `apps/mgk_lift/lib` links to
+- [x] **Terms and Privacy links.** Nothing in `apps/mgk_lift/lib` linked to
       either. Required wherever an account can be created.
+
+      Landed 2026-09-01 as a `legal` feature copied from run's rather than
+      designed twice — `LegalDocument`, a renderer, a hub, and a staleness test
+      pinning the in-app copy to `docs/`. Three documents, all written from the
+      code: [privacy-policy.md](../apps/mgk_lift/docs/privacy-policy.md),
+      [terms-of-use.md](../apps/mgk_lift/docs/terms-of-use.md) and
+      [ai-disclosure.md](../apps/mgk_lift/docs/ai-disclosure.md). Each carries a
+      "draft, legally unreviewed" banner naming what is still open, and **legal
+      review of all three is a real open item** rather than a formality.
+
+      Reachable from Settings ▸ Privacy & legal, and from the sign-in screen,
+      which is the only place in this app an account can be created.
 - [ ] **Auto-renew disclosure, verbatim.** Guideline 3.1.2(a) wants the full
       24-hour cancellation window at the point of purchase, not a summary.
       Liftio's accepted wording is in its 1.4.0 changelog entry.
-- [ ] **Third-party AI disclosure.** Guideline 5.1.2(i). This is *more* acute
+
+      **Blocked on Phase 3, and deliberately not started.** There is no point of
+      purchase to put it at, and 3.1.2(a) wants the disclosure in full or not at
+      all. The terms carry one sentence — "Everything the app does today is
+      available without paying" — and a test asserts the words *auto-renew*,
+      *automatically renews*, *per month* and *free trial* appear nowhere, so
+      the first person to write half the disclosure trips it. `docs/terms-of-use.md`
+      holds the marker for what has to be written when payments land.
+- [x] **Third-party AI disclosure.** Guideline 5.1.2(i). This is *more* acute
       than it was for Liftio, which sent numerical aggregates only: Lift sends
       the lifter's own words about their body and injuries to OpenRouter. Needs
       a visible surface — Liftio settled on an info affordance at the point of
       use, a Settings toggle, and a dedicated screen naming provider, what is
       sent and what is not.
+
+      Landed 2026-09-01, all three. The affordance is in the coach sheet's top
+      bar and is shown mid-intake as well as in conversation, because the
+      questionnaire is where the injury notes are typed. The switch is
+      device-local rather than in `core.user_settings` — it is consent, not a
+      display choice, and an account row is something a restore could quietly
+      flip back on. **Off means the mark is absent, not inert**, matching the
+      call `main.dart` already makes when there is no server.
+
+      Two things the wiring turned up. Building a plan is an AI request too, so
+      the switch had to reach `_canPlan` or Plan would have gone on sending the
+      intake answers — injury notes included — with the coach switched off. And
+      the note under the then-disabled button said *"Your coach needs a
+      connection"*, which had become a confident lie about a choice somebody
+      made on purpose; `PlanSurface` now takes the reason and says which it is.
 - [ ] **Email confirmation back on in Supabase Auth.** Switched off 2026-08-10
       for the first TestFlight sign-in. With it off, anybody can register an
       address they do not own. `AuthRepository.signUp` already handles both
@@ -208,6 +243,34 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
 - [ ] Update `getliftio.com` Terms — three files across `Liftio` and
       `getliftio.com` still contradict the licence decision, and Liftio has no
       credits screen. `mgk_lift`'s `credits_screen.dart` is the reference.
+
+## Found while working Phase 2, and not on it
+
+Two gaps this plan does not list, one of them a hard rejection.
+
+- [ ] **There is no way to delete an account.** Nothing in `apps/mgk_lift/lib`
+      references deletion at all — no screen, no service, no mention. The
+      `delete-account` Edge Function exists and is already app-aware
+      (`{"app": "lift"}` erases `lift.*` and keeps the shared login when Run
+      still holds data), and run has a full `DeleteAccountScreen` and
+      `AccountDeletionService` to copy. **Guideline 5.1.1(v) requires in-app
+      deletion for any app that supports account creation**, so this is a
+      rejection rather than a nice-to-have, and the privacy policy currently
+      describes a deletion path the app does not have.
+
+- [ ] **Run's deletion is unscoped, and erases Lift's data.** Not this app's
+      bug and not fixable from this branch, but found here and worth writing
+      down. `AccountDeletionService` invokes `delete-account` with **no body**;
+      the function reads an absent `app` as "erase everything, everywhere, and
+      the login", and `core.delete_account(user, null)` targets both schemas.
+      So deleting a Run account today also erases the lifter's sessions —
+      while run's own privacy copy promises *"we delete everything this app
+      holds and keep only the profile, so your data in Lift survives"*.
+
+      The corroboration is in run's own code: `AccountDeletionResult` models
+      `retainedReason == 'sibling_app_data'`, which the server can only ever
+      return for a scoped call. That branch is unreachable today. The fix is
+      one argument — `body: {'app': 'run'}` — in run's lane.
 
 ## Phase 3 — Payments, owned
 
