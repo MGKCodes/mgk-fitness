@@ -420,6 +420,10 @@ class _LiftShellState extends State<LiftShell> {
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,
+                  // Shown whether or not the account is entitled. A lapsed
+                  // lifter has to be able to reach photos they already took, and
+                  // somebody who has never had it should meet the offer rather than
+                  // a tab that is not there.
                   onOpenPhotos: widget.photos == null ? null : _openPhotos,
                 ),
               ],
@@ -542,8 +546,11 @@ class _LiftShellState extends State<LiftShell> {
     if (library == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            PhotosSurface(library: library, source: widget.photoSource),
+        builder: (_) => PhotosSurface(
+          library: library,
+          source: widget.photoSource,
+          isEntitled: widget.isEntitled,
+        ),
       ),
     );
   }

@@ -240,6 +240,34 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
 - [ ] **Progress photos: sync them, or change the copy.** The screen currently
       promises nothing is uploaded. Tables and bucket exist. Whichever way this
       goes, the sentence and the behaviour change in the same commit.
+
+      **Settled 2026-09-01, and the answer changed the question.** Photos are
+      not a free feature that might sync — the whole feature is paid, gated on
+      the same entitlement as the coach and the plan. Storing photographs of
+      somebody's body costs real money in a way text rows do not, which is the
+      one place in this app where a storage gate is an economic fact rather
+      than a paywall looking for a home. It is also the cleanest answer under
+      data minimisation: we do not hold body photos for people who get nothing
+      back from them.
+
+      Landed so far: the gate, the offer, and the lapse behaviour. **A lapse
+      takes the camera, not the photos** — everything already shot stays
+      readable, playable and deletable, which is the rule `main.dart` already
+      applies to coach memory and which matters more here, because a progress
+      photo is the one thing in this app that cannot be recreated from anything
+      else.
+
+      Still to come, and what this checkbox is waiting on: the upload and
+      restore paths, the deletion cascade, and the screen's own promise —
+      *"Photos stay on this device. Nothing is uploaded."* — changing in the
+      same commit as the behaviour, along with the privacy policy's photos
+      section.
+
+      **Open, for Phase 3:** which tier. The paywall lists Free, £1 Coaching
+      and £3 Premium, and photos are currently gated on the same `isEntitled`
+      boolean as the coach — so today they land in £1. The tier copy in
+      `plan_surface.dart` does not mention photos at all yet and will have to,
+      whichever way this goes.
 - [ ] ~~Update `getliftio.com` Terms~~ — **superseded 2026-09-01.**
       `getliftio.com` is being retired rather than corrected. The web presence
       folds into the MGKCodes site as something like

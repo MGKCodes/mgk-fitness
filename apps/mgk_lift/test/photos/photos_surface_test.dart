@@ -39,6 +39,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -58,6 +59,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -78,6 +80,7 @@ void main() {
             photo(Pose.back, 0),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -100,6 +103,7 @@ void main() {
             photo(Pose.front, 11),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -120,6 +124,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -155,6 +160,7 @@ void main() {
       PhotosSurface(
         library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
         source: FakePhotoSource('/tmp/x.jpg'),
+        isEntitled: true,
         now: now,
       ),
     );
@@ -177,6 +183,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -196,6 +203,7 @@ void main() {
             photo(Pose.back, 0),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -212,6 +220,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),

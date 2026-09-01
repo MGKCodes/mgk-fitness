@@ -17,11 +17,33 @@ import 'pose_series_screen.dart';
 /// definition of done: two photos, once a week.
 ///
 /// Which is why the first thing on the screen is whether this week is done.
+///
+/// ## Paid, and what that means when it lapses
+///
+/// The whole feature is behind the entitlement, alongside the coach and the
+/// plan: taking a photo needs [isEntitled], not just a camera. Storing
+/// photographs of somebody's body costs real money in a way that text rows do
+/// not, which is the one place in this app where a storage gate is an economic
+/// fact rather than a paywall looking for a home.
+///
+/// **A lapse takes the camera, not the photos.** Somebody who stops paying
+/// keeps everything they shot: they can look at it, play it back, and delete
+/// it. Only adding stops. That is the same rule `main.dart` already applies to
+/// coach memory — *"somebody who has stopped paying must still be able to read
+/// what was stored about them and delete it"* — and here it matters more,
+/// because a progress photo is the one thing in this app that cannot be
+/// recreated from anything else.
+///
+/// So the two unentitled states are different screens. Nothing shot yet is the
+/// offer; photos already there is the library, read-only, with a line saying
+/// why the camera has gone.
 class PhotosSurface extends StatefulWidget {
   const PhotosSurface({
     super.key,
     required this.library,
     this.source,
+    this.isEntitled = false,
+    this.onSubscribe,
     this.poses = Pose.defaults,
     this.now,
   });
@@ -31,6 +53,15 @@ class PhotosSurface extends StatefulWidget {
   /// Null disables adding — right for a build with no camera plugin, and for a
   /// preview. The screen still shows what is there.
   final PhotoSource? source;
+
+  /// Whether this account has the paid tier. **Defaults to false**, matching
+  /// [PlanSurface]: a default that silently hands over the paid half is the one
+  /// mistake worth making impossible.
+  final bool isEntitled;
+
+  /// Opens the store. Null until billing exists (Phase 3), which the offer
+  /// says out loud rather than showing a button that does nothing.
+  final VoidCallback? onSubscribe;
 
   /// Which poses this account tracks, as it starts. The lifter can add the
   /// others from the screen.
@@ -88,9 +119,17 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
     photos: _photos.where((p) => p.pose == pose).toList(),
   );
 
+  /// Whether a photo can be taken at all.
+  ///
+  /// Two conditions, and the entitlement is the one that carries meaning: a
+  /// missing [PhotoSource] is a build without a camera plugin, which is a
+  /// developer's problem, while a missing entitlement is a person's state and
+  /// the screen has to explain it.
+  bool get _canAdd => widget.isEntitled && widget.source != null;
+
   Future<void> _add(Pose pose) async {
     final source = widget.source;
-    if (source == null) return;
+    if (source == null || !widget.isEntitled) return;
 
     final path = await _chooseSource(source);
     if (path == null) return;
@@ -150,8 +189,7 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                             // The nudge does something. "1 of 2 taken" told you
                             // the state and left you to find the missing pose
                             // yourself.
-                            onFinish:
-                                widget.source == null || done == series.length
+                            onFinish: !_canAdd || done == series.length
                                 ? null
                                 : () => _add(
                                     series
@@ -165,9 +203,7 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                               series: s,
                               thisWeek: week,
                               onOpen: () => _open(s),
-                              onAdd: widget.source == null
-                                  ? null
-                                  : () => _add(s.pose),
+                              onAdd: !_canAdd ? null : () => _add(s.pose),
                             ),
                           if (_untracked.isNotEmpty) ...<Widget>[
                             const SizedBox(height: AppSpacing.sm),
@@ -185,6 +221,13 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                                   ),
                               ],
                             ),
+                          ],
+                          // Why the camera went, for somebody who had it
+                          // yesterday. Without this the screen simply loses a
+                          // button and reads as broken rather than as lapsed.
+                          if (!widget.isEntitled) ...<Widget>[
+                            const SizedBox(height: AppSpacing.lg),
+                            _Lapsed(onSubscribe: widget.onSubscribe),
                           ],
                           const SizedBox(height: AppSpacing.lg),
                           Text(
@@ -205,7 +248,11 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        ] else
+                        ] else if (!widget.isEntitled)
+                          // Nothing shot and nothing bought: the offer, not an
+                          // empty state with a disabled button.
+                          _Offer(onSubscribe: widget.onSubscribe)
+                        else
                           _Empty(
                             poses: _tracked,
                             onAdd: widget.source == null ? null : _add,
@@ -234,7 +281,7 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
           thisWeek: _thisWeek,
           library: widget.library,
           source: widget.source,
-          onAdd: widget.source == null ? null : () => _add(series.pose),
+          onAdd: !_canAdd ? null : () => _add(series.pose),
         ),
       ),
     );
@@ -327,11 +374,18 @@ class _PoseCard extends StatelessWidget {
               // out of every single one.
               aspectRatio: 4 / 3,
               child: latest == null
-                  ? const ColoredBox(
+                  ? ColoredBox(
                       color: AppColors.elevated,
                       child: Center(
                         child: Icon(
-                          Icons.add_a_photo_outlined,
+                          // An invitation only when it can be accepted. With
+                          // no way to add — no camera, or no entitlement — the
+                          // add-a-photo icon was a card that looked tappable,
+                          // did nothing, and gave no reason. A plain empty
+                          // frame says "nothing here", which is true.
+                          onAdd == null
+                              ? Icons.photo_outlined
+                              : Icons.add_a_photo_outlined,
                           color: AppColors.textTertiary,
                         ),
                       ),
@@ -383,6 +437,186 @@ class _PoseCard extends StatelessWidget {
     // Both numbers, because they differ the moment a week is missed and the gap
     // is the interesting part.
     return weeks <= 1 ? photos : '$photos over $weeks weeks';
+  }
+}
+
+/// Nothing shot, nothing bought: what the feature is and what it costs.
+///
+/// An offer rather than an empty state with a dead button. Somebody who has
+/// never had this cannot miss it, so the screen has to say what it would be —
+/// and the pitch is the same one the feature actually delivers, which is the
+/// only kind worth making.
+class _Offer extends StatelessWidget {
+  const _Offer({required this.onSubscribe});
+
+  final VoidCallback? onSubscribe;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+      child: Column(
+        children: <Widget>[
+          Text(
+            'Same spot, same light, once a week',
+            style: theme.textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'The scale moves for reasons that have nothing to do with '
+            'training. A photo a week does not.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const _OfferPoint(
+            icon: Icons.grid_on_outlined,
+            title: 'One stream per pose',
+            body:
+                'Front and back to start, sides when you want them. One '
+                'photo a week each, so a year is fifty-two frames rather '
+                'than four hundred.',
+          ),
+          const _OfferPoint(
+            icon: Icons.play_circle_outline,
+            title: 'Play it back',
+            body:
+                'Months of the same angle, in sequence. A bad week can be '
+                'skipped without deleting it.',
+          ),
+          const _OfferPoint(
+            icon: Icons.lock_outline,
+            title: 'Yours alone',
+            body:
+                'Never sent to the coach or any AI provider, and deletable '
+                'one at a time or all at once.',
+            isLast: true,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          if (onSubscribe != null)
+            PrimaryButton(label: 'Unlock photos', onPressed: onSubscribe)
+          else
+            Text(
+              // Honest about the state rather than showing a button that does
+              // nothing. Payments do not exist yet (Phase 3), and a dead
+              // "Subscribe" is worse than a sentence.
+              'Part of the paid tier, alongside the coach and your plan. '
+              'Subscriptions are not open yet.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferPoint extends StatelessWidget {
+  const _OfferPoint({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, size: 20, color: AppColors.textSecondary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  body,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Photos already here, subscription gone.
+///
+/// Says what still works before it says what does not. Everything the lifter
+/// already shot is theirs, and the screen leading with the loss would misstate
+/// what has actually happened.
+class _Lapsed extends StatelessWidget {
+  const _Lapsed({required this.onSubscribe});
+
+  final VoidCallback? onSubscribe;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassSurface(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Your photos are still here',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Look at them, play them back, delete them — all of that keeps '
+            'working. Taking new ones is part of the paid tier.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+          if (onSubscribe != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onSubscribe,
+                child: const Text('Resubscribe'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
