@@ -34,8 +34,15 @@
 //     SUPABASE_ANON_KEY            used only to validate the caller's JWT
 //     SUPABASE_SERVICE_ROLE_KEY    used only after that check passes
 //
-// Dependency-free (raw fetch), matching `coach/index.ts`, so the wire shape is
-// explicit and the Deno edge build stays reproducible.
+// Raw fetch for everything the database and auth admin API can do, matching
+// `coach/index.ts`, so the wire shape is explicit and the edge build stays
+// reproducible. **One exception**, and it is deliberate: the storage sweep uses
+// `supabase-js`, because the list and delete body shapes are the two here that
+// are easy to hand-write subtly wrong — and a wrong one fails silently as
+// "nothing to delete", leaving photographs of somebody's body behind after they
+// asked to be erased. See `removeProgressPhotos`.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -50,74 +57,57 @@ type App = (typeof KNOWN_APPS)[number];
 /// Every object under `<user id>/` in the progress-photos bucket.
 ///
 /// The prefix is the whole of the access control on that bucket
-/// (`(storage.foldername(name))[1] = auth.uid()`), which means it is also
-/// exactly the set of one person's photographs — there is no ambiguity about
-/// what belongs to whom.
+/// (`(storage.foldername(name))[1] = auth.uid()`), which makes it exactly the
+/// set of one person's photographs — there is no ambiguity about what belongs
+/// to whom.
 ///
-/// Listed then removed rather than deleted by prefix, because the storage API
-/// has no delete-by-prefix. A page size of 100 is the API default; the loop is
-/// what makes this correct for somebody with three years of weekly photos
-/// rather than only for the first hundred.
+/// **Uses the client library rather than raw fetch, unlike the rest of this
+/// file.** Everything else here talks to documented, stable REST endpoints —
+/// `/auth/v1/user`, `/rest/v1/rpc/...`, the admin user delete. Storage list and
+/// delete are the two shapes worth not hand-writing: the request bodies are
+/// easy to get subtly wrong, a wrong one fails silently as "nothing to delete",
+/// and the failure mode is retained photographs of somebody's body. The library
+/// is the thing that knows the wire format.
+///
+/// Listed then removed, because there is no delete-by-prefix. `remove` caps at
+/// 1000 keys per call, and `list` defaults to 100 — the loop is what makes this
+/// correct for three years of weekly photos rather than only the first page.
 async function removeProgressPhotos(
   supabaseUrl: string,
   serviceKey: string,
   userId: string,
 ): Promise<void> {
-  const headers = {
-    "content-type": "application/json",
-    "apikey": serviceKey,
-    "Authorization": `Bearer ${serviceKey}`,
-  };
-
   try {
-    for (let guard = 0; guard < 100; guard++) {
-      const listRes = await fetch(
-        `${supabaseUrl}/storage/v1/object/list/progress-photos`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            prefix: `${userId}/`,
-            limit: 100,
-            offset: 0,
-          }),
-        },
-      );
-      if (!listRes.ok) {
-        console.error("progress photo list failed", listRes.status);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const bucket = supabase.storage.from("progress-photos");
+
+    for (let page = 0; page < 200; page++) {
+      const { data, error } = await bucket.list(userId, { limit: 100 });
+      if (error) {
+        console.error("progress photo list failed", error.message);
+        return;
+      }
+      if (!data || data.length === 0) return;
+
+      const paths = data.map((o: { name: string }) => `${userId}/${o.name}`);
+      const { error: removeError } = await bucket.remove(paths);
+      if (removeError) {
+        console.error("progress photo delete failed", removeError.message);
         return;
       }
 
-      const items = await listRes.json().catch(() => null);
-      if (!Array.isArray(items) || items.length === 0) return;
-
-      const names = items
-        .map((i: { name?: unknown }) => i?.name)
-        .filter((n: unknown): n is string => typeof n === "string")
-        .map((n: string) => `${userId}/${n}`);
-      if (names.length === 0) return;
-
-      const delRes = await fetch(
-        `${supabaseUrl}/storage/v1/object/progress-photos`,
-        {
-          method: "DELETE",
-          headers,
-          body: JSON.stringify({ prefixes: names }),
-        },
-      );
-      if (!delRes.ok) {
-        console.error("progress photo delete failed", delRes.status);
-        return;
-      }
-
-      // Offset stays 0 on purpose: the page just removed is gone, so the next
-      // hundred have moved up into its place. Paging forward would skip them.
-      if (items.length < 100) return;
+      // The page just removed is gone, so the next hundred have moved up into
+      // its place — there is no offset to advance. A short page means the
+      // folder is now empty.
+      if (data.length < 100) return;
     }
     console.error("progress photo sweep hit its guard", userId.slice(0, 8));
   } catch (e) {
-    // Never fails the deletion. The rows are gone either way, and a retry of
-    // something that has already mostly happened is worse than a log line.
+    // Never fails the deletion. The rows are gone either way, and asking
+    // somebody to retry something that has already mostly happened is worse
+    // than a log line that turns this into a support job.
     console.error("progress photo sweep threw", String(e));
   }
 }

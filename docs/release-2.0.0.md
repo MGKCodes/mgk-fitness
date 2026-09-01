@@ -237,6 +237,19 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
       paths, so this needs no code change — but the built-in mailer is
       rate-limited and explicitly for testing, so **configuring SMTP is the
       actual task** and the toggle is a stopgap.
+
+      **Half of this is already done, and the other half is now demonstrated
+      rather than predicted.** Checked against the live project 2026-09-01: the
+      toggle is back ON — a sign-up attempt returns `email rate limit
+      exceeded`, which is the built-in mailer refusing to send a confirmation,
+      not a validation error. So the stopgap is in place and **SMTP is the only
+      thing left**, exactly as this item warned. Until it is configured, sign-up
+      is effectively broken for anybody new: the mailer's limit is a handful of
+      messages an hour across the whole project.
+
+      Worth knowing while testing: Supabase Auth also rejects `example.com` and
+      `.invalid` addresses outright, so a throwaway test account needs a real
+      domain.
 - [ ] **Progress photos: sync them, or change the copy.** The screen currently
       promises nothing is uploaded. Tables and bucket exist. Whichever way this
       goes, the sentence and the behaviour change in the same commit.
@@ -283,11 +296,22 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
         think to run. The Edge Function now sweeps the bucket prefix, keyed off
         the same `shared_deleted` flag the row sweep uses.
 
-      **Not verified against the live server.** Everything here is proved by
-      unit tests and by reading; the upload, the download and the storage sweep
-      need a device and the real project, and there is no local Supabase in
-      this worktree. That is the first thing to exercise on the next build —
-      see the test sheet.
+      **The storage sweep is now verified against production**, end to end: a
+      probe account was created with three photo rows and three objects, signed
+      in, and put through the real `delete-account` function. Rows gone,
+      **objects gone**, and the two real accounts' 30 rows and 37 objects
+      untouched. That is the bug proved fixed rather than reasoned about.
+
+      Rewritten to use `supabase-js` in the process. The sweep was hand-written
+      REST — `POST /storage/v1/object/list/{bucket}`, `DELETE` with `prefixes` —
+      and the docs confirm the client methods but not those bodies. A wrong body
+      fails *silently* as "nothing to delete", and the residue is photographs of
+      somebody's body kept after they asked to be erased. That is not a shape to
+      guess at, so the library owns it now.
+
+      **Still unverified:** the upload and download themselves, which need a
+      device with a camera. The rules deciding which photos go and where they
+      land are unit-tested; the round trip is for the next build.
 
       **Also open:** a lift-only deletion keeps the photos, because they live in
       `core` and are shared with the account rather than owned by this app. That

@@ -286,6 +286,33 @@ class SupabasePhotoSync implements PhotoBackup {
     final path = raw['storage_path'] as String?;
     if (path == null) return false;
 
+    // **The slot may already be taken by a different photo, and inserting
+    // anyway takes the whole restore down.**
+    //
+    // Liftio's remote uniqueness was `(user_id, date, pose_type)` — `date` being
+    // the exact millisecond, so it constrained nothing and two front photos in
+    // one week were legal. This app's local index is `(week_start, pose_type)`,
+    // which is the real rule, so a legacy pair collapses onto one slot on the
+    // way down. `insertOnConflictUpdate` conflicts on the primary key, not on
+    // that index, so the second row throws — and the throw is caught as a
+    // network failure in `run`, meaning somebody's whole library silently stops
+    // restoring because of two photos from 2026.
+    //
+    // Skipped rather than merged, and nothing remote is touched: the photo
+    // stays on the server, it simply is not the one shown for that week. One
+    // per slot is the model, and picking arbitrarily between two is what the
+    // model is for.
+    final occupant =
+        await (_db.select(_db.progressPhotos)..where(
+              (t) =>
+                  t.weekStart.equals(weekStart) &
+                  t.poseType.equals(raw['pose_type'] as String? ?? '') &
+                  t.deletedAt.isNull() &
+                  t.id.equals(id).not(),
+            ))
+            .getSingleOrNull();
+    if (occupant != null) return false;
+
     final dir = await _directory();
     final destination = File(p.join(dir.path, '$id.jpg'));
     try {
