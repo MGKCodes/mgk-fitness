@@ -1,6 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../legal/domain/legal_copy.dart';
+import '../../legal/domain/legal_document.dart';
+import '../../legal/presentation/legal_document_screen.dart';
 import '../domain/account.dart';
 
 /// Sign in, or make an account.
@@ -268,6 +272,14 @@ class _SignInScreenState extends State<SignInScreen> {
                           height: 1.4,
                         ),
                       ),
+
+                      // Required wherever an account can be created, and this
+                      // screen is the only place it can be. Shown in both modes
+                      // rather than only when creating: somebody signing in on a
+                      // new phone is re-accepting the same terms, and a link
+                      // that appears and disappears reads as a trick.
+                      const SizedBox(height: AppSpacing.lg),
+                      const _LegalLinks(),
                     ],
                   ),
                 ),
@@ -292,5 +304,61 @@ class _SignInScreenState extends State<SignInScreen> {
         // "back up your data" is a category.
         : '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'exists' : 'exist'} only '
               'on this phone. An account backs ${n == 1 ? 'it' : 'them'} up.';
+  }
+}
+
+/// The terms and privacy links under the sign-in form.
+///
+/// One sentence with two tappable halves rather than two buttons. Apple wants
+/// the documents reachable from the point of account creation; a person wants
+/// to know what they are agreeing to. A sentence does both, and two more
+/// buttons under the primary action would compete with it.
+class _LegalLinks extends StatelessWidget {
+  const _LegalLinks();
+
+  void _open(BuildContext context, LegalDocument document) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalDocumentScreen(document: document),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = theme.textTheme.bodySmall?.copyWith(
+      color: AppColors.textTertiary,
+      height: 1.4,
+    );
+    final link = base?.copyWith(
+      color: AppColors.textSecondary,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.textTertiary,
+    );
+
+    return Text.rich(
+      TextSpan(
+        children: <InlineSpan>[
+          const TextSpan(text: 'By continuing you agree to the '),
+          TextSpan(
+            text: termsOfUse.title.toLowerCase(),
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => _open(context, termsOfUse),
+          ),
+          const TextSpan(text: ' and the '),
+          TextSpan(
+            text: privacyPolicy.title.toLowerCase(),
+            style: link,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => _open(context, privacyPolicy),
+          ),
+          const TextSpan(text: '.'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      style: base,
+    );
   }
 }

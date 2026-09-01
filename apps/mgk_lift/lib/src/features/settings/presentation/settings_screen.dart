@@ -4,6 +4,7 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
+import '../../legal/presentation/legal_screen.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_section.dart';
 import '../domain/unit_preferences.dart';
@@ -14,12 +15,12 @@ import 'credits_screen.dart';
 /// **Keep it in step with `version:` in pubspec.yaml.** Dart cannot read the
 /// pubspec at runtime without a plugin, and a wrong version in a bug report is
 /// worse than none.
-const String kAppVersion = '0.1.0';
+const String kAppVersion = '2.0.0';
 
 /// Units, and the credits the licence requires.
 ///
 /// Deliberately thin. Everything an account owns — email, deletion, the plan —
-/// belongs with the account rather than here, and Lift has no auth yet.
+/// belongs with the account rather than here.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -213,6 +214,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: AppSpacing.lg),
             const _Heading('About'),
 
+            SettingsTile(
+              icon: Icons.policy_outlined,
+              title: 'Privacy & legal',
+              subtitle: 'Terms, privacy policy, how your coach uses AI',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => LegalScreen(email: widget.email),
+                ),
+              ),
+            ),
             SettingsTile(
               icon: Icons.workspace_premium_outlined,
               title: 'Credits',
