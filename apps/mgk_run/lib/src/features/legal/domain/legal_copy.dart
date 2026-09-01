@@ -105,7 +105,14 @@ const LegalDocument privacyPolicy = LegalDocument(
             'identifier, and we never send raw GPS traces. But we will not '
             'pretend the rest is anonymous: taken together it is health '
             'information about one person, and if you would rather it did not '
-            'leave the app, do not use the coach.',
+            'leave the app, do not use the coach. What we control, and what we '
+            'do not: every request we make asks OpenRouter to route only to '
+            'providers that do not keep or train on what we send. That setting '
+            'is on for all of them, and it is the strongest control available '
+            'to us. What we cannot do is audit the provider that ultimately '
+            'serves a request, so treat that as a control we apply rather than '
+            'a promise we can make for them. We will say so here if that ever '
+            'changes.',
         'RevenueCat — handles subscription purchases and tells our server '
             'whether yours is active. It receives your account identifier and '
             'your purchase history, and nothing else: no runs, no training '

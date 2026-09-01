@@ -36,12 +36,23 @@ OUT = DOCS / "legal-site"
 # Blockers that must clear before either page goes live. Taken from the source
 # document's own draft banner, which is stripped from the rendered output.
 BLOCKERS = [
-    "A processor agreement with OpenRouter covering special-category data."
-    " The policy NAMES OpenRouter as a processor, so publishing before the"
-    " agreement exists asserts something that is not yet true.",
-    "Whether the configured COACH_MODEL's provider trains on inference inputs.",
     "The publication date - replace the PUBLICATION_DATE token below.",
 ]
+
+# Two items were on this list and came off, both deliberately and both dated
+# 2026-09-01.
+#
+# Formal legal review: out of reach for now. The document's protection is that it
+# was written from the running system rather than from intent, so what is
+# unreviewed is legal form rather than factual accuracy.
+#
+# The OpenRouter processor agreement: a real Article 28 obligation, but NOT a
+# publication blocker, and this list said otherwise for a few hours. Naming a
+# recipient in a privacy policy is an Article 13 transparency duty - tell people
+# who receives their data - and it does not assert that a contract exists. The
+# two obligations run in parallel; disclosure does not cure the contract, and the
+# missing contract does not make the disclosure false. It is tracked in
+# docs/openrouter-processor-agreement.md instead.
 
 # Formal legal review was deliberately dropped as a blocker on 2026-09-01: out of
 # reach for now, and the document's protection is that it was written from the

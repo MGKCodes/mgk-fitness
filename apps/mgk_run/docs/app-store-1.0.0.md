@@ -135,13 +135,23 @@ App Store Connect will not accept a submission without these. None are code.
          were read off the running system rather than written from intent; what
          is unreviewed is legal *form*, not factual accuracy. Revisit when there
          is budget — a dated policy update is normal.
-      2. **A processor agreement with OpenRouter.** **Not the same kind of item
-         as legal review, and it should not be waved through with it.** The
-         policy *names* OpenRouter as a processor, which asserts an Article 28
-         arrangement exists. Publishing first states something not yet true — a
-         factual precondition rather than a review of wording. The email is
-         drafted; see
-         [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
+      2. ~~**A processor agreement with OpenRouter.**~~ **Also off the blocker
+         list — and this document argued the opposite for a few hours, wrongly.**
+         Naming a recipient in a privacy policy is an **Article 13 transparency
+         duty**: tell people who receives their data. It does not assert that a
+         contract exists, so publishing does not state anything untrue. The
+         **Article 28** contract is a real and separate obligation that runs in
+         parallel — disclosure does not cure it, and its absence does not make
+         the disclosure false. The email went to `support@openrouter.ai` on
+         2026-09-01; tracked in
+         [openrouter-processor-agreement.md](openrouter-processor-agreement.md),
+         not here.
+
+         What the policy does instead is **claim only what we can stand behind**:
+         it now says `data_collection: "deny"` is set on every request and is the
+         strongest control available to us, and that we cannot audit the provider
+         that ultimately serves one — a control we apply, not a promise we make
+         for them.
       3. **Whether the configured `COACH_MODEL`'s provider trains on inference
          inputs.** A per-model property. Answer from the deployed secret;
          [compliance.md](compliance.md) is explicit that guessing from the repo
@@ -149,7 +159,9 @@ App Store Connect will not accept a submission without these. None are code.
          is unconfirmed is what it guarantees contractually.
       4. **The publication date** — replace the `PUBLICATION_DATE` token.
 
-      Items 2 and 3 can still change what the policy has to say.
+      Only item 3 can still change what the policy has to say, and less than it
+      could have: the wording above no longer implies providers never retain, so a
+      "best-effort" answer costs a sentence rather than a rewrite.
 - [x] **An App Store Connect app record exists for
       `com.mgkcodes.fitness.run`** — proven by build 11 publishing successfully,
       since the upload step fails after a successful build when no listing

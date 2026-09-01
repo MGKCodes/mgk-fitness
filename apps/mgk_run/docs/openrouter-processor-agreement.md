@@ -1,14 +1,26 @@
 # The OpenRouter processor agreement
 
-Blocker 2 of the four standing between the legal pages and a published URL, and
-the one with the longest lead time, because it depends on somebody else
-answering. Start it before anything else in
-[app-store-1.0.0.md](app-store-1.0.0.md)'s Gate 2.
+**Sent to `support@openrouter.ai` on 2026-09-01.** Awaiting a reply.
 
-**What it blocks:** `docs/privacy-policy.md` names OpenRouter as a sub-processor
-receiving special-category health data. Naming a processor in a policy is a
-claim that an Article 28 arrangement exists. Until one does, the policy is
-describing something that has not been agreed.
+**It does not block publishing, and an earlier version of this document said it
+did.** That was wrong, and the distinction is worth keeping straight:
+
+- **Article 13** is a transparency duty — tell people who receives their data.
+  `docs/privacy-policy.md` names OpenRouter, which discharges it. Naming a
+  recipient does not assert that a contract exists.
+- **Article 28** requires a written contract with any processor. Real, separate,
+  and still outstanding. Disclosure does not cure it; its absence does not make
+  the disclosure false.
+
+So the two run in parallel. The policy can publish honestly today, and this
+remains a genuine obligation to close.
+
+The policy also no longer leans on the answer: it states that
+`data_collection: "deny"` is set on every request and is the strongest control
+available to us, and that we cannot audit the provider that ultimately serves
+one. That is a control we apply rather than a promise made for somebody else —
+which is what makes a "best-effort" answer to question 2 cost a sentence instead
+of a rewrite.
 
 ---
 
