@@ -435,7 +435,17 @@ against the per-hour allowance in
 - **Was backup consent on during the 23 Aug run?** Settings showed it on the
   next morning (`IMG_4698`), which does not answer it. Phase 0's first item
   settles this.
-- **Location is "On while the app is open"** (`IMG_4698`), not Always. The run
-  survived an hour, so the screen was presumably on — but a backgrounded run on
-  While-Using is a data-loss path that has not been tested, and should be before
-  anybody else runs with this.
+- ~~**Location is "On while the app is open"** (`IMG_4698`), not Always — is a
+  backgrounded run a data-loss path?~~ **Settled: it records with the screen
+  locked.** Confirmed on a live TestFlight build. This was never really an open
+  question by the time it was written down: `b493341` had already given iOS
+  `UIBackgroundModes: location` with `allowBackgroundLocationUpdates: true` and
+  `pauseLocationUpdatesAutomatically: false`, and Android the foreground service
+  that stops the silent freeze. While-Using is sufficient because a run always
+  starts with a tap, which is also why `ACCESS_BACKGROUND_LOCATION` is
+  deliberately absent on Android.
+
+  Worth keeping the lesson rather than just the answer: **the test was done and
+  the result lived nowhere**, so this document went on calling it an untested
+  data-loss path for a fortnight. A device result that is not written down is a
+  device result you will pay to obtain twice.

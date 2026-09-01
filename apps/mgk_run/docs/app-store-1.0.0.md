@@ -37,10 +37,11 @@ Green, and worth stating so the list below is read as short rather than long:
 - **`ITSAppUsesNonExemptEncryption` is answered** in `Info.plist`, so no build
   lands in App Store Connect as "Missing Compliance" waiting on a hand answer.
 
-**The app has never been compiled for iOS.** It has only ever been built for an
-Android emulator on Windows. The first real iOS compile happens on Codemagic,
-which makes the TestFlight round below a genuine unknown rather than a
-formality.
+**The app has already been to TestFlight.** `CHANGELOG.md` records it: built and
+installed, never on a store. So the pipeline below is a path that has run
+end to end, not an unknown — what has never happened is a *submission*. Day-to-day
+development still happens on Windows against an Android emulator, which is why
+the device questions in Gate 1 are answered on TestFlight rather than here.
 
 ---
 
@@ -62,10 +63,15 @@ What this round exists to prove — none of it can be answered from Windows:
       [release-1.0.0.md](release-1.0.0.md)'s Phase 0. With the log reading Drift,
       the run should simply appear. If it does not, it never finalized, and that
       is a new bug rather than the one already fixed.
-- [ ] **A backgrounded run survives on While-Using location.** Called out as an
-      open question in the release plan and never tested. This is a data-loss
-      path: if a run dies when the screen locks, nothing else on this list
-      matters. Test it before anybody else runs with the app.
+- [x] **A backgrounded run survives with the screen locked — tested, and it
+      works.** Confirmed on a live TestFlight build. The capability was built in
+      `b493341`: iOS carries `UIBackgroundModes: location` with
+      `allowBackgroundLocationUpdates: true` and
+      `pauseLocationUpdatesAutomatically: false`, and Android got the foreground
+      service that stops the silent freeze. **The result was never written down**,
+      which is why [release-1.0.0.md](release-1.0.0.md) still listed it as an
+      untested data-loss path a fortnight after it had been settled. It no longer
+      does.
 - [ ] **Widening the Health request does not re-prompt badly.** The app now asks
       for steps as well as workouts. Whether an existing install re-prompts is
       untested, and it sits awkwardly beside the onboarding doc's claim that
@@ -216,7 +222,7 @@ Recorded so nobody re-opens them under deadline:
 3. **Publish the two legal pages** — the long pole, because it needs a hosted
    page and word-for-word parity with the in-app copy. Start it now; it does not
    depend on anything else here.
-4. **Work Gate 1 on a device**, starting with the backgrounded-run test.
+4. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
 5. **Fix Gate 4**, which is an hour and removes the risk of arguing a compliance
    claim from a document that describes a renamed schema.
 6. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
