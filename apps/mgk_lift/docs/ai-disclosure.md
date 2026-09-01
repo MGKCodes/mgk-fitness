@@ -55,7 +55,7 @@ rest is anonymous: taken together it is health information about one person.
 **Use the AI coach** in Settings turns this off completely. With it off, nothing
 in this document happens — no message, no training summary and no plan answer
 leaves the app for OpenRouter. Logging, plans you already have, your photos and
-backup all keep working.
+syncing all keep working.
 
 Turning it off does not un-send what you have already said. You can erase what
 the coach remembers under Settings › Coach, and Delete account removes your

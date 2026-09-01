@@ -10,7 +10,7 @@ import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
 import '../../sync/domain/sync_status.dart';
-import '../../sync/presentation/backup_section.dart';
+import '../../sync/presentation/account_section.dart';
 import '../domain/unit_preferences.dart';
 import 'credits_screen.dart';
 
@@ -98,7 +98,7 @@ class SettingsScreen extends StatefulWidget {
 
   final String version;
 
-  /// What "last checked" is measured against, for the backup card. Null is the
+  /// What "last checked" is measured against, for the account card. Null is the
   /// wall clock, which is what the app passes and what a preview must not.
   final DateTime? now;
 
@@ -195,16 +195,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
             const SizedBox(height: AppSpacing.lg),
-            const _Heading('Backup'),
-            BackupSection(
+            // One section, not two. The old screen had a "Backup" card and an
+            // "Account" row three headings apart, which said the account was a
+            // backup and the identity was something else. It is one thing.
+            const _Heading('Account'),
+            AccountSection(
               pending: widget.pending,
               isSignedIn: widget.isSignedIn,
+              email: widget.email,
               isSyncing: widget.isSyncing,
               lastReport: widget.lastReport,
               onSyncNow: widget.onSyncNow,
               onSignIn: widget.onSignIn,
               now: widget.now,
             ),
+            if (widget.isSignedIn)
+              SettingsTile(
+                icon: Icons.logout,
+                title: 'Sign out',
+                // Says what survives, because the fear this row triggers is
+                // that signing out is a way to lose something.
+                subtitle: 'Your training stays on this phone',
+                onTap: widget.onSignOut,
+                showChevron: false,
+              ),
 
             if (widget.useCoach != null ||
                 (widget.isSignedIn && widget.coachMemory != null)) ...<Widget>[
@@ -242,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Your messages, a summary of your recent training, and your '
                     'injury notes if you gave any. Off means none of it leaves '
                     'the app, and the coach mark goes away with it — logging, '
-                    'plans you already have, photos and backup all keep '
+                    'plans you already have, photos and syncing all keep '
                     'working.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textTertiary,
@@ -282,17 +296,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-            ],
-
-            if (widget.isSignedIn) ...<Widget>[
-              const _Heading('Account'),
-              SettingsTile(
-                icon: Icons.person_outline,
-                title: widget.email ?? 'Signed in',
-                subtitle: 'Sign out',
-                onTap: widget.onSignOut,
-                showChevron: false,
-              ),
             ],
 
             const SizedBox(height: AppSpacing.lg),

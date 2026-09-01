@@ -80,7 +80,7 @@ We do not sell personal data, and we do not use it for third-party advertising.
 The coach is the only part of the app that sends anything to an AI provider.
 Turning off **Use the AI coach** in Settings stops that entirely: no message, no
 training summary and no plan answer leaves the app for OpenRouter. Logging,
-plans you already have, photos and backup all keep working. Nothing you have
+plans you already have, photos and syncing all keep working. Nothing you have
 already said is un-sent by turning it off, but you can erase what the coach
 remembers from the same screen.
 
@@ -98,12 +98,14 @@ from — it logs, reads and plans with no network at all. Signing in copies your
 sessions to our Supabase project in eu-west-1 (Ireland). Data in transit is
 encrypted with HTTPS/TLS.
 
-## Backing up is what an account is for
+## What an account is for
 
 You do not need an account to track your training, and with no account nothing
-leaves your phone at all. There is no separate backup switch: **signing in is the
-switch.** Signing in copies your sessions up and pulls them back down on a new
-phone, so a lost or replaced device does not lose your training.
+leaves your phone at all. An MGKFitness account is where your training lives once
+you want it in more than one place: it follows you to a new phone, and it is the
+same account MGKFitness: Run uses. There is no separate switch — **signing in is
+the switch.** A lost or replaced phone not losing your training is a consequence
+of that rather than the point of it.
 
 ## Your rights
 
@@ -112,13 +114,13 @@ consent. Delete account removes every record we hold for you — your sessions,
 exercises and sets, your plans, your coach conversations and your usage records.
 Your phone keeps its own copy until you uninstall.
 
-**Deletion asks how much**, because your login is your MGKFitness profile and it
+**Deletion asks how much**, because your login is your MGKFitness account and it
 is shared with MGKFitness: Run. Delete this app only, and we erase everything
-this app holds; your profile survives so Run keeps working. Delete your whole
-profile, and everything Run holds goes too, along with the login itself.
+this app holds; your account survives so Run keeps working. Delete your whole
+account, and everything Run holds goes too, along with the login itself.
 
 One thing the narrow choice cannot promise: if Run holds no data, there is
-nothing left for the profile to be for, so it is removed as well. We tell you
+nothing left for the account to be for, so it is removed as well. We tell you
 which happened rather than leaving you to find out.
 
 ## Retention

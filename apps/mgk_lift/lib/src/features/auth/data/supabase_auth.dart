@@ -5,7 +5,8 @@ import '../domain/account.dart';
 /// Supabase auth, with its errors mapped to the small set the screens know.
 ///
 /// **Nothing here gates tracking.** Logging a session works signed out and
-/// always will; an account buys backup, cross-device restore and the coach.
+/// always will; an account is where training lives across devices, and what the coach
+/// hangs off.
 /// That ordering is the whole product decision — an app that demands an account
 /// before it will let you write down a set is one people close.
 class SupabaseAuth implements AuthService {

@@ -59,7 +59,7 @@ void main() {
 
     await tester.tap(find.text('Create an account'));
     await tester.pumpAndSettle();
-    expect(find.text('Back up your training'), findsOneWidget);
+    expect(find.text('Your training, everywhere'), findsOneWidget);
 
     await tester.tap(find.text('I already have an account'));
     await tester.pumpAndSettle();

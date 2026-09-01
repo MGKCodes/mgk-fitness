@@ -100,7 +100,7 @@
       "sub": "Pushed from Profile's gear — nothing here is on a tab",
       "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. Backup reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
       "racks": [
-        { "title": "Units and backup", "screens": ["settings", "settings-signed-in", "backup-signed-out", "backup-synced"] },
+        { "title": "Units and account", "screens": ["settings", "settings-signed-in", "account-signed-out", "account-synced"] },
         { "title": "What the coach remembers", "screens": ["coach-memory", "coach-memory-empty", "coach-memory-error"] },
         { "title": "About", "screens": ["credits"] }
       ]
@@ -988,7 +988,7 @@
       "doc": "Memory is deliberately separate from the coach itself: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
       "tags": ["free"]
     },
-    "backup-signed-out": {
+    "account-signed-out": {
       "code": "A3",
       "title": "Backup — nine waiting",
       "host": "pushed",
@@ -999,7 +999,7 @@
       "doc": "Nothing here blocks logging — the local database has everything and the rows stay pending. It reports rather than reassures, because discovering that your training is on one device only is worst after losing a phone.",
       "tags": ["free"]
     },
-    "backup-synced": {
+    "account-synced": {
       "code": "A4",
       "title": "Backup — up to date",
       "host": "pushed",
@@ -1011,7 +1011,7 @@
       "tags": ["free"],
       "arch": {
         "class": "BackupSection",
-        "file": "lib/src/features/sync/presentation/backup_section.dart",
+        "file": "lib/src/features/sync/presentation/account_section.dart",
         "adrs": ["0004", "0012"],
         "action": "Tapping Sync now",
         "path": [
@@ -1171,8 +1171,8 @@
     { "from": "profile-empty", "to": "track", "label": "Log a session" },
 
     { "from": "settings", "to": "settings-signed-in", "label": "signed in" },
-    { "from": "settings", "to": "backup-signed-out", "label": "rows pending" },
-    { "from": "settings-signed-in", "to": "backup-synced", "label": "after a sync" },
+    { "from": "settings", "to": "account-signed-out", "label": "rows pending" },
+    { "from": "settings-signed-in", "to": "account-synced", "label": "after a sync" },
     { "from": "settings-signed-in", "to": "coach-memory", "label": "Coach" },
     { "from": "coach-memory", "to": "coach-memory-empty", "label": "nothing formed" },
     { "from": "coach-memory", "to": "coach-memory-error", "label": "will not load" },

@@ -172,7 +172,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           title: 'Delete my $kAppName data',
           body:
               'Your sessions, exercises and sets, your plans, and your coach '
-              'conversations. Your $kPlatformName profile stays, so '
+              'conversations. Your $kPlatformName account stays, so '
               '$kPlatformName: Run keeps working.',
         ),
         _ScopeChoice(
@@ -181,7 +181,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           selected: _scope,
           enabled: !_busy,
           onChanged: (s) => setState(() => _scope = s),
-          title: 'Delete my whole $kPlatformName profile',
+          title: 'Delete my whole $kPlatformName account',
           body:
               'Everything above, everything $kPlatformName: Run holds, and the '
               'login itself. You will not be able to sign in to either app.',
@@ -208,11 +208,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 // take their login, because we are not going to keep a profile
                 // that has nothing behind it on their behalf.
                 _scope == DeletionScope.liftOnly
-                    ? 'Your login is your $kPlatformName profile, shared with '
+                    ? 'Your login is your $kPlatformName account, shared with '
                           '$kPlatformName: Run. If Run holds no data, there is '
-                          'nothing left for the profile to be for, so it goes '
+                          'nothing left for the account to be for, so it goes '
                           'too. We will tell you which happened.'
-                    : 'This removes the profile itself, so anything '
+                    : 'This removes the account itself, so anything '
                           '$kPlatformName: Run holds goes with it. If you only '
                           'want out of this app, choose the first option.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -271,7 +271,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           // last thing read before the tap is the scope that was chosen.
           label: _scope == DeletionScope.liftOnly
               ? 'Delete my $kAppName data'
-              : 'Delete my profile',
+              : 'Delete my account',
           busy: _busy,
           onPressed: _armed ? _delete : null,
         ),
@@ -330,14 +330,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           'hello@mgkcodes.com and we will finish it by hand.';
     }
     if (result.loginRetainedForOtherApp) {
-      return '$gone Your $kPlatformName profile is still active because '
+      return '$gone Your $kPlatformName account is still active because '
           '$kPlatformName: Run is using it, which is what you asked for.';
     }
     if (result.accountDeleted) {
       return _scope == DeletionScope.liftOnly
           // Asked for the narrow one and got the wide one, because there was
           // nothing left to keep. Said plainly rather than glossed.
-          ? '$gone Your $kPlatformName profile went too: nothing else was '
+          ? '$gone Your $kPlatformName account went too: nothing else was '
                 'using it, so there was nothing left for it to be for.'
           : '$gone Everything $kPlatformName: Run held is gone as well, along '
                 'with your login.';

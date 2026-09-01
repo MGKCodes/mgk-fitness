@@ -8,7 +8,7 @@ enum SyncOutcome {
   /// Rows moved, in one direction or both.
   synced,
 
-  /// No account. Tracking works signed out; backup cannot.
+  /// No account. Tracking works signed out; syncing cannot.
   signedOut,
 
   /// No network, or the server refused. **Not an error the lifter caused**, and

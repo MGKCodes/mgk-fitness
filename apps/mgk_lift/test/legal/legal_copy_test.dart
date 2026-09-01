@@ -115,7 +115,7 @@ void main() {
         bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
           'Deletion asks how much',
           'Delete this app only, and we erase everything this app holds',
-          'if Run holds no data, there is nothing left for the profile to be '
+          'if Run holds no data, there is nothing left for the account to be '
               'for, so it is removed as well',
         ]);
       },

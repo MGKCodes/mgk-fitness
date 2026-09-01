@@ -84,9 +84,9 @@ const LegalDocument privacyPolicy = LegalDocument(
             'provider. Turning off Use the AI coach in Settings stops that '
             'entirely: no message, no training summary and no plan answer '
             'leaves the app for OpenRouter. Logging, plans you already have, '
-            'photos and backup all keep working. Nothing you have already said '
-            'is un-sent by turning it off, but you can erase what the coach '
-            'remembers from the same screen.',
+            'photos and syncing all keep working. Nothing you have already '
+            'said is un-sent by turning it off, but you can erase what the '
+            'coach remembers from the same screen.',
       ],
     ),
     LegalSection(
@@ -109,13 +109,16 @@ const LegalDocument privacyPolicy = LegalDocument(
       ],
     ),
     LegalSection(
-      heading: 'Backing up is what an account is for',
+      heading: 'What an account is for',
       paragraphs: <String>[
         'You do not need an account to track your training, and with no '
-            'account nothing leaves your phone at all. There is no separate '
-            'backup switch: signing in is the switch. Signing in copies your '
-            'sessions up and pulls them back down on a new phone, so a lost or '
-            'replaced device does not lose your training.',
+            'account nothing leaves your phone at all. An $kPlatformName '
+            'account is where your training lives once you want it in more '
+            'than one place: it follows you to a new phone, and it is the same '
+            'account $kPlatformName: Run uses. There is no separate switch — '
+            'signing in is the switch. A lost or replaced phone not losing '
+            'your training is a consequence of that rather than the point of '
+            'it.',
       ],
     ),
     LegalSection(
@@ -127,12 +130,12 @@ const LegalDocument privacyPolicy = LegalDocument(
             'coach conversations and your usage records. Your phone keeps its '
             'own copy until you uninstall.',
         'Deletion asks how much, because your login is your $kPlatformName '
-            'profile and it is shared with $kPlatformName: Run. Delete this '
-            'app only, and we erase everything this app holds; your profile '
-            'survives so Run keeps working. Delete your whole profile, and '
+            'account and it is shared with $kPlatformName: Run. Delete this '
+            'app only, and we erase everything this app holds; your account '
+            'survives so Run keeps working. Delete your whole account, and '
             'everything Run holds goes too, along with the login itself.',
         'One thing the narrow choice cannot promise: if Run holds no data, '
-            'there is nothing left for the profile to be for, so it is removed '
+            'there is nothing left for the account to be for, so it is removed '
             'as well. We tell you which happened rather than leaving you to '
             'find out.',
       ],
@@ -350,8 +353,8 @@ const LegalDocument aiDisclosure = LegalDocument(
         'Use the AI coach in Settings turns this off completely. With it off, '
             'nothing in this document happens — no message, no training '
             'summary and no plan answer leaves the app for OpenRouter. '
-            'Logging, plans you already have, your photos and backup all keep '
-            'working.',
+            'Logging, plans you already have, your photos and syncing all '
+            'keep working.',
         'Turning it off does not un-send what you have already said. You can '
             'erase what the coach remembers under Settings, Coach, and Delete '
             'account removes your conversations along with everything else.',

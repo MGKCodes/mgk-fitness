@@ -233,6 +233,6 @@ void backupSmoke() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.text('This device only'), findsOneWidget);
+    expect(find.text('Not signed in'), findsOneWidget);
   });
 }

@@ -349,14 +349,14 @@ class PreviewApp extends StatelessWidget {
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
       ),
-      'backup-signed-out': (_) => SettingsScreen(
+      'account-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
         pending: const SyncPending(workouts: 9, lastSyncedAt: null),
         onSignIn: () {},
       ),
-      'backup-synced': (_) => SettingsScreen(
+      'account-synced': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,

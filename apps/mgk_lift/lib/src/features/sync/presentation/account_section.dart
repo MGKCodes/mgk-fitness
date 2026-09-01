@@ -3,19 +3,32 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../domain/sync_status.dart';
 
-/// The backup row in Settings: what is waiting, when it last went, and a way to
-/// send it now.
+/// The account card in Settings: who is signed in, what is waiting, when it
+/// last went, and a way to send it now.
 ///
-/// **Manual, and honest about being a backup.** Nothing here is on the path of
-/// logging a set — the local database already has it. So this reports rather
-/// than reassures: a lifter who has not signed in is told plainly that their
+/// **This used to be called Backup, and calling it that was the mistake.**
+/// Backup names a failure mode — insurance against losing a phone — which makes
+/// the account sound like a precaution somebody might reasonably skip. It is
+/// not. It is where training lives across devices, what the coach's memory
+/// hangs off, what Run shares, and what a subscription attaches to. A lost
+/// phone is a case it *handles*, not the thing it *is*.
+///
+/// So the card leads with the account and lets the lost-phone case be the fine
+/// print it deserves to be. The one place "saved" survives is the status line,
+/// where it is reporting what the last run actually moved rather than making a
+/// pitch.
+///
+/// **Manual, and honest about it.** Nothing here is on the path of logging a
+/// set — the local database already has it. So this reports rather than
+/// reassures: somebody who has not signed in is told plainly that their
 /// training is on one device only, because that is the fact and discovering it
 /// after losing a phone is the worst possible time.
-class BackupSection extends StatelessWidget {
-  const BackupSection({
+class AccountSection extends StatelessWidget {
+  const AccountSection({
     super.key,
     required this.pending,
     required this.isSignedIn,
+    this.email,
     this.isSyncing = false,
     this.lastReport,
     this.onSyncNow,
@@ -25,6 +38,11 @@ class BackupSection extends StatelessWidget {
 
   final SyncPending? pending;
   final bool isSignedIn;
+
+  /// Shown as the card's title when signed in, so the section names the account
+  /// it is talking about rather than describing one in the abstract.
+  final String? email;
+
   final bool isSyncing;
   final SyncReport? lastReport;
   final VoidCallback? onSyncNow;
@@ -35,8 +53,7 @@ class BackupSection extends StatelessWidget {
   /// Injected for the same reason [ProfileSurface] injects its clock: without
   /// it, a preview of a sync that happened three minutes ago reads "20d ago"
   /// and gets worse every day, because the fixture is pinned and the clock is
-  /// not. Every other surface in the app already took one; this was the last
-  /// that did not.
+  /// not.
   final DateTime? now;
 
   @override
@@ -65,8 +82,13 @@ class BackupSection extends StatelessWidget {
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
-                    isSignedIn ? 'Backup' : 'This device only',
+                    // The address, when there is one. An account is a specific
+                    // thing belonging to a specific person, and naming it is
+                    // also how somebody signed in as the wrong address finds
+                    // out before they wonder where their training went.
+                    isSignedIn ? (email ?? 'Signed in') : 'Not signed in',
                     style: theme.textTheme.titleSmall,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (isSyncing)
@@ -90,10 +112,10 @@ class BackupSection extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 // What it means, not what the server said. A PostgREST code is
-                // not something to put in front of somebody who was trying to
-                // back up their training — and it is not their problem to fix.
+                // not something to put in front of somebody, and it is not
+                // their problem to fix.
                 'Could not reach the server. Your training is safe on this '
-                'device and will go up next time.',
+                'phone and will go up next time.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.4,
@@ -109,12 +131,12 @@ class BackupSection extends StatelessWidget {
               child: !isSignedIn
                   ? OutlinedButton(
                       onPressed: onSignIn,
-                      child: const Text('Sign in to back up'),
+                      child: const Text('Sign in'),
                     )
                   : OutlinedButton(
                       onPressed: isSyncing ? null : onSyncNow,
                       // "Sync now" either way. The old second label said
-                      // "check for changes", which understated it - the run
+                      // "check for changes", which understated it — the run
                       // pushes and pulls regardless, and may bring down what
                       // another device wrote.
                       child: const Text('Sync now'),
@@ -129,12 +151,14 @@ class BackupSection extends StatelessWidget {
   String _status(int count) {
     if (!isSignedIn) {
       return count == 0
-          ? 'Your training is only on this phone. Sign in and it is backed up '
-                'and follows you to a new one.'
-          // The number makes it concrete. "Sign in to back up" is easy to
+          ? 'Your training is on this phone only. An $kPlatformName account '
+                'keeps it with you — on a new phone, and in '
+                '$kPlatformName: Run.'
+          // The number makes it concrete. A general invitation is easy to
           // ignore; "9 sessions exist nowhere else" is not.
           : '$count session${count == 1 ? '' : 's'} ${count == 1 ? 'exists' : 'exist'} '
-                'nowhere else. Sign in and they are backed up.';
+                'nowhere else. An $kPlatformName account keeps '
+                '${count == 1 ? 'it' : 'them'}.';
     }
     if (count > 0) {
       return '$count session${count == 1 ? '' : 's'} waiting to upload.';
@@ -148,13 +172,13 @@ class BackupSection extends StatelessWidget {
         if (report.pulled > 0) '${report.pulled} down',
       ];
       if (parts.isNotEmpty) {
-        return 'Backed up. ${parts.join(', ')} just now.';
+        return 'Saved. ${parts.join(', ')} just now.';
       }
     }
     final last = pending?.lastSyncedAt;
     return last == null
-        ? 'Nothing has been backed up yet.'
-        : 'Everything is backed up. Last checked ${_ago(last, now)}.';
+        ? 'Nothing saved yet.'
+        : 'Everything is saved. Last checked ${_ago(last, now)}.';
   }
 
   /// Rough, and deliberately so. "3 minutes ago" is the answer to "did that

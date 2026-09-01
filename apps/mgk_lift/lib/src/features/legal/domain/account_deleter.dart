@@ -6,11 +6,11 @@
 /// an absent one takes everything — so this is a choice the server already
 /// modelled and no client had yet offered.
 enum DeletionScope {
-  /// Erase `lift.*` and this app's coach data. The MGKFitness profile survives
-  /// **if Run still holds data**; if it does not, the login goes too, because a
-  /// profile with nothing behind it is not something to keep on somebody's
-  /// behalf. The server decides that, not the client — see
-  /// [AccountDeletionResult.accountDeleted].
+  /// Erase `lift.*` and this app's coach data. The MGKFitness account
+  /// survives **if Run still holds data**; if it does not, the login goes
+  /// too, because an account with nothing behind it is not something to
+  /// keep on somebody's behalf. The server decides that, not the client —
+  /// see [AccountDeletionResult.accountDeleted].
   liftOnly,
 
   /// Erase everything, in every app, and the login itself.

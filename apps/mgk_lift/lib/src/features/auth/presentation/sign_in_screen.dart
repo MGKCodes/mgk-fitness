@@ -128,7 +128,9 @@ class _SignInScreenState extends State<SignInScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       Text(
-                        _creating ? 'Back up your training' : 'Welcome back',
+                        _creating
+                            ? 'Your training, everywhere'
+                            : 'Welcome back',
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -265,7 +267,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         // should be able to leave without feeling they have lost
                         // something, because they have not.
                         'You do not need an account to track your training. '
-                        'This is for backing it up.',
+                        'An account is what keeps it beyond this phone.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textTertiary,
@@ -298,12 +300,13 @@ class _SignInScreenState extends State<SignInScreen> {
     }
     final n = widget.pendingWorkouts;
     return n == 0
-        ? 'Your training is only on this phone. An account backs it up and '
-              'follows you to a new one.'
+        ? 'Your training is on this phone only. An $kPlatformName account '
+              'keeps it with you — on a new phone, and in $kPlatformName: Run.'
         // Specific beats general. "9 sessions exist nowhere else" is a reason;
-        // "back up your data" is a category.
+        // "keep your data" is a category.
         : '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'exists' : 'exist'} only '
-              'on this phone. An account backs ${n == 1 ? 'it' : 'them'} up.';
+              'on this phone. An $kPlatformName account keeps '
+              '${n == 1 ? 'it' : 'them'}.';
   }
 }
 
