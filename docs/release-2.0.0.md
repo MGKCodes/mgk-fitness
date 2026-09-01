@@ -114,7 +114,7 @@ The soonest goal: TestFlight, off the live server, on a real device.
 - [x] Generate `config/app_config.json` from secure vars in the workflow.
       **Also created `config/app_config.example.json`**, which `AppConfig`'s
       documentation claimed was committed — the directory did not exist.
-- [ ] **Create the `mgk_fitness_supabase` variable group in Codemagic** with
+- [x] **Create the `mgk_fitness_supabase` variable group in Codemagic** with
       `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, marked Secure, and move
       those two out of `mgk_fitness_run_env`. One project (ADR-0008) means one
       group: a copy per app makes a key rotation half-land, with one product
@@ -127,7 +127,13 @@ The soonest goal: TestFlight, off the live server, on a real device.
       config step with "SUPABASE_URL is empty". Lift has no group of its own;
       an empty one would just be somewhere for a future secret to land without
       anyone deciding it should.
-- [ ] **Create an App Store distribution provisioning profile for
+
+      **Ticked 2026-09-01, on evidence rather than on a memory of doing it.**
+      The group lives in Codemagic, not in this repository, so the proof is
+      indirect: the workflow names the group, the config step fails at the
+      first script without it, and a build off that workflow was installed on
+      a phone on 2026-08-24. It exists.
+- [x] **Create an App Store distribution provisioning profile for
       `com.mgkcodes.liftio`.** This was briefly ticked on the understanding that
       an inherited App ID brought one with it. The first build (2026-08-18,
       `7d758a2`) proved otherwise, failing with "No matching profiles found for
@@ -141,11 +147,39 @@ The soonest goal: TestFlight, off the live server, on a real device.
       ▸ Distribution ▸ App Store Connect ▸ pick the App ID and the existing
       Apple Distribution certificate. Nothing to download. Lift needs no
       capabilities, so it will not need regenerating.
-- [ ] First TestFlight upload, installed on device.
+
+      **Settled differently from how it is written above.** Creating the
+      profile was necessary and not sufficient. Codemagic's *fetch* of it never
+      once succeeded — five builds, every one with `startedAt` null, so no
+      machine ever started and nothing about the build itself was reached — and
+      the cause is still genuinely unexplained after the obvious theories were
+      ruled out with evidence. What ships instead is **manual signing**: the
+      profile and certificate uploaded once to Codemagic ▸ Teams ▸ Code signing
+      identities and named in `ios_signing` as "Lift MGKFitness App Store" and
+      "Lift MGKFitness Distribution", where Run still uses the automatic
+      `distribution_type` + `bundle_identifier` form. Lift is the exception on
+      purpose. `codemagic.yaml` carries the full account of what was ruled out;
+      read it before "simplifying" the two apps back into agreement.
+- [x] First TestFlight upload, installed on device. Built 2026-08-21
+      (`a5d2d3e`, `10d1552`), held and worked through on 2026-08-24 against
+      [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md). What
+      that session turned up became
+      [lift-2.0.0-punch-list.md](lift-2.0.0-punch-list.md) — a plan of its own
+      rather than a line here.
 - [ ] **Prove a real `lift_chat` turn against production.** Carried over from
-      [roadmap.md](roadmap.md) and still unproven: everything says the plumbing
-      is right, nothing yet says the coach answers. This build is what finally
-      answers it.
+      [roadmap.md](roadmap.md) and still unproven. The reason is now known, and
+      it was never the plumbing.
+
+      `core.entitlements` is **empty** — zero rows, for anybody — and the
+      deployed coach function gates on it. So every Lift coach request in
+      production has been refused, and the 2026-08-24 session was a test of the
+      free half of the app. `coach.turns` holds exactly one conversation and it
+      is `app = 'run'`; there has never been a `lift:` turn.
+
+      What this needs is the one-row `insert into core.entitlements` from the
+      test sheet's "Before you start", and then a re-test. Not a code change.
+      Until that row exists, every observation of Lift's paid half is an
+      observation of a gated app.
 
 ## Phase 2 — Compliance the old app already paid for
 
