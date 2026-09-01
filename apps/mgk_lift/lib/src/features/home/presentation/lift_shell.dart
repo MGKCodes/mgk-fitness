@@ -9,6 +9,7 @@ import '../../coaching/domain/coach.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
+import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/plan_intake.dart';
 import '../../planning/domain/plan_builder.dart';
@@ -60,6 +61,7 @@ class LiftShell extends StatefulWidget {
     this.coach,
     this.transcript,
     this.coachMemory,
+    this.coachPreference,
     this.planner,
     this.plans,
     this.isEntitled = false,
@@ -118,6 +120,13 @@ class LiftShell extends StatefulWidget {
   /// somebody who has stopped paying should still be able to read what was
   /// stored about them and delete it.
   final CoachMemoryStore? coachMemory;
+
+  /// Whether the lifter wants the coach at all, and where that is kept.
+  ///
+  /// Null hides the switch and leaves the coach on, which is what a build
+  /// with no store wired up should do: the toggle is a consent control, and
+  /// one that cannot persist an answer is worse than none.
+  final CoachPreferenceStore? coachPreference;
 
   /// Builds and adapts plans. Null hides the entry point rather than showing
   /// one that cannot work — the same rule every other optional dependency here
@@ -218,10 +227,22 @@ class _LiftShellState extends State<LiftShell> {
   StandingPlan? _plan;
   bool _buildingPlan = false;
 
+  /// Whether the coach is switched on. Held here rather than in Settings
+  /// because it governs the mark floating over every surface and whether
+  /// Plan can build anything — both of which outlive the screen that
+  /// flips it.
+  ///
+  /// Starts true and is corrected by the load. The window is a frame or two
+  /// on a device that has already opted out, and it costs nothing: the mark
+  /// being briefly present sends nothing, and every path that would send is
+  /// behind a tap that cannot happen that fast.
+  bool _useCoach = true;
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadUnits());
+    unawaited(_loadCoachPreference());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     unawaited(_refreshPending());
@@ -317,9 +338,28 @@ class _LiftShellState extends State<LiftShell> {
     setState(() => _openSessionDetail = session);
   }
 
+  Future<void> _loadCoachPreference() async {
+    final store = widget.coachPreference;
+    if (store == null) return;
+    final enabled = await store.load();
+    if (!mounted) return;
+    setState(() => _useCoach = enabled);
+  }
+
+  Future<void> _setUseCoach(bool enabled) async {
+    // Applied immediately, not after the write — the same call the units
+    // control makes, and more clearly right here: somebody turning the
+    // coach off wants the mark gone now, not once a plugin has answered.
+    setState(() => _useCoach = enabled);
+    await widget.coachPreference?.save(enabled: enabled);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final coach = widget.coach;
+    // Off means absent, not inert. main.dart already makes this call when
+    // there is no server — "the mark stays absent rather than inert" — and
+    // an inert mark is a promise the app then refuses to keep.
+    final coach = _useCoach ? widget.coach : null;
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -354,6 +394,10 @@ class _LiftShellState extends State<LiftShell> {
                   today: widget.today,
                   unit: _units.mass,
                   onBuildPlan: _canPlan ? _buildPlan : null,
+                  // So the note under a disabled button names the real
+                  // reason. Only when a planner exists: with no server
+                  // the connection line is the true one.
+                  coachIsOff: !_useCoach && widget.planner != null,
                   onOpenSession: widget.recorder == null
                       ? null
                       : _openPlannedSession,
@@ -445,6 +489,10 @@ class _LiftShellState extends State<LiftShell> {
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,
           coachMemory: widget.coachMemory,
+          useCoach: widget.coachPreference == null ? null : _useCoach,
+          onUseCoachChanged: widget.coachPreference == null
+              ? null
+              : _setUseCoach,
         ),
       ),
     );
@@ -459,7 +507,7 @@ class _LiftShellState extends State<LiftShell> {
   /// stops a round trip that cannot succeed.
   Future<void> _openCoach() async {
     final coach = widget.coach;
-    if (coach == null) return;
+    if (coach == null || !_useCoach) return;
     if (_account == null) {
       await _openSignIn();
       return;
@@ -493,8 +541,15 @@ class _LiftShellState extends State<LiftShell> {
 
   /// Whether a plan can be built at all: it takes a coach and somewhere to put
   /// the result, and both are optional in a preview or an offline build.
+  /// Building a plan is an AI request like any other, so the switch reaches
+  /// it too. Without this the coach could be off and Plan would still send
+  /// the intake answers — including the injury notes — to OpenRouter, which
+  /// is exactly what the switch promises it does not do.
   bool get _canPlan =>
-      widget.planner != null && widget.plans != null && !_buildingPlan;
+      _useCoach &&
+      widget.planner != null &&
+      widget.plans != null &&
+      !_buildingPlan;
 
   Future<void> _refreshPlan() async {
     final plans = widget.plans;

@@ -13,6 +13,7 @@ import 'src/features/planning/data/supabase_standing_plan_store.dart';
 import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
+import 'src/features/settings/data/local_coach_preference.dart';
 import 'src/features/settings/data/local_unit_preferences.dart';
 import 'src/features/settings/data/supabase_unit_preferences.dart';
 import 'src/features/settings/data/unit_preferences_repository.dart';
@@ -109,6 +110,11 @@ class MgkLiftApp extends StatelessWidget {
         // stopped paying must still be able to read what was stored about them
         // and delete it.
         coachMemory: supabase == null ? null : SupabaseCoachMemory(supabase),
+        // Device-local and unconditional: the switch is consent, so it
+        // works with no account and no server — and a build with no
+        // Supabase has no coach to switch off, which the shell reads from
+        // `coach` being null rather than from this.
+        coachPreference: LocalCoachPreference(),
         planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
         plans: supabase == null ? null : SupabaseStandingPlanStore(supabase),
       ),

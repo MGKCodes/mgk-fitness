@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../legal/domain/legal_copy.dart';
+import '../../legal/presentation/legal_document_screen.dart';
 import '../domain/coach.dart';
 import 'coach_history_sheet.dart';
 
@@ -679,6 +681,27 @@ class _TopBar extends StatelessWidget {
                       tooltip: 'Previous conversations',
                       visualDensity: VisualDensity.compact,
                     ),
+                  // The disclosure, at the point of use (Guideline 5.1.2(i)).
+                  // Settings carries it too, but this is the screen that does
+                  // the sending, and a disclosure somebody has to go looking
+                  // for in another tab is one they will not read.
+                  //
+                  // Shown mid-intake as well, unlike history: the questionnaire
+                  // is where the injury notes are typed, so it is the last
+                  // moment the answer is worth having.
+                  AppIconButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            const LegalDocumentScreen(document: aiDisclosure),
+                      ),
+                    ),
+                    icon: Icons.info_outline,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                    tooltip: aiDisclosure.title,
+                    visualDensity: VisualDensity.compact,
+                  ),
                   AppIconButton(
                     onPressed: onClose,
                     icon: Icons.close,

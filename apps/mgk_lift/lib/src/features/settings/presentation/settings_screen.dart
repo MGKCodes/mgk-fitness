@@ -4,6 +4,8 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
+import '../../legal/domain/legal_copy.dart';
+import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_section.dart';
@@ -36,6 +38,8 @@ class SettingsScreen extends StatefulWidget {
     this.onSyncNow,
     this.onSignIn,
     this.coachMemory,
+    this.useCoach,
+    this.onUseCoachChanged,
     this.version = kAppVersion,
     this.now,
   });
@@ -71,6 +75,17 @@ class SettingsScreen extends StatefulWidget {
   /// entirely rather than showing one that opens an empty screen — there is
   /// nothing to remember without an account.
   final CoachMemoryStore? coachMemory;
+
+  /// Whether the AI coach is switched on. **Null hides the switch**, which is
+  /// the honest state for a build with no coach in it — a switch that turns off
+  /// something absent is a control with nothing behind it.
+  ///
+  /// The value is held by the shell rather than here, because turning the coach
+  /// off has to remove the mark floating over every surface, not just change a
+  /// row on this screen.
+  final bool? useCoach;
+
+  final ValueChanged<bool>? onUseCoachChanged;
 
   final String version;
 
@@ -182,22 +197,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
               now: widget.now,
             ),
 
-            if (widget.isSignedIn && widget.coachMemory != null) ...<Widget>[
+            if (widget.useCoach != null ||
+                (widget.isSignedIn && widget.coachMemory != null)) ...<Widget>[
               const _Heading('Coach'),
-              SettingsTile(
-                icon: Icons.psychology_outlined,
-                title: 'What your coach remembers',
-                // The subtitle is where the app says the coach remembers at
-                // all. A lifter who never opens the screen should still learn
-                // it from the row.
-                subtitle: 'Read it, or clear it',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        CoachMemoryScreen(store: widget.coachMemory!),
+
+              if (widget.useCoach case final bool on) ...<Widget>[
+                SwitchListTile(
+                  value: on,
+                  onChanged: widget.onUseCoachChanged,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                  ),
+                  title: const Text('Use the AI coach'),
+                  subtitle: Text(
+                    on
+                        ? 'On. What you write is sent to OpenRouter.'
+                        : 'Off. Nothing is sent to OpenRouter.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    0,
+                    AppSpacing.xl,
+                    AppSpacing.sm,
+                  ),
+                  child: Text(
+                    // Named plainly, and it names what is actually at stake.
+                    // "Enable AI features" would be a category; the sentence a
+                    // lifter needs is the one about their own words.
+                    'Your messages, a summary of your recent training, and your '
+                    'injury notes if you gave any. Off means none of it leaves '
+                    'the app, and the coach mark goes away with it — logging, '
+                    'plans you already have, photos and backup all keep '
+                    'working.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                SettingsTile(
+                  icon: Icons.auto_awesome_outlined,
+                  title: aiDisclosure.title,
+                  // Reachable from beside the switch as well as from the legal
+                  // hub. Somebody deciding whether to turn it off is exactly
+                  // who the disclosure is for, and making them go and find it
+                  // under About is how a disclosure becomes decorative.
+                  subtitle: 'What is sent, and what is not',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          const LegalDocumentScreen(document: aiDisclosure),
+                    ),
+                  ),
+                ),
+              ],
+
+              if (widget.isSignedIn && widget.coachMemory != null)
+                SettingsTile(
+                  icon: Icons.psychology_outlined,
+                  title: 'What your coach remembers',
+                  // The subtitle is where the app says the coach remembers at
+                  // all. A lifter who never opens the screen should still learn
+                  // it from the row.
+                  subtitle: 'Read it, or clear it',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          CoachMemoryScreen(store: widget.coachMemory!),
+                    ),
+                  ),
+                ),
             ],
 
             if (widget.isSignedIn) ...<Widget>[

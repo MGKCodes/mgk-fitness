@@ -27,6 +27,7 @@ class PlanSurface extends StatelessWidget {
   const PlanSurface({
     super.key,
     this.onBuildPlan,
+    this.coachIsOff = false,
     this.onSubscribe,
     this.isEntitled = false,
     this.plan,
@@ -39,6 +40,16 @@ class PlanSurface extends StatelessWidget {
   /// Starts the coach conversation that produces a plan. Null when the coach is
   /// unreachable — no backend wired up, or no connection.
   final VoidCallback? onBuildPlan;
+
+  /// Why [onBuildPlan] is null, when the reason is the lifter rather than
+  /// the network.
+  ///
+  /// Building a plan is an AI request, so the coach switch turns it off
+  /// along with everything else — and without this the screen would go on
+  /// blaming the connection for a choice somebody made on purpose. A note
+  /// that is wrong about the cause is worse than no note: it sends a lifter
+  /// to check their signal over a setting.
+  final bool coachIsOff;
 
   /// Opens the store. Null until billing exists.
   final VoidCallback? onSubscribe;
@@ -181,9 +192,13 @@ class PlanSurface extends StatelessWidget {
       if (onBuildPlan == null) ...<Widget>[
         const SizedBox(height: AppSpacing.sm),
         _Note(
-          text:
-              'Your coach needs a connection. Tracking carries on without '
-              'one.',
+          text: coachIsOff
+              // Says where the switch is, because a note that only states the
+              // state leaves somebody hunting for the thing that changes it.
+              ? 'The AI coach is off. Turn it back on in Settings to build a '
+                    'plan — building one sends your answers to an AI provider.'
+              : 'Your coach needs a connection. Tracking carries on without '
+                    'one.',
         ),
       ],
     ];
