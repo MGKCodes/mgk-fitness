@@ -26,22 +26,44 @@ void main() {
     });
   });
 
-  /// **Delete-and-replace this test when pricing is decided**, do not just
-  /// delete it — see the PRICING block in `plan_gate_copy.dart`. It exists so a
-  /// figure cannot reach the app before somebody has agreed it.
-  test('and quotes no figure, because none has been agreed yet', () {
-    expect(
-      RegExp(r'[£$€]\s?\d').hasMatch(planGateCostsCopy),
-      isFalse,
-      reason: 'a price in onboarding is a commercial claim, not copy',
-    );
-    expect(
-      RegExp(
-        r'\b\d+\s*(runs?|messages?|per month|a month)\b',
-      ).hasMatch(planGateCostsCopy.toLowerCase()),
-      isFalse,
-      reason: 'a quota is a commercial claim too',
-    );
+  /// Replaced, not deleted, when pricing landed — which is what the PRICING
+  /// block in `plan_gate_copy.dart` asked for. It used to assert that **no**
+  /// figure was quoted, because a price in onboarding is a commercial claim and
+  /// none had been agreed. [ADR-0029](../../docs/decisions/0029-what-a-tier-costs-and-buys.md)
+  /// agreed them, so it now asserts the opposite: that the figures are there,
+  /// and that they are the consts rather than numbers typed into a sentence.
+  group('quotes the agreed price, from the one place it is written', () {
+    test('both tiers appear, and via the consts', () {
+      expect(planGateCostsCopy, contains(kCoachPrice));
+      expect(planGateCostsCopy, contains(kSharpCoachPrice));
+    });
+
+    test('no other figure has crept in', () {
+      // A second price in the sentence means somebody typed one rather than
+      // interpolating, and the two will part company at the next change.
+      final quoted = RegExp(r'[£$€]\s?\d+(?:\.\d+)?')
+          .allMatches(planGateCostsCopy)
+          .map((m) => m.group(0))
+          .toSet();
+      expect(quoted, <String>{kCoachPrice, kSharpCoachPrice});
+    });
+
+    test('the prices are what ADR-0029 settled', () {
+      // limits.ts sizes every spend ceiling as a fraction of these, so a change
+      // here that is not mirrored there makes the ceilings the wrong size.
+      expect(kCoachPrice, '£1');
+      expect(kSharpCoachPrice, '£3');
+    });
+
+    test('still quotes no quota, because none has been agreed', () {
+      expect(
+        RegExp(
+          r'\d+\s*(runs?|messages?|plans?)',
+        ).hasMatch(planGateCostsCopy.toLowerCase()),
+        isFalse,
+        reason: 'a usage quota is a commercial claim and the tiers name none',
+      );
+    });
   });
 
   test('the coach never uses an em dash, scripted or not', () {

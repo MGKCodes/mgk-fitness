@@ -40,3 +40,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0026](0026-a-record-is-a-window-in-a-trace.md) | A record is a window in a trace, not a run's own time | Accepted |
 | [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted |
 | [0028](0028-revenuecat-is-the-purchase-path.md) | RevenueCat is the purchase path, and the webhook is the truth | Accepted |
+| [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Accepted |
