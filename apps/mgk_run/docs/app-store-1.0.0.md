@@ -158,7 +158,90 @@ App Store Connect will not accept a submission without these. None are code.
 
 ---
 
-## Gate 3 — Would pass the form and fail the review
+## Gate 3 — Payments, and the dead end that ships today
+
+**The app tells a free runner to upgrade and gives them no way to do it.**
+
+`home_last_run.dart`'s `_Locked` state is a good piece of design — a dimmed
+skeleton of the two rows a coach would fill, the words *"Upgrade to see this
+stat"*, and a sentence naming what is behind the lock rather than only that
+something is. Under it:
+
+```dart
+if (onUpgrade != null) ...<Widget>[
+  AppTextButton(label: 'See what a coach adds', onPressed: onUpgrade),
+],
+```
+
+**`home_shell.dart` never passes `onUpgrade`.** The only place that supplies one
+is `test/home/last_run_test.dart`, so in the shipping app the button is not
+rendered and the runner is told to upgrade with nothing to tap. That is an App
+Review Guideline 2.1 risk on its own, whatever is decided about payments.
+
+### What is already built
+
+More than you would expect — the hard, security-shaped half is done:
+
+- **`core.entitlements`** — one row per (user, app); `product` in
+  free/paid/premium, `status` in active/expired/grace/refunded/revoked, plus
+  platform, expiry and `source_txn_id`. **Client-read-only by design**: no
+  INSERT/UPDATE/DELETE policy and no grant to `authenticated`, because the repo
+  is public and a write path that exists is a write path somebody uses. Only
+  `service_role` writes.
+- **The server read path** — `supabase/functions/coach/entitlements.ts` reads
+  it, `tierFor` maps a product to a model tier, the coach function calls it, and
+  `entitlements_test.ts` covers it. Only `active` grants anything.
+- **The client tier model** — `CoachAccess`, defaulting to `free`, every unknown
+  answer resolving to `free`, and deliberately *not* read from a stored flag: a
+  value a client can write is a value a client can forge.
+- **Both UI states**, drawn and on the contact sheet — `H4` with a coach, `H5`
+  free.
+- **The gate copy**, as a placeholder that names no price on purpose.
+
+### What does not exist
+
+- **A purchase SDK.** Neither app has one — no `purchases_flutter`, no
+  `in_app_purchase`, no StoreKit. RevenueCat is not wired anywhere.
+- **The write path.** Three Edge Functions exist (`coach`, `daily-ai-summary`,
+  `delete-account`) and none validates a receipt. **Nothing has ever written a
+  row to `core.entitlements`.**
+- **Pricing.** `plan_gate_copy.dart` says the tiers are undecided and
+  `plan_gate_copy_test.dart` asserts no figure is quoted.
+- **App Store Connect subscription products**, a RevenueCat account, and the
+  ADR choosing between RevenueCat and StoreKit —
+  [ADR-0014](decisions/0014-model-is-chosen-per-surface-and-per-tier.md) says
+  "a verified App Store transaction" and stops there.
+
+### The decision 1.0.0 has to make
+
+- [ ] **Ship 1.0.0 free, or ship it paid?** Everything else here follows from
+      that, and it is not a decision this document can make.
+
+**Free is cheaper and probably right for a first release.** Nothing sets
+`subscribed`, so the app already *is* free and the coach works for everyone. The
+work is small and subtractive: remove or reword `_Locked` so nothing offers an
+upgrade that does not exist, confirm nothing else names a subscription, and
+declare no purchases on the listing. Payments become 1.1.0, with their own ADR
+and their own TestFlight round.
+
+**Paid is a project, not a task.** Choose RevenueCat or StoreKit and write the
+ADR; add the SDK; build the receipt-validating Edge Function that writes
+`core.entitlements` under `service_role`; settle pricing and update
+`plan_gate_copy.dart`, `product-spec.md` and
+[ADR-0015](decisions/0015-spend-is-capped-over-three-windows.md); create the
+products in App Store Connect; and add restore-purchases, which Apple requires.
+Then App Review scrutinises the purchase flow, which is its own category of
+rejection.
+
+**If it ships paid, ADR-0015 is load-bearing and currently rests on a
+placeholder.** Its whole cost argument is written against a £1 monthly
+subscription, and the spend ceilings in `supabase/functions/coach/limits.ts` are
+sized against that number. A different price means they are sized against the
+wrong one.
+
+---
+
+## Gate 4 — Would pass the form and fail the review
 
 - [x] **`TARGETED_DEVICE_FAMILY` set to `"1"` — iPhone only.** It was `"1,2"`,
       Flutter's default, which nobody chose: Apple would have required an iPad
@@ -191,7 +274,7 @@ App Store Connect will not accept a submission without these. None are code.
 
 ---
 
-## Gate 4 — Documents that are now wrong
+## Gate 5 — Documents that are now wrong
 
 These matter more than usual: two of them are what you hand a reviewer or a
 regulator, and a confidently wrong compliance document is worse than none.
@@ -241,13 +324,15 @@ Recorded so nobody re-opens them under deadline:
    build runs, which is the first thing the next build proves.
 2. **Send the OpenRouter email** ([openrouter-processor-agreement.md](openrouter-processor-agreement.md)).
    It is the only item here whose clock is somebody else's.
-3. **Run the TestFlight build**, and write the test sheet while it builds.
-4. **Publish the two legal pages** — the long pole, because it needs a hosted
+3. **Decide free or paid** (Gate 3). It changes what the build in step 4 is
+   for, so it comes before it.
+4. **Run the TestFlight build**, and write the test sheet while it builds.
+5. **Publish the two legal pages** — the long pole, because it needs a hosted
    page and word-for-word parity with the in-app copy. Start it now; it does not
    depend on anything else here.
-5. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
-6. **Fix Gate 4**, which is an hour and removes the risk of arguing a compliance
+6. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
+7. **Fix Gate 5**, which is an hour and removes the risk of arguing a compliance
    claim from a document that describes a renamed schema.
-7. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
-8. **Decide Gate 3's elevation question** last — it is the only item here that
+8. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
+9. **Decide Gate 4's elevation question** last — it is the only item here that
    could reasonably change what 1.0.0 contains.
