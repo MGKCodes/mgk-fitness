@@ -115,7 +115,9 @@ App Store Connect will not accept a submission without these. None are code.
       1. **Legal review** of the document.
       2. **A processor agreement with OpenRouter** covering special-category
          data. External, with real lead time, and it gates wording rather than
-         following it — start it first.
+         following it — start it first. The email to send, what we already have
+         in place, and what each answer changes are in
+         [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
       3. **Whether the configured `COACH_MODEL`'s provider trains on inference
          inputs.** A per-model property. Answer from the deployed secret;
          [compliance.md](compliance.md) is explicit that guessing from the repo
@@ -158,17 +160,19 @@ App Store Connect will not accept a submission without these. None are code.
 
 ## Gate 3 — Would pass the form and fail the review
 
-- [ ] **`TARGETED_DEVICE_FAMILY` is `"1,2"` — the app is built for iPad.**
-      This is Flutter's default and nobody chose it. Consequences: Apple requires
-      an iPad screenshot set, and **reviews the app on an iPad**. Nothing here has
+- [x] **`TARGETED_DEVICE_FAMILY` set to `"1"` — iPhone only.** It was `"1,2"`,
+      Flutter's default, which nobody chose: Apple would have required an iPad
+      screenshot set and **reviewed the app on an iPad**, and nothing here has
       ever been laid out for one — the widest surface the board tests is 430pt,
-      and the in-run screen's detents are tuned across 320–430. An untested iPad
-      layout in front of a reviewer is a rejection risk for no gain.
+      and the in-run detents are tuned across 320–430. Changed in all three of
+      the Runner target's configurations (Debug, Release, Profile). iPhone-only
+      is the honest description of what was built and matches
+      [ADR-0001](decisions/0001-flutter-ios-only.md).
 
-      Set it to `"1"` in `ios/Runner.xcodeproj/project.pbxproj` (three places).
-      iPhone-only is the honest description of what was built, matches
-      [ADR-0001](decisions/0001-flutter-ios-only.md), and removes the iPad
-      screenshot requirement.
+      `UISupportedInterfaceOrientations~ipad` is left in `Info.plist`. It is dead
+      under device family 1 and harmless, and it documents the intent if iPad is
+      ever reconsidered. **The change is unverified until a build runs** — it is
+      an Xcode project edit made on Windows.
 - [ ] **Decide what elevation does at launch.** The tiles are built end to end
       and permanently read "not recorded", because there is no barometric source
       ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). That is
@@ -233,15 +237,17 @@ Recorded so nobody re-opens them under deadline:
 
 ## The order
 
-1. **Set `TARGETED_DEVICE_FAMILY` to `"1"`** before the TestFlight build, so the
-   binary in front of testers is the binary you intend to ship.
-2. **Run the TestFlight build**, and write the test sheet while it builds.
-3. **Publish the two legal pages** — the long pole, because it needs a hosted
+1. ~~Set `TARGETED_DEVICE_FAMILY` to `"1"`~~ — done, and unverified until a
+   build runs, which is the first thing the next build proves.
+2. **Send the OpenRouter email** ([openrouter-processor-agreement.md](openrouter-processor-agreement.md)).
+   It is the only item here whose clock is somebody else's.
+3. **Run the TestFlight build**, and write the test sheet while it builds.
+4. **Publish the two legal pages** — the long pole, because it needs a hosted
    page and word-for-word parity with the in-app copy. Start it now; it does not
    depend on anything else here.
-4. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
-5. **Fix Gate 4**, which is an hour and removes the risk of arguing a compliance
+5. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
+6. **Fix Gate 4**, which is an hour and removes the risk of arguing a compliance
    claim from a document that describes a renamed schema.
-6. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
-7. **Decide Gate 3's elevation question** last — it is the only item here that
+7. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
+8. **Decide Gate 3's elevation question** last — it is the only item here that
    could reasonably change what 1.0.0 contains.
