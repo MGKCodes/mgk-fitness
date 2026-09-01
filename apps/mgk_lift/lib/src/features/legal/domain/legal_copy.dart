@@ -11,7 +11,8 @@ const LegalDocument privacyPolicy = LegalDocument(
   lead:
       '$kProductName is a strength-training log with an optional AI coach. '
       'Your sessions live on your phone and tracking works with no account at '
-      'all. Signing in backs them up. To coach you it sends your training '
+      'all. Signing in stores them on our servers. To coach you it sends '
+      'your training '
       'context, and what you say in the conversation, to an AI provider. We do '
       'not sell your data. You can delete everything at any time.',
   sections: <LegalSection>[
@@ -109,16 +110,13 @@ const LegalDocument privacyPolicy = LegalDocument(
       ],
     ),
     LegalSection(
-      heading: 'What an account is for',
+      heading: 'Your account',
       paragraphs: <String>[
         'You do not need an account to track your training, and with no '
-            'account nothing leaves your phone at all. An $kPlatformName '
-            'account is where your training lives once you want it in more '
-            'than one place: it follows you to a new phone, and it is the same '
-            'account $kPlatformName: Run uses. There is no separate switch — '
-            'signing in is the switch. A lost or replaced phone not losing '
-            'your training is a consequence of that rather than the point of '
-            'it.',
+            'account nothing leaves your phone at all. Signing in stores your '
+            'sessions on our servers under your $kPlatformName account, which '
+            'is the same account $kPlatformName: Run uses. There is no '
+            'separate switch — signing in is the switch.',
       ],
     ),
     LegalSection(

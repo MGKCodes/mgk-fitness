@@ -10,8 +10,8 @@ void main() {
     testWidgets('says the training exists in one place only', (
       WidgetTester tester,
     ) async {
-      // Discovering this after losing a phone is the worst possible time, so
-      // the screen says it while the phone still exists.
+      // The one fact worth stating unprompted, because discovering it after
+      // losing a phone is the worst possible time.
       await tester.pumpWidget(
         wrap(
           const AccountSection(
@@ -22,21 +22,31 @@ void main() {
       );
 
       expect(find.text('Not signed in'), findsOneWidget);
-      expect(find.textContaining('on this phone only'), findsOneWidget);
-      // Names what an account IS. The old copy said "sign in to back up",
-      // which described a failure mode and made the account sound optional.
-      expect(
-        find.textContaining('An MGKFitness account keeps it with you'),
-        findsOneWidget,
-      );
+      expect(find.text('Your training is on this phone only.'), findsOneWidget);
       expect(find.text('Sign in'), findsOneWidget);
+
+      // Reports, does not sell. An account is a thing people already
+      // understand, so the card must not explain that a cloud account is
+      // readable when you sign in, nor argue for creating one.
+      for (final pitch in <String>[
+        'keeps it with you',
+        'new phone',
+        'follows you',
+        'back up',
+        'backed up',
+      ]) {
+        expect(
+          find.textContaining(pitch),
+          findsNothing,
+          reason: 'the card is arguing for an account: "$pitch"',
+        );
+      }
     });
 
     testWidgets('counts what would be lost, rather than just warning', (
       WidgetTester tester,
     ) async {
-      // A general invitation is easy to ignore. "9 sessions exist nowhere
-      // else" is not.
+      // The number makes the state concrete where there is one.
       await tester.pumpWidget(
         wrap(
           const AccountSection(
@@ -46,10 +56,7 @@ void main() {
         ),
       );
 
-      expect(
-        find.textContaining('9 sessions exist nowhere else'),
-        findsOneWidget,
-      );
+      expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
     });
 
     testWidgets('gets the singular right', (WidgetTester tester) async {
@@ -62,7 +69,7 @@ void main() {
         ),
       );
       expect(
-        find.textContaining('1 session exists nowhere else'),
+        find.textContaining('1 session is on this phone only'),
         findsOneWidget,
       );
     });

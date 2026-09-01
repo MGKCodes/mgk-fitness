@@ -128,19 +128,24 @@ class _SignInScreenState extends State<SignInScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       Text(
-                        _creating
-                            ? 'Your training, everywhere'
-                            : 'Welcome back',
+                        _creating ? 'Create an account' : 'Welcome back',
                         style: theme.textTheme.headlineSmall,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        _reason(),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.4,
+                      // Only when there is something to say. Signing in
+                      // needs no explanation, and a paragraph under the
+                      // headline that exists to fill the space is how the
+                      // screen started arguing for an account in the first
+                      // place.
+                      if (_reason() case final String reason) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          reason,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: AppSpacing.xl),
 
                       TextFormField(
@@ -266,8 +271,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         // The escape hatch. Somebody who opened this by accident
                         // should be able to leave without feeling they have lost
                         // something, because they have not.
-                        'You do not need an account to track your training. '
-                        'An account is what keeps it beyond this phone.',
+                        'You do not need an account to track your training.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textTertiary,
@@ -293,20 +297,21 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  String _reason() {
-    if (!_creating) {
-      return 'Sign in and your training comes back, on this phone or any '
-          'other.';
-    }
+  /// What is worth saying under the headline, or null when nothing is.
+  ///
+  /// Signing in gets nothing: somebody on this screen with an account knows
+  /// what it does, and the app telling them their data will be there is the
+  /// kind of line that reads as filler at best.
+  ///
+  /// Creating gets one fact, and only when there is one — sessions that exist
+  /// in a single place. That is state the person may not have, not an argument
+  /// for the account.
+  String? _reason() {
+    if (!_creating) return null;
     final n = widget.pendingWorkouts;
-    return n == 0
-        ? 'Your training is on this phone only. An $kPlatformName account '
-              'keeps it with you — on a new phone, and in $kPlatformName: Run.'
-        // Specific beats general. "9 sessions exist nowhere else" is a reason;
-        // "keep your data" is a category.
-        : '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'exists' : 'exist'} only '
-              'on this phone. An $kPlatformName account keeps '
-              '${n == 1 ? 'it' : 'them'}.';
+    if (n == 0) return null;
+    return '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'is' : 'are'} on this '
+        'phone only.';
   }
 }
 

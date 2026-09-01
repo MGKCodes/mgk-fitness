@@ -56,7 +56,7 @@ void main() {
     test('carries every load-bearing sentence', () {
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
         'We do not sell your data. You can delete everything at any time.',
-        'Signing in backs them up.',
+        'Signing in stores them on our servers.',
         'special-category data under UK GDPR',
         'we never send your progress photos',
         'taken together it is health information about one person',

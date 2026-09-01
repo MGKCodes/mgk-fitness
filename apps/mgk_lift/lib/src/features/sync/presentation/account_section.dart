@@ -6,23 +6,20 @@ import '../domain/sync_status.dart';
 /// The account card in Settings: who is signed in, what is waiting, when it
 /// last went, and a way to send it now.
 ///
-/// **This used to be called Backup, and calling it that was the mistake.**
-/// Backup names a failure mode — insurance against losing a phone — which makes
-/// the account sound like a precaution somebody might reasonably skip. It is
-/// not. It is where training lives across devices, what the coach's memory
-/// hangs off, what Run shares, and what a subscription attaches to. A lost
-/// phone is a case it *handles*, not the thing it *is*.
+/// **It reports, it does not sell.** This was called Backup, and the copy under
+/// it explained that an account would follow you to a new phone. Both were
+/// wrong in the same way: an account is a thing people already understand, and
+/// explaining that a cloud account is readable when you sign in reads as either
+/// a sales pitch or an insult. It is just an account.
 ///
-/// So the card leads with the account and lets the lost-phone case be the fine
-/// print it deserves to be. The one place "saved" survives is the status line,
-/// where it is reporting what the last run actually moved rather than making a
-/// pitch.
+/// So every line here is a statement of state — signed in or not, what is
+/// waiting, when it last ran — and none of them argue for anything. The one
+/// fact worth stating unprompted is that training is on one device only,
+/// because that is the state and discovering it after losing a phone is the
+/// worst possible time.
 ///
-/// **Manual, and honest about it.** Nothing here is on the path of logging a
-/// set — the local database already has it. So this reports rather than
-/// reassures: somebody who has not signed in is told plainly that their
-/// training is on one device only, because that is the fact and discovering it
-/// after losing a phone is the worst possible time.
+/// **Manual.** Nothing here is on the path of logging a set; the local database
+/// already has it.
 class AccountSection extends StatelessWidget {
   const AccountSection({
     super.key,
@@ -150,15 +147,12 @@ class AccountSection extends StatelessWidget {
 
   String _status(int count) {
     if (!isSignedIn) {
+      // The state, and nothing after it. The number makes it concrete where
+      // there is one.
       return count == 0
-          ? 'Your training is on this phone only. An $kPlatformName account '
-                'keeps it with you — on a new phone, and in '
-                '$kPlatformName: Run.'
-          // The number makes it concrete. A general invitation is easy to
-          // ignore; "9 sessions exist nowhere else" is not.
-          : '$count session${count == 1 ? '' : 's'} ${count == 1 ? 'exists' : 'exist'} '
-                'nowhere else. An $kPlatformName account keeps '
-                '${count == 1 ? 'it' : 'them'}.';
+          ? 'Your training is on this phone only.'
+          : '$count session${count == 1 ? '' : 's'} ${count == 1 ? 'is' : 'are'} '
+                'on this phone only.';
     }
     if (count > 0) {
       return '$count session${count == 1 ? '' : 's'} waiting to upload.';

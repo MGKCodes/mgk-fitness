@@ -38,17 +38,37 @@ void main() {
     );
   });
 
-  testWidgets('the reason to sign up is specific, not a category', (
+  testWidgets('says what is on one phone only, and nothing more', (
     WidgetTester tester,
   ) async {
     await pump(tester, FakeAuth(), pending: 9);
     await tester.tap(find.text('Create an account'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('9 sessions exist only on this phone'),
-      findsOneWidget,
-    );
+    expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
+
+    // State, not an argument. The screen does not explain what an account is
+    // or what signing in would get them; both are things people already know.
+    for (final pitch in <String>['new phone', 'follows you', 'back up']) {
+      expect(
+        find.textContaining(pitch),
+        findsNothing,
+        reason: 'the sign-up screen is selling: "$pitch"',
+      );
+    }
+  });
+
+  testWidgets('and says nothing at all when there is nothing to say', (
+    WidgetTester tester,
+  ) async {
+    // No pending sessions, so there is no state worth reporting. A paragraph
+    // here to fill the space is how the screen started arguing in the first
+    // place.
+    await pump(tester, FakeAuth());
+    await tester.tap(find.text('Create an account'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('on this phone only'), findsNothing);
   });
 
   testWidgets('one screen toggles between signing in and signing up', (
@@ -59,7 +79,9 @@ void main() {
 
     await tester.tap(find.text('Create an account'));
     await tester.pumpAndSettle();
-    expect(find.text('Your training, everywhere'), findsOneWidget);
+    // Two of them now: the headline and the toggle that got us here.
+    expect(find.text('Create an account'), findsWidgets);
+    expect(find.text('Welcome back'), findsNothing);
 
     await tester.tap(find.text('I already have an account'));
     await tester.pumpAndSettle();
