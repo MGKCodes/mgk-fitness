@@ -67,9 +67,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Runio uses your location to record your run's route, distance, and pace.</string>
+	<string>Record your run's route, distance, and pace.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Runio keeps recording your run in the background so tracking continues with the screen locked.</string>
+	<string>Keep recording your run in the background so tracking continues with the screen locked.</string>
 	<!-- Required the moment the binary links HealthKit: App Store Connect
 	     rejects an upload that references the framework without a purpose
 	     string, so this is a build blocker rather than a nicety.
@@ -87,18 +87,18 @@
 
 	     False is the accurate answer, not the convenient one: the only
 	     cryptography here is HTTPS to Supabase and to the coach function, which
-	     is exempt under the standard TLS exemption. If Runio ever ships crypto of
+	     is exempt under the standard TLS exemption. If the app ever ships crypto of
 	     its own, this key has to be revisited rather than left. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Runio reads your workouts from Health so runs you recorded on a watch or another app appear in your training log, and so your coach sees the whole picture.</string>
-	<!-- Runio does not write to Health yet. This describes what the entitlement
+	<string>Read your workouts and step count from Health, so runs you recorded on a watch or another app appear in your training log and your coach sees the whole picture.</string>
+	<!-- The app does not write to Health yet. This describes what the entitlement
 	     permits and what the app is built toward: workout_dedup.dart already
-	     treats Runio's own recordings as the preferred source of a run, which
+	     treats the app's own recordings as the preferred source of a run, which
 	     only means anything once they are there. -->
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Runio can save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
+	<string>Save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
