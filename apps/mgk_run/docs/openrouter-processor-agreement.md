@@ -75,58 +75,64 @@ page or a reply to an existing thread before sending.
 
 ## The email
 
-**A draft is already in Gmail** with the body below and **no recipient**, left
-empty on purpose so it cannot go to a guessed address.
-
-
+**A draft is already in Gmail** — this text verbatim, with **no recipient**,
+left empty on purpose so it cannot go to a guessed address. Keep the two in step
+if either is edited.
 
 > **Subject:** Data processing agreement — special-category (health) data,
 > UK GDPR
 >
 > Hello,
 >
-> We run a running-coach app that sends training context and users' own messages
-> to models through OpenRouter. That content is health data, and therefore
-> special-category personal data under UK GDPR, so we need a processor
-> arrangement in place before we publish our privacy policy and submit to the
-> App Store.
+> We run a running-coach app (MGKCodes Ltd, UK) that sends training context and
+> users' own messages to models through OpenRouter. That content is health data,
+> and therefore special-category personal data under UK GDPR, so we need a
+> processor arrangement in place before we publish our privacy policy and submit
+> to the App Store.
 >
-> All our requests are made server-to-server and set
-> `provider: { data_collection: "deny", require_parameters: true,
-> allow_fallbacks: true }`.
+> All our requests are made server-to-server and set:
+>
+>   `provider: { data_collection: "deny", require_parameters: true, allow_fallbacks: true }`
+>
+> Your privacy policy refers to a Data Processing Agreement, and to separate
+> agreements you hold with Model Providers, which is what prompts most of the
+> below.
 >
 > Five questions:
 >
-> 1. **Do you offer a Data Processing Agreement / Article 28 processor
->    agreement**, and can you send the current version? If there is a standard
->    one we can sign, that is ideal.
+> 1. Can you send us your current Data Processing Agreement / Article 28
+>    processor agreement? If there is a standard one we can sign, that is ideal.
 >
-> 2. **What does `data_collection: "deny"` guarantee contractually**, as opposed
->    to on a best-effort basis? Specifically: is it a routing filter applied
->    against provider-declared policy, or something you warrant? We have built on
->    the assumption that a request sent with `deny` is never routed to a provider
+> 2. What does `data_collection: "deny"` guarantee contractually, as opposed to
+>    on a best-effort basis? Specifically: is it a routing filter applied against
+>    provider-declared policy, or something you warrant? We have built on the
+>    assumption that a request sent with `deny` is never routed to a provider
 >    that retains or trains on it, and we would like that confirmed in writing.
 >
-> 3. **Do you maintain a list of sub-processors** (the providers eligible to
->    serve a request under `data_collection: "deny"`), and will you notify us of
+> 3. Do you maintain a list of sub-processors — the providers eligible to serve
+>    a request under `data_collection: "deny"` — and will you notify us of
 >    changes to it? We name OpenRouter in our published policy rather than one
->    downstream provider, because our model is a configuration choice — but a
->    regulator may ask who is downstream, and we would like to be able to answer.
+>    downstream provider, because the model we use is a server-side configuration
+>    choice. But a regulator may ask who is downstream, and we would like to be
+>    able to answer.
 >
-> 4. **What does OpenRouter itself retain**, separately from the model provider?
+> 4. What does OpenRouter itself retain, separately from the model provider?
 >    Request and response bodies, prompts, or only metadata such as token counts
 >    and model ids? If bodies are retained, for how long, and can that be
 >    disabled for our account?
 >
-> 5. **Where is our data processed and stored**, and do you rely on the UK
->    International Data Transfer Agreement / EU Standard Contractual Clauses for
->    transfers outside the UK and EEA? Our own storage is in `eu-west-1`
->    (Ireland).
+> 5. Where is our data processed and stored, and do you rely on the UK
+>    International Data Transfer Agreement or the EU Standard Contractual Clauses
+>    for transfers outside the UK and EEA? Our own storage is in `eu-west-1`
+>    (Ireland), and we note OpenRouter, Inc. is a US entity.
 >
 > Happy to sign an NDA first if that helps.
 >
 > Thanks,
-> Matthew Kay — MGKCodes Ltd — hello@mgkcodes.com
+>
+> Matthew Kay
+> MGKCodes Ltd
+> hello@mgkcodes.com
 
 ---
 
