@@ -166,20 +166,35 @@ The soonest goal: TestFlight, off the live server, on a real device.
       that session turned up became
       [lift-2.0.0-punch-list.md](lift-2.0.0-punch-list.md) — a plan of its own
       rather than a line here.
-- [ ] **Prove a real `lift_chat` turn against production.** Carried over from
-      [roadmap.md](roadmap.md) and still unproven. The reason is now known, and
-      it was never the plumbing.
+- [x] **Prove a real `lift_chat` turn against production.** Carried over from
+      [roadmap.md](roadmap.md), open since this plan was written, and **done on
+      2026-09-01.**
 
-      `core.entitlements` is **empty** — zero rows, for anybody — and the
-      deployed coach function gates on it. So every Lift coach request in
-      production has been refused, and the 2026-08-24 session was a test of the
-      free half of the app. `coach.turns` holds exactly one conversation and it
-      is `app = 'run'`; there has never been a `lift:` turn.
+      The diagnosis was right and it was never the plumbing. `core.entitlements`
+      was empty, the deployed function gates on it, so every Lift coach request
+      had been refused and the 2026-08-24 session tested the free half of the
+      app without knowing it.
 
-      What this needs is the one-row `insert into core.entitlements` from the
-      test sheet's "Before you start", and then a re-test. Not a code change.
-      Until that row exists, every observation of Lift's paid half is an
-      observation of a gated app.
+      Proved by talking to the live project directly rather than by another
+      build. An entitled probe account was created, signed in, and asked the
+      coach a real question:
+
+      > *"My bench has stalled at 80kg for three weeks. What should I change?"*
+      > → 200, and a reply that correctly noticed the account had logged no
+      > sessions and said so instead of inventing any.
+
+      It reached `coach.turns` as **the first `app = 'lift'` conversation that
+      has ever existed**, two turns, under the id the client sent — which is
+      also ADR-0002's central claim proved: the function derives nothing. A
+      `coach.usage` row was written for `lift_chat`, so the spend ledger is on
+      the path too. The probe was then deleted and every real record was
+      confirmed untouched.
+
+      **Two corrections to what this file used to say.** `core.entitlements` is
+      no longer empty — there is one row, and it is `lift` / `paid` / `active`.
+      And the table is scoped **per app**: it has an `app` column, so an
+      entitlement is not suite-wide and a Run subscription would not unlock
+      Lift.
 
 ## Phase 2 — Compliance the old app already paid for
 
@@ -369,6 +384,15 @@ Two gaps this plan does not list, one of them a hard rejection.
       outcome screen says what actually happened — including the case where the
       narrow choice still took the login because Run held nothing, which is
       said before the tap as well as after it.
+
+      **Both scopes proved against production 2026-09-01.** A probe account was
+      put through the deployed function twice over: once with no scope (200,
+      everything gone, login gone) and once with `{"app":"lift"}` on an account
+      holding no Run data — which removed the login as well, which is exactly
+      the case the screen warns about *before* the tap. Run's three
+      conversations, the real entitlement, and 30 photos with 37 objects were
+      all confirmed untouched by both runs. The copy describes real behaviour
+      rather than intended behaviour.
 
 - [ ] **Run's deletion is unscoped, and erases Lift's data.** Not this app's
       bug and not fixable from this branch, but found here and worth writing
