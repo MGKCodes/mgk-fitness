@@ -212,32 +212,54 @@ More than you would expect — the hard, security-shaped half is done:
   [ADR-0014](decisions/0014-model-is-chosen-per-surface-and-per-tier.md) says
   "a verified App Store transaction" and stops there.
 
-### The decision 1.0.0 has to make
+### Settled: 1.0.0 ships paid, on RevenueCat
 
-- [ ] **Ship 1.0.0 free, or ship it paid?** Everything else here follows from
-      that, and it is not a decision this document can make.
+The coach costs real money per request through OpenRouter, so it is a paid tier
+and the `_Locked` state stays. **RevenueCat is the purchase path** —
+[ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md) records the choice
+and the reasoning: the suite spans Apple and Google, and the five statuses in
+`core.entitlements` are the hard part rather than the paywall.
 
-**Free is cheaper and probably right for a first release.** Nothing sets
-`subscribed`, so the app already *is* free and the coach works for everyone. The
-work is small and subtractive: remove or reword `_Locked` so nothing offers an
-upgrade that does not exist, confirm nothing else names a subscription, and
-declare no purchases on the listing. Payments become 1.1.0, with their own ADR
-and their own TestFlight round.
+Done already, because it was cheap while the policy was unpublished:
 
-**Paid is a project, not a task.** Choose RevenueCat or StoreKit and write the
-ADR; add the SDK; build the receipt-validating Edge Function that writes
-`core.entitlements` under `service_role`; settle pricing and update
-`plan_gate_copy.dart`, `product-spec.md` and
-[ADR-0015](decisions/0015-spend-is-capped-over-three-windows.md); create the
-products in App Store Connect; and add restore-purchases, which Apple requires.
-Then App Review scrutinises the purchase flow, which is its own category of
-rejection.
+- [x] **[ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md) written.**
+- [x] **RevenueCat declared as a sub-processor** in all four places that have to
+      agree: `docs/privacy-policy.md`, `legal_copy.dart`, `compliance.md`'s
+      table, and the regenerated pages. `legal_copy_test.dart` now pins all four
+      processors rather than the two that happened to be interesting.
 
-**If it ships paid, ADR-0015 is load-bearing and currently rests on a
-placeholder.** Its whole cost argument is written against a £1 monthly
-subscription, and the spend ceilings in `supabase/functions/coach/limits.ts` are
-sized against that number. A different price means they are sized against the
-wrong one.
+What is left, roughly in order:
+
+- [ ] **Decide the price.** Nothing technical waits on it, but three things do:
+      `plan_gate_copy.dart` (which quotes no figure today, and whose test
+      asserts that), `docs/product-spec.md`, and
+      [ADR-0015](decisions/0015-spend-is-capped-over-three-windows.md) — whose
+      spend ceilings in `supabase/functions/coach/limits.ts` are sized against a
+      £1 monthly subscription that was always a placeholder. A different price
+      means they are sized against the wrong number, so this is a cost control
+      as much as a commercial decision.
+- [ ] **RevenueCat account, and the products in App Store Connect.** The
+      products have to exist before a build can offer them.
+- [ ] **The webhook Edge Function** — the only thing that writes
+      `core.entitlements`, under `service_role`. Idempotent, tolerant of
+      out-of-order events, comparing `source_txn_id`. This is the piece that
+      matters; everything else is UI.
+- [ ] **The SDK in the client**, public key through `app_config.json` beside
+      `SUPABASE_URL`, webhook secret server-side only.
+- [ ] **Wire `onUpgrade`** in `home_shell.dart`, which is what closes the dead
+      end above, and **the purchase screen it opens**.
+- [ ] **Restore purchases.** Apple requires it; RevenueCat provides it, but it
+      still needs a surface.
+- [ ] **A processor agreement with RevenueCat**, alongside the OpenRouter one in
+      [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
+- [ ] **App Privacy: declare Purchases and the identifier.**
+- [ ] **Sandbox testing**, which needs a real device and a sandbox Apple ID — so
+      it joins Gate 1 rather than being provable here.
+
+**The client stays out of the decision.** `CoachAccess` keeps coming from the
+server; the SDK presents and performs a purchase and nothing more. Reading
+`CustomerInfo.entitlements.active` on device and unlocking from it would replace
+a fact with a claim, which is the property `coach_access.dart` exists to hold.
 
 ---
 
@@ -324,9 +346,12 @@ Recorded so nobody re-opens them under deadline:
    build runs, which is the first thing the next build proves.
 2. **Send the OpenRouter email** ([openrouter-processor-agreement.md](openrouter-processor-agreement.md)).
    It is the only item here whose clock is somebody else's.
-3. **Decide free or paid** (Gate 3). It changes what the build in step 4 is
-   for, so it comes before it.
-4. **Run the TestFlight build**, and write the test sheet while it builds.
+3. **Run the TestFlight build**, and write the test sheet while it builds. It
+   proves the device-family change and answers the rest of Gate 1; the payment
+   work does not block it, because the app is on `free` until a webhook says
+   otherwise.
+4. **Decide the price**, which unblocks the App Store Connect products, the gate
+   copy, and ADR-0015's ceilings.
 5. **Publish the two legal pages** — the long pole, because it needs a hosted
    page and word-for-word parity with the in-app copy. Start it now; it does not
    depend on anything else here.

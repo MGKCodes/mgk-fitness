@@ -86,9 +86,18 @@ void main() {
     test('names the current sub-processors and not the old one', () {
       // The provider swap to an OpenRouter gateway (ADR-0007) has to be visible
       // in both. A policy naming the wrong processor is a compliance defect.
+      //
+      // All four are pinned, not just the interesting ones. A sub-processor
+      // added to the architecture and not to the policy is the same defect as
+      // one named after it was dropped, and it is the more likely direction:
+      // RevenueCat (ADR-0028) arrived as a purchase decision, and remembering
+      // that a purchase decision is also a disclosure is exactly what nobody
+      // does at the time.
       for (final text in <String>[doc, app]) {
         expect(text, contains('Supabase'));
         expect(text, contains('OpenRouter'));
+        expect(text, contains('RevenueCat'));
+        expect(text, contains('MapTiler'));
         expect(
           text,
           isNot(contains('Anthropic')),

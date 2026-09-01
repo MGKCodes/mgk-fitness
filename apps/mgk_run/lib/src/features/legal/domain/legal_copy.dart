@@ -106,6 +106,10 @@ const LegalDocument privacyPolicy = LegalDocument(
             'pretend the rest is anonymous: taken together it is health '
             'information about one person, and if you would rather it did not '
             'leave the app, do not use the coach.',
+        'RevenueCat — handles subscription purchases and tells our server '
+            'whether yours is active. It receives your account identifier and '
+            'your purchase history, and nothing else: no runs, no training '
+            'data, and nothing you said to your coach.',
         'MapTiler — serves the basemap tiles behind your route; receives '
             'approximate map viewport coordinates.',
       ],

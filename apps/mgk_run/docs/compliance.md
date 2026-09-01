@@ -38,6 +38,7 @@ Runio:
 |---|---|---|
 | **Supabase** | Auth, database, Edge Functions (hosting) | Account; and — **only with backup consent** — runs, traces, plans, coach transcripts. Usage records regardless, since the limiter cannot work without them. `eu-west-1` (Ireland) |
 | **OpenRouter** | LLM gateway for onboarding, planning, adaptation and conversation | Training context **and the runner's own messages**; see below |
+| **RevenueCat** | Subscription purchases and the entitlement state behind them ([ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md)) | The Supabase `user_id` as a pseudonymous app user id, and purchase records. **No training, health or message content.** |
 | **MapTiler** | Basemap tiles | Approximate viewport coordinates |
 
 **Pick the model provider before writing the policy, not after.** Runio calls
