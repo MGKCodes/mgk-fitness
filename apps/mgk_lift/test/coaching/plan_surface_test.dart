@@ -20,6 +20,41 @@ Future<void> pumpTall(WidgetTester tester, Widget child) async {
 }
 
 void main() {
+  group('the tiers', () {
+    testWidgets('name photos as paid, and Free as tracking only', (
+      WidgetTester tester,
+    ) async {
+      // Photos moved behind the entitlement on 2026-09-01 and the tier copy
+      // did not follow for one commit. This is what notices next time: a
+      // feature that changes side has to change this block too.
+      await pumpTall(tester, const PlanSurface());
+
+      expect(find.textContaining('and progress photos'), findsOneWidget);
+      expect(
+        find.text('Sessions, templates, history, stats. No limits and no ads.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('say the two paid tiers differ only by how much you can talk', (
+      WidgetTester tester,
+    ) async {
+      // £3 buys more messages and nothing else. Leaving a price difference
+      // unexplained invites somebody to infer a feature list from it, which is
+      // how a paywall starts lying without anybody writing a false sentence.
+      await pumpTall(tester, const PlanSurface());
+
+      expect(
+        find.textContaining('Everything in Coaching, feature for feature'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Far more room to talk to the coach'),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('the offer', () {
     // The first version was a headline, a paragraph and a disabled button with
     // nine hundred pixels of nothing between them — a third of the app's

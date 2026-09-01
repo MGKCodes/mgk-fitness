@@ -270,6 +270,12 @@ class PlanSurface extends StatelessWidget {
 /// All three, not just the one being sold. Showing Free at the top is the point:
 /// it is the row that proves tracking is not the thing behind the paywall, which
 /// a screen that only listed the paid tiers would quietly imply.
+///
+/// **The two paid tiers hold the same features.** £3 buys more room to talk to
+/// the coach and nothing else — no screen, no capability, no extra half of the
+/// app. That is worth saying in the copy rather than leaving somebody to infer
+/// a feature list from a price, and it is why the Premium row names what it is
+/// the same as before it names what is different.
 class _Tiers extends StatelessWidget {
   const _Tiers();
 
@@ -293,14 +299,18 @@ class _Tiers extends StatelessWidget {
           _Tier(
             price: '£1',
             name: 'Coaching',
-            detail: 'A plan built for you, and a coach that adapts it.',
+            detail:
+                'A plan built for you, a coach that adapts it, and progress '
+                'photos.',
             isHighlighted: true,
           ),
           _Divider(),
           _Tier(
             price: '£3',
             name: 'Premium',
-            detail: 'The same coach, with far more room to talk to it.',
+            detail:
+                'Everything in Coaching, feature for feature. Far more room '
+                'to talk to the coach.',
           ),
         ],
       ),

@@ -263,11 +263,12 @@ Liftio's changelog is a list of rejections bought once. Do not buy them twice.
       same commit as the behaviour, along with the privacy policy's photos
       section.
 
-      **Open, for Phase 3:** which tier. The paywall lists Free, £1 Coaching
-      and £3 Premium, and photos are currently gated on the same `isEntitled`
-      boolean as the coach — so today they land in £1. The tier copy in
-      `plan_surface.dart` does not mention photos at all yet and will have to,
-      whichever way this goes.
+      **Settled 2026-09-01:** photos are part of the paid tier, which means
+      £1 and up. The two paid tiers hold the same features and differ only in
+      how much the coach will talk to you, so there was never a photos-shaped
+      question about which one — `isEntitled` is the whole gate. The paywall
+      copy now names photos in the Coaching row and says Premium is the same
+      feature for feature, with a test holding both.
 - [ ] ~~Update `getliftio.com` Terms~~ — **superseded 2026-09-01.**
       `getliftio.com` is being retired rather than corrected. The web presence
       folds into the MGKCodes site as something like
@@ -328,12 +329,44 @@ Two gaps this plan does not list, one of them a hard rejection.
       return for a scoped call. That branch is unreachable today. The fix is
       one argument — `body: {'app': 'run'}` — in run's lane.
 
-## Phase 3 — Payments, owned
+## Phase 3 — Payments, through RevenueCat
 
 `core.entitlements` already models the store lifecycle exactly — `product` in
 `(free, paid, premium)`, `status` in `(active, expired, grace, refunded,
 revoked)` — and already revokes write access from `authenticated`. The table is
 shaped for this; what is missing is anything that writes to it.
+
+**Rewritten 2026-09-01: RevenueCat, not our own validators.** This phase was
+called *Payments, owned* and specified two Edge Functions — one verifying
+Apple's JWS signature chain against their root CAs, one reconciling Play
+Real-time Developer Notifications over Pub/Sub. That is a genuine amount of
+security-sensitive code to own for a product with no subscribers yet, and both
+halves are exactly what RevenueCat exists to do. The reasoning for owning it is
+kept below rather than deleted, because it is the argument to revisit if
+RevenueCat ever becomes the constraint.
+
+`core.entitlements` does not change. It stays the app's single source of truth
+and stays unwritable by `authenticated`; RevenueCat's webhook becomes the thing
+that writes it, in place of the two validators. Nothing client-side reads an
+entitlement from anywhere else.
+
+### What the tiers actually are
+
+**Both paid tiers hold the same features.** £3 buys more room to talk to the
+coach and nothing else — no extra screen, no extra capability. Photos are part
+of the paid tier alongside the coach and the plan (see the photos item in Phase
+2), so the split is:
+
+| | Free | £1 Coaching | £3 Premium |
+|---|---|---|---|
+| Tracking, templates, history, stats | yes | yes | yes |
+| Plan, coach, progress photos | no | yes | yes |
+| Coach message allowance | — | standard | far higher |
+
+The paywall copy in `plan_surface.dart` says exactly this, and a test holds it
+there — a feature that changes side has to change that block too.
+
+### The work
 
 - [ ] **Confirm the subscriber count is zero** in the RevenueCat dashboard
       before building on the assumption. Liftio's changelog refers to "every
@@ -342,28 +375,50 @@ shaped for this; what is missing is anything that writes to it.
 - [ ] Create store products on both stores: **£1 Coaching** → `product = 'paid'`,
       **£3 Premium** → `product = 'premium'`. This is a pricing change as well
       as a platform one — Liftio sold a single £1.99 tier.
-- [ ] Client purchase flow with `in_app_purchase`: query, buy, restore, and a
-      purchase stream that survives backgrounding.
-- [ ] **iOS validator** — an Edge Function handling App Store Server
-      Notifications V2. Apple POSTs signed JWS payloads for renewal, failed
-      renewal, grace period, refund and revocation; the function verifies the
-      signature chain against Apple's root CAs and writes `core.entitlements`
-      with `service_role`.
-- [ ] **Android validator** — Play Real-time Developer Notifications over
-      Pub/Sub, reconciled through `purchases.subscriptionsv2.get`, writing the
-      same row.
-- [ ] **A manual grant path before either of them.** A SQL function usable from
+- [ ] **Wire RevenueCat into the app** (`purchases_flutter`): configure with the
+      public SDK key, identify the customer as the Supabase user id so the two
+      systems agree on who somebody is without a mapping table, and drive the
+      paywall from its offerings rather than from prices hardcoded in
+      `_Tiers`.
+- [ ] **A RevenueCat webhook → `core.entitlements`.** One Edge Function, with
+      the shared-secret check RevenueCat signs its calls with, writing the row
+      under `service_role`. This replaces both validators: renewal, expiry,
+      grace, refund and revocation all arrive as the same event shape rather
+      than as two vendors' formats.
+- [ ] **The client never trusts the SDK for access.** RevenueCat's cached
+      customer info decides what the *paywall* shows; `core.entitlements`
+      decides what the *server* serves, which is already how the coach function
+      gates. Two sources for "has this person paid" is how the wrong one gets
+      reached for, and the server's is the one that cannot be edited from a
+      jailbroken phone.
+- [ ] **A manual grant path before any of it.** A SQL function usable from
       Supabase Studio to set somebody's entitlement. This is the support escape
       hatch, and Liftio needed exactly this repeatedly. Cheap now, invaluable
-      the first time a purchase does not land.
+      the first time a purchase does not land — and it is what the TestFlight
+      test sheet already depends on to exercise the paid half at all.
+- [ ] **Auto-renew disclosure, verbatim** — Phase 2's blocked item lands here,
+      because this is when there is a point of purchase to put it at. Guideline
+      3.1.2(a) wants the full 24-hour cancellation window in the terms *and* at
+      the point of purchase. `docs/terms-of-use.md` carries the marker, and a
+      test in `legal_copy_test.dart` currently fails if anybody writes half of
+      it — clear that test by writing the whole thing, not by deleting it.
 - [ ] Sandbox-test both stores end to end: buy, renew, cancel, refund, restore
       on a second device.
 
-**Admin dashboard — deliberately not release-blocking.** Wanted, and the reason
-to own validation, but the manual grant path covers the same emergency at a
-fraction of the cost. Build it once real purchases are flowing and it has real
-data to show. Scope when started: users and their entitlements, grant and
-revoke, and a log of store notifications received.
+### Kept, because it is the argument to revisit
+
+The case for owning validation was: no dependency on a third party for the thing
+that decides who has paid, no per-transaction cut, and a webhook we can replay.
+It also came with an admin dashboard — **deliberately not release-blocking**,
+because the manual grant path covers the same emergency at a fraction of the
+cost.
+
+If RevenueCat's pricing, uptime or data handling ever becomes the problem, the
+migration is bounded by design: `core.entitlements` is already the only thing
+the app reads, so replacing the webhook with the two validators above is a
+server-side change with no client release. Scope for the dashboard when it is
+wanted: users and their entitlements, grant and revoke, and a log of store
+events received.
 
 ## Phase 4 — Android
 
