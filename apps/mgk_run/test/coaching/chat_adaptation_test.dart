@@ -16,6 +16,7 @@ import 'package:mgk_run/src/features/coaching/presentation/chat_widgets.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 
 /// A coach that always wants to change the week, and remembers the brief it was
 /// given. Standing in for the model, so the test is about what the app does
@@ -155,6 +156,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // The coach is the paid half now (ADR-0030), so a test that
+          // opens it has to say it bought one. Pinned rather than read:
+          // these are tests about conversations, and where a tier comes
+          // from belongs to entitlement_repository_test.dart.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => someRuns(),
           chatClient: chat,
@@ -309,6 +315,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // The coach is the paid half now (ADR-0030), so a test that
+          // opens it has to say it bought one. Pinned rather than read:
+          // these are tests about conversations, and where a tier comes
+          // from belongs to entitlement_repository_test.dart.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => someRuns(),
           chatClient: chat,

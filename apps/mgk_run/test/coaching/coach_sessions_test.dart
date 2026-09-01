@@ -11,6 +11,7 @@ import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.da
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 
 /// A coach that answers and records what it was briefed with.
 class _Chat implements CoachChatClient, CoachSummariseClient {
@@ -302,6 +303,11 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark,
           home: HomeShell(
+            // The coach is the paid half now (ADR-0030), so a test that
+            // opens it has to say it bought one. Pinned rather than read:
+            // these are tests about conversations, and where a tier comes
+            // from belongs to entitlement_repository_test.dart.
+            access: CoachAccess.subscribed,
             auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
             historySource: () async => const <RunSummary>[],
             chatClient: coach,

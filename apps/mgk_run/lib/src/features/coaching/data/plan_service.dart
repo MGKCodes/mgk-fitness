@@ -166,6 +166,12 @@ class PlanService {
       return await propose();
     } on CoachLimitException {
       rethrow;
+    } on CoachNotEntitledException {
+      // Same reason as the limit above, and a stronger one. `null` here means
+      // "the model failed, build the deterministic plan instead", and handing
+      // an unentitled runner a free fallback plan would give away the thing the
+      // subscription is for while telling them nothing.
+      rethrow;
     } catch (_) {
       return null;
     }

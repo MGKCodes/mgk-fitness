@@ -11,8 +11,11 @@ an Android emulator on Windows.
 
 ## Before you start
 
-**1. Grant yourself the coach.** The plan and the coach sit behind an
-entitlement, and the purchase flow does not exist yet
+**1. Grant yourself the coach — this is now mandatory, not a convenience.**
+Since [ADR-0030](decisions/0030-the-coach-is-the-paid-half.md) the coach is the
+paid half on Run too, so **without a row you get no model access at all**: the
+coach mark opens a sheet naming the price instead of a conversation. That is the
+correct behaviour and not a bug. The purchase flow does not exist yet
 ([ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md) chooses
 RevenueCat; none of it is built). Without a row you will test the free half and
 conclude the paid half is broken. Run this once against production, with your
@@ -51,6 +54,9 @@ Real, known, written down. Reporting them costs you time and tells me nothing:
   the test suite, so a free runner is told to upgrade with no way to do it. It
   is the first thing the payment work fixes, and it is a submission blocker —
   but it is known.
+- **The coach gate has no buy button either**, and deliberately not a fake one:
+  RevenueCat is chosen and unbuilt, and a button that cannot take money fails at
+  the moment somebody has decided to pay.
 - **Climb and high point always read "not recorded".** There is no barometric
   source ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). The
   tiles are built end to end and correctly report absence rather than guessing
@@ -120,7 +126,8 @@ Needs the entitlement row from *Before you start*.
 | D6 | Ask about a run from over a week ago | Gets the **date right** — it should not place an old run as yesterday | ☐ |
 | D7 | Force-quit, reopen, ask something | A new session; it does not replay the old conversation verbatim | ☐ |
 | D8 | Open previous chats | Old sessions readable | ☐ |
-| D9 | **Delete the entitlement row, relaunch** | Paid surfaces lock again. Access must come from the server, never a cached flag | ☐ |
+| D9 | **Delete the entitlement row, relaunch** | The coach locks again and the mark opens the price sheet. Access comes from the server, never a cached flag | ☐ |
+| D10 | With the row deleted, ask for a plan | Refused as a door with a price, never as "the coach hit a problem" — and **no free fallback plan is generated** | ☐ |
 
 ## E. Account, backup and deletion
 

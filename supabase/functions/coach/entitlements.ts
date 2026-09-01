@@ -68,8 +68,18 @@ export function tierFor(app: App, entitlement: Entitlement | null): Access {
   const active = entitlement?.status === "active";
   const tier = active ? PRODUCT_TIERS[entitlement.product] ?? "free" : "free";
 
-  // Lift's coach is the paid half of the app. Run's is free at the bottom tier.
-  if (app === "lift" && tier === "free") return null;
+  // **Both apps refuse an unentitled caller.** The coach is the paid half of
+  // each, and every surface this proxy exposes is the coach: a plan, a
+  // conversation, the intents inside one, and the memory written after it.
+  //
+  // Run used to return `"free"` here. That was never a decision — a3980c4 gave
+  // Run "the real tier lookup its code had been hard-coding to `free`", and the
+  // hard-coded placeholder was preserved rather than chosen. The comment above
+  // it then described the leftover as a product choice, which is how a
+  // placeholder becomes a policy nobody agreed. It also contradicted the app's
+  // own gate copy, which has told runners a plan needs a subscription the whole
+  // time. See ADR-0030.
+  if (tier === "free") return null;
   return tier;
 }
 

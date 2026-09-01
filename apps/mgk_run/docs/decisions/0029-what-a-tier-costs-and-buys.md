@@ -1,6 +1,6 @@
 # 0029 — What a tier costs, and what it buys
 
-**Status:** Accepted
+**Status:** Accepted, amended in part by [0030](0030-the-coach-is-the-paid-half.md)
 **Extends:** [0014](0014-model-is-chosen-per-surface-and-per-tier.md), [0015](0015-spend-is-capped-over-three-windows.md)
 
 ## Context
@@ -26,8 +26,13 @@ difference because there was nothing to tell it.
 
 ## Decision
 
-**£1 a month for the coach. £3 a month for the sharper one. The free tier keeps
-a taste of it, and each tier's spend ceiling is sized against its own revenue.**
+**£1 a month for the coach. £3 a month for the sharper one. Each tier's spend
+ceiling is sized against its own revenue.**
+
+*As written, this gave the free tier a small allowance of its own. Six hours
+later [ADR-0030](0030-the-coach-is-the-paid-half.md) established that free
+callers get no model access at all, so the free row below is a floor nothing
+stands on rather than a budget. The paid arithmetic is untouched.*
 
 | `product` | Model tier | Price | Ex-VAT | Net of Apple | ~USD |
 |---|---|---|---|---|---|
@@ -67,9 +72,15 @@ thing for the two tiers to mean. `limits_test.ts` pins that day's cost against
 each tier, so the trade-off is an assertion somebody can read rather than a
 number somebody chose.
 
-**The free tier earns nothing, so every credit it spends is acquisition cost.**
-A tenth of a dollar a month is enough to meet the coach and not enough to live
-on it.
+**Superseded, 2026-09-01.** The free tier no longer spends anything at all:
+[ADR-0030](0030-the-coach-is-the-paid-half.md) refuses an unentitled caller, so
+the ceiling below can never bind. It is kept as a second line of defence rather
+than deleted — the tier still exists as the cheapest-not-dearest fallback, and a
+ceiling nothing reaches costs less than a null somebody has to handle.
+
+What the row was for, when free callers still spent: every credit was
+acquisition cost, and a tenth of a dollar a month was enough to meet the coach
+and not enough to live on it.
 
 ### Per-surface rate limits stay flat
 

@@ -41,10 +41,9 @@ void main() {
     test('no other figure has crept in', () {
       // A second price in the sentence means somebody typed one rather than
       // interpolating, and the two will part company at the next change.
-      final quoted = RegExp(r'[£$€]\s?\d+(?:\.\d+)?')
-          .allMatches(planGateCostsCopy)
-          .map((m) => m.group(0))
-          .toSet();
+      final quoted = RegExp(
+        r'[£$€]\s?\d+(?:\.\d+)?',
+      ).allMatches(planGateCostsCopy).map((m) => m.group(0)).toSet();
       expect(quoted, <String>{kCoachPrice, kSharpCoachPrice});
     });
 

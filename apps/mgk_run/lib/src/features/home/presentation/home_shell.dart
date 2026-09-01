@@ -15,6 +15,8 @@ import '../../coaching/data/plan_client.dart';
 import '../../coaching/data/plan_repository.dart';
 import '../../coaching/data/plan_service.dart';
 import '../../coaching/data/plan_store.dart';
+import '../../coaching/data/entitlement_repository.dart';
+
 import '../../coaching/domain/coach_access.dart';
 import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
@@ -42,6 +44,7 @@ import '../../coaching/presentation/coach_conversation.dart';
 import '../../coaching/presentation/coach_reveal.dart';
 import '../../coaching/presentation/chat_entry.dart';
 import '../../coaching/presentation/coach_flow.dart';
+import '../../coaching/presentation/coach_gate_sheet.dart';
 import '../../coaching/presentation/plan_finish_screen.dart';
 import '../../coaching/presentation/plan_screen.dart';
 import '../../coaching/presentation/plan_block_screen.dart';
@@ -87,7 +90,8 @@ class HomeShell extends StatefulWidget {
     this.consentStore,
     this.initialTab = 0,
     this.justSignedUp = false,
-    this.access = CoachAccess.free,
+    this.access,
+    this.entitlements,
     this.runnerName,
     this.introStore,
   });
@@ -151,12 +155,20 @@ class HomeShell extends StatefulWidget {
 
   /// Which tab to open on. Exists so the preview harness can address a tab by
   /// URL — Playwright cannot reliably tap Flutter's canvas to switch tabs.
-  /// Whether the coach's reading of a run is paid for.
+  /// The tier to draw with, when a caller wants to pin it.
   ///
-  /// **Injected, and until now not passed at all.** `HomeTab` defaults it to
-  /// free and nothing in `lib/` ever constructed [CoachAccess.subscribed], so
-  /// the paid half of the last-run card could not be reached by any route.
-  final CoachAccess access;
+  /// Left null in the app, where [entitlements] resolves it from
+  /// `core.entitlements` on launch. Passed by tests and the plate board, which
+  /// need a tier without a Supabase session behind them.
+  final CoachAccess? access;
+
+  /// Where the drawn tier comes from, and **not** where it is enforced — the
+  /// Edge Function refuses an unentitled request regardless (ADR-0030). This
+  /// exists so a runner is told the coach is part of the subscription instead
+  /// of tapping into a sheet that then fails.
+  ///
+  /// Null falls back to [access], and then to [CoachAccess.free].
+  final EntitlementRepository? entitlements;
 
   /// What the coach calls this runner.
   ///
@@ -344,6 +356,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     unawaited(widget.auth.ensureProfile());
     unawaited(_loadUnit());
     unawaited(_restoreThenLoad());
+
+    unawaited(_resolveAccess());
 
     final client = _chatClient;
     if (client != null) {
@@ -826,7 +840,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// At the shell rather than on the Plan tab, which is the whole point of a
   /// floating mark: the dock it replaces could only ever exist on one screen,
   /// so the coach was present on a third of the app and absent from the rest.
+  /// The tier the UI draws with. Starts at whatever a caller pinned, or free,
+  /// and is replaced once `core.entitlements` has been read.
+  late CoachAccess _access = widget.access ?? CoachAccess.free;
+
+  Future<void> _resolveAccess() async {
+    final source = widget.entitlements;
+    // A pinned tier wins: tests and the plate board set one deliberately, and
+    // a network read would race them.
+    if (source == null || widget.access != null) return;
+    final resolved = await source.access();
+    if (mounted && resolved != _access) setState(() => _access = resolved);
+  }
+
   void _openCoach() {
+    // The door, before the sheet. The Edge Function refuses an unentitled
+    // request anyway (ADR-0030), so this is not the gate — it is the difference
+    // between being told what something costs and watching the app fail.
+    if (!_access.isSubscribed) {
+      unawaited(CoachGateSheet.show(context));
+      return;
+    }
     final chat = _chat;
     if (chat == null) return;
     final note = _note;
@@ -1535,7 +1569,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             index: _index,
             children: <Widget>[
               HomeTab(
-                access: widget.access,
+                access: _access,
                 onRecord: () => _startRun(context, withSession: false),
                 onStartSession: () => _startRun(context),
                 // Two destinations, not one. These were a single

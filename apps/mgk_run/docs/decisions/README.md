@@ -25,10 +25,10 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0011](0011-a-plan-has-a-shape.md) | A plan has a shape (block / rhythm / horizon / log) | Accepted |
 | [0012](0012-backup-is-consented-restore-only-adds.md) | Backup is consented, and restore only ever adds | Accepted |
 | [0013](0013-page-every-postgrest-read.md) | Page every PostgREST read | Accepted |
-| [0014](0014-model-is-chosen-per-surface-and-per-tier.md) | The model is chosen per surface, and per tier | Accepted |
+| [0014](0014-model-is-chosen-per-surface-and-per-tier.md) | The model is chosen per surface, and per tier | Amended by [0030](0030-the-coach-is-the-paid-half.md) |
 | [0015](0015-spend-is-capped-over-three-windows.md) | Spend is capped over three windows, not one | Accepted |
 | [0016](0016-a-run-is-editable-its-trace-is-not.md) | A run is editable; its trace is not | Accepted |
-| [0017](0017-the-coach-is-the-entry-point.md) | The coach is the entry point; completion is observed | Accepted |
+| [0017](0017-the-coach-is-the-entry-point.md) | The coach is the entry point; completion is observed | Amended by [0030](0030-the-coach-is-the-paid-half.md) |
 | [0018](0018-onboarding-opens-as-a-conversation.md) | Onboarding opens as a conversation; the form comes last | Accepted |
 | [0019](0019-onboarding-is-two-moments.md) | Onboarding is two moments; only the second is about a plan | Accepted |
 | [0020](0020-codemagic-is-the-build-path.md) | Codemagic is the build and submit path | Accepted |
@@ -40,4 +40,5 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0026](0026-a-record-is-a-window-in-a-trace.md) | A record is a window in a trace, not a run's own time | Accepted |
 | [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted |
 | [0028](0028-revenuecat-is-the-purchase-path.md) | RevenueCat is the purchase path, and the webhook is the truth | Accepted |
-| [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Accepted |
+| [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Amended in part by [0030](0030-the-coach-is-the-paid-half.md) |
+| [0030](0030-the-coach-is-the-paid-half.md) | The coach is the paid half, on both apps | Accepted |

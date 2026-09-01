@@ -292,6 +292,7 @@ class CoachService
           .timeout(requestTimeout);
       final data = res.data;
       if (data is Map<String, dynamic> && data['error'] == null) return data;
+      _throwIfNotEntitled(data);
       final limit = _limitFrom(data);
       if (limit != null) throw limit;
       return null;
@@ -300,9 +301,21 @@ class CoachService
       // path", and a hung provider is exactly that case.
       return null;
     } on FunctionException catch (e) {
+      _throwIfNotEntitled(e.details);
       final limit = _limitFrom(e.details);
       if (limit != null) throw limit;
       return null;
+    }
+  }
+
+  /// Turns the function's 402 into something the UI can render as a door.
+  ///
+  /// Collapsing it into `null` would send every caller down its "the model
+  /// failed, use the deterministic path" branch, and an unentitled runner would
+  /// get a silently degraded app instead of being told what it costs.
+  static void _throwIfNotEntitled(Object? details) {
+    if (_codeFrom(details) == 'not_entitled') {
+      throw const CoachNotEntitledException();
     }
   }
 
@@ -336,6 +349,11 @@ class CoachService
         return 'The coach is not set up yet.';
       case 'unauthorized':
         return 'Please sign in again to use the coach.';
+      case 'not_entitled':
+        // Belt and braces: `_throwIfNotEntitled` should have caught this before
+        // any caller reaches here, and a wrong message on a paywall is worse
+        // than a wrong message on a fault.
+        return const CoachNotEntitledException().message;
       default:
         return 'The coach hit a problem. Please try again.';
     }

@@ -10,6 +10,7 @@ import '../../coaching/data/coach_memory_store.dart';
 import '../../history/domain/run_writer.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../coaching/data/plan_store.dart';
+import '../../coaching/data/entitlement_repository.dart';
 import '../../home/presentation/home_shell.dart';
 import '../../settings/domain/unit_settings.dart';
 import '../../onboarding/data/intro_permission_requester.dart';
@@ -41,6 +42,7 @@ class AuthGate extends StatefulWidget {
     this.memoryStore,
     this.memoryMirror,
     this.unitSettings,
+    this.entitlements,
     this.requestPermission,
     this.introStore,
   });
@@ -82,6 +84,10 @@ class AuthGate extends StatefulWidget {
 
   /// Where the display unit is read and written.
   final UnitSettings? unitSettings;
+
+  /// Injectable so a test can pin a tier without a Supabase session. The app
+  /// leaves it null and gets [SupabaseEntitlements].
+  final EntitlementRepository? entitlements;
 
   /// Records that this install has been through the intro. Null uses the
   /// platform default; injected by tests and the preview harness.
@@ -271,6 +277,10 @@ class _AuthGateState extends State<AuthGate> {
     memoryStore: widget.memoryStore,
     memoryMirror: widget.memoryMirror,
     unitSettings: widget.unitSettings,
+    // Read once on launch so the coach mark can say the door is locked before
+    // somebody walks into it. Not the gate — the Edge Function refuses an
+    // unentitled request whatever this says (ADR-0030).
+    entitlements: widget.entitlements ?? SupabaseEntitlements(),
   );
 }
 
