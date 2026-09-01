@@ -335,15 +335,27 @@ a fact with a claim, which is the property `coach_access.dart` exists to hold.
       defensible — absent beats a plausible wrong number — but a reviewer or a
       tester sees a metric the app advertises and never fills. Either build
       `CMAltimeter`, or make sure it reads as deliberate rather than broken.
-- [ ] **`steps` and `elevation_max_m` are not mirrored.** `run.runs` has neither
-      column, so a restore onto a new phone drops them silently. Two lines in
-      `supabase_run_backup.dart`, two matching reads in `SupabaseRestore`, and a
-      Postgres migration. Not a rejection risk; a real data-loss-on-upgrade risk,
-      and cheap.
-- [ ] **Elevation renders in metres for everyone**, in an app whose rule is
-      "store metric, convert at display". Needs an `Elevation` type in
-      `packages/mgk_units` — a local feet conversion on one screen while the
-      in-run readout keeps metres is the two-numbers-for-one-thing bug.
+- [x] **`steps` and `elevation_max_m` are mirrored.** `run.runs` gained both
+      columns, and both sides of the seam read and write them. The gap was
+      exactly as cheap to close as it looked — and it had gone unnoticed for a
+      month *because* nothing rendered wrongly: absence is the designed state for
+      both, so the loss showed up as an empty field rather than a bug.
+
+      `mirror_round_trip_test.dart` now pins the invariant that broke: every
+      column the mirror writes must be one the restore reads. The
+      interface-level tests could not have caught it — they fake `RunBackup` and
+      assert what a caller does with the result, which says nothing about a
+      column list — so it reads the two files as text, the way `naming_test.dart`
+      reads `lib/`.
+- [x] **Elevation converts at display.** `Elevation` is in `mgk_units`
+      alongside `Distance`, `Pace` and `Mass`, and the three sites that hardcoded
+      `m` now use it — the in-run climb readout and both tiles on the finish
+      screen.
+
+      It follows the **distance** system rather than having a unit of its own,
+      which is the difference from `Mass`: kilometres with pounds is an ordinary
+      combination, and miles with metres of climb is not. There is deliberately
+      no `ElevationUnit` to get wrong.
 
 ---
 

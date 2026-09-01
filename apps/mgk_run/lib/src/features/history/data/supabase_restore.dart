@@ -267,12 +267,17 @@ class SupabaseRestore implements DataRestore {
     ),
     avgPaceSPerKm: Value((r['avg_pace_s_per_km'] as num?)?.toDouble()),
     elevationGainM: Value((r['elevation_gain_m'] as num?)?.toDouble()),
-    // No `elevation_max_m` and no `steps`, because `run.runs` has neither: both
-    // are local columns from schema version 8 and the Postgres side is a `db/`
-    // change this app cannot make (`apps/mgk_run/CLAUDE.md` — the schema is not
-    // here). So a run restored onto a new phone comes back without its high
-    // point and its step count, which read as absent rather than wrong. See
-    // `SupabaseRunBackup.pushRun` for the other half of the same seam.
+    elevationMaxM: Value((r['elevation_max_m'] as num?)?.toDouble()),
+    steps: Value((r['steps'] as num?)?.toInt()),
+    // Both arrive now. `run.runs` gained them on 2026-09-01; until then this
+    // comment explained why a run restored onto a new phone came back without
+    // its high point and its step count.
+    //
+    // A row mirrored BEFORE that migration has null for both, which is
+    // indistinguishable from a run that never had them — and correctly so, since
+    // absence is the designed state for each: `steps` needs a Health permission
+    // that may be refused, and `elevation_max_m` needs a barometric source that
+    // is not wired at all (ADR-0024).
     avgHr: Value((r['avg_hr'] as num?)?.toInt()),
     maxHr: Value((r['max_hr'] as num?)?.toInt()),
     cadence: Value((r['cadence'] as num?)?.toInt()),

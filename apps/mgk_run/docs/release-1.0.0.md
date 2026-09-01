@@ -1,5 +1,11 @@
 # Release 1.0.0 — Run, first shippable
 
+> **Where this stops.** This plan is about whether the app is good, and its
+> phases are essentially done. Whether it can be **submitted** is a different
+> question and a different document:
+> [app-store-1.0.0.md](app-store-1.0.0.md), which is the live checklist.
+> Items closed here after 2026-08-28 were closed from that one.
+
 The plan to take `apps/mgk_run` from "records a run" to "somebody can hold it",
 written against the first real field test.
 
@@ -249,16 +255,13 @@ Strava's summary for the same run carried elevation gain (167 m), max elevation
 - [ ] **`NSHealthShareUsageDescription`** in `ios/Runner/Info.plist` says the app
       "reads your workouts from Health". It now also reads steps, and that string
       has to say so before submission. An App Store review item, not a nicety.
-- [ ] **`steps` and `elevation_max_m` are local-only.** The mirror enumerates its
-      columns and `run.runs` has neither, so a restore onto a new phone silently
-      drops them. Two lines here plus a Postgres migration in `supabase/` — a
-      `db/` lane change.
-- [ ] **Elevation renders in metres everywhere**, in an app whose rule 4 is
-      "store metric, convert at display". `mgk_units` has `Distance`, `Pace` and
-      `Mass` and no elevation type. Adding a local feet conversion on one screen
-      while the in-run readout kept metres would be the two-numbers-for-one-thing
-      bug this document complains about elsewhere, so it needs an `Elevation`
-      type in `packages/mgk_units`.
+- [x] **`steps` and `elevation_max_m` are mirrored** — closed 2026-09-01.
+      `run.runs` gained both columns, both sides of the seam carry them, and
+      `mirror_round_trip_test.dart` fails if they part company again.
+- [x] **Elevation converts at display** — closed 2026-09-01. `Elevation` is in
+      `mgk_units` and the three sites that hardcoded `m` use it. It follows the
+      distance system rather than having a unit of its own, so there is no
+      `ElevationUnit` to get wrong.
 - [ ] **Widening the Health request will re-prompt existing installs** for Steps.
       Untested, and it sits awkwardly beside the onboarding doc's claim that
       neither permission can be asked twice.

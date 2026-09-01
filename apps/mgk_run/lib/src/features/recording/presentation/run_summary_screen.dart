@@ -308,12 +308,18 @@ class RunSummaryScreen extends StatelessWidget {
     // with.
     if (summary.elevationGainMeters != null) {
       tiles.add(
-        _Tile('ELEVATION GAIN', '${summary.elevationGainMeters!.round()} m'),
+        _Tile(
+          'ELEVATION GAIN',
+          Elevation.metres(summary.elevationGainMeters!).label(unit),
+        ),
       );
     }
     if (summary.elevationMaxMeters != null) {
       tiles.add(
-        _Tile('MAX ELEVATION', '${summary.elevationMaxMeters!.round()} m'),
+        _Tile(
+          'MAX ELEVATION',
+          Elevation.metres(summary.elevationMaxMeters!).label(unit),
+        ),
       );
     }
     if (summary.steps != null) {

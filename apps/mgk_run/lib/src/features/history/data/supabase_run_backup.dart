@@ -90,6 +90,10 @@ class SupabaseRunBackup implements RunBackup {
       'distance_m': row.distanceM,
       'avg_pace_s_per_km': row.avgPaceSPerKm,
       'elevation_gain_m': row.elevationGainM,
+      // Added to `run.runs` on 2026-09-01. Before that both were dropped here
+      // and a run restored onto a new phone came back without them.
+      'elevation_max_m': row.elevationMaxM,
+      'steps': row.steps,
       'avg_hr': row.avgHr,
       'max_hr': row.maxHr,
       'cadence': row.cadence,
@@ -110,9 +114,13 @@ class SupabaseRunBackup implements RunBackup {
   ///
   /// **The points and the splits go up; `run_best_efforts` does not.** The
   /// device grew that table in schema version 9 and there is no matching table
-  /// in the `run` schema, so a run's records are local-only in exactly the way
-  /// `elevation_max_m` and `steps` are, and for the same reason: the schema is
-  /// not this app's to change.
+  /// in the `run` schema, so a run's records are local-only: the schema is not
+  /// this app's to change.
+  ///
+  /// `elevation_max_m` and `steps` used to be in that sentence. They were
+  /// columns, not a table, and both now exist in `run.runs` — so the only thing
+  /// still local-only is a runner's records, which are derived from a trace
+  /// that does go up and can be recomputed.
   ///
   /// It is the cheapest of the three gaps to live with, and worth saying why
   /// rather than leaving somebody to work it out. The records are a pure

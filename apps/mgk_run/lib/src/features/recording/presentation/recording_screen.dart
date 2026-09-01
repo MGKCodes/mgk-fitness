@@ -1228,7 +1228,11 @@ class _Panel extends StatelessWidget {
               // a line of type saying the same word twice.
               StatBlock(
                 label: 'CLIMB',
-                value: '${climbMeters!.round()} m',
+                // Feet for a runner working in miles. Metres everywhere used to
+                // be the only option, because there was no Elevation type and a
+                // local conversion here would have been the second number for
+                // one thing that mgk_units exists to prevent.
+                value: Elevation.metres(climbMeters!).label(unit),
                 size: StatSize.standard,
               ),
             ],
