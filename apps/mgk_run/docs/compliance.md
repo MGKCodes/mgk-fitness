@@ -18,15 +18,22 @@ Requirements before submission:
 - **A working deletion path** — the user can delete their account and all
   associated data and it is actually removed from Supabase, not just hidden.
   Built as the
-  [`delete-account` Edge Function](../supabase/functions/delete-account/README.md);
+  [`delete-account` Edge Function](../../../supabase/functions/delete-account/README.md);
   see [Deletion on a shared account](#deletion-on-a-shared-account) below.
 
-  `runio_delete_account` sweeps **every table in the `runio` schema carrying a
-  `user_id`**, discovered from the catalogue and ordered so children go before
+  `core.delete_account(p_user_id, p_app)` sweeps **every table in the target
+  app's schema carrying a `user_id`** — `run` and `lift` are the app schemas,
+  plus `coach` — discovered from the catalogue and ordered so children go before
   parents, rather than working from a hard-coded list. That is what makes the
-  policy's "every Runio record" claim safe to write: the coach transcripts and
-  the usage ledger were added months after the function and were covered the day
-  they existed. A list would have needed someone to remember.
+  policy's "every record we hold for you" claim safe to write: the coach
+  transcripts and the usage ledger were added months after the function and were
+  covered the day they existed. A list would have needed someone to remember.
+
+  **This paragraph described `runio_delete_account` and the `runio` schema until
+  2026-09-01**, a month after `20260806130000_restructure_schemas.sql` renamed
+  that schema to `run`. The function was right the whole time; the document
+  justifying it to a regulator was not, which is the worse way round for the two
+  to disagree.
 - **Data minimisation** — only collect what the coach needs.
 
 ## Named sub-processors

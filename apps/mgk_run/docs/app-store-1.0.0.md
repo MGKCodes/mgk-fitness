@@ -81,12 +81,13 @@ What this round exists to prove — none of it can be answered from Windows:
       Settings › Run › Location afterwards, because copy sends people there.
 - [ ] **A run records end to end on real hardware** — acquire, splits, pause,
       lap, finish, and the run appears in the log and on the profile.
-- [ ] **Write the test sheet.** Lift has
-      [testflight-2.0.0-test-sheet.md](../../../docs/testflight-2.0.0-test-sheet.md);
-      Run has nothing equivalent. Use its shape — *Before you start*, *Known gaps
-      — do not report these*, then lettered sections, then *What to send back*.
-      The "known gaps" section is the load-bearing one: without it every tester
-      reports the missing barometer as a bug.
+- [x] **The test sheet is written** —
+      [testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md), on the
+      shape of Lift's. Six lettered sections, and a *Known gaps* list that names
+      the `_Locked` dead end, the always-absent elevation and the five other
+      things a tester would otherwise file. It carries the SQL to grant yourself
+      an entitlement, since the purchase flow does not exist and without a row
+      you test the free half and conclude the paid half is broken.
 
 ---
 
@@ -296,30 +297,34 @@ a fact with a claim, which is the property `coach_access.dart` exists to hold.
 
 ---
 
-## Gate 5 — Documents that are now wrong
+## Gate 5 — Documents that were wrong
 
-These matter more than usual: two of them are what you hand a reviewer or a
-regulator, and a confidently wrong compliance document is worse than none.
+Cleared 2026-09-01. Recorded rather than deleted, because three of the four were
+the kind of staleness that is invisible until somebody acts on it.
 
-- [ ] **`compliance.md` describes a function that no longer exists.** It says
-      `runio_delete_account` sweeps "every table in the `runio` schema" and that
-      this makes the policy's "every Runio record" claim safe. The real function
-      is `delete_account`, and it sweeps `array['lift', 'run']` plus `coach` —
-      the `runio` schema was renamed to `run` in
-      `20260806130000_restructure_schemas.sql`. **The code is right and the
-      document is stale**, but this is the document that justifies a GDPR claim.
-- [ ] **`codemagic.yaml`'s header contradicts its own workflow list.** It states
-      "**Run has no Android workflow, deliberately** (ADR-0001)" while
-      `run-android-release` sits at line 751. The spirit is intact — that
-      workflow has no `publishing:` block and produces a downloadable APK for
-      device testing, not a release — but the letter sends a reader looking for
-      something that is right there.
-- [ ] **`release-1.0.0.md` is ~12 commits stale.** It was last touched at
-      `c26797c`; everything from the account removal onwards is missing from it,
-      including work that closed items it still lists as open.
-- [ ] **`roadmap.md` is titled "Runio — Roadmap"** and its *Definition of "v1
-      shippable"* is the closest thing this project has to a release checklist —
-      worth reconciling with this document rather than leaving two.
+- [x] **`compliance.md` described a function that no longer existed.** It said
+      `runio_delete_account` sweeps "every table in the `runio` schema", a month
+      after that schema was renamed to `run`. The real function is
+      `core.delete_account(p_user_id, p_app)`, sweeping the target app schema
+      plus `coach`. **The code was right and the document defending it to a
+      regulator was not**, which is the worse way round. The broken link to the
+      Edge Function README beside it is fixed too.
+- [x] **`codemagic.yaml`'s header contradicted its own workflow list** — "Run
+      has no Android workflow" above a `run-android-release` a few hundred lines
+      below. Now says no Android *release*, which is what was meant and what the
+      missing `publishing:` block actually enforces.
+- [x] **`roadmap.md`** retitled, its two present-tense "Runio" lines fixed, and
+      its *Definition of "v1 shippable"* reconciled with this document rather
+      than maintained beside it — two checklists being how one goes stale.
+- [x] **Lift's test sheet granted an entitlement that could not exist.** Found
+      while writing Run's: it inserted `platform = 'manual'` against a
+      `check (platform in ('apple', 'google'))`. It fails with a constraint
+      violation rather than granting anything, so anyone who ran it tested the
+      free half of Lift believing it was the paid one. Fixed to `'apple'`.
+- [ ] **`release-1.0.0.md` is still ~12 commits stale.** Its phases are ticked
+      but the account-removal work and everything after it is missing. Lower
+      priority than the four above, because it misleads about *history* rather
+      than about how the system behaves now.
 
 ---
 
@@ -356,8 +361,7 @@ Recorded so nobody re-opens them under deadline:
    page and word-for-word parity with the in-app copy. Start it now; it does not
    depend on anything else here.
 6. **Work the rest of Gate 1 on a device**, starting with the 23 Aug recovery.
-7. **Fix Gate 5**, which is an hour and removes the risk of arguing a compliance
-   claim from a document that describes a renamed schema.
+7. ~~Fix Gate 5~~ — done, except `release-1.0.0.md`'s own staleness.
 8. **Fill in Gate 2** in App Store Connect once there is a build to attach it to.
 9. **Decide Gate 4's elevation question** last — it is the only item here that
    could reasonably change what 1.0.0 contains.
