@@ -36,11 +36,17 @@ OUT = DOCS / "legal-site"
 # Blockers that must clear before either page goes live. Taken from the source
 # document's own draft banner, which is stripped from the rendered output.
 BLOCKERS = [
-    "Legal review of this document.",
-    "A processor agreement with OpenRouter covering special-category data.",
+    "A processor agreement with OpenRouter covering special-category data."
+    " The policy NAMES OpenRouter as a processor, so publishing before the"
+    " agreement exists asserts something that is not yet true.",
     "Whether the configured COACH_MODEL's provider trains on inference inputs.",
     "The publication date - replace the PUBLICATION_DATE token below.",
 ]
+
+# Formal legal review was deliberately dropped as a blocker on 2026-09-01: out of
+# reach for now, and the document's protection is that it was written from the
+# running system rather than from intent. Recorded here so that "no legal review"
+# reads as a decision somebody took rather than a step somebody forgot.
 
 PAGES = [
     ("privacy-policy.md", "privacy-policy.html"),

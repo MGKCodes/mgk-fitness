@@ -127,20 +127,29 @@ App Store Connect will not accept a submission without these. None are code.
       `docs/medical-disclaimer.md`. Same four blockers before it goes live.
 - [ ] **Clear the four publication blockers**, which the policy's own draft
       banner names and the generated pages repeat in an HTML comment:
-      1. **Legal review** of the document.
-      2. **A processor agreement with OpenRouter** covering special-category
-         data. External, with real lead time, and it gates wording rather than
-         following it — start it first. The email to send, what we already have
-         in place, and what each answer changes are in
+      1. ~~**Legal review** of the document.~~ **Dropped as a blocker
+         2026-09-01** — out of reach for now, and the policy ships as the most
+         accurate description we can write. Recorded as an accepted risk rather
+         than a forgotten step, in the policy's own banner and in the
+         generator's `BLOCKERS` list. What protects it is that the data flows
+         were read off the running system rather than written from intent; what
+         is unreviewed is legal *form*, not factual accuracy. Revisit when there
+         is budget — a dated policy update is normal.
+      2. **A processor agreement with OpenRouter.** **Not the same kind of item
+         as legal review, and it should not be waved through with it.** The
+         policy *names* OpenRouter as a processor, which asserts an Article 28
+         arrangement exists. Publishing first states something not yet true — a
+         factual precondition rather than a review of wording. The email is
+         drafted; see
          [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
       3. **Whether the configured `COACH_MODEL`'s provider trains on inference
          inputs.** A per-model property. Answer from the deployed secret;
          [compliance.md](compliance.md) is explicit that guessing from the repo
-         is wrong.
+         is wrong. `data_collection: "deny"` is the control and it is set; what
+         is unconfirmed is what it guarantees contractually.
       4. **The publication date** — replace the `PUBLICATION_DATE` token.
 
-      Items 2 and 3 can change what the policy has to say, so everything else in
-      this gate is cheaper to do after them than before.
+      Items 2 and 3 can still change what the policy has to say.
 - [x] **An App Store Connect app record exists for
       `com.mgkcodes.fitness.run`** — proven by build 11 publishing successfully,
       since the upload step fails after a successful build when no listing

@@ -1,17 +1,30 @@
 # Privacy Policy — MGKFitness: Run
 
-> **Draft — legally unreviewed.** The data flows below are accurate as built and
-> were checked against the running system, not written from intent. What is still
-> open before submission is not wording:
+> **Not legally reviewed, and shipping anyway — a decision taken 2026-09-01.**
+> Formal review is out of reach for now, so this goes out as the most accurate
+> description we can write. What protects it is that the data flows below were
+> read off the running system rather than written from intent: the risk that
+> actually bites is a policy that says something untrue about what happens to
+> somebody's data, and that is the part this document is careful about. What is
+> unreviewed is its legal *form* — rights language, how the lawful basis is
+> phrased, whether the retention justification would satisfy a regulator.
+> Revisit when there is budget; it is revisable, and a dated update is normal.
 >
-> 1. **Legal review** of this document.
-> 2. **A processor agreement with OpenRouter** covering special-category data.
-> 3. **Whether the configured `COACH_MODEL`'s provider trains on inference
+> Still open, and different in kind from the above:
+>
+> 1. **A processor agreement with OpenRouter** covering special-category data.
+>    **This one is not about wording.** The policy names OpenRouter as a
+>    processor, which asserts that an Article 28 arrangement exists. Publishing
+>    before it does means stating something that is not yet true — so it is a
+>    factual precondition rather than a review, and it wants a decision of its
+>    own. See
+>    [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
+> 2. **Whether the configured `COACH_MODEL`'s provider trains on inference
 >    inputs.** A per-model property, so changing the model can change the answer
->    — see [compliance.md](compliance.md).
-> 4. The publication date below.
->
-> Items 2 and 3 are the ones that could change what this policy has to say.
+>    — see [compliance.md](compliance.md). `data_collection: "deny"` is set on
+>    every request, which is the control; what is unconfirmed is what it
+>    guarantees contractually.
+> 3. The publication date below.
 
 **Last updated:** [date] · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
