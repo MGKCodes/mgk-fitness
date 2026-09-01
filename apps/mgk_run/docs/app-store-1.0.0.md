@@ -94,19 +94,36 @@ What this round exists to prove — none of it can be answered from Windows:
 
 App Store Connect will not accept a submission without these. None are code.
 
-- [ ] **A published privacy policy URL.** This is the biggest one and nothing
-      exists today. The policy lives in `docs/privacy-policy.md` and is rendered
-      in-app, but App Store Connect has a required **Privacy Policy URL** field
-      and there is no public page to put in it. It has to be hosted somewhere
-      stable under `mgkcodes.com`.
+- [ ] **A published privacy policy URL.** Still the long pole, but the page now
+      exists: `docs/legal-site/privacy-policy.html`, generated from
+      `docs/privacy-policy.md` by `tool/build_legal_pages.py`. **It is not
+      deployable yet** — see the four blockers below. What remains is hosting it
+      somewhere stable under `mgkcodes.com` and pasting the URL into App Store
+      Connect's required field.
 
-      [naming.md](../../../docs/naming.md) is explicit about the trap:
-      **the in-app copy mirrors the published page word for word, and a reviewer
-      does check that they match.** So publishing is not a copy-paste and forget
-      — it is a second copy that now has to be kept in step.
-- [ ] **The medical disclaimer, published the same way**, for the same reason.
-      An app that prescribes physical load and shows a disclaimer only in-app has
-      nothing to point a reviewer at.
+      It is generated rather than written because
+      [naming.md](../../../docs/naming.md) names the trap: **the in-app copy
+      mirrors the published page word for word, and a reviewer does check.**
+      That is three renderings of one text — the doc, `legal_copy.dart`, and now
+      a web page — and hand-maintaining the third is how they drift. Verified at
+      generation: 58 of 58 source blocks appear verbatim, and every phrase
+      `legal_copy_test.dart` pins is present.
+- [x] **The medical disclaimer page**, generated the same way from
+      `docs/medical-disclaimer.md`. Same four blockers before it goes live.
+- [ ] **Clear the four publication blockers**, which the policy's own draft
+      banner names and the generated pages repeat in an HTML comment:
+      1. **Legal review** of the document.
+      2. **A processor agreement with OpenRouter** covering special-category
+         data. External, with real lead time, and it gates wording rather than
+         following it — start it first.
+      3. **Whether the configured `COACH_MODEL`'s provider trains on inference
+         inputs.** A per-model property. Answer from the deployed secret;
+         [compliance.md](compliance.md) is explicit that guessing from the repo
+         is wrong.
+      4. **The publication date** — replace the `PUBLICATION_DATE` token.
+
+      Items 2 and 3 can change what the policy has to say, so everything else in
+      this gate is cheaper to do after them than before.
 - [ ] **An App Store Connect app record for `com.mgkcodes.fitness.run`.** Lift
       has one (id 6759969740). Whether Run does needs confirming — the
       `codemagic.yaml` setup notes say the upload step fails after a *successful*
