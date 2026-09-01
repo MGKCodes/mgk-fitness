@@ -51,7 +51,34 @@ Also relevant to how the questions are framed:
 
 ---
 
+## What their own policy already tells us
+
+Read before sending, because it changes two of the questions from open to
+pointed:
+
+- **They do offer a DPA.** Their privacy policy says "if you have a Data
+  Processing Agreement with us, the terms of that agreement and our separate
+  agreements with Model Providers govern how your data is handled." So question
+  1 is asking for a document that exists, not asking whether one could.
+- **They hold separate agreements with model providers.** That is the mechanism
+  behind `data_collection: "deny"`, and it is exactly what question 2 needs
+  pinned down — a routing filter over provider-declared policy is a different
+  thing from a warranty backed by those agreements.
+- **OpenRouter, Inc. is a US entity**, 169 Madison Avenue, New York, NY 10016.
+  So question 5 is live rather than precautionary: our storage is `eu-west-1`
+  and the processor is not.
+
+**Their contact address is Cloudflare-obfuscated on every public page**, so it
+cannot be read from the site — it renders as `[email protected]` in the
+policy, the terms and the DMCA notice alike. Confirm it from a logged-in account
+page or a reply to an existing thread before sending.
+
 ## The email
+
+**A draft is already in Gmail** with the body below and **no recipient**, left
+empty on purpose so it cannot go to a guessed address.
+
+
 
 > **Subject:** Data processing agreement — special-category (health) data,
 > UK GDPR
