@@ -207,6 +207,15 @@ workflows:
         working_directory: supabase/functions/coach
         script: deno test
 
+      - name: Deno — RevenueCat webhook
+        # The only writer of core.entitlements, and therefore the only thing
+        # standing between a purchase and a coach (ADR-0030). Its mapping is
+        # pure for exactly this reason: a wrong status here either hands
+        # somebody a subscription they did not buy or takes one they did, and
+        # neither should need a store to catch.
+        working_directory: supabase/functions/revenuecat
+        script: deno test
+
       - name: Deno — eval rules
         # The arithmetic half of the coach evals. Separate from the graded run,
         # which costs money, needs an account and is deliberately not a gate —

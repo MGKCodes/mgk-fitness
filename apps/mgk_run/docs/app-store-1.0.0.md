@@ -277,10 +277,24 @@ What is left, roughly in order:
       as much as a commercial decision.
 - [ ] **RevenueCat account, and the products in App Store Connect.** The
       products have to exist before a build can offer them.
-- [ ] **The webhook Edge Function** — the only thing that writes
-      `core.entitlements`, under `service_role`. Idempotent, tolerant of
-      out-of-order events, comparing `source_txn_id`. This is the piece that
-      matters; everything else is UI.
+- [x] **The webhook Edge Function is built** — `supabase/functions/revenuecat`,
+      the only thing that writes `core.entitlements`. Its mapping is pure and
+      unit-tested (16 tests, no store and no database), and the ordering story
+      turned out to need a migration: `source_txn_id` is not a watermark, so
+      `event_ms` was added and an event must be strictly newer to win. A replay
+      is a no-op, a late expiry cannot revert a live renewal, and a row inserted
+      by hand loses to the first real event rather than blocking it.
+
+      **Not deployed, and nothing works until it is.** Since
+      [ADR-0030](decisions/0030-the-coach-is-the-paid-half.md) the coach is
+      refused without a row, and no row can exist without this function. See its
+      [README](../../../supabase/functions/revenuecat/README.md) for the deploy
+      command, the two secrets, and the RevenueCat dashboard wiring.
+- [ ] **Deploy it, and set the secrets.** `REVENUECAT_WEBHOOK_SECRET` and
+      `REVENUECAT_PRODUCTS`, the latter carrying the real App Store product ids
+      once they exist. Deployed with `--no-verify-jwt`, which is required rather
+      than lax: RevenueCat has no Supabase token and authenticates with the
+      shared secret instead.
 - [ ] **The SDK in the client**, public key through `app_config.json` beside
       `SUPABASE_URL`, webhook secret server-side only.
 - [ ] **Wire `onUpgrade`** in `home_shell.dart`, which is what closes the dead
