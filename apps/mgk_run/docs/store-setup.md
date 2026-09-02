@@ -367,7 +367,7 @@ is the cheapest confirmation available that the deploy and the dashboard agree.
 
 ## 7. Codemagic — the public key
 
-- [ ] Add `REVENUECAT_PUBLIC_KEY` to the `mgk_fitness_run_env` group, set to the
+- [x] Add `REVENUECAT_PUBLIC_KEY` to the `mgk_fitness_run_env` group, set to the
       **Apple** key from RevenueCat ▸ Project settings ▸ API keys. It begins
       `appl_`, and the build fails if it does not: a Google or web key would
       configure the SDK against the wrong store and fail at the moment of

@@ -292,11 +292,13 @@ five strings that must match exactly, and a table mapping each of the webhook's
 own ignore reasons to its cause. Read that rather than this for the doing; this
 stays the checklist.
 
-- [ ] **1. Apple: paid-applications agreement, tax and banking.** Nothing about
+- [x] **1. Apple: paid-applications agreement, tax and banking.** Already
+      Active from Liftio — an agreement is held by the team, not the app. Nothing about
       subscriptions exists in App Store Connect until Business ▸ Agreements is
       active. **This is the longest lead time on the page and nothing depends on
       it** — start it first, then do everything else while it clears.
-- [ ] **2. The subscription group and two products.** One group, because the two
+- [x] **2. The subscription group and two products.** Both Ready to Submit,
+      Premium Coach ranked level 1 (the higher tier, and level 1 is the higher). One group, because the two
       tiers are alternatives and a runner should move between them without a
       second purchase. Per product:
       - reference name, **product id**, duration 1 month
@@ -307,10 +309,12 @@ stays the checklist.
         "Missing Metadata" that holds up the whole submission
       - free trial / introductory offer: **no**, unless there is a reason. A
         trial on a £1 product costs more in support than it earns.
-- [ ] **3. RevenueCat: account, project, products imported.** App configured with
+- [x] **3. RevenueCat: project, app, products, entitlements, offering.** App configured with
       the App Store Connect shared secret and the in-app purchase key;
       entitlement identifiers mapped onto the two products.
-- [ ] **4. Deploy the webhook and set its secrets.**
+- [x] **4. Deploy the webhook and set its secrets.** Version 2, verified by
+      probing: anonymous POST answers 401 rather than 503, which proves the
+      secret is set without anyone reading it.
 
       ```bash
       supabase functions deploy revenuecat --no-verify-jwt
@@ -324,7 +328,8 @@ stays the checklist.
       **configuration rather than code**, so adding a SKU or changing a price
       does not need a deploy. Full detail in the function's
       [README](../../../supabase/functions/revenuecat/README.md).
-- [ ] **5. RevenueCat ▸ Integrations ▸ Webhooks.** URL
+- [x] **5. RevenueCat ▸ Integrations ▸ Webhooks.** Verified with a test
+      event: 200, and the log reads `unmapped_product: test_product`. URL
       `https://<project>.supabase.co/functions/v1/revenuecat`; Authorization
       header set to `REVENUECAT_WEBHOOK_SECRET` **verbatim** — no `Bearer`
       prefix, because it is compared as-is.
