@@ -188,17 +188,18 @@ It matches the listing name, `MGKFitness: Run`.
 
 ## 3. App Store Connect — the two credentials RevenueCat needs
 
-Both are easy to miss and both fail quietly.
+Three, not two, and the one that matters is not the one Apple's own
+documentation puts first.
 
-- [ ] **App-Specific Shared Secret** — App Store Connect ▸ your app ▸ App
-      Information ▸ App-Specific Shared Secret. RevenueCat uses it to validate
-      receipts. Without it, purchases appear to work on device and never
-      validate.
-- [ ] **In-App Purchase Key** — Users and Access ▸ Integrations ▸ In-App
-      Purchase ▸ generate a key. **The `.p8` downloads exactly once.** Same rule
-      as the App Store Connect API key `codemagic.yaml` already uses; put it
-      somewhere you will still have it in a year, and keep the **Key ID** with
-      it.
+- [ ] **In-App Purchase Key — the required one.** `purchases_flutter` 10.x is
+      well past v5, so this app is on **StoreKit 2**, and RevenueCat's own form
+      says it plainly: *"transactions will fail to be recorded without this key
+      being set. This can result in users not accessing the purchases they are
+      entitled to."* Not a nicety. Users and Access ▸ Integrations ▸ In-App
+      Purchase.
+      **The `.p8` downloads exactly once.** Same rule as the App Store Connect
+      API key `codemagic.yaml` already uses; put it somewhere you will still
+      have it in a year, and keep the **Key ID** with it.
 
       **Name it for the team, not for Run.** These keys are issued to the
       account and sign App Store Server API requests for every app you own, so
@@ -209,6 +210,16 @@ Both are easy to miss and both fail quietly.
 
       Distinct from the App Store Connect API key the build uses (`frunt_asc`).
       That one has the wrong scope for this; do not reuse it.
+- [ ] **App-Specific Shared Secret — legacy, and optional.** App Store Connect ▸
+      your app ▸ App Information. RevenueCat labels this field
+      **"(Legacy)"**: it is the older receipt-validation path, superseded by the
+      key above. Fill it in if you like; it is not what makes StoreKit 2 work.
+      **This one is genuinely per-app**, unlike the key, so Run's is not Lift's.
+- [ ] **App Store Connect API key — only if you want products imported.**
+      Without it the two product ids are typed into RevenueCat by hand, which
+      takes a minute, and price changes are not applied automatically. A third
+      key type again, and `frunt_asc`'s `.p8` may now exist only inside
+      Codemagic. Addable later.
 
 ## 4. RevenueCat — project, products, entitlements, offering
 
@@ -223,6 +234,20 @@ Both are easy to miss and both fail quietly.
       it would have the new suite sharing a webhook secret with a retired app.
       Name the project `mgk-fitness`, and add Lift to it when the rewrite ships.
 - [ ] An **App** in that project, with bundle id `com.mgkcodes.fitness.run`.
+
+      **Name it `Run`, not after the project.** RevenueCat defaults the name to
+      the project's, and Lift will be a second app in the same project — two
+      entries called `MGKFitness (App Store)` are indistinguishable.
+
+      Leave **Custom URL Scheme** blank: it exists for RevenueCat's hosted
+      paywall previews, and the paywall here is `PurchaseScreen`, built in
+      Flutter.
+- [ ] **Apple Small Business Program — set the start date if enrolled.** Not
+      cosmetic. [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md) does its
+      whole arithmetic at Apple's **15%** small-business rate, £0.99 to £0.70
+      net, and every ceiling in `supabase/functions/coach/limits.ts` is roughly
+      three quarters of that. At the standard 30% the net falls about 18% and
+      every ceiling is oversized.
 - [ ] Paste the **shared secret** and upload the **in-app purchase key** from
       step 3.
 - [ ] **Import the two products.** They must exist in App Store Connect first.
