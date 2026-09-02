@@ -47,7 +47,7 @@ export type IgnoredReason =
 
 export type Decision =
   | { write: EntitlementWrite }
-  | { ignore: IgnoredReason };
+  | { ignore: IgnoredReason; detail?: string };
 
 /**
  * How each event type moves the row.
@@ -167,7 +167,19 @@ export function decide(
 
   const productId = str(e.product_id);
   const sale = productId === null ? undefined : products.get(productId);
-  if (sale === undefined) return { ignore: "unmapped_product" };
+  if (sale === undefined) {
+    // **The product id is carried out, and it is the only field that is.**
+    // A mismatch between App Store Connect and `REVENUECAT_PRODUCTS` is the
+    // most likely misconfiguration in this whole path and the least visible:
+    // a real purchase and a dummy test event produce the identical reason, so
+    // "unmapped_product" alone cannot tell a working system from a typo.
+    //
+    // Safe to log where the rest of the event is not. A product id is a
+    // catalogue identifier -- `run.coach.monthly` -- not personal data, not a
+    // receipt, and not a user. The privacy note at the top of this file is
+    // about the body and the runner; this is neither.
+    return { ignore: "unmapped_product", detail: productId ?? "(absent)" };
+  }
 
   const type = str(e.type);
   const status = type === null ? undefined : STATUS_BY_TYPE[type];

@@ -108,7 +108,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Logged so an unmapped product id or a new event type is findable, and
     // 200 so it is not retried forever. Neither the body nor the user id is
     // logged: this is the money path, not a debugging surface.
-    console.log(`revenuecat: ignored (${decision.ignore})`);
+    console.log(
+      `revenuecat: ignored (${decision.ignore}${
+        decision.detail === undefined ? "" : `: ${decision.detail}`
+      })`,
+    );
     return json({ ok: true, ignored: decision.ignore });
   }
 

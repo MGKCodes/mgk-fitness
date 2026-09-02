@@ -227,3 +227,16 @@ Deno.test("a row with no watermark loses to any real event", () => {
   assert(supersedes(1, null));
   assert(supersedes(1, undefined));
 });
+
+Deno.test("an unmapped product says which one, because a typo looks like a test", () => {
+  // The reason alone cannot separate a dummy id in a RevenueCat test event from
+  // a mistyped one in REVENUECAT_PRODUCTS, and the second is silent on a real
+  // purchase. The id is the only field carried out, and it is a catalogue
+  // identifier rather than anything about a person.
+  const decision = decide(event({ product_id: "run.coach.montly" }), PRODUCTS);
+  assertEquals("ignore" in decision && decision.ignore, "unmapped_product");
+  assertEquals(
+    "ignore" in decision ? decision.detail : undefined,
+    "run.coach.montly",
+  );
+});
