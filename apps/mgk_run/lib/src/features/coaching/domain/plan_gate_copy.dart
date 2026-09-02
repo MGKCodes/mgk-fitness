@@ -22,10 +22,17 @@ library;
 // which carries the arithmetic: what each tier nets after VAT and Apple's cut,
 // and the spend ceiling sized against it in supabase/functions/coach/limits.ts.
 //
-// The two consts below are the single source of the figures. [planGateCostsCopy]
-// interpolates them and `plan_gate_copy_test.dart` asserts it does, so a price
-// cannot drift between the sentence a runner reads and the record of the
-// decision behind it.
+// The two consts below are the record of what was agreed. **They are not what
+// a runner is shown.** The copy quoted them for a day and should not have: a
+// price typed into the binary is right in one storefront and wrong in every
+// other, it is stale the moment pricing moves, and Apple expects the figure on
+// screen to be the localised one StoreKit hands back. So the sentence names the
+// tier and the store names the price, which is also the only arrangement that
+// survives a currency the app has never heard of.
+//
+// Until RevenueCat is wired there is no price to show, and the sheet says so
+// rather than inventing one. `plan_gate_copy_test.dart` asserts the copy quotes
+// no figure at all.
 //
 // If either price moves, three things move with it:
 //
@@ -48,7 +55,5 @@ const String kSharpCoachPrice = '£3';
 /// See the PRICING block above before editing.
 const String planGateCostsCopy =
     'Recording your runs is free and always will be. A plan is different: '
-    'building one and keeping it honest week to week costs real money behind '
-    'the scenes, so it needs a subscription. That is $kCoachPrice a month, or '
-    '$kSharpCoachPrice for a coach that thinks harder about your week. Your '
-    'runs and your history stay yours either way.';
+    'building one and keeping it honest week to week needs a subscription. '
+    'Your runs and your history stay yours either way.';

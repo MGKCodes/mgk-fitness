@@ -26,30 +26,34 @@ void main() {
     });
   });
 
-  /// Replaced, not deleted, when pricing landed — which is what the PRICING
-  /// block in `plan_gate_copy.dart` asked for. It used to assert that **no**
-  /// figure was quoted, because a price in onboarding is a commercial claim and
-  /// none had been agreed. [ADR-0029](../../docs/decisions/0029-what-a-tier-costs-and-buys.md)
-  /// agreed them, so it now asserts the opposite: that the figures are there,
-  /// and that they are the consts rather than numbers typed into a sentence.
-  group('quotes the agreed price, from the one place it is written', () {
-    test('both tiers appear, and via the consts', () {
-      expect(planGateCostsCopy, contains(kCoachPrice));
-      expect(planGateCostsCopy, contains(kSharpCoachPrice));
-    });
-
-    test('no other figure has crept in', () {
-      // A second price in the sentence means somebody typed one rather than
-      // interpolating, and the two will part company at the next change.
+  /// Reversed once already, and now settled the other way.
+  ///
+  /// It first asserted that **no** figure was quoted, because none had been
+  /// agreed. [ADR-0029](../../docs/decisions/0029-what-a-tier-costs-and-buys.md)
+  /// agreed them and this flipped to assert they were present. That was the
+  /// wrong conclusion from a right decision: agreeing a price settles what to
+  /// charge, not where the number is rendered. A figure compiled into the
+  /// binary is correct in one storefront and wrong in every other, so it goes
+  /// back to asserting the copy quotes nothing, and the consts are checked as
+  /// what they are: the record `limits.ts` is sized against.
+  group('the copy names the tier, and the store will name the price', () {
+    test('no figure is quoted, in any currency', () {
       final quoted = RegExp(
-        r'[£$€]\s?\d+(?:\.\d+)?',
-      ).allMatches(planGateCostsCopy).map((m) => m.group(0)).toSet();
-      expect(quoted, <String>{kCoachPrice, kSharpCoachPrice});
+        r'[£$€]\s?\d+(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:p|pence|GBP|USD|EUR)',
+      ).allMatches(planGateCostsCopy).map((m) => m.group(0)).toList();
+      expect(
+        quoted,
+        isEmpty,
+        reason:
+            'a price belongs to the storefront, not to the binary; StoreKit '
+            'hands back the localised one once RevenueCat is wired',
+      );
     });
 
-    test('the prices are what ADR-0029 settled', () {
-      // limits.ts sizes every spend ceiling as a fraction of these, so a change
-      // here that is not mirrored there makes the ceilings the wrong size.
+    test('and the consts are still the record ADR-0029 settled', () {
+      // Not shown to anybody. limits.ts sizes every spend ceiling as a fraction
+      // of these, so a change here that is not mirrored there makes the
+      // ceilings the wrong size.
       expect(kCoachPrice, '£1');
       expect(kSharpCoachPrice, '£3');
     });
@@ -57,11 +61,17 @@ void main() {
     test('still quotes no quota, because none has been agreed', () {
       expect(
         RegExp(
-          r'\d+\s*(runs?|messages?|plans?)',
+          r'\d+\s*(runs?|messages?|plans?)',
         ).hasMatch(planGateCostsCopy.toLowerCase()),
         isFalse,
         reason: 'a usage quota is a commercial claim and the tiers name none',
       );
+    });
+
+    test('and stays short enough to be a sentence in a conversation', () {
+      // The sheet is a door, not a pricing page. It ran to four sentences the
+      // day the figures went in, which is how a gate turns into a brochure.
+      expect(planGateCostsCopy.split('. ').length, lessThanOrEqualTo(3));
     });
   });
 
