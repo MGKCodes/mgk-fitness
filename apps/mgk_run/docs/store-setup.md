@@ -83,6 +83,22 @@ App Store Connect ▸ your app ▸ Subscriptions.
       and without being charged twice.
 - [ ] **Localised group display name.** Shown in the runner's Apple ID
       subscription settings, so it should read as a thing they recognise.
+- [ ] **Rank Premium Coach as level 1 and Coach as level 2.**
+
+      **Level 1 is the highest service level, not the lowest**, and the numbering
+      reads backwards to almost everybody the first time. Apple uses the rank to
+      decide what a switch *is*: moving to a lower number is an **upgrade**,
+      which takes effect immediately with a prorated refund of the unused time,
+      and moving to a higher number is a **downgrade**, deferred to the next
+      renewal with no proration.
+
+      Ranked the intuitive way round, a runner who pays £2.99 to move up is
+      charged and then **waits up to a month** for the better model, because
+      Apple treats it as a downgrade and defers it. RevenueCat only fires
+      `PRODUCT_CHANGE` when the change takes effect, so `core.entitlements`
+      would not carry `premium` until then either. Nothing looks broken; it is
+      simply wrong and slow. Unlike a product id, the rank can be changed at any
+      time.
 
 Then, per product:
 
