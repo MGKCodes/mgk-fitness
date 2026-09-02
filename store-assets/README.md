@@ -25,15 +25,21 @@ left this repo at 786x1704 RGBA and would have been rejected on upload. The
 script flattens onto the app's own near-black, so a transparent edge does not
 come out as a white halo against the screen it came from.
 
-It also checks what a machine can check: alpha, and dimensions against the spec
-each asset is for. **It cannot tell you the screenshot is of the right screen**,
-or that an icon has square corners.
+**And it refuses arbitrary dimensions.** The documented "640x920 minimum" for
+an IAP review screenshot is the old rule: a 786x1704 render, comfortably over
+it, was rejected by the form. What App Store Connect takes is a real iPhone
+screenshot size, so the paywall is rendered once at 430x932 logical by 3, which
+is 1290x2796, rather than upscaled from something smaller.
+
+It checks what a machine can check: alpha, and dimensions against the spec each
+asset is for. **It cannot tell you the screenshot is of the right screen**, or
+that an icon has square corners.
 
 ## What is here
 
 | File | Spec | For |
 |---|---|---|
-| `derived/run-iap-review-screenshot.png` | ≥640x920, no alpha | Both subscriptions' review screenshot |
+| `derived/run-iap-review-screenshot.png` | 1290x2796, no alpha | Both subscriptions' review screenshot |
 
 ## What is not here yet
 

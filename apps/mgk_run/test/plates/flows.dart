@@ -249,6 +249,36 @@ void main() {
     );
   });
 
+  /// The same screen at a size App Store Connect will actually accept.
+  ///
+  /// **Not a board plate.** `paywall` above is 393x852 at 2x like every other
+  /// plate, which is right for reading a board and wrong for uploading: App
+  /// Store Connect wants a review screenshot at a real iPhone screenshot size,
+  /// and refuses arbitrary dimensions. `kMaxPhone` at 3x is 1290x2796, which is
+  /// the 6.7-inch size Apple accepts, so this renders once rather than being
+  /// upscaled from something smaller.
+  ///
+  /// `tool/export_store_assets.py` flattens it and checks the result.
+  testWidgets('and the paywall at App Store screenshot size', (tester) async {
+    final store = await seeded();
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'paywall-store',
+      app(store, runs, access: CoachAccess.free),
+      size: kMaxPhone,
+      pixelRatio: 3,
+      drive: (tester) async {
+        await settle(tester);
+        await tapCoach(tester);
+        await tester.tap(find.text('See the plans'));
+        await settle(tester);
+        await settle(tester);
+      },
+    );
+  });
+
   // --- Settings --------------------------------------------------------------
 
   testWidgets('settings, from the icon on Profile', (tester) async {

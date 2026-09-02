@@ -216,15 +216,15 @@ both twice.
 
 Each also needs a **review screenshot**, and one file serves both. Run
 `python tool/export_store_assets.py`; it lands in
-`store-assets/derived/run-iap-review-screenshot.png` at 786x1704, over Apple's
-640x920 minimum. An IAP review screenshot only has to show the reviewer where
-the purchase happens, so unlike the *listing* screenshots the plate is usable
-and no device is needed.
+`store-assets/derived/run-iap-review-screenshot.png` at **1290x2796**. An IAP
+review screenshot only has to show the reviewer where the purchase happens, so
+unlike the *listing* screenshots the plate is usable and no device is needed.
 
-That script exists because **App Store Connect refuses an image with an alpha
-channel and every Flutter render carries one.** The first copy of this
-screenshot left the repo at 786x1704 RGBA and would have been rejected on
-upload.
+That script exists because App Store Connect rejects the file twice over
+otherwise. **It refuses an alpha channel**, and every Flutter render carries
+one. **And it refuses arbitrary dimensions**: Apple's older "640x920 minimum"
+is not what the form takes, and a 786x1704 export that cleared that minimum was
+rejected. The plate is rendered at 430x932 logical by 3 for this reason.
 
 Prices are [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md)'s, and
 `supabase/functions/coach/limits.ts` sizes every spend ceiling against them. Let

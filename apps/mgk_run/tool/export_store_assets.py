@@ -71,11 +71,24 @@ class Spec:
         return problems
 
 
-# An IAP review screenshot only has to show the reviewer where the purchase
-# happens, so the plate is legitimate here. The LISTING screenshots are a
-# different requirement and the plates are not usable for them: they are
-# 393x852 logical renders with no basemap tiles.
-IAP_REVIEW = Spec("IAP review screenshot", min_w=640, min_h=920)
+# **App Store Connect refuses arbitrary dimensions here.** The documented
+# "640x920 minimum" is the old rule and no longer what the form accepts: a
+# 786x1704 render, comfortably over that minimum, was rejected outright. What it
+# takes is a real iPhone screenshot size, so `paywall-store` is rendered at
+# 430x932 logical by 3, which is 1290x2796.
+#
+# Content-wise an IAP review screenshot only has to show the reviewer where the
+# purchase happens, so a plate is legitimate. The LISTING screenshots are a
+# different requirement and plates are not usable for them: no basemap tiles.
+IPHONE_SCREENSHOT_SIZES = [
+    (1320, 2868),  # 6.9in, iPhone 16 Pro Max
+    (1290, 2796),  # 6.7in, iPhone 15/14 Pro Max
+    (1284, 2778),  # 6.5in
+    (1242, 2688),  # 6.5in, older
+    (1179, 2556),  # 6.1in, iPhone 15/14 Pro
+    (1242, 2208),  # 5.5in
+]
+IAP_REVIEW = Spec("IAP review screenshot", exact=IPHONE_SCREENSHOT_SIZES)
 LISTING_69 = Spec(
     "6.9in listing screenshot",
     exact=[(1320, 2868), (1290, 2796)],
@@ -89,7 +102,7 @@ MARKETING_ICON = Spec(
 
 # plate -> (output name, spec, what it is for)
 DERIVED_FROM_PLATES = {
-    "paywall.png": (
+    "paywall-store.png": (
         "run-iap-review-screenshot.png",
         IAP_REVIEW,
         "Both subscriptions. Shows the purchase surface.",
