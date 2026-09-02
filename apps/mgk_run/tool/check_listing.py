@@ -38,6 +38,11 @@ LIMITS = {
     'promotional text': 170,
     'keywords': 100,
     'description': 4000,
+    # The subscription localisation fields, which are an order of magnitude
+    # tighter than everything above and are the ones that actually bite. The
+    # first draft of both product descriptions ran to 82 and 99 characters.
+    'subscription display name': 30,
+    'subscription description': 45,
 }
 
 NAME = 'MGKFitness: Run'
@@ -66,6 +71,33 @@ def subtitles(md: str) -> list[tuple[str, str]]:
     return out
 
 
+def subscription_fields(md: str) -> list[tuple[str, str]]:
+    """The display names and descriptions from the subscription table.
+
+    Read out of the table rather than kept in a second list, so the counts and
+    the copy cannot part company. A row looks like:
+
+        | Coach | `Coach` (5) | `A training plan, ...` (37) |
+    """
+    # Anchored on the localisation table's own header, not merely on the
+    # section: the tier table above it also has three columns and backticks,
+    # and reading that one reported `paid` as a display name.
+    i = md.find('| | Display name | Description |')
+    if i < 0:
+        raise SystemExit('no subscription localisation table found')
+    j = md.find('\n## ', i + 1)
+    out = []
+    for line in md[i:j].split('\n'):
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells) != 3 or cells[0] in ('', '---') or '`' not in line:
+            continue
+        for kind, cell in (('display name', cells[1]), ('description', cells[2])):
+            m = re.search(r'`([^`]*)`', cell)
+            if m:
+                out.append(('%s %s' % (cells[0].lower(), kind), m.group(1)))
+    return out
+
+
 def promo(md: str) -> str:
     i = md.find('## Promotional text')
     j = md.find('\n## ', i + 1)
@@ -91,6 +123,12 @@ def main() -> int:
     for n, text in subtitles(md):
         report('subtitle %s' % n, text, LIMITS['subtitle'], fails)
     report('promotional text', promo(md), LIMITS['promotional text'], fails)
+
+    for label, text in subscription_fields(md):
+        is_desc = 'description' in label
+        limit = LIMITS['subscription description'] if is_desc \
+            else LIMITS['subscription display name']
+        report(label, text, limit, fails)
 
     kw = fenced(md, '## Keywords')
     report('keywords', kw, LIMITS['keywords'], fails)

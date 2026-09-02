@@ -199,15 +199,25 @@ move between them without a second purchase.
 | Entitlement | `paid` | `premium` |
 | Model tier | `standard` | `sharp` |
 | Price | £0.99 / month | £2.99 / month |
-| Display name | Coach | Premium Coach |
 | Duration | 1 month | 1 month |
 
-**Description** (each needs one, and each needs a review screenshot):
+**Display name** is capped at 30 characters and **description at 45** — far
+tighter than the listing's own fields, and tight enough that the first draft of
+both descriptions came in at 82 and 99. `check_listing.py` counts them now.
 
-- **Coach** — "A training plan built around your running, and a coach that
-  adjusts it every week."
-- **Premium Coach** — "The same coach, thinking harder about your week. A
-  better model behind every plan and every answer."
+| | Display name | Description |
+|---|---|---|
+| Coach | `Coach` (5) | `A training plan, adjusted every week.` (37) |
+| Premium Coach | `Premium Coach` (13) | `A better model behind every plan and answer.` (44) |
+
+They read as a pair on purpose: the first says what the product is, the second
+says only what is different about it. At 45 characters there is no room to say
+both twice.
+
+Each also needs a **review screenshot**. `apps/mgk_run/plates/paywall.png` is
+786x1704, over Apple's 640x920 minimum, and an IAP review screenshot only has to
+show the reviewer where the purchase happens — so unlike the *listing*
+screenshots, the plate is usable and no device is needed.
 
 Prices are [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md)'s, and
 `supabase/functions/coach/limits.ts` sizes every spend ceiling against them. Let

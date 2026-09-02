@@ -94,8 +94,16 @@ Then, per product:
 | Price | £0.99 | £2.99 |
 | Display name | Coach | Premium Coach |
 
-Descriptions are drafted in
-[app-store-listing.md](app-store-listing.md#subscription-products).
+Then per product, **Localization ▸ English (U.K.)**:
+
+| | Coach | Premium Coach |
+|---|---|---|
+| Display name (30) | `Coach` | `Premium Coach` |
+| Description (45) | `A training plan, adjusted every week.` | `A better model behind every plan and answer.` |
+
+**Those two limits are much tighter than they look** — 30 and 45 characters,
+against the 170 and 4000 of the listing's own fields. The first draft of both
+descriptions ran to 82 and 99 and would have been refused in the form.
 
 **The product IDs above are the placeholders already in the webhook README.**
 Keep them and there is nothing to change; use different ones and they must be
@@ -104,7 +112,10 @@ mirrored into `REVENUECAT_PRODUCTS` in step 6.
 - [ ] **A review screenshot per product.** Required, and a common cause of
       "Missing Metadata" holding up the whole submission. The `paywall` plate on
       [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)
-      is what this screen looks like; take the real one off a device.
+      is what this screen looks like, and **is usable as-is**: it is 786x1704
+      against Apple's 640x920 minimum, and an IAP review screenshot only has to
+      show where the purchase happens. Unlike the listing screenshots, this one
+      needs no device.
 - [ ] **Review notes per product.** Say the coach is the paid half and recording
       is free, so a reviewer is not hunting for what changed.
 - [ ] **No free trial, no introductory offer.** Deliberate: a trial on a £0.99
