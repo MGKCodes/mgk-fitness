@@ -197,11 +197,32 @@ Both are easy to miss and both fail quietly.
 - [ ] **In-App Purchase Key** — Users and Access ▸ Integrations ▸ In-App
       Purchase ▸ generate a key. **The `.p8` downloads exactly once.** Same rule
       as the App Store Connect API key `codemagic.yaml` already uses; put it
-      somewhere you will still have it in a year.
+      somewhere you will still have it in a year, and keep the **Key ID** with
+      it.
+
+      **Name it for the team, not for Run.** These keys are issued to the
+      account and sign App Store Server API requests for every app you own, so
+      an app-specific name describes a scope it does not have and invites a
+      second key doing the same job. **Check whether Liftio's RevenueCat already
+      uses one first** — the same key serves a second project, and two
+      indistinguishable `.p8` files in circulation is worse than one well named.
+
+      Distinct from the App Store Connect API key the build uses (`frunt_asc`).
+      That one has the wrong scope for this; do not reuse it.
 
 ## 4. RevenueCat — project, products, entitlements, offering
 
-- [ ] Project, then an **App** with bundle id `com.mgkcodes.fitness.run`.
+- [ ] **A new project for the suite, not Liftio's.** RevenueCat scopes
+      entitlements and offerings per project, and the backend is already built
+      for one project serving both apps: `core.entitlements.app` is
+      `('lift', 'run')`, `REVENUECAT_PRODUCTS` maps a product id to
+      `{app, product}`, and one webhook URL with one secret routes both.
+
+      The existing Liftio project belongs to the React Native app being
+      replaced — different product ids, its own webhook wiring. Folding Run into
+      it would have the new suite sharing a webhook secret with a retired app.
+      Name the project `mgk-fitness`, and add Lift to it when the rewrite ships.
+- [ ] An **App** in that project, with bundle id `com.mgkcodes.fitness.run`.
 - [ ] Paste the **shared secret** and upload the **in-app purchase key** from
       step 3.
 - [ ] **Import the two products.** They must exist in App Store Connect first.
