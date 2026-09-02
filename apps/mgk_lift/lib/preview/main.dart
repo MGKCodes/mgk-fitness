@@ -26,6 +26,11 @@ import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/presentation/plan_intake_screen.dart';
 import '../src/features/planning/presentation/swap_sheet.dart';
 import '../src/features/home/presentation/lift_shell.dart';
+import '../src/features/legal/data/account_deletion_service.dart';
+import '../src/features/legal/domain/legal_copy.dart';
+import '../src/features/legal/presentation/delete_account_screen.dart';
+import '../src/features/legal/presentation/legal_document_screen.dart';
+import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_sheet.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
@@ -76,6 +81,16 @@ void main() => runApp(const PreviewApp());
 /// the same streak. A harness whose output changes with the wall clock is
 /// useless for comparing before and after.
 final DateTime previewNow = DateTime(2026, 8, 6, 18, 30);
+
+/// A signed-in account for the compliance plates.
+///
+/// A function rather than a shared constant because [FakeAuth] owns a
+/// `StreamController`: two plates holding one instance would share a closed
+/// controller the moment the first of them is disposed, and the second would
+/// render an account that had silently signed itself out.
+FakeAuth _signedInAuth() => FakeAuth(
+  account: const Account(id: 'fake-user', email: 'matt@example.com'),
+);
 
 class PreviewApp extends StatelessWidget {
   const PreviewApp({super.key});
@@ -367,6 +382,50 @@ class PreviewApp extends StatelessWidget {
         ),
         onSyncNow: () {},
       ),
+
+      // ---- The coach switch, and the route to the compliance surfaces -------
+      //
+      // Added 2026-09-02. Every Settings plate above passes neither `useCoach`
+      // nor `deleter`, and both are null-hides-the-control by design — so the
+      // Coach heading, the switch, the disclosure row beside it and the route
+      // to deletion rendered on **no plate at all**. The whole of the
+      // 2026-09-01 compliance work was invisible to the board that exists to
+      // prove it is there.
+      'settings-coach': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        now: previewNow,
+        isSignedIn: true,
+        email: 'matt@example.com',
+        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        onSignOut: () {},
+        onSyncNow: () {},
+        coachMemory: FakeCoachMemory(),
+        useCoach: true,
+        onUseCoachChanged: (_) {},
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+      ),
+      // Off is not the same screen with a toggle moved. The subtitle stops
+      // saying what is sent in the present tense, which is the sentence
+      // Guideline 5.1.2(i) is actually satisfied by, and the mark leaves every
+      // other surface — so this plate is the one that shows the switch is a
+      // consent control rather than a display preference.
+      'settings-coach-off': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        now: previewNow,
+        isSignedIn: true,
+        email: 'matt@example.com',
+        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        onSignOut: () {},
+        onSyncNow: () {},
+        coachMemory: FakeCoachMemory(),
+        useCoach: false,
+        onUseCoachChanged: (_) {},
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+      ),
       'coach': (_) => _sheet(
         null,
         opener: 'Your bench has not moved in three weeks. Want to look at it?',
@@ -594,6 +653,36 @@ class PreviewApp extends StatelessWidget {
       'sign-in-error': (_) =>
           SignInScreen(auth: FakeAuth(failWith: AuthFailure.wrongCredentials)),
       'credits': (_) => const CreditsScreen(),
+
+      // ---- Privacy, legal and leaving --------------------------------------
+      //
+      // Added 2026-09-02, and not one of these had ever been photographed: the
+      // whole surface landed on 2026-09-01, after the last capture. Guidelines
+      // 5.1.1(v) and 5.1.2(i) are both argued from these screens, so a board
+      // that omits them omits precisely the part most likely to be the reason
+      // the app is rejected.
+      'legal': (_) => LegalScreen(
+        email: 'matt@example.com',
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+        onSignedOut: () {},
+      ),
+      // The same hub before there is an account. **Both halves of deletion are
+      // null, so the row is absent rather than disabled** — which is the state
+      // the documents are readable in, and the first one a reviewer reaches.
+      'legal-signed-out': (_) => const LegalScreen(),
+      'terms': (_) => const LegalDocumentScreen(document: termsOfUse),
+      'privacy': (_) => const LegalDocumentScreen(document: privacyPolicy),
+      'ai-disclosure': (_) => const LegalDocumentScreen(document: aiDisclosure),
+      // Opens on the narrower scope with the confirmation empty, which is how
+      // it is entered. The done state is deliberately not addressable: it
+      // exists only after a typed phrase and a tap, and a harness entry that
+      // faked it would be a photograph of a state the code cannot reach.
+      'delete-account': (_) => DeleteAccountScreen(
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+        onSignedOut: () {},
+      ),
       // `coach-mark` used to sit here, and was character-for-character the same
       // shell as `track-coach` — two entries, one screen, two frames on the
       // board. It is gone rather than renamed: now that every shell entry

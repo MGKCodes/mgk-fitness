@@ -98,16 +98,117 @@
       "letter": "A",
       "title": "Account and settings",
       "sub": "Pushed from Profile's gear — nothing here is on a tab",
-      "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. Backup reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
+      "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. The account reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
       "racks": [
         { "title": "Units and account", "screens": ["settings", "settings-signed-in", "account-signed-out", "account-synced"] },
+        { "title": "The coach switch", "screens": ["settings-coach", "settings-coach-off"] },
         { "title": "What the coach remembers", "screens": ["coach-memory", "coach-memory-empty", "coach-memory-error"] },
         { "title": "About", "screens": ["credits"] }
+      ]
+    },
+    {
+      "letter": "L",
+      "title": "Privacy, legal and leaving",
+      "sub": "Pushed from Settings › Privacy & legal — the surface a reviewer goes looking for",
+      "lede": "Liftio's changelog is a list of rejections bought once, and this act is where they are not bought twice. All six plates landed on 2026-09-01 and not one had ever been photographed, which made them the largest blind spot on the board: the part of the app most likely to be the reason it is rejected was the part with no picture of it. The documents render from bundled copy rather than a fetch, so they are readable offline and cannot change under the person who agreed to them, and a staleness test pins each one to its file in docs/. Every one still carries a draft, legally unreviewed banner — legal review is a real open item, not a formality.",
+      "racks": [
+        { "title": "The hub", "screens": ["legal", "legal-signed-out"] },
+        { "title": "The three documents", "screens": ["terms", "privacy", "ai-disclosure"] },
+        { "title": "Leaving", "screens": ["delete-account"] }
       ]
     }
   ],
 
   "screens": {
+    "settings-coach": {
+      "code": "A9",
+      "title": "Settings — the coach switch",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › a build with a coach in it",
+      "out": "App bar back",
+      "next": "Turn the coach off, or open the disclosure beside it",
+      "note": "The section the other four Settings plates were missing.",
+      "doc": "useCoach and deleter are both null-hides-the-control, and not one of the four Settings plates passed either — so the Coach heading, the switch, the disclosure row beside it and the route to deletion rendered on no plate at all. The whole of the 2026-09-01 compliance work was invisible to the board that exists to prove it is there.",
+      "tags": ["free", "new", "first"]
+    },
+    "settings-coach-off": {
+      "code": "A10",
+      "title": "Settings — coach off",
+      "host": "pushed",
+      "in": "{{settings-coach}} › the switch",
+      "out": "App bar back",
+      "next": "Turn it back on",
+      "note": "Off means absent, not inert.",
+      "doc": "The subtitle stops naming OpenRouter in the present tense, and the mark leaves every other surface — which is what makes this a consent control rather than a display preference. It is device-local for the same reason: an account row is something a restore could quietly flip back on. Building a plan is an AI request too, so the switch had to reach _canPlan, or Plan would have gone on sending the intake answers — injury notes included — with the coach switched off.",
+      "tags": ["free", "new", "first"]
+    },
+    "legal": {
+      "code": "L1",
+      "title": "Privacy & legal",
+      "host": "pushed",
+      "in": "{{settings}} › Privacy & legal",
+      "out": "App bar back",
+      "next": "Any of the three documents, or leave",
+      "note": "The one place the compliance surfaces are reachable from.",
+      "doc": "Three data-rights documents kept together rather than scattered through Settings, and deliberately the same shape as run's, so the two apps do not present compliance differently. The email at the top says which account the rights below apply to — which is also how somebody signed in as the wrong address finds out.",
+      "tags": ["free", "new", "first"]
+    },
+    "legal-signed-out": {
+      "code": "L2",
+      "title": "Privacy & legal — no account",
+      "host": "pushed",
+      "in": "{{legal}} › before anybody has signed in",
+      "out": "App bar back",
+      "next": "Read any of the three",
+      "note": "The deletion row is absent, not disabled.",
+      "doc": "Both halves of deletion are null and the row is gone entirely. An app that cannot delete an account should not offer to, and Guideline 5.1.1(v) only applies where one can be created in the first place. This is the state a reviewer reaches first, because tracking has never needed a sign-in.",
+      "tags": ["free", "new", "first"]
+    },
+    "terms": {
+      "code": "L3",
+      "title": "Terms of use",
+      "host": "pushed",
+      "in": "{{legal}} › Terms of use",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Bundled, not fetched.",
+      "doc": "Rendered from structure rather than markdown, so it takes the app's own typography, needs no parser, and cannot silently change under the person who agreed to it. The source of truth is docs/terms-of-use.md and a staleness test pins the load-bearing sentences to it. This is also where the auto-renew disclosure has to be written when payments land — a test currently fails if anybody writes half of it.",
+      "tags": ["free", "new", "first"]
+    },
+    "privacy": {
+      "code": "L4",
+      "title": "Privacy policy",
+      "host": "pushed",
+      "in": "{{legal}} › Privacy policy",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Same renderer, different document.",
+      "doc": "One parameterised screen rather than run's three near-identical classes: nothing about rendering the policy differs from rendering the terms, and three classes is three places for a padding change to be applied twice and forgotten once.",
+      "tags": ["free", "new", "first"]
+    },
+    "ai-disclosure": {
+      "code": "L5",
+      "title": "How your coach uses AI",
+      "host": "pushed",
+      "in": "{{legal}} › also the mark in {{coach}}, and beside the switch in {{settings-coach}}",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Reachable from three places, on purpose.",
+      "doc": "Guideline 5.1.2(i), and more acute here than it was for Liftio, which sent numerical aggregates only — Lift sends the lifter's own words about their body and injuries to OpenRouter. Names the provider, what is sent, and what is not. The affordance sits in the coach sheet's top bar and shows mid-intake as well as in conversation, because the questionnaire is where the injury notes are typed.",
+      "tags": ["free", "new", "first"]
+    },
+    "delete-account": {
+      "code": "L6",
+      "title": "Delete account",
+      "host": "pushed",
+      "in": "{{legal}} › Delete account",
+      "out": "App bar back, until it has happened",
+      "next": "Choose a scope, type DELETE",
+      "note": "Opens on the narrower scope, disarmed.",
+      "doc": "Guideline 5.1.1(v). One login serves the whole suite, so \"delete my account\" names two different requests and the app has to ask which — run offers neither and sends no scope at all, which the function reads as everything. The narrow choice still cannot promise the login survives, and this screen says so before the tap rather than after it: if Run holds nothing, a profile with nothing behind it is not kept on somebody's behalf.",
+      "flag": "The done state is not on this board. It exists only after a typed phrase and a tap, so the harness cannot address it without faking a state the code cannot reach. Both scopes were proved against the deployed function on 2026-09-01 instead.",
+      "tags": ["free", "new", "first", "flag"]
+    },
     "sign-in": {
       "code": "S1",
       "title": "Sign in",
@@ -990,7 +1091,7 @@
     },
     "account-signed-out": {
       "code": "A3",
-      "title": "Backup — nine waiting",
+      "title": "Account — nine waiting",
       "host": "pushed",
       "in": "{{settings}} › with training in one place only",
       "out": "App bar back",
@@ -1001,7 +1102,7 @@
     },
     "account-synced": {
       "code": "A4",
-      "title": "Backup — up to date",
+      "title": "Account — up to date",
       "host": "pushed",
       "in": "{{settings-signed-in}} › after a sync",
       "out": "App bar back",
@@ -1010,7 +1111,7 @@
       "doc": "\"Synced\" is only useful if you know when. This card read the wall clock until 2026-08-27, so on a pinned fixture it said a three-minute-old sync was 20 days ago — and got a day worse every day.",
       "tags": ["free"],
       "arch": {
-        "class": "BackupSection",
+        "class": "AccountSection",
         "file": "lib/src/features/sync/presentation/account_section.dart",
         "adrs": ["0004", "0012"],
         "action": "Tapping Sync now",
@@ -1048,7 +1149,7 @@
           {
             "depth": 0,
             "call": "_ago(lastSyncedAt, now)",
-            "symbol": "BackupSection",
+            "symbol": "AccountSection",
             "note": "Rough on purpose: \"3 min ago\" answers \"did that work\"; a timestamp to the second does not. Takes an injected clock so a pinned fixture reads correctly."
           }
         ]
@@ -1176,6 +1277,15 @@
     { "from": "settings-signed-in", "to": "coach-memory", "label": "Coach" },
     { "from": "coach-memory", "to": "coach-memory-empty", "label": "nothing formed" },
     { "from": "coach-memory", "to": "coach-memory-error", "label": "will not load" },
-    { "from": "settings", "to": "credits", "label": "Credits" }
+    { "from": "settings", "to": "credits", "label": "Credits" },
+
+    { "from": "settings", "to": "legal", "label": "Privacy & legal" },
+    { "from": "settings-coach", "to": "settings-coach-off", "label": "the switch" },
+    { "from": "settings-coach", "to": "ai-disclosure", "label": "beside the switch" },
+    { "from": "coach", "to": "ai-disclosure", "label": "the mark in the top bar" },
+    { "from": "legal", "to": "terms", "label": "Terms of use" },
+    { "from": "legal", "to": "privacy", "label": "Privacy policy" },
+    { "from": "legal", "to": "ai-disclosure", "label": "How your coach uses AI" },
+    { "from": "legal", "to": "delete-account", "label": "Delete account" }
   ]
 }
