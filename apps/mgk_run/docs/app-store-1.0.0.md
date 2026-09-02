@@ -97,10 +97,12 @@ has been on a phone**, including the whole payment arc.
 
 App Store Connect will not accept a submission without these. None are code.
 
-- [ ] **A published privacy policy URL.** Still the long pole. The page exists —
-      `docs/legal-site/privacy-policy.html`, generated from
-      `docs/privacy-policy.md`. What remains is hosting it and pasting the URL
-      into the required field.
+- [ ] **A published privacy policy URL.** **The site is built; it is not
+      deployed.** `web/` is a Next.js app serving
+      `mgkfitness.mgkcodes.com/run/privacy`, `/run/medical-disclaimer` and
+      `/run/support`, verified locally end to end. What remains is a Vercel
+      project (root directory `web`), a CNAME, and pasting the URL into the
+      required field.
 
       **Where it goes is settled: `mgkfitness.mgkcodes.com/run`.** A suite
       subdomain with a path per app, which is the shape the naming already
@@ -108,8 +110,9 @@ App Store Connect will not accept a submission without these. None are code.
       as `kPlatformName` owns the bundle id and each app owns the suffix. Lift's
       pages land beside it at `/lift` without a second decision.
 
-      **Settled 2026-09-02: it lives in the MGKCodes site** — `C:\Projects\MGKCodes`,
-      public, Next.js 16 and Tailwind 4 on Vercel.
+      **Settled 2026-09-02, then re-settled the same day: it lives in `web/`,
+      here.** The first answer was the MGKCodes studio site, and reading that
+      repo changed it.
 
       **Two things about that site change the job, and neither was known when
       the subdomain was chosen.** It already hosts app legal pages, and the
@@ -127,12 +130,18 @@ App Store Connect will not accept a submission without these. None are code.
          `tool/build_legal_pages.py` was written to stop, reintroduced in a repo
          where no test can catch it.
 
-      So the open decision is how the page is produced, not where it lives:
-      **teach the generator to emit a `page.tsx`** so the site keeps its design
-      and the generator stays the only writer, or serve the generated static
-      HTML and accept that Run's legal pages look unlike Lift's. Whatever is
-      chosen, `docs/privacy-policy.md` stays the only place the words are
-      edited.
+      Both problems disappear by putting the site in this repository. The
+      generator now writes to `web/public/run/` as well as `docs/legal-site/`,
+      the pages are served **verbatim** rather than reproduced by a component,
+      and `legal_copy_test.dart` reads the served bytes directly — so the third
+      rendering finally joins the two that were already pinned to each other.
+      Confirmed by breaking it: renaming a sub-processor on the served page
+      alone fails the suite. That check is why the site is here and not in a
+      repository of its own.
+
+      The studio site's own Liftio pages were retired the same day, redirected
+      to `getliftio.com` rather than deleted, because a shipped listing carries
+      whatever URL it was submitted with.
 
       It is generated rather than written because
       [naming.md](../../../docs/naming.md) names the trap: **the in-app copy
@@ -163,10 +172,10 @@ App Store Connect will not accept a submission without these. None are code.
       purchase surface, and the paywall does not exist yet (Gate 3, step 7).
       `legal_screen.dart` should gain a fourth row pointing at the same URL, so
       it is reachable from Settings whether or not somebody is mid-purchase.
-- [ ] **A support URL.** Required, and there is not one. `mgkfitness.mgkcodes.com/run`
-      with a contact route on it is enough — the same page can carry support,
-      and the marketing copy when there is any. It appears in the listing *and*
-      in the privacy policy's contact section, so settle it once.
+- [ ] **A support URL.** **Written, not deployed** — `web/app/run/support/page.tsx`,
+      at `mgkfitness.mgkcodes.com/run/support`. It answers the three things a
+      runner actually writes in about, and says plainly which two we cannot fix:
+      Apple takes the payment, so Apple cancels and Apple refunds.
 - [ ] **Clear the remaining publication blocker.** The policy's own banner and
       the generator's `BLOCKERS` list carry four; two are closed:
       1. ~~**Legal review.**~~ **Dropped 2026-09-01** — out of reach for now,

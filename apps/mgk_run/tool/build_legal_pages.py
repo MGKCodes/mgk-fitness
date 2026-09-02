@@ -33,6 +33,17 @@ import sys
 DOCS = pathlib.Path("docs")
 OUT = DOCS / "legal-site"
 
+# The second output, and the one that is actually served. `web/` is the Next.js
+# app behind mgkfitness.mgkcodes.com; files under its `public/` are served
+# verbatim, and `web/next.config.ts` rewrites the extension away so the URL in
+# the App Store listing has no `.html` in it.
+#
+# **Written to both places on purpose.** `docs/legal-site/` is the reviewable
+# artefact that lives next to its source, and `web/public/run/` is the deployed
+# one. They are byte-identical by construction rather than by discipline, which
+# is the only arrangement that survives somebody editing the served copy.
+WEB = pathlib.Path("../../web/public/run")
+
 # Blockers that must clear before either page goes live. Taken from the source
 # document's own draft banner, which is stripped from the rendered output.
 BLOCKERS = [
@@ -225,9 +236,18 @@ def build(src_name: str, out_name: str) -> str:
 </body>
 </html>
 """
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / out_name).write_text(page, encoding="utf-8")
-    return "%s  (%.1f KB)  <- docs/%s" % (out_name, len(page) / 1024, src_name)
+    written = []
+    for target in (OUT, WEB):
+        target.mkdir(parents=True, exist_ok=True)
+        (target / out_name).write_text(page, encoding="utf-8")
+        written.append(str(target / out_name))
+    return "%s  (%.1f KB)  <- docs/%s%s     %s" % (
+        out_name,
+        len(page) / 1024,
+        src_name,
+        NL,
+        (NL + "     ").join(written),
+    )
 
 
 if __name__ == "__main__":

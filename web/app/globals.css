@@ -1,0 +1,117 @@
+/* The same palette the generated legal pages carry, so a visitor moving from
+   /run/support to /run/privacy does not arrive somewhere else. Those pages are
+   written by `build_legal_pages.py` with their CSS inline and no dependencies
+   at all, which is deliberate: a privacy policy that leaks the reader's IP to a
+   font host before they reach the first line is the sort of thing a regulator
+   notices. This file stays on the same terms. System fonts, no webfont, no CDN. */
+:root {
+  color-scheme: light dark;
+  --ink: #14171a;
+  --muted: #5a6169;
+  --ground: #ffffff;
+  --sunk: #f6f7f8;
+  --rule: #e3e6ea;
+  --accent: #7a4f08;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6e9ec;
+    --muted: #9aa1a9;
+    --ground: #101214;
+    --sunk: #191c1f;
+    --rule: #282d32;
+    --accent: #d9a63e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem 6rem;
+}
+
+h1 {
+  font-size: clamp(1.75rem, 4.5vw, 2.4rem);
+  line-height: 1.15;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 2.75rem 0 0.75rem;
+  letter-spacing: -0.01em;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+}
+
+p,
+li {
+  margin: 0 0 0.9rem;
+}
+
+ul {
+  padding-left: 1.25rem;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+
+.card {
+  background: var(--sunk);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  margin: 0 0 0.9rem;
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+footer {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 1.25rem 4rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+}
