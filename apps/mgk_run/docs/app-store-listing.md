@@ -56,12 +56,14 @@ name, the phone carries the app name.
 
 ## Subtitle — 30 characters
 
-Three, because it is a taste call and it sits under the name in every search
-result. All three lead with tracking, because the free half is most of the app
-and the gate copy already makes that promise — a listing that leads with the
+**Settled 2026-09-02: option 1.** The other two are kept because a subtitle is
+cheap to change and the reasoning should outlive the choice.
+
+All three lead with tracking, because the free half is most of the app and the
+gate copy already makes that promise — a listing that leads with the
 subscription and a gate that leads with what is free are two different products.
 
-1. **`Track runs. Get a real plan.`** — 28. *Recommended.* Two sentences, two
+1. **`Track runs. Get a real plan.`** — 28. **Chosen.** Two sentences, two
    halves, in the order a runner meets them.
 2. `Run tracking, and a coach` — 25. Quieter, and says less about the plan.
 3. `Your runs, and a plan for them` — 30. Warmest, and at the limit exactly.
@@ -173,6 +175,19 @@ app, in your own currency, before you buy anything.
 Privacy policy: https://mgkfitness.mgkcodes.com/run/privacy
 Terms of use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 ```
+
+**The terms link is Apple's standard EULA, settled 2026-09-02.** Nothing to
+write, Apple hosts it, and it satisfies Guideline 3.1.2 today.
+[ADR-0005](decisions/0005-license-agpl.md) already establishes why AGPL is
+compatible with distributing through the App Store: that was always a
+multi-copyright-holder problem, and MGKCodes is the sole holder — which is the
+same reason Signal ships under AGPL.
+
+**The privacy policy URL above is provisional.** See
+[app-store-1.0.0.md](app-store-1.0.0.md)'s Gate 2: the page is going into the
+MGKCodes site, whose existing app-legal routes are `/privacy/liftio` rather than
+a subdomain. Settle the route shape before this string goes anywhere near App
+Store Connect.
 
 ## Subscription products
 

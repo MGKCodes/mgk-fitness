@@ -108,13 +108,31 @@ App Store Connect will not accept a submission without these. None are code.
       as `kPlatformName` owns the bundle id and each app owns the suffix. Lift's
       pages land beside it at `/lift` without a second decision.
 
-      What is not settled is which codebase serves it. `C:\Projects\MGKCodes`
-      (public, `MGKCodes/MGKCodes`) is Next.js 16 on Vercel and could carry the
-      subdomain, or the suite could get a site of its own. Either way the
-      generator's output is **static HTML with no build step**, so it drops in as
-      files rather than needing a port — and `tool/build_legal_pages.py` stays
-      the only writer, or the third copy starts drifting again the first time
-      somebody edits the served page instead of the source.
+      **Settled 2026-09-02: it lives in the MGKCodes site** — `C:\Projects\MGKCodes`,
+      public, Next.js 16 and Tailwind 4 on Vercel.
+
+      **Two things about that site change the job, and neither was known when
+      the subdomain was chosen.** It already hosts app legal pages, and the
+      pattern is not what we assumed:
+
+      1. **The routes are paths, not a subdomain** — `mgkcodes.com/privacy/liftio`,
+         `/terms/liftio`, `/support/liftio`. A subdomain needs middleware host
+         rewriting, a DNS record and a Vercel domain, *and* leaves the two apps
+         with different URL shapes for the same kind of page.
+      2. **The prose is hand-typed into JSX.** `app/privacy/liftio/page.tsx` is
+         671 lines and `app/terms/liftio/page.tsx` is 743, with the policy text
+         inline and **nothing testing it against the app**. Copying that pattern
+         for Run makes a *fourth* hand-maintained rendering of a text a reviewer
+         compares word for word — which is the exact failure
+         `tool/build_legal_pages.py` was written to stop, reintroduced in a repo
+         where no test can catch it.
+
+      So the open decision is how the page is produced, not where it lives:
+      **teach the generator to emit a `page.tsx`** so the site keeps its design
+      and the generator stays the only writer, or serve the generated static
+      HTML and accept that Run's legal pages look unlike Lift's. Whatever is
+      chosen, `docs/privacy-policy.md` stays the only place the words are
+      edited.
 
       It is generated rather than written because
       [naming.md](../../../docs/naming.md) names the trap: **the in-app copy
@@ -138,8 +156,13 @@ App Store Connect will not accept a submission without these. None are code.
       2. **A custom EULA**, generated into `legal-site/` alongside the other two
          and surfaced as a fourth row in `legal_screen.dart`.
 
-      Option 1 unless there is a reason. Either way the **paywall must link to
-      it**, and the paywall does not exist yet (Gate 3).
+      **Settled 2026-09-02: Apple's standard EULA.**
+      `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` goes in
+      the listing's terms field and in App Store Connect's EULA field. What is
+      still open is the **in-app** half: Guideline 3.1.2 wants the link on the
+      purchase surface, and the paywall does not exist yet (Gate 3, step 7).
+      `legal_screen.dart` should gain a fourth row pointing at the same URL, so
+      it is reachable from Settings whether or not somebody is mid-purchase.
 - [ ] **A support URL.** Required, and there is not one. `mgkfitness.mgkcodes.com/run`
       with a contact route on it is enough — the same page can carry support,
       and the marketing copy when there is any. It appears in the listing *and*
