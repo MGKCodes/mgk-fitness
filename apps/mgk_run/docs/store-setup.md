@@ -158,6 +158,15 @@ Ready to Submit is also the bar that matters for everything downstream:
 **RevenueCat cannot fetch a product below it**, and neither can sandbox
 StoreKit. Do not submit anything to get past the warning.
 
+**Do not leave items parked in that Draft Submission either.** App Store
+Connect freezes a subscription's editable fields while it is part of a pending
+submission, **including its level**, and the control simply greys out with no
+explanation of why. It looks like something you have to wait for review to
+change, and nothing has been submitted to wait on. Remove the items, or delete
+the draft outright; it is scaffolding and rebuilds itself the moment there is an
+app version to attach. Add them back when you actually submit, which is the one
+time they genuinely do have to be in it.
+
 ## 3. App Store Connect — the two credentials RevenueCat needs
 
 Both are easy to miss and both fail quietly.
