@@ -319,9 +319,12 @@ until this list is finished.**
 
 ## Gate 4 — The listing itself
 
-None of this has been written. It is the part that is easy to leave until the
-build is green and then discover is a day's work of copywriting and image
-production. Character limits are Apple's and are hard.
+**The copy is drafted, in
+[app-store-listing.md](app-store-listing.md)** — one document, so this stays a
+checklist and the writing lives somewhere it can be edited as writing. Every
+character count there is verified by `tool/check_listing.py`, which also refuses
+a description claiming something the code does not do. What is left here is the
+art, and the choices only you can make.
 
 ### App information — set once, not per version
 
@@ -332,11 +335,10 @@ production. Character limits are Apple's and are hard.
       (`CFBundleDisplayName`), which is deliberate — iOS truncates at roughly
       twelve characters and `MGKFitness: Run` and `MGKFitness: Lift` would both
       render as `MGKFitness:…` on the same phone.
-- [ ] **Subtitle** (30) — unwritten. It sits under the name in search results and
-      is the second thing anybody reads. It should say what the app *is*, not how
-      it feels: the free half is a tracker, the paid half is a coach that writes
-      the plan.
-- [ ] **Primary category** Health & Fitness. **Secondary** Sports, or none.
+- [ ] **Subtitle** (30) — **three drafted, one to pick.** Recommended:
+      `Track runs. Get a real plan.` (28). It sits under the name in every search
+      result and is the second thing anybody reads.
+- [x] **Primary category** Health & Fitness, **secondary** Sports.
 - [ ] **Content rights.** Run does not ship third-party content the way Lift does
       (Lift's exercise illustrations are CC BY-SA), but the **MapTiler basemap**
       is third-party and attribution obligations apply. Confirm the in-app map
@@ -347,9 +349,11 @@ production. Character limits are Apple's and are hard.
 
 ### Version information — 1.0.0
 
-- [ ] **Promotional text** (170). Changeable without review, which makes it the
-      right place for anything that will move.
-- [ ] **Description** (4000). Unwritten. What it has to do:
+- [x] **Promotional text** (170) — drafted at 158, which leaves room for a
+      launch line. Changeable without review, so it is the right place for
+      anything that will move.
+- [x] **Description** (4000) — drafted at 3,182, so there is room for a
+      paragraph somebody wants to add. What it had to do, and does:
       - lead with the free half, because it is most of the app and because the
         gate copy already makes that promise — a listing that leads with the
         subscription and a gate that leads with what is free are two different
@@ -360,13 +364,14 @@ production. Character limits are Apple's and are hard.
       - **auto-renewable subscription disclosure**: title, length, price, and
         that payment is charged to the Apple ID — Apple wants this in the
         description as well as on the paywall
-- [ ] **Keywords** (100, comma-separated, no spaces after commas — the spaces
-      count). Do not repeat words already in the name or subtitle; Apple indexes
-      those separately.
+- [x] **Keywords** (100) — drafted at 90. Comma-separated with no space after
+      the comma, because the spaces count; nothing repeated from the name, which
+      Apple indexes separately; and no competitor named, which is a rejection.
+      `check_listing.py` asserts all three.
 - [ ] **Support URL** — Gate 2. Required.
 - [ ] **Marketing URL** — optional; `mgkcodes.com` if there is a page worth
       landing on.
-- [ ] **Copyright** — `2026 MGKCodes Ltd`.
+- [x] **Copyright** — `2026 MGKCodes Ltd`.
 - [ ] **Screenshots.** **Read the exact required set off App Store Connect
       rather than trusting a number written here** — at time of writing it wants
       a 6.9" set (1320×2868 or 1290×2796) and derives the smaller sizes.
@@ -420,6 +425,14 @@ production. Character limits are Apple's and are hard.
       alongside `Distance`, `Pace` and `Mass`, following the **distance** system
       rather than having a unit of its own — kilometres with pounds is an
       ordinary combination, miles with metres of climb is not.
+- [ ] **`NSHealthUpdateUsageDescription` describes a write that never happens.**
+      `health_read_types.dart` requests `HealthDataAccess.READ` for `WORKOUT` and
+      `STEPS` and nothing else, but `Info.plist` carries a purpose string saying
+      *"Save the runs you record here into Health"*. The comment beside it admits
+      the app does not write yet. A purpose string for a permission the binary
+      never exercises is at best noise a reviewer reads and cannot verify, and at
+      worst Guideline 5.1.1 — requesting access it does not use. Either build the
+      write or drop the key; do not ship the sentence.
 - [ ] **Decide what elevation does at launch.** The tiles are built end to end
       and permanently read "not recorded", because there is no barometric source
       ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). That is
@@ -450,6 +463,12 @@ it.
       so anyone who ran it tested the free half of Lift believing it was the paid
       one.
 - [x] **This document was 18 commits stale**, which is what prompted the rewrite.
+- [ ] **`product-spec.md` stopped tracking the build.** It is titled "Runio",
+      is marked **"Pre-alpha (design)"**, and its decisions table promises
+      HealthKit writes the app does not do. It is named as the source-of-truth
+      product definition and is the document a listing would naturally be written
+      from — which is why the listing copy was written against the code instead,
+      and why this is worse than it looks.
 - [ ] **`release-1.0.0.md` is still ~12 commits stale.** Its phases are ticked
       but the account-removal work and everything after it is missing. Lower
       priority than the rest, because it misleads about *history* rather than
