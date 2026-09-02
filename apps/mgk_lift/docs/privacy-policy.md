@@ -1,18 +1,28 @@
 # Privacy Policy — MGKFitness: Lift
 
-> **Draft — legally unreviewed.** The data flows below are accurate as built and
-> were checked against the code and the schema, not written from intent. What is
-> still open before submission is not wording:
->
-> 1. **Legal review** of this document.
-> 2. **A processor agreement with OpenRouter** covering special-category data.
-> 3. **Whether the configured `COACH_MODEL`'s provider trains on inference
->    inputs.** A per-model property, so changing the model can change the answer.
-> 4. The publication date below.
->
-> Items 2 and 3 are the ones that could change what this policy has to say.
+<!-- NOT FOR PUBLICATION — repo notes. HTML comments do not render, so this
+     block is safe in the file that gets published.
 
-**Last updated:** [date] · **Controller:** MGKCodes Ltd · **Contact:**
+     Ships without legal review, by decision (docs/submission-week.md, decision 3).
+     The data flows below were checked against the code and the schema rather than
+     written from intent, which is what makes that decision defensible rather than
+     merely fast.
+
+     Two things remain open and BOTH could change what this policy has to say:
+
+       1. A processor agreement with OpenRouter covering special-category data.
+       2. Whether the configured COACH_MODEL's provider trains on inference
+          inputs. A per-model property, so changing the model can change the
+          answer, and this document deliberately claims neither way until it is
+          confirmed.
+
+     When RevenueCat is wired it becomes a processor and MUST be named below and
+     in legal_copy.dart. test/legal/legal_copy_test.dart has a case that fails if
+     a processor reaches the pipeline without reaching the reader; do not silence
+     it by editing the list without editing the policy.
+-->
+
+**Last updated:** 2 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 ## Summary

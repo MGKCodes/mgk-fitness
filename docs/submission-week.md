@@ -80,10 +80,17 @@ under `flutter run`, which is exactly why nothing has caught it — and Phase 4'
 *"Internal testing track, installed on a real Android device"* has never been
 ticked, so no release build has ever been run.
 
-**Work:** add `<uses-permission android:name="android.permission.INTERNET"/>` to
-the main manifest, then **install a release build on a real device and sign in**.
-The permission is one line; the lesson is that the Android build has never been
-executed, and a manifest fix does not prove the rest of it works.
+**Fixed 2026-09-02**, and proved rather than assumed. The permission is in the
+main manifest with a comment saying why it cannot be tidied away, and a release
+APK was built: the **packaged** manifest —
+`build/app/intermediates/packaged_manifests/release/processReleaseManifestForPackage/` —
+now carries `android.permission.INTERNET` where before it carried only the
+auto-generated receiver permission.
+
+**Still open, and the more important half:** install that release build on a real
+device and sign in. The permission was one line; the finding was that no release
+Android build had ever been executed, and a manifest fix proves nothing about the
+rest of it. That item lives in workstream E.
 
 ### 2. Restore Purchases does not exist
 
@@ -120,9 +127,13 @@ Nothing here was laid out for one. The capture harness says so in as many words 
 *"A phone, because that is the only place this app runs"* — and every plate on the
 screen board is a 390×844 portrait phone.
 
-**Recommendation: set it to `"1"`.** One line. It removes an entire screenshot
-set and an entire class of rejection. Shipping a universal binary nobody has
-opened on an iPad is how a release gets rejected for something unrelated to it.
+**Done 2026-09-02.** Set to `"1"` in all three build configurations. That
+removes an entire screenshot set and an entire class of rejection — shipping a
+universal binary nobody has opened on an iPad is how a release gets rejected for
+something unrelated to it.
+
+Not verifiable from here: the change is in `project.pbxproj` and only an actual
+iOS build confirms Xcode agrees. It is on the next TestFlight cut.
 
 ### 5. Liftio's existing subscribers
 
@@ -215,14 +226,37 @@ Nothing in F or G can be finished until a build can take money.
 - [x] Account deletion, both scopes, proved against production 2026-09-01.
 - [x] Third-party AI disclosure surfaces: the coach sheet mark, the Settings
       switch, the dedicated screen.
-- [ ] **Strip the "draft, legally unreviewed" banners** *(me)*, per decision 3.
-- [ ] **Repoint every `getliftio.com` reference** at
-      `mgkfitness.mgkcodes.com/lift` *(me)*.
+- [x] **Strip the "draft, legally unreviewed" banners.** Done 2026-09-02. They
+      did not simply go: each carried real open items, and deleting the banner
+      would have deleted those with it. They moved into **HTML comments**, which
+      no markdown renderer emits — so the published page is clean while the note
+      stays beside the claim it is about. The two that matter are tracked below
+      rather than left in a comment.
+- [x] **`getliftio.com` references: nothing to repoint.** Checked 2026-09-02, and
+      the answer is better than the item assumed — **the shipped app contains no
+      URLs at all**. The only domains in `legal_copy.dart` are
+      `hello@mgkcodes.com` email addresses. Every remaining `getliftio.com` in the
+      repo is ADR, README or roadmap narrative *about* the domain being retired,
+      where naming it is correct. The user-facing repoint was already a no-op.
+- [x] **Publication date set** to 2 September 2026 in all three documents,
+      replacing `[date]`.
 - [ ] **Publish the documents at `mgkfitness.mgkcodes.com/lift`** *(you)*. The
       privacy policy URL is a required field in **both** App Store Connect and
       Play's Data safety form, which makes a one-page site a submission blocker
       for both stores.
-- [ ] Set the publication date in the documents *(me)*, currently `[date]`.
+- [ ] **A processor agreement with OpenRouter** covering special-category data
+      *(you)*. Carried out of the stripped banners; it was open before and is open
+      still.
+- [ ] **Confirm whether the configured `COACH_MODEL`'s provider trains on
+      inference inputs** *(you)*. A per-model property, so changing the model can
+      change the answer. All three documents deliberately claim neither way until
+      it is settled, which is defensible but not permanent.
+- [ ] **Name RevenueCat as a processor** in `docs/privacy-policy.md` *and*
+      `legal_copy.dart`, in the same commit that wires it *(me)*.
+      `legal_copy_test.dart` has a case — *"names every processor it sends data
+      to"* — that fails when a processor reaches the pipeline without reaching the
+      reader. It is the right tripwire and must be cleared by writing the policy,
+      not by editing the list.
 
 One worry checked and dismissed: Lift invokes only the `coach` function. It never
 calls `daily-ai-summary`, so the Anthropic-direct debt in Phase 5 is not a hole in
@@ -243,8 +277,10 @@ that is what the disclosure says.
 
 - [x] iOS release signing and the `lift-ios-release` Codemagic workflow.
 - [x] Android release signing wired; `lift-android-release` workflow exists.
-- [ ] **Add `INTERNET` to the main Android manifest** *(me)* — blocker 1.
-- [ ] **`TARGETED_DEVICE_FAMILY` → `"1"`** *(me)* — blocker 4.
+- [x] **`INTERNET` in the main Android manifest** — blocker 1. Done and proved
+      against a rebuilt packaged manifest 2026-09-02.
+- [x] **`TARGETED_DEVICE_FAMILY` → `"1"`** — blocker 4. Done 2026-09-02; confirmed
+      by an iOS build rather than a grep is still outstanding.
 - [ ] **Create the upload keystore** *(you)*, back it up permanently, add to
       Codemagic as `liftio_upload`. An upload key Play has seen cannot be swapped
       without Google's intervention.

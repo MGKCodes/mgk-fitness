@@ -1,23 +1,25 @@
 # Terms of Use — MGKFitness: Lift
 
-> **Draft — legally unreviewed.** Written to be accurate about the app as built
-> rather than to be comprehensive, so a reviewer has something true to correct
-> instead of boilerplate to rewrite. Open before submission:
->
-> 1. **Legal review** of this document.
-> 2. **The subscription section**, which cannot be finished until payments exist
->    — Phase 3 of `docs/release-2.0.0.md`. Apple's Guideline 3.1.2(a) wants the
->    auto-renew terms in full, and they are marked below rather than guessed at.
-> 3. Reconciling this with the Terms on `getliftio.com`, which still describe the
->    app this one replaces.
-> 4. The publication date below.
+<!-- NOT FOR PUBLICATION — repo notes. HTML comments do not render.
 
-**Last updated:** [date] · **Provider:** MGKCodes Ltd · **Contact:**
+     Ships without legal review, by decision (docs/submission-week.md, decision 3).
+     Written to be accurate about the app as built rather than comprehensive.
+
+     Still open: the Subscriptions section below, which cannot be finished until
+     payments exist. Guideline 3.1.2(a) wants the auto-renew terms in full, and
+     they are marked in place rather than guessed at.
+
+     No longer open: reconciling with the Terms on getliftio.com. That domain is
+     retired rather than corrected — the web presence folds into
+     mgkfitness.mgkcodes.com/lift, which is where this file is published.
+-->
+
+**Last updated:** 2 September 2026 · **Provider:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
-> The in-app copy of these terms lives in
-> `lib/src/features/legal/domain/legal_copy.dart`. **Change both together** — a
-> regression test (`test/legal/legal_copy_test.dart`) fails if they drift.
+<!-- The in-app copy of these terms lives in
+     lib/src/features/legal/domain/legal_copy.dart. CHANGE BOTH TOGETHER — the
+     regression test test/legal/legal_copy_test.dart fails if they drift. -->
 
 ## Who we are and what this is
 

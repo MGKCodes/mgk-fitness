@@ -1,22 +1,25 @@
 # How your coach uses AI — MGKFitness: Lift
 
-> **Draft — legally unreviewed.** Accurate as built: every claim below was
-> checked against `supabase/functions/coach/` and the app's own coach code
-> rather than written from intent. Open before submission:
->
-> 1. **Legal review** of this document.
-> 2. **A processor agreement with OpenRouter** covering special-category data.
-> 3. **Whether the configured `COACH_MODEL`'s provider trains on inference
->    inputs.** A per-model property, so changing the model can change the answer.
->    Until it is confirmed, this document does not claim either way.
+<!-- NOT FOR PUBLICATION — repo notes. HTML comments do not render.
+
+     Ships without legal review, by decision (docs/submission-week.md, decision 3).
+     Every claim below was checked against supabase/functions/coach/ and the app's
+     own coach code rather than written from intent.
+
+     Still open: a processor agreement with OpenRouter covering special-category
+     data, and whether the configured COACH_MODEL's provider trains on inference
+     inputs. That is a per-model property, so changing the model can change the
+     answer — which is why this document claims neither way rather than
+     guessing.
+-->
 
 Apple Guideline 5.1.2(i) requires that a person knows their data is going to a
 third-party AI service before it goes. This is that disclosure, and it is
 reachable from the coach itself as well as from Settings › Privacy & legal.
 
-> The in-app copy lives in `lib/src/features/legal/domain/legal_copy.dart`.
-> **Change both together** — a regression test
-> (`test/legal/legal_copy_test.dart`) fails if they drift.
+<!-- The in-app copy lives in lib/src/features/legal/domain/legal_copy.dart.
+     CHANGE BOTH TOGETHER — the regression test test/legal/legal_copy_test.dart
+     fails if they drift. -->
 
 ## Who answers when you talk to your coach
 

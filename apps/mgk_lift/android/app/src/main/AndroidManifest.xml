@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- **The release build had no network access until 2026-09-02.**
+
+         Flutter's template declares INTERNET in debug/AndroidManifest.xml and
+         profile/AndroidManifest.xml only, and manifests are merged per build
+         type — so `flutter run` works, a profile build works, and the release
+         build that goes to Play cannot make a single request. Sign-in, sync, the
+         coach, plan generation and photo upload all fail, and every one of them
+         fails at runtime on a user's phone rather than at build time here.
+
+         It was found by reading the merged release manifest rather than by a
+         failure, because no release Android build had ever been run — Phase 4's
+         "installed on a real Android device" is still open. Do not delete this
+         line to tidy the file up; it is not inherited from anywhere. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="Lift"
         android:name="${applicationName}"
