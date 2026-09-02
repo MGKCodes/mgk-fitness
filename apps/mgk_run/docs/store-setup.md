@@ -201,6 +201,14 @@ documentation puts first.
       API key `codemagic.yaml` already uses; put it somewhere you will still
       have it in a year, and keep the **Key ID** with it.
 
+      **The Issuer ID is on a different tab.** RevenueCat asks for the `.p8`,
+      the Key ID and an Issuer ID together, but the In-App Purchase tab shows
+      only the first two. The Issuer ID lives at the top of the **App Store
+      Connect API** tab, above the key list, and is the same value for every key
+      you own because it identifies the *team* rather than a key. Its field in
+      RevenueCat carries a placeholder that looks exactly like a real UUID, so
+      an empty field reads as a filled one.
+
       **Name it for the team, not for Run.** These keys are issued to the
       account and sign App Store Server API requests for every app you own, so
       an app-specific name describes a scope it does not have and invites a
