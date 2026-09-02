@@ -84,8 +84,12 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      expect(find.textContaining('£1.00 / month'), findsOneWidget);
-      expect(find.textContaining('£3.00 / month'), findsOneWidget);
+      // The fixture's figures, not the app's. `FakePurchases.demoOffers` is a
+      // stand-in for a storefront, and the assertion is that whatever it says
+      // reaches the screen -- which is why it is priced at the real points
+      // rather than the round numbers ADR-0029 reasoned with.
+      expect(find.textContaining('£0.99 / month'), findsOneWidget);
+      expect(find.textContaining('£2.99 / month'), findsOneWidget);
     });
 
     testWidgets('a link to the terms of use', (tester) async {
@@ -162,7 +166,7 @@ void main() {
 
     expect(find.textContaining(r'$1.29 / month'), findsOneWidget);
     expect(find.textContaining(kCoachPrice), findsNothing);
-    expect(find.textContaining(kSharpCoachPrice), findsNothing);
+    expect(find.textContaining(kPremiumCoachPrice), findsNothing);
   });
 
   group('buying', () {
@@ -337,7 +341,7 @@ void main() {
     testWidgets('quotes no price either way', (tester) async {
       await pumpGate(tester, canSell: true);
       expect(find.textContaining(kCoachPrice), findsNothing);
-      expect(find.textContaining(kSharpCoachPrice), findsNothing);
+      expect(find.textContaining(kPremiumCoachPrice), findsNothing);
     });
   });
 }

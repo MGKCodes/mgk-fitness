@@ -51,15 +51,15 @@ class FakePurchases implements PurchaseClient {
       description:
           'A training plan built around your running, and a coach that '
           'adjusts it every week.',
-      price: '£1.00',
+      price: '£0.99',
     ),
     CoachOffer(
-      id: 'run.coach.sharp.monthly',
-      title: 'Coach, sharper',
+      id: 'run.coach.premium.monthly',
+      title: 'Premium Coach',
       description:
           'The same coach, thinking harder about your week. A better model '
           'behind every plan and every answer.',
-      price: '£3.00',
+      price: '£2.99',
     ),
   ];
 

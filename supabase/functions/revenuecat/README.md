@@ -30,7 +30,7 @@ would reject every event with a 401 that looks like a RevenueCat problem.
 supabase secrets set REVENUECAT_WEBHOOK_SECRET='<a long random string>'
 supabase secrets set REVENUECAT_PRODUCTS='{
   "run.coach.monthly":       {"app":"run",  "product":"paid"},
-  "run.coach.sharp.monthly": {"app":"run",  "product":"premium"},
+  "run.coach.premium.monthly": {"app":"run",  "product":"premium"},
   "lift.coach.monthly":      {"app":"lift", "product":"paid"}
 }'
 ```
@@ -51,7 +51,7 @@ in production lets anybody with a tester account grant themselves a coach.
 
 RevenueCat dashboard ▸ Integrations ▸ Webhooks:
 
-- **URL** `https://<project>.supabase.co/functions/v1/revenuecat`
+- **URL** `https://cwpwzxjjhxbkwhrgnasn.supabase.co/functions/v1/revenuecat`
 - **Authorization header** the value of `REVENUECAT_WEBHOOK_SECRET`, verbatim.
   RevenueCat sends it as-is, so it is compared as-is — no `Bearer` prefix.
 

@@ -19,7 +19,7 @@ const USER = "3f1a2b4c-5d6e-4f70-8a91-b2c3d4e5f607";
 
 const PRODUCTS = productMap(JSON.stringify({
   "run.coach.monthly": { app: "run", product: "paid" },
-  "run.coach.sharp.monthly": { app: "run", product: "premium" },
+  "run.coach.premium.monthly": { app: "run", product: "premium" },
   "lift.coach.monthly": { app: "lift", product: "paid" },
 }));
 
@@ -64,7 +64,7 @@ Deno.test("a purchase becomes an active row for the product's own app", () => {
   assertEquals(row.event_ms, 1_700_000_000_000);
   assertEquals(row.expires_at, new Date(1_702_592_000_000).toISOString());
 
-  assertEquals(written({ product_id: "run.coach.sharp.monthly" }).product, "premium");
+  assertEquals(written({ product_id: "run.coach.premium.monthly" }).product, "premium");
   assertEquals(written({ product_id: "lift.coach.monthly" }).app, "lift");
 });
 

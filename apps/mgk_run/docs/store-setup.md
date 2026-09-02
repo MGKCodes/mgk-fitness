@@ -86,13 +86,13 @@ App Store Connect ▸ your app ▸ Subscriptions.
 
 Then, per product:
 
-| | Coach | Sharper coach |
+| | Coach | Premium Coach |
 |---|---|---|
-| Reference name | Run Coach Monthly | Run Coach Sharp Monthly |
-| Product ID | `run.coach.monthly` | `run.coach.sharp.monthly` |
+| Reference name | Run Coach Monthly | Run Coach Premium Monthly |
+| Product ID | `run.coach.monthly` | `run.coach.premium.monthly` |
 | Duration | 1 month | 1 month |
-| Price | £1 | £3 |
-| Display name | Coach | Coach, sharper |
+| Price | £0.99 | £2.99 |
+| Display name | Coach | Premium Coach |
 
 Descriptions are drafted in
 [app-store-listing.md](app-store-listing.md#subscription-products).
@@ -107,7 +107,7 @@ mirrored into `REVENUECAT_PRODUCTS` in step 6.
       is what this screen looks like; take the real one off a device.
 - [ ] **Review notes per product.** Say the coach is the paid half and recording
       is free, so a reviewer is not hunting for what changed.
-- [ ] **No free trial, no introductory offer.** Deliberate: a trial on a £1
+- [ ] **No free trial, no introductory offer.** Deliberate: a trial on a £0.99
       product costs more in support than it earns. Revisit later, not now.
 - [ ] Let Apple's matrix set every other storefront's price. The app never shows
       a figure of its own, so this is safe by construction.
@@ -147,7 +147,7 @@ everything else looks configured.
 
 RevenueCat ▸ Integrations ▸ Webhooks.
 
-- [ ] **URL** `https://<project-ref>.supabase.co/functions/v1/revenuecat`
+- [ ] **URL** `https://cwpwzxjjhxbkwhrgnasn.supabase.co/functions/v1/revenuecat`
 - [ ] **Authorization header** — the value of `REVENUECAT_WEBHOOK_SECRET`,
       **verbatim**. No `Bearer` prefix: RevenueCat sends the header as-is and
       the function compares it as-is.
@@ -163,7 +163,7 @@ supabase functions deploy revenuecat --no-verify-jwt
 supabase secrets set REVENUECAT_WEBHOOK_SECRET='<a long random string>'
 supabase secrets set REVENUECAT_PRODUCTS='{
   "run.coach.monthly":       {"app":"run",  "product":"paid"},
-  "run.coach.sharp.monthly": {"app":"run",  "product":"premium"}
+  "run.coach.premium.monthly": {"app":"run",  "product":"premium"}
 }'
 ```
 

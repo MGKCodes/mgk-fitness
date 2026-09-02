@@ -47,8 +47,14 @@ library;
 /// The coach, monthly. `product = 'paid'`, model tier `standard`.
 const String kCoachPrice = '£1';
 
-/// The sharper coach, monthly. `product = 'premium'`, model tier `sharp`.
-const String kSharpCoachPrice = '£3';
+/// The premium coach, monthly. `product = 'premium'`, model tier `sharp`.
+///
+/// Named for the **product**, not the model tier. `core.entitlements.product`
+/// has said `premium` since the table was written, and the App Store calls it
+/// Premium Coach, so the two names anybody ever says out loud now agree. The
+/// third name, `sharp`, stays where it belongs: it is a model tier in
+/// `entitlements.ts`, and a runner never meets it.
+const String kPremiumCoachPrice = '£3';
 
 /// What a plan costs, in the coach's voice.
 ///

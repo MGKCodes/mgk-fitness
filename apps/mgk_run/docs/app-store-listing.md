@@ -194,19 +194,19 @@ Store Connect.
 One group, because the tiers are alternatives and a runner should be able to
 move between them without a second purchase.
 
-| | Coach | Sharper coach |
+| | Coach | Premium Coach |
 |---|---|---|
 | Entitlement | `paid` | `premium` |
 | Model tier | `standard` | `sharp` |
-| Price | £1 / month | £3 / month |
-| Display name | Coach | Coach, sharper |
+| Price | £0.99 / month | £2.99 / month |
+| Display name | Coach | Premium Coach |
 | Duration | 1 month | 1 month |
 
 **Description** (each needs one, and each needs a review screenshot):
 
 - **Coach** — "A training plan built around your running, and a coach that
   adjusts it every week."
-- **Coach, sharper** — "The same coach, thinking harder about your week. A
+- **Premium Coach** — "The same coach, thinking harder about your week. A
   better model behind every plan and every answer."
 
 Prices are [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md)'s, and

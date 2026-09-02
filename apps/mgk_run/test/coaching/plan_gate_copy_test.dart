@@ -55,7 +55,7 @@ void main() {
       // of these, so a change here that is not mirrored there makes the
       // ceilings the wrong size.
       expect(kCoachPrice, '£1');
-      expect(kSharpCoachPrice, '£3');
+      expect(kPremiumCoachPrice, '£3');
     });
 
     test('still quotes no quota, because none has been agreed', () {
