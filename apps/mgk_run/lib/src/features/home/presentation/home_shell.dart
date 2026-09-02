@@ -1579,6 +1579,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // plan (ADR-0017).
                 onOpenPlan: () => setState(() => _index = _planTab),
                 onOpenCoach: _chat == null ? null : _openCoach,
+                // The same door the coach mark opens (ADR-0030), reached from
+                // the other end. The locked last-run tile tells a free runner
+                // to upgrade, and `onUpgrade` is what turns that sentence into
+                // something tappable — null hides the offer, so until this was
+                // passed the shipping app said "upgrade" and gave nobody a way
+                // to. Only `last_run_test.dart` ever supplied one.
+                onUpgrade: () => unawaited(CoachGateSheet.show(context)),
                 today: _todayView,
                 thisWeek: _thisWeek,
                 note: _note,
