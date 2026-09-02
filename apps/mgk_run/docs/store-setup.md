@@ -171,6 +171,12 @@ time they genuinely do have to be in it.
 
 ### As configured, 2026-09-02
 
+**Enrolled in the Apple Small Business Program since 2026-06-01**, so
+[ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md) holds as written: the
+15% rate, £0.99 to £0.70 net, and every ceiling in `limits.ts` at roughly three
+quarters of that. At the standard 30% they would each have been about 18%
+oversized.
+
 Both products reached **Ready to Submit**. Check RevenueCat against this table
 rather than against the one above, which is what we meant to do.
 
@@ -191,7 +197,7 @@ It matches the listing name, `MGKFitness: Run`.
 Three, not two, and the one that matters is not the one Apple's own
 documentation puts first.
 
-- [ ] **In-App Purchase Key — the required one.** `purchases_flutter` 10.x is
+- [x] **In-App Purchase Key — the required one.** `purchases_flutter` 10.x is
       well past v5, so this app is on **StoreKit 2**, and RevenueCat's own form
       says it plainly: *"transactions will fail to be recorded without this key
       being set. This can result in users not accessing the purchases they are
@@ -218,7 +224,7 @@ documentation puts first.
 
       Distinct from the App Store Connect API key the build uses (`frunt_asc`).
       That one has the wrong scope for this; do not reuse it.
-- [ ] **App-Specific Shared Secret — legacy, and optional.** App Store Connect ▸
+- [x] **App-Specific Shared Secret — legacy, and optional.** App Store Connect ▸
       your app ▸ App Information. RevenueCat labels this field
       **"(Legacy)"**: it is the older receipt-validation path, superseded by the
       key above. Fill it in if you like; it is not what makes StoreKit 2 work.
@@ -231,7 +237,7 @@ documentation puts first.
 
 ## 4. RevenueCat — project, products, entitlements, offering
 
-- [ ] **A new project for the suite, not Liftio's.** RevenueCat scopes
+- [x] **A new project for the suite, not Liftio's.** RevenueCat scopes
       entitlements and offerings per project, and the backend is already built
       for one project serving both apps: `core.entitlements.app` is
       `('lift', 'run')`, `REVENUECAT_PRODUCTS` maps a product id to
@@ -241,7 +247,7 @@ documentation puts first.
       replaced — different product ids, its own webhook wiring. Folding Run into
       it would have the new suite sharing a webhook secret with a retired app.
       Name the project `mgk-fitness`, and add Lift to it when the rewrite ships.
-- [ ] An **App** in that project, with bundle id `com.mgkcodes.fitness.run`.
+- [x] An **App** in that project, with bundle id `com.mgkcodes.fitness.run`.
 
       **Name it `Run`, not after the project.** RevenueCat defaults the name to
       the project's, and Lift will be a second app in the same project — two
@@ -250,7 +256,7 @@ documentation puts first.
       Leave **Custom URL Scheme** blank: it exists for RevenueCat's hosted
       paywall previews, and the paywall here is `PurchaseScreen`, built in
       Flutter.
-- [ ] **Apple Small Business Program — set the start date if enrolled.** Not
+- [x] **Apple Small Business Program — set the start date if enrolled.** Not
       cosmetic. [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md) does its
       whole arithmetic at Apple's **15%** small-business rate, £0.99 to £0.70
       net, and every ceiling in `supabase/functions/coach/limits.ts` is roughly
@@ -264,6 +270,12 @@ documentation puts first.
       maps a *product id* to a tier. Create them if you like the reporting; do
       not expect them to change what the app grants.
 - [ ] **An offering, marked CURRENT, containing a package per product.**
+
+      Two monthly products cannot both be `$rc_monthly`, so at least one package
+      needs a custom identifier. **Nothing in the app reads them**:
+      `RevenueCatPurchases.offers()` maps by `storeProduct.identifier`, so any
+      names work. The **order does** matter, because `availablePackages` comes
+      back in the order configured and the paywall renders it in that order.
 
 **This last one is the trap.** `RevenueCatPurchases.offers()` reads
 `Offerings.current.availablePackages`. Products that exist but sit in no current
