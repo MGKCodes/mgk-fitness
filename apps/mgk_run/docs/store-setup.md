@@ -313,6 +313,16 @@ RevenueCat ▸ Integrations ▸ Webhooks.
 - [x] **Authorization header** — the value of `REVENUECAT_WEBHOOK_SECRET`,
       **verbatim**. No `Bearer` prefix: RevenueCat sends the header as-is and
       the function compares it as-is.
+- [x] **Send a test event and read the log.** RevenueCat ▸ the webhook ▸ Send
+      test event. Expect **200** with `{"ok":true,"ignored":"unmapped_product"}`
+      and a log line reading `unmapped_product: test_product` — `test_product`
+      being the dummy id RevenueCat sends. A 401 means the header does not match
+      Supabase; a 404 means the URL is wrong.
+
+      **This does not prove `REVENUECAT_PRODUCTS` is right**, only that it is not
+      implicated. The sandbox purchase in step 8 is what proves it, with a real
+      product id — and it will name the id if it fails, which is the point of
+      logging it.
 - [x] Leave the event set at everything. The function ignores what it does not
       handle and answers 200 anyway, because a webhook that 4xxs an event it
       chose not to handle gets retried until RevenueCat gives up and alerts.
@@ -398,7 +408,7 @@ before changing anything.
 | Reason | What it means | Fix |
 |---|---|---|
 | `unknown_app_user_id` | The event's `app_user_id` is not a UUID. Almost always an `RCAnonymousID:` — a purchase made before `Purchases.logIn` ran. | Sign in to the app before buying. The app calls `identify` when a session exists. |
-| `unmapped_product` | The product id is not a key in `REVENUECAT_PRODUCTS`. | Mirror the App Store Connect ids into the secret. Exactly, including case. |
+| `unmapped_product` | The product id is not a key in `REVENUECAT_PRODUCTS`. **The log names it.** `test_product` is RevenueCat's own test event and is fine; anything beginning `run.` is a real mismatch. | Mirror the App Store Connect ids into the secret. Exactly, including case. |
 | `sandbox` | A sandbox purchase, and `REVENUECAT_ACCEPT_SANDBOX` is not `true`. | Set it for testing. **Unset it for production.** |
 | `unhandled_type` | An event type the map does not carry. | Usually fine and deliberate. RevenueCat adds types; guessing at one is worse than ignoring it. |
 | `no_event_timestamp` | No `event_timestamp_ms`. | Malformed. Check you are pointed at the right URL. |
