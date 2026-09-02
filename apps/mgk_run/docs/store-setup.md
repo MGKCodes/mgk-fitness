@@ -265,10 +265,27 @@ documentation puts first.
 - [ ] Paste the **shared secret** and upload the **in-app purchase key** from
       step 3.
 - [ ] **Import the two products.** They must exist in App Store Connect first.
-- [ ] **Entitlements.** RevenueCat's own entitlement identifiers are for its
-      dashboard and its SDK, and **our backend does not read them** — the webhook
-      maps a *product id* to a tier. Create them if you like the reporting; do
-      not expect them to change what the app grants.
+- [ ] **Entitlements, named `paid` and `premium`.** One per product, matching
+      the product ids one to one.
+
+      **Our backend does not read them** — the webhook maps a *product id* to a
+      tier, so these grant nothing. They are worth having anyway, for the moment
+      somebody writes in saying they paid and have no coach: RevenueCat's
+      customer page is the first place you look, and it should answer "what does
+      this person have" without you doing the mapping in your head under
+      pressure.
+
+      **The names are the whole point.** `paid` and `premium` are the values
+      `core.entitlements.product` takes and the values `REVENUECAT_PRODUCTS`
+      maps to, so the two configurations are comparable at a glance rather than
+      being two plausible-looking mappings that disagree.
+
+      This is normally exactly the second-source-of-truth drift this repository
+      keeps removing, and it is safe here for one specific reason: **the app
+      cannot read them even by accident.** `PurchaseClient` has no
+      `isSubscribed`, `restore()` reads `activeSubscriptions` rather than
+      `CustomerInfo.entitlements`, and the gate is `tierFor` server-side. Add a
+      client-side entitlement read and this stops being free.
 - [ ] **An offering, marked CURRENT, containing a package per product.**
 
       Two monthly products cannot both be `$rc_monthly`, so at least one package
