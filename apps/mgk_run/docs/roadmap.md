@@ -63,7 +63,7 @@ context, readiness inputs (resting HR / HRV / sleep).
 ## Definition of "v1 shippable"
 
 Phases A and B are complete. **What "shippable" now means is
-[app-store-1.0.0.md](app-store-1.0.0.md)**, which is the live checklist — five
+[app-store-1.0.0.md](app-store-1.0.0.md)**, which is the live checklist — six
 gates from a green build to a live listing. This section is kept as the original
 statement of intent rather than maintained alongside it, because two checklists
 are how one of them goes stale.
