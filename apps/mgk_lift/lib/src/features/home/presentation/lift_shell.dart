@@ -6,6 +6,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
+import '../../entitlement/domain/entitlement.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
@@ -68,6 +69,7 @@ class LiftShell extends StatefulWidget {
     this.planner,
     this.plans,
     this.isEntitled = false,
+    this.entitlements,
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
@@ -152,6 +154,16 @@ class LiftShell extends StatefulWidget {
   /// only decides what the app *shows*: Plan was hardcoded to the sales pitch,
   /// so somebody who had just paid still saw the offer.
   final bool isEntitled;
+
+  /// Where the live answer comes from. **Null keeps [isEntitled] as given**,
+  /// which is what the preview and the widget tests rely on — they state the
+  /// tier they want to render rather than standing up a server to be told it.
+  ///
+  /// Non-null makes [isEntitled] the *starting* value and this the truth after
+  /// the first resolve. Production passes one; before 2026-09-02 nothing did,
+  /// which is why every account in production took the `false` default no
+  /// matter what `core.entitlements` said about them.
+  final EntitlementGate? entitlements;
 
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
@@ -257,6 +269,12 @@ class _LiftShellState extends State<LiftShell> {
   /// behind a tap that cannot happen that fast.
   bool _useCoach = true;
 
+  /// What the paid surfaces are rendered against. Starts at whatever was passed
+  /// and is corrected by the first resolve, on the same reasoning [_useCoach]
+  /// gives for starting optimistic: the window is a frame or two, and nothing
+  /// behind the gate can be reached inside it.
+  late bool _entitled = widget.isEntitled;
+
   @override
   void initState() {
     super.initState();
@@ -266,6 +284,7 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_refreshLog());
     unawaited(_refreshPending());
     unawaited(_refreshPlan());
+    unawaited(_refreshEntitlement());
 
     final auth = widget.auth;
     if (auth != null) {
@@ -281,6 +300,10 @@ class _LiftShellState extends State<LiftShell> {
         // signing in. Runs on sign-out too: the device value is then the only
         // answer, and it should be the one on screen.
         unawaited(_loadUnits());
+        // Entitlements are per account, so both directions matter. Signing in
+        // is when the paid half can appear; signing out is when it must stop,
+        // and must stop for the *device* rather than only for this frame.
+        unawaited(_refreshEntitlement(signedOut: account == null));
       });
     }
   }
@@ -289,6 +312,20 @@ class _LiftShellState extends State<LiftShell> {
   void dispose() {
     unawaited(_authSub?.cancel());
     super.dispose();
+  }
+
+  /// Resolves what the paid surfaces should show.
+  ///
+  /// No gate means the caller stated the answer — the preview and the widget
+  /// tests — so this does nothing rather than overwriting them with a `false`
+  /// obtained from a server neither of them has.
+  Future<void> _refreshEntitlement({bool signedOut = false}) async {
+    final gate = widget.entitlements;
+    if (gate == null) return;
+    if (signedOut) await gate.forget();
+    final entitled = await gate.isEntitled();
+    if (!mounted || entitled == _entitled) return;
+    setState(() => _entitled = entitled);
   }
 
   Future<void> _openSignIn() async {
@@ -326,7 +363,7 @@ class _LiftShellState extends State<LiftShell> {
     // and its result is the one Settings reports — a photo upload that stalls
     // must not make a successful log backup look like a failure.
     final photos = widget.photoBackup;
-    if (photos != null && widget.isEntitled && !report.isFailure) {
+    if (photos != null && _entitled && !report.isFailure) {
       await photos.run();
     }
 
@@ -418,7 +455,7 @@ class _LiftShellState extends State<LiftShell> {
                       : _openPlannedSession,
                 ),
                 PlanSurface(
-                  isEntitled: widget.isEntitled,
+                  isEntitled: _entitled,
                   plan: _plan,
                   today: widget.today,
                   unit: _units.mass,
@@ -547,7 +584,7 @@ class _LiftShellState extends State<LiftShell> {
       await _openSignIn();
       return;
     }
-    if (!widget.isEntitled) {
+    if (!_entitled) {
       _go(_planTab);
       return;
     }
@@ -571,7 +608,7 @@ class _LiftShellState extends State<LiftShell> {
         builder: (_) => PhotosSurface(
           library: library,
           source: widget.photoSource,
-          isEntitled: widget.isEntitled,
+          isEntitled: _entitled,
         ),
       ),
     );

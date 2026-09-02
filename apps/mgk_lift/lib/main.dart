@@ -17,6 +17,9 @@ import 'src/features/photos/data/drift_photo_library.dart';
 import 'src/features/photos/data/supabase_photo_sync.dart';
 import 'src/features/settings/data/local_coach_preference.dart';
 import 'src/features/settings/data/local_unit_preferences.dart';
+import 'src/features/entitlement/data/local_entitlement_cache.dart';
+import 'src/features/entitlement/data/supabase_entitlements.dart';
+import 'src/features/entitlement/domain/entitlement.dart';
 import 'src/features/settings/data/supabase_unit_preferences.dart';
 import 'src/features/settings/data/unit_preferences_repository.dart';
 import 'src/features/stats/data/drift_session_history.dart';
@@ -105,6 +108,21 @@ class MgkLiftApp extends StatelessWidget {
             ? null
             : SupabasePhotoSync(db, supabase),
         auth: supabase == null ? null : SupabaseAuth(supabase),
+        // **The wire that was missing until 2026-09-02.** `isEntitled` defaulted
+        // to false and nothing ever passed it, so the paid half was invisible to
+        // everybody — including the account that actually holds one. The server
+        // knew and the screen did not.
+        //
+        // The cache is what stops a bad connection reading as "has not paid".
+        // It grants nothing: the coach function re-reads `core.entitlements`
+        // under `service_role` before spending, so the worst a stale `true` buys
+        // is a nicer-looking app and a refusal.
+        entitlements: supabase == null
+            ? null
+            : EntitlementGate(
+                source: SupabaseEntitlements(client: supabase),
+                cache: LocalEntitlementCache(),
+              ),
         sync: (db == null || supabase == null)
             ? null
             : SupabaseSync(db, supabase),

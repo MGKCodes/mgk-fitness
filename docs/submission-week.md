@@ -15,7 +15,7 @@ the item and say why**.
 
 This does not replace [release-2.0.0.md](release-2.0.0.md). That file holds the
 reasoning for each phase. This one is the ordering, the exhaustive per-store
-submission checklists, and **five blockers that appear on no phase of it**.
+submission checklists, and **six blockers that appear on no phase of it**.
 
 ---
 
@@ -62,9 +62,12 @@ not apply.
 
 ---
 
-## Five blockers, found by reading the code
+## Six blockers, found by reading the code
 
-None of these are on `release-2.0.0.md`. Ordered by what they cost if missed.
+None of these are on `release-2.0.0.md`. Ordered by what they cost if missed —
+**except the sixth, which belongs second and is numbered last only because the
+others are cross-referenced by number throughout this file.** Renumbering them
+would quietly break every reference rather than loudly break one.
 
 ### 1. The Android release build has no network access
 
@@ -166,6 +169,52 @@ deleting them**, map the legacy product ids to `product = 'paid'` in the webhook
 and backfill entitlement rows for anyone still active.
 `core.grant_entitlement()` covers whoever slips through.
 
+### 6. Nothing read the entitlement, so nobody could have a paid account
+
+**Belongs at number two by cost.** `LiftShell.isEntitled` has carried the doc
+comment *"Read from `core.entitlements`"* since it was written, and until
+2026-09-02 nothing read it. `main.dart` never passed the flag, so it took its
+`false` default, and there was **no entitlement type anywhere in `lib/`** — no
+repository, no model, nothing that had ever issued the query.
+
+So every account in production was unentitled as far as the app was concerned,
+including the one holding `lift` / `paid` / `active`. The server knew and the
+screen did not: `fc62fdc` proved the coach answers by probing the deployed
+function directly, which is exactly why this survived — the paid half was never
+tested *through the app*.
+
+It also reframes blocker 3. `onSubscribe` wired to nothing is the purchase half;
+this is the entitlement half. **A perfect purchase flow on top of this would have
+taken somebody's money and changed no screen**, and the failure would have looked
+like a payments bug rather than a missing read.
+
+And it compounds blocker 5: Liftio's existing subscribers would have opened
+2.0.0 and been asked to subscribe again no matter what was in the table.
+
+**Fixed 2026-09-02.** A new `entitlement` feature: `Entitlement` and
+`EntitlementTier` in the domain, `SupabaseEntitlements` reading
+`core.entitlements` scoped to `app = 'lift'`, a device cache so a bad connection
+does not read as "has not paid", and an `EntitlementGate` resolving live answer →
+last known → free. Wired through `main.dart` and resolved by the shell on launch,
+on sign-in and on sign-out.
+
+Three distinctions the implementation turns on, each of which had a way of going
+wrong:
+
+- **Null is not false.** "Cannot say" (signed out, timed out, failed) and "no row"
+  are different answers. Collapsing them is what shows a paywall to a paying
+  customer in a tunnel.
+- **The cache grants nothing.** It decides presentation only; the coach function
+  re-reads the table under `service_role` before spending, so a stale `true` buys
+  a nicer screen and a refusal.
+- **Sign-out forgets rather than writes false**, or the next person to sign in on
+  that device inherits the previous account's paid screens.
+
+`grace` is pinned as *not* granting, matching the rule the table states about
+itself — and flagged in a test, because when the RevenueCat webhook starts
+producing that value the store's intent is that access continues, and that change
+should be deliberate.
+
 ---
 
 ## Workstreams
@@ -207,6 +256,11 @@ Nothing in F or G can be finished until a build can take money.
       shared-secret check, writing under `service_role`. Renewal, expiry, grace,
       refund and revocation arrive as one event shape. Maps legacy Liftio product
       ids to `paid`.
+- [x] **Read the entitlement at all.** Done 2026-09-02 — blocker 6, and the
+      thing every other item in this workstream was silently assuming existed.
+      `EntitlementGate` resolves live → cached → free, wired through `main.dart`
+      and refreshed on launch, sign-in and sign-out. 13 tests, one of which is
+      the widget-level regression that would have caught the original gap.
 - [ ] **The client never trusts the SDK for access** *(me)*. RevenueCat's cached
       customer info decides what the *paywall* shows; `core.entitlements` decides
       what the *server* serves, which is already how the coach function gates.
