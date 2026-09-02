@@ -165,13 +165,13 @@ App Store Connect will not accept a submission without these. None are code.
       2. **A custom EULA**, generated into `legal-site/` alongside the other two
          and surfaced as a fourth row in `legal_screen.dart`.
 
-**Settled 2026-09-02: Apple's standard EULA.**
+      **Settled 2026-09-02: Apple's standard EULA.**
       `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` goes in
-      the listing's terms field and in App Store Connect's EULA field. What is
-      still open is the **in-app** half: Guideline 3.1.2 wants the link on the
-      purchase surface, and the paywall does not exist yet (Gate 3, step 7).
-      `legal_screen.dart` should gain a fourth row pointing at the same URL, so
-      it is reachable from Settings whether or not somebody is mid-purchase.
+      the listing's terms field and in App Store Connect's EULA field. **The
+      in-app half is built**: the paywall links to it, and
+      `purchase_screen_test.dart` asserts the link is there. Still owed is a
+      fourth row in `legal_screen.dart` pointing at the same URL, so it is
+      reachable from Settings by somebody who is not mid-purchase.
 - [ ] **A support URL.** **Written, not deployed** — `web/app/run/support/page.tsx`,
       at `mgkfitness.mgkcodes.com/run/support`. It answers the three things a
       runner actually writes in about, and says plainly which two we cannot fix:
