@@ -35,6 +35,10 @@ as decisions rather than drift.
 4. **No annual tier.** Liftio sold £19.99/yr beside its monthly. 2.0.0 ships two
    monthly tiers only — £1 Coaching and £3 Premium. This is now settled rather
    than omitted; revisit when there is renewal data to price an annual against.
+5. **The web presence lives in this repo**, under a new top-level `web/` —
+   legal, support and marketing for Lift, together. Added 2026-09-02, replacing
+   the assumption that a page would be stood up somewhere else. What it changes
+   is more than where files sit; see workstream H.
 
 ## The two submissions are not the same shape
 
@@ -167,7 +171,8 @@ and backfill entitlement rows for anyone still active.
 ## Workstreams
 
 Ordered by dependency. **B blocks almost everything else**, which is why it is
-first; A is already done and listed so the foundation is visible.
+first; A is already done and listed so the foundation is visible. H arrived on
+2026-09-02 when the web presence moved into this repo.
 
 Owner is `you` where it needs an account I cannot reach, `me` where it is code,
 and `both` where it needs a device and a dashboard at the same time.
@@ -240,10 +245,10 @@ Nothing in F or G can be finished until a build can take money.
       where naming it is correct. The user-facing repoint was already a no-op.
 - [x] **Publication date set** to 2 September 2026 in all three documents,
       replacing `[date]`.
-- [ ] **Publish the documents at `mgkfitness.mgkcodes.com/lift`** *(you)*. The
-      privacy policy URL is a required field in **both** App Store Connect and
-      Play's Data safety form, which makes a one-page site a submission blocker
-      for both stores.
+- [ ] **Publish the documents at `mgkfitness.mgkcodes.com/lift`.** A workstream
+      H item now rather than a dashboard one, because the site moved into this
+      repo. Still a submission blocker for both stores, and for two required
+      fields rather than one — see H.
 - [ ] **A processor agreement with OpenRouter** covering special-category data
       *(you)*. Carried out of the stripped banners; it was open before and is open
       still.
@@ -339,6 +344,51 @@ deadline.
 - [ ] **A full pass of `testflight-2.0.0-test-sheet.md`** *(you)* on the new
       build, with an entitled account.
 
+### H. The web presence — `web/`
+
+Added 2026-09-02. Lift's legal, support and marketing pages live in a new
+top-level `web/` in this repo rather than on a site of their own. `getliftio.com`
+is retired; its Next.js source stays at `C:/Projects/getliftio.com` as a content
+and design reference, not as a thing to keep running.
+
+**The reason to care that it is in *this* repo is the legal text, not the
+convenience.** Those documents already exist twice — `apps/mgk_lift/docs/*.md`
+and `legal_copy.dart` — and `legal_copy_test.dart` is the tripwire that stops the
+two drifting. A third copy under `web/` would have no tripwire at all, and it
+would be the copy the public reads. `getliftio.com` shows precisely how that
+ends: it carries its own `privacy-policy.md` and `terms-of-service.md`, and they
+now describe an app that no longer exists.
+
+**Two required store fields point here, not one.** The privacy policy URL was
+already known. The **support URL** is required of every app by App Store Connect
+and was missing from this plan entirely until the site moved into the repo and
+made the omission obvious.
+
+- [ ] **The web build reads `apps/mgk_lift/docs/*.md` directly.** Same repo, so
+      this is a relative path rather than a sync step, and it is the whole
+      argument for putting `web/` here. **Do not copy the markdown into `web/`.**
+- [ ] **Strip HTML comments at build time.** The repo notes carried out of the
+      draft banners live in `<!-- -->` blocks. They do not render, but they would
+      sit in the page source of a legal document saying `NOT FOR PUBLICATION`,
+      which is not where that sentence should be readable. One transform in the
+      build removes the question.
+- [ ] **A support page**, and the **support URL** that App Store Connect
+      requires.
+- [ ] A **support email address** for Play, which asks for an address rather than
+      a page.
+- [ ] The three legal documents, at stable paths under `/lift`. Stable because a
+      store field points at them and changing a submitted URL is a metadata
+      review.
+- [ ] Enough of a marketing page that a store link does not open an empty room.
+- [ ] Decide how it deploys and where the subdomain points *(you)*. The MGKCodes
+      site is Next.js 16 on Vercel; this is a second project from a different
+      repo, not a route inside that one.
+- [x] **Confirmed `web/` does not join the Dart workspace.** Checked 2026-09-02:
+      the root `pubspec.yaml` globs `packages/*` and `apps/*` only, and both are
+      deliberately single-`*` for a reason already recorded there. A top-level
+      `web/` is invisible to `flutter pub get`. Re-check only if those globs are
+      ever widened.
+
 ---
 
 ## Submission checklists
@@ -353,7 +403,8 @@ the rest of this file.
 | ☐ | Build uploaded and processed | needs E |
 | ☐ | 6.9-inch iPhone screenshots | needs F |
 | ☐ | Description, keywords, promotional text, what's new | needs F |
-| ☐ | Privacy policy URL, live | needs C |
+| ☐ | Privacy policy URL, live | needs H |
+| ☐ | **Support URL** — required of every app; missing from this plan until 2026-09-02 | needs H |
 | ☐ | App privacy (nutrition labels) | needs F |
 | ☐ | Age rating | needs F |
 | ☐ | Subscriptions submitted with the build, review screenshot each | needs B |
@@ -380,7 +431,8 @@ or social login, so no Sign in with Apple equivalent is required.
 | ☐ | Short and full description | needs F |
 | ☐ | Content rating, target audience, ads declaration | needs F |
 | ☐ | Data safety form | needs F |
-| ☐ | Privacy policy URL, live | needs C |
+| ☐ | Privacy policy URL, live | needs H |
+| ☐ | Support email address | needs H |
 | ☐ | Subscriptions as base plans | needs B |
 | ☐ | Release Android build proven on a real device | needs E + G |
 
