@@ -129,6 +129,19 @@ mirrored into `REVENUECAT_PRODUCTS` in step 6.
 - [ ] Let Apple's matrix set every other storefront's price. The app never shows
       a figure of its own, so this is safe by construction.
 
+**What "done" looks like, because the screen implies otherwise.** A finished
+product reads **Ready to Submit**, and App Store Connect then shows a Draft
+Submission saying *"Unable to Submit for Review"* with two reasons: the
+subscription must be submitted with its group, and there is no app version for
+the platform. **Both are correct and neither is a fault.** Subscriptions are
+reviewed alongside an app version on the first submission and never on their
+own, so the item sits in the draft until the rest of Gate 2 and Gate 4 are
+filled in and goes up with the build.
+
+Ready to Submit is also the bar that matters for everything downstream:
+**RevenueCat cannot fetch a product below it**, and neither can sandbox
+StoreKit. Do not submit anything to get past the warning.
+
 ## 3. App Store Connect — the two credentials RevenueCat needs
 
 Both are easy to miss and both fail quietly.
