@@ -59,15 +59,29 @@ Connect wrong, and that field cannot be corrected without a new submission.
 
 ## Deploying
 
-A Vercel project of its own, separate from the studio site at `mgkcodes.com`:
+Vercel project **`mgkfitness`** on the MGKCodes team, separate from `mgk-codes`
+which serves the studio site.
 
-- **Root directory** `web`
-- **Ignored build step** `git diff --quiet HEAD^ HEAD -- .` so a Flutter-only
-  commit does not trigger a deploy
-- **Domain** `mgkfitness.mgkcodes.com`, a CNAME on `mgkcodes.com`
+- **Root directory** `web`. The one setting that matters: the repository root is
+  Flutter, so a project without it detects no framework and builds nothing.
+- **Ignored build step** `git diff --quiet HEAD^ HEAD -- .`, under **Settings ▸
+  Build and Deployment**, not Git. Without it every Flutter-only commit triggers
+  a web deploy: wasteful rather than broken.
+- **Domain** `mgkfitness.mgkcodes.com`.
+
+**Both projects must be on the same team.** Adding the subdomain from a
+different team than the one holding `mgkcodes.com` is refused with a demand for
+a TXT record at `_vercel.mgkcodes.com`, because Vercel will not let one account
+claim a subdomain of another's apex without proof. Moving `mgk-codes` to the
+team that owns this project removes the question rather than answering it.
 
 The subdomain is a DNS fact, not a repository one. Moving to a domain of its own
 later is a CNAME change and nothing else.
+
+**Deployment protection must stay off for these routes.** Vercel Pro can put
+Vercel Authentication in front of a project, and App Review has no account: the
+privacy policy URL would become unreachable to Apple while looking perfectly
+fine to anybody signed in to the team.
 
 ## What is not here yet
 
