@@ -9,6 +9,7 @@ import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
+import '../../purchases/presentation/restore_button.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/account_section.dart';
 import '../domain/unit_preferences.dart';
@@ -44,6 +45,7 @@ class SettingsScreen extends StatefulWidget {
     this.onUseCoachChanged,
     this.auth,
     this.deleter,
+    this.onRestorePurchases,
     this.version = kAppVersion,
     this.now,
   });
@@ -95,6 +97,17 @@ class SettingsScreen extends StatefulWidget {
   /// here only because Settings is the route to that screen.
   final AuthService? auth;
   final AccountDeleter? deleter;
+
+  /// Restore purchases. **Null hides the row**, on the same rule as every other
+  /// optional here: a build with no store cannot restore anything.
+  ///
+  /// It lives beside the account rather than under a Subscription heading of
+  /// its own, because a subscription belongs to the login and a heading with
+  /// one row under it is a section pretending to be a group. It is also the
+  /// second place this appears — the paywalls carry it too — since somebody
+  /// looking for it after a reinstall goes to Settings, not to the pitch for a
+  /// thing they have already bought.
+  final Future<void> Function()? onRestorePurchases;
 
   final String version;
 
@@ -218,6 +231,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'Your training stays on this phone',
                 onTap: widget.onSignOut,
                 showChevron: false,
+              ),
+
+            if (widget.onRestorePurchases != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: RestorePurchasesButton(
+                    onRestore: widget.onRestorePurchases,
+                  ),
+                ),
               ),
 
             if (widget.useCoach != null ||

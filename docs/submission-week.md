@@ -110,8 +110,15 @@ second device, has no other route back to what they paid for. Phase 3 mentions
 "restore on a second device" only as a *sandbox test step*, which quietly assumes
 a button nobody built.
 
-**Work:** a Restore purchases affordance on both paywalls and in Settings,
-calling RevenueCat's `restorePurchases()`, then re-reading `core.entitlements`.
+**Fixed 2026-09-02.** `RestorePurchasesButton` on both paywalls and in
+Settings, behind a `Purchases` seam so it is exercised by tests rather than by a
+sandbox account. It settles against `core.entitlements` exactly as a purchase
+does, and **"nothing to restore" is its own outcome** rather than a failure —
+Apple exercises that path, and "something went wrong" would be a lie about an
+account that simply has no subscription on it.
+
+The button lives in lift rather than `mgk_ui` because run has no payments to
+restore. It moves when that stops being true, not before.
 
 ### 3. `onSubscribe` is wired to nothing, in two places
 
@@ -123,6 +130,15 @@ surfaces to wire, not one; the plan only ever discusses the Plan paywall.
 tier table, and `photos_surface.dart` renders `Unlock photos`. Prices and offers
 on screen with no purchase path behind them is Guideline 3.1.1, so both facts
 have to change in the same build.
+
+**Fixed 2026-09-02.** Both paywalls now take `onSubscribe` and `onRestore` from
+the shell, which supplies them only when a store *and* an entitlement gate are
+both present — a purchase that cannot be reconciled against `core.entitlements`
+is a charge with nothing to show for it, so one without the other buys nothing.
+
+**Two gaps this opened up, neither of them fixed:** see the two new items in
+workstream B. Wiring the button was the easy half; what it revealed is that the
+paywall describes a product the app cannot yet sell.
 
 ### 4. The app is built universal, and has never been an iPad app
 
@@ -251,7 +267,20 @@ Nothing in F or G can be finished until a build can take money.
       customer as the Supabase user id so the two systems agree on who somebody is
       without a mapping table, and drive **both** paywalls from offerings rather
       than the hardcoded `_Tiers` — blocker 3.
-- [ ] **Restore Purchases** *(me)* — blocker 2.
+- [x] **Restore Purchases** — blocker 2. Done 2026-09-02, on both paywalls and
+      in Settings.
+- [x] **The purchase seam** — `Purchases`, `PurchaseOffer`, `PurchaseFlow` and a
+      scripted fake, with both paywalls wired through the shell. 14 tests. The
+      RevenueCat SDK now drops in behind an interface rather than into a screen.
+- [ ] **Premium is displayed and cannot be bought** *(me)*. `_Tiers` renders a £3
+      row and nothing can reach it: the only button says *Start coaching — £1/mo*
+      and buys Coaching. A tier the app advertises and cannot sell is an
+      incomplete purchase flow, which is the 2.1 bucket rather than a cosmetic
+      gap. The paywall needs a way to choose before it is honest.
+- [ ] **`_Tiers` hardcodes £1 and £3** *(me)*. Prices have to come from the store
+      offerings, which is why `PurchaseOffer` carries a localised `price` string
+      rather than a number. A hardcoded `£` is wrong for most of the world and is
+      the kind of wrong that arrives with a screenshot attached to a rejection.
 - [ ] **The webhook Edge Function → `core.entitlements`** *(me)*: one function,
       shared-secret check, writing under `service_role`. Renewal, expiry, grace,
       refund and revocation arrive as one event shape. Maps legacy Liftio product

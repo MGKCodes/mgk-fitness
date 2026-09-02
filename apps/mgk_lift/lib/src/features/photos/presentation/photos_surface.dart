@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../purchases/presentation/restore_button.dart';
+
 import '../domain/progress_photo.dart';
 import 'photo_sheets.dart';
 import 'pose_series_screen.dart';
@@ -44,6 +46,7 @@ class PhotosSurface extends StatefulWidget {
     this.source,
     this.isEntitled = false,
     this.onSubscribe,
+    this.onRestore,
     this.poses = Pose.defaults,
     this.now,
   });
@@ -59,9 +62,14 @@ class PhotosSurface extends StatefulWidget {
   /// mistake worth making impossible.
   final bool isEntitled;
 
-  /// Opens the store. Null until billing exists (Phase 3), which the offer
-  /// says out loud rather than showing a button that does nothing.
+  /// Opens the store. Null when there is none, which the offer says out loud
+  /// rather than showing a button that does nothing.
   final VoidCallback? onSubscribe;
+
+  /// Restore purchases, required of any app selling a subscription
+  /// (Guideline 3.1.1) and the only route back for somebody reinstalling.
+  /// Null hides the affordance rather than disabling it.
+  final Future<void> Function()? onRestore;
 
   /// Which poses this account tracks, as it starts. The lifter can add the
   /// others from the screen.
@@ -227,7 +235,10 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                           // button and reads as broken rather than as lapsed.
                           if (!widget.isEntitled) ...<Widget>[
                             const SizedBox(height: AppSpacing.lg),
-                            _Lapsed(onSubscribe: widget.onSubscribe),
+                            _Lapsed(
+                              onSubscribe: widget.onSubscribe,
+                              onRestore: widget.onRestore,
+                            ),
                           ],
                           const SizedBox(height: AppSpacing.lg),
                           Text(
@@ -257,7 +268,10 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                         ] else if (!widget.isEntitled)
                           // Nothing shot and nothing bought: the offer, not an
                           // empty state with a disabled button.
-                          _Offer(onSubscribe: widget.onSubscribe)
+                          _Offer(
+                            onSubscribe: widget.onSubscribe,
+                            onRestore: widget.onRestore,
+                          )
                         else
                           _Empty(
                             poses: _tracked,
@@ -453,9 +467,10 @@ class _PoseCard extends StatelessWidget {
 /// and the pitch is the same one the feature actually delivers, which is the
 /// only kind worth making.
 class _Offer extends StatelessWidget {
-  const _Offer({required this.onSubscribe});
+  const _Offer({required this.onSubscribe, required this.onRestore});
 
   final VoidCallback? onSubscribe;
+  final Future<void> Function()? onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -503,9 +518,10 @@ class _Offer extends StatelessWidget {
             isLast: true,
           ),
           const SizedBox(height: AppSpacing.xl),
-          if (onSubscribe != null)
-            PrimaryButton(label: 'Unlock photos', onPressed: onSubscribe)
-          else
+          if (onSubscribe != null) ...<Widget>[
+            PrimaryButton(label: 'Unlock photos', onPressed: onSubscribe),
+            RestorePurchasesButton(onRestore: onRestore),
+          ] else
             Text(
               // Honest about the state rather than showing a button that does
               // nothing. Payments do not exist yet (Phase 3), and a dead
@@ -580,9 +596,10 @@ class _OfferPoint extends StatelessWidget {
 /// already shot is theirs, and the screen leading with the loss would misstate
 /// what has actually happened.
 class _Lapsed extends StatelessWidget {
-  const _Lapsed({required this.onSubscribe});
+  const _Lapsed({required this.onSubscribe, required this.onRestore});
 
   final VoidCallback? onSubscribe;
+  final Future<void> Function()? onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -619,6 +636,7 @@ class _Lapsed extends StatelessWidget {
                 child: const Text('Resubscribe'),
               ),
             ),
+            RestorePurchasesButton(onRestore: onRestore),
           ],
         ],
       ),

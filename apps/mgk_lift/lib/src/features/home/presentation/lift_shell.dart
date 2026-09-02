@@ -7,6 +7,7 @@ import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../entitlement/domain/entitlement.dart';
+import '../../purchases/domain/purchases.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
@@ -70,6 +71,7 @@ class LiftShell extends StatefulWidget {
     this.plans,
     this.isEntitled = false,
     this.entitlements,
+    this.purchases,
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
@@ -164,6 +166,15 @@ class LiftShell extends StatefulWidget {
   /// which is why every account in production took the `false` default no
   /// matter what `core.entitlements` said about them.
   final EntitlementGate? entitlements;
+
+  /// The store. **Null hides every purchase affordance**, which is the honest
+  /// state for a build without one — both paywalls already say so out loud
+  /// rather than showing a button that does nothing.
+  ///
+  /// Paired with [entitlements] rather than used alone: a purchase that cannot
+  /// be reconciled against `core.entitlements` is a charge with nothing to show
+  /// for it, so one without the other buys nothing.
+  final Purchases? purchases;
 
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
@@ -328,6 +339,86 @@ class _LiftShellState extends State<LiftShell> {
     setState(() => _entitled = entitled);
   }
 
+  /// Buying and restoring, or null when either half is missing.
+  PurchaseFlow? get _flow {
+    final store = widget.purchases;
+    final gate = widget.entitlements;
+    if (store == null || gate == null) return null;
+    return PurchaseFlow(purchases: store, gate: gate);
+  }
+
+  /// The button says "Start coaching — £1/mo", so it buys Coaching.
+  ///
+  /// **Premium is displayed and not purchasable**, which is a gap rather than a
+  /// decision: `_Tiers` renders a £3 row that nothing here can reach, and the
+  /// paywall needs a way to choose before that is honest. Recorded in
+  /// `docs/submission-week.md` rather than left in a comment nobody reads.
+  Future<void> _startPurchase() async {
+    final flow = _flow;
+    if (flow == null) return;
+
+    final offers = await flow.purchases.offers();
+    PurchaseOffer? offer;
+    for (final candidate in offers) {
+      if (candidate.tier == EntitlementTier.paid) {
+        offer = candidate;
+        break;
+      }
+    }
+    offer ??= offers.isEmpty ? null : offers.first;
+
+    if (offer == null) {
+      // Reached the store and it offered nothing. Almost always a
+      // misconfiguration rather than a network failure, and saying "try again"
+      // would send somebody round a loop that cannot end.
+      _say('The store has nothing to sell right now. Nothing was charged.');
+      return;
+    }
+
+    await _report(await flow.buy(offer));
+  }
+
+  Future<void> _restorePurchases() async {
+    final flow = _flow;
+    if (flow == null) return;
+    await _report(await flow.restore(), restoring: true);
+  }
+
+  /// Says what happened, and makes the screen agree with it.
+  Future<void> _report(PurchaseResult result, {bool restoring = false}) async {
+    // Refreshed regardless of outcome: a restore that found nothing still
+    // settles the screen onto the truth, and the gate is cheap.
+    await _refreshEntitlement();
+    if (!mounted) return;
+
+    switch (result.status) {
+      case PurchaseStatus.entitled:
+        _say(restoring ? 'Your subscription is back.' : 'You are all set.');
+      case PurchaseStatus.pending:
+        // Charged, and the webhook has not landed. Neither "done" nor "failed"
+        // is true, and saying either would be the wrong kind of wrong.
+        _say(
+          'Payment went through. It can take a moment to appear — '
+          'reopen the app if it has not.',
+        );
+      case PurchaseStatus.nothingToRestore:
+        _say('There is no subscription on this account to restore.');
+      case PurchaseStatus.failed:
+        _say(result.message ?? 'That did not go through.');
+      case PurchaseStatus.cancelled:
+        // Deliberately silent. Backing out of a store sheet is not an event
+        // worth narrating, and a message would read as a failure.
+        break;
+    }
+  }
+
+  void _say(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _openSignIn() async {
     final auth = widget.auth;
     if (auth == null) return;
@@ -456,6 +547,8 @@ class _LiftShellState extends State<LiftShell> {
                 ),
                 PlanSurface(
                   isEntitled: _entitled,
+                  onSubscribe: _flow == null ? null : _startPurchase,
+                  onRestore: _flow == null ? null : _restorePurchases,
                   plan: _plan,
                   today: widget.today,
                   unit: _units.mass,
@@ -561,6 +654,7 @@ class _LiftShellState extends State<LiftShell> {
           coachMemory: widget.coachMemory,
           auth: widget.auth,
           deleter: widget.deleter,
+          onRestorePurchases: _flow == null ? null : _restorePurchases,
           useCoach: widget.coachPreference == null ? null : _useCoach,
           onUseCoachChanged: widget.coachPreference == null
               ? null
@@ -609,6 +703,8 @@ class _LiftShellState extends State<LiftShell> {
           library: library,
           source: widget.photoSource,
           isEntitled: _entitled,
+          onSubscribe: _flow == null ? null : _startPurchase,
+          onRestore: _flow == null ? null : _restorePurchases,
         ),
       ),
     );

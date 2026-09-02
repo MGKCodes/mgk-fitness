@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+
+import '../../purchases/presentation/restore_button.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../planning/domain/standing_plan.dart';
@@ -29,6 +31,7 @@ class PlanSurface extends StatelessWidget {
     this.onBuildPlan,
     this.coachIsOff = false,
     this.onSubscribe,
+    this.onRestore,
     this.isEntitled = false,
     this.plan,
     this.unit = MassUnit.kilograms,
@@ -53,6 +56,11 @@ class PlanSurface extends StatelessWidget {
 
   /// Opens the store. Null until billing exists.
   final VoidCallback? onSubscribe;
+
+  /// Restore purchases, required of any app selling a subscription
+  /// (Guideline 3.1.1) and the only route back for somebody reinstalling.
+  /// Null hides the affordance rather than disabling it.
+  final Future<void> Function()? onRestore;
 
   /// Whether this account has the paid tier for Lift. Entitlements are per-app
   /// and client-read-only; the server decides.
@@ -255,6 +263,7 @@ class PlanSurface extends StatelessWidget {
       const _Tiers(),
       const SizedBox(height: AppSpacing.lg),
       PrimaryButton(label: 'Start coaching — £1/mo', onPressed: onSubscribe),
+      RestorePurchasesButton(onRestore: onRestore),
       const SizedBox(height: AppSpacing.md),
       _Note(
         text:
