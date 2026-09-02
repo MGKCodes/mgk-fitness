@@ -35,42 +35,67 @@ class CoachGateSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              'The coach is part of the subscription',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
+    // **A surface of its own.** `showModalBottomSheet` is given a transparent
+    // background above so the sheet can draw its own corners — which means a
+    // child that draws nothing gets no panel at all, only the barrier's dim.
+    // This shipped that way: the copy rendered straight over Home, the last
+    // run's figures reading through the middle of the price. The board caught
+    // it the first time the screen was ever plated. Same solid fill and top
+    // radius as the conversation sheet — glass wants something behind it to
+    // distort, and behind a sheet is a scrim.
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sheet),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            bottom: AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.md),
+                child: SheetHandle(),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              planGateCostsCopy,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+              Text(
+                'The coach is part of the subscription',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Not available to buy in this build yet.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textTertiary,
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                planGateCostsCopy,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                label: 'Close',
-                onPressed: () => Navigator.of(context).pop(),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Not available to buy in this build yet.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  label: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
