@@ -66,24 +66,26 @@ unlocks.**
 
 App Store Connect ▸ Business.
 
-- [ ] **Paid Applications agreement active.** Nothing about subscriptions works
+- [x] **Paid Applications agreement active.** Nothing about subscriptions works
       until it is, and it is the longest lead time on the whole release.
-- [ ] Tax forms complete for your territories.
-- [ ] Bank details added and verified.
+- [x] Tax forms complete for your territories.
+- [x] Bank details added and verified.
 
-Start this first. Everything below can be done while it clears, but none of it
-can be *tested* until it is Active.
+**Done 2026-09-02, and it cost nothing: it was already Active from Liftio.** An
+agreement is held by the team rather than by an app, which is worth knowing
+before budgeting weeks for it — the same reason `codemagic.yaml` reuses one App
+Store Connect API key across every app in the suite.
 
 ## 2. App Store Connect — the subscription group and two products
 
 App Store Connect ▸ your app ▸ Subscriptions.
 
-- [ ] **One subscription group.** One, not two: the tiers are alternatives, and
+- [x] **One subscription group.** One, not two: the tiers are alternatives, and
       a group is what lets somebody move between them without a second purchase
       and without being charged twice.
-- [ ] **Localised group display name.** Shown in the runner's Apple ID
+- [x] **Localised group display name.** Shown in the runner's Apple ID
       subscription settings, so it should read as a thing they recognise.
-- [ ] **Rank Premium Coach as level 1 and Coach as level 2.**
+- [x] **Rank Premium Coach as level 1 and Coach as level 2.**
 
       **Level 1 is the highest service level, not the lowest**, and the numbering
       reads backwards to almost everybody the first time. Apple uses the rank to
@@ -125,7 +127,7 @@ descriptions ran to 82 and 99 and would have been refused in the form.
 Keep them and there is nothing to change; use different ones and they must be
 mirrored into `REVENUECAT_PRODUCTS` in step 6.
 
-- [ ] **A review screenshot per product.** Required, and a common cause of
+- [x] **A review screenshot per product.** Required, and a common cause of
       "Missing Metadata" holding up the whole submission. The `paywall` plate on
       [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)
       is what this screen looks like, and **is usable**: an IAP review
@@ -138,11 +140,11 @@ mirrored into `REVENUECAT_PRODUCTS` in step 6.
       an alpha channel, and it refuses arbitrary dimensions -- the "640x920
       minimum" in Apple's older documentation is not what the form accepts, and
       a 786x1704 render that cleared it was rejected outright.
-- [ ] **Review notes per product.** Say the coach is the paid half and recording
+- [x] **Review notes per product.** Say the coach is the paid half and recording
       is free, so a reviewer is not hunting for what changed.
-- [ ] **No free trial, no introductory offer.** Deliberate: a trial on a £0.99
+- [x] **No free trial, no introductory offer.** Deliberate: a trial on a £0.99
       product costs more in support than it earns. Revisit later, not now.
-- [ ] Let Apple's matrix set every other storefront's price. The app never shows
+- [x] Let Apple's matrix set every other storefront's price. The app never shows
       a figure of its own, so this is safe by construction.
 
 **What "done" looks like, because the screen implies otherwise.** A finished
@@ -166,6 +168,23 @@ change, and nothing has been submitted to wait on. Remove the items, or delete
 the draft outright; it is scaffolding and rebuilds itself the moment there is an
 app version to attach. Add them back when you actually submit, which is the one
 time they genuinely do have to be in it.
+
+### As configured, 2026-09-02
+
+Both products reached **Ready to Submit**. Check RevenueCat against this table
+rather than against the one above, which is what we meant to do.
+
+| | Coach | Premium Coach |
+|---|---|---|
+| Product ID | `run.coach.monthly` | `run.coach.premium.monthly` |
+| Level | 2 | **1** (the higher tier) |
+| Price | £0.99 | £2.99 |
+| Group | `Run Coach`, shown to runners as `MGKFitness: Run Coach` |||
+
+The group's display name is deliberately longer than the group's reference name:
+it appears in a runner's Apple ID subscription list among every other app's
+subscriptions, with no context, so `Run Coach` alone would not say whose it is.
+It matches the listing name, `MGKFitness: Run`.
 
 ## 3. App Store Connect — the two credentials RevenueCat needs
 
