@@ -69,11 +69,23 @@ which serves the studio site.
   a web deploy: wasteful rather than broken.
 - **Domain** `mgkfitness.mgkcodes.com`.
 
-**Both projects must be on the same team.** Adding the subdomain from a
-different team than the one holding `mgkcodes.com` is refused with a demand for
-a TXT record at `_vercel.mgkcodes.com`, because Vercel will not let one account
-claim a subdomain of another's apex without proof. Moving `mgk-codes` to the
-team that owns this project removes the question rather than answering it.
+**The team must own the apex, and moving the project does not move it.** A
+domain in Vercel is an ownership record held by a team, separate from any
+project using it. Transferring `mgk-codes` to the MGKCodes team brought its
+domain *assignments* along -- the project lists `mgkcodes.com` -- while the apex
+itself stayed owned by the personal account. A subdomain request from a team
+that does not own the parent is refused, with a demand for a TXT record at
+`_vercel.mgkcodes.com`.
+
+**That TXT is the fix rather than a workaround.** Vercel's claim flow transfers
+ownership of the domain to whoever proves it, *"even if the domain is currently
+owned by another user or team"*. So adding the record does not merely permit the
+subdomain; it moves `mgkcodes.com` onto the same team as the projects that
+serve it, which is the arrangement the transfer was reaching for. The record can
+be deleted afterwards.
+
+Add it wherever the zone lives. If Vercel runs the nameservers that is under the
+team that currently **owns** the domain, not the one that uses it.
 
 The subdomain is a DNS fact, not a repository one. Moving to a domain of its own
 later is a CNAME change and nothing else.
