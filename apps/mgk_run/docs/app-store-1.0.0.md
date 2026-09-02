@@ -286,6 +286,12 @@ The order is load-bearing: since ADR-0030 the coach is refused without a row, an
 no row can exist until step 4 is deployed. **Nothing about the paid half works
 until this list is finished.**
 
+**Steps 1 to 5 are a click-through in two dashboards, and
+[store-setup.md](store-setup.md) is the runbook for them** — every field, the
+five strings that must match exactly, and a table mapping each of the webhook's
+own ignore reasons to its cause. Read that rather than this for the doing; this
+stays the checklist.
+
 - [ ] **1. Apple: paid-applications agreement, tax and banking.** Nothing about
       subscriptions exists in App Store Connect until Business ▸ Agreements is
       active. **This is the longest lead time on the page and nothing depends on
