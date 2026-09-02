@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import shutil
 import sys
 
 try:
@@ -186,6 +187,23 @@ def check():
     return problems
 
 
+def handout(dest):
+    """Copy the exported assets somewhere a human can reach them.
+
+    This repository is usually worked in as a worktree, several levels down
+    inside a hidden .claude directory. That is a fine home for a build output
+    and a hopeless one for a file about to be dragged into a browser -- and
+    uploading a stale copy found somewhere easier is a real way to lose an
+    afternoon, which is exactly how this flag came to exist.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    for _plate, (out_name, _spec, _why) in DERIVED_FROM_PLATES.items():
+        src = DERIVED / out_name
+        if src.exists():
+            shutil.copy2(src, dest / out_name)
+            print("  %s" % (dest / out_name))
+
+
 def main() -> int:
     check_only = "--check" in sys.argv
     if not check_only:
@@ -199,6 +217,18 @@ def main() -> int:
         print("\n%d problem%s. Nothing here is a judgement about whether the "
               "image is of the right screen." % (problems, "" if problems == 1 else "s"))
         return 1
+    dest = None
+    if "--downloads" in sys.argv:
+        dest = pathlib.Path(os.path.expanduser("~/Downloads"))
+    elif "--to" in sys.argv:
+        i = sys.argv.index("--to")
+        if i + 1 >= len(sys.argv):
+            sys.exit("--to needs a directory")
+        dest = pathlib.Path(sys.argv[i + 1])
+    if dest is not None:
+        print("\nCopied to")
+        handout(dest)
+
     print("\nEvery asset fits its spec. Whether each is the RIGHT picture is "
           "still yours to say.")
     return 0

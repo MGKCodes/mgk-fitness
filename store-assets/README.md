@@ -3,9 +3,18 @@
 Images destined for App Store Connect.
 
 ```
-python tool/export_store_assets.py            # from apps/mgk_run
-python tool/export_store_assets.py --check    # check only
+python tool/export_store_assets.py             # from apps/mgk_run
+python tool/export_store_assets.py --check     # check only
+python tool/export_store_assets.py --downloads # also copy to ~/Downloads
+python tool/export_store_assets.py --to <dir>  # ...or somewhere specific
 ```
+
+**`--downloads` is not a convenience, it is a correctness feature.** This
+repository is usually worked in as a worktree, so `derived/` sits several levels
+down inside a hidden `.claude` directory: a fine home for a build output and a
+hopeless one for a file about to be dragged into a browser. The first version of
+this asset was uploaded from an easier-to-find copy that was two revisions
+stale, and nothing about that looked wrong until App Store Connect refused it.
 
 ## Two kinds of thing, and only one of them is committed
 
