@@ -346,10 +346,20 @@ deadline.
 
 ### H. The web presence — `web/`
 
-Added 2026-09-02. Lift's legal, support and marketing pages live in a new
-top-level `web/` in this repo rather than on a site of their own. `getliftio.com`
-is retired; its Next.js source stays at `C:/Projects/getliftio.com` as a content
-and design reference, not as a thing to keep running.
+Added 2026-09-02. **`web/` does not exist yet, and nothing here is being built
+yet.** This workstream exists so the decision is recorded before the directory
+is, rather than re-argued once it is.
+
+Lift's legal, support and marketing pages will live in a new top-level `web/`
+**in this repo** — and explicitly **not in the MGKCodes site repo**. That is the
+load-bearing half: `mgkcodes.com` is a separate Next.js project with its own
+deployment, and the obvious-looking move of adding Lift's pages there is the one
+being ruled out. `mgkfitness.mgkcodes.com/lift` is a subdomain served from the
+folder that will be made here.
+
+`getliftio.com` is retired; its Next.js source stays at
+`C:/Projects/getliftio.com` as a content and design reference, not as a thing to
+keep running.
 
 **The reason to care that it is in *this* repo is the legal text, not the
 convenience.** Those documents already exist twice — `apps/mgk_lift/docs/*.md`
