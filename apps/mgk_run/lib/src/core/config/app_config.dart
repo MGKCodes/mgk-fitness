@@ -27,6 +27,7 @@ class AppConfig {
     required this.supabasePublishableKey,
     this.mapTileUrlTemplate = '',
     this.mapAttribution = '',
+    this.revenueCatKey = '',
   });
 
   final String supabaseUrl;
@@ -43,6 +44,18 @@ class AppConfig {
 
   /// Attribution required by the tile provider's terms, shown on the map.
   final String mapAttribution;
+
+  /// RevenueCat's **public** SDK key.
+  ///
+  /// Designed to ship in a client, exactly like [supabasePublishableKey]: it
+  /// can present offerings and start a purchase and nothing else. The secret
+  /// that matters is `REVENUECAT_WEBHOOK_SECRET`, which authenticates the
+  /// server-to-server webhook and never leaves Supabase.
+  ///
+  /// Empty is a normal state, not an error. A build made before the RevenueCat
+  /// account existed cannot sell anything, and the paywall says so rather than
+  /// showing an empty shop. See [canSell].
+  final String revenueCatKey;
 
   /// Whether this build can actually reach a backend.
   ///
@@ -69,12 +82,17 @@ class AppConfig {
   /// configured, which is a normal state rather than an error.
   bool get hasBasemap => mapTileUrlTemplate.isNotEmpty;
 
+  /// Whether this build can take a payment. False leaves the coach gate as a
+  /// statement of what a subscription buys, with no button to press.
+  bool get canSell => revenueCatKey.isNotEmpty;
+
   /// The configuration baked in at build time.
   static const AppConfig current = AppConfig(
     supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
     supabasePublishableKey: String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY'),
     mapTileUrlTemplate: String.fromEnvironment('MAP_TILE_URL_TEMPLATE'),
     mapAttribution: String.fromEnvironment('MAP_ATTRIBUTION'),
+    revenueCatKey: String.fromEnvironment('REVENUECAT_PUBLIC_KEY'),
   );
 
   // Optional developer quick-sign-in accounts, injected only in local builds

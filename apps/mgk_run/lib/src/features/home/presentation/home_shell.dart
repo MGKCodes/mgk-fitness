@@ -16,6 +16,7 @@ import '../../coaching/data/plan_repository.dart';
 import '../../coaching/data/plan_service.dart';
 import '../../coaching/data/plan_store.dart';
 import '../../coaching/data/entitlement_repository.dart';
+import '../../coaching/data/purchase_client.dart';
 
 import '../../coaching/domain/coach_access.dart';
 import '../../coaching/domain/coach_brief.dart';
@@ -92,6 +93,7 @@ class HomeShell extends StatefulWidget {
     this.justSignedUp = false,
     this.access,
     this.entitlements,
+    this.purchases,
     this.runnerName,
     this.introStore,
   });
@@ -169,6 +171,14 @@ class HomeShell extends StatefulWidget {
   ///
   /// Null falls back to [access], and then to [CoachAccess.free].
   final EntitlementRepository? entitlements;
+
+  /// Presents and performs a purchase. Null in a build with no RevenueCat key,
+  /// which leaves the coach gate a statement rather than a shop.
+  ///
+  /// Deliberately separate from [entitlements]: this one asks for money, that
+  /// one asks the server what was bought, and only the second is ever believed
+  /// ([ADR-0030](../../../../docs/decisions/0030-the-coach-is-the-paid-half.md)).
+  final PurchaseClient? purchases;
 
   /// What the coach calls this runner.
   ///
@@ -358,6 +368,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     unawaited(_restoreThenLoad());
 
     unawaited(_resolveAccess());
+    unawaited(_identifyForPurchases());
 
     final client = _chatClient;
     if (client != null) {
@@ -853,12 +864,56 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (mounted && resolved != _access) setState(() => _access = resolved);
   }
 
+  /// Tells RevenueCat who this is, so a purchase can be attributed.
+  ///
+  /// **The webhook keys `core.entitlements` on this id** and refuses an
+  /// `RCAnonymousID:` rather than writing a row to nobody, so a purchase made
+  /// before this call is money taken for an entitlement that never arrives.
+  /// Fired whenever there is both a session and an SDK, which is why it sits
+  /// beside the access read rather than in `main()`: the app opens with no
+  /// account at all (ADR-0019), and the id only exists once one does.
+  Future<void> _identifyForPurchases() async {
+    final client = widget.purchases;
+    final id = widget.auth.currentUser?.id;
+    if (client == null || id == null) return;
+    await client.identify(id);
+  }
+
+  /// The door a free runner meets, from either end.
+  ///
+  /// Two callers: the coach mark, and the locked last-run card's offer. One
+  /// method because they should open the same thing -- a second surface saying
+  /// the same words differently is how two paywalls drift apart.
+  void _showCoachGate() {
+    unawaited(
+      CoachGateSheet.show(
+        context,
+        purchases: widget.purchases,
+        entitlements: widget.entitlements,
+        // Re-read rather than assume. The screen only reports success once the
+        // server agrees, so by here the row exists -- but the shell's own copy
+        // of the tier is what the tabs draw from, and it is still stale.
+        onUnlocked: _refreshAccess,
+      ),
+    );
+  }
+
+  /// Re-reads the tier after a purchase, ignoring the pin guard in
+  /// [_resolveAccess]: a test that pinned `free` and then bought something
+  /// wants to see the result.
+  Future<void> _refreshAccess() async {
+    final source = widget.entitlements;
+    if (source == null) return;
+    final resolved = await source.access();
+    if (mounted && resolved != _access) setState(() => _access = resolved);
+  }
+
   void _openCoach() {
     // The door, before the sheet. The Edge Function refuses an unentitled
     // request anyway (ADR-0030), so this is not the gate — it is the difference
     // between being told what something costs and watching the app fail.
     if (!_access.isSubscribed) {
-      unawaited(CoachGateSheet.show(context));
+      _showCoachGate();
       return;
     }
     final chat = _chat;
@@ -1585,7 +1640,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // something tappable — null hides the offer, so until this was
                 // passed the shipping app said "upgrade" and gave nobody a way
                 // to. Only `last_run_test.dart` ever supplied one.
-                onUpgrade: () => unawaited(CoachGateSheet.show(context)),
+                onUpgrade: _showCoachGate,
                 today: _todayView,
                 thisWeek: _thisWeek,
                 note: _note,

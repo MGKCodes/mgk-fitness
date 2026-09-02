@@ -31,6 +31,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
+import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
@@ -95,6 +96,11 @@ void main() {
     unitSettings: InMemoryUnitSettings(),
     initialTab: initialTab,
     access: access,
+    // A shop, so the gate draws the state that ships rather than the state a
+    // build with no RevenueCat key falls back to. Both are real; only one of
+    // them is what a runner will meet.
+    purchases: FakePurchases(),
+    entitlements: FakeEntitlements(access),
   );
 
   /// Taps the coach's mark.
@@ -211,6 +217,34 @@ void main() {
       drive: (tester) async {
         await settle(tester);
         await tapCoach(tester);
+      },
+    );
+  });
+
+  /// **The paywall**, reached the way a runner reaches it.
+  ///
+  /// Driven rather than built, and driven all the way from the coach mark,
+  /// because the route is half the claim: this screen is only ever arrived at
+  /// through the gate, and a plate constructed from arguments would prove the
+  /// screen renders without proving anybody can get to it.
+  ///
+  /// Every figure on it comes from the fake storefront. Nothing here reads a
+  /// price out of the binary, which is the property the screen exists to hold.
+  testWidgets('and the paywall behind it', (tester) async {
+    final store = await seeded();
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'paywall',
+      app(store, runs, access: CoachAccess.free),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await tapCoach(tester);
+        await tester.tap(find.text('See the plans'));
+        await settle(tester);
+        await settle(tester);
       },
     );
   });

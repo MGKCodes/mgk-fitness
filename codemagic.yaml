@@ -367,6 +367,35 @@ workflows:
           tiles = (os.environ.get("MAP_TILE_URL_TEMPLATE") or "").strip()
           attribution = (os.environ.get("MAP_ATTRIBUTION") or "").strip()
 
+          # RevenueCat's PUBLIC SDK key. Optional in the same sense the basemap
+          # is: without it the app runs, the coach gate explains what a
+          # subscription buys, and there is no button to press. The secret that
+          # matters is REVENUECAT_WEBHOOK_SECRET, which lives in Supabase and is
+          # never built into an IPA.
+          revenuecat = (os.environ.get("REVENUECAT_PUBLIC_KEY") or "").strip()
+
+          # Same banner treatment as the basemap, and for the same reason: a
+          # TestFlight build that silently cannot sell anything looks identical
+          # to one that can until somebody taps the gate.
+          if not revenuecat:
+              print("=" * 72)
+              print("WARNING: REVENUECAT_PUBLIC_KEY is unset.")
+              print("This build CANNOT TAKE A PAYMENT. The coach gate will say")
+              print("so rather than offering a button, which is the honest")
+              print("state but not a testable one.")
+              print("Set it in the mgk_fitness_run_env group.")
+              print("=" * 72)
+
+          # The iOS key begins appl_. A Google or a web key here would configure
+          # the SDK against the wrong store and fail at the moment of purchase,
+          # which is the one moment worth failing early instead.
+          if revenuecat and not revenuecat.startswith("appl_"):
+              sys.exit(
+                  "REVENUECAT_PUBLIC_KEY must be the Apple key, which begins "
+                  f"appl_ - got {revenuecat[:8]!r}... Check Project settings "
+                  "> API keys in RevenueCat."
+              )
+
           # Loud, not a print. The first TestFlight build shipped with no
           # basemap and nobody noticed until a run was recorded against a
           # charcoal void, because the only signal was one line in the middle
@@ -396,6 +425,7 @@ workflows:
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
               "MAP_TILE_URL_TEMPLATE": tiles,
               "MAP_ATTRIBUTION": attribution,
+              "REVENUECAT_PUBLIC_KEY": revenuecat,
               # Empty on purpose — see the note above.
               "DEV_ACCOUNT_1_LABEL": "",
               "DEV_ACCOUNT_1_EMAIL": "",

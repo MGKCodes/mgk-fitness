@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../data/entitlement_repository.dart';
+import '../data/purchase_client.dart';
 import '../domain/plan_gate_copy.dart';
+import 'purchase_screen.dart';
 
 /// What a runner without a subscription gets when they reach for the coach.
 ///
@@ -17,20 +20,65 @@ import '../domain/plan_gate_copy.dart';
 /// ([ADR-0019](../../../../docs/decisions/0019-onboarding-is-two-moments.md)).
 /// Leading with the price would misdescribe the product.
 ///
-/// **There is no buy button yet**, and there deliberately is not a fake one.
-/// RevenueCat is chosen ([ADR-0028](../../../../docs/decisions/0028-revenuecat-is-the-purchase-path.md))
-/// and unbuilt, so this states the price and stops. A button that cannot take
-/// money is worse than no button: it fails at the moment somebody has decided
+/// **It quotes no figure.** A price compiled into the binary is right in one
+/// storefront and wrong in every other, so the sentence names the tier and
+/// [PurchaseScreen] shows what the store says it costs.
+///
+/// **The way through is conditional, and honestly so.** Given a
+/// [PurchaseClient] this offers to open the paywall; without one it says the
+/// coach cannot be bought here and stops. A button that cannot take money is
+/// worse than no button, because it fails at the moment somebody has decided
 /// to pay, which is the worst moment available.
 class CoachGateSheet extends StatelessWidget {
-  const CoachGateSheet({super.key});
+  const CoachGateSheet({
+    super.key,
+    this.purchases,
+    this.entitlements,
+    this.onUnlocked,
+  });
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+  /// Null in a build with no RevenueCat key, which is a normal state. See
+  /// `AppConfig.canSell`.
+  final PurchaseClient? purchases;
+
+  /// Needed alongside [purchases]: the paywall waits for the *server* to agree
+  /// that the purchase landed before it reports success.
+  final EntitlementRepository? entitlements;
+
+  /// Fired when the coach actually came unlocked, so the shell can re-read what
+  /// this runner is entitled to rather than assume.
+  final VoidCallback? onUnlocked;
+
+  static Future<void> show(
+    BuildContext context, {
+    PurchaseClient? purchases,
+    EntitlementRepository? entitlements,
+    VoidCallback? onUnlocked,
+  }) => showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const CoachGateSheet(),
+    builder: (_) => CoachGateSheet(
+      purchases: purchases,
+      entitlements: entitlements,
+      onUnlocked: onUnlocked,
+    ),
   );
+
+  bool get _canSell => purchases != null && entitlements != null;
+
+  Future<void> _openPaywall(BuildContext context) async {
+    final NavigatorState navigator = Navigator.of(context);
+    // The sheet closes first. Leaving it under the paywall would put two
+    // scrims over the app and strand the runner behind both if the push failed.
+    navigator.pop();
+    final bool unlocked = await PurchaseScreen.show(
+      context,
+      purchases: purchases!,
+      entitlements: entitlements!,
+    );
+    if (unlocked) onUnlocked?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,20 +128,36 @@ class CoachGateSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Not available to buy in this build yet.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
+              if (!_canSell) ...<Widget>[
+                Text(
+                  'Not available to buy in this build yet.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
+              ],
               SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(
-                  label: 'Close',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+                child: _canSell
+                    ? PrimaryButton(
+                        label: 'See the plans',
+                        onPressed: () => _openPaywall(context),
+                      )
+                    : PrimaryButton(
+                        label: 'Close',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
               ),
+              if (_canSell) ...<Widget>[
+                const SizedBox(height: AppSpacing.xs),
+                Center(
+                  child: AppTextButton(
+                    label: 'Not now',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

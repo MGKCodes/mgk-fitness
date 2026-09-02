@@ -165,7 +165,7 @@ App Store Connect will not accept a submission without these. None are code.
       2. **A custom EULA**, generated into `legal-site/` alongside the other two
          and surfaced as a fourth row in `legal_screen.dart`.
 
-      **Settled 2026-09-02: Apple's standard EULA.**
+**Settled 2026-09-02: Apple's standard EULA.**
       `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` goes in
       the listing's terms field and in App Store Connect's EULA field. What is
       still open is the **in-app** half: Guideline 3.1.2 wants the link on the
@@ -322,26 +322,42 @@ until this list is finished.**
       `https://<project>.supabase.co/functions/v1/revenuecat`; Authorization
       header set to `REVENUECAT_WEBHOOK_SECRET` **verbatim** — no `Bearer`
       prefix, because it is compared as-is.
-- [ ] **6. The SDK in the client.** `purchases_flutter`, public key through
-      `app_config.json` beside `SUPABASE_URL` — which also means a new secure
-      variable and a line in `codemagic.yaml`'s config-generation step. The
-      webhook secret stays server-side and never enters the binary.
-      **`Purchases.logIn(session.user.id)`**: the Supabase user id is what keys
-      the row, and an `RCAnonymousID:` is refused rather than written to nobody.
-- [ ] **7. The purchase screen `C5` should open onto.** Prices read from
-      `Offerings` / `CustomerInfo`, never from the binary. It must carry:
-      - both tiers, and what each buys
-      - **Restore purchases** — Apple requires it, and RevenueCat provides it,
-        but it still needs a surface
-      - **functional links to the Terms of Use and the privacy policy** (Gate 2)
-      - the standard auto-renew disclosure
-- [ ] **8. `CoachAccess` still comes from the server.** The SDK presents and
-      performs a purchase and nothing more. Reading
-      `CustomerInfo.entitlements.active` on device and unlocking from it would
-      replace a fact with a claim, which is the property `coach_access.dart`
-      exists to hold. The one honest client-side use is a *refresh*: after a
-      purchase, re-read `core.entitlements` rather than trusting the SDK — with a
-      retry, because the webhook and the app race.
+- [x] **6. The SDK in the client.** `purchases_flutter ^10.10.1`, behind a
+      `PurchaseClient` interface with a `RevenueCatPurchases` implementation and
+      a `FakePurchases` that lets the whole thing be driven from Windows. The
+      public key rides in `app_config.json` as `REVENUECAT_PUBLIC_KEY`;
+      `codemagic.yaml` writes it, warns loudly when it is unset, and **fails the
+      build if it is not an `appl_` key** — a Google key here would configure
+      the SDK against the wrong store and fail at the moment of purchase.
+      `HomeShell` calls `identify` with the Supabase user id whenever there is a
+      session, because the webhook keys the row on it and refuses an
+      `RCAnonymousID:` rather than writing to nobody.
+- [x] **7. The purchase screen `C5` opens onto** — `PurchaseScreen`, plate
+      `paywall` on the board, driven all the way from the coach mark so the
+      route is evidence rather than the render alone. Prices come from
+      `Offerings`; `purchase_screen_test.dart` prices a fixture in dollars and
+      asserts the pounds ADR-0029 settled appear nowhere. It carries both tiers,
+      **Restore purchases**, functional links to the **Terms of Use** (Apple's
+      EULA) and the **privacy policy**, and the auto-renew disclosure — four
+      Guideline 3.1.2 requirements, each with a test named after it.
+
+      Two things the tests caught rather than review: the legal links were a
+      `Row` that **overflowed a 430pt phone by 29 pixels**, which on the
+      narrowest supported 320pt would have clipped a link Apple requires to be
+      functional; and a cancelled purchase was about to be reported as a
+      failure, which it is not.
+- [x] **8. `CoachAccess` still comes from the server.** `PurchaseClient` has no
+      `isSubscribed` and will not get one. The screen reports success only once
+      `core.entitlements` agrees, and **polls for it** — zero, one, two, three
+      and five seconds — because RevenueCat tells the Edge Function
+      server-to-server while the store's sheet is still dismissing, so the first
+      read after a payment usually says `free`.
+
+      When the row never arrives it says *"Payment went through. The coach can
+      take a minute to unlock"* rather than reporting an error: the money moved,
+      and inviting a second purchase is the one outcome worse than waiting. The
+      single place the SDK's own view is read is `restore`, and it decides which
+      sentence to show rather than what anybody owns.
 - [ ] **9. Sandbox purchase on a device** — Gate 1.
 - [ ] **10. A processor agreement with RevenueCat**, alongside the OpenRouter
       one.

@@ -11,6 +11,8 @@ import '../../history/domain/run_writer.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../coaching/data/plan_store.dart';
 import '../../coaching/data/entitlement_repository.dart';
+import '../../coaching/data/purchase_client.dart';
+import '../../coaching/data/revenuecat_purchases.dart';
 import '../../home/presentation/home_shell.dart';
 import '../../settings/domain/unit_settings.dart';
 import '../../onboarding/data/intro_permission_requester.dart';
@@ -43,6 +45,7 @@ class AuthGate extends StatefulWidget {
     this.memoryMirror,
     this.unitSettings,
     this.entitlements,
+    this.purchases,
     this.requestPermission,
     this.introStore,
   });
@@ -89,6 +92,10 @@ class AuthGate extends StatefulWidget {
   /// leaves it null and gets [SupabaseEntitlements].
   final EntitlementRepository? entitlements;
 
+  /// Forwarded to [HomeShell]. Null in the real app means "make one", not
+  /// "cannot sell" -- see [_AuthGateState._purchases].
+  final PurchaseClient? purchases;
+
   /// Records that this install has been through the intro. Null uses the
   /// platform default; injected by tests and the preview harness.
   final IntroStore? introStore;
@@ -110,6 +117,19 @@ class _AuthGateState extends State<AuthGate> {
   bool _metCoachThisSession = false;
 
   late final IntroStore _intro = widget.introStore ?? createIntroStore();
+
+  /// Held rather than made in `build`, because the SDK wrapper carries state a
+  /// rebuild would throw away: whether `Purchases.configure` has run, and the
+  /// packages a purchase needs. A fresh one per frame would reconfigure the SDK
+  /// and lose the offerings between showing a price and charging for it.
+  ///
+  /// **Null when the build has no key**, which is a normal state rather than a
+  /// failure: the coach gate then explains what a subscription buys and offers
+  /// no button. A button that cannot take money fails at the moment somebody
+  /// has decided to pay.
+  late final PurchaseClient? _purchases =
+      widget.purchases ??
+      (AppConfig.current.canSell ? RevenueCatPurchases() : null);
 
   /// Whether this install has already been through the intro. Null while the
   /// marker is being read, which is one or two frames.
@@ -281,6 +301,10 @@ class _AuthGateState extends State<AuthGate> {
     // somebody walks into it. Not the gate — the Edge Function refuses an
     // unentitled request whatever this says (ADR-0030).
     entitlements: widget.entitlements ?? SupabaseEntitlements(),
+    // Presents and performs; never asked what the runner owns. The line above
+    // is the one that answers that, and the Edge Function is the one that
+    // enforces it.
+    purchases: _purchases,
   );
 }
 
