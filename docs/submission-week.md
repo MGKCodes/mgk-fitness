@@ -298,10 +298,36 @@ Nothing in F or G can be finished until a build can take money.
       With no store the tiers are still named and described and the price column
       says `—`, because not knowing the price is true and inventing one is not.
       Pinned by a test that fails if a `£` appears on the paywall at all.
-- [ ] **The webhook Edge Function → `core.entitlements`** *(me)*: one function,
-      shared-secret check, writing under `service_role`. Renewal, expiry, grace,
-      refund and revocation arrive as one event shape. Maps legacy Liftio product
-      ids to `paid`.
+- [x] **The webhook Edge Function → `core.entitlements`.** Written 2026-09-02
+      as `supabase/functions/revenuecat-webhook/`, with the mapping split into a
+      pure `events.ts` and 16 Deno tests, matching how `coach/` is structured.
+      Four decisions in it are worth knowing rather than rediscovering:
+
+      **Cancelling does not end access.** In RevenueCat `CANCELLATION` means
+      auto-renew was switched off, not that the subscription ended — the period
+      is paid for and runs to `EXPIRATION`. Revoking on cancellation would take
+      away time somebody has been charged for, on the day they chose not to
+      renew. A refund is the exception, and arrives as
+      `cancel_reason: CUSTOMER_SUPPORT`.
+
+      **An unknown product grants `paid`**, which is how blocker 5 is handled
+      without knowing Liftio's product ids. They are live under the same bundle
+      id, so renewals will arrive for products 2.0.0 has never heard of, and
+      refusing them would tell a long-standing customer they have no
+      subscription.
+
+      **Sandbox events are honoured.** Ignoring them looks safer and fails
+      review: the App Store reviewer's purchase *is* a sandbox purchase. The
+      environment is recorded in the `rc:<env>:<store>:<id>` provenance instead,
+      which also keeps store rows distinguishable from `manual:` support grants.
+
+      **Status codes are a retry policy.** RevenueCat retries anything non-2xx,
+      so an ignored event returns 200 and only a failed database write returns
+      500. Getting that backwards either drops a purchase silently or redelivers
+      a decision forever.
+- [ ] **Set `REVENUECAT_WEBHOOK_SECRET` and deploy the function** *(both)*. It is
+      written and tested but **not deployed** — it needs the shared secret to
+      exist first, and the same value goes in the RevenueCat dashboard.
 - [x] **Read the entitlement at all.** Done 2026-09-02 — blocker 6, and the
       thing every other item in this workstream was silently assuming existed.
       `EntitlementGate` resolves live → cached → free, wired through `main.dart`
