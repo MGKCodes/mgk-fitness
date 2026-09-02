@@ -302,13 +302,18 @@ everything else looks configured.
 
 ## 5. RevenueCat — the webhook
 
+**Do step 6 first.** These are numbered in the order they were written, not the
+order they work: the webhook wants a URL that resolves and a secret that exists,
+and both are step 6's. Configuring it first leaves RevenueCat pointed at a 404
+and you cannot tell a wrong URL from an undeployed function.
+
 RevenueCat ▸ Integrations ▸ Webhooks.
 
-- [ ] **URL** `https://cwpwzxjjhxbkwhrgnasn.supabase.co/functions/v1/revenuecat`
-- [ ] **Authorization header** — the value of `REVENUECAT_WEBHOOK_SECRET`,
+- [x] **URL** `https://cwpwzxjjhxbkwhrgnasn.supabase.co/functions/v1/revenuecat`
+- [x] **Authorization header** — the value of `REVENUECAT_WEBHOOK_SECRET`,
       **verbatim**. No `Bearer` prefix: RevenueCat sends the header as-is and
       the function compares it as-is.
-- [ ] Leave the event set at everything. The function ignores what it does not
+- [x] Leave the event set at everything. The function ignores what it does not
       handle and answers 200 anyway, because a webhook that 4xxs an event it
       chose not to handle gets retried until RevenueCat gives up and alerts.
 
@@ -328,7 +333,23 @@ supabase secrets set REVENUECAT_PRODUCTS='{
 user, has no Supabase token, and authenticates with the shared secret, which is
 checked before anything else happens.
 
-- [ ] **For sandbox testing only**, and never in production:
+**Deployed 2026-09-02, version 1**, via the Supabase MCP rather than the CLI,
+which is not installed here. Verified by probing the live endpoint:
+
+| Request | Answer |
+|---|---|
+| `GET` | `405 method_not_allowed` |
+| `OPTIONS` | `200` |
+| `POST`, no Authorization | `401 unauthorized` |
+| `POST`, wrong Authorization | `401 unauthorized` |
+
+**The 401 is the interesting one.** The function answers `503 not_configured`
+when `REVENUECAT_WEBHOOK_SECRET` is absent and only reaches the auth check when
+it is present, so a 401 to an anonymous POST is proof the secret is set —
+without anybody having to read it. Worth repeating after any secret change; it
+is the cheapest confirmation available that the deploy and the dashboard agree.
+
+- [x] **For sandbox testing only**, and never in production:
       `supabase secrets set REVENUECAT_ACCEPT_SANDBOX=true`. A sandbox event is
       a real event from a fake payment, so accepting them in production lets
       anybody with a tester account grant themselves a coach. **Unset it before
