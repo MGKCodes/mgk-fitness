@@ -214,10 +214,17 @@ They read as a pair on purpose: the first says what the product is, the second
 says only what is different about it. At 45 characters there is no room to say
 both twice.
 
-Each also needs a **review screenshot**. `apps/mgk_run/plates/paywall.png` is
-786x1704, over Apple's 640x920 minimum, and an IAP review screenshot only has to
-show the reviewer where the purchase happens — so unlike the *listing*
-screenshots, the plate is usable and no device is needed.
+Each also needs a **review screenshot**, and one file serves both. Run
+`python tool/export_store_assets.py`; it lands in
+`store-assets/derived/run-iap-review-screenshot.png` at 786x1704, over Apple's
+640x920 minimum. An IAP review screenshot only has to show the reviewer where
+the purchase happens, so unlike the *listing* screenshots the plate is usable
+and no device is needed.
+
+That script exists because **App Store Connect refuses an image with an alpha
+channel and every Flutter render carries one.** The first copy of this
+screenshot left the repo at 786x1704 RGBA and would have been rejected on
+upload.
 
 Prices are [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md)'s, and
 `supabase/functions/coach/limits.ts` sizes every spend ceiling against them. Let
@@ -275,9 +282,13 @@ the client never decides what it is entitled to.
       plate harness, which draws no basemap tiles. Six shots, chosen off
       [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190):
       `H1`, `R4` or `R5`, `F1`, `P2`, `C3`, `S4`. The first two are what shows
-      in search, so they carry the argument alone.
-- [ ] **The 1024×1024 marketing icon** in App Store Connect — no alpha channel,
-      no rounded corners.
-- [ ] **A review screenshot per subscription product.**
+      in search, so they carry the argument alone. Drop them in
+      `store-assets/captured/` named `listing-*.png`; the export script checks
+      the dimensions and the alpha channel.
+- [ ] **The 1024×1024 marketing icon** — no alpha channel, no rounded corners,
+      the most common trivial rejection there is. Name it
+      `store-assets/captured/icon-1024.png` and the checker asserts both.
+- [x] **A review screenshot per subscription product** — exported, and one file
+      covers both.
 - [ ] **The demo account**, and an `active` row in `core.entitlements` for it.
 - [ ] **The two URLs above must resolve** before submission. Neither does yet.

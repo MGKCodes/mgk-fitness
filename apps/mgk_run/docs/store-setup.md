@@ -112,10 +112,12 @@ mirrored into `REVENUECAT_PRODUCTS` in step 6.
 - [ ] **A review screenshot per product.** Required, and a common cause of
       "Missing Metadata" holding up the whole submission. The `paywall` plate on
       [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)
-      is what this screen looks like, and **is usable as-is**: it is 786x1704
-      against Apple's 640x920 minimum, and an IAP review screenshot only has to
-      show where the purchase happens. Unlike the listing screenshots, this one
-      needs no device.
+      is what this screen looks like, and **is usable**: 786x1704 against
+      Apple's 640x920 minimum, and an IAP review screenshot only has to show
+      where the purchase happens. Unlike the listing screenshots, this one needs
+      no device. Export it with `python tool/export_store_assets.py`, which
+      flattens the alpha channel every Flutter render carries and which App
+      Store Connect refuses. It lands in `store-assets/derived/`.
 - [ ] **Review notes per product.** Say the coach is the paid half and recording
       is free, so a reviewer is not hunting for what changed.
 - [ ] **No free trial, no introductory offer.** Deliberate: a trial on a £0.99

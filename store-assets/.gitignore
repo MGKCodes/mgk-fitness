@@ -1,0 +1,4 @@
+# Generated from the plate board by apps/mgk_run/tool/export_store_assets.py.
+# Not committed on purpose: a committed copy of a generated file is a copy that
+# drifts, and this one is regenerable in seconds. Run the script.
+/derived/
