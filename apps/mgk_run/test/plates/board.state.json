@@ -1,0 +1,403 @@
+{
+  "_": [
+    "What each plate was captured at, per plate rather than per run.",
+    "A board whose pictures are older than the app is worse than no board, and",
+    "nothing else in this repo would ever notice: the plates are gitignored, no",
+    "test asserts on them, and a caption written against code that has since",
+    "moved still reads perfectly. This file is the only thing that can say so.",
+    "",
+    "Regenerate a source file's plates with `flutter test <source>`, then stamp",
+    "the ones it wrote. Every plate here was taken in one pass, so the shas are",
+    "currently identical -- they will not stay that way, which is the point of",
+    "recording them per plate.",
+    "",
+    "The board this feeds: https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
+  ],
+  "plates": {
+    "00-acquiring": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "01-early": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "02-warming": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "03-warmed": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "04-deep": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "05-paused": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "06-lapped": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "07-sheet-open": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "08-signal-lost": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "09-unplanned-early": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "10-unplanned-running": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "11-permission-denied": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "12-permission-forever": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "13-services-off": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "14-location-failed": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "15-small-early": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "16-small-warmed": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "17-max-early": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "18-max-warmed": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "19-easy-under": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "20-easy-over": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "21-threshold-under": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "22-threshold-over": {
+      "source": "test/plates/board.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "account-gate": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "add-run": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-greeting": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-home": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-name": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-permission-allowed": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-permission": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-sign-in": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "arrive-welcome": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "coach-answering": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "coach-conversation": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "coach-gate": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "coach-resting": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "coach-speaking": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "hero_weights": {
+      "source": "test/plates/hero_weights.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "home-first-launch": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "home-no-plan": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "home-with-plan": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "keep-runs-safe": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "last-run-free": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "last-run-subscribed": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-block": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-calendar": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-confirm": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-disclaimer": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-intake": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-reveal": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-shape": {
+      "source": "test/plates/arrival.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "plan-week": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "profile-empty": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "profile-records-by-hand": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "profile-with-log": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "route-draw-100": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "route-draw-30": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "route-draw-65": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "run-complete-record": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "run-complete": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "run-from-log": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "run-list": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "settings-foot": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "settings-no-account": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "settings": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-plan-empty": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-plan-finish": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-plan": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-profile-empty": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-profile": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-race-after": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-race-day": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-race-result-sheet": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "shell-race-run-up": {
+      "source": "test/plates/shell.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "week-detail": {
+      "source": "test/plates/flows.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "year-grid-empty": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    },
+    "year-grid": {
+      "source": "test/plates/screens.dart",
+      "sha": "31b7ce3079db8e2a180c4fc499b6d943ad3aa39a",
+      "captured": "2026-09-02"
+    }
+  }
+}

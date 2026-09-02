@@ -34,6 +34,7 @@ import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/readiness.dart';
@@ -69,6 +70,13 @@ void main() {
     DriftPlanStore store,
     List<RunSummary> runs, {
     int initialTab = 0,
+    // **Pinned, never inferred.** Since ADR-0030 the coach mark is a door for
+    // an unsubscribed runner: tapping it opens the gate sheet rather than the
+    // conversation. The shell defaults to `free`, so the two conversation
+    // plates below silently became plates of the gate the day that landed —
+    // a valid PNG of the wrong screen, wearing the right caption, which is the
+    // one failure a board cannot notice about itself.
+    CoachAccess access = CoachAccess.subscribed,
   }) => HomeShell(
     // **With a name on it.** The fake defaults to none, so Settings correctly
     // drew "Nothing in particular" against the one row on the page that is
@@ -86,6 +94,7 @@ void main() {
     runEditor: RunEditor(db: db),
     unitSettings: InMemoryUnitSettings(),
     initialTab: initialTab,
+    access: access,
   );
 
   /// Taps the coach's mark.
@@ -178,6 +187,30 @@ void main() {
         await tester.tap(find.textContaining('half marathon').last);
         await settle(tester);
         await settle(tester);
+      },
+    );
+  });
+
+  /// **The door a free runner meets instead** — the same mark, the other tier.
+  ///
+  /// New with ADR-0030 and never on a board: before it, the app offered the
+  /// coach to everybody and let the Edge Function refuse, which surfaced as
+  /// "The coach hit a problem. Please try again." A working paywall reading as
+  /// broken software is the kind of thing only a picture catches.
+  testWidgets('and the door, for a runner without a subscription', (
+    tester,
+  ) async {
+    final store = await seeded();
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'coach-gate',
+      app(store, runs, access: CoachAccess.free),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await tapCoach(tester);
       },
     );
   });
