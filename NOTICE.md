@@ -2,7 +2,40 @@
 
 Third-party material in this repository, and one unresolved question about it.
 
-The code is [AGPL-3.0](LICENSE). This file covers everything that is not code.
+The code is [AGPL-3.0](LICENSE), **except `web/`**. This file covers the
+exceptions: one directory of our own code, one typeface, and 522 illustrations.
+
+---
+
+## The website - `web/`
+
+**`web/` is not covered by this repository's AGPL licence.** It is proprietary,
+all rights reserved, under its own [`web/LICENSE`](web/LICENSE). The source is
+visible because the repository is; it is not offered for reuse.
+
+Two reasons, and the second is the one people miss.
+
+**Copyleft protects the app, not the brand.**
+[ADR-0005](apps/mgk_run/docs/decisions/0005-license-agpl.md) chose AGPL so that
+nobody can reskin the apps and ship a closed competitor. That argument is about
+the software a runner uses. Marketing copy, brand assets and the pages that
+carry them are the opposite case: strong copyleft on those would let a
+competitor lawfully take the presentation of the product wholesale, which is
+what AGPL was picked to prevent, applied to the wrong layer.
+
+**AGPL section 13 is the network clause.** It requires that anyone who
+interacts with the software *over a network* be offered its source. A website
+is the literal case that clause was written for, so an AGPL `web/` would owe a
+source offer to every visitor. That is a real obligation attached to no benefit.
+
+The same split already exists across the studio: `getliftio.com` is a public
+repository serving a live site under an all-rights-reserved licence. Visible,
+not reusable. `web/` matches it.
+
+**The generated legal pages under `web/public/` are a special case.** They are
+rendered from `apps/mgk_run/docs/`, which is AGPL, and their text is a published
+legal document rather than a creative work anybody would want to copy. Nothing
+turns on their licence; they inherit `web/`'s because they live there.
 
 ---
 
