@@ -61,9 +61,9 @@ void main() {
   });
 
   testWidgets('buying sends the tier the button names', (tester) async {
-    // "Start coaching — £1/mo" must buy Coaching. The paywall renders a £3
-    // Premium row too, and sending that one because it happened to be first in
-    // the offerings is exactly the mix-up worth pinning.
+    // The primary button names Coach, so it must buy Coach. The tier block
+    // renders a Premium Coach row too, and sending that one because it happened
+    // to be first in the offerings is exactly the mix-up worth pinning.
     final store = FakePurchases();
     await openPlan(
       tester,

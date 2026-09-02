@@ -286,6 +286,11 @@ class _LiftShellState extends State<LiftShell> {
   /// behind the gate can be reached inside it.
   late bool _entitled = widget.isEntitled;
 
+  /// What the store will sell, for the paywall to price itself from. Empty
+  /// until the store answers, which the tier block renders as "not known yet"
+  /// rather than as a guess.
+  List<PurchaseOffer> _offers = const <PurchaseOffer>[];
+
   @override
   void initState() {
     super.initState();
@@ -296,6 +301,7 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_refreshPending());
     unawaited(_refreshPlan());
     unawaited(_refreshEntitlement());
+    unawaited(_loadOffers());
 
     final auth = widget.auth;
     if (auth != null) {
@@ -347,11 +353,19 @@ class _LiftShellState extends State<LiftShell> {
     return PurchaseFlow(purchases: store, gate: gate);
   }
 
-  /// The button says "Start coaching — £1/mo", so it buys Coaching.
+  Future<void> _loadOffers() async {
+    final store = widget.purchases;
+    if (store == null) return;
+    final offers = await store.offers();
+    if (!mounted || offers.isEmpty) return;
+    setState(() => _offers = offers);
+  }
+
+  /// The primary button buys **Coach**, which is what it names.
   ///
-  /// **Premium is displayed and not purchasable**, which is a gap rather than a
-  /// decision: `_Tiers` renders a £3 row that nothing here can reach, and the
-  /// paywall needs a way to choose before that is honest. Recorded in
+  /// **Premium Coach is displayed and not purchasable**, which is a gap rather
+  /// than a decision: the tier block renders a row nothing here can reach, and
+  /// the paywall needs a way to choose before that is honest. Recorded in
   /// `docs/submission-week.md` rather than left in a comment nobody reads.
   Future<void> _startPurchase() async {
     final flow = _flow;
@@ -549,6 +563,7 @@ class _LiftShellState extends State<LiftShell> {
                   isEntitled: _entitled,
                   onSubscribe: _flow == null ? null : _startPurchase,
                   onRestore: _flow == null ? null : _restorePurchases,
+                  offers: _offers,
                   plan: _plan,
                   today: widget.today,
                   unit: _units.mass,

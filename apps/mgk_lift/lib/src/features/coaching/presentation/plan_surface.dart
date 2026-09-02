@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../entitlement/domain/entitlement.dart';
+import '../../purchases/domain/purchases.dart';
 import '../../purchases/presentation/restore_button.dart';
 import 'package:mgk_units/mgk_units.dart';
 
@@ -32,6 +34,7 @@ class PlanSurface extends StatelessWidget {
     this.coachIsOff = false,
     this.onSubscribe,
     this.onRestore,
+    this.offers = const <PurchaseOffer>[],
     this.isEntitled = false,
     this.plan,
     this.unit = MassUnit.kilograms,
@@ -61,6 +64,12 @@ class PlanSurface extends StatelessWidget {
   /// (Guideline 3.1.1) and the only route back for somebody reinstalling.
   /// Null hides the affordance rather than disabling it.
   final Future<void> Function()? onRestore;
+
+  /// What the store says it will sell, and **the only source of a price on this
+  /// screen**. Empty when there is no store or it has not answered, in which
+  /// case the tiers are still named and described — the copy is the app's — and
+  /// the price column says it does not know.
+  final List<PurchaseOffer> offers;
 
   /// Whether this account has the paid tier for Lift. Entitlements are per-app
   /// and client-read-only; the server decides.
@@ -99,6 +108,20 @@ class PlanSurface extends StatelessWidget {
   /// the two copy states.
   /// Whether there is a live plan to show rather than an offer or an invitation.
   bool get isBlock => isEntitled && plan != null;
+
+  /// Names the tier, and adds the price only when the store has supplied one.
+  ///
+  /// It used to read `Start coaching — £1/mo` as a constant, which was wrong for
+  /// every territory that does not use sterling and wrong again the first time
+  /// the price moves.
+  String get _buyLabel {
+    for (final offer in offers) {
+      if (offer.tier == EntitlementTier.paid) {
+        return 'Start coaching — ${offer.price}/${offer.period}';
+      }
+    }
+    return 'Start coaching';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -260,9 +283,9 @@ class PlanSurface extends StatelessWidget {
       ),
 
       const SizedBox(height: AppSpacing.xl),
-      const _Tiers(),
+      _Tiers(offers),
       const SizedBox(height: AppSpacing.lg),
-      PrimaryButton(label: 'Start coaching — £1/mo', onPressed: onSubscribe),
+      PrimaryButton(label: _buyLabel, onPressed: onSubscribe),
       RestorePurchasesButton(onRestore: onRestore),
       const SizedBox(height: AppSpacing.md),
       _Note(
@@ -280,18 +303,47 @@ class PlanSurface extends StatelessWidget {
 /// it is the row that proves tracking is not the thing behind the paywall, which
 /// a screen that only listed the paid tiers would quietly imply.
 ///
-/// **The two paid tiers hold the same features.** £3 buys more room to talk to
-/// the coach and nothing else — no screen, no capability, no extra half of the
-/// app. That is worth saying in the copy rather than leaving somebody to infer
-/// a feature list from a price, and it is why the Premium row names what it is
-/// the same as before it names what is different.
+/// **The two paid tiers hold the same features.** Premium Coach buys more room
+/// to talk to the coach and nothing else — no screen, no capability, no extra
+/// half of the app. That is worth saying in the copy rather than leaving
+/// somebody to infer a feature list from a price difference, and it is why the
+/// Premium Coach row says what is the same before it says what differs.
+///
+/// **Names are the app's; prices are the store's.** The tiers are Coach and
+/// Premium Coach — see [EntitlementTier.label] — and the price column is filled
+/// in from [PurchaseOffer] or left unknown. Both were hardcoded as `£1` and `£3`
+/// until 2026-09-02, which named the tiers after a number that is wrong outside
+/// the UK and has to be hunted down the day it changes.
 class _Tiers extends StatelessWidget {
-  const _Tiers();
+  const _Tiers(this.offers);
+
+  final List<PurchaseOffer> offers;
+
+  /// What the tier is for. App copy, so it reads the same whether or not the
+  /// store answered.
+  static String _detail(EntitlementTier tier) => switch (tier) {
+    EntitlementTier.free =>
+      'Sessions, templates, history, stats. No limits and no ads.',
+    EntitlementTier.paid =>
+      'A plan built for you, a coach that adapts it, and progress photos.',
+    EntitlementTier.premium =>
+      'Everything in Coach, feature for feature. Far more room to talk to '
+          'the coach.',
+  };
+
+  /// An em dash rather than a guess. Not knowing the price yet is a true thing
+  /// to show; inventing one is not.
+  String _price(EntitlementTier tier) {
+    for (final offer in offers) {
+      if (offer.tier == tier) return offer.price;
+    }
+    return '—';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const GlassSurface(
-      padding: EdgeInsets.symmetric(
+    return GlassSurface(
+      padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
@@ -301,25 +353,20 @@ class _Tiers extends StatelessWidget {
           _Tier(
             price: 'Free',
             name: 'Everything you are using now',
-            detail:
-                'Sessions, templates, history, stats. No limits and no ads.',
+            detail: _detail(EntitlementTier.free),
           ),
-          _Divider(),
+          const _Divider(),
           _Tier(
-            price: '£1',
-            name: 'Coaching',
-            detail:
-                'A plan built for you, a coach that adapts it, and progress '
-                'photos.',
+            price: _price(EntitlementTier.paid),
+            name: EntitlementTier.paid.label,
+            detail: _detail(EntitlementTier.paid),
             isHighlighted: true,
           ),
-          _Divider(),
+          const _Divider(),
           _Tier(
-            price: '£3',
-            name: 'Premium',
-            detail:
-                'Everything in Coaching, feature for feature. Far more room '
-                'to talk to the coach.',
+            price: _price(EntitlementTier.premium),
+            name: EntitlementTier.premium.label,
+            detail: _detail(EntitlementTier.premium),
           ),
         ],
       ),

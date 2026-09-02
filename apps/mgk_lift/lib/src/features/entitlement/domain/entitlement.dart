@@ -29,6 +29,24 @@ enum EntitlementTier {
     'premium' => EntitlementTier.premium,
     _ => EntitlementTier.free,
   };
+
+  /// What the tier is called on screen, and the **only** way the app should
+  /// name one.
+  ///
+  /// A tier is named, never priced. `£1` and `£3` were used as identity in the
+  /// paywall, the button and the plan — which is wrong twice over: the store
+  /// localises price and currency per territory, so a hardcoded `£` is simply
+  /// incorrect for most of the world; and a price that appears in copy has to
+  /// be found and changed everywhere the day it moves, which is the day nobody
+  /// remembers where it all is.
+  ///
+  /// Prices come from [PurchaseOffer], which gets them from the store. This is
+  /// the name.
+  String get label => switch (this) {
+    EntitlementTier.free => 'Free',
+    EntitlementTier.paid => 'Coach',
+    EntitlementTier.premium => 'Premium Coach',
+  };
 }
 
 /// One row of `core.entitlements`, for this app and this person.

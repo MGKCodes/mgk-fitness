@@ -14,16 +14,19 @@ import '../../entitlement/domain/entitlement.dart';
 /// A tier the store will sell, as the store describes it.
 ///
 /// **The price is a string from the store, never a constant here.** Apple and
-/// Google localise price and currency per territory, so a hardcoded `£1` is
-/// wrong for most of the world and is the kind of wrong that gets a screenshot
-/// attached to a rejection. `_Tiers` in `plan_surface.dart` hardcodes £1 and £3
-/// today; driving it from these is what removes that.
+/// Google localise price and currency per territory, so a hardcoded currency
+/// symbol is simply wrong for most of the world, and it is the kind of wrong
+/// that arrives with a screenshot attached to a rejection.
+///
+/// The tier's *name* does not come from the store either — see
+/// [EntitlementTier.label]. What a tier is called is the app's decision and has
+/// to read the same everywhere; what it costs is the store's answer and differs
+/// by territory. Keeping the two in different places is the point.
 @immutable
 class PurchaseOffer {
   const PurchaseOffer({
     required this.id,
     required this.tier,
-    required this.name,
     required this.price,
     required this.period,
   });
@@ -33,16 +36,17 @@ class PurchaseOffer {
   /// can match a screen to a receipt.
   final String id;
 
+  /// Which tier this buys. Also where its name comes from —
+  /// [EntitlementTier.label] — rather than from whatever was typed into App
+  /// Store Connect, so the two stores cannot disagree about what a tier is
+  /// called.
   final EntitlementTier tier;
-
-  /// What the tier is called on the paywall: `Coaching`, `Premium`.
-  final String name;
 
   /// Localised and formatted by the store: `£1.00`, `$1.99`, `1,09 €`.
   final String price;
 
   /// Localised billing period: `month`. Kept separate from [price] so copy can
-  /// say "£1.00 / month" without parsing a string the store composed.
+  /// join the two without parsing a string the store composed.
   final String period;
 }
 
@@ -168,20 +172,21 @@ class FakePurchases implements Purchases {
     this.onBuy = PurchaseStatus.entitled,
     this.onRestore = PurchaseStatus.entitled,
     this.throwOnBuy = false,
-  }) : _offers = offers ?? const <PurchaseOffer>[coaching, premium];
+  }) : _offers = offers ?? const <PurchaseOffer>[coach, premiumCoach];
 
-  static const PurchaseOffer coaching = PurchaseOffer(
-    id: 'lift.coaching.monthly',
+  /// Stand-ins for what a store would answer. **The prices here are fixtures,
+  /// not the product's prices** — the real ones live in App Store Connect and
+  /// Play Console and reach the app only through [Purchases.offers].
+  static const PurchaseOffer coach = PurchaseOffer(
+    id: 'lift.coach.monthly',
     tier: EntitlementTier.paid,
-    name: 'Coaching',
     price: '£1.00',
     period: 'month',
   );
 
-  static const PurchaseOffer premium = PurchaseOffer(
-    id: 'lift.premium.monthly',
+  static const PurchaseOffer premiumCoach = PurchaseOffer(
+    id: 'lift.premium_coach.monthly',
     tier: EntitlementTier.premium,
-    name: 'Premium',
     price: '£3.00',
     period: 'month',
   );

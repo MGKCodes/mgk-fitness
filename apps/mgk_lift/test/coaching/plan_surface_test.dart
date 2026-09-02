@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_lift/src/features/entitlement/domain/entitlement.dart';
+import 'package:mgk_lift/src/features/purchases/domain/purchases.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/plan_surface.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -39,13 +41,14 @@ void main() {
     testWidgets('say the two paid tiers differ only by how much you can talk', (
       WidgetTester tester,
     ) async {
-      // £3 buys more messages and nothing else. Leaving a price difference
-      // unexplained invites somebody to infer a feature list from it, which is
-      // how a paywall starts lying without anybody writing a false sentence.
+      // Premium Coach buys more messages and nothing else. Leaving a price
+      // difference unexplained invites somebody to infer a feature list from it,
+      // which is how a paywall starts lying without anybody writing a false
+      // sentence.
       await pumpTall(tester, const PlanSurface());
 
       expect(
-        find.textContaining('Everything in Coaching, feature for feature'),
+        find.textContaining('Everything in Coach, feature for feature'),
         findsOneWidget,
       );
       expect(
@@ -78,9 +81,60 @@ void main() {
       await pumpTall(tester, const PlanSurface());
 
       expect(find.text('Free'), findsOneWidget);
-      expect(find.text('£1'), findsOneWidget);
-      expect(find.text('£3'), findsOneWidget);
-      expect(find.text('Start coaching — £1/mo'), findsOneWidget);
+      expect(find.text('Coach'), findsOneWidget);
+      expect(find.text('Premium Coach'), findsOneWidget);
+    });
+
+    testWidgets('names the tiers and never prices them itself', (
+      WidgetTester tester,
+    ) async {
+      // The rule, pinned. A tier is Coach or Premium Coach; what it costs is
+      // the store's answer and differs by territory. Hardcoding `£1` named the
+      // tier after a number that is wrong outside the UK and has to be hunted
+      // down the day it moves.
+      await pumpTall(tester, const PlanSurface());
+
+      expect(find.textContaining('£'), findsNothing);
+      expect(
+        find.text('Start coaching'),
+        findsOneWidget,
+        reason: 'with no store there is no price to name',
+      );
+      expect(
+        find.text('—'),
+        findsNWidgets(2),
+        reason: 'not knowing the price yet is true; inventing one is not',
+      );
+    });
+
+    testWidgets('prices come from the store, verbatim', (
+      WidgetTester tester,
+    ) async {
+      // Whatever the store hands over, including its currency and formatting.
+      // The app neither composes nor parses it.
+      await pumpTall(
+        tester,
+        const PlanSurface(
+          offers: <PurchaseOffer>[
+            PurchaseOffer(
+              id: 'x',
+              tier: EntitlementTier.paid,
+              price: r'$1.99',
+              period: 'month',
+            ),
+            PurchaseOffer(
+              id: 'y',
+              tier: EntitlementTier.premium,
+              price: r'$4.99',
+              period: 'month',
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text(r'$1.99'), findsOneWidget);
+      expect(find.text(r'$4.99'), findsOneWidget);
+      expect(find.text(r'Start coaching — $1.99/month'), findsOneWidget);
     });
 
     testWidgets('promises tracking stays free', (WidgetTester tester) async {

@@ -38,7 +38,7 @@ void main() {
         FakeEntitlements(
           const Entitlement(tier: EntitlementTier.paid, status: 'active'),
         ),
-      ).buy(FakePurchases.coaching);
+      ).buy(FakePurchases.coach);
 
       expect(result.status, PurchaseStatus.entitled);
       expect(result.changedEntitlement, isTrue);
@@ -46,9 +46,7 @@ void main() {
 
     test('waits for the webhook rather than believing the store', () async {
       // The realistic case: the store returns before core.entitlements exists.
-      final result = await flowOver(
-        lagging(after: 3),
-      ).buy(FakePurchases.coaching);
+      final result = await flowOver(lagging(after: 3)).buy(FakePurchases.coach);
 
       expect(result.status, PurchaseStatus.entitled);
     });
@@ -59,7 +57,7 @@ void main() {
       final result = await flowOver(
         FakeEntitlements(Entitlement.none),
         attempts: 3,
-      ).buy(FakePurchases.coaching);
+      ).buy(FakePurchases.coach);
 
       expect(result.status, PurchaseStatus.pending);
       expect(result.changedEntitlement, isFalse);
@@ -72,7 +70,7 @@ void main() {
       final result = await flowOver(
         source,
         store: FakePurchases(onBuy: PurchaseStatus.cancelled),
-      ).buy(FakePurchases.coaching);
+      ).buy(FakePurchases.coach);
 
       expect(result.status, PurchaseStatus.cancelled);
       expect(source.calls, isZero, reason: 'nothing can have changed');
@@ -82,7 +80,7 @@ void main() {
       final result = await flowOver(
         FakeEntitlements(Entitlement.none),
         store: FakePurchases(throwOnBuy: true),
-      ).buy(FakePurchases.coaching);
+      ).buy(FakePurchases.coach);
 
       expect(result.status, PurchaseStatus.failed);
       expect(result.message, isNotNull);
@@ -102,9 +100,9 @@ void main() {
           const Entitlement(tier: EntitlementTier.premium, status: 'active'),
         ),
         store: store,
-      ).buy(FakePurchases.premium);
+      ).buy(FakePurchases.premiumCoach);
 
-      expect(store.bought.single.id, FakePurchases.premium.id);
+      expect(store.bought.single.id, FakePurchases.premiumCoach.id);
     });
   });
 

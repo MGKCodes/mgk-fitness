@@ -33,8 +33,21 @@ as decisions rather than drift.
    corrected, and the "draft, legally unreviewed" banners come out of the shipped
    copy.
 4. **No annual tier.** Liftio sold £19.99/yr beside its monthly. 2.0.0 ships two
-   monthly tiers only — £1 Coaching and £3 Premium. This is now settled rather
-   than omitted; revisit when there is renewal data to price an annual against.
+   monthly tiers only — **Coach** and **Premium Coach**. This is now settled
+   rather than omitted; revisit when there is renewal data to price an annual
+   against.
+6. **The tiers are named, never priced.** Settled 2026-09-02. They are **Coach**
+   and **Premium Coach** everywhere — in copy, in the plan, in conversation — and
+   **no price is ever written into the app**. Prices live in App Store Connect
+   and Play Console and reach the screen only through the store's own offerings,
+   localised and formatted by the store.
+
+   Two reasons, and the second is the one that bites. A hardcoded `£` is simply
+   wrong for every territory that does not use sterling. And a price that
+   appears in copy has to be found and changed in every place it was written the
+   day it moves — which is the day nobody remembers where all of them are.
+   Naming a tier after its price makes the price part of its identity, and then
+   changing the price looks like changing the product.
 5. **The web presence lives in this repo**, under a new top-level `web/` —
    legal, support and marketing for Lift, together. Added 2026-09-02, replacing
    the assumption that a page would be stood up somewhere else. What it changes
@@ -126,10 +139,10 @@ restore. It moves when that stops being true, not before.
 `VoidCallback? onSubscribe`, and nothing passes one. There are **two** paywall
 surfaces to wire, not one; the plan only ever discusses the Plan paywall.
 
-`plan_surface.dart:257` already renders `Start coaching — £1/mo` above a £1/£3
-tier table, and `photos_surface.dart` renders `Unlock photos`. Prices and offers
-on screen with no purchase path behind them is Guideline 3.1.1, so both facts
-have to change in the same build.
+`plan_surface.dart` already rendered a priced button above a priced tier table,
+and `photos_surface.dart` renders `Unlock photos`. Offers on screen with no
+purchase path behind them is Guideline 3.1.1, so both facts had to change in the
+same build.
 
 **Fixed 2026-09-02.** Both paywalls now take `onSubscribe` and `onRestore` from
 the shell, which supplies them only when a store *and* an entitlement gate are
@@ -256,9 +269,10 @@ Nothing in F or G can be finished until a build can take money.
 
 - [ ] **Count Liftio's live subscribers** *(you)* — blocker 5. Everything else in
       this section is shaped by the answer.
-- [ ] Create store products *(you)*: **£1 Coaching** → `product = 'paid'`,
-      **£3 Premium** → `product = 'premium'`, on both stores. On Apple they go in
-      the existing subscription group beside the legacy tiers.
+- [ ] Create store products *(you)*: **Coach** → `product = 'paid'`,
+      **Premium Coach** → `product = 'premium'`, on both stores. On Apple they go
+      in the existing subscription group beside the legacy tiers. **Prices are
+      set there and nowhere else** (decision 6) — the app never carries one.
 - [x] **Annual tier: no.** Settled 2026-09-02 as decision 4 — monthly only. The
       legacy £19.99/yr product still has to survive for whoever holds one, which
       is blocker 5's problem rather than a pricing one.
@@ -272,15 +286,18 @@ Nothing in F or G can be finished until a build can take money.
 - [x] **The purchase seam** — `Purchases`, `PurchaseOffer`, `PurchaseFlow` and a
       scripted fake, with both paywalls wired through the shell. 14 tests. The
       RevenueCat SDK now drops in behind an interface rather than into a screen.
-- [ ] **Premium is displayed and cannot be bought** *(me)*. `_Tiers` renders a £3
-      row and nothing can reach it: the only button says *Start coaching — £1/mo*
-      and buys Coaching. A tier the app advertises and cannot sell is an
-      incomplete purchase flow, which is the 2.1 bucket rather than a cosmetic
-      gap. The paywall needs a way to choose before it is honest.
-- [ ] **`_Tiers` hardcodes £1 and £3** *(me)*. Prices have to come from the store
-      offerings, which is why `PurchaseOffer` carries a localised `price` string
-      rather than a number. A hardcoded `£` is wrong for most of the world and is
-      the kind of wrong that arrives with a screenshot attached to a rejection.
+- [ ] **Premium Coach is displayed and cannot be bought** *(me)*. The tier block
+      renders a Premium Coach row and nothing can reach it: the primary button
+      names Coach and buys Coach. A tier the app advertises and cannot sell is an
+      incomplete purchase flow — the 2.1 bucket rather than a cosmetic gap — so
+      the paywall needs a way to choose before it is honest.
+- [x] **Prices come from the store, and tiers are named rather than priced.**
+      Done 2026-09-02, per decision 6. `EntitlementTier.label` is the single
+      source of *Coach* and *Premium Coach*; `PurchaseOffer.price` carries the
+      store's own localised string and the app neither composes nor parses it.
+      With no store the tiers are still named and described and the price column
+      says `—`, because not knowing the price is true and inventing one is not.
+      Pinned by a test that fails if a `£` appears on the paywall at all.
 - [ ] **The webhook Edge Function → `core.entitlements`** *(me)*: one function,
       shared-secret check, writing under `service_role`. Renewal, expiry, grace,
       refund and revocation arrive as one event shape. Maps legacy Liftio product
