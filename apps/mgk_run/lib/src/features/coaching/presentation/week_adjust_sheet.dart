@@ -6,6 +6,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../data/adaptation_service.dart';
 import '../data/coach_errors.dart';
+import '../domain/prescribed_distance.dart';
 import '../domain/runner_profile.dart';
 import '../domain/training_plan.dart';
 import '../domain/week_adaptation.dart';
@@ -221,8 +222,7 @@ class _ChangeRow extends StatelessWidget {
 
   String _label(PlannedSession? s) => s == null
       ? 'Rest'
-      : '${kindLabel(s.kind)} '
-            '${Distance.meters(s.distanceMeters).format(unit, fractionDigits: 1)}';
+      : '${kindLabel(s.kind)} ${formatPrescribed(s.distanceMeters, unit)}';
 
   @override
   Widget build(BuildContext context) {

@@ -7,7 +7,8 @@ specific to the running app.
 ## Current state
 
 **Built and working, not yet released anywhere.** Tracking, plan generation and
-the coach all run; 917 tests pass. `lib/` holds ~178 Dart files.
+the coach all run; 1186 tests pass and 3 are skipped (they are `@Tags(['live'])`
+and hit the real backend). `lib/` holds ~181 Dart files.
 
 This was previously a standalone repo called Runio. It moved into the monorepo
 on 2026-08-06 and was repointed at `packages/mgk_ui`. If you find a doc here
@@ -31,7 +32,11 @@ schema, it is stale — say so rather than working around it.
 4. **Store metric, convert at display.**
 5. **No Strava. No copyrighted training tables.** Do not integrate Strava in any
    form. Do not reproduce VDOT tables or published plan schedules — derive paces
-   from formulae (Riegel, % of threshold). This repo is public.
+   from formulae (Riegel, % of threshold). **The repo is private today and is
+   intended to go public** (a git-history secret scrub is the prerequisite; see
+   `docs/roadmap.md`). Write every line as though it already is - which is also
+   why `core.entitlements` has no client write path. A rule whose stated reason
+   is a false fact gets "corrected" later, and takes the rule with it.
 6. **Health data is special-category data.** Never log raw health values. A
    denied HealthKit read is indistinguishable from no data — design for absence,
    not error states.
@@ -78,7 +83,7 @@ schema, it is stale — say so rather than working around it.
 - `docs/product-spec.md` — the source-of-truth product definition.
 - `docs/architecture/` — run recording, plan generation, onboarding, LLM and
   secrets.
-- `docs/decisions/` — 20 ADRs (the *why*).
+- `docs/decisions/` — 27 ADRs (the *why*).
 - `docs/roadmap.md` — phased build order.
 - `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`.
 

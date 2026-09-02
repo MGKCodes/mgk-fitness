@@ -3,7 +3,12 @@ import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 
 import '../../../core/database/app_database.dart';
+import '../../../core/ids.dart';
+import '../../health/data/health_kit_run_metrics.dart';
+import '../../health/domain/run_health_metrics.dart';
 import '../../history/data/run_backup.dart';
+import '../domain/best_effort.dart';
+import '../domain/live_metrics.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/run_recorder.dart';
@@ -23,6 +28,7 @@ class RecordingRunRecorder implements RunRecorder {
     required LocationSource source,
     required AppDatabase db,
     RunBackup? backup,
+    RunHealthSource? health,
     String Function()? newId,
     DateTime Function()? now,
     double recordAccuracyMeters = kMaxRecordableAccuracyMeters,
@@ -30,6 +36,7 @@ class RecordingRunRecorder implements RunRecorder {
   }) : _source = source,
        _db = db,
        _runBackup = backup,
+       _health = health ?? HealthKitRunMetrics(),
        _newId = newId ?? _defaultId,
        _now = now ?? DateTime.now,
        _recordAccuracyM = recordAccuracyMeters,
@@ -42,6 +49,17 @@ class RecordingRunRecorder implements RunRecorder {
   /// preview harness and a dev persona want — invented runs must never reach
   /// the shared project.
   final RunBackup? _runBackup;
+
+  /// What the phone noticed while the run was happening, which the GPS trace
+  /// cannot answer — steps, today.
+  ///
+  /// **Not nullable, unlike the backup**, and the asymmetry is the point. A
+  /// null backup means "this run must never leave the device", which a dev
+  /// persona genuinely needs. There is no equivalent hazard in *reading*: the
+  /// default implementation answers nothing on any platform without Health, so
+  /// a test host and a preview get the same absence a runner who declined does,
+  /// with no wiring required at the composition root to make that true.
+  final RunHealthSource _health;
   final String Function() _newId;
   final DateTime Function() _now;
 
@@ -56,6 +74,15 @@ class RecordingRunRecorder implements RunRecorder {
 
   /// Runs [push] only when there is a backup, and never lets it fail the
   /// caller: the run has already committed locally.
+  ///
+  /// The catch is deliberate and always was, but for a while it was the *only*
+  /// thing that happened to a failed push, which is how a backup that had been
+  /// broken for weeks could look exactly like one that was working. Finishing a
+  /// run must not fail because a server was unreachable; it must also not be
+  /// the last anybody hears of it. The reporting is done by the wrapper the
+  /// backup is built with (`ReportedRunBackup` in `main.dart`) rather than
+  /// here, so the recorder keeps knowing nothing about backups beyond this
+  /// seam — and so the editor and the backfill get it too.
   Future<void> _backup(Future<void> Function(RunBackup) push) async {
     final backup = _runBackup;
     if (backup == null) return;
@@ -63,8 +90,47 @@ class RecordingRunRecorder implements RunRecorder {
       await push(backup);
     } catch (_) {
       // Deliberate — a lost push is a run on the phone and not yet in the
-      // backup, which the next push repairs.
+      // backup, which the next push repairs. Recorded on the way past; see
+      // above.
     }
+  }
+
+  /// Asks Health what it counted over the run's window and stores it, or does
+  /// nothing at all.
+  ///
+  /// **Three ways to end with no steps written, and all three are correct.**
+  /// The runner declined the Health read; the phone counted nothing because it
+  /// spent the hour on a table; the store was slow enough to hit the deadline.
+  /// iOS cannot tell them apart and neither can this — so none of them is an
+  /// error, none of them is a zero, and none of them touches the column. A run
+  /// with no steps stored shows no STEPS tile, which is the honest rendering of
+  /// "not recorded" (CLAUDE.md rule 6).
+  ///
+  /// **Wall-clock window, not moving time.** A pause takes time off the run's
+  /// clock but the runner is still standing on the road, and HealthKit indexes
+  /// by the calendar. Asking `startedAt..endedAt` counts the steps taken during
+  /// a coffee stop, which is a slight over-count and the honest direction to be
+  /// wrong in — the alternative is stitching one query per unpaused segment,
+  /// which costs a platform round trip per pause to correct a rounding error in
+  /// a figure nobody trains off.
+  ///
+  /// Known and unfixable from here: iOS writes pedometer samples with a lag, so
+  /// a run finished the instant the last step lands can be asked before the
+  /// store has it. That under-counts slightly on the finish screen and is why
+  /// this is a write that repeats safely rather than a one-shot — re-reading a
+  /// run's steps later is a change this method's shape already allows.
+  Future<void> _recordSteps({
+    required String runId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final RunHealthMetrics metrics = await _health.forInterval(
+      start: from,
+      end: to,
+    );
+    final steps = metrics.steps;
+    if (steps == null) return;
+    await _db.recordRunSteps(runId: runId, steps: steps);
   }
 
   final StreamController<RunPoint> _points =
@@ -359,8 +425,9 @@ class RecordingRunRecorder implements RunRecorder {
     // smoother, so the stored total matches what the screen displayed and isn't
     // inflated by jitter (the live [_distanceM] is a raw running estimate).
     final rows = await _db.pointsForRun(runId);
+    final trace = <RunPoint>[for (final row in rows) _rowToPoint(row)];
     final distanceM = processedDistanceMeters(
-      rows.map(_rowToPoint),
+      trace,
       maxAccuracyM: _distanceAccuracyM,
     );
     final ended = _now();
@@ -377,10 +444,97 @@ class RecordingRunRecorder implements RunRecorder {
       durationS: durationS,
       distanceM: distanceM,
       avgPaceSPerKm: avgPace,
+      // **Elevation goes down with the run**, from the same walk over the same
+      // trace as the distance and the splits below — so the three can never
+      // disagree about which fixes they were derived from.
+      //
+      // Climb had the splits' bug: computed on every fix for the in-run readout
+      // and stored nowhere, so an hour of watching it tick up ended with a
+      // summary that had no column to read it back from. The maximum is new
+      // beside it because it answers a different question — hill repeats are
+      // huge gain and an unremarkable high point, one long drag is the reverse.
+      //
+      // Both are null on a trace with no barometric altitude, which today is
+      // every trace this app records: `GeolocatorLocationSource` supplies no
+      // altitude at all and GPS altitude is deliberately never substituted (see
+      // ADR-0024). That is absence, not failure, and it renders as an absent
+      // tile — but it does mean these two stay empty until a barometer source
+      // exists, and no amount of wiring on this side changes that.
+      elevationGainM: climbMeters(trace),
+      elevationMaxM: maxElevationMeters(trace),
     );
-    // The run is safe on the phone at this point (rule 1). Mirroring it is
-    // what makes it appear in the log at all, because History reads Supabase —
-    // before this existed, a recorded run was written here and seen nowhere.
+    // **The splits go down with the run**, from the same walk over the same
+    // persisted trace the distance just came from.
+    //
+    // They were computed on every fix for the in-run readout and then dropped
+    // on the floor: `run_splits` was written only by a restore, so the ten
+    // splits a runner watched turn over disappeared the moment the screen did,
+    // and the summary they were sent to could only ever show an empty list.
+    // Points have always been persisted as they arrive (rule 1); this is the
+    // derived half of the same run finally being kept.
+    //
+    // Written before the mirror, because `pushTrace` reads the splits back out
+    // of the database — pushing first would mirror a run with none.
+    await _db.replaceRunSplits(runId, <RunSplitsCompanion>[
+      for (final split in splitsFor(trace))
+        RunSplitsCompanion.insert(
+          runId: runId,
+          seq: split.index,
+          distanceM: split.distanceMeters,
+          durationS: split.duration.inSeconds,
+        ),
+    ]);
+    // **The records go down with the run too, and for the same reason the
+    // splits do: this is the only moment the trace is cheap to read.**
+    //
+    // A record is the fastest continuous stretch of 5 km, 10 km, a half or a
+    // full *inside* this run — searched for over the trace, never read off the
+    // summary. The 23 Aug run covered 10.18 km in 58:28 and its actual 10K was
+    // about 57:25; reporting the whole run's time as a 10K best understates the
+    // runner's own record by a minute and says nothing about doing so
+    // (ADR-0026).
+    //
+    // Computed here rather than when Profile opens, which is the same argument
+    // ADR-0023 makes about reads: the alternative is loading every point of
+    // every run in the log on every visit to a tab, over a log that only grows.
+    // Four numbers per run, written once, is the whole cost.
+    //
+    // Usually empty, and that is not a gap: most runs are shorter than 5 km.
+    await _db.replaceRunBestEfforts(runId, <RunBestEffortsCompanion>[
+      for (final effort in bestEffortsFor(trace))
+        RunBestEffortsCompanion.insert(
+          runId: runId,
+          distanceM: effort.distanceMeters,
+          durationS: effort.duration.inSeconds,
+        ),
+    ]);
+    // **What the phone counted while the GPS was watching the road.**
+    //
+    // Last of the local writes and deliberately so: it is the only one that
+    // depends on anything outside this app, and the run is already complete and
+    // correct without it. A Health store that is slow, locked or refusing costs
+    // a bounded pause on the Finish button and nothing else — every one of
+    // those outcomes reaches [_recordSteps] as an absence rather than as a
+    // throw, and none of them can delay the run being in the log.
+    //
+    // Before the mirror rather than after, so that the day the Postgres columns
+    // exist the push carries the figure instead of a stale null. Today it does
+    // not: `pushRun` enumerates its columns and `run.runs` has no `steps`, so
+    // steps are local-only and a restore onto a new phone will not bring them
+    // back. That is a `db/` change and out of this lane; see ADR-0024.
+    //
+    // `_startedAt` is non-null wherever `_runId` is — they are set and cleared
+    // together — so the fallback is unreachable, and it collapses the window to
+    // nothing rather than inventing one if that ever stops being true.
+    await _recordSteps(runId: runId, from: _startedAt ?? ended, to: ended);
+    // The run is safe on the phone at this point, and that is now the whole of
+    // what "safe" requires (rule 1): the log is read from Drift, so the run is
+    // in it the moment the line above returns. Mirroring is a mirror.
+    //
+    // It used to be more than that — the log was read from Supabase, so this
+    // push was what made a run appear at all, and a runner who had declined
+    // backup finished a 10 km run and was shown "No runs yet". ADR-0023 has
+    // the argument; the code that changed is one line in `main.dart`.
     await _backup((backup) async {
       await backup.pushRun(runId);
       await backup.pushTrace(runId);
@@ -413,4 +567,10 @@ class RecordingRunRecorder implements RunRecorder {
   );
 }
 
-String _defaultId() => DateTime.now().microsecondsSinceEpoch.toString();
+/// A recorded run's identity. Not the clock — see [newLocalId].
+///
+/// Starting two runs inside one microsecond is not a thing a person does, so
+/// this generator was the safer of the two that shared the bug. It is fixed
+/// anyway: "the caller happens not to race" is a property of today's callers,
+/// and the recorder already writes from a stream.
+String _defaultId() => newLocalId();

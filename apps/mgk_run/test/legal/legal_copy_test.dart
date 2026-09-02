@@ -86,9 +86,18 @@ void main() {
     test('names the current sub-processors and not the old one', () {
       // The provider swap to an OpenRouter gateway (ADR-0007) has to be visible
       // in both. A policy naming the wrong processor is a compliance defect.
+      //
+      // All four are pinned, not just the interesting ones. A sub-processor
+      // added to the architecture and not to the policy is the same defect as
+      // one named after it was dropped, and it is the more likely direction:
+      // RevenueCat (ADR-0028) arrived as a purchase decision, and remembering
+      // that a purchase decision is also a disclosure is exactly what nobody
+      // does at the time.
       for (final text in <String>[doc, app]) {
         expect(text, contains('Supabase'));
         expect(text, contains('OpenRouter'));
+        expect(text, contains('RevenueCat'));
+        expect(text, contains('MapTiler'));
         expect(
           text,
           isNot(contains('Anthropic')),
@@ -198,5 +207,128 @@ void main() {
         expect(line.trim(), isNotEmpty);
       }
     }
+  });
+
+  /// The third rendering, and the only one App Review actually opens.
+  ///
+  /// Everything above pins `legal_copy.dart` against `docs/*.md`. The published
+  /// page is generated from the same markdown by `tool/build_legal_pages.py`
+  /// and served verbatim out of `web/public/run/`, so in principle it cannot
+  /// drift. In practice **"generated" is a property of whether somebody ran the
+  /// generator**, and the failure is silent: a doc edited without regenerating
+  /// leaves a live page saying something the app does not, which is exactly the
+  /// comparison a reviewer makes.
+  ///
+  /// This reads the bytes `web/next.config.ts` rewrites `/run/privacy` to, not
+  /// a copy of them. Liftio's pages became 1,414 lines of hand-typed prose that
+  /// nothing checked; this is the check that stops it happening twice.
+  group('the published pages say what the app says', () {
+    String readPublished(String name) {
+      final file = File('../../web/public/run/$name');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason:
+            'web/public/run/$name is missing. Run '
+            '`python tool/build_legal_pages.py` from apps/mgk_run; the page is '
+            'committed because Vercel builds from the repo and cannot run it.',
+      );
+      // Strip the generator's banner comment and its stylesheet before the
+      // tags, or CSS property names end up in the compared text.
+      final text = file
+          .readAsStringSync()
+          .replaceAll(RegExp(r'<!--.*?-->', dotAll: true), ' ')
+          .replaceAll(RegExp(r'<style.*?</style>', dotAll: true), ' ')
+          .replaceAll(RegExp(r'<[^>]+>'), ' ')
+          .replaceAll('&middot;', '·')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>')
+          .replaceAll('&amp;', '&');
+      // Stripping an inline tag leaves a space where the markup was, so
+      // `<em>estimates</em>,` normalises to `estimates ,` and stops matching a
+      // sentence that is in fact present. Close the gap before punctuation
+      // rather than loosening every phrase in the list to compensate.
+      return _normalise(
+        text,
+      ).replaceAllMapped(RegExp(r'\s+([,.;:!?])'), (m) => m.group(1)!);
+    }
+
+    test('the medical disclaimer carries its load-bearing sentences', () {
+      final page = readPublished('medical-disclaimer.html');
+      for (final phrase in <String>[
+        'It is not medical advice and is not a substitute for professional '
+            'medical care.',
+        'Consult a physician before starting any training programme',
+        'cannot account for your full medical history',
+        'Metrics such as calories and effort are estimates, not measurements.',
+        'MGKCodes Ltd is not liable for injury',
+      ]) {
+        expect(
+          page,
+          contains(phrase),
+          reason:
+              'the published disclaimer no longer says: $phrase. Regenerate, '
+              'or the page and the app disagree in front of a reviewer.',
+        );
+      }
+    });
+
+    test('the privacy policy names the same four sub-processors', () {
+      final page = readPublished('privacy-policy.html');
+      for (final processor in <String>[
+        'Supabase',
+        'OpenRouter',
+        'RevenueCat',
+        'MapTiler',
+      ]) {
+        expect(page, contains(processor));
+      }
+      expect(
+        page,
+        isNot(contains('Anthropic')),
+        reason: 'the published page still names a dropped sub-processor',
+      );
+    });
+
+    test('and makes the same claims about health data and the model', () {
+      final page = readPublished('privacy-policy.html');
+      for (final phrase in <String>[
+        'special-category',
+        'HealthKit',
+        'never used for advertising',
+        'last twenty messages',
+        'as you wrote them',
+        'never send raw GPS traces',
+      ]) {
+        expect(
+          page,
+          contains(phrase),
+          reason: 'the published policy no longer says: $phrase',
+        );
+      }
+      expect(
+        page,
+        isNot(contains('structured training context')),
+        reason: 'the understated claim is back on the live page',
+      );
+    });
+
+    test('neither page has been edited by hand', () {
+      // The banner is the only thing distinguishing a generated file from one
+      // somebody opened and fixed a typo in. Losing it is not itself a defect;
+      // it is the signal that the file stopped being an artifact and became a
+      // fourth copy.
+      for (final name in <String>[
+        'privacy-policy.html',
+        'medical-disclaimer.html',
+      ]) {
+        final raw = File('../../web/public/run/$name').readAsStringSync();
+        expect(
+          raw,
+          contains('GENERATED by tool/build_legal_pages.py'),
+          reason: '$name lost its generated banner, so it was hand-edited',
+        );
+      }
+    });
   });
 }

@@ -106,6 +106,10 @@ class AdaptationService {
       // so swallowing this would tell the runner the coach "couldn't adjust the
       // week" when the truth is they've spent their allowance. Let it through.
       rethrow;
+    } on CoachNotEntitledException {
+      // And the same for the door: "couldn't adjust the week" would describe a
+      // fault, where the truth is that adjusting weeks is what the coach is.
+      rethrow;
     } catch (_) {
       revised = null;
     }

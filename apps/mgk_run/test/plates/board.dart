@@ -72,8 +72,6 @@ void main() {
     FakeRunRecorder rec, {
     PlannedSession? session = easy5k,
     SessionKind? kind,
-    double? weekDone,
-    double? weekTarget,
   }) => RecordingScreen(
     recorder: rec,
     plannedSession: kind == null
@@ -89,8 +87,6 @@ void main() {
             Distance.meters(5000),
             const Duration(minutes: 24, seconds: 30),
           ),
-    weekDoneMeters: weekDone,
-    weekTargetMeters: weekTarget,
     onCancel: () {},
   );
 
@@ -177,7 +173,7 @@ void main() {
       await shot(
         tester,
         '07-sheet-open',
-        screen(rec, weekDone: 18000, weekTarget: 32000),
+        screen(rec),
         drive: (WidgetTester t) async {
           await advance(125)(t);
           // Drag the sheet to its full detent — the state nobody reads while

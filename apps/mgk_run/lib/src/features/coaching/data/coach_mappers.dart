@@ -6,7 +6,7 @@ import '../domain/plan_shape.dart';
 
 /// Pure JSON ⇄ domain mapping for the coach `intake` surface. Kept free of
 /// Supabase so it is testable without a network — the same split as
-/// `history/data/run_mappers.dart`.
+/// `history/data/drift_run_repository.dart`.
 ///
 /// The wire format is metric throughout: distances in meters, durations in
 /// seconds, dates as `YYYY-MM-DD`, weekdays as 1=Mon..7=Sun. The model

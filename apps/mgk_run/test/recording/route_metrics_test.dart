@@ -162,4 +162,95 @@ void main() {
       expect(traceSegments([_p(0, 0, accuracy: 100)]), isEmpty);
     });
   });
+
+  // The pair Strava carried for the same 10 km — 167 m of gain, a 111 m high
+  // point — and this app carried neither. They are two different questions and
+  // the tests here are mostly about keeping them from being answered as one.
+  group('climbMeters', () {
+    test('sums the rises and ignores the descents', () {
+      // Up 30, down 30, up 20: 50 m of climbing, back nearly where it started.
+      final climb = climbMeters(<RunPoint>[
+        _alt(10),
+        _alt(40),
+        _alt(10),
+        _alt(30),
+      ]);
+      expect(climb, closeTo(50, 0.001));
+    });
+
+    test('a barometer drifting while somebody stands still is not a hill', () {
+      // Sub-metre wobble, repeated. Unfiltered this sums into a climb; the
+      // noise floor is what stops a coffee stop reading as a stairwell.
+      final climb = climbMeters(<RunPoint>[
+        for (var i = 0; i < 60; i++) _alt(i.isEven ? 20.0 : 20.6),
+      ]);
+      expect(climb, isNull);
+    });
+
+    test('a flat run reports nothing rather than 0 m', () {
+      // True, useless, and it trains the eye to skip the block on the runs
+      // where the figure does say something.
+      expect(climbMeters(<RunPoint>[_alt(20), _alt(21), _alt(20)]), isNull);
+    });
+
+    test('a trace with no altitude at all is absent, not zero', () {
+      // Every run this app currently records: no barometric source, so no
+      // altitude on any point (ADR-0024).
+      expect(climbMeters(<RunPoint>[_p(0, 0), _p(0, 0.001)]), isNull);
+      expect(climbMeters(const <RunPoint>[]), isNull);
+    });
+  });
+
+  group('maxElevationMeters', () {
+    test('is the high point of the route, not the sum of its climbs', () {
+      // Hill repeats: 90 m of gain over a maximum of 40. Reporting either
+      // number for the other would be wrong by a factor of two here and by a
+      // factor of ten on a real hill session.
+      final points = <RunPoint>[
+        _alt(10),
+        _alt(40),
+        _alt(10),
+        _alt(40),
+        _alt(10),
+        _alt(40),
+      ];
+      expect(maxElevationMeters(points), 40);
+      expect(climbMeters(points), closeTo(90, 0.001));
+    });
+
+    test('has no floor, because a low high point is still an answer', () {
+      // Sea-level running is not missing data. This is the case where the
+      // climb floor would have been exactly the wrong rule to copy.
+      expect(maxElevationMeters(<RunPoint>[_alt(2), _alt(4), _alt(3)]), 4);
+    });
+
+    test('reads through the points that carry no altitude', () {
+      final points = <RunPoint>[_p(0, 0), _alt(35), _p(0, 0.001), _alt(12)];
+      expect(maxElevationMeters(points), 35);
+    });
+
+    test('a trace with no altitude at all is absent, not zero', () {
+      expect(maxElevationMeters(<RunPoint>[_p(0, 0), _p(0, 0.001)]), isNull);
+      expect(maxElevationMeters(const <RunPoint>[]), isNull);
+    });
+
+    test('a flat run has a maximum even though it has no gain', () {
+      // The two absences mean different things and this is the case that
+      // separates them: null gain beside a real maximum is a flat run, both
+      // null is a phone with no barometer.
+      final points = <RunPoint>[_alt(18), _alt(18.2), _alt(18)];
+      expect(climbMeters(points), isNull);
+      expect(maxElevationMeters(points), 18.2);
+    });
+  });
 }
+
+/// A fix carrying barometric altitude. Position is irrelevant to both elevation
+/// functions, so it stays fixed and the metres are the only variable.
+RunPoint _alt(double metres) => RunPoint(
+  latitude: 0,
+  longitude: 0,
+  accuracyMeters: 5,
+  altitudeMeters: metres,
+  timestamp: _start,
+);

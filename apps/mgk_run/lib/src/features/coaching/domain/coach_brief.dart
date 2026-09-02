@@ -1,5 +1,6 @@
 import 'package:mgk_units/mgk_units.dart';
 import '../../recording/domain/run_summary.dart';
+import 'coach_memory.dart';
 import 'pace_model.dart';
 import 'runner_profile.dart';
 import 'plan_history.dart';
@@ -26,9 +27,16 @@ import 'training_plan.dart';
 /// every turn is the loudest tell of a machine. A sore calf mentioned yesterday
 /// is worth a line; the same line in message six is uncanny.
 ///
-/// **Never put a number here the app cannot defend.** Everything rendered is
+/// **Never put a number here the app cannot defend.** Every figure rendered is
 /// computed from stored runs and the validated plan. The model phrases; Dart
 /// counts.
+///
+/// One section is deliberately not that, and is fenced off because of it. The
+/// recollections paragraph carries the runner's own past words, which are
+/// evidence rather than fact — they are rendered dated, attributed, and under a
+/// sentence saying they are not the current picture. A number that appears
+/// there is something the runner once said, never something the app is standing
+/// behind, and the paragraph tells the coach so.
 class CoachBrief {
   const CoachBrief._(this.text);
 
@@ -54,6 +62,10 @@ class CoachBrief {
   /// brief because a coach that has been told a name and does not use it is
   /// worse than one that never asked — and it is the only line here that is
   /// about the person rather than the training.
+  ///
+  /// [recalled] is the on-demand tier of the coach's memory: a few turns from
+  /// past conversations that matched what is being asked now. They are rendered
+  /// **dated and attributed**, never as facts — see [_recollections].
   factory CoachBrief.write({
     required List<RunSummary> recentRuns,
     StoredPlan? plan,
@@ -61,6 +73,7 @@ class CoachBrief {
     String? name,
     String? rollingSummary,
     List<LabelledPlan> history = const <LabelledPlan>[],
+    List<CoachTurn> recalled = const <CoachTurn>[],
     UnitSystem unit = UnitSystem.metric,
     DateTime? now,
   }) {
@@ -86,14 +99,21 @@ class CoachBrief {
       // coach opens onboarding with, so without it the first thing it ever
       // says is addressed to nobody.
       final called = _calledLine(name);
-      return CoachBrief._(
+      final first = <String>[
         opening == null || opening.isEmpty
             ? '${called}You have not coached this runner before and they have '
                   'not logged any runs yet. Find out what they want from their '
                   'running before suggesting anything.'
             : '${called}You have not coached this runner before and they have '
                   'not logged any runs yet.\n\n$opening',
-      );
+        // The refusal goes in even here, where there is least to invent. It is
+        // the *first* conversation that is most likely to be asked "what did I
+        // run last week", and least likely to have an answer.
+        _emptyLogRefusal,
+      ];
+      final remembered = _recollections(recalled, today);
+      if (remembered != null) first.add(remembered);
+      return CoachBrief._(first.join('\n\n'));
     }
 
     final paragraphs = <String>[];
@@ -130,11 +150,17 @@ class CoachBrief {
     final summary = rollingSummary?.trim();
     if (summary != null && summary.isNotEmpty) paragraphs.add(summary);
 
+    // Recall goes after everything the app can prove, because it is the one
+    // section that is *not* proof. Anything it carries is something the runner
+    // said once, and the paragraph says so at length.
+    final remembered = _recollections(recalled, today);
+    if (remembered != null) paragraphs.add(remembered);
+
     if (paragraphs.isEmpty) {
       return const CoachBrief._(
         'You have not coached this runner before and they have not logged any '
         'runs yet. Find out what they want from their running before '
-        'suggesting anything.',
+        'suggesting anything.\n\n$_emptyLogRefusal',
       );
     }
     return CoachBrief._(paragraphs.join('\n\n'));
@@ -177,8 +203,25 @@ class CoachBrief {
     switch (shapeOf(plan.profile)) {
       case PlanShape.block:
         final days = daysBetweenDates(today, plan.profile.eventDate!);
-        return 'They are in week $week of $total of a $goal block, $days days '
-            'out from the event. This is $phase of about $volume.';
+        // **Race day is not "-2 days out from the event".** The countdown
+        // reads perfectly well until it goes negative, at which point it is
+        // arithmetic rather than a sentence, and a coach handed it will
+        // cheerfully tell somebody their marathon is in minus two days. The
+        // three cases below are the three things a block can be doing, and the
+        // last one is the coach's cue to ask a question the app cannot answer
+        // for itself.
+        final where = switch (days) {
+          0 =>
+            'Today is race day. There is nothing left to coach — wish them '
+                'well, keep it short, and answer what they ask.',
+          < 0 =>
+            'Race day was ${-days} ${days == -1 ? 'day' : 'days'} ago and they '
+                'have not told you how it went. Ask, once, and let them answer '
+                'before you say anything about what comes next.',
+          _ => 'They are $days days out from the event.',
+        };
+        return 'They are in week $week of $total of a $goal block. $where '
+            'This is $phase of about $volume.';
 
       case PlanShape.horizon:
         final assessment = readiness;
@@ -288,13 +331,21 @@ class CoachBrief {
 
   /// What they have actually been doing. Relative dates, because "26 July"
   /// means nothing to a reader who does not know today's date.
+  ///
+  /// **Every run named here carries its own date**, and the runs before the
+  /// latest are named rather than only counted. That is the second half of the
+  /// fix for the first field test's answer: asked to look at a previous run,
+  /// the coach described one from a week earlier as "yesterday". Sessions stop
+  /// week-old conversation being in front of the model at all; dating each run
+  /// means that even when a recollection does surface, there is a dated log
+  /// beside it to be checked against.
   static String? _recent(
     List<RunSummary> runs,
     DateTime today,
     UnitSystem unit,
   ) {
     if (runs.isEmpty) {
-      return 'They have not logged any runs yet.';
+      return 'They have not logged any runs yet. $_emptyLogRefusal';
     }
 
     final latest = runs.first;
@@ -309,6 +360,15 @@ class CoachBrief {
       (sum, r) => sum + r.distanceMeters,
     );
 
+    // The handful before the latest, each dated. Bounded at four: this is the
+    // "say what changed" section, and a runner's whole log recited back is the
+    // record-in-a-prompt failure the class doc opens with.
+    final earlier = <String>[
+      for (final r in runs.skip(1).take(4))
+        '${_distance(Distance.meters(r.distanceMeters), unit)} '
+            '${_relativeDay(r.startedAt, today)}',
+    ];
+
     final sentences = <String>[
       'Their last run was $when: '
           '${_distance(Distance.meters(latest.distanceMeters), unit)}'
@@ -319,9 +379,64 @@ class CoachBrief {
         'Over the past seven days they have run ${lastWeek.length} '
             '${lastWeek.length == 1 ? 'time' : 'times'}, '
             '${_distance(Distance.meters(weekMeters), unit)} in total.',
+      if (earlier.isNotEmpty) 'Before that, ${_list(earlier)}.',
+      // Deliberately "their most recent runs" rather than "the runs in their
+      // log": this section shows at most five, and telling the coach it has the
+      // whole log would have it assure a runner of forty runs that they have
+      // done five. The claim being made is about the dates, which are exact.
+      'Those are their most recent runs, and the dates are as given. Do not '
+          'describe a run as more recent than its date here.',
     ];
     return sentences.join(' ');
   }
+
+  /// What the coach must do when the log is empty and it is asked about a run.
+  ///
+  /// The failure this refuses is confabulation, and it is not hypothetical in
+  /// spirit even though the field test's version of it was a true memory: with
+  /// nothing to report, a model asked about "my previous run" will produce a
+  /// plausible one. The instruction names the specific way a run can seem to
+  /// exist without being in the log — it was mentioned in a conversation and
+  /// never logged — because that is the case where declining feels wrong to the
+  /// model and is nonetheless right.
+  static const String _emptyLogRefusal =
+      'If they ask about a run, say there is nothing in their log rather than '
+      'describing one. A run they mentioned to you in conversation was never '
+      'logged, and you must not report it as though it were.';
+
+  /// The on-demand tier of the coach's memory: a few things the runner said in
+  /// past conversations that matched what they are asking now.
+  ///
+  /// **Every line is dated, and the paragraph says what it is before it says
+  /// any of it.** That ordering is the whole design. The bug this section
+  /// exists to avoid is the one that produced it: undated past conversation
+  /// sitting in the context reads as current, and the coach placed a week-old
+  /// run "yesterday". Retrieval without a date is the same bug with fewer
+  /// tokens.
+  ///
+  /// It is bounded by count rather than by length. The words are the runner's
+  /// own and truncating them mid-sentence can change what they said, which is
+  /// a worse failure than a slightly longer prompt; `recollectionsFrom` keeps
+  /// the count at four.
+  static String? _recollections(List<CoachTurn> turns, DateTime today) {
+    if (turns.isEmpty) return null;
+
+    final lines = <String>[
+      for (final turn in turns)
+        '${_relativeDay(turn.at, today)}, they said: ${_oneLine(turn.text)}',
+    ];
+    return 'Some things they have said to you before, each with when they said '
+        'it. These are recollections of past conversations, not facts about '
+        'their training — what is true now is above, in their plan and their '
+        'log. Anything mentioned here happened on the date given and not more '
+        'recently, and a run named in one of these lines is only a run they '
+        'did if their log says so.\n\n${lines.join('\n')}';
+  }
+
+  /// One line of a stored turn. Whitespace is collapsed so a message the runner
+  /// typed across three lines does not break the list it is rendered into.
+  static String _oneLine(String text) =>
+      text.trim().replaceAll(RegExp(r'\s+'), ' ');
 
   /// What they are currently capable of, and what that projects to.
   ///

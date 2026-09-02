@@ -13,6 +13,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/goal_draft.dart';
 import '../domain/plan_shape.dart';
+import '../domain/prescribed_distance.dart';
 import '../domain/training_plan.dart';
 import '../domain/week_adaptation.dart';
 import '../../history/domain/run_draft.dart';
@@ -284,8 +285,7 @@ class _ChangeLine extends StatelessWidget {
 
   String _label(PlannedSession? s) => s == null
       ? 'Rest'
-      : '${kindLabel(s.kind)} '
-            '${Distance.meters(s.distanceMeters).format(unit, fractionDigits: 1)}';
+      : '${kindLabel(s.kind)} ${formatPrescribed(s.distanceMeters, unit)}';
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -402,9 +402,14 @@ class _Outcome extends StatelessWidget {
 
 /// A day boundary in the transcript.
 ///
-/// Only worth drawing because conversations now survive a relaunch. Without it,
-/// a question asked last Tuesday sits directly above one asked this morning and
-/// the transcript reads as one long conversation nobody had.
+/// It earns its place mostly in a conversation read back from the history
+/// sheet, which can be long and can cross midnight. In the live sheet it is now
+/// nearly unreachable — a conversation ends after half an hour of silence
+/// (ADR-0025), so it can only span two days by being had across midnight. That
+/// is a deliberate consequence rather than dead code: without a divider, a
+/// question asked last Tuesday sitting directly above one asked this morning
+/// reads as one long conversation nobody had, which is precisely the confusion
+/// sessions exist to prevent.
 class DayDivider extends StatelessWidget {
   const DayDivider({super.key, required this.label});
 
@@ -615,7 +620,11 @@ class _GoalLine extends StatelessWidget {
     // rendering as an absence.
     if (distance == null) return 'No goal — just keeping the running going';
 
-    final label = Distance.meters(distance).format(unit, fractionDigits: 1);
+    // The runner's own word for it where there is one. A goal is stored exactly
+    // — 42,195 m, because every pace projection hangs off it — but "42.2 km" is
+    // nobody's name for a marathon, and "42 km" is a worse one. See
+    // [describeGoal].
+    final label = describeGoal(distance, unit);
     final date = draft.eventDate;
     if (date == null) return '$label · no race date yet';
     return '$label on ${_dayMonth(date)}';
@@ -664,6 +673,12 @@ class _RunLine extends StatelessWidget {
     final parts = <String>[];
     final d = draft.distanceMeters;
     if (d != null) {
+      // A decimal on purpose, and the one place in this file that keeps one.
+      // This is a run the runner *did* — typed to the coach, or read back off a
+      // recording they are editing — not a distance the plan asked for.
+      // Prescriptions round; achievements do not, and telling someone who ran
+      // 10.18 km that they ran "10 km" is the app shaving their work down to
+      // fit its own grid. See `prescribed_distance.dart`.
       parts.add(Distance.meters(d).format(unit, fractionDigits: 1));
     }
     final t = draft.duration;

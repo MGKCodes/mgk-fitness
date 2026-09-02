@@ -20,7 +20,8 @@ const paid: Entitlement = { product: "paid", status: "active" };
 // ---- the policy -------------------------------------------------------------
 
 Deno.test("an active purchase maps onto its tier", () => {
-  assertEquals(tierFor("run", { product: "free", status: "active" }), "free");
+  // `free` is a row that bought nothing, so it grants nothing on either app.
+  assertEquals(tierFor("run", { product: "free", status: "active" }), null);
   assertEquals(tierFor("run", paid), "standard");
   assertEquals(
     tierFor("run", { product: "premium", status: "active" }),
@@ -39,7 +40,7 @@ Deno.test("only `active` grants anything", () => {
   for (const status of ["expired", "grace", "refunded", "revoked", "ACTIVE"]) {
     assertEquals(
       tierFor("run", { product: "premium", status }),
-      "free",
+      null,
       `${status} must not grant the premium tier`,
     );
     assertEquals(
@@ -56,19 +57,31 @@ Deno.test("an unknown product is the cheapest tier, never the dearest", () => {
   for (const product of ["", "pro", "PREMIUM", "lifetime", "premium "]) {
     assertEquals(
       tierFor("run", { product, status: "active" }),
-      "free",
+      null,
       `${JSON.stringify(product)} must not be promoted`,
     );
   }
 });
 
-Deno.test("no entitlement means no Lift coach, and a free Run coach", () => {
-  // Both halves preserve what each app did before the two were unified: Lift
-  // sells coaching, Run gives everyone the cheapest model. It also means a
-  // FAILED read (which arrives as null) fails closed on the app that charges.
+Deno.test("no entitlement means no coach, on either app", () => {
+  // Run used to return "free" here, which was a hard-coded placeholder that
+  // survived into policy rather than a decision (ADR-0030). Every surface this
+  // proxy exposes is the coach, and the coach is what a subscription buys, so
+  // both apps refuse. A FAILED read arrives as null too, which means the
+  // failure mode is "no coach" rather than "a free one" — the safe direction
+  // now that it costs money on both sides.
   assertEquals(tierFor("lift", null), null);
-  assertEquals(tierFor("run", null), "free");
+  assertEquals(tierFor("run", null), null);
   assertEquals(tierFor("lift", { product: "free", status: "active" }), null);
+  assertEquals(tierFor("run", { product: "free", status: "active" }), null);
+});
+
+Deno.test("a paid row still grants, so the gate is not simply shut", () => {
+  // The counter-test to the one above: refusing everybody would pass every
+  // assertion about refusal and ship an app nobody can use.
+  assertEquals(tierFor("run", paid), "standard");
+  assertEquals(tierFor("run", { product: "premium", status: "active" }), "sharp");
+  assertEquals(tierFor("lift", paid), "standard");
 });
 
 // ---- reading the row --------------------------------------------------------
@@ -113,8 +126,10 @@ Deno.test("the read names the core schema and filters to one app", () => {
 });
 
 Deno.test("a failed read is no entitlement, not a thrown request", () => {
-  // A Run request must not die on a table Run does not use, and a Lift request
-  // must not be granted because the check could not be made.
+  // Neither app may be granted a coach because the check could not be made, and
+  // neither request may die on the attempt: a 500 or a dead socket resolves to
+  // null, and null now refuses on both sides. Before ADR-0030 this was the one
+  // place the asymmetry bit hardest — a failed read handed Run a free coach.
   const failing = new EntitlementStore(
     "https://db",
     "service-key",
@@ -133,6 +148,6 @@ Deno.test("a failed read is no entitlement, not a thrown request", () => {
     assertEquals(a, null);
     assertEquals(b, null);
     assertEquals(tierFor("lift", a), null);
-    assertEquals(tierFor("run", b), "free");
+    assertEquals(tierFor("run", b), null);
   });
 });

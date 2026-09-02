@@ -76,6 +76,35 @@ Future<void> loadInter() async {
     );
   }
   await loader.load();
+  await _loadIcons();
+}
+
+/// **Real icons, for the same reason as real Inter.**
+///
+/// Without this every `Icon` in the app draws as a hollow square, because the
+/// icon font is an SDK artifact rather than a package asset and the test bundle
+/// does not carry it. That is not a neutral omission on a design board: the nav
+/// bar, every affordance in Settings and every glyph on a run's stats grid all
+/// come out as boxes, and a reader cannot tell a square that means "no icon
+/// font" from a square that means "nobody drew this icon yet". The board is
+/// read for exactly that kind of gap, so it has to stop manufacturing them.
+///
+/// Found through `FLUTTER_ROOT`, which `flutter test` sets, rather than a path
+/// typed into this file — the SDK does not live in the same place on two
+/// machines. A missing font is skipped rather than thrown: squares are worse
+/// than icons, but they are much better than no plate at all.
+Future<void> _loadIcons() async {
+  final String? root = Platform.environment['FLUTTER_ROOT'];
+  if (root == null) return;
+  final File file = File(
+    '$root/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
+  );
+  if (!file.existsSync()) return;
+  final FontLoader icons = FontLoader('MaterialIcons');
+  icons.addFont(
+    Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)),
+  );
+  await icons.load();
 }
 
 final GlobalKey _boundary = GlobalKey();

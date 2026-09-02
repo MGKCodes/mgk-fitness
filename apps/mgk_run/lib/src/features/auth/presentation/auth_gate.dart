@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -8,9 +10,12 @@ import '../../coaching/data/coach_memory_store.dart';
 import '../../history/domain/run_writer.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../coaching/data/plan_store.dart';
+import '../../coaching/data/entitlement_repository.dart';
 import '../../home/presentation/home_shell.dart';
 import '../../settings/domain/unit_settings.dart';
 import '../../onboarding/data/intro_permission_requester.dart';
+import '../../onboarding/data/intro_store_factory.dart';
+import '../../onboarding/domain/intro_store.dart';
 import '../../onboarding/domain/intro_permission.dart';
 import '../../onboarding/presentation/welcome_screen.dart';
 import '../../recording/domain/run_recorder.dart';
@@ -37,7 +42,9 @@ class AuthGate extends StatefulWidget {
     this.memoryStore,
     this.memoryMirror,
     this.unitSettings,
+    this.entitlements,
     this.requestPermission,
+    this.introStore,
   });
 
   final AuthRepository auth;
@@ -78,6 +85,14 @@ class AuthGate extends StatefulWidget {
   /// Where the display unit is read and written.
   final UnitSettings? unitSettings;
 
+  /// Injectable so a test can pin a tier without a Supabase session. The app
+  /// leaves it null and gets [SupabaseEntitlements].
+  final EntitlementRepository? entitlements;
+
+  /// Records that this install has been through the intro. Null uses the
+  /// platform default; injected by tests and the preview harness.
+  final IntroStore? introStore;
+
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
@@ -94,16 +109,76 @@ class _AuthGateState extends State<AuthGate> {
   /// without waiting on the round trip that records it.
   bool _metCoachThisSession = false;
 
-  Future<void> _coachMet(AuthRepository auth) async {
-    setState(() => _metCoachThisSession = true);
-    // Deliberately not awaited before the shell appears, and deliberately not
-    // allowed to fail loudly: the conversation has happened either way, and a
-    // dropped connection must not strand somebody on an intro they have just
+  late final IntroStore _intro = widget.introStore ?? createIntroStore();
+
+  /// Whether this install has already been through the intro. Null while the
+  /// marker is being read, which is one or two frames.
+  bool? _introDone;
+
+  /// What the runner told the coach to call them, when there is no account
+  /// holding it. Null for anybody signed in, who has it on their profile.
+  String? _localName;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_readIntro());
+  }
+
+  Future<void> _readIntro() async {
+    final done = await _intro.isDone();
+    final name = await _intro.readName();
+    if (!mounted) return;
+    setState(() {
+      _introDone = done;
+      _localName = name;
+    });
+  }
+
+  /// Records the intro against the install, and against the account when there
+  /// is one.
+  ///
+  /// Both, deliberately. The local marker is what answers for a runner with no
+  /// account, which is now the ordinary case; the metadata flag is what stops
+  /// somebody arriving from Lift on a second device meeting the coach twice.
+  /// Neither can do the other's job.
+  Future<void> _introFinished(AuthRepository auth, String? name) async {
+    setState(() {
+      _metCoachThisSession = true;
+      _introDone = true;
+      _localName = name ?? _localName;
+    });
+    await _intro.markDone(name: name);
+    if (!auth.isSignedIn) return;
+    // Not allowed to fail loudly: the conversation has happened either way, and
+    // a dropped connection must not strand somebody on an intro they have just
     // finished. The cost of losing it is that it is asked once more.
     try {
       await auth.markCoachMet();
+      // **And the name goes to the profile too, when there is one.**
+      //
+      // Only somebody arriving already signed in reaches this - from Lift, or
+      // on a second device - and the intro hands them their profile name to
+      // correct. Without this the correction was recorded locally and the
+      // profile kept the old one, so the two homes for a name disagreed from
+      // the first screen, and [_name] below had to pick a winner rather than
+      // just read the answer.
+      //
+      // A skipped question (null) leaves the profile alone rather than
+      // clearing it: not answering is not the same as asking to be unnamed,
+      // which is what the name row in Settings is for.
+      if (name != null && name.trim().isNotEmpty) await auth.updateName(name);
     } catch (_) {}
   }
+
+  /// What to call this runner, from whichever home has it.
+  ///
+  /// **The account first, the install second.** A profile name travels between
+  /// devices and is the one Settings edits, so it is the answer wherever it
+  /// exists; the local marker answers for the ordinary new case, where there is
+  /// no account at all. `_introFinished` writes both, so the two only disagree
+  /// while a profile has no name on it.
+  String? _name(AuthRepository auth) => auth.currentName ?? _localName;
 
   @override
   Widget build(BuildContext context) {
@@ -115,12 +190,38 @@ class _AuthGateState extends State<AuthGate> {
       stream: auth.authChanges(),
       builder: (context, _) {
         if (!auth.isSignedIn) {
-          return _SignedOutFlow(
-            auth: auth,
-            devAccounts: accounts,
-            onSignUpIntent: (v) => _justSignedUp = v,
-            requestPermission: widget.requestPermission,
-          );
+          // **An account is not the price of using this.**
+          //
+          // This returned the signed-out flow unconditionally, which made every
+          // screen in the app - Home, recording, the log, the year - sit behind
+          // an email and a password. The on-device database has been the source
+          // of truth since the scaffold (CLAUDE.md rule 1) and Supabase has
+          // always been a backup rather than the store, so nothing about that
+          // gate was load-bearing: it was asking for an account because the
+          // only door in happened to be built out of one.
+          //
+          // Now the intro is the door. It costs a conversation and the
+          // permissions a tracker needs, both of which buy the runner
+          // something, and it ends on a working app. An account is asked for at
+          // the two moments it buys something too - a plan, because the coach
+          // costs money to run, and backup, because that is what it is for.
+          if (_introDone == null) {
+            // One or two frames while the marker is read. Blank rather than a
+            // spinner, for the reason `CoachFlow` gives about the disclaimer: a
+            // loader that flashes before a first impression looks like a fault.
+            return const Scaffold(body: SizedBox.shrink());
+          }
+          if (_introDone == false) {
+            return _SignedOutFlow(
+              auth: auth,
+              devAccounts: accounts,
+              onSignUpIntent: (v) => _justSignedUp = v,
+              requestPermission: widget.requestPermission,
+              onIntroFinished: (name) => unawaited(_introFinished(auth, name)),
+            );
+          }
+          // Introduced, and not signed in. The tracker, on this phone only.
+          return _shell(auth);
         }
         // **Signed in is not the same as onboarded.**
         //
@@ -143,28 +244,44 @@ class _AuthGateState extends State<AuthGate> {
             initial: IntroAnswers(name: auth.currentName),
             requestPermission:
                 widget.requestPermission ?? requestIntroPermission,
-            onFinished: () => _coachMet(auth),
+            onFinished: (name) => unawaited(_introFinished(auth, name)),
           );
         }
-        return HomeShell(
-          justSignedUp: _justSignedUp,
-          auth: auth,
-          recorderFactory: widget.recorderFactory,
-          historySource: widget.historySource,
-          runEditor: widget.runEditor,
-          restore: widget.restore,
-          consentStore: widget.consentStore,
-          coach: widget.coach,
-          planClient: widget.planClient,
-          planStore: widget.planStore,
-          planBackup: widget.planBackup,
-          memoryStore: widget.memoryStore,
-          memoryMirror: widget.memoryMirror,
-          unitSettings: widget.unitSettings,
-        );
+        return _shell(auth);
       },
     );
   }
+
+  Widget _shell(AuthRepository auth) => HomeShell(
+    justSignedUp: _justSignedUp,
+    auth: auth,
+    // **The wire the last change built both ends of and never joined.**
+    // `IntroStore` gained a name and `HomeShell` gained the parameter to take
+    // one, but nothing passed it, so `_localName` was written three times and
+    // read nowhere: a runner told the coach their name in the intro and the
+    // coach met them again as a stranger the moment they asked for a plan.
+    runnerName: _name(auth),
+    // Where the name is kept for somebody with no account, so Settings can
+    // change it. Passed rather than re-created there: this store is `_intro`,
+    // already open, and two stores over one marker file is a race.
+    introStore: _intro,
+    recorderFactory: widget.recorderFactory,
+    historySource: widget.historySource,
+    runEditor: widget.runEditor,
+    restore: widget.restore,
+    consentStore: widget.consentStore,
+    coach: widget.coach,
+    planClient: widget.planClient,
+    planStore: widget.planStore,
+    planBackup: widget.planBackup,
+    memoryStore: widget.memoryStore,
+    memoryMirror: widget.memoryMirror,
+    unitSettings: widget.unitSettings,
+    // Read once on launch so the coach mark can say the door is locked before
+    // somebody walks into it. Not the gate — the Edge Function refuses an
+    // unentitled request whatever this says (ADR-0030).
+    entitlements: widget.entitlements ?? SupabaseEntitlements(),
+  );
 }
 
 /// Which part of the signed-out flow is on screen.
@@ -177,6 +294,7 @@ class _SignedOutFlow extends StatefulWidget {
   const _SignedOutFlow({
     required this.auth,
     required this.devAccounts,
+    required this.onIntroFinished,
     this.onSignUpIntent,
     this.requestPermission,
   });
@@ -191,6 +309,9 @@ class _SignedOutFlow extends StatefulWidget {
   /// can tell a brand-new runner apart from a returning one.
   final ValueChanged<bool>? onSignUpIntent;
 
+  /// The conversation ended. The gate above records it and swaps in the shell.
+  final void Function(String? name) onIntroFinished;
+
   @override
   State<_SignedOutFlow> createState() => _SignedOutFlowState();
 }
@@ -198,12 +319,15 @@ class _SignedOutFlow extends StatefulWidget {
 class _SignedOutFlowState extends State<_SignedOutFlow> {
   /// Where in the signed-out flow we are.
   ///
-  /// Creating a profile now happens **inside** the conversation, so [_Signed.intro]
-  /// is terminal on that path: it makes the account itself and `AuthGate` swaps
-  /// the subtree when the session lands. [_Signed.form] is reached only by a
-  /// returning runner saying they already have one, because somebody signing
-  /// back in wants a form their password manager recognises rather than a
-  /// conversation they have had before.
+  /// [_Signed.intro] is terminal, and no longer because it creates an account -
+  /// it does not create one at all now. It ends on the last permission and the
+  /// gate above swaps in the shell, signed out and entirely local.
+  ///
+  /// [_Signed.form] is reached only from the welcome screen, by a runner saying
+  /// they already have an account: somebody signing back in wants a form their
+  /// password manager recognises rather than a conversation they have had
+  /// before. Creating an account is still reachable from inside that screen,
+  /// and from the two places in the app that need one.
   _Signed _at = _Signed.welcome;
 
   /// What the intro conversation gathered, carried into the form and then into
@@ -241,12 +365,15 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
           if (didPop) return;
           setState(() => _at = _Signed.welcome);
         },
+        // **No `auth`, and that is the whole change.** `IntroScreen` already
+        // ends at the last permission and calls `onFinished` when it has no
+        // repository to sign up against - the path a runner arriving from Lift
+        // has always taken. Every new runner takes it now.
         child: IntroScreen(
-          auth: widget.auth,
           initial: _answers,
           requestPermission: widget.requestPermission ?? requestIntroPermission,
           onBack: () => setState(() => _at = _Signed.welcome),
-          onSignUpIntent: widget.onSignUpIntent,
+          onFinished: widget.onIntroFinished,
         ),
       );
     }

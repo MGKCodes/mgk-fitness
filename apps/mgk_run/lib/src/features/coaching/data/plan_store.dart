@@ -1,4 +1,5 @@
 import '../domain/plan_history.dart';
+import '../domain/race_day.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
@@ -20,6 +21,21 @@ abstract interface class PlanStore {
   /// Stores [plan], superseding any plan already active. Atomic: a failure
   /// leaves the previous plan intact rather than half-replacing it.
   Future<void> savePlan(StoredPlan plan);
+
+  /// Closes [plan] out: it reached its own end rather than being replaced
+  /// (ADR-0027).
+  ///
+  /// [raceTime] is what the runner confirmed they ran, and must be null for
+  /// [PlanClosure.didNotRace] — a time on a plan they did not race would be a
+  /// result for a race that did not happen.
+  ///
+  /// The returned future completes only once the close is **on disk**, because
+  /// the screen shown next is a statement that the plan is over.
+  Future<void> closePlan(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  });
 
   /// Every plan the runner has had, **oldest first**, including the current one.
   ///
@@ -95,11 +111,13 @@ class InMemoryPlanStore implements PlanStore {
   final Map<int, TrainingWeek> _weeks = <int, TrainingWeek>{};
   final Map<String, SessionStatus> _statuses = <String, SessionStatus>{};
 
-  /// Superseded plans, oldest first, with the moment each stopped being active.
-  /// Kept because history is a feature rather than a database detail — a store
+  /// Plans behind the current one, oldest first, with the moment each stopped
+  /// being active and — where it ended on its own terms — how.
+  ///
+  /// Kept because history is a feature rather than a database detail: a store
   /// that forgot them would make the preview and every widget test look like a
   /// runner who has never had a plan.
-  final List<(StoredPlan, DateTime)> _past = <(StoredPlan, DateTime)>[];
+  final List<_PastPlan> _past = <_PastPlan>[];
   final DateTime Function() _now;
 
   @override
@@ -110,7 +128,7 @@ class InMemoryPlanStore implements PlanStore {
     // A new plan supersedes the old one: its weeks and marks do not carry over.
     final previous = _plan;
     if (previous != null && previous.id != plan.id) {
-      _past.add((previous, _now()));
+      _past.add(_PastPlan(plan: previous, endedAt: _now()));
     }
     _plan = plan;
     _weeks.clear();
@@ -118,8 +136,41 @@ class InMemoryPlanStore implements PlanStore {
   }
 
   @override
+  Future<void> closePlan(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  }) async {
+    if (_plan?.id != plan.id) return;
+    final at = _now();
+    _past.add(
+      _PastPlan(
+        plan: plan,
+        endedAt: at,
+        closure: closure,
+        // Never a time on a plan they did not race, whatever a caller passes:
+        // the store is the last place that can hold the two apart, and a
+        // result for a race that did not happen is worse than no result.
+        raceTime: closure == PlanClosure.raced ? raceTime : null,
+      ),
+    );
+    _plan = null;
+    // The weeks and marks belonged to a plan that is over. Cleared for the same
+    // reason [savePlan] clears them: whatever comes next starts from nothing.
+    _weeks.clear();
+    _statuses.clear();
+  }
+
+  @override
   Future<List<PlanRecord>> loadHistory() async => <PlanRecord>[
-    for (final (plan, endedAt) in _past) _recordOf(plan, endedAt: endedAt),
+    for (final past in _past)
+      _recordOf(
+        past.plan,
+        endedAt: past.endedAt,
+        closure: past.closure,
+        finishedAt: past.closure == null ? null : past.endedAt,
+        raceTime: past.raceTime,
+      ),
     if (_plan != null) _recordOf(_plan!, active: true),
   ];
 
@@ -127,6 +178,9 @@ class InMemoryPlanStore implements PlanStore {
     StoredPlan plan, {
     DateTime? endedAt,
     bool active = false,
+    PlanClosure? closure,
+    DateTime? finishedAt,
+    Duration? raceTime,
   }) => PlanRecord(
     id: plan.id,
     startDate: plan.startDate,
@@ -135,6 +189,9 @@ class InMemoryPlanStore implements PlanStore {
     goalDistanceMeters: plan.profile.goalDistanceMeters,
     eventDate: plan.profile.eventDate,
     endedAt: endedAt,
+    closure: closure,
+    finishedAt: finishedAt,
+    raceTime: raceTime,
   );
 
   @override
@@ -169,4 +226,29 @@ class InMemoryPlanStore implements PlanStore {
   }
 
   static String _key(DateTime date) => '${date.year}-${date.month}-${date.day}';
+}
+
+/// One plan behind the current one, inside [InMemoryPlanStore].
+///
+/// A class rather than the record it used to be: it grew a third and fourth
+/// field the moment a plan could end on its own terms, and
+/// `(plan, endedAt, closure, raceTime)` read at three call sites is a shape
+/// nobody can hold in their head.
+class _PastPlan {
+  const _PastPlan({
+    required this.plan,
+    required this.endedAt,
+    this.closure,
+    this.raceTime,
+  });
+
+  final StoredPlan plan;
+
+  /// When it stopped being the active plan — superseded, or closed out.
+  final DateTime endedAt;
+
+  /// How it ended, or null when it was simply replaced by the next one.
+  final PlanClosure? closure;
+
+  final Duration? raceTime;
 }

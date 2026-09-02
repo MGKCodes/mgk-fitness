@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'plan_shape.dart';
+import 'prescribed_distance.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
 import 'training_plan.dart';
@@ -128,7 +129,10 @@ TrainingWeek buildFallbackWeek(SkeletonWeek slot, RunnerProfile profile) {
   final total = slot.volumeMeters;
   // The long run is the slot's own declared long run, not a fresh calculation.
   // The plan arc already shows the slot's number, so deriving it again here let
-  // the arc and the week disagree about the same session.
+  // the arc and the week disagree about the same session. Rounding it to the
+  // prescribed grid below does not bring that back: the arc shows whole
+  // kilometres too, so both screens still say 19 km — what they can no longer
+  // do is start from two different numbers.
   final longRun = slot.longRunMeters;
   final others = n - 1;
   final remainder = total - longRun;
@@ -138,19 +142,48 @@ TrainingWeek buildFallbackWeek(SkeletonWeek slot, RunnerProfile profile) {
     longRun: longRun,
   );
 
+  // The share table is arithmetic, not a prescription: it hands back 4,137 m
+  // for a Tuesday because that is what 40 km divided by a shape comes to. This
+  // is where it becomes something a coach would say out loud — at the session,
+  // rather than at the arc above, because the arc is the plan's working and the
+  // session is what the runner is asked to run.
+  //
+  // The long run and the rest go on the grid by different routes, and
+  // deliberately.
+  //
+  // The long run is rounded on its own, because it has to keep matching the
+  // number the plan arc shows for the same week and rounding moves it by at
+  // most half a kilometre. Apportioning it with the others was tried and is
+  // worse: it can move a full kilometre, and the arc and the week start
+  // disagreeing again — the exact bug the slot copy above exists to prevent.
+  //
+  // The rest are *apportioned*, because rounding them one at a time throws the
+  // week away: seven days of 1.14 km each fall to 1 km apiece and an 8 km week
+  // arrives as 7. Then capped at the long run, because two roundings going
+  // opposite ways can otherwise hand a Tuesday more kilometres than the long
+  // run kept — 2.5 km rounding up to 3 past a 2.4 km long run rounding down to
+  // 2. Capping can leave the week a kilometre short of the arc, which is inside
+  // what the validator allows and is the lesser of the two wrongs.
+  final longGridded = roundPrescribed(longRun);
+  final shares = <double>[
+    for (final m in prescribeAcross(<double>[
+      for (var k = 0; k < others; k++) remainder * shape[k].share,
+    ]))
+      math.min(m, longGridded),
+  ];
   final sessions = <PlannedSession>[
     for (var k = 0; k < n; k++)
       if (k == n - 1)
         PlannedSession(
           weekday: days[k],
           kind: SessionKind.long,
-          distanceMeters: longRun,
+          distanceMeters: longGridded,
         )
       else
         PlannedSession(
           weekday: days[k],
           kind: shape[k].kind,
-          distanceMeters: remainder * shape[k].share,
+          distanceMeters: shares[k],
         ),
     for (final day in _strengthDays(
       available,
@@ -213,13 +246,25 @@ TrainingWeek _buildRhythmWeek(SkeletonWeek slot, RunnerProfile profile) {
   final perFill = chosen.isEmpty ? 0.0 : remainder / chosen.length;
   final fill = _rhythmFill(chosen, committed.keys, remainder);
 
+  // The filler runs go on the grid; the commitments do not. A commitment's
+  // distance is the runner's own number — parkrun is 5 km because parkrun is
+  // 5 km — and putting their word on our grid would be the plan correcting them
+  // about something they told us.
+  //
+  // Apportioned across the fillers together, so what the commitments left over
+  // is still what gets run. Rounding each one alone would lose a kilometre here
+  // and a kilometre there out of the only part of the week the plan controls.
+  final filledDays = fill.keys.toList(growable: false);
+  final fillDistances = prescribeAcross(<double>[
+    for (final day in filledDays) fill[day]!.meters,
+  ]);
   final sessions = <PlannedSession>[
     ...committed.values,
-    for (final entry in fill.entries)
+    for (var i = 0; i < filledDays.length; i++)
       PlannedSession(
-        weekday: entry.key,
-        kind: entry.value.kind,
-        distanceMeters: entry.value.meters,
+        weekday: filledDays[i],
+        kind: fill[filledDays[i]]!.kind,
+        distanceMeters: fillDistances[i],
       ),
     for (final day in _strengthDays(
       available,
@@ -238,7 +283,11 @@ TrainingWeek _buildRhythmWeek(SkeletonWeek slot, RunnerProfile profile) {
         PlannedSession(
           weekday: s.weekday,
           kind: s.kind,
-          distanceMeters: perFill > 0 ? perFill : slot.volumeMeters / target,
+          // A length the plan invented, so it is prescribed on the grid like
+          // any other — the runner did not name this number, we did.
+          distanceMeters: roundPrescribed(
+            perFill > 0 ? perFill : slot.volumeMeters / target,
+          ),
           label: s.label,
         )
       else
@@ -432,6 +481,12 @@ List<_Slot> _fitUnderLongRun(
 /// are nearly as long as the long run — that is what a three-day week is — and
 /// a plan should not be deformed to hide it. The rows say "Long run" and
 /// "Easy", so a shared number reads fine.
+///
+/// Which means the *stored* numbers can tie too, now that both sit on the
+/// whole-kilometre grid: 3% of a 5 km long run is 150 m and the grid step is a
+/// thousand. Harmless, and worth being explicit about — the long run is the
+/// session whose kind says so, never the biggest number in the week, and
+/// nothing may start picking it that way.
 const double _underLongRun = 0.97;
 
 /// Days for strength work: available days the runner is *not* running, furthest
@@ -499,6 +554,12 @@ const int _rhythmWeeks = 12;
 /// worked out is what the plan keeps — it is what explains why they were shown
 /// 7 km, and rounding it here would throw that away for a saving nobody asked
 /// for. See `prescribed_distance.dart`.
+///
+/// Still true now that sessions are stored on the prescribed grid: the grid is
+/// applied where a [PlannedSession] is built, not here. The skeleton keeps the
+/// working — 35% of a week that came to 19,462 m — and the week prescribes
+/// 19 km from it. Anything comparing the two has to allow for the difference;
+/// [prescribedGridSlackMeters] is how much.
 double _longRun(double volume) => math.min(volume * 0.35, 37000);
 
 /// Phase per week (0-based). base ~40%, build ~40%, peak the rest, then taper.

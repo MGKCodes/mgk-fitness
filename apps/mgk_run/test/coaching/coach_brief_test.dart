@@ -3,6 +3,7 @@ import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_brief.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_memory.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_history.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
@@ -324,6 +325,153 @@ void main() {
       }
       // And in the runner's unit, like every other distance in here.
       expect(brief.text, contains('mi block'));
+    });
+  });
+
+  // Phase 4 of the 1.0.0 plan, and the reason for it. Asked to look at a
+  // previous run, the coach answered "You ran 10 km in 60 minutes yesterday"
+  // about a run logged through the chat a week earlier. See ADR-0025.
+  group('a run in the brief carries when it happened', () {
+    test('the runs before the latest are named with their own dates', () {
+      final brief = CoachBrief.write(
+        recentRuns: <RunSummary>[
+          run(at: now.subtract(const Duration(days: 1)), meters: 8200),
+          run(at: now.subtract(const Duration(days: 4)), meters: 5000),
+          run(at: now.subtract(const Duration(days: 20)), meters: 12000),
+        ],
+        profile: profile(),
+        now: now,
+      );
+
+      expect(brief.text, contains('yesterday'));
+      expect(brief.text, contains('4 days ago'));
+      expect(brief.text, contains('3 weeks ago'));
+    });
+
+    test('and the coach is told not to move one forward in time', () {
+      final brief = CoachBrief.write(
+        recentRuns: <RunSummary>[
+          run(at: now.subtract(const Duration(days: 8)), meters: 8200),
+        ],
+        profile: profile(),
+        now: now,
+      );
+      expect(brief.text, contains('more recent than its date'));
+    });
+  });
+
+  group('a coach with no run data has to say it has none', () {
+    test('an empty log tells it to decline rather than describe one', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        now: now,
+      );
+
+      expect(brief.text, contains('not logged any runs yet'));
+      expect(brief.text, contains('nothing in their log'));
+      expect(brief.text, contains('was never logged'));
+    });
+
+    test('so does a first conversation, where there is least to go on', () {
+      final brief = CoachBrief.write(recentRuns: const <RunSummary>[]);
+      expect(brief.text, contains('nothing in their log'));
+    });
+
+    // The field test's answer, reconstructed: the log is empty, and a week-old
+    // turn mentioning a run is the only place a run appears. The brief has to
+    // make both facts unmissable — there is nothing logged, and the thing it
+    // remembers was said a week ago.
+    test('a remembered run is dated and kept out of the log', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        recalled: <CoachTurn>[
+          CoachTurn(
+            conversationId: 'last-week',
+            seq: 0,
+            role: CoachRole.user,
+            text: 'I ran 10k in 60 minutes this morning.',
+            at: now.subtract(const Duration(days: 7)),
+          ),
+        ],
+        now: now,
+      );
+
+      expect(brief.text, contains('nothing in their log'));
+      expect(
+        brief.text,
+        contains(
+          'a week ago, they said: I ran 10k in 60 minutes this morning.',
+        ),
+        reason: 'the date is what stops it being read as this morning',
+      );
+      expect(brief.text, contains('only a run they did if their log says so'));
+    });
+  });
+
+  group('a recollection is fenced off from the things the app can prove', () {
+    CoachTurn said(String text, {required int daysAgo}) => CoachTurn(
+      conversationId: 'old',
+      seq: 0,
+      role: CoachRole.user,
+      text: text,
+      at: now.subtract(Duration(days: daysAgo)),
+    );
+
+    test('the framing comes before the lines, not after them', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        recalled: <CoachTurn>[said('My calf tightens on hills.', daysAgo: 3)],
+        now: now,
+      );
+
+      final framing = brief.text.indexOf('recollections of past conversations');
+      final line = brief.text.indexOf('My calf tightens on hills.');
+      expect(framing, greaterThanOrEqualTo(0));
+      expect(
+        framing,
+        lessThan(line),
+        reason: 'a model reads what it is given in order',
+      );
+    });
+
+    test('nothing recalled adds no paragraph at all', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        now: now,
+      );
+      expect(brief.text, isNot(contains('they said')));
+    });
+
+    test('a message typed across lines stays one line', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        recalled: <CoachTurn>[
+          said('My calf is sore.\n\nIt started on Tuesday.', daysAgo: 2),
+        ],
+        now: now,
+      );
+      expect(
+        brief.text,
+        contains('My calf is sore. It started on Tuesday.'),
+        reason: 'one turn per line, or the dates stop lining up with the words',
+      );
+    });
+
+    test('and it stays prose, with nothing to recite', () {
+      final brief = CoachBrief.write(
+        recentRuns: const <RunSummary>[],
+        profile: profile(),
+        recalled: <CoachTurn>[said('I run before work.', daysAgo: 5)],
+        now: now,
+      );
+      for (final token in <String>['{', '}', '[', ']', '":']) {
+        expect(brief.text, isNot(contains(token)));
+      }
     });
   });
 }

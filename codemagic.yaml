@@ -9,11 +9,17 @@
 # nothing about it needs Xcode and the macOS instance costs several times more
 # per minute.
 #
-# **Run has no Android workflow, deliberately** (ADR-0001). Its Android build is
-# a verification harness for design work on Windows, not a product, and a
-# release pipeline would imply otherwise. That decision is Run's alone: Lift
-# ships to both stores as part of 2.0.0, which is why the asymmetry below is
-# intended rather than unfinished.
+# **Run has no Android RELEASE, deliberately** (ADR-0001). `run-android-release`
+# below builds an installable APK and stops: it carries no `publishing:` block,
+# because its Android build is a verification harness for design work on Windows
+# rather than a product, and a store pipeline would imply otherwise. That
+# decision is Run's alone: Lift ships to both stores as part of 2.0.0, which is
+# why the asymmetry below is intended rather than unfinished.
+#
+# This comment read "Run has no Android workflow" until 2026-09-01, while
+# `run-android-release` sat a few hundred lines below it. The intent was right
+# and the sentence was not, which is the kind of staleness that sends a reader
+# looking for something that is already there.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -199,6 +205,15 @@ workflows:
         # network, which is why they are a second rather than a minute, and why
         # a red here is always the code rather than the weather.
         working_directory: supabase/functions/coach
+        script: deno test
+
+      - name: Deno — RevenueCat webhook
+        # The only writer of core.entitlements, and therefore the only thing
+        # standing between a purchase and a coach (ADR-0030). Its mapping is
+        # pure for exactly this reason: a wrong status here either hands
+        # somebody a subscription they did not buy or takes one they did, and
+        # neither should need a store to catch.
+        working_directory: supabase/functions/revenuecat
         script: deno test
 
       - name: Deno — eval rules

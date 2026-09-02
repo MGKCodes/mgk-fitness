@@ -10,6 +10,8 @@
 
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 
+import type { Tier } from "./surfaces.ts";
+
 import {
   configFromEnv,
   decide,
@@ -57,6 +59,19 @@ const TEST_LIMITS: LimitConfig = {
 /// rather than indexing into the array.
 function credits(config: LimitConfig, scope: string): number | undefined {
   return config.spend.find((r) => r.scope === scope)?.credits;
+}
+
+/// The same lookup where a missing scope is a test bug rather than a value, so
+/// the result can be compared arithmetically without narrowing at every site.
+function creditsOf(config: LimitConfig, scope: string): number {
+  const found = credits(config, scope);
+  if (found === undefined) throw new Error(`no spend rule for ${scope}`);
+  return found;
+}
+
+/// A tier's shipped ceilings, with nothing from the environment.
+function shipped(tier: Tier): LimitConfig {
+  return configFromEnv(() => undefined, tier);
 }
 
 /// `n` calls on `surface`, spaced `spacingMs` apart, the most recent
@@ -301,8 +316,10 @@ Deno.test("env overrides are read", () => {
     COACH_DAILY_REQUEST_LIMIT: "40",
     COACH_FALLBACK_CREDITS_PER_MTOK: "3.5",
   };
-  const config = configFromEnv((k) => env[k]);
-  assertEquals(credits(config, "daily_spend"), 0.25);
+  const config = configFromEnv((k) => env[k], "standard");
+  // The legacy un-suffixed key can only tighten, and 0.25 is above standard's
+  // shipped 0.15, so the shipped value stands.
+  assertEquals(credits(config, "daily_spend"), 0.15);
   assertEquals(config.dailyRequests.max, 40);
   assertEquals(config.fallbackCreditsPerMillionTokens, 3.5);
 });
@@ -311,8 +328,9 @@ Deno.test("a junk env value keeps the default rather than becoming NaN", () => {
   // NaN is the dangerous direction: every comparison against it is false, so a
   // typo would silently allow unlimited spend.
   for (const junk of ["", "  ", "abc", "-1", "0", "NaN", "1e"]) {
-    const config = configFromEnv((k) =>
-      k === "COACH_DAILY_SPEND_LIMIT" ? junk : undefined
+    const config = configFromEnv(
+      (k) => (k === "COACH_DAILY_SPEND_LIMIT_STANDARD" ? junk : undefined),
+      "standard",
     );
     assertEquals(
       credits(config, "daily_spend"),
@@ -323,7 +341,7 @@ Deno.test("a junk env value keeps the default rather than becoming NaN", () => {
 });
 
 Deno.test("an unset environment yields the shipped defaults", () => {
-  assertEquals(configFromEnv(() => undefined), DEFAULT_LIMITS);
+  assertEquals(configFromEnv(() => undefined, "standard"), DEFAULT_LIMITS);
 });
 
 // ---- usage accounting ------------------------------------------------------
@@ -492,6 +510,16 @@ Deno.test("summarising after every turn hits the wall, by design", () => {
 Deno.test("a heavy but honest day of coaching fits under the daily backstop", () => {
   // Onboarding, a plan, a talkative day, and the memories written after it. The
   // 120/day ceiling exists for a client bug, not for a keen runner.
+  //
+  // Spend is lifted out of the way here ON PURPOSE. This test is about the
+  // REQUEST backstop, and once the ceilings became per-tier the same day also
+  // began tripping standard's daily *money* cap — two different limits failing
+  // one assertion, which would have made this test lie about which one moved.
+  // What that day costs, and which tiers admit it, is pinned separately below.
+  const noMoneyCeiling: LimitConfig = {
+    ...DEFAULT_LIMITS,
+    spend: DEFAULT_LIMITS.spend.map((r) => ({ ...r, credits: 1_000 })),
+  };
   const day: [Surface, number, number][] = [
     // surface, calls, minutes between them
     ["intake", 6, 0.5],
@@ -508,7 +536,7 @@ Deno.test("a heavy but honest day of coaching fits under the daily backstop", ()
   for (const [surface, count, spacingMinutes] of day) {
     for (let i = 0; i < count; i++) {
       assertEquals(
-        decide(surface, history, at, DEFAULT_LIMITS),
+        decide(surface, history, at, noMoneyCeiling),
         { allowed: true },
         `${surface} call ${i + 1} should be allowed`,
       );
@@ -591,11 +619,11 @@ Deno.test("lookback reaches the longest spend window, not just a day", () => {
 
 Deno.test("each spend window has its own env override", () => {
   const env: Record<string, string> = {
-    COACH_DAILY_SPEND_LIMIT: "0.1",
-    COACH_WEEKLY_SPEND_LIMIT: "0.4",
-    COACH_MONTHLY_SPEND_LIMIT: "1.2",
+    COACH_DAILY_SPEND_LIMIT_SHARP: "0.1",
+    COACH_WEEKLY_SPEND_LIMIT_SHARP: "0.4",
+    COACH_MONTHLY_SPEND_LIMIT_SHARP: "1.2",
   };
-  const config = configFromEnv((k) => env[k]);
+  const config = configFromEnv((k) => env[k], "sharp");
   assertEquals(credits(config, "daily_spend"), 0.1);
   assertEquals(credits(config, "weekly_spend"), 0.4);
   assertEquals(credits(config, "monthly_spend"), 1.2);
@@ -609,5 +637,102 @@ Deno.test("the shipped defaults are ordered day <= week <= month", () => {
   assert(
     by("weekly_spend") <= by("monthly_spend"),
     "week must not exceed month",
+  );
+});
+
+// ---- what a tier costs and buys (ADR-0029) ---------------------------------
+
+Deno.test("each tier gets its own ceilings, and they climb with the price", () => {
+  const free = shipped("free");
+  const standard = shipped("standard");
+  const sharp = shipped("sharp");
+
+  for (const scope of ["daily_spend", "weekly_spend", "monthly_spend"]) {
+    assert(
+      creditsOf(free, scope) < creditsOf(standard, scope),
+      `free must be under standard for ${scope}`,
+    );
+    assert(
+      creditsOf(standard, scope) < creditsOf(sharp, scope),
+      `standard must be under sharp for ${scope}`,
+    );
+  }
+  assert(free.dailyRequests.max < standard.dailyRequests.max);
+  assert(standard.dailyRequests.max < sharp.dailyRequests.max);
+});
+
+Deno.test("every monthly ceiling sits under what its tier actually earns", () => {
+  // ADR-0015's whole argument, and the reason ADR-0029 does the VAT and Apple
+  // arithmetic rather than picking round numbers. Net of 20% VAT and Apple's
+  // 15%, converted at a pessimistic 1.20 USD/GBP.
+  const netUsdPerMonth: Record<string, number> = {
+    free: 0,
+    standard: 0.85,
+    sharp: 2.56,
+  };
+  for (const [tier, revenue] of Object.entries(netUsdPerMonth)) {
+    const monthly = creditsOf(shipped(tier as Tier), "monthly_spend");
+    if (revenue === 0) {
+      // The free tier earns nothing, so there is no ratio to hold — only that
+      // it stays small enough to be acquisition spend rather than a business.
+      assert(monthly <= 0.1, "the free ceiling is acquisition cost, keep it small");
+      continue;
+    }
+    assert(
+      monthly < revenue,
+      `${tier}: monthly ceiling ${monthly} must sit under net revenue ${revenue}`,
+    );
+    assert(
+      monthly / revenue <= 0.8,
+      `${tier}: ${monthly}/${revenue} leaves too little for everything else`,
+    );
+  }
+});
+
+Deno.test("an unknown tier gets the cheapest ceilings, never the dearest", () => {
+  // Same direction as tierFor's fallback: a bug must not be able to bill at the
+  // sharp rate. The default argument matters too — a caller that forgets to
+  // pass a tier gets free, not standard.
+  const free = shipped("free");
+  assertEquals(configFromEnv(() => undefined), free);
+  const bogus = shipped("enterprise" as Tier);
+  assertEquals(creditsOf(bogus, "monthly_spend"), creditsOf(free, "monthly_spend"));
+  assertEquals(bogus.dailyRequests.max, free.dailyRequests.max);
+});
+
+Deno.test("the legacy un-suffixed spend secret can only tighten", () => {
+  // It predates tiers. Letting it win outright would hand the free tier
+  // whatever number was chosen when there was only one config, which is the
+  // direction that costs money.
+  const tighter = configFromEnv(
+    (k) => (k === "COACH_MONTHLY_SPEND_LIMIT" ? "0.05" : undefined),
+    "sharp",
+  );
+  assertEquals(credits(tighter, "monthly_spend"), 0.05);
+
+  const looser = configFromEnv(
+    (k) => (k === "COACH_MONTHLY_SPEND_LIMIT" ? "99" : undefined),
+    "free",
+  );
+  assertEquals(credits(looser, "monthly_spend"), 0.1);
+});
+
+Deno.test("a heavy day costs about £1's worth, and that is what £1 buys", () => {
+  // The trade-off ADR-0029 records, as an assertion rather than a paragraph.
+  // The day from the backstop test above: onboarding, a plan, forty chat turns
+  // and the memories after it, at the 0.002/call this suite assumes throughout.
+  const HEAVY_DAY_CALLS = 6 + 2 + 12 + 40 + 6 + 4;
+  const cost = HEAVY_DAY_CALLS * 0.002;
+
+  const dailyFor = (t: Tier) => creditsOf(shipped(t), "daily_spend");
+
+  assert(cost > dailyFor("free"), "the free tier must not fund a day like this");
+  assert(
+    cost < dailyFor("standard"),
+    `£1 should admit one heavy day: ${cost} vs ${dailyFor("standard")}`,
+  );
+  assert(
+    creditsOf(shipped("sharp"), "monthly_spend") > cost * 3,
+    "£3 should admit several such days in a month",
   );
 });

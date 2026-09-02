@@ -267,6 +267,17 @@ class SupabaseRestore implements DataRestore {
     ),
     avgPaceSPerKm: Value((r['avg_pace_s_per_km'] as num?)?.toDouble()),
     elevationGainM: Value((r['elevation_gain_m'] as num?)?.toDouble()),
+    elevationMaxM: Value((r['elevation_max_m'] as num?)?.toDouble()),
+    steps: Value((r['steps'] as num?)?.toInt()),
+    // Both arrive now. `run.runs` gained them on 2026-09-01; until then this
+    // comment explained why a run restored onto a new phone came back without
+    // its high point and its step count.
+    //
+    // A row mirrored BEFORE that migration has null for both, which is
+    // indistinguishable from a run that never had them — and correctly so, since
+    // absence is the designed state for each: `steps` needs a Health permission
+    // that may be refused, and `elevation_max_m` needs a barometric source that
+    // is not wired at all (ADR-0024).
     avgHr: Value((r['avg_hr'] as num?)?.toInt()),
     maxHr: Value((r['max_hr'] as num?)?.toInt()),
     cadence: Value((r['cadence'] as num?)?.toInt()),

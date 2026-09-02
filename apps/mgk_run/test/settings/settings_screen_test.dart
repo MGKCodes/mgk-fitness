@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
+import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 
@@ -170,6 +172,90 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(version, findsOneWidget);
+  });
+
+  /// **A switch that says "On" and means "on, and silently failing since the
+  /// 3rd" is a promise the app is not keeping.** Every push is best-effort by
+  /// contract, which for a long time was implemented as `catch (_) {}` and
+  /// nothing else — so a backup that had been broken for a month was
+  /// indistinguishable from one that was working. It is answered here, beside
+  /// the switch that offered the backup, rather than shouted about mid-run:
+  /// nothing was lost, and there is nothing for the runner to do but be online
+  /// at some point (ADR-0023).
+  group('the backup says what it last did', () {
+    Future<void> pumpWithBackup(
+      WidgetTester tester, {
+      required BackupConsent consent,
+      required BackupHealth health,
+    }) async {
+      await tester.binding.setSurfaceSize(const Size(420, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            unit: UnitSystem.metric,
+            settings: InMemoryUnitSettings(),
+            auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+            consentStore: InMemoryBackupConsent(consent),
+            backupHealthStore: InMemoryBackupHealth(health),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a failed push is discoverable', (tester) async {
+      await pumpWithBackup(
+        tester,
+        consent: BackupConsent.granted,
+        health: const BackupHealth().failedAt(DateTime(2026, 8, 23)),
+      );
+
+      expect(
+        find.textContaining('The last backup did not go through'),
+        findsOneWidget,
+      );
+      // Calm, and explicit that nothing was lost: the log is read from the
+      // phone, so the run is already there.
+      expect(find.textContaining('safe on this phone'), findsOneWidget);
+    });
+
+    testWidgets('a working one says so with a date', (tester) async {
+      await pumpWithBackup(
+        tester,
+        consent: BackupConsent.granted,
+        health: const BackupHealth().succeededAt(DateTime(2026, 8, 23)),
+      );
+
+      expect(find.text('Last backed up 23 Aug.'), findsOneWidget);
+    });
+
+    testWidgets('a runner who declined is told nothing about a backup they '
+        'do not have', (tester) async {
+      // There is no promise to report on. A warning here would be the app
+      // apologising for doing exactly what it was asked.
+      await pumpWithBackup(
+        tester,
+        consent: BackupConsent.declined,
+        health: const BackupHealth().failedAt(DateTime(2026, 8, 23)),
+      );
+
+      expect(find.textContaining('The last backup'), findsNothing);
+      expect(find.textContaining('Last backed up'), findsNothing);
+    });
+
+    testWidgets('and a phone that has never pushed anything stays quiet', (
+      tester,
+    ) async {
+      await pumpWithBackup(
+        tester,
+        consent: BackupConsent.granted,
+        health: const BackupHealth(),
+      );
+
+      expect(find.textContaining('Last backed up'), findsNothing);
+    });
   });
 
   testWidgets('no longer offers a way through to Profile, which is a tab', (

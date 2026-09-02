@@ -18,7 +18,7 @@ this once against production, with your own email:
 
 ```sql
 insert into core.entitlements (user_id, app, product, status, platform)
-select id, 'lift', 'paid', 'active', 'manual'
+select id, 'lift', 'paid', 'active', 'apple'
 from auth.users where email = 'you@example.com'
 on conflict (user_id, app) do update
   set product = 'paid', status = 'active';
@@ -26,6 +26,12 @@ on conflict (user_id, app) do update
 
 Only `status = 'active'` grants anything, and an unknown `product` falls back to
 the free tier rather than the dear one — so both fields have to be right.
+
+`platform` must be `'apple'` or `'google'`; the table has a check constraint and
+nothing else is accepted. **This block said `'manual'` until 2026-09-01**, which
+fails with a constraint violation rather than granting anything — so anybody who
+ran it got no entitlement and then tested the free half believing it was the
+paid one.
 
 **2. Know which install you are.** Two paths through this build, and they fail
 differently:

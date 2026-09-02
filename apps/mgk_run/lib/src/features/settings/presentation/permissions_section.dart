@@ -110,7 +110,7 @@ class _PermissionsSectionState extends State<PermissionsSection> {
         builder: (_) => IntroScreen(
           requestPermission: (p) => requestIntroPermission(p, health: _health),
           onBack: () => Navigator.of(context).maybePop(),
-          onFinished: () => Navigator.of(context).maybePop(),
+          onFinished: (_) => Navigator.of(context).maybePop(),
         ),
       ),
     );

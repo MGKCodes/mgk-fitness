@@ -5,6 +5,7 @@ import 'package:health/health.dart';
 import '../domain/health_workout.dart';
 import '../domain/workout_dedup.dart';
 import '../domain/workout_source.dart';
+import 'health_read_types.dart';
 
 /// Workouts read from Apple Health (and Health Connect on Android).
 ///
@@ -32,9 +33,15 @@ class HealthKitWorkouts implements WorkoutSource {
 
   bool _configured = false;
 
-  /// Workouts only. Distance and energy ride on the workout itself, so asking
-  /// for the quantity types separately would widen the permission prompt for
-  /// data this app does not read.
+  /// What this class *queries* — workouts, and nothing else. Distance and
+  /// energy ride on the workout itself, so asking for those quantity types
+  /// separately would be reading data twice.
+  ///
+  /// Deliberately not the same list as [kHealthReadTypes], which is what
+  /// [requestAccess] asks *permission* for. The app now also reads steps, from
+  /// `HealthKitRunMetrics` at the end of a run, and iOS grants read access once
+  /// per type at the one moment the sheet appears — so the request has to cover
+  /// every type the app will ever read, while each query stays narrow.
   static const List<HealthDataType> _types = <HealthDataType>[
     HealthDataType.WORKOUT,
   ];
@@ -45,14 +52,21 @@ class HealthKitWorkouts implements WorkoutSource {
     _configured = true;
   }
 
+  /// **The app's one Health permission moment, for everything it reads.**
+  ///
+  /// It asks for [kHealthReadTypes], not [_types]. A second sheet later — at
+  /// the end of a first run, to ask for steps — would be a permission prompt
+  /// arriving at the worst possible moment, in front of somebody who has just
+  /// stopped running and wants to see their numbers. One ask, in onboarding,
+  /// covering everything (ADR-0019).
   @override
   Future<bool> requestAccess() async {
     try {
       await _configure();
       return await _health
           .requestAuthorization(
-            _types,
-            permissions: const <HealthDataAccess>[HealthDataAccess.READ],
+            kHealthReadTypes,
+            permissions: kHealthReadAccess,
           )
           .timeout(timeout);
     } on Object {

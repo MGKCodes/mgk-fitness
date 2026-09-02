@@ -103,6 +103,33 @@ privacy policy, a working deletion path, named sub-processors, and a medical
 disclaimer are prerequisites for submission — not follow-ups. See
 [compliance.md](compliance.md).
 
+## 7a. What it costs
+
+Settled by [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md). Three
+tiers, one row per (user, app) in `core.entitlements`, and the model behind each
+is a server-side choice that can move without the tier meaning anything
+different to a runner ([ADR-0014](decisions/0014-model-is-chosen-per-surface-and-per-tier.md)).
+
+| Tier | `product` | Price | What it adds |
+|---|---|---|---|
+| Free | `free` | — | The whole tracker: recording, the log, splits, records, the runner's own history. A taste of the coach on the cheapest model. |
+| Coach | `paid` | **£1/month** | A plan, and the coach's reading of a run against the session it set. |
+| Sharper coach | `premium` | **£3/month** | The same, on a model that thinks harder, with roughly three times the monthly allowance. |
+
+**Recording is free and stays free.** The subscription buys a coach, not a
+plan-shaped paywall over the tracker —
+[ADR-0019](decisions/0019-onboarding-is-two-moments.md) is why the app opens on
+a working tracker with no account at all.
+
+Each tier's spend ceiling is sized against what that tier actually earns, in
+`supabase/functions/coach/limits.ts`. The prices live once, as consts in
+`plan_gate_copy.dart`; a test asserts the gate copy interpolates them rather
+than quoting a number somebody typed.
+
+Purchases run through RevenueCat
+([ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md)), which is
+**unbuilt at 1.0.0** — nothing sets `subscribed` yet.
+
 ## 8. Out of scope
 
 Route planning. Live location sharing. Social feed, following, leaderboards.

@@ -15,8 +15,16 @@ import 'location_source.dart';
 /// indicator can't be checked in a simulator or on desktop/web). See
 /// docs/architecture/run-recording.md.
 ///
-/// Altitude is deliberately NOT taken from GPS — GPS elevation is visibly wrong.
-/// Barometric altitude via `CMAltimeter` is a separate platform channel (TODO).
+/// **Altitude is deliberately NOT taken from GPS**, and nothing else supplies
+/// it, so every run this app records has a trace with no altitude at all. That
+/// is a decision rather than an oversight (ADR-0024) — GPS vertical error is
+/// several times its horizontal error, and summing it invents hundreds of
+/// metres of climb on a flat run — but it has a consequence worth stating where
+/// somebody reading this class will see it: `climbMeters` and
+/// `maxElevationMeters` answer null for every recorded run, so the summary's
+/// two elevation tiles never appear. Filling them needs a barometric source
+/// (`CMAltimeter` on iOS, `Sensor.TYPE_PRESSURE` on Android), which is a
+/// platform channel this app does not have yet.
 class GeolocatorLocationSource implements LocationSource {
   GeolocatorLocationSource({LocationSettings? settings})
     : _settings = settings ?? runSettingsForPlatform();
@@ -97,7 +105,10 @@ class GeolocatorLocationSource implements LocationSource {
     latitude: position.latitude,
     longitude: position.longitude,
     accuracyMeters: position.accuracy,
-    altitudeMeters: null, // GPS altitude is unreliable — CMAltimeter TODO.
+    // `position.altitude` is right there and is deliberately dropped: it is a
+    // plausible wrong number, which is the worst kind (ADR-0024). Absent until
+    // there is a barometer to ask.
+    altitudeMeters: null,
     timestamp: position.timestamp,
   );
 }

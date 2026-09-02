@@ -63,3 +63,29 @@ class CoachLimitException implements CoachException {
   @override
   String toString() => message;
 }
+
+/// The coach is a paid tier and this runner has not bought it.
+///
+/// The function's `not_entitled` refusal, which arrives as a 402
+/// ([ADR-0030](../../../../docs/decisions/0030-the-coach-is-the-paid-half.md)).
+///
+/// **Distinct from every other coach failure because it is not one.** Nothing
+/// has gone wrong: the runner is at a door rather than at a fault, and the
+/// difference has to survive all the way to the widget or it renders as "The
+/// coach hit a problem. Please try again." — which is a lie that invites a
+/// retry guaranteed to fail, and makes a working paywall look like broken
+/// software. Retrying is not the answer; buying is.
+///
+/// It is deliberately **not** a [CoachLimitException]. That one means "come
+/// back later", and this one never clears on its own.
+class CoachNotEntitledException implements CoachException {
+  const CoachNotEntitledException();
+
+  @override
+  String get message =>
+      'A plan and the coach are part of the subscription. Your runs, your log '
+      'and your records are always free.';
+
+  @override
+  String toString() => message;
+}

@@ -61,7 +61,7 @@ Thumbs.db
 # Claude Code settings hold personal permission grants — keep them out of the
 # public repo.
 .claude/
-# Web is a local dev/preview target only; Runio ships iOS-only (see ADR-0001).
+# Web is a local dev/preview target only; the app ships iOS-only (ADR-0001).
 # Regenerate with: flutter create . --platforms web
 /web/
 # Preview-harness screenshots and Playwright MCP output are local UI-verification

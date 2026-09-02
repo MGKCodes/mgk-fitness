@@ -1,6 +1,7 @@
 import 'package:mgk_units/mgk_units.dart';
 import '../../recording/domain/run_summary.dart';
 import '../presentation/session_labels.dart';
+import 'prescribed_distance.dart';
 import 'session_status.dart';
 import 'stored_plan.dart';
 import 'training_plan.dart';
@@ -205,8 +206,13 @@ MissedPrompt? missedPromptFor({
   // The long name: these are sentences, and "You missed Sun's long run" reads
   // as an abbreviation of nothing. The ribbon is where the short form belongs.
   final day = weekdayLongName(latest.session.weekday);
+  // Through the prescribed formatter rather than a zero-decimal conversion.
+  // The two agree on almost everything, and disagreeing at all is the problem
+  // this is: a session under half a unit long reads as "0 km" one way and
+  // "1 km" the other, and the sentence goes out to the coach with the number in
+  // it. One function decides what a prescription reads like.
   final what =
-      '${Distance.meters(latest.session.distanceMeters).format(unit, fractionDigits: 0)} '
+      '${formatPrescribed(latest.session.distanceMeters, unit)} '
       '${kindLabel(latest.session.kind).toLowerCase()}';
 
   if (missed.length == 1) {

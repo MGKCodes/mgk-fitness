@@ -1,8 +1,12 @@
+import 'package:mgk_units/mgk_units.dart';
+
+import '../../recording/domain/run_summary.dart';
 import '../domain/plan_builder.dart';
 import '../domain/plan_headline.dart';
 import '../domain/plan_history.dart';
 import '../domain/plan_shape.dart';
 import '../domain/plan_validator.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
@@ -221,7 +225,10 @@ class PlanRepository {
   ///
   /// Materialises the current week first, so a null session unambiguously means
   /// "rest day" rather than "not generated yet".
-  Future<TodayView> today(StoredPlan plan) async {
+  Future<TodayView> today(
+    StoredPlan plan, {
+    UnitSystem unit = UnitSystem.metric,
+  }) async {
     final now = _now();
     final slot = plan.weekOn(now);
     final week = await weekFor(plan, slot);
@@ -237,10 +244,75 @@ class PlanRepository {
       session: session,
       support: support,
       heading: todayHeading(plan.profile, slot),
+      // Resolved here for the reason [heading] is: whether today is race day,
+      // three days out, or the morning after is a property of the plan's
+      // shape, and the card takes the answer and asks nothing (ADR-0011).
+      // Null for a horizon, a rhythm and a log — none of which has a date to
+      // arrive at — and for the ordinary run of a block, which is most days.
+      race: raceOutlookFor(plan, now, unit: unit),
       status: session == null
           ? SessionStatus.planned
           : await _store.statusOn(plan, now) ?? SessionStatus.planned,
     );
+  }
+
+  /// Closes [plan] out — it reached its own end rather than being replaced.
+  ///
+  /// **The one write in this file the runner is watching.** Everything else
+  /// here is a screen loading; this is the moment sixteen weeks stop being the
+  /// plan, so it completes on disk before anything is shown (the same contract
+  /// [markToday] has, for the same reason).
+  ///
+  /// [raceTime] is what they confirmed they ran, and is dropped for a runner
+  /// who did not race — see [PlanStore.closePlan].
+  ///
+  /// **Not mirrored.** `finished_at` and `race_time_s` are schema 10 columns
+  /// with no counterpart in the `run` Postgres schema, so [PlanBackup] does not
+  /// carry them and there is nothing to push. That is the position `runs.steps`
+  /// and `elevation_max_m` are in (ADR-0024) and for the same reason: the
+  /// schema lives in `supabase/` at the repo root and is not this app's to
+  /// change. The cost is stated at the seam in `plan_backup_rows.dart`.
+  Future<void> finish(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  }) => _store.closePlan(plan, closure: closure, raceTime: raceTime);
+
+  /// Closes a plan whose race is long past and which the runner never closed,
+  /// and answers how — or null when it is still theirs to close.
+  ///
+  /// **This is the runner who never races.** It is common: they get injured in
+  /// week eleven, or the entry never happened, or the event was cancelled, and
+  /// the thing they do next is stop opening the app. Nothing about that
+  /// produces a tap, so nothing would ever end the plan — the coach would keep
+  /// briefing against a marathon that happened last spring, and Profile would
+  /// never list it among the things they have trained for.
+  ///
+  /// Called from the refresh that loads the plan rather than from [load],
+  /// deliberately: a read that writes is a read nobody can reason about, and
+  /// there are half a dozen callers of [load] that have no business closing
+  /// anything.
+  ///
+  /// A store that refuses the close answers null rather than raising: the plan
+  /// is then exactly as it was, which is the state this exists to tidy and not
+  /// one that can hurt anybody in the meantime. Nobody asked for this and
+  /// nobody can see it, so there is nothing to report.
+  Future<PlanClosure?> closeIfOverdue(
+    StoredPlan plan,
+    List<RunSummary> runs,
+  ) async {
+    final closure = overdueClosureFor(plan, runs, _now());
+    if (closure == null) return null;
+    // Read from the log, which is the same evidence the runner would have been
+    // shown before confirming. Null for the didNotRace case by construction —
+    // [overdueClosureFor] only answers `raced` when there is a run to read.
+    final result = raceResultFor(plan, runs);
+    try {
+      await finish(plan, closure: closure, raceTime: result?.time);
+    } on PlanStoreException {
+      return null;
+    }
+    return closure;
   }
 
   /// Marks today's session done / skipped / planned again.
@@ -302,6 +374,7 @@ class TodayView {
     required this.status,
     required this.heading,
     this.support,
+    this.race,
   });
 
   /// The skeleton week today falls in.
@@ -318,6 +391,14 @@ class TodayView {
   /// genuine rest day and on a day that already has a run, so a non-null value
   /// means "no run, but the day is still spoken for".
   final PlannedSession? support;
+
+  /// The race, when it is close enough to matter — already resolved for the
+  /// plan's shape, so the card draws it without knowing there are shapes.
+  ///
+  /// Null on the overwhelming majority of days, and null for every plan that
+  /// is not aimed at a date. A card reading this must not treat null as an
+  /// error state: it means "an ordinary day", which is what most days are.
+  final RaceOutlook? race;
 
   /// Only meaningful when [session] is non-null.
   final SessionStatus status;

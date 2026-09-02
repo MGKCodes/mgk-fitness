@@ -57,7 +57,7 @@ The coach persona and tone are defined **once** and shared across all prompts:
 | `rationale` | Why this session, given the block and recent history. |
 | `checkin` | Post-run and weekly reflection. |
 | `chat` | The open conversation — anything the runner asks. |
-| `summarise` | Rewrites the coach's rolling memory when a conversation ends. |
+| `summarise` | Rewrites the coach's rolling memory when the conversation sheet closes, over the turns said since the last rewrite. |
 
 ## Structured output & validation
 

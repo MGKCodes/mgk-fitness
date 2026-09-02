@@ -10,6 +10,7 @@ import 'package:mgk_run/src/features/coaching/domain/plan_shape.dart';
 import 'package:mgk_run/src/core/config/app_config.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
+import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 
 /// A consent store that records whether it was asked, and when.
@@ -41,12 +42,7 @@ class _RecordingConsent implements BackupConsentStore {
 /// Driven off `introPermissions` rather than a fixed list of taps, so adding or
 /// removing a permission does not silently strand every flow test on a screen
 /// it does not know how to leave.
-Future<void> _throughIntro(
-  WidgetTester tester, {
-  String? name,
-  String email = 'sam@runio.app',
-  String password = 'password',
-}) async {
+Future<void> _throughIntro(WidgetTester tester, {String? name}) async {
   await tester.tap(find.text('Get started'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Sounds good'));
@@ -60,12 +56,6 @@ Future<void> _throughIntro(
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
   }
-  await tester.enterText(find.byType(TextField), email);
-  await tester.tap(find.byTooltip('Continue'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField), password);
-  await tester.tap(find.byTooltip('Create my profile'));
-  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -89,6 +79,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: auth,
           coach: FakeCoachService(),
           consentStore: consent,
@@ -97,6 +88,8 @@ void main() {
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
 
     await _throughIntro(tester, name: 'Sam');
@@ -132,12 +125,15 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark,
           home: AuthGate(
+            introStore: InMemoryIntroStore(),
             auth: FakeAuthRepository(),
             historySource: () async => const [],
             requestPermission: (_) async => granted,
           ),
         ),
       );
+      // The gate reads its intro marker asynchronously, so frame one is blank.
+      await tester.pump();
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Get started'));
@@ -183,28 +179,42 @@ void main() {
     });
   });
 
-  testWidgets('the name travels with the account', (tester) async {
+  testWidgets('the name is kept even though there is no account to keep it on', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
+    // **The regression this guards.** The intro asks what to call somebody and
+    // then, since it stopped creating an account, had nowhere to put the
+    // answer: `currentName` reads auth metadata, and there is no session. The
+    // runner would tell the coach their name and the coach would forget it
+    // between the last permission and the first screen.
     final auth = FakeAuthRepository();
+    final intro = InMemoryIntroStore();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
         home: AuthGate(
+          introStore: intro,
           auth: auth,
           historySource: () async => const [],
           requestPermission: (_) async => true,
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
 
     await _throughIntro(tester, name: 'Sam');
 
-    // Given to the coach and stored on the profile, without a form in between.
-    expect(auth.lastName, 'Sam');
-    expect(auth.currentName, 'Sam');
+    expect(await intro.readName(), 'Sam');
+    expect(
+      auth.lastName,
+      isNull,
+      reason: 'nothing signed up, so nothing was written to a profile',
+    );
   });
 
   testWidgets('signing in asks for no name — they already have one', (
@@ -217,12 +227,15 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: FakeAuthRepository(),
           historySource: () async => const [],
           requestPermission: (_) async => true,
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('I already have an account'));
@@ -322,6 +335,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: AuthGate(
+          introStore: InMemoryIntroStore(),
           auth: FakeAuthRepository(),
           coach: FakeCoachService(),
           consentStore: consent,
@@ -333,6 +347,8 @@ void main() {
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
 
     // Start down the sign-up road, which is what claims the intent...

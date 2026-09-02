@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_validator.dart';
+import 'package:mgk_run/src/features/coaching/domain/prescribed_distance.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 
@@ -90,27 +91,44 @@ void main() {
   });
 
   group('buildFallbackWeek', () {
-    RunnerProfile profileDays(int days) => RunnerProfile(
-      goalDistanceMeters: 42195,
-      eventDate: DateTime(2027, 1, 1),
-      currentWeeklyMeters: 45000,
-      longestRecentMeters: 18000,
-      daysPerWeek: days,
-      availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
-    );
+    RunnerProfile profileDays(int days, {double weekly = 45000}) =>
+        RunnerProfile(
+          goalDistanceMeters: 42195,
+          eventDate: DateTime(2027, 1, 1),
+          currentWeeklyMeters: weekly,
+          longestRecentMeters: weekly * 0.4,
+          daysPerWeek: days,
+          availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
+        );
 
+    // Across volumes as well as widths, because sessions are stored in whole
+    // kilometres now and every rounding is worth up to 500 m of drift against
+    // the slot. On a 45 km week that is noise; on an 8 km week spread over
+    // seven days it is most of the week, and the volume and long-run tolerances
+    // have to survive it — the first version of the grid rounded each session
+    // on its own and an 8 km week came out as 7.
+    //
+    // Both ends of the range are real limits rather than arbitrary: below about
+    // 7 km a week a whole kilometre is simply the wrong unit for a session, and
+    // three running days cannot carry much past 60 km a week whatever the
+    // rounding does, because the long run is capped at 37 km and the other two
+    // days are held under it.
     test('every filled week passes validateWeek across days x every slot', () {
       for (var days = 3; days <= 7; days++) {
-        final profile = profileDays(days);
-        final skeleton = buildSkeleton(profile, now: now, weeks: 16);
-        for (final slot in skeleton.weeks) {
-          final week = buildFallbackWeek(slot, profile);
-          final result = validateWeek(week, slot, profile);
-          expect(
-            result.isValid,
-            isTrue,
-            reason: 'days=$days week=${slot.index} -> ${result.violations}',
-          );
+        for (final weekly in <double>[8000, 12000, 20000, 45000, 60000]) {
+          final profile = profileDays(days, weekly: weekly);
+          final skeleton = buildSkeleton(profile, now: now, weeks: 16);
+          for (final slot in skeleton.weeks) {
+            final week = buildFallbackWeek(slot, profile);
+            final result = validateWeek(week, slot, profile);
+            expect(
+              result.isValid,
+              isTrue,
+              reason:
+                  'days=$days weekly=$weekly week=${slot.index} -> '
+                  '${result.violations}',
+            );
+          }
         }
       }
     });
@@ -147,6 +165,11 @@ void main() {
     // showed two different long runs for the same week (19 km on the arc, then
     // 20.1 km once you opened it). The filler must honour the slot, not
     // re-derive a number the runner has already been shown.
+    //
+    // Compared against the slot put on the prescribed grid rather than the slot
+    // itself: the week states whole kilometres and the arc keeps the plan's
+    // exact working, so the two differ by up to half a kilometre by design. A
+    // re-derivation at 38% is a whole kilometre out and still caught.
     test('a filled week long run matches the slot the arc displays', () {
       for (final days in <int>[3, 4, 5, 6]) {
         final profile = profileDays(days);
@@ -155,7 +178,7 @@ void main() {
           final week = buildFallbackWeek(slot, profile);
           expect(
             week.longRunMeters,
-            closeTo(slot.longRunMeters, 1),
+            closeTo(roundPrescribed(slot.longRunMeters), 1),
             reason:
                 'week ${slot.index} ($days days/week): the arc shows '
                 '${slot.longRunMeters.round()} m',
@@ -201,6 +224,13 @@ void main() {
     test('the long run stays the longest session at every width', () {
       // Two non-long days is the tight case: the remainder is ~65% of the week
       // against a long run that is 35% of it, so a shaped share can overtake it.
+      //
+      // Overtaking is the failure; tying is not. Sessions are stored in whole
+      // kilometres, and the clearance the week shape can deliver (3%) is
+      // narrower than a kilometre for any long run under about 33 km, so a
+      // three-day week lands both on the same stored number. Nothing picks the
+      // long run by size — it is the session whose kind says so — and the
+      // week's own `longRunMeters` still comes back as its distance.
       for (var days = 3; days <= 7; days++) {
         final profile = _profile(
           40000,
@@ -215,12 +245,19 @@ void main() {
             if (s.kind == SessionKind.long) continue;
             expect(
               s.distanceMeters,
-              lessThan(long.distanceMeters),
+              lessThanOrEqualTo(long.distanceMeters),
               reason:
                   'days=$days week=${slot.index}: ${s.kind.name} '
-                  '(${s.distanceMeters.round()} m) is not under the long run',
+                  '(${s.distanceMeters.round()} m) is past the long run',
             );
           }
+          expect(
+            week.longRunMeters,
+            long.distanceMeters,
+            reason:
+                'days=$days week=${slot.index}: the week reports a long run '
+                'that is not the long run',
+          );
         }
       }
     });

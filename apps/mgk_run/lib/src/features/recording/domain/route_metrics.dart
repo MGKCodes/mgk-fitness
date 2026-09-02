@@ -211,3 +211,35 @@ const double kClimbNoiseMeters = 1.0;
 
 /// Below this, there was no climb worth reporting.
 const double kClimbFloorMeters = 5.0;
+
+/// The highest point on the route, in metres above sea level, or null when the
+/// trace carries no altitude at all.
+///
+/// **A different question from [climbMeters], and the two disagree constantly.**
+/// Gain is the sum of every rise; this is one reading. A runner doing hill
+/// repeats on a 40 m bank has enormous gain and an unremarkable maximum, and a
+/// runner walking up one mountain has the opposite. Strava shows both figures
+/// for the same 10 km for exactly that reason.
+///
+/// Barometric only, on the same grounds as [climbMeters]: GPS altitude's
+/// vertical error is several times its horizontal one, and here one bad fix
+/// would set a maximum that then stands for the whole run.
+///
+/// **No noise floor here, deliberately**, which is where the two functions part
+/// company. [climbMeters] drops rises under [kClimbNoiseMeters] because drift
+/// *accumulates* into an invented hill; a maximum accumulates nothing, so a
+/// route that tops out at 4 m has genuinely topped out at 4 m and there is
+/// nowhere in the Netherlands where saying so is wrong.
+///
+/// Two shapes of absence come out of this pair and they do not mean the same
+/// thing: a null gain beside a real maximum is a flat run, and both null is a
+/// phone with no barometer. Neither is an error and neither renders as a zero.
+double? maxElevationMeters(List<RunPoint> points) {
+  double? highest;
+  for (final point in points) {
+    final altitude = point.altitudeMeters;
+    if (altitude == null) continue;
+    if (highest == null || altitude > highest) highest = altitude;
+  }
+  return highest;
+}

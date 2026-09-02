@@ -1,4 +1,4 @@
-# Static analysis configuration for Runio.
+# Static analysis configuration for the running app.
 # Runs via `flutter analyze` and in CI. No new warnings are allowed (see
 # CONTRIBUTING.md).
 include: package:flutter_lints/flutter.yaml

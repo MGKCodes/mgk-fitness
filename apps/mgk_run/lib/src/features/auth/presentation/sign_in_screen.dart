@@ -18,6 +18,7 @@ class SignInScreen extends StatefulWidget {
     this.initialSignUp = false,
     this.onBack,
     this.onSignUpIntent,
+    this.onAuthenticated,
     this.introName,
     this.devAccounts = const <DevAccount>[],
   });
@@ -34,6 +35,20 @@ class SignInScreen extends StatefulWidget {
   /// for the result learned about it one rebuild too late — the shell was
   /// already built, and `startOnboarding` is read once in `initState`.
   final ValueChanged<bool>? onSignUpIntent;
+
+  /// There is now a session. **Only a screen that was *pushed* needs this.**
+  ///
+  /// In the signed-out flow this screen is a state of `AuthGate`, and a
+  /// successful sign-in swaps the whole subtree for the shell — nothing has to
+  /// be dismissed, because the screen ceases to exist. A gate raised from
+  /// inside the running app is the opposite case: it is a route over a shell
+  /// that stays exactly where it is, so without this the runner signs up
+  /// successfully and is left sitting on the form they have just finished, with
+  /// the thing they asked for waiting behind a back gesture nobody told them to
+  /// make.
+  ///
+  /// Null keeps the flow behaviour, which needs no dismissal.
+  final VoidCallback? onAuthenticated;
 
   /// The name the coach already asked for, so the form does not ask again.
   /// Null when the runner skipped it or is signing back in.
@@ -92,9 +107,14 @@ class _SignInScreenState extends State<SignInScreen> {
               () => _message = 'Check your email to confirm your account.',
             );
           }
+        } else {
+          // A session exists. A pushed gate dismisses itself here; the flow
+          // passes nothing and is swapped out by the auth stream instead.
+          widget.onAuthenticated?.call();
         }
       } else {
         await widget.auth.signIn(email: email, password: password);
+        widget.onAuthenticated?.call();
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -127,6 +147,7 @@ class _SignInScreenState extends State<SignInScreen> {
         email: account.email,
         password: account.password,
       );
+      widget.onAuthenticated?.call();
     } on AuthException catch (e) {
       if (mounted) {
         setState(() => _message = e.message);

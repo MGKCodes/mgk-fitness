@@ -28,6 +28,24 @@ import 'plan_mappers.dart';
 /// omitted**: a runner who was training for a marathon and is now keeping a
 /// rhythm needs the old values cleared on the upsert, and an omitted key on a
 /// PostgREST upsert leaves the previous one in place.
+///
+/// **The end of a plan does not cross this seam, and that is a known gap.**
+/// Schema 10 added `finished_at` and `race_time_s` locally so a block can
+/// reach its own end (ADR-0027); the `run` Postgres schema has neither column,
+/// and adding them is a `db/` lane change rather than this app's. `status` is
+/// the third: it is written here as a literal `'active'`, and `pushPlan`
+/// demotes every other row to `'superseded'` — so a plan that finished with a
+/// race locally reads as merely replaced on the server. This is the position
+/// `runs.steps` and `elevation_max_m` are already in
+/// ([ADR-0024](../../../../../docs/decisions/0024-elevation-is-barometric-or-absent.md)).
+///
+/// The cost of living with it is bounded, because a race result is a fact the
+/// runner confirmed rather than one derived from anything: a restored phone
+/// gets the plan and its arc back, and loses only *how* the block ended and
+/// what was run on the day. There is nothing on the phone that could rebuild
+/// those, which makes this the most expensive of the three gaps rather than
+/// the cheapest — and it is still not worth reaching across a lane boundary
+/// for. When the `run` schema next moves, these are the columns to add.
 Map<String, dynamic> planRow(StoredPlan plan, String userId) {
   final p = plan.profile;
   return <String, dynamic>{

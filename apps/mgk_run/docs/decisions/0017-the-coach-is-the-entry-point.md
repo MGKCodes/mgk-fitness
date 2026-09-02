@@ -124,6 +124,18 @@ label is the headline, the current week, the arc and the calendar — a plan.
 Everything named `coach_*` that is genuinely the conversation — the client, the
 controller, the transcript, the mark — keeps its name.
 
+**Amended, 2026-09-01 — the entry point to coaching, not to the app.**
+[ADR-0030](0030-the-coach-is-the-paid-half.md) makes the coach the paid half on
+both apps, so it is no longer what a runner meets first. That job moved to the
+scripted intro when onboarding split in two
+([ADR-0019](0019-onboarding-is-two-moments.md)), and this record predates both.
+
+What survives is the argument this ADR actually makes: that coaching is a
+conversation rather than a form, and that completion is observed rather than
+asked for. What does not is the literal reading — a runner without a
+subscription now meets a working tracker, and the coach is a door with a price
+on it.
+
 ## Consequences
 
 **The form does not go away.** The coach needs the network

@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'plan_shape.dart';
+import 'prescribed_distance.dart';
 import 'runner_profile.dart';
 import 'training_plan.dart';
 
@@ -135,7 +138,9 @@ class PlanRules {
   /// How far a generated week's long run may drift from the long run its
   /// skeleton slot declares. Tighter than [weekVolumeTolerance] because the
   /// slot's long run is shown to the runner on the plan arc as a single number,
-  /// so drift here reads as two screens contradicting each other.
+  /// so drift here reads as two screens contradicting each other. Floored at
+  /// [prescribedGridSlackMeters] where it is applied, since the week rounds to
+  /// whole kilometres and the slot does not.
   final double longRunTolerance;
 
   /// Whether the final week must be a taper below peak. Only a block has an
@@ -388,9 +393,18 @@ ValidationResult validateWeek(
   // so a week that quietly picks its own contradicts what the runner was shown
   // for that very week — checked separately from the fraction/ceiling bounds
   // above, which a divergent long run can satisfy perfectly well.
+  //
+  // Floored at half a kilometre because the week prescribes on the whole-
+  // kilometre grid while the slot keeps the plan's exact working, so the two
+  // legitimately differ by up to that much. Without the floor a 5.7 km slot
+  // prescribed as 6 km is 330 m out against a 285 m band, and the app rejects
+  // its own arithmetic — a rounding reported as a contradiction.
+  final longRunBand = math.max(
+    slot.longRunMeters * rules.longRunTolerance,
+    prescribedGridSlackMeters,
+  );
   if (slot.longRunMeters > 0 &&
-      (week.longRunMeters - slot.longRunMeters).abs() >
-          slot.longRunMeters * rules.longRunTolerance) {
+      (week.longRunMeters - slot.longRunMeters).abs() > longRunBand) {
     v.add(
       Violation(
         'long_run_slot',
