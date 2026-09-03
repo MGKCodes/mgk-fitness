@@ -26,9 +26,11 @@ Green, and worth stating so the list below is read as short rather than long:
   reads.
 - **The iOS pipeline has run end to end.** `Run — iOS TestFlight` in
   `codemagic.yaml`, signing via the team's `frunt_asc` App Store Connect key,
-  publishing with `submit_to_testflight: true`. **Build 11 succeeded on
-  2026-09-01** — six minutes, every step green including Publishing, `run.ipa`
-  at 26.1 MB. Build numbers come from `$PROJECT_BUILD_NUMBER`, so `1.0.0+1` in
+  publishing with `submit_to_testflight: true`. **Build 12 succeeded on
+  2026-09-02**, every step green including Publishing — the first build carrying
+  the RevenueCat SDK, the paywall, the wired `onUpgrade`, the gate sheet's
+  surface and the `appl_` key. Triggered through Codemagic's REST API rather
+  than the UI. Build numbers come from `$PROJECT_BUILD_NUMBER`, so `1.0.0+1` in
   the pubspec never needs bumping.
 - **An App Store Connect record exists** for `com.mgkcodes.fitness.run` —
   proven rather than assumed: the upload step fails after a successful build
@@ -60,9 +62,11 @@ answered on TestFlight rather than here.
 
 Build 11 settled four unknowns: `TARGETED_DEVICE_FAMILY = "1"` compiles, code
 signing resolves for the bundle id, the artefact globs match, and an App Store
-Connect record exists. Re-trigger `run-ios-release` against `run/release-1.0.0`
-when there is something new to test — and there is: **nothing from 1 Sep onwards
-has been on a phone**, including the whole payment arc.
+Connect record exists.
+
+**Build 12 is in TestFlight and carries everything below.** Every item in this
+gate is now answerable in one sitting, and none of them has been answered:
+nothing from 1 Sep onwards has been on a phone, the payment arc included.
 
 - [x] **A backgrounded run survives with the screen locked.** Confirmed on a
       live TestFlight build. iOS carries `UIBackgroundModes: location` with
