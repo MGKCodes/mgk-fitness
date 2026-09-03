@@ -68,6 +68,10 @@ commit and nothing caught it.
 `apps/mgk_lift/assets/exercises/LICENCE.md` restates this next to the files, so
 anyone who copies the directory out of the repository takes the terms with it.
 
+The reasoning behind all of this — what was weighed, what was rejected, and what
+is still outstanding outside this repository — is
+[ADR-0002](apps/mgk_lift/docs/decisions/0002-exercise-illustrations-are-cc-by-sa.md).
+
 ### Why, in short
 
 522 WebP files — a start/end pair for each of 261 movements, plus four generic

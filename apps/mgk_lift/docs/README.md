@@ -33,13 +33,8 @@ Decisions that bind **both** apps mostly sit in Run's
 first — [ADR-0025, a coach conversation is a session](../../mgk_run/docs/decisions/0025-a-coach-conversation-is-a-session.md)
 binds Lift as much as Run.
 
-One shared decision has **no ADR anywhere**: the exercise illustrations are
-CC BY-SA 4.0 adaptations rather than first-party work, which constrains how the
-assets may be shipped and relicensed. It is recorded in
-[NOTICE.md](../../../NOTICE.md) and
-[assets/exercises/LICENCE.md](../assets/exercises/LICENCE.md) — both of which
-state the obligation — but the *reasoning* was never written down as a decision.
-Worth one when somebody is next in here.
+The index is [decisions/README.md](decisions/README.md), which also lists the
+shared ones that live in Run's set.
 
 ## Not here yet
 
