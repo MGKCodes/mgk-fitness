@@ -57,12 +57,27 @@ Green, and worth stating so the list below is read as short rather than long:
   Edge Function that is the only thing that writes a row.
 - **Every screen is on a board** —
   [the contact sheet](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190),
-  **77 plates**, with `test/plates/board.state.json` recording what each was
-  taken at. This said 73 until 2026-09-03; the state file has 77, and the file
-  is the one that counts. Every plate is still stamped `31b7ce3` while
-  `flows.dart` has moved three times since (`406aab4`, `7f0692a`, `34b5439`),
-  so the board is a recapture behind — written by the harness, not by hand,
-  and not a phone job.
+  rendered 2026-09-02 at `31b7ce3`.
+
+  **Two counts, both true, and they are not the same thing.** The board shows
+  **73** plates (33 of them driven through the real app). `board.state.json`
+  records **77** captures. The four it holds that the board does not show are
+  `account-gate`, `keep-runs-safe`, `settings-no-account` and `hero_weights`.
+  This page said 73, was changed to 77 on 2026-09-03, and is now precise
+  instead — a single number here could only ever have been wrong about one of
+  the two.
+
+  **Neither count includes the paywall.** `flows.dart` generates `paywall` and
+  `paywall-store`; `board.state.json` carries neither, because the board
+  predates them. The board's own *Not on the board yet* table still lists the
+  purchase screen as missing "because RevenueCat is chosen and unbuilt", which
+  has been untrue since 2026-09-02.
+
+  **And `board.state.json` is maintained by hand.** `plate()` writes PNGs into
+  the git-ignored `plates/` and never touches the state file, so the stamps are
+  a human promise rather than a record. Every one still reads `31b7ce3` while
+  `flows.dart` has moved three times since (`406aab4`, `7f0692a`, `34b5439`).
+  It should be written by the harness. Not a phone job, and not a blocker.
 
 **What has never happened is a submission.** Day-to-day development is on
 Windows against an Android emulator, which is why every device question below is
@@ -472,10 +487,15 @@ art, and the choices only you can make.
       art with a caption band. What the board *is* good for is choosing which
       screens to shoot: the strongest six are `H1` (a plan and today's session),
       `R4` or `R5` (a run in progress), `F1` (a finished run), `P2` (a week
-      opened), `C3` (the coach answering), `S4` (a year of running). Take them
-      from a real device on TestFlight, not from the plate harness — the basemap
-      tiles are absent in the harness, and the map is half of what makes `R4`
-      worth showing.
+      opened), **`C4`** (the coach answering), `S4` (a year of running). Take
+      them from a real device on TestFlight, not from the plate harness — the
+      basemap tiles are absent in the harness, and the map is half of what makes
+      `R4` worth showing.
+
+      **This said `C3` until 2026-09-03, which named one plate and described
+      another.** On the board `C3` is the conversation merely opened and `C4` is
+      the coach answering a suggestion — and the answering one is the picture
+      that argues for a coach. Read off the board rather than inferred.
 
       Those are **board codes, and they exist only inside the published contact
       sheet** — not in `test/plates/`, so they cannot be resolved from this

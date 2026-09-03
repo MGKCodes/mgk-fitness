@@ -363,27 +363,31 @@ already the right pixel size with no alpha channel. Drop them in
 `python tool/export_store_assets.py --check`.
 
 **Two naming systems, and only one of them is in this repository.** The board
-codes (`H1`, `R4`, `C3`) exist **only inside the published contact sheet** —
+codes (`H1`, `R4`, `C4`) exist **only inside the published contact sheet** —
 `grep` for them across `test/plates/` returns nothing. The repo's own names are
-the semantic plate ids in `test/plates/board.state.json`. Both are given below
-so this table is readable without opening the board.
+the semantic plate ids in `test/plates/board.state.json`. Both are below, read
+off the board itself on 2026-09-03 rather than guessed.
 
 | # | The screen | Board code | Plate id in the repo | ✓ |
 |---|---|---|---|---|
 | H1 | Home: a plan, and today's session | `H1` | `home-with-plan` | ☐ |
-| H2 | A run in progress — **outdoors, map drawn** | `R4`/`R5` | `03-warmed` / `04-deep` | ☐ |
+| H2 | A run in progress — **outdoors, map drawn** | `R4` / `R5` | `03-warmed` / `04-deep` | ☐ |
 | H3 | A finished run: route, splits, stats | `F1` | `run-complete` | ☐ |
-| H4 | A week of the plan, opened | `P2` | `plan-week` *(or `week-detail`)* | ☐ |
-| H5 | The coach answering — needs the entitlement | `C3` | `coach-answering` | ☐ |
+| H4 | A week of the plan, opened | `P2` | `week-detail` | ☐ |
+| H5 | The coach answering — needs the entitlement | `C4` | `coach-answering` | ☐ |
 | H6 | A year of running, on the profile | `S4` | `year-grid` | ☐ |
 
-The plate-id column is **inferred, not read off a mapping table**, because no
-mapping table exists. Two things make it trustworthy anyway: the board has
-exactly 23 `R` codes and `board.state.json` has exactly 23 numbered recording
-plates in the same order, and `app-store-1.0.0.md` independently calls the gate
-sheet plate `C5`, which lands on `coach-gate` under the same scheme. **`H4` is
-the one to check by eye** — there are two plausible plan-week plates and the
-codes cannot separate them.
+Two of these were wrong when this table was first written from inference, and
+both are worth knowing because the release plan still carries the old pair:
+
+- **`P2` is `week-detail`, not `plan-week`.** `plan-week` is `P1`, "this week";
+  `P2` is "a week opened", which is the shot wanted.
+- **The coach answering is `C4`, not `C3`.** On the board `C3` is *the
+  conversation* (`coach-conversation`) and `C4` is *answering*
+  (`coach-answering`). All three copies of the shot list said `C3` — naming one
+  plate and describing the other — and all three were corrected on 2026-09-03.
+  **Shoot `C4`**: the coach replying to a suggestion chip is the picture that
+  argues for a coach, where `C3` is the conversation merely opened.
 
 **Shoot from the description, not the code.** The middle column is the shot; the
 other two are only there to find the reference.

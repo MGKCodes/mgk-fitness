@@ -281,8 +281,10 @@ the client never decides what it is entitled to.
 - [ ] **Screenshots.** 6.9" set, off a real device on TestFlight — not from the
       plate harness, which draws no basemap tiles. Six shots, chosen off
       [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190):
-      `H1`, `R4` or `R5`, `F1`, `P2`, `C3`, `S4`. The first two are what shows
-      in search, so they carry the argument alone. Drop them in
+      `H1`, `R4` or `R5`, `F1`, `P2`, **`C4`**, `S4` — the plate ids each maps
+      onto are in section H of
+      [the test sheet](testflight-1.0.0-test-sheet.md). The first two are what
+      shows in search, so they carry the argument alone. Drop them in
       `store-assets/captured/` named `listing-*.png`; the export script checks
       the dimensions and the alpha channel.
 - [ ] **The 1024×1024 marketing icon** — no alpha channel, no rounded corners,
