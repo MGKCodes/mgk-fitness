@@ -396,6 +396,21 @@ other two are only there to find the reference.
 them last, after sections C–G have put real data in the app: H1 and H4 need a
 generated plan, H5 needs the coach unlocked, H3 needs a finished run.
 
+⚠ **H3 will look worse on the phone than the plate does, and this is the first
+time anybody has been able to see that.** The `run-complete` plate shows a
+six-tile grid with **Elevation gain 167 m** and **Max elevation 111 m** filled
+in, because its fixture supplies altitude. On a real device both read *"not
+recorded"* — there is no barometric source (ADR-0024). So the shot you actually
+take has **two of its six tiles empty**, a third of the grid, in a picture going
+on the App Store.
+
+**Look at it before you decide it is fine**, and say which it reads as. This is
+the same judgement the *say these out loud* list asks for, arriving with a cost
+attached: it is no longer only "does absence read as deliberate", it is "does a
+third of the stat grid read as deliberate in a store screenshot". If the answer
+is no, H3 can be shot from the splits instead, and Gate 5's elevation decision
+stops being cosmetic.
+
 **H6 is the one to think about.** A fresh install has no year of running, and a
 profile showing an empty year is a worse shot than five good ones. If the data
 is not there, say so and we pick a sixth from what is — between three and ten

@@ -565,6 +565,20 @@ art, and the choices only you can make.
       **The only item on this page that could reasonably change what 1.0.0
       contains**, which is why it is decided last.
 
+      **It costs more than it looked, found 2026-09-03 by looking at the
+      plate.** `run-complete` is the finished-run screen, and it is also listing
+      screenshot **H3**. The plate shows a six-tile grid with elevation gain and
+      max elevation filled in, because its fixture supplies altitude; on a
+      device both read "not recorded". So the App Store shot has **two of six
+      tiles empty** — and the plate is precisely why nobody noticed, since it
+      renders a state the app cannot produce.
+
+      That reframes the decision. It is not only whether absence reads as
+      deliberate to a reviewer, it is whether a third of the stat grid reads as
+      deliberate in a picture chosen to sell the app. Three ways out: build
+      `CMAltimeter`, drop the two tiles for 1.0.0, or shoot H3 framed on the
+      splits instead. **The phone answers which.**
+
 ---
 
 ## Gate 6 — Documents that were wrong
