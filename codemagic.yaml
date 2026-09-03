@@ -484,7 +484,7 @@ workflows:
         # submit_to_app_store: false   # flip on when ready for a store release
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Lift — see docs/release-2.0.0.md for the release this feeds.
+  # Lift — see apps/mgk_lift/docs/release-2.0.0.md for the release this feeds.
   #
   # ONE-TIME SETUP, beyond what Run already established:
   #

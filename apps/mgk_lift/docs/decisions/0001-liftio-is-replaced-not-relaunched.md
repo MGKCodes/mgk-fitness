@@ -66,7 +66,7 @@ so the convention costs it nothing.
   Run build failed — profiles are fetched, not created.
 - Existing installs receive 2.0.0 as an update, so it must not assume a fresh
   device. Whether the app restores their cloud history on sign-in is
-  **unverified** and tracked in [release-2.0.0.md](../../../../docs/release-2.0.0.md).
+  **unverified** and tracked in [release-2.0.0.md](../release-2.0.0.md).
 - The Play listing is a genuinely new first upload. Nothing to migrate there,
   and no legacy id to inherit — `com.mgkcodes.liftio` is claimed fresh.
 - If Lift is ever renamed, the bundle id will name a product that no longer

@@ -65,6 +65,18 @@ flutter test
 The workspace resolves from the repo root, so `flutter pub get` there covers
 this app too.
 
+## Documentation
+
+- [`docs/`](docs/) — Lift's own documents, and the filing rule the suite
+  follows: they tier by **lifecycle**, not topic.
+- [`docs/release-2.0.0.md`](docs/release-2.0.0.md) — the plan to replace the
+  shipped Expo build at 1.4.0, and [the test sheet](docs/testflight-2.0.0-test-sheet.md)
+  that goes to a phone with it.
+- [`docs/decisions/`](docs/decisions/) — Lift's ADRs.
+- [`../../docs/`](../../docs/) — the suite: the Supabase schema, the design
+  language, naming, navigation, and the coach's profile. Anything true of both
+  apps lives there rather than here.
+
 ## Conventions
 
 Everything visual comes from [`mgk_ui`](../../packages/mgk_ui). This app

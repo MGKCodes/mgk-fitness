@@ -6,7 +6,7 @@ The plan to put `apps/mgk_lift` on the App Store and Google Play as **Liftio
 Written 2026-08-17. Tick items as they land; when something is settled
 differently from how it is written here, change the item and say why — the
 reasoning is worth more than the checkbox, which is the lesson
-[roadmap.md](roadmap.md) records about itself.
+[roadmap.md](../../../docs/roadmap.md) records about itself.
 
 ---
 
@@ -60,7 +60,7 @@ Blocks everything else: signing, store records and product ids all key off these
 - [x] Display names: `CFBundleDisplayName` is `Mgk Lift` and `android:label` is
       `mgk_lift`. Both are dev placeholders. Both become **Liftio**.
 - [x] **Record the bundle-id decision** —
-      [ADR-0001](../apps/mgk_lift/docs/decisions/0001-liftio-is-replaced-not-relaunched.md),
+      [ADR-0001](decisions/0001-liftio-is-replaced-not-relaunched.md),
       the first in Lift's own `docs/decisions/`. It turned out to **reverse** a
       decision, not fill a gap: `apps/mgk_lift/README.md` explicitly recorded
       the opposite — *"this is a new record, not an update. The existing listing
@@ -122,7 +122,7 @@ The soonest goal: TestFlight, off the live server, on a real device.
       capabilities, so it will not need regenerating.
 - [ ] First TestFlight upload, installed on device.
 - [ ] **Prove a real `lift_chat` turn against production.** Carried over from
-      [roadmap.md](roadmap.md) and still unproven: everything says the plumbing
+      [roadmap.md](../../../docs/roadmap.md) and still unproven: everything says the plumbing
       is right, nothing yet says the coach answers. This build is what finally
       answers it.
 
@@ -228,7 +228,7 @@ workflow, deliberately", and Liftio never shipped to Play.
 
 ## Phase 5 — Debt that touches the release
 
-From [roadmap.md](roadmap.md)'s carried-over list, filtered to what a shipping
+From [roadmap.md](../../../docs/roadmap.md)'s carried-over list, filtered to what a shipping
 app cannot leave broken.
 
 - [ ] **Delete Runio's `coach` and `delete-account` functions.**
