@@ -237,6 +237,12 @@ documentation puts first.
 
 ## 4. RevenueCat — project, products, entitlements, offering
 
+Confirmed configured on 2026-09-03. The four boxes below were done on
+the 2nd and left unticked, which had this runbook and
+[app-store-1.0.0.md](app-store-1.0.0.md) disagreeing about whether a CURRENT
+offering existed — the single disagreement that would have sent a sandbox
+failure hunting in the wrong layer.
+
 - [x] **A new project for the suite, not Liftio's.** RevenueCat scopes
       entitlements and offerings per project, and the backend is already built
       for one project serving both apps: `core.entitlements.app` is
@@ -262,10 +268,10 @@ documentation puts first.
       net, and every ceiling in `supabase/functions/coach/limits.ts` is roughly
       three quarters of that. At the standard 30% the net falls about 18% and
       every ceiling is oversized.
-- [ ] Paste the **shared secret** and upload the **in-app purchase key** from
+- [x] Paste the **shared secret** and upload the **in-app purchase key** from
       step 3.
-- [ ] **Import the two products.** They must exist in App Store Connect first.
-- [ ] **Entitlements, named `paid` and `premium`.** One per product, matching
+- [x] **Import the two products.** They must exist in App Store Connect first.
+- [x] **Entitlements, named `paid` and `premium`.** One per product, matching
       the product ids one to one.
 
       **Our backend does not read them** — the webhook maps a *product id* to a
@@ -286,7 +292,7 @@ documentation puts first.
       `isSubscribed`, `restore()` reads `activeSubscriptions` rather than
       `CustomerInfo.entitlements`, and the gate is `tierFor` server-side. Add a
       client-side entitlement read and this stops being free.
-- [ ] **An offering, marked CURRENT, containing a package per product.**
+- [x] **An offering, marked CURRENT, containing a package per product.**
 
       Two monthly products cannot both be `$rc_monthly`, so at least one package
       needs a custom identifier. **Nothing in the app reads them**:

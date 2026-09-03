@@ -291,4 +291,6 @@ the client never decides what it is entitled to.
 - [x] **A review screenshot per subscription product** — exported, and one file
       covers both.
 - [ ] **The demo account**, and an `active` row in `core.entitlements` for it.
-- [ ] **The two URLs above must resolve** before submission. Neither does yet.
+- [x] **The two URLs above resolve.** Both live 2026-09-03 and verified against
+      the running site: 200, valid certificate, reachable with no login. Gate 2
+      of [app-store-1.0.0.md](app-store-1.0.0.md) carries the detail.

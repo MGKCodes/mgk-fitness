@@ -6,9 +6,16 @@ specific to the running app.
 
 ## Current state
 
-**Built and working, not yet released anywhere.** Tracking, plan generation and
-the coach all run; 1186 tests pass and 3 are skipped (they are `@Tags(['live'])`
-and hit the real backend). `lib/` holds ~181 Dart files.
+**In TestFlight, not yet submitted.** Build 12 (2026-09-02) is the first build
+carrying the payment arc — the RevenueCat SDK, `PurchaseScreen`, and the coach
+gate's real destination. Tracking, plan generation and the coach all run.
+`lib/` holds ~190 Dart files.
+
+Three tests are skipped by design (`@Tags(['live'])` — they hit the real
+backend). **The test count is deliberately not written here.** It sat at 1186 in
+this file while the suite passed 1352, because a number copied into a second
+place is a number that drifts. `docs/app-store-1.0.0.md` carries the current
+figure; read it there.
 
 This was previously a standalone repo called Runio. It moved into the monorepo
 on 2026-08-06 and was repointed at `packages/mgk_ui`. If you find a doc here
@@ -80,12 +87,22 @@ schema, it is stale — say so rather than working around it.
 
 ## Where things live
 
-- `docs/product-spec.md` — the source-of-truth product definition.
-- `docs/architecture/` — run recording, plan generation, onboarding, LLM and
-  secrets.
-- `docs/decisions/` — 27 ADRs (the *why*).
-- `docs/roadmap.md` — phased build order.
-- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`.
+**Start at [`docs/README.md`](docs/README.md)**, which carries the filing rule:
+documents are tiered by lifecycle, not by topic.
+
+- `docs/decisions/` — 30 ADRs, the *why*. Superseded, never edited.
+- `docs/architecture/` — the *how*. Four of the six are untouched since
+  2026-08-06 and predate the purchase arc; trust `decisions/` where they
+  disagree, and fix what you find.
+- `docs/app-store-1.0.0.md` — the live release plan, and **the only checklist
+  carrying state**. `store-setup.md` is its runbook (dashboard fields and
+  troubleshooting); `app-store-listing.md` is listing copy parsed by
+  `tool/check_listing.py`, so it is source rather than prose.
+- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md` —
+  the legal source, generated into `legal-site/` and `web/public/run/`. Never
+  edit a generated copy.
+- `docs/product-spec.md` — **stale, and still titled Runio.** It was named here
+  as the source of truth and is not one. Read it as history.
 
 ## Definition of done
 

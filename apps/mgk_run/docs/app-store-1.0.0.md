@@ -21,9 +21,16 @@ the same reason.
 
 Green, and worth stating so the list below is read as short rather than long:
 
-- **1,333 tests pass, analyzer and format clean.** Including `naming_test.dart`,
-  which fails the build if a retired product name reaches a string a runner
-  reads.
+- **1,352 tests pass, analyzer and format clean** — verified at `23fde2a` on
+  2026-09-03 (3 skipped by design, `@Tags(['live'])`, they hit the real
+  backend). Including `naming_test.dart`, which fails the build if a retired
+  product name reaches a string a runner reads.
+
+  **This is the only place the figure is written down.** It said 1186 in
+  `apps/mgk_run/CLAUDE.md` while the suite passed 1352, so that second copy was
+  deleted rather than corrected — a number kept in two places is a number that
+  drifts, and the same failure had two release checklists disagreeing about the
+  RevenueCat offering.
 - **The iOS pipeline has run end to end.** `Run — iOS TestFlight` in
   `codemagic.yaml`, signing via the team's `frunt_asc` App Store Connect key,
   publishing with `submit_to_testflight: true`. **Build 12 succeeded on
@@ -91,9 +98,12 @@ nothing from 1 Sep onwards has been on a phone, the payment arc included.
       11 and proven nowhere but a widget test: an unentitled runner tapping the
       mark should meet the sheet, an entitled one the conversation. Grant
       yourself a row with the SQL in the test sheet.
-- [ ] **Sandbox purchase**, once there are products. Needs a sandbox Apple ID
-      and `REVENUECAT_ACCEPT_SANDBOX=true` on a non-production deploy. Belongs
-      to Gate 3 but lands here, because it cannot be proven from Windows.
+- [ ] **Sandbox purchase.** Both products are Ready to Submit, the offering is
+      CURRENT, and `REVENUECAT_ACCEPT_SANDBOX=true` is already set on the
+      deploy — so the only missing piece is a sandbox Apple ID and a device.
+      Section G of [the test sheet](testflight-1.0.0-test-sheet.md) walks the
+      whole chain. Belongs to Gate 3 but lands here, because it cannot be proven
+      from Windows. **Unset the flag before submitting.**
 
 ---
 
@@ -299,57 +309,35 @@ prices, [ADR-0030](decisions/0030-the-coach-is-the-paid-half.md) what is gated.
 
 ### The wiring, in the order it has to happen
 
-The order is load-bearing: since ADR-0030 the coach is refused without a row, and
-no row can exist until step 4 is deployed. **Nothing about the paid half works
-until this list is finished.**
+The order is load-bearing: since ADR-0030 the coach is refused without a row,
+and no row can exist until the webhook is deployed. **Nothing about the paid
+half works until this list is finished.**
 
-**Steps 1 to 5 are a click-through in two dashboards, and
-[store-setup.md](store-setup.md) is the runbook for them** — every field, the
-five strings that must match exactly, and a table mapping each of the webhook's
-own ignore reasons to its cause. Read that rather than this for the doing; this
-stays the checklist.
+#### Steps 1–5: the two dashboards
 
-- [x] **1. Apple: paid-applications agreement, tax and banking.** Already
-      Active from Liftio — an agreement is held by the team, not the app. Nothing about
-      subscriptions exists in App Store Connect until Business ▸ Agreements is
-      active. **This is the longest lead time on the page and nothing depends on
-      it** — start it first, then do everything else while it clears.
-- [x] **2. The subscription group and two products.** Both Ready to Submit,
-      Premium Coach ranked level 1 (the higher tier, and level 1 is the higher). One group, because the two
-      tiers are alternatives and a runner should move between them without a
-      second purchase. Per product:
-      - reference name, **product id**, duration 1 month
-      - price: £1 (`paid`) and £3 (`premium`) per ADR-0029; let Apple's matrix
-        set every other storefront
-      - localised display name and description (en-GB at minimum)
-      - **review screenshot and review notes, per product** — a common cause of
-        "Missing Metadata" that holds up the whole submission
-      - free trial / introductory offer: **no**, unless there is a reason. A
-        trial on a £1 product costs more in support than it earns.
-- [x] **3. RevenueCat: project, app, products, entitlements, offering.** App configured with
-      the App Store Connect shared secret and the in-app purchase key;
-      entitlement identifiers mapped onto the two products.
-- [x] **4. Deploy the webhook and set its secrets.** Version 2, verified by
-      probing: anonymous POST answers 401 rather than 503, which proves the
-      secret is set without anyone reading it.
+Apple's agreements, tax and banking; the subscription group and its two
+products; the RevenueCat project with its entitlements and a CURRENT offering;
+the deployed webhook and its secrets; and the webhook registration.
 
-      ```bash
-      supabase functions deploy revenuecat --no-verify-jwt
-      supabase secrets set REVENUECAT_WEBHOOK_SECRET='<a long random string>'
-      supabase secrets set REVENUECAT_PRODUCTS='{"<real product id>":{"app":"run","product":"paid"}, ...}'
-      ```
+- [x] **All of it, confirmed 2026-09-03.** **The checklist lives in
+      [store-setup.md](store-setup.md) §1–7 and nowhere else** — every field,
+      the five strings that must match exactly, and a table mapping each of the
+      webhook's own ignore reasons to its cause.
 
-      `--no-verify-jwt` is required rather than lax: RevenueCat is not a
-      signed-in user, has no Supabase token, and authenticates with the shared
-      secret — which is checked before anything else happens. The product ids are
-      **configuration rather than code**, so adding a SKU or changing a price
-      does not need a deploy. Full detail in the function's
-      [README](../../../supabase/functions/revenuecat/README.md).
-- [x] **5. RevenueCat ▸ Integrations ▸ Webhooks.** Verified with a test
-      event: 200, and the log reads `unmapped_product: test_product`. URL
-      `https://<project>.supabase.co/functions/v1/revenuecat`; Authorization
-      header set to `REVENUECAT_WEBHOOK_SECRET` **verbatim** — no `Bearer`
-      prefix, because it is compared as-is.
+      **It used to be listed here as well, with its own tick boxes, and the two
+      copies disagreed.** This page said the RevenueCat setup was complete while
+      the runbook still had the offering unticked — and no CURRENT offering is
+      the single misconfiguration that produces a calm, correct and entirely
+      misleading paywall reading *"Not available to buy yet"*. A sandbox failure
+      would have been hunted in the app.
+
+      Two checklists for one job is how one of them goes stale, which Gate 6
+      already recorded about `roadmap.md` and which this page then did anyway.
+      The runbook is finer-grained and is read with a dashboard open, so it
+      keeps the boxes. This stays the plan.
+
+#### Steps 6–11: code in this repository
+
 - [x] **6. The SDK in the client.** `purchases_flutter ^10.10.1`, behind a
       `PurchaseClient` interface with a `RevenueCatPurchases` implementation and
       a `FakePurchases` that lets the whole thing be driven from Windows. The
@@ -573,33 +561,40 @@ Recorded so nobody re-opens them under deadline:
 
 ## The order
 
-Three things have somebody else's clock on them. Start those first and do
-everything else while they run.
+**Six of the nine steps below are done.** What is left is one sitting on a
+phone, one form-filling session in App Store Connect, and one decision.
 
-1. **Apple's paid-applications agreement, tax and banking** (Gate 3, step 1).
-   Longest lead time on the page, and every subscription product is blocked
-   behind it.
+Struck through is finished — kept rather than deleted, because the sequence is
+the useful part and a list that only shows what remains loses it.
+
+1. ~~**Apple's paid-applications agreement, tax and banking.**~~ Active, and
+   held by the team rather than the app.
 2. **The OpenRouter reply** — sent 2026-09-01, tracked in
-   [openrouter-processor-agreement.md](openrouter-processor-agreement.md). Only
-   blocker 3 depends on it, and only for a sentence.
-3. **Stand up `mgkfitness.mgkcodes.com`, and settle the EULA and support URL**
-   (Gate 2). The legal pages go at `/run`, generated and static, with
-   word-for-word parity with the in-app copy. Depends on nothing else here, and
-   the same subdomain later carries the marketing pages for both apps.
+   [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
+   **Still outstanding, and the only thing waiting on somebody else.** Blocker 3
+   depends on it, and only for a sentence.
+3. ~~**Stand up `mgkfitness.mgkcodes.com`, settle the EULA and the support
+   URL.**~~ Live 2026-09-03; both URLs verified against the running site, and
+   the served page still carries the banner `legal_copy_test.dart` asserts on.
+4. ~~**Run a TestFlight build.**~~ Build 12, 2026-09-02, every step green.
+5. ~~**Gate 3, the wiring**~~ — the two dashboards, the webhook, the SDK, the
+   purchase screen. Everything except the sandbox purchase itself.
+6. ~~**Write Gate 4's copy.**~~ Description, keywords and promotional text
+   drafted and machine-checked by `tool/check_listing.py`. The subtitle is three
+   drafts with one still to pick.
 
-Then, in order:
+Then what is actually left:
 
-4. **Run a TestFlight build** and work Gate 1 on a device, starting with the
-   23 Aug recovery. The payment work does not block it — the app is on `free`
-   until a webhook says otherwise.
-5. **Gate 3, steps 2 to 8** — products, RevenueCat, the webhook deployed, the
-   SDK, the purchase screen. This is the largest remaining body of code.
-6. **Write Gate 4.** Subtitle, description, keywords, then screenshots off a
-   real device once the paid half is reachable — the coach is worth two of the
-   six shots and cannot be photographed until step 5 is done.
-7. **Fill in Gate 2's forms** in App Store Connect, once there is a build to
-   attach them to.
-8. **Sandbox purchase on a device** (Gate 1), which is the last thing that can
-   fail quietly.
-9. **Decide Gate 5's elevation question** last — the only item that could
-   reasonably change what 1.0.0 contains.
+7. **One sitting on the phone**, working
+   [the test sheet](testflight-1.0.0-test-sheet.md) end to end. Build 12
+   unblocked seven things at once and they share a device and an afternoon: the
+   five Gate 1 questions that have never been answerable from Windows, the
+   sandbox purchase, and the six listing screenshots. **Unset
+   `REVENUECAT_ACCEPT_SANDBOX` when it is over.**
+8. **Fill in Gate 2's forms** in App Store Connect — App Privacy, the age
+   rating, the review notes, and a demo account with an `active` entitlement
+   row. Nothing blocks this beyond wanting the phone's answers first.
+9. **Decide Gate 5's elevation question** last. It is the only item that could
+   reasonably change what 1.0.0 contains, and the only one the phone can
+   actually inform: a plate cannot tell you whether "not recorded" reads as
+   deliberate or as broken.
