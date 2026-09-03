@@ -4,14 +4,20 @@
 goal, and have a coach that adapts when life gets in the way. Part of the
 [mgk-fitness](../../README.md) suite.
 
-[![Status: pre-release](https://img.shields.io/badge/Status-pre--release-orange.svg)](docs/roadmap.md)
+[![Status: TestFlight](https://img.shields.io/badge/Status-TestFlight-blue.svg)](docs/app-store-1.0.0.md)
 [![Platform: iOS](https://img.shields.io/badge/Platform-iOS-lightgrey.svg)](#)
 [![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B.svg)](https://flutter.dev)
 
 ## Status
 
-**Working, and not yet released anywhere.** Tracking, plan generation and the
-coach all run. 917 tests pass.
+**In TestFlight, not yet submitted.** Build 12 (2026-09-02) is the first build
+carrying the payment arc — the RevenueCat SDK, the paywall, and the coach
+gate's real destination. Tracking, plan generation and the coach all run.
+
+The test count lives in
+[`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) and only there. It read
+917 here, 1186 in `CLAUDE.md` and 1,333 in the release plan while the suite
+passed 1,352 — four copies, four answers, and the release plan was the closest.
 
 Previously a standalone repo called Runio; moved into this monorepo on
 2026-08-06 and repointed at the shared design system. The move deleted 13
@@ -99,11 +105,26 @@ un-namespaced call fails at runtime rather than at compile time.
 
 ## Documentation
 
-- [`docs/product-spec.md`](docs/product-spec.md) — the source-of-truth product definition
-- [`docs/architecture/`](docs/architecture/) — run recording, plan generation, onboarding, LLM and secrets
-- [`docs/decisions/`](docs/decisions/) — 20 ADRs, the *why* behind the above
-- [`docs/roadmap.md`](docs/roadmap.md) — phased build order
-- [`docs/compliance.md`](docs/compliance.md), [`privacy-policy.md`](docs/privacy-policy.md), [`medical-disclaimer.md`](docs/medical-disclaimer.md)
+**Start at [`docs/README.md`](docs/README.md)** — it carries the filing rule
+(documents tier by **lifecycle**, not topic) and names the live release set.
+
+- [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) — shipping 1.0.0, and
+  the only checklist carrying state. [`store-setup.md`](docs/store-setup.md) is
+  its runbook; [`app-store-listing.md`](docs/app-store-listing.md) is listing
+  copy parsed by `tool/check_listing.py`.
+- [`docs/decisions/`](docs/decisions/) — 30 ADRs, the *why*. Superseded, never
+  edited.
+- [`docs/architecture/`](docs/architecture/) — the *how*. Four of the six have
+  not been touched since 2026-08-06; trust `decisions/` where they disagree.
+- [`docs/compliance.md`](docs/compliance.md),
+  [`privacy-policy.md`](docs/privacy-policy.md),
+  [`medical-disclaimer.md`](docs/medical-disclaimer.md) — the legal source,
+  generated into `web/public/run/`. Never edit a generated copy.
+- [`../../docs/`](../../docs/) — the suite: the Supabase schema, the design
+  language, naming, navigation.
+- [`docs/product-spec.md`](docs/product-spec.md) — **stale, and still titled
+  Runio.** It was named here as the source of truth and is not one. History.
+
 
 ## Testing
 
