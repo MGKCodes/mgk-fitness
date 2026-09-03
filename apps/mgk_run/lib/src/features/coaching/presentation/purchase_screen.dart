@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../legal/domain/legal_urls.dart';
 import '../../legal/presentation/privacy_policy_screen.dart';
 import '../data/entitlement_repository.dart';
 import '../data/purchase_client.dart';
@@ -11,14 +12,10 @@ import '../domain/coach_access.dart';
 import '../domain/coach_offer.dart';
 import '../domain/plan_gate_copy.dart';
 
-/// Apple's standard EULA, which is the Terms of Use for this app.
-///
-/// Nothing to write and Apple hosts it, which is what
-/// [ADR-0005](../../../../docs/decisions/0005-license-agpl.md) makes safe:
-/// distributing under AGPL through the App Store is a multi-copyright-holder
-/// problem and MGKCodes is the sole holder, the same position Signal is in.
-const String kTermsOfUseUrl =
-    'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+/// Re-exported so that importing this screen still yields [kTermsOfUseUrl].
+/// The constant moved to `legal/domain/legal_urls.dart` when Settings gained
+/// the same link: a legal document should not live inside the paywall.
+export '../../legal/domain/legal_urls.dart' show kTermsOfUseUrl;
 
 /// Where the coach is actually bought.
 ///

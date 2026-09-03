@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/legal/domain/account_deleter.dart';
+import 'package:mgk_run/src/features/legal/domain/legal_urls.dart';
 import 'package:mgk_run/src/features/legal/presentation/legal_screen.dart';
 
 class _NeverDeleter implements AccountDeleter {
@@ -25,13 +26,34 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('offers all three compliance surfaces', (tester) async {
+  testWidgets('offers all four compliance surfaces', (tester) async {
     await pumpLegal(tester);
 
     expect(find.text('Privacy & legal'), findsOneWidget);
     expect(find.text('Medical disclaimer'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
+    expect(find.text('Terms of use'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
+  });
+
+  // Guideline 3.1.2 is satisfied by the paywall's copy of this link, and
+  // `purchase_screen_test.dart` pins it there. This row exists for the person
+  // who is *not* mid-purchase — a reviewer looking through Settings, or a
+  // runner who wants to read what they agreed to after the fact. A link
+  // reachable only from a paywall is unreachable to both of them.
+  testWidgets('the terms are reachable without opening the paywall', (
+    tester,
+  ) async {
+    await pumpLegal(tester);
+
+    expect(find.text('Terms of use'), findsOneWidget);
+    expect(find.text("Apple's standard licence agreement"), findsOneWidget);
+
+    // Apple hosts it, so the row opens a URL rather than pushing a document.
+    // Assert the destination rather than mocking the launcher, which is what
+    // the paywall's own test does with the same constant.
+    expect(kTermsOfUseUrl, contains('apple.com'));
+    expect(kTermsOfUseUrl, contains('stdeula'));
   });
 
   testWidgets('the disclaimer opens read-only, with no accept button', (
