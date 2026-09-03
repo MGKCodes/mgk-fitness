@@ -128,11 +128,22 @@ Keep them and there is nothing to change; use different ones and they must be
 mirrored into `REVENUECAT_PRODUCTS` in step 6.
 
 - [x] **A review screenshot per product.** Required, and a common cause of
-      "Missing Metadata" holding up the whole submission. The `paywall` plate on
-      [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)
-      is what this screen looks like, and **is usable**: an IAP review
-      screenshot only has to show where the purchase happens, so unlike the
-      listing screenshots this one needs no device.
+      "Missing Metadata" holding up the whole submission. **Done, and in the
+      repo**: `store-assets/derived/run-iap-review-screenshot.png`, verified
+      2026-09-03 at **1290×2796 with no alpha channel** — the two things App
+      Store Connect actually refuses. An IAP review screenshot only has to show
+      where the purchase happens, so unlike the listing screenshots this one
+      needs no device.
+
+      It comes from the `paywall-store` plate in `test/plates/flows.dart`, which
+      renders at `kMaxPhone` × 3 for exactly this purpose, then
+      `tool/export_store_assets.py` flattens and checks it. **It is not on
+      [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)**,
+      and this document said it was until 2026-09-03. The board was captured at
+      `31b7ce3`, before the paywall existed; `board.state.json` carries neither
+      `paywall` nor `paywall-store`. Regenerate it with
+      `flutter test test/plates/flows.dart --plain-name paywall`, which writes
+      into the git-ignored `plates/`.
 
       Export it with `python tool/export_store_assets.py`. It lands in
       `store-assets/derived/` at **1290x2796**, with the alpha channel

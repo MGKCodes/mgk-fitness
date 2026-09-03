@@ -1,11 +1,14 @@
 # MGKFitness: Run 1.0.0 — TestFlight test sheet
 
-Fill this in on the phone, with the build in your hand. Tick what passes, write
-a line where it does not, and hand the whole thing back — a failed row with two
-words of context is worth more than a green sheet.
+Read this on the phone with the build in your hand, and **dictate what you find
+into a note** rather than ticking as you go — see *How to capture what you find*
+below. A failed row with two words of context is worth more than a green sheet.
 
-**Tick only what you actually saw.** An untested row left blank is useful; an
-assumed pass is not.
+**Only what you actually saw counts.** An untested row is useful; an assumed
+pass is not. Silence on a row is read as untested, never as passed.
+
+The boxes below get filled in afterwards, from your note, in the commit that
+records the build — not by you, one-handed, outdoors.
 
 **Rewritten 2026-09-03 for build 12.** The previous version was written before
 the payment arc existed, and its *known gaps* list told you to ignore three
@@ -20,6 +23,118 @@ Build 12 (2026-09-02) is the first build carrying the RevenueCat SDK,
 `PurchaseScreen`, the wired `onUpgrade`, and the gate sheet's real surface.
 **Nothing from 1 Sep onwards has been on a phone, the payment arc included** —
 so sections G and H are a first look, not a re-check.
+
+One row is **not** in build 12: E9, the Terms of Use link in Settings, was
+written after the build was cut. Skip it.
+
+---
+
+## How to capture what you find
+
+**Do not tick this file on the phone.** Editing a markdown table one-handed
+outdoors is how findings get lost, and the ones most easily lost are the ones
+only a phone can produce.
+
+**Dictate into one note.** Open Notes, start a single note called
+`run 1.0.0 build 12`, and hold the **microphone key on the keyboard** — not
+Voice Memos, which gives you an audio file that has to be transcribed before
+anybody can read it. Dictation gives you text immediately, editable, and it
+pastes straight into a Claude Code session at the end.
+
+**Capture by exception.** There are **74 rows** below (A4, B6, C12, D11, E9, F4,
+G22, H6). Dictated as "pass" one at a time that is unreadable, and nobody checks
+an unreadable list. Say the row id and what happened only when:
+
+- it **failed**, or
+- it passed but **felt wrong**, or
+- it is on the *say these out loud* list below, where a tick throws the answer
+  away.
+
+Anything you do not mention is read as **untested, not passed** — which is the
+safe direction and the reason this works. Say "A through C all clean" if they
+were, and that is enough.
+
+### Say these out loud — a tick loses the answer
+
+Fourteen rows produce a *value* rather than a pass, and two judgements have no
+row at all. These are the reason the afternoon is worth an afternoon:
+
+| Row | Say |
+|---|---|
+| A3 | Whether the 23 Aug run is in the log. Yes or no, and if no, whether anything from that day is |
+| B1, B2, B3 | The wording you actually saw, roughly. B2 must name **step count** |
+| B4 | Whether Health re-prompted for Steps on an install that already had the app. **Nobody knows this** |
+| B6 | Whether iOS ever asked for Health **write** access. Decides whether an `Info.plist` key gets dropped |
+| C12 | How many haptics per kilometre, and whether signal loss buzzed once or repeatedly |
+| F1 | The distance, against whatever you compared it to |
+| F2 | **The battery percentage used, and over how long.** First measurement ever taken |
+| F3 | Where it stuttered, if it did |
+| G6, G8 | What the two prices read, and in which currency |
+| G18 | The actual row: `product`, `status`, `platform` |
+| G's failure | **The ignore-reason string from the `revenuecat` function log** — not a description of the screen. That screen is calm and correct for five different causes |
+| Elevation | Whether "not recorded" reads as **deliberate or broken** on a real finished run. Gate 5's last open decision, and it cannot be judged from a plate |
+| H6 | Whether there is enough history for a year-of-running shot at all |
+
+### Where the note goes
+
+Paste it into a Claude Code session in this repo and say it is the build 12
+sheet. **The findings belong in this file, not beside it** — a second document
+carrying the same state is how one of them goes wrong. This file gets filled in
+and committed from your note; the note is scaffolding and can be deleted.
+
+If it is long, drop it at
+`apps/mgk_run/docs/.findings-build-12.txt` instead and say so — the dot prefix
+keeps it out of the docs listing, and it gets deleted in the same commit that
+fills in the sheet.
+
+---
+
+## The running order
+
+**The sections are not in the order you do them.** The account has to be created
+partway through and deleted at the very end, and the entitlement row has to move
+twice. Followed section by section, this sheet has you deleting the account
+before you buy anything with it.
+
+1. **A, B** — indoors, fresh install, no account. **Do B first and do it once**:
+   permissions are a first-launch question, and once answered you cannot get the
+   dialog back without reinstalling.
+2. **E1 to E4** — still no account. E1 needs two runs on the clock, so take two
+   short ones round the block; they do not have to be the real C run.
+3. **E5, E6, E7 — create the account.** This is the one path where consent
+   causes a real upload, and everything after it needs the account to exist.
+   **Leave E8 alone.**
+4. **Grant the entitlement row** (SQL below), then **D1 to D8** — the coach and
+   the plan on a granted row. A coach broken behind a grant is a coach problem;
+   discovering that mid-purchase wastes the purchase.
+5. **Delete the row**, then **D9, D10, D11** and **C11** — the gate, the
+   refusal, and the locked card. These mean nothing with an entitlement in
+   place.
+6. **Go outside: C, with C12 alongside it.** Two kilometres minimum, a lock, a
+   pause, a lap. Then **F**, forty minutes with the screen off — or fold C into
+   the start of F if the weather is against you. **C10 wants airplane mode**, so
+   do it as its own short run rather than mid-F.
+7. **G, indoors, row still deleted.** Sign into the app *first*, sign out of the
+   sandbox account *first*, read the function log rather than the screen.
+8. **H** — the screenshots. Everything here needs data the earlier steps made:
+   H1 and H4 the plan from step 4, H5 the coach unlocked by step 7, H3 a
+   finished run, H6 whatever history exists.
+9. **E8 last, and only last.** Deleting the account destroys what steps 4 to 8
+   were standing on. It is the final act of the afternoon.
+
+**Five ways to waste the afternoon**, each recoverable only by starting over:
+
+- **E8 early.** Deleting the account takes the entitlement row, the purchase and
+  the coach with it. It is the single most expensive misstep on this sheet, and
+  reading the sections in order is what causes it.
+- **Buying before signing into the app** — the webhook refuses an
+  `RCAnonymousID:` and writes nothing (`unknown_app_user_id`).
+- **Leaving a granted row in place through G**, so a purchase and a grant are
+  indistinguishable.
+- **Signing into iCloud with the sandbox Apple ID** rather than letting iOS ask
+  for it at the moment of purchase.
+- **Answering B's dialogs before you are paying attention.** There is no second
+  showing without a reinstall, and B1 to B3 are about the wording.
 
 ---
 
@@ -139,6 +254,7 @@ Must work with no account and no entitlement.
 | C9 | Open the same run from the log | Same numbers as the summary showed | ☐ |
 | C10 | Airplane mode, record a short run, finish | Records and saves with no network at all | ☐ |
 | C11 | On the finished run, find the locked stat card | Reads *"See what a coach adds"* and **opens the gate sheet when tapped**. It shipped for a month telling people to upgrade with nothing to tap | ☐ |
+| C12 | **Count the haptics across the whole run** | One per kilometre — **not one per GPS fix** — and one when the signal drops, not one a second. Nothing else fires unbidden. The tests assert which haptic fired and how many; **nothing has ever been felt**, which is the half a widget test cannot reach | ☐ |
 
 ## D. The coach and the plan — the paid half
 
@@ -170,6 +286,7 @@ Needs the entitlement row from *Before you start*. Do this before section G.
 | E6 | Turn backup off | Says what it deleted; the phone keeps its copy | ☐ |
 | E7 | Settings with no account | States the position; **no Sign out or Delete account rows** | ☐ |
 | E8 | Delete account | Confirmation first, then the data actually goes | ☐ |
+| E9 | Settings ▸ Privacy & legal ▸ **Terms of use** | **NOT IN BUILD 12 — skip unless you are on a later build.** The row was written on 2026-09-03, after build 12 was cut. On build 12 the Terms of Use are reachable only from the paywall (G9). When it does ship: opens Apple's standard EULA in a browser, and actually loads | ☐ |
 
 ## F. The long one
 
@@ -245,14 +362,31 @@ already the right pixel size with no alpha channel. Drop them in
 `store-assets/captured/` named `listing-*.png`, then from `apps/mgk_run` run
 `python tool/export_store_assets.py --check`.
 
-| # | Plate | The screen | ✓ |
-|---|---|---|---|
-| H1 | `H1` | Home: a plan, and today's session | ☐ |
-| H2 | `R4`/`R5` | A run in progress — **outdoors, map drawn** | ☐ |
-| H3 | `F1` | A finished run: route, splits, stats | ☐ |
-| H4 | `P2` | A week of the plan, opened | ☐ |
-| H5 | `C3` | The coach answering — needs the entitlement | ☐ |
-| H6 | `S4` | A year of running, on the profile | ☐ |
+**Two naming systems, and only one of them is in this repository.** The board
+codes (`H1`, `R4`, `C3`) exist **only inside the published contact sheet** —
+`grep` for them across `test/plates/` returns nothing. The repo's own names are
+the semantic plate ids in `test/plates/board.state.json`. Both are given below
+so this table is readable without opening the board.
+
+| # | The screen | Board code | Plate id in the repo | ✓ |
+|---|---|---|---|---|
+| H1 | Home: a plan, and today's session | `H1` | `home-with-plan` | ☐ |
+| H2 | A run in progress — **outdoors, map drawn** | `R4`/`R5` | `03-warmed` / `04-deep` | ☐ |
+| H3 | A finished run: route, splits, stats | `F1` | `run-complete` | ☐ |
+| H4 | A week of the plan, opened | `P2` | `plan-week` *(or `week-detail`)* | ☐ |
+| H5 | The coach answering — needs the entitlement | `C3` | `coach-answering` | ☐ |
+| H6 | A year of running, on the profile | `S4` | `year-grid` | ☐ |
+
+The plate-id column is **inferred, not read off a mapping table**, because no
+mapping table exists. Two things make it trustworthy anyway: the board has
+exactly 23 `R` codes and `board.state.json` has exactly 23 numbered recording
+plates in the same order, and `app-store-1.0.0.md` independently calls the gate
+sheet plate `C5`, which lands on `coach-gate` under the same scheme. **`H4` is
+the one to check by eye** — there are two plausible plan-week plates and the
+codes cannot separate them.
+
+**Shoot from the description, not the code.** The middle column is the shot; the
+other two are only there to find the reference.
 
 **H1 and H2 are what shows in search**, so they carry the argument alone. Shoot
 them last, after sections C–G have put real data in the app: H1 and H4 need a
@@ -270,21 +404,21 @@ screenshots are allowed, and six mediocre beats five strong plus one hollow.
 
 ## What to send back
 
-1. This sheet, ticked, with a line against anything that failed.
-2. Whether you tested free, paid, or both.
-3. **The answer to A3** — whether the 23 Aug run came back. It is the last
-   thing holding Phase 0 open.
-4. **The answer to B4** — whether widening the Health request re-prompted.
-   Nobody knows, and it affects every existing install.
-5. **The answer to B6** — whether iOS ever asked for Health *write* access.
-   It decides whether an `Info.plist` key gets dropped before submission.
-6. **The F2 battery figure**, whatever it is. There is nothing to compare it to
-   yet, which is exactly why the first number matters.
-7. **Where section G broke, if it did** — and the ignore-reason from the
-   function log rather than a description of the screen. That screen is calm
-   and correct for several different causes.
-8. **Whether "not recorded" reads as deliberate or broken** on a real finished
-   run. That is Gate 5's last open decision and it cannot be judged from a
-   plate.
-9. Anything that felt wrong but still passed. Those are the ones worth arguing
-   about.
+**The note, and nothing else.** The fourteen rows that need a spoken answer are
+listed once, in *Say these out loud* above; they are not repeated here, because
+two lists of the same fourteen rows is how one of them loses an entry.
+
+What the note needs beyond those:
+
+1. **Which half you tested** — free, paid, or both. They are different products
+   and they fail differently.
+2. **Which build**, if it is not 12.
+3. **How far you got.** Stopping at F is a fine outcome; a sheet that claims G
+   ran when the weather ended the afternoon is not.
+4. **Anything that felt wrong but still passed.** Those are the ones worth
+   arguing about, and they are the only findings this sheet has no row for —
+   by definition, since a row would have made them a pass or a fail.
+
+Then paste it in and say it is the build 12 sheet. The boxes get filled in, the
+findings get written against the rows they belong to, and the note gets deleted
+in the same commit.

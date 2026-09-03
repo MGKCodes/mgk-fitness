@@ -21,10 +21,11 @@ the same reason.
 
 Green, and worth stating so the list below is read as short rather than long:
 
-- **1,352 tests pass, analyzer and format clean** — verified at `23fde2a` on
-  2026-09-03 (3 skipped by design, `@Tags(['live'])`, they hit the real
-  backend). Including `naming_test.dart`, which fails the build if a retired
-  product name reaches a string a runner reads.
+- **1,353 tests pass, analyzer and format clean** — verified on 2026-09-03,
+  after the Settings row for the Terms of Use landed (3 skipped by design,
+  `@Tags(['live'])`, they hit the real backend). Including `naming_test.dart`,
+  which fails the build if a retired product name reaches a string a runner
+  reads.
 
   **This is the only place the figure is written down.** It said 1186 in
   `apps/mgk_run/CLAUDE.md` while the suite passed 1352, so that second copy was
@@ -54,10 +55,14 @@ Green, and worth stating so the list below is read as short rather than long:
 - **The purchase back end is built** — `core.entitlements`, the coach's
   server-side read, the client tier model, the gate sheet, and the `revenuecat`
   Edge Function that is the only thing that writes a row.
-- **Every screen is on a board**, recaptured at `31b7ce3` —
+- **Every screen is on a board** —
   [the contact sheet](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190),
-  73 plates, with `test/plates/board.state.json` recording what each was taken
-  at.
+  **77 plates**, with `test/plates/board.state.json` recording what each was
+  taken at. This said 73 until 2026-09-03; the state file has 77, and the file
+  is the one that counts. Every plate is still stamped `31b7ce3` while
+  `flows.dart` has moved three times since (`406aab4`, `7f0692a`, `34b5439`),
+  so the board is a recapture behind — written by the harness, not by hand,
+  and not a phone job.
 
 **What has never happened is a submission.** Day-to-day development is on
 Windows against an Android emulator, which is why every device question below is
@@ -194,11 +199,19 @@ App Store Connect will not accept a submission without these. None are code.
 
       **Settled 2026-09-02: Apple's standard EULA.**
       `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` goes in
-      the listing's terms field and in App Store Connect's EULA field. **The
-      in-app half is built**: the paywall links to it, and
-      `purchase_screen_test.dart` asserts the link is there. Still owed is a
-      fourth row in `legal_screen.dart` pointing at the same URL, so it is
-      reachable from Settings by somebody who is not mid-purchase.
+      the listing's terms field and in App Store Connect's EULA field.
+
+      **The in-app half is finished, 2026-09-03.** The paywall links to it
+      (`purchase_screen_test.dart`), and `legal_screen.dart` now carries a
+      fourth row pointing at the same URL, so it is reachable from Settings by
+      somebody who is not mid-purchase — a reviewer working through Settings,
+      or a runner reading what they agreed to afterwards. `kTermsOfUseUrl` moved
+      to `legal/domain/legal_urls.dart` so that neither screen owns it and
+      `legal/` does not import `coaching/` to show a legal document.
+      `legal_screen_test.dart` pins the row and the destination.
+
+      **What is left is both App Store Connect fields**, which is form-filling
+      in Gate 2's sitting rather than code.
 - [x] **A support URL** — **`https://mgkfitness.mgkcodes.com/run/support`**,
       live 2026-09-03 and verified alongside the policy. It answers the three things a
       runner actually writes in about, and says plainly which two we cannot fix:
@@ -348,9 +361,21 @@ the deployed webhook and its secrets; and the webhook registration.
       `HomeShell` calls `identify` with the Supabase user id whenever there is a
       session, because the webhook keys the row on it and refuses an
       `RCAnonymousID:` rather than writing to nobody.
-- [x] **7. The purchase screen `C5` opens onto** — `PurchaseScreen`, plate
-      `paywall` on the board, driven all the way from the coach mark so the
-      route is evidence rather than the render alone. Prices come from
+- [x] **7. The purchase screen `C5` opens onto** — `PurchaseScreen`, driven all
+      the way from the coach mark so the route is evidence rather than the
+      render alone.
+
+      **It is not on the board**, and this said "plate `paywall` on the board"
+      until 2026-09-03. `flows.dart` generates `paywall` and `paywall-store`,
+      but the board was captured at `31b7ce3` before either existed and
+      `board.state.json` carries neither. The store-sized one is exported to
+      `store-assets/derived/run-iap-review-screenshot.png` and is what satisfies
+      the per-product review screenshot in [store-setup.md](store-setup.md) §2.
+
+      Two naming systems collided in that sentence, which is why it went
+      unnoticed: `C5` is a **board code**, and board codes exist only inside the
+      published contact sheet — nowhere in `test/plates/`. `paywall` is a
+      **harness plate id**. They are not the same namespace. Prices come from
       `Offerings`; `purchase_screen_test.dart` prices a fixture in dollars and
       asserts the pounds ADR-0029 settled appear nowhere. It carries both tiers,
       **Restore purchases**, functional links to the **Terms of Use** (Apple's
@@ -451,6 +476,13 @@ art, and the choices only you can make.
       from a real device on TestFlight, not from the plate harness — the basemap
       tiles are absent in the harness, and the map is half of what makes `R4`
       worth showing.
+
+      Those are **board codes, and they exist only inside the published contact
+      sheet** — not in `test/plates/`, so they cannot be resolved from this
+      repository. Section H of
+      [the test sheet](testflight-1.0.0-test-sheet.md) carries the mapping onto
+      the semantic plate ids in `board.state.json`, and carries it **once**:
+      do not copy it here.
 - [ ] **App preview video** — optional, and genuinely optional. Skip for 1.0.0.
 - [ ] **App icon.** Already in the binary; confirm the 1024×1024 marketing icon
       is set in App Store Connect and has **no alpha channel and no rounded
@@ -561,8 +593,13 @@ Recorded so nobody re-opens them under deadline:
 
 ## The order
 
-**Six of the nine steps below are done.** What is left is one sitting on a
-phone, one form-filling session in App Store Connect, and one decision.
+**Five of the nine steps below are done, and a sixth is sent and waiting on
+somebody else.** What is left is one sitting on a phone, one form-filling
+session in App Store Connect, and one decision.
+
+*Said "six" until 2026-09-03, while only five were struck through. Step 2 is
+sent, not finished — counting a posted email as done is how the one item with
+somebody else's clock on it stops being chased.*
 
 Struck through is finished — kept rather than deleted, because the sequence is
 the useful part and a list that only shows what remains loses it.
