@@ -479,10 +479,17 @@ art, and the choices only you can make.
 
       Those are **board codes, and they exist only inside the published contact
       sheet** — not in `test/plates/`, so they cannot be resolved from this
-      repository. Section H of
-      [the test sheet](testflight-1.0.0-test-sheet.md) carries the mapping onto
-      the semantic plate ids in `board.state.json`, and carries it **once**:
-      do not copy it here.
+      repository. The mapping onto the semantic plate ids in `board.state.json`
+      lives in section H of
+      [the test sheet](testflight-1.0.0-test-sheet.md), once: do not copy it
+      here.
+
+      ⚠ **The list of which six to shoot is in three places** — here, section H
+      of the test sheet, and `app-store-listing.md`, which
+      `store-assets/README.md` names as its home. Three copies of one list is
+      the failure this page has already recorded twice, and it has not been
+      resolved: it is written down here so the next person to touch it picks an
+      owner rather than adding a fourth.
 - [ ] **App preview video** — optional, and genuinely optional. Skip for 1.0.0.
 - [ ] **App icon.** Already in the binary; confirm the 1024×1024 marketing icon
       is set in App Store Connect and has **no alpha channel and no rounded

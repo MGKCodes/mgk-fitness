@@ -128,12 +128,27 @@ Keep them and there is nothing to change; use different ones and they must be
 mirrored into `REVENUECAT_PRODUCTS` in step 6.
 
 - [x] **A review screenshot per product.** Required, and a common cause of
-      "Missing Metadata" holding up the whole submission. **Done, and in the
-      repo**: `store-assets/derived/run-iap-review-screenshot.png`, verified
-      2026-09-03 at **1290×2796 with no alpha channel** — the two things App
-      Store Connect actually refuses. An IAP review screenshot only has to show
-      where the purchase happens, so unlike the listing screenshots this one
-      needs no device.
+      "Missing Metadata" holding up the whole submission. **Generated and
+      verified 2026-09-03** at **1290×2796 with no alpha channel** — the two
+      things App Store Connect actually refuses. An IAP review screenshot only
+      has to show where the purchase happens, so unlike the listing screenshots
+      this one needs no device.
+
+      **It is not in the repository, on purpose.** `store-assets/.gitignore`
+      excludes `/derived/`, because a committed copy of a generated file is a
+      copy that drifts. So it exists on whichever machine last ran the script
+      and nowhere else. Do not hunt for the path — inside a worktree it sits
+      several levels down in a hidden `.claude` directory. Run:
+
+      ```
+      python tool/export_store_assets.py --downloads
+      ```
+
+      and take it from `~/Downloads`. `--downloads` is a correctness feature
+      rather than a convenience: [store-assets/README.md](../../../store-assets/README.md)
+      records that the first upload of this asset came from an easier-to-find
+      copy that was two revisions stale, and nothing looked wrong until the
+      form refused it.
 
       It comes from the `paywall-store` plate in `test/plates/flows.dart`, which
       renders at `kMaxPhone` × 3 for exactly this purpose, then
