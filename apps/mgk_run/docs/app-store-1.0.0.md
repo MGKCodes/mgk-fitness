@@ -27,12 +27,13 @@ Green, and worth stating so the list below is read as short rather than long:
   `naming_test.dart`, which fails the build if a retired product name reaches a
   string a runner reads.
 
-  **Build 12 is superseded.** It went to a phone on 2026-09-04 and came back
-  with four blockers and a defect nobody had filed as one; nine commits answer
-  them, and none of that is on a device yet. What is written below as done on
-  hardware was done on *build 12*, and everything fixed since needs build 13.
-  [The test sheet](testflight-1.0.0-test-sheet.md) carries the row-by-row
-  record.
+  **Build 12 is superseded. Build 13 (`75a89df`) was triggered 2026-09-04** and
+  carries eighteen commits of fixes, none of them yet on a device. What is
+  written below as done on hardware was done on *build 12*.
+  [The test sheet](testflight-1.0.0-test-sheet.md) is rewritten for build 13:
+  86 rows, with section G moved **before** the outdoor run because it is the
+  most submission-critical thing on it and has never once run — last time it sat
+  behind the weather and the afternoon ended first.
 
   **This is the only place the figure is written down.** It said 1186 in
   `apps/mgk_run/CLAUDE.md` while the suite passed 1352, so that second copy was
