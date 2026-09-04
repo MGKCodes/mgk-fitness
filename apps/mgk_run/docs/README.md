@@ -55,6 +55,11 @@ Supporting the same push:
 - **[../../../store-assets/README.md](../../../store-assets/README.md)** — what
   App Store Connect will and will not accept as an image, and the script that
   checks it.
+- **[after-1.0.0.md](after-1.0.0.md)** — the edge of the same push: the two
+  items from the build 12 field test that are **not** 1.0.0 scope, because
+  neither is specified — plan depth, and interactivity on the finish screen. It
+  exists so neither is mistaken for done or forgotten. Everything else from that
+  field test is on `app-store-1.0.0.md`.
 
 ## Legal — written once, rendered three times
 

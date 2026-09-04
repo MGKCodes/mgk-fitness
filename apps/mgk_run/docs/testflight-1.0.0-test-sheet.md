@@ -29,6 +29,61 @@ written after the build was cut. Skip it.
 
 ---
 
+## What build 12 answered
+
+**Field-tested 2026-09-04, free and paid both.** The run stopped at section F.
+**Sections G (22 rows) and H (6 rows) were never reached**, so the purchase
+chain and the listing screenshots remain entirely unproven — which is the pair
+build 12 was cut to test.
+
+Four defects block the release:
+
+- **The coach is unreachable after paying** (D5, D1). An active subscription
+  showed the paywall instead of the coach, and that survived a force-quit and a
+  relaunch. Where a purchase did land, the coach only appeared after a full
+  relaunch of the app.
+- **Nothing syncs on sign-in, and nothing uploads on consent** (A3, E5). Old run
+  history did not come back on sign-in — the 23 Aug run is still missing — and
+  existing runs did not upload after backup was turned on.
+- **Plans are scheduled into the past, and onto race day** (D3, D4). The current
+  week's sessions were placed on days already gone, and the final week
+  prescribes a real 5 km run on race day itself.
+- **Account creation hangs silently offline** (E5). It succeeded in airplane
+  mode with no offline indicator at all.
+
+**E6 was the most serious finding on the sheet, and it was filed as
+non-blocking.** Turning backup off gave no confirmation of what was deleted —
+because nothing was deleted. `BackupEraser` had been written on 2026-08-06,
+documented, and **never constructed anywhere in `lib/`**: `HomeShell` built
+`SettingsScreen` without an `eraser`, so the call fell through a `?? true`
+default, reported success, and skipped the erase entirely.
+
+[The policy](privacy-policy.md) says *"Back up my data → off withdraws consent
+to storing your data on our servers **and deletes what is already there**"*.
+That is special-category health data and a UK GDPR right, claimed in a document
+a reviewer can open. `legal_copy_test.dart` pins that sentence in four places;
+none of them is a behaviour, which is exactly how it survived — the promise was
+tested and the act was not.
+
+The tester could only observe the missing confirmation. The cause was found by
+reading the code afterwards, which is worth noting about this sheet's method:
+a device test reports symptoms honestly and cannot be expected to name a cause.
+
+**Two questions are still open.** B4 — whether Health re-prompts for Steps on an
+install that already had the app — was only exercised on a fresh reinstall, so
+it is genuinely unknown rather than untested-by-accident. F2 — the battery
+figure — was not measured, because section F was skipped; it is still the first
+measurement nobody has taken.
+
+⚠ **Read the coverage claims with a caution attached.** The session that
+produced these results worked from a copy of this sheet made **before the
+2026-09-03 rewrite**. It reported the dead upgrade button and the missing gate
+buy button as outstanding *known gaps* when both were fixed on 2026-09-02, and
+its copy carried no sections G or H at all. What it says it found is worth
+having; what it says it covered is bounded by that stale copy.
+
+---
+
 ## How to capture what you find
 
 **Do not tick this file on the phone.** Editing a markdown table one-handed
@@ -218,10 +273,10 @@ mode (`Elevation` lives in `mgk_units` and converts at display).
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| A1 | Install from TestFlight | Home screen icon reads **Run**, not MGKFitness | ☐ |
-| A2 | Launch with no account | Lands on a working app, not a sign-in wall | ☐ |
-| A3 | **Does the 23 Aug run appear in the log?** | The last open item in Phase 0. With the log reading Drift it should simply be there. If it is not, it never finalized — a new bug, not the one already fixed | ☐ |
-| A4 | Check the app is portrait-first and nothing is clipped | Notch and home indicator both respected | ☐ |
+| A1 | Install from TestFlight | Home screen icon reads **Run**, not MGKFitness | ☑ |
+| A2 | Launch with no account | Lands on a working app, not a sign-in wall — passed on a clean reinstall; the first install carried a stale build | ☑ |
+| A3 | **Does the 23 Aug run appear in the log?** | The last open item in Phase 0. With the log reading Drift it should simply be there. If it is not, it never finalized — a new bug, not the one already fixed — **FAILED:** old run history did not sync on sign-in. The 23 Aug run did not come back | ✗ |
+| A4 | Check the app is portrait-first and nothing is clipped | Notch and home indicator both respected | ☑ |
 
 ## B. Permissions — the strings, on a device, for the first time
 
@@ -230,12 +285,12 @@ phone.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| B1 | Location prompt | Says *"Record your run's route, distance, and pace."* No mention of "Runio" | ☐ |
-| B2 | Health prompt | Says *"Read your workouts and step count from Health…"* — **step count must be named** | ☐ |
-| B3 | Settings › Run › Location | The app is listed as **Run**, and the in-app copy that sends you here matches what you find | ☐ |
-| B4 | **On an install that already had the app**, does Health re-prompt for Steps? | Untested and genuinely unknown — answer it either way | ☐ |
-| B5 | Deny location, then look at the banner | Names an **iOS** settings path, not an Android one | ☐ |
-| B6 | Is Health *write* access ever requested? | It should not be. `Info.plist` still carries a write purpose string for a write the binary never performs — if iOS shows it, that is Guideline 5.1.1 and the key gets dropped before submission | ☐ |
+| B1 | Location prompt | Says *"Record your run's route, distance, and pace."* No mention of "Runio" | ☑ |
+| B2 | Health prompt | Says *"Read your workouts and step count from Health…"* — **step count must be named** — both step count and workouts were named | ☑ |
+| B3 | Settings › Run › Location | The app is listed as **Run**, and the in-app copy that sends you here matches what you find | ☑ |
+| B4 | **On an install that already had the app**, does Health re-prompt for Steps? | Untested and genuinely unknown — answer it either way — *still unknown*: only a fresh reinstall was tested, so the upgrade case was never exercised | — |
+| B5 | Deny location, then look at the banner | Names an **iOS** settings path, not an Android one — and starting a run with location denied shows a clear message | ☑ |
+| B6 | Is Health *write* access ever requested? | It should not be. `Info.plist` still carries a write purpose string for a write the binary never performs — if iOS shows it, that is Guideline 5.1.1 and the key gets dropped before submission — *not reached* | — |
 
 ## C. Recording — the free half
 
@@ -243,18 +298,18 @@ Must work with no account and no entitlement.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| C1 | Start a run, wait for a fix | Acquiring state resolves; route begins drawing | ☐ |
-| C2 | Run 2 km+ | Distance and pace track sanely against a known route | ☐ |
-| C3 | Watch a kilometre split land | Split appears with a sane time | ☐ |
-| C4 | Take a manual lap | Lap recorded, does not disturb the splits | ☐ |
-| C5 | Pause, wait, resume | Clock stops and restarts; distance does not jump | ☐ |
-| C6 | **Lock the phone for 10+ minutes while running** | Distance keeps climbing. Confirmed working before — confirm it again on this build | ☐ |
-| C7 | Raise and lower the stats panel | Two detents, no clipping at either | ☐ |
-| C8 | Finish the run | Summary screen appears with route, splits and the stats grid | ☐ |
-| C9 | Open the same run from the log | Same numbers as the summary showed | ☐ |
-| C10 | Airplane mode, record a short run, finish | Records and saves with no network at all | ☐ |
-| C11 | On the finished run, find the locked stat card | Reads *"See what a coach adds"* and **opens the gate sheet when tapped**. It shipped for a month telling people to upgrade with nothing to tap | ☐ |
-| C12 | **Count the haptics across the whole run** | One per kilometre — **not one per GPS fix** — and one when the signal drops, not one a second. Nothing else fires unbidden. The tests assert which haptic fired and how many; **nothing has ever been felt**, which is the half a widget test cannot reach | ☐ |
+| C1 | Start a run, wait for a fix | Acquiring state resolves; route begins drawing | ☑ |
+| C2 | Run 2 km+ | Distance and pace track sanely against a known route | ☑ |
+| C3 | Watch a kilometre split land | Split appears with a sane time | ☑ |
+| C4 | Take a manual lap | Lap recorded, does not disturb the splits | ☑ |
+| C5 | Pause, wait, resume | Clock stops and restarts; distance does not jump | ☑ |
+| C6 | **Lock the phone for 10+ minutes while running** | Distance keeps climbing. Confirmed working before — confirm it again on this build | ☑ |
+| C7 | Raise and lower the stats panel | Two detents, no clipping at either | ☑ |
+| C8 | Finish the run | Summary screen appears with route, splits and the stats grid | ☑ |
+| C9 | Open the same run from the log | Same numbers as the summary showed | ☑ |
+| C10 | Airplane mode, record a short run, finish | Records and saves with no network at all | ☑ |
+| C11 | On the finished run, find the locked stat card | Reads *"See what a coach adds"* and **opens the gate sheet when tapped**. It shipped for a month telling people to upgrade with nothing to tap — *not reached* | — |
+| C12 | **Count the haptics across the whole run** | One per kilometre — **not one per GPS fix** — and one when the signal drops, not one a second. Nothing else fires unbidden. The tests assert which haptic fired and how many; **nothing has ever been felt**, which is the half a widget test cannot reach — *not reached* | — |
 
 ## D. The coach and the plan — the paid half
 
@@ -262,31 +317,34 @@ Needs the entitlement row from *Before you start*. Do this before section G.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| D1 | Ask for a plan | Cost notice, then the intake conversation | ☐ |
-| D2 | Complete the intake | It reflects back what it heard before building | ☐ |
-| D3 | Read the generated plan | Whole numbers for prescribed distances — never `4.1 km` | ☐ |
-| D4 | Check the plan's last week | Ends on race day, not an arbitrary Sunday | ☐ |
-| D5 | Ask the coach about your last run | Reads it against the session you were set | ☐ |
-| D6 | Ask about a run from over a week ago | Gets the **date right** — it should not place an old run as yesterday | ☐ |
-| D7 | Force-quit, reopen, ask something | A new session; it does not replay the old conversation verbatim | ☐ |
-| D8 | Open previous chats | Old sessions readable | ☐ |
-| D9 | **Delete the entitlement row, relaunch** | The coach locks again. Access comes from the server, never a cached flag | ☐ |
-| D10 | With the row deleted, ask for a plan | Refused as a door with a price, never as *"the coach hit a problem"* — and **no free fallback plan is generated** | ☐ |
-| D11 | With the row deleted, tap the coach mark | The **gate sheet**, and its button reaches the paywall. Both destinations are new in this build | ☐ |
+| D1 | Ask for a plan | Cost notice, then the intake conversation — **FAILED:** the purchase completed but the coach did not unlock until a full relaunch; the *may take a minute* message showed throughout. **Recorded against the row the tester used, but this is G19's behaviour, not D1's** — the sheet's own numbering was not what the session was reading from. Cause: `_resolveAccess` ran only in `initState`, and signing in leaves the shell mounted. **Fixed 2026-09-04 (`cc89e9b`)** | ✗ |
+| D2 | Complete the intake | It reflects back what it heard before building — it does, but the intake asks about four questions in one message. A design problem rather than a failure of this row | ☑ |
+| D3 | Read the generated plan | Whole numbers for prescribed distances — never `4.1 km` — **FAILED:** the distances are whole numbers, as specified, but the current week's sessions were placed on days already past | ✗ |
+| D4 | Check the plan's last week | Ends on race day, not an arbitrary Sunday — **FAILED:** the final week schedules a real 5 km run on race day itself | ✗ |
+| D5 | Ask the coach about your last run | Reads it against the session you were set — **FAILED:** an active subscription showed the paywall instead of the coach, and it survived a force-quit and a relaunch | ✗ |
+| D6 | Ask about a run from over a week ago | Gets the **date right** — it should not place an old run as yesterday | — |
+| D7 | Force-quit, reopen, ask something | A new session; it does not replay the old conversation verbatim | — |
+| D8 | Open previous chats | Old sessions readable | — |
+| D9 | **Delete the entitlement row, relaunch** | The coach locks again. Access comes from the server, never a cached flag | — |
+| D10 | With the row deleted, ask for a plan | Refused as a door with a price, never as *"the coach hit a problem"* — and **no free fallback plan is generated** | — |
+| D11 | With the row deleted, tap the coach mark | The **gate sheet**, and its button reaches the paywall. Both destinations are new in this build | — |
+
+**D6 to D11 were not reached.** D5 left the coach unreachable behind an active
+subscription, and every row below it needs the coach answering first.
 
 ## E. Account, backup and deletion
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| E1 | Record two runs with no account | After the second, the backup prompt appears once | ☐ |
-| E2 | Decline it | Nothing is stored; you are not asked again | ☐ |
-| E3 | Turn on *Back up my data* with no account | Raises sign-up rather than silently storing a yes | ☐ |
-| E4 | Abandon that sign-up | Nothing written — you were interrupted, not asked and answered | ☐ |
-| E5 | Create an account, turn backup on | Existing runs upload. **Never run outside fakes** — this is the one path where consent causes a real upload | ☐ |
-| E6 | Turn backup off | Says what it deleted; the phone keeps its copy | ☐ |
-| E7 | Settings with no account | States the position; **no Sign out or Delete account rows** | ☐ |
-| E8 | Delete account | Confirmation first, then the data actually goes | ☐ |
-| E9 | Settings ▸ Privacy & legal ▸ **Terms of use** | **NOT IN BUILD 12 — skip unless you are on a later build.** The row was written on 2026-09-03, after build 12 was cut. On build 12 the Terms of Use are reachable only from the paywall (G9). When it does ship: opens Apple's standard EULA in a browser, and actually loads | ☐ |
+| E1 | Record two runs with no account | After the second, the backup prompt appears once | ☑ |
+| E2 | Decline it | Nothing is stored; you are not asked again | ☑ |
+| E3 | Turn on *Back up my data* with no account | Raises sign-up rather than silently storing a yes | ☑ |
+| E4 | Abandon that sign-up | Nothing written — you were interrupted, not asked and answered | ☑ |
+| E5 | Create an account, turn backup on | Existing runs upload. **Never run outside fakes** — this is the one path where consent causes a real upload — **FAILED:** account creation succeeded silently in airplane mode with no offline indicator, and existing runs did not upload after backup was turned on | ✗ |
+| E6 | Turn backup off | Says what it deleted; the phone keeps its copy — **FAILED:** no confirmation, and nothing was deleted: `BackupEraser` was never constructed, so the erase was skipped and reported as success. **Fixed 2026-09-04 (`32c8cec`)** — re-test on build 13 | ✗ |
+| E7 | Settings with no account | States the position; **no Sign out or Delete account rows** | ☑ |
+| E8 | Delete account | Confirmation first, then the data actually goes | ☑ |
+| E9 | Settings ▸ Privacy & legal ▸ **Terms of use** | **NOT IN BUILD 12 — skip unless you are on a later build.** The row was written on 2026-09-03, after build 12 was cut. On build 12 the Terms of Use are reachable only from the paywall (G9). When it does ship: opens Apple's standard EULA in a browser, and actually loads | — |
 
 ## F. The long one
 
@@ -294,16 +352,25 @@ One run of 40+ minutes, ideally with the screen off for most of it.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| F1 | Distance against a second device or a known route | Within a few percent | ☐ |
-| F2 | Battery drain over the run | Note the figure — no target yet, this is the first measurement | ☐ |
-| F3 | Any point where the map or panel stuttered | Note where | ☐ |
-| F4 | The run in the log the next morning | **Still there.** This is the failure that started release-1.0.0.md | ☐ |
+| F1 | Distance against a second device or a known route | Within a few percent | — |
+| F2 | Battery drain over the run | Note the figure — no target yet, this is the first measurement | — |
+| F3 | Any point where the map or panel stuttered | Note where | — |
+| F4 | The run in the log the next morning | **Still there.** This is the failure that started release-1.0.0.md | — |
+
+**Section F was not run in this pass.** Distance, battery and stutter had been
+validated on a separate outdoor run outside this cycle, so the afternoon stopped
+here rather than starting a second one. **F2's battery figure is therefore still
+outstanding** — it remains the first measurement nobody has taken.
 
 ## G. The purchase — the whole chain
 
 **New in build 12, and the last thing on the release that can fail quietly.**
 Nothing below has run outside a unit test, and the paywall has only ever
 rendered against `FakePurchases`.
+
+**None of it was reached on 2026-09-04.** The afternoon stopped at section F, so
+all twenty-two rows below are untested and the purchase chain is exactly as
+unproven as it was the day the build was cut.
 
 Runbook detail, including every webhook ignore-reason and its cause, is in
 [store-setup.md](store-setup.md) §8. **Read the function log before changing
@@ -313,38 +380,38 @@ anything** — the webhook never guesses, and it names the reason.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| G1 | A sandbox Apple ID exists — ASC ▸ Users and Access ▸ Sandbox ▸ Testers | Do **not** sign into iCloud with it | ☐ |
-| G2 | Sign out of the sandbox account on the device — Settings ▸ App Store ▸ Sandbox Account | iOS asks for it at the moment of purchase | ☐ |
-| G3 | Sign in to the **app**, so there is a Supabase user | The webhook keys the row on the Supabase UUID and refuses an `RCAnonymousID:` | ☐ |
-| G4 | Delete any entitlement row you granted yourself | Otherwise you cannot tell a purchase from a grant | ☐ |
+| G1 | A sandbox Apple ID exists — ASC ▸ Users and Access ▸ Sandbox ▸ Testers | Do **not** sign into iCloud with it | — |
+| G2 | Sign out of the sandbox account on the device — Settings ▸ App Store ▸ Sandbox Account | iOS asks for it at the moment of purchase | — |
+| G3 | Sign in to the **app**, so there is a Supabase user | The webhook keys the row on the Supabase UUID and refuses an `RCAnonymousID:` | — |
+| G4 | Delete any entitlement row you granted yourself | Otherwise you cannot tell a purchase from a grant | — |
 
 ### The paywall
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| G5 | Coach mark ▸ gate sheet ▸ **See the plans** | `PurchaseScreen` opens | ☐ |
-| G6 | **Both tiers show a price**, from the store | If it reads *"Not available to buy yet"* the offering is not CURRENT — stop, that is configuration, not the app | ☐ |
-| G7 | Premium Coach reads as the higher tier | Ranked level 1, and level 1 is the higher | ☐ |
-| G8 | The price is in **the storefront's** currency | Nothing compiles a figure into the binary; the test asserts the ADR-0029 pounds appear nowhere on screen | ☐ |
-| G9 | Tap **Terms of Use** | Apple's standard EULA opens, and actually loads | ☐ |
-| G10 | Tap **Privacy policy** | `mgkfitness.mgkcodes.com/run/privacy` opens, with no login | ☐ |
-| G11 | The auto-renew disclosure is on screen and legible | One of four Guideline 3.1.2 requirements; the others are G6, G9/G10 and G12 | ☐ |
-| G12 | **Restore purchases** is present | Required, and the only place the SDK's own view of ownership is read | ☐ |
-| G13 | Nothing clips at the bottom | The legal links overflowed a 430pt phone by 29px before a test caught it; 320pt is the narrowest supported | ☐ |
+| G5 | Coach mark ▸ gate sheet ▸ **See the plans** | `PurchaseScreen` opens | — |
+| G6 | **Both tiers show a price**, from the store | If it reads *"Not available to buy yet"* the offering is not CURRENT — stop, that is configuration, not the app | — |
+| G7 | Premium Coach reads as the higher tier | Ranked level 1, and level 1 is the higher | — |
+| G8 | The price is in **the storefront's** currency | Nothing compiles a figure into the binary; the test asserts the ADR-0029 pounds appear nowhere on screen | — |
+| G9 | Tap **Terms of Use** | Apple's standard EULA opens, and actually loads | — |
+| G10 | Tap **Privacy policy** | `mgkfitness.mgkcodes.com/run/privacy` opens, with no login | — |
+| G11 | The auto-renew disclosure is on screen and legible | One of four Guideline 3.1.2 requirements; the others are G6, G9/G10 and G12 | — |
+| G12 | **Restore purchases** is present | Required, and the only place the SDK's own view of ownership is read | — |
+| G13 | Nothing clips at the bottom | The legal links overflowed a 430pt phone by 29px before a test caught it; 320pt is the narrowest supported | — |
 
 ### Buying
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| G14 | Start a purchase, then **cancel at the sandbox sheet** | Reported as cancelled, **never as a failure** | ☐ |
-| G15 | Buy the Coach tier | Sandbox sheet, then the app's polling message | ☐ |
-| G16 | RevenueCat ▸ Customer history | The purchase, against your **Supabase UUID** — not an `RCAnonymousID:` | ☐ |
-| G17 | RevenueCat ▸ Webhooks | A 200 | ☐ |
-| G18 | `core.entitlements` | One row: `product` `paid`, `status` `active`, `platform` `apple` | ☐ |
-| G19 | The app | The coach unlocks. It polls at 0/1/2/3/5s; if the row is late it says the payment went through and the unlock is coming — **that is the correct message, not an error** | ☐ |
-| G20 | Move to the Premium tier | No second purchase — one group, and the tiers are alternatives | ☐ |
-| G21 | **Restore purchases** on a fresh install | The coach comes back | ☐ |
-| G22 | Cancel from Apple ID settings | The row goes `expired` **when it lapses**, not immediately. `CANCELLATION` means auto-renew is off and you keep what you paid for | ☐ |
+| G14 | Start a purchase, then **cancel at the sandbox sheet** | Reported as cancelled, **never as a failure** | — |
+| G15 | Buy the Coach tier | Sandbox sheet, then the app's polling message | — |
+| G16 | RevenueCat ▸ Customer history | The purchase, against your **Supabase UUID** — not an `RCAnonymousID:` | — |
+| G17 | RevenueCat ▸ Webhooks | A 200 | — |
+| G18 | `core.entitlements` | One row: `product` `paid`, `status` `active`, `platform` `apple` | — |
+| G19 | The app | The coach unlocks. It polls at 0/1/2/3/5s; if the row is late it says the payment went through and the unlock is coming — **that is the correct message, not an error** | — |
+| G20 | Move to the Premium tier | No second purchase — one group, and the tiers are alternatives | — |
+| G21 | **Restore purchases** on a fresh install | The coach comes back | — |
+| G22 | Cancel from Apple ID settings | The row goes `expired` **when it lapses**, not immediately. `CANCELLATION` means auto-renew is off and you keep what you paid for | — |
 
 **If nothing happens**, the reason is in the `revenuecat` function log and it
 names the product id. `unmapped_product` means `REVENUECAT_PRODUCTS` and App
@@ -352,6 +419,8 @@ Store Connect disagree; `unknown_app_user_id` means you bought before signing
 in; `sandbox` means the accept flag is not set.
 
 ## H. The six listing screenshots
+
+**Not reached on 2026-09-04.** Not one of these six has been taken.
 
 Same device, same sitting. **These cannot be taken from Windows**: the plate
 harness answers every network image with a 400, so there are no basemap tiles,
@@ -370,12 +439,12 @@ off the board itself on 2026-09-03 rather than guessed.
 
 | # | The screen | Board code | Plate id in the repo | ✓ |
 |---|---|---|---|---|
-| H1 | Home: a plan, and today's session | `H1` | `home-with-plan` | ☐ |
-| H2 | A run in progress — **outdoors, map drawn** | `R4` / `R5` | `03-warmed` / `04-deep` | ☐ |
-| H3 | A finished run: route, splits, stats | `F1` | `run-complete` | ☐ |
-| H4 | A week of the plan, opened | `P2` | `week-detail` | ☐ |
-| H5 | The coach answering — needs the entitlement | `C4` | `coach-answering` | ☐ |
-| H6 | A year of running, on the profile | `S4` | `year-grid` | ☐ |
+| H1 | Home: a plan, and today's session | `H1` | `home-with-plan` | — |
+| H2 | A run in progress — **outdoors, map drawn** | `R4` / `R5` | `03-warmed` / `04-deep` | — |
+| H3 | A finished run: route, splits, stats | `F1` | `run-complete` | — |
+| H4 | A week of the plan, opened | `P2` | `week-detail` | — |
+| H5 | The coach answering — needs the entitlement | `C4` | `coach-answering` | — |
+| H6 | A year of running, on the profile | `S4` | `year-grid` | — |
 
 Two of these were wrong when this table was first written from inference, and
 both are worth knowing because the release plan still carries the old pair:
