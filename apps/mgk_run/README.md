@@ -122,7 +122,7 @@ un-namespaced call fails at runtime rather than at compile time.
   generated into `web/public/run/`. Never edit a generated copy.
 - [`../../docs/`](../../docs/) — the suite: the Supabase schema, the design
   language, naming, navigation.
-- [`docs/product-spec.md`](docs/product-spec.md) — **stale, and still titled
+- [`docs/history/product-spec.md`](docs/history/product-spec.md) — **stale, and still titled
   Runio.** It was named here as the source of truth and is not one. History.
 
 

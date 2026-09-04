@@ -3,7 +3,7 @@
 > **Where this stops.** This plan is about whether the app is good, and its
 > phases are essentially done. Whether it can be **submitted** is a different
 > question and a different document:
-> [app-store-1.0.0.md](app-store-1.0.0.md), which is the live checklist.
+> [app-store-1.0.0.md](../app-store-1.0.0.md), which is the live checklist.
 > Items closed here after 2026-08-28 were closed from that one.
 
 The plan to take `apps/mgk_run` from "records a run" to "somebody can hold it",
@@ -13,7 +13,7 @@ Written 2026-08-24, from a 10 km run recorded on 23 Aug under
 `mattkay02@gmail.com` alongside Strava as a control. Screenshots in
 `attachments/`. Tick items as they land; when something is settled differently
 from how it is written here, change the item and say why — the reasoning is
-worth more than the checkbox, which is the lesson [roadmap.md](roadmap.md)
+worth more than the checkbox, which is the lesson [roadmap.md](../roadmap.md)
 records about itself.
 
 ---
@@ -114,13 +114,13 @@ architecture rather than with the typo:
   that renders as "you have not done anything yet" is worse than a crash.
 
 This contradicts
-[ADR-0004](decisions/0004-offline-first-local-source-of-truth.md) directly. The
+[ADR-0004](../decisions/0004-offline-first-local-source-of-truth.md) directly. The
 local database is written on every fix and finalized on stop — it is a
 complete, correct source of truth that nothing ever reads. "Offline-first"
 describes the write path and nothing else.
 
 It also quietly breaks the consent bargain in
-[ADR-0012](decisions/0012-backup-is-consented-restore-only-adds.md). Backup is
+[ADR-0012](../decisions/0012-backup-is-consented-restore-only-adds.md). Backup is
 meant to be optional. As built, declining it means your own runs are invisible
 to you on your own phone — so the toggle is not really consent, it is the price
 of using the app. That is a compliance problem as well as a product one.
@@ -309,7 +309,7 @@ nothing.
       runs, per-run detail — **as empty placeholders**, so a new runner can see
       what the app is going to tell them once they run.
 - [x] This is the counter-signal
-      [ADR-0019](decisions/0019-onboarding-is-two-moments.md) names: a
+      [ADR-0019](../decisions/0019-onboarding-is-two-moments.md) names: a
       plan-shaped hole on a free screen. A profile that says only "No runs yet"
       reads as broken rather than as new. Recorded as a consequence on that ADR,
       with the general rule it leaves behind: a screen with no data states its
@@ -327,7 +327,7 @@ them in nine others.
 produces 4.1 km because a weekly volume got split by a share table. Nobody
 cares about the 0.1. To any runner alive that is a 4 km run, and
 `prescribed_distance.dart` already says so at length —
-[ADR-0011](decisions/0011-a-plan-has-a-shape.md) settled it.
+[ADR-0011](../decisions/0011-a-plan-has-a-shape.md) settled it.
 
 **It is a suggestion, never a floor or a ceiling.** Going further or shorter is
 a runner making a decision, not failing a check. `fulfils()` already implements
@@ -388,7 +388,7 @@ every decimal formatter is faithfully reporting it.
 Currently every message lands in one transcript forever. Closing and reopening
 the app continues it; there is no notion of a conversation that ended.
 
-Settled in [ADR-0025](decisions/0025-a-coach-conversation-is-a-session.md).
+Settled in [ADR-0025](../decisions/0025-a-coach-conversation-is-a-session.md).
 **The boundary is silence, not a lifecycle event**: a conversation ends when
 nothing has been said in it for 30 minutes, measured from `lastTurnAt`. One rule
 covers the cold start, the resume from background, and the runner who never
@@ -429,7 +429,7 @@ Still open, and recorded as a cost on the ADR rather than done here: a
 conversation abandoned by force-quitting the app mid-sentence is folded into the
 rolling summary by nothing. Closing that means a model call on the launch path,
 against the per-hour allowance in
-[ADR-0015](decisions/0015-spend-is-capped-over-three-windows.md).
+[ADR-0015](../decisions/0015-spend-is-capped-over-three-windows.md).
 
 ---
 

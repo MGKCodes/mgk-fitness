@@ -38,7 +38,7 @@ library;
 //
 //   1. `supabase/functions/coach/limits.ts` — every ceiling there is a fraction
 //      of that tier's net revenue, so a new price makes them the wrong size.
-//   2. `docs/product-spec.md`.
+//   2. `docs/history/product-spec.md`.
 //   3. The subscription products in App Store Connect.
 //
 // Keep the copy short. This is a sentence in a conversation, not a pricing page.

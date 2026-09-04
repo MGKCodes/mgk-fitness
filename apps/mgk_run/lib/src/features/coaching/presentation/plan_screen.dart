@@ -123,7 +123,7 @@ class PlanScreen extends StatelessWidget {
         ],
       ),
       // The photograph is what makes the glass above it mean anything: over a
-      // flat fill a BackdropFilter blurs nothing (docs/design/design-system.md).
+      // flat fill a BackdropFilter blurs nothing (docs/history/design-system.md).
       // `quiet`, because this screen is dense — the picture is texture here
       // rather than subject.
       body: PhotoBackdrop(

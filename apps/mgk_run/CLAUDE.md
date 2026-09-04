@@ -101,7 +101,7 @@ documents are tiered by lifecycle, not by topic.
 - `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md` —
   the legal source, generated into `legal-site/` and `web/public/run/`. Never
   edit a generated copy.
-- `docs/product-spec.md` — **stale, and still titled Runio.** It was named here
+- `docs/history/product-spec.md` — **stale, and still titled Runio.** It was named here
   as the source of truth and is not one. Read it as history.
 
 ## Definition of done

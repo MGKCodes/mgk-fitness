@@ -37,7 +37,7 @@ See [ADR-0007](../decisions/0007-secrets-via-backend-proxy.md).
   Edge Function instances are ephemeral, and the limiter **fails closed**: if it
   can't be consulted, the call is refused rather than spent. The numbers, the SQL
   and the error contract are in
-  [`supabase/functions/coach/README.md`](../../supabase/functions/coach/README.md).
+  [`supabase/functions/coach/README.md`](../../../../supabase/functions/coach/README.md).
 - **Model portability.** Swapping model or provider is a server change; the app
   ships unchanged.
 - **Data minimisation.** The server decides exactly what context leaves the

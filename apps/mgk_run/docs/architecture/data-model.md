@@ -200,8 +200,12 @@ it were a fact.
 ## Row Level Security
 
 Every table is scoped by `user_id`. RLS policies must guarantee a user can only
-read and write their own rows. This is a security-critical invariant — see
-[SECURITY.md](../../SECURITY.md).
+read and write their own rows. This is a security-critical invariant, and it is
+asserted against the live catalogue rather than described: see
+[`supabase/tests/`](../../../../supabase/tests/), run by `supabase test db`
+([ADR-0013 and the pgTAP contracts](../decisions/)).
+
+*This pointed at a `SECURITY.md` that has never existed in this repository.*
 
 ## Local mirror
 

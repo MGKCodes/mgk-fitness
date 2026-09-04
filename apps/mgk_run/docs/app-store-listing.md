@@ -12,7 +12,7 @@ some fields and rejects in others, and neither is a thing to discover on
 submission day.
 
 **Every claim below was checked against the code, not against the product
-spec** — [product-spec.md](product-spec.md) still says "Runio", still says
+spec** — [product-spec.md](history/product-spec.md) still says "Runio", still says
 "Pre-alpha (design)", and still promises HealthKit writes the app does not do.
 It is a design document that stopped tracking the build.
 
@@ -29,7 +29,7 @@ Written first, because a listing is where an aspiration quietly becomes a lie.
   recorded" ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)).
   Elevation is not a feature until it is.
 - **No heart rate, no cadence, no active energy.** Stopped on purpose in
-  [release-1.0.0.md](release-1.0.0.md).
+  [release-1.0.0.md](history/release-1.0.0.md).
 - **No audio cues** — [ADR-0006](decisions/0006-in-run-audio-deferred.md).
 - **No Strava, in any direction**
   ([ADR-0002](decisions/0002-no-strava-integration.md)). Do not name it in

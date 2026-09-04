@@ -1,6 +1,6 @@
 # App Store 1.0.0 — everything between a green build and a live listing
 
-[release-1.0.0.md](release-1.0.0.md) took the app from "records a run" to
+[release-1.0.0.md](history/release-1.0.0.md) took the app from "records a run" to
 "somebody can hold it". This document picks up where it stops, because the two
 are different problems: that one is about whether the app is good, this one is
 about whether it can be **submitted, reviewed, and approved**. An app can be
@@ -116,7 +116,7 @@ nothing from 1 Sep onwards has been on a phone, the payment arc included.
 - [x] **The test sheet is written** —
       [testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md).
 - [ ] **The 23 Aug run is recoverable.** The last open item in
-      [release-1.0.0.md](release-1.0.0.md)'s Phase 0. With the log reading
+      [release-1.0.0.md](history/release-1.0.0.md)'s Phase 0. With the log reading
       Drift, the run should simply appear. If it does not, it never finalized,
       and that is a new bug rather than the one already fixed.
 - [ ] **Widening the Health request does not re-prompt badly.** The app now asks
@@ -632,7 +632,7 @@ it.
 Recorded so nobody re-opens them under deadline:
 
 - **Heart rate, cadence, active energy.** Stopped on purpose, with reasons, in
-  [release-1.0.0.md](release-1.0.0.md)'s "Deliberately not built".
+  [release-1.0.0.md](history/release-1.0.0.md)'s "Deliberately not built".
 - **In-run audio** — [ADR-0006](decisions/0006-in-run-audio-deferred.md).
 - **The Android release pipeline.** The APK workflow is a verification harness,
   not a product ([ADR-0021](decisions/0021-android-is-a-target.md)); nothing

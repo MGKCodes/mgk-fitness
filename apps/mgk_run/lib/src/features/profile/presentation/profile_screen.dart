@@ -171,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // rather than a solid fill because there is always something
               // behind it here — the photograph at rest, the cards once moving —
               // which is the one condition that makes the material worth its
-              // cost (docs/design/design-system.md).
+              // cost (docs/history/design-system.md).
               // `SizedBox.expand`, not a bare `ColoredBox`: a ColoredBox with no
               // child takes `constraints.smallest`, and the flexible space is
               // laid out loose — so the filter covered nothing at all and the

@@ -98,27 +98,29 @@ purchase arc, the session-bounded coach, and the two-moments onboarding. Read
 them against [`decisions/`](decisions/), which is current, and fix what you find
 rather than working around it.
 
-## History — read as history
+## History — [`history/`](history/)
 
-These describe how things got here. **None of them describes how the app
-behaves now**, and each says so.
+**Moved out of this directory on 2026-09-04, and the move is the point.** They
+used to sit here alongside the live documents under a heading saying they were
+stale, which is the same shape of protection this repository distrusts
+everywhere else: a warning that depends on somebody reading a paragraph holds
+until the next person. `docs/history/product-spec.md` cannot be mistaken for
+current in a way `docs/product-spec.md` could.
 
-- **[release-1.0.0.md](release-1.0.0.md)** — the build that took Run from
-  "records a run" to "somebody can hold it". Roughly twelve commits stale: its
-  phases are ticked but the account-removal work and everything after it is
-  missing.
-- **[roadmap.md](roadmap.md)** — the phased build order. Reconciled against
-  `app-store-1.0.0.md` rather than maintained beside it.
-- **[product-spec.md](product-spec.md)** — **stale, and the most misleading
-  document in the repository.** It is titled *Runio*, marked
-  *Pre-alpha (design)*, and its decisions table promises HealthKit writes the
-  app does not perform. It used to be named here as the source of truth, which
-  is why the listing copy was written against the code instead. Read it for how
-  the product was conceived, never for what it does.
-- **[../CHANGELOG.md](../CHANGELOG.md)** — what shipped, when.
-- **[design/design-system.md](design/design-system.md)** — superseded by
-  `packages/mgk_ui`, which is the design system now rather than a description
-  of one.
+Three documents, none maintained, none describing how the app behaves now:
+`release-1.0.0.md`, `product-spec.md` and `design-system.md`.
+[`history/README.md`](history/README.md) says what each one is for and why it
+was kept rather than deleted.
+
+Two things that read like history and stayed here, because other documents treat
+them as live:
+
+- **[roadmap.md](roadmap.md)** — the phased build order, reconciled against
+  `app-store-1.0.0.md` rather than maintained beside it. Still cited as the
+  source for pending work: the OpenRouter move is item 1, and Lift's template
+  design is item 3.
+- **[../CHANGELOG.md](../CHANGELOG.md)** — what shipped, when. A record that
+  keeps being added to.
 
 ## Elsewhere in the repository
 

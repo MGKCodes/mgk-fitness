@@ -66,7 +66,7 @@ Consequences that follow:
   up *is* the training state. A count of it ("parkrun, 14 this year") is the
   same class of thing as "week 1 of 16" — the runner's position in their own
   training. It is not the streak that
-  [the product spec puts out of scope](../product-spec.md#8-out-of-scope), which
+  [the product spec puts out of scope](../history/product-spec.md#8-out-of-scope), which
   is a reward mechanic: no badge, no penalty for breaking it, nothing unlocked.
   That line is amended to say so, because as written it would keep regenerating
   this argument.
