@@ -21,9 +21,15 @@ the same reason.
 
 Green, and worth stating so the list below is read as short rather than long:
 
-- **1,391 tests pass, analyzer and format clean** — verified 2026-09-04, after
-  the build 12 field-test fixes (3 skipped by design, `@Tags(['live'])`, they
-  hit the real backend). 199 Deno tests pass alongside them. Including
+- **1,450 tests pass, analyzer and format clean** — verified 2026-09-04 at
+  `75a89df`, after the build 12 field-test fixes (3 skipped by design,
+  `@Tags(['live'])`, they hit the real backend). 199 Deno tests pass alongside
+  them.
+
+  **The count is not evidence about the defects that afternoon found.** All of
+  them were caught by reading, by a device, or by somebody saying so — never by
+  the suite, because four of them were an argument nobody passed, and a widget
+  test cannot see the argument its caller declined to supply. Including
   `naming_test.dart`, which fails the build if a retired product name reaches a
   string a runner reads.
 
