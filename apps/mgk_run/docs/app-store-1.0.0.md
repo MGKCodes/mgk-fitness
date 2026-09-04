@@ -21,11 +21,18 @@ the same reason.
 
 Green, and worth stating so the list below is read as short rather than long:
 
-- **1,353 tests pass, analyzer and format clean** — verified on 2026-09-03,
-  after the Settings row for the Terms of Use landed (3 skipped by design,
-  `@Tags(['live'])`, they hit the real backend). Including `naming_test.dart`,
-  which fails the build if a retired product name reaches a string a runner
-  reads.
+- **1,391 tests pass, analyzer and format clean** — verified 2026-09-04, after
+  the build 12 field-test fixes (3 skipped by design, `@Tags(['live'])`, they
+  hit the real backend). 199 Deno tests pass alongside them. Including
+  `naming_test.dart`, which fails the build if a retired product name reaches a
+  string a runner reads.
+
+  **Build 12 is superseded.** It went to a phone on 2026-09-04 and came back
+  with four blockers and a defect nobody had filed as one; nine commits answer
+  them, and none of that is on a device yet. What is written below as done on
+  hardware was done on *build 12*, and everything fixed since needs build 13.
+  [The test sheet](testflight-1.0.0-test-sheet.md) carries the row-by-row
+  record.
 
   **This is the only place the figure is written down.** It said 1186 in
   `apps/mgk_run/CLAUDE.md` while the suite passed 1352, so that second copy was
@@ -638,6 +645,22 @@ Recorded so nobody re-opens them under deadline:
 somebody else.** What is left is one sitting on a phone, one form-filling
 session in App Store Connect, and one decision.
 
+⚠ **Step 7 happened on 2026-09-04 and did not close.** The sitting stopped at
+section F, so the purchase chain (G, 22 rows) and the listing screenshots
+(H, 6 rows) were never reached — the two things build 12 was cut to test. It
+found four blockers and a fifth nobody had filed as one, all now fixed and none
+of them on a device. **Step 7 is therefore still open, against build 13**, and
+the rows it never reached are still the rows that decide whether 1.0.0 can be
+submitted at all.
+
+A new open item, from the same afternoon: **plans anchor week 1 to
+`mondayOf(now)`**, so a plan built on a Friday opens with Monday to Thursday
+already behind it. Race day is fixed (a session may no longer land on it); this
+half is a decision rather than a patch, because the fix is the anchor — start
+on the coming Monday, or count the block backwards from race day as ADR-0027
+already claims it does — and either changes what every plan looks like.
+`PlanRules.rejectPastDays` exists ready for it.
+
 *Said "six" until 2026-09-03, while only five were struck through. Step 2 is
 sent, not finished — counting a posted email as done is how the one item with
 somebody else's clock on it stops being chased.*
@@ -664,11 +687,14 @@ the useful part and a list that only shows what remains loses it.
 Then what is actually left:
 
 7. **One sitting on the phone**, working
-   [the test sheet](testflight-1.0.0-test-sheet.md) end to end. Build 12
-   unblocked seven things at once and they share a device and an afternoon: the
-   five Gate 1 questions that have never been answerable from Windows, the
-   sandbox purchase, and the six listing screenshots. **Unset
-   `REVENUECAT_ACCEPT_SANDBOX` when it is over.**
+   [the test sheet](testflight-1.0.0-test-sheet.md) end to end. **Attempted on
+   build 12, 2026-09-04, and it did not finish** — it stopped at section F, so
+   G and H are still unproven. It was not wasted: it found the purchase chain
+   granting nothing, the coach reachable through six ungated doors, sync doing
+   nothing in either direction, plans training on race day, an account created
+   silently offline, and a backup switch that promised erasure and performed
+   none. All fixed; none verified on hardware. **Cut build 13 and work the whole
+   sheet, G and H included.** Unset `REVENUECAT_ACCEPT_SANDBOX` when it is over.
 8. **Fill in Gate 2's forms** in App Store Connect — App Privacy, the age
    rating, the review notes, and a demo account with an `active` entitlement
    row. Nothing blocks this beyond wanting the phone's answers first.
