@@ -143,35 +143,192 @@ void main() {
   testWidgets('holds every app-level control in one place', (tester) async {
     await pump(tester, memberSince: DateTime(2026, 7, 4));
 
-    // Units.
-    expect(find.text('Kilometres'), findsOneWidget);
-    expect(find.text('Miles'), findsOneWidget);
-    // The account actions, now grouped under Account rather than floating
-    // below the divider.
-    expect(find.text('Delete account'), findsOneWidget);
+    // Band 1, in the first viewport: who this is, and the reversible half of
+    // the account actions.
     expect(find.text('Sign out'), findsOneWidget);
+
     // Which build this is. Settings is a ListView and the version sits at its
     // foot, below the debug-only developer tools, so it has to be scrolled to
     // rather than found in the first viewport — a widget test runs in debug,
     // where those tools are present.
+    //
     // Scrolled to in the order they appear, and asserted as each arrives: a
     // lazy ListView disposes what it has scrolled past, so checking for an
-    // earlier row after reaching the foot finds nothing.
-    final legal = find.text('Privacy & legal');
-    await tester.scrollUntilVisible(
-      legal,
+    // earlier row after reaching the foot finds nothing. That order is now
+    // load-bearing rather than incidental, and `the page reads as four bands`
+    // below is what pins it.
+    Future<void> scrollTo(Finder target) => tester.scrollUntilVisible(
+      target,
       300,
       scrollable: find.byType(Scrollable).first,
     );
+
+    // Band 3 — units, and what the app says about itself.
+    final units = find.text('Kilometres');
+    await scrollTo(units);
+    expect(units, findsOneWidget);
+    expect(find.text('Miles'), findsOneWidget);
+
+    final legal = find.text('Privacy & legal');
+    await scrollTo(legal);
     expect(legal, findsOneWidget);
 
+    // Band 4 — the one irreversible row, at the foot of everything a runner
+    // uses rather than beside the things they use daily.
+    final delete = find.text('Delete account');
+    await scrollTo(delete);
+    expect(delete, findsOneWidget);
+
     final version = find.textContaining('$kProductName $kAppVersion');
-    await tester.scrollUntilVisible(
-      version,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await scrollTo(version);
     expect(version, findsOneWidget);
+  });
+
+  /// **The screen is four bands, and the order of them is the argument.**
+  ///
+  /// Build 12's field test called Settings disorganised: one undifferentiated
+  /// list, with consent, the permissions, the account and the deletion all
+  /// below the fold and nothing to mark any of them out. The answer was not to
+  /// shuffle rows but to give them an order that can be stated — sections
+  /// descend by how much of the runner's record they decide, and the single
+  /// irreversible control is placed by the cost of an accidental tap instead,
+  /// which puts it last.
+  ///
+  /// A layout with a stated principle and no test is a layout that drifts back
+  /// the first time a row is added, so the principle is asserted here as
+  /// positions rather than described in a comment nobody runs.
+  group('the page reads as four bands', () {
+    /// Tall enough to lay the whole page out at once. A `ListView` builds only
+    /// what is near the viewport, so relative positions cannot be compared
+    /// across a fold that is still there.
+    Future<void> pumpWhole(WidgetTester tester, {bool signedIn = true}) async {
+      await tester.binding.setSurfaceSize(const Size(420, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            unit: UnitSystem.metric,
+            settings: InMemoryUnitSettings(),
+            auth: FakeAuthRepository(
+              signedIn: signedIn,
+              email: signedIn ? 'dev@runio.app' : null,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the headings run in the one stated order', (tester) async {
+      await pumpWhole(tester);
+
+      double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
+
+      // Band 1 · where you stand — band 2 · what the app may do with your
+      // running — band 3 · what neither of those touches — band 4 · leaving.
+      final order = <String>[
+        'YOU',
+        'ACCOUNT',
+        'YOUR DATA',
+        'PERMISSIONS',
+        'DISTANCE',
+        'ABOUT',
+        'LEAVING',
+      ];
+      // `topOf` throws on a heading that is not there, so this list existing
+      // at all is the assertion that all seven bands drew.
+      final tops = <double>[for (final label in order) topOf(label)];
+
+      for (var i = 1; i < order.length; i++) {
+        expect(
+          tops[i],
+          greaterThan(tops[i - 1]),
+          reason: '${order[i]} must sit below ${order[i - 1]}',
+        );
+      }
+    });
+
+    testWidgets('the row that cannot be undone is the last one on the page', (
+      tester,
+    ) async {
+      await pumpWhole(tester);
+
+      final delete = tester.getTopLeft(find.text('Delete account')).dy;
+
+      // Below everything a runner touches on an ordinary visit — including
+      // the documents, which is as far down as anything else goes.
+      for (final earlier in <String>[
+        'Sign out',
+        'Back up my data',
+        'Location',
+        'Kilometres',
+        'Privacy & legal',
+      ]) {
+        expect(
+          tester.getTopLeft(find.text(earlier)).dy,
+          lessThan(delete),
+          reason: '"$earlier" must sit above the deletion, not below it',
+        );
+      }
+    });
+
+    testWidgets('and it keeps the danger tint that says so', (tester) async {
+      await pumpWhole(tester);
+
+      // The only sanctioned use of colour on this screen (ADR-0009). A
+      // deletion demoted to the foot and then greyed to match its neighbours
+      // would have traded one signal for another rather than added one.
+      final tile = tester.widget<SettingsTile>(
+        find.widgetWithText(SettingsTile, 'Delete account'),
+      );
+      expect(tile.tint, AppColors.danger);
+    });
+
+    testWidgets('nothing is left pointing at an empty band with no account', (
+      tester,
+    ) async {
+      await pumpWhole(tester, signedIn: false);
+
+      // The whole band is signed-in only, heading and rule included. A rule
+      // with nothing under it is the last thing on the page promising a
+      // section that does not exist.
+      expect(find.text('LEAVING'), findsNothing);
+      expect(find.text('Delete account'), findsNothing);
+      expect(find.text('ABOUT'), findsOneWidget);
+    });
+  });
+
+  /// **ADR-0012's cost function turns on consent not being something you go
+  /// looking for.** The switch is also the place it is withdrawn, and consent
+  /// must be at least as easy to take back as it was to give. It used to sit
+  /// below the unit picker, below a rule, and below the fold — reachable only
+  /// by somebody already scrolling for it.
+  testWidgets('backup consent is in the first screenful of a phone', (
+    tester,
+  ) async {
+    // A 6.1" phone in logical pixels. Nothing here depends on the exact
+    // handset: the claim is that the switch arrives before the first scroll on
+    // an ordinary one, not that it lands at a particular pixel.
+    const fold = 844.0;
+    await tester.binding.setSurfaceSize(const Size(390, fold));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: SettingsScreen(
+          unit: UnitSystem.metric,
+          settings: InMemoryUnitSettings(),
+          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Whole tile, not just its top edge: a switch half off the bottom of the
+    // screen is a switch somebody has to go looking for.
+    final tile = find.byType(SwitchListTile);
+    expect(tester.getBottomLeft(tile).dy, lessThan(fold));
   });
 
   /// **A switch that says "On" and means "on, and silently failing since the
@@ -271,7 +428,15 @@ void main() {
   ) async {
     await pump(tester);
 
-    await tester.tap(find.text('Delete account'));
+    // At the foot of the page now, which is the point of it — so it has to be
+    // scrolled to, exactly as a runner would have to.
+    final delete = find.text('Delete account');
+    await tester.scrollUntilVisible(
+      delete,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(delete);
     await tester.pumpAndSettle();
 
     // The same confirmation the legal screen reaches — promoting the row must

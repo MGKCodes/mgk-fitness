@@ -104,6 +104,13 @@ void main() {
     final settings = InMemoryUnitSettings();
     UnitSystem? announced;
 
+    // The unit picker sits in band 3 of Settings, below the two bands that
+    // decide something about the runner's data — it is a one-time preference
+    // shared with Lift, not a daily control. That puts it past the default
+    // 800×600 test viewport, and a `ListView` does not build what it cannot
+    // show, so the surface is sized to the whole page rather than the fold.
+    await tester.binding.setSurfaceSize(const Size(420, 2600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         home: SettingsScreen(
@@ -129,6 +136,8 @@ void main() {
   testWidgets('the settings screen says the choice is shared with Lift', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 2600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         home: SettingsScreen(

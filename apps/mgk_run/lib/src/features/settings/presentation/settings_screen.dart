@@ -41,6 +41,49 @@ const String kAppVersion = '1.0.0';
 /// There is no row through to Profile any more. Profile is a tab — a row here
 /// pointing at a page one tap away was a leftover from when it was not.
 ///
+/// ## The order is a decision, not the order these were written in
+///
+/// Build 12's field test called this screen disorganised, and the specific
+/// complaint underneath that word was that it read as **one undifferentiated
+/// list**: the fold fell somewhere in the middle of it, and consent, the
+/// permissions and the account all sat below the fold with nothing to mark
+/// them out. Headings existed, but every heading looked like every other one,
+/// so seven of them in a column read as no structure at all.
+///
+/// So the page is four **bands**, separated by rules — the only separator on
+/// the screen, which is what makes it mean something. Inside a band, headings
+/// separate sections; between bands, a rule does. The bands descend by how
+/// much of the runner's record each one decides:
+///
+///  1. **Where you stand** — the name, and either the account or the plain
+///     statement that there is not one. It leads because nothing below it can
+///     be judged without it: whether backup can be switched on at all depends
+///     on whether there is an account, and this is the band that says.
+///  2. **What the app may do with your running** — backup consent, then what
+///     the app is allowed to read off the phone. The two decisions on this
+///     screen with any weight, and the two a runner comes back here to check.
+///  3. **What neither of those touches** — how a distance is printed, and what
+///     the app says about itself. Reversible in a tap, consequential to
+///     nothing, and correspondingly far down.
+///  4. **Leaving** — one row, alone, at the foot.
+///
+/// **Band 4 is the exception that proves the ordering.** Ranked by consequence
+/// it would come first: deleting the account decides more about the record
+/// than anything else here. It is last because it is the only control on this
+/// screen that cannot be undone, and an irreversible control is placed by the
+/// cost of reaching it *by accident* rather than by its importance. The danger
+/// tint is the same argument in colour (ADR-0009), and the confirmation screen
+/// behind it is the same argument again.
+///
+/// **Backup consent moved up a band rather than down.** ADR-0012's cost
+/// function turns on the question not being something a runner has to go
+/// looking for, and this switch is also where consent is *withdrawn* — which
+/// must be at least as easy as giving it was. It used to sit below the unit
+/// picker, below a rule, below the fold. Band 2 puts it in the first
+/// screenful, directly under the block that says whether there is an account
+/// for a grant to attach to: strictly more findable than before, and now
+/// beside the thing it depends on.
+///
 /// Takes its dependencies as parameters like every other screen here, so it
 /// renders against fakes in tests and the preview harness.
 class SettingsScreen extends StatefulWidget {
@@ -415,6 +458,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
           children: <Widget>[
+            // ── Band 1 · where you stand ────────────────────────────────────
+            //
             // **The runner, before the account.**
             //
             // These two rows used to sit under an "Account" heading, behind a
@@ -540,15 +585,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // **Immediately under the heading they belong to.**
+            // **Sign out stays with the account. Delete account does not.**
             //
-            // These rows have always been written after the unit picker, which
-            // was survivable while "Account" was a block of text at the top of
-            // the page. It stopped being survivable when it became a labelled
-            // section: the board drew ACCOUNT, then DISTANCE, then Sign out and
-            // Delete account — two account actions filed under distance, one
-            // heading away from their own.
-            if (signedIn) ...<Widget>[
+            // Both rows were hoisted up here together, off the far side of the
+            // unit picker, when Account became a labelled section: the board
+            // drew ACCOUNT, then DISTANCE, then Sign out and Delete account —
+            // two account actions filed under distance, one heading away from
+            // their own. What that fix was correcting was the *heading*, not
+            // the height, and the two rows never deserved the same answer.
+            // Signing out is undone by signing back in and the runs never left
+            // the phone; deleting is the one act on this screen that cannot be
+            // undone at all. So the reversible half stays here under the
+            // heading it belongs to, and the destructive half goes to the foot
+            // of the page under a heading of its own — filed correctly *and*
+            // hard to reach by accident, rather than one at the cost of the
+            // other.
+            if (signedIn)
               Entrance(
                 index: 2,
                 child: SettingsTile(
@@ -558,28 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   showChevron: false,
                   onTap: _signOut,
                 ),
-              ),
-              // Also reachable inside Privacy & legal, which is where the law
-              // wants it. It is here too because this is where a runner looks
-              // for it — a deletion buried one screen deeper reads as hidden.
-              Entrance(
-                index: 3,
-                child: SettingsTile(
-                  icon: Icons.delete_outline,
-                  title: 'Delete account',
-                  subtitle: 'Permanently remove your runs, profile, and plans',
-                  tint: AppColors.danger,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => DeleteAccountScreen(
-                        auth: widget.auth,
-                        deleter: widget.deleter,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ]
+              )
             // Exactly the two things an account buys, named as such — the same
             // two gates the app actually raises one at (ADR-0019). Anything
             // more would be selling it.
@@ -594,20 +625,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
 
-            const Entrance(
-              index: 2,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.sm,
-                  AppSpacing.xl,
-                  AppSpacing.xs,
-                ),
-                child: SectionLabel('Distance'),
-              ),
-            ),
+            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+
+            // ── Band 2 · what the app may do with your running ──────────────
+            //
+            // The two decisions on this page with any weight, and now the two
+            // immediately under the fold-line rather than beyond it. Consent
+            // first because it governs what *leaves* the phone, permissions
+            // second because they govern what the app may *read* off it — and
+            // because the app can act on the first and can only report on the
+            // second (iOS will not let it revoke its own permissions, or ask
+            // twice).
+            //
+            // Still above the legal rows rather than inside them: this is a
+            // decision the runner makes, not a document they read.
             Entrance(
               index: 3,
+              child: BackupSection(
+                consent: _consent,
+                health: _backupHealth,
+                busy: _consentBusy,
+                onChanged: _setConsent,
+              ),
+            ),
+
+            PermissionsSection(health: widget.health, startIndex: 4),
+
+            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+
+            // ── Band 3 · what neither of those touches ──────────────────────
+            //
+            // How a distance is printed, and what the app says about itself.
+            // The unit picker used to sit above the backup switch on the
+            // strength of being tapped more often, which is not true of it
+            // anyway: it is shared with Lift and set once, in the first week,
+            // and then read for the life of the install. Nothing here changes
+            // what is recorded or where it goes, so nothing here outranks a
+            // band that does.
+            const Entrance(index: 6, child: _SectionHeading('Distance')),
+            Entrance(
+              index: 6,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.xl,
@@ -634,59 +691,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                0,
-                AppSpacing.xl,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                'Shared with Lift — changing it here changes it there too. '
-                'Your runs are always stored in metric.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiary,
-                  height: 1.4,
-                ),
-              ),
-            ),
-
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            // Above the legal rows rather than inside them: this is a decision
-            // the runner makes, not a document they read.
             Entrance(
-              index: 4,
-              child: BackupSection(
-                consent: _consent,
-                health: _backupHealth,
-                busy: _consentBusy,
-                onChanged: _setConsent,
-              ),
-            ),
-
-            PermissionsSection(health: widget.health),
-
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            // Labelled rather than floating. Everything else on this screen
-            // sits under a heading; these did not, which made them read as
-            // leftovers — and left "Sign out" and "Delete account", both
-            // account actions, further from the account than the unit picker.
-            const Entrance(
-              index: 5,
+              index: 6,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
                   AppSpacing.xl,
                   AppSpacing.sm,
-                  AppSpacing.xl,
-                  AppSpacing.xs,
                 ),
-                child: SectionLabel('About'),
+                child: Text(
+                  'Shared with Lift — changing it here changes it there too. '
+                  'Your runs are always stored in metric.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.4,
+                  ),
+                ),
               ),
             ),
+
+            // No rule before this one: About shares band 3 with the units.
+            // Both are read-only as far as the runner's record is concerned,
+            // and a rule between them would claim a break that is not there.
+            const Entrance(index: 7, child: _SectionHeading('About')),
             Entrance(
-              index: 5,
+              index: 7,
               child: SettingsTile(
                 icon: Icons.shield_outlined,
                 title: 'Privacy & legal',
@@ -699,6 +729,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+
+            // ── Band 4 · leaving ────────────────────────────────────────────
+            //
+            // One row, alone, behind a rule, at the foot of everything a
+            // runner uses. Also reachable inside Privacy & legal, which is
+            // where the law wants it; it is *here* too because this is where
+            // somebody looks for it, and a deletion that exists only one
+            // screen deeper reads as hidden.
+            //
+            // The whole band is signed-in only. Offering to delete an account
+            // that was never created is a row that can only fail, in the place
+            // somebody came to find out where they stand — and an empty band
+            // would leave its rule as the last thing on the page, pointing at
+            // nothing.
+            if (signedIn) ...<Widget>[
+              const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
+              const Entrance(index: 8, child: _SectionHeading('Leaving')),
+              Entrance(
+                index: 8,
+                child: SettingsTile(
+                  icon: Icons.delete_outline,
+                  title: 'Delete account',
+                  subtitle: 'Permanently remove your runs, profile, and plans',
+                  tint: AppColors.danger,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DeleteAccountScreen(
+                        auth: widget.auth,
+                        deleter: widget.deleter,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             // Debug builds only: enter the app as a seeded runner. Last, under
             // a divider, because it is a tool rather than a setting — and
             // absent entirely from a release bundle.
@@ -742,6 +807,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+/// A heading over a section of the settings list, at the list's own gutter.
+///
+/// The same eight lines of padding were spelled out at every heading that
+/// stands on its own line, which is how a page ends up with headings that do
+/// not quite line up with one another — and a band structure only reads as one
+/// if the labels share an edge. One place to change it means the alignment is
+/// a decision made once, which is the argument [SectionLabel] itself was
+/// extracted on.
+///
+/// `BackupSection` and `PermissionsSection` still write theirs out by hand.
+/// They are the same eight lines and they agree today; they are left alone
+/// because this change is a reordering, and a private widget cannot be
+/// imported across the two files anyway. If a third file needs it, the answer
+/// is `mgk_ui`, not an export from here.
+///
+/// The two blocks at the top of the page do not use this: "You" and "Account"
+/// each pad a whole column rather than a lone label, so their headings sit
+/// inside that padding instead of carrying their own.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.xl,
+      AppSpacing.sm,
+      AppSpacing.xl,
+      AppSpacing.xs,
+    ),
+    child: SectionLabel(text),
+  );
 }
 
 /// One row in a settings list: icon, title, supporting line, chevron.

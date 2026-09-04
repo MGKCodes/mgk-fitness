@@ -38,7 +38,11 @@ void main() {
     Future<void> Function()? onBackupGranted,
   }) async {
     final intro = InMemoryIntroStore(done: true, name: name);
-    await tester.binding.setSurfaceSize(const Size(420, 1600));
+    // Tall enough for the whole page. Settings is a `ListView`, so it builds
+    // only what is near the viewport — and half of what this file asserts is
+    // that a row is *absent*, which a fold turns into a claim about scrolling
+    // rather than about the tree.
+    await tester.binding.setSurfaceSize(const Size(420, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
@@ -184,6 +188,28 @@ void main() {
       expect(find.text('sam@example.com'), findsOneWidget);
     });
 
+    testWidgets('the rows that work without one still do, in one band', (
+      tester,
+    ) async {
+      // The reorganisation moved every band on this page, and three of these
+      // rows answer for a runner with no session at all: the name comes from
+      // the install store, the units from a local file, the documents from the
+      // bundle. A regrouping that quietly made any of them account-only would
+      // be the exact failure this file was opened for, one layout later.
+      await pumpSignedOut(tester, name: 'Sam');
+
+      expect(find.text('Coach calls you'), findsOneWidget);
+      expect(find.text('Kilometres'), findsOneWidget);
+      expect(find.text('Privacy & legal'), findsOneWidget);
+
+      // And they are still in the stated order, with no band left empty.
+      double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(topOf('YOU'), lessThan(topOf('YOUR DATA')));
+      expect(topOf('YOUR DATA'), lessThan(topOf('DISTANCE')));
+      expect(topOf('DISTANCE'), lessThan(topOf('ABOUT')));
+      expect(find.text('LEAVING'), findsNothing);
+    });
+
     testWidgets('creating one from the row raises the same gate', (
       tester,
     ) async {
@@ -209,6 +235,37 @@ void main() {
   /// row-level policy. That is a promise the app cannot keep, made by the one
   /// section whose entire job is not making those.
   group('turning backup on needs an account', () {
+    testWidgets('but the question is asked of them anyway, above the fold', (
+      tester,
+    ) async {
+      // ADR-0012's cost function: consent that has to be discovered is not
+      // really offered, and the runner with no account is exactly the one the
+      // amended ADR expects to reach their second week without ever being
+      // asked in a dialog. So the switch has to be in the first screenful of
+      // an ordinary phone here too — not only for somebody signed in.
+      const fold = 844.0;
+      await tester.binding.setSurfaceSize(const Size(390, fold));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            unit: UnitSystem.metric,
+            settings: InMemoryUnitSettings(),
+            auth: FakeAuthRepository(),
+            introStore: InMemoryIntroStore(done: true),
+            consentStore: InMemoryBackupConsent(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getBottomLeft(find.byType(SwitchListTile)).dy,
+        lessThan(fold),
+      );
+    });
+
     testWidgets('the switch raises sign-up rather than storing a yes', (
       tester,
     ) async {
