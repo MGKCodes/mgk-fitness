@@ -58,16 +58,46 @@ class RevenueCatPurchases implements PurchaseClient {
     }
   }
 
+  /// The last id [identify] was asked for, kept so [buy] can try again.
+  ///
+  /// `HomeShell` calls `identify` unawaited from `initState`, so a failure
+  /// there is silent and permanent for the session. Holding the id lets the
+  /// one moment that actually matters retry it.
+  String? _userId;
+
   @override
   Future<void> identify(String userId) async {
+    _userId = userId;
     if (!await _ready()) return;
     try {
       await Purchases.logIn(userId);
     } on PlatformException {
-      // Nothing to do about it here, and nothing to say. A purchase made
-      // without this attaches to an anonymous id, which the webhook refuses
-      // rather than writing a row to nobody -- so the failure surfaces as an
-      // entitlement that never arrives, not as a payment that vanishes.
+      // Deliberately quiet here -- there is nothing a runner could do about it
+      // mid-launch, and [_identified] retries at the point of sale.
+    }
+  }
+
+  /// Whether the SDK is attached to a real Supabase user, retrying once.
+  ///
+  /// **This is the guard build 12 did not have.** RevenueCat starts every
+  /// install on an `$RCAnonymousID:`, and the webhook refuses to write a row
+  /// for one, so a purchase made in that state takes money and grants nothing.
+  /// The previous code accepted that, reasoning the failure would surface as
+  /// "an entitlement that never arrives" -- which on a real device on
+  /// 2026-09-04 surfaced as a paying subscriber staring at a paywall that no
+  /// relaunch would clear.
+  Future<bool> _identified() async {
+    try {
+      if (!await Purchases.isAnonymous) return true;
+      final String? id = _userId;
+      if (id == null) return false;
+      // One retry, here rather than at launch: a transient logIn failure is
+      // exactly the case worth recovering from, and this is the moment it
+      // matters.
+      await Purchases.logIn(id);
+      return !await Purchases.isAnonymous;
+    } on PlatformException {
+      return false;
     }
   }
 
@@ -107,6 +137,9 @@ class RevenueCatPurchases implements PurchaseClient {
   @override
   Future<PurchaseOutcome> buy(CoachOffer offer) async {
     if (!await _ready()) return PurchaseOutcome.failed;
+    // Before the store, never after. A payment we cannot attribute is worse
+    // than a sale we did not make.
+    if (!await _identified()) return PurchaseOutcome.notIdentified;
     Package? package = _packages[offer.id];
     if (package == null) {
       // The offer outlived its packages -- a rebuilt screen, a resumed app.

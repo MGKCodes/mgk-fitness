@@ -99,6 +99,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       case PurchaseOutcome.cancelled:
         // Not an error. Somebody decided not to buy, and they know they did.
         setState(() => _busyId = null);
+      case PurchaseOutcome.notIdentified:
+        // Refused before the store was reached, so this is not a failed
+        // payment and must not read as one. Signing in is the actual fix, and
+        // saying so beats a retry that would refuse again.
+        setState(() {
+          _busyId = null;
+          _note =
+              'Sign in first, then try again. A subscription has to be '
+              'attached to an account or it cannot reach your coach. '
+              'Nothing has been charged.';
+        });
       case PurchaseOutcome.nothingToRestore:
       case PurchaseOutcome.failed:
         setState(() {
@@ -124,6 +135,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           _note = 'No previous subscription found on this Apple ID.';
         });
       case PurchaseOutcome.cancelled:
+      case PurchaseOutcome.notIdentified:
       case PurchaseOutcome.failed:
         setState(() {
           _restoring = false;

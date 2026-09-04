@@ -251,6 +251,35 @@ void main() {
 
       expect(find.textContaining('Nothing has been charged'), findsOneWidget);
     });
+
+    // Build 12's first real sandbox purchase went through on an
+    // `RCAnonymousID:`. The webhook refused it (`unknown_app_user_id`), no
+    // entitlement row was ever written, and the runner was left having paid
+    // with a coach that no relaunch would unlock. `RevenueCatPurchases.buy`
+    // now refuses before reaching the store; this pins what the screen says
+    // when it does.
+    testWidgets('an unattributable purchase is refused, not reported as a '
+        'failed payment', (tester) async {
+      await pump(
+        tester,
+        purchases: FakePurchases(buyOutcome: PurchaseOutcome.notIdentified),
+        entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
+      );
+
+      await tester.tap(find.text('Subscribe').first);
+      await tester.pumpAndSettle();
+
+      // It names the fix, because retrying without signing in refuses again.
+      expect(find.textContaining('Sign in first'), findsOneWidget);
+      expect(find.textContaining('Nothing has been charged'), findsOneWidget);
+
+      // And it is not dressed up as a payment problem: nothing reached the
+      // store, so "that did not go through" would be describing an attempt
+      // that never happened.
+      expect(find.textContaining('did not go through'), findsNothing);
+      expect(find.textContaining('Payment went through'), findsNothing);
+      expect(find.byType(PurchaseScreen), findsOneWidget);
+    });
   });
 
   testWidgets('an empty shop says so, and does not look broken', (

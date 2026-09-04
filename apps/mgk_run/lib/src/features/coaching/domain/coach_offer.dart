@@ -55,6 +55,18 @@ enum PurchaseOutcome {
   /// button; it does not promise the button will find anything.
   nothingToRestore,
 
+  /// **Refused before the store was called**, because the SDK is still on an
+  /// anonymous id and the backend could not have attributed the payment.
+  ///
+  /// Distinct from [failed] on purpose: nothing was attempted, so nothing was
+  /// charged and nothing needs undoing. Build 12 shipped without this and the
+  /// first real sandbox purchase proved why — it went through as an
+  /// `RCAnonymousID:`, the webhook refused to write a row to nobody
+  /// (`unknown_app_user_id`), and the runner was left having paid with a coach
+  /// that never unlocked and no relaunch that could fix it. Refusing to sell is
+  /// the only outcome better than selling something we cannot deliver.
+  notIdentified,
+
   /// The store refused, the network died, or the SDK is not configured.
   failed;
 
