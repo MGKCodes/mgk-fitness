@@ -116,13 +116,9 @@ class _SignInScreenState extends State<SignInScreen> {
         await widget.auth.signIn(email: email, password: password);
         widget.onAuthenticated?.call();
       }
-    } on AuthException catch (e) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _message = e.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _message = 'Something went wrong. Try again.');
+        setState(() => _message = _messageFor(error));
       }
     } finally {
       if (mounted) {
@@ -148,13 +144,9 @@ class _SignInScreenState extends State<SignInScreen> {
         password: account.password,
       );
       widget.onAuthenticated?.call();
-    } on AuthException catch (e) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _message = e.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _message = 'Something went wrong. Try again.');
+        setState(() => _message = _messageFor(error));
       }
     } finally {
       if (mounted) {
@@ -357,6 +349,48 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
     );
   }
+}
+
+/// What to print when authenticating fails.
+///
+/// **A dead connection earns its own sentence.** This screen used to print
+/// `AuthException.message` and collapse everything else into "Something went
+/// wrong. Try again." — which describes a broken app, names nothing the runner
+/// can go and put right, and invites the one retry guaranteed to fail again.
+/// Build 12 was field-tested with aeroplane mode left on and that is the
+/// sentence it produced, after a spinner that had already run for as long as
+/// the runner was willing to wait.
+///
+/// [AuthRetryableFetchException] is tested **before its own supertype**, and
+/// that ordering is why this function exists at all. gotrue does not let a
+/// socket error out raw: it wraps every failed fetch in an `AuthException`
+/// whose `message` is the underlying error's `toString()`. So the branch that
+/// prints the server's own words — right for a wrong password, and the reason
+/// it is kept — was one line away from showing `ClientException with
+/// SocketException: Failed host lookup ...` to somebody who had simply left the
+/// radio off.
+///
+/// Those two types are the whole reachable set, which is worth saying because
+/// the instinct here is to reach for `dart:io`. A raw `SocketException` or
+/// `ClientException` cannot arrive: gotrue wraps its own, and the
+/// `core.profiles` write that goes out through postgrest is now best-effort
+/// inside [AuthRepository.ensureProfileBestEffort], so it throws nothing at
+/// this screen. [TimeoutException] is what [AuthRepository.timeout] raises when
+/// a call blows its deadline. Importing `dart:io` for a case that cannot happen
+/// would drag this screen out of the web preview harness's import graph for
+/// nothing.
+///
+/// The words are the ones the account-deletion path already uses for the same
+/// fact, because it is the same fact.
+String _messageFor(Object error) {
+  if (error is AuthRetryableFetchException || error is TimeoutException) {
+    return 'We could not reach the server. Check your connection and try '
+        'again.';
+  }
+  // A real answer from the server — wrong password, weak password, an address
+  // already registered — said in its own words rather than a paraphrase.
+  if (error is AuthException) return error.message;
+  return 'Something went wrong. Try again.';
 }
 
 /// What signing up is actually for, on the screen where someone is deciding.

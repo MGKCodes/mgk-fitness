@@ -7,7 +7,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// [AuthRepository] does not require Supabase to be initialised — which keeps
 /// widgets that hold one testable without a live backend.
 class AuthRepository {
-  const AuthRepository();
+  const AuthRepository({this.timeout = const Duration(seconds: 20)});
+
+  /// How long one call on the auth path may take before it counts as failed.
+  ///
+  /// **Nothing here had a deadline.** Build 12 was field-tested with the radio
+  /// off and creating an account neither failed nor said anything: gotrue
+  /// classes a failed fetch as *retryable* and keeps the request alive, so the
+  /// call simply sat there behind a spinner. The runner was given no way to
+  /// tell a slow connection from no connection, and the app looked stopped
+  /// rather than offline. Every other network call in this app is already
+  /// bounded — entitlements and the unit read at 5s, the coach at 90 — and this
+  /// was the one path without one.
+  ///
+  /// Longer than the reads, deliberately. Those are best-effort and have a
+  /// default to fall back on, so cutting them short costs nothing; this one is
+  /// the runner's account, and a deadline tight enough to sever a slow-but-
+  /// working connection would refuse sign-ups that were about to succeed. Long
+  /// enough to survive a bad carriage, short enough that a dead radio gets
+  /// reported instead of waited on.
+  final Duration timeout;
 
   SupabaseClient get _client => Supabase.instance.client;
 
@@ -28,12 +47,20 @@ class AuthRepository {
   Stream<void> authChanges() => _client.auth.onAuthStateChange.map((_) {});
 
   Future<void> signIn({required String email, required String password}) async {
-    await _client.auth.signInWithPassword(email: email, password: password);
-    await ensureProfile();
+    await _client.auth
+        .signInWithPassword(email: email, password: password)
+        .timeout(timeout);
+    await ensureProfileBestEffort();
   }
 
   /// Returns true if a session was created (email confirmation disabled), or
   /// false if the user must confirm their email before signing in.
+  ///
+  /// **The answer is about the session, and nothing else.** It used to be about
+  /// the session *and* the `core.profiles` row, because the profile write was
+  /// awaited into the result — see [ensureProfileBestEffort] for why that made
+  /// a created account report itself as a failure.
+  ///
   /// [name] is what the coach calls them. It goes into **auth user metadata**
   /// rather than a column: `public.profiles` is the shared MGKCodes identity
   /// table that Liftio reads too, so a name column there is a migration against
@@ -45,15 +72,17 @@ class AuthRepository {
     String? name,
   }) async {
     final trimmed = name?.trim();
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      data: trimmed == null || trimmed.isEmpty
-          ? null
-          : <String, dynamic>{'name': trimmed},
-    );
+    final response = await _client.auth
+        .signUp(
+          email: email,
+          password: password,
+          data: trimmed == null || trimmed.isEmpty
+              ? null
+              : <String, dynamic>{'name': trimmed},
+        )
+        .timeout(timeout);
     if (response.session != null) {
-      await ensureProfile();
+      await ensureProfileBestEffort();
       return true;
     }
     return false;
@@ -134,9 +163,39 @@ class AuthRepository {
   Future<void> ensureProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.schema('core').from('profiles').upsert({
-      'id': user.id,
-      'email': user.email,
-    });
+    await _client
+        .schema('core')
+        .from('profiles')
+        .upsert({'id': user.id, 'email': user.email})
+        .timeout(timeout);
+  }
+
+  /// [ensureProfile] with its failure absorbed — the only shape the sign-in and
+  /// sign-up paths may use it in.
+  ///
+  /// **An account that exists is not a failure, whatever happened next.**
+  /// [ensureProfile] is a second write, to a different schema, after gotrue has
+  /// already created the account and issued the session; a connection that dies
+  /// between the two is enough to fail it on its own. Awaited into the result,
+  /// that threw straight past [signUp]'s `return true` and out to the screen,
+  /// which told the runner their sign-up had gone wrong. It had not — and
+  /// because `onAuthenticated` never fired, the gate they signed up from never
+  /// dismissed either, so the obvious response was to fill the form in again
+  /// and be told "User already registered". A dead end reached by doing
+  /// everything right, and the one the field test walked into in row E5.
+  ///
+  /// **The row is not abandoned by swallowing this.** `HomeShell.initState`
+  /// calls [ensureProfile] on every launch precisely to cover a session it did
+  /// not create, so the repair costs nothing and happens on its own — often
+  /// within the same second, since a sign-in from the signed-out flow builds
+  /// that shell immediately afterwards. Refusing to authenticate until the row
+  /// lands would not have helped: a device that could not write it a moment ago
+  /// cannot write it now, and the profile is not what the runner asked for.
+  Future<void> ensureProfileBestEffort() async {
+    try {
+      await ensureProfile();
+    } catch (_) {
+      // Deliberately silent. The next launch writes it; see above.
+    }
   }
 }

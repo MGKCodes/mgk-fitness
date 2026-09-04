@@ -30,6 +30,20 @@ class FakeAuthRepository extends AuthRepository {
   String? lastEmail;
   String? lastPassword;
 
+  /// Thrown by [signIn] and [signUp] in place of signing in, so a test can put
+  /// the screen in the state build 12 was field-tested in — a call that never
+  /// reaches the server. Null on the normal path, which is every other test.
+  Object? failure;
+
+  /// Thrown by [ensureProfile], so a test can reproduce the half-success that
+  /// stranded a runner in row E5: gotrue makes the account, and the separate
+  /// `core.profiles` write does not land.
+  Object? profileFailure;
+
+  /// How many times the profile row was attempted. Lets a test tell a write
+  /// that failed apart from one that was never made at all.
+  int profileWrites = 0;
+
   @override
   bool get isSignedIn => _signedIn;
 
@@ -49,9 +63,15 @@ class FakeAuthRepository extends AuthRepository {
   Future<void> signIn({required String email, required String password}) async {
     lastEmail = email;
     lastPassword = password;
+    final error = failure;
+    if (error != null) throw error;
     _email = email;
     _signedIn = true;
     _changes.add(null);
+    // Through the real wrapper rather than [ensureProfile] directly. The point
+    // of that seam is that the profile write cannot fail an authentication, and
+    // a fake that reached past it would leave exactly that untested.
+    await ensureProfileBestEffort();
   }
 
   /// The name the last sign-up passed, so a test can assert it travelled.
@@ -66,10 +86,16 @@ class FakeAuthRepository extends AuthRepository {
     lastEmail = email;
     lastPassword = password;
     lastName = name;
+    final error = failure;
+    if (error != null) throw error;
     _email = email;
     _name = name;
     _signedIn = true;
     _changes.add(null);
+    await ensureProfileBestEffort();
+    // True because the account exists, which is what this answer is about. The
+    // real repository says the same thing for the same reason, whatever the
+    // profile write did afterwards.
     return true;
   }
 
@@ -110,5 +136,9 @@ class FakeAuthRepository extends AuthRepository {
   }
 
   @override
-  Future<void> ensureProfile() async {}
+  Future<void> ensureProfile() async {
+    profileWrites++;
+    final error = profileFailure;
+    if (error != null) throw error;
+  }
 }
