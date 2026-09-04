@@ -9,6 +9,7 @@ import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_shape.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
@@ -260,6 +261,12 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark,
           home: HomeShell(
+            // Pinned, because this drives a coach hand-off and the coach is
+            // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
+            // until 2026-09-04, when the gate moved into `_askCoach`: five
+            // tests were exercising six ungated doors into the paid product,
+            // which is how the hole survived review.
+            access: CoachAccess.subscribed,
             auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
             historySource: () async => const <RunSummary>[],
             chatClient: chat,

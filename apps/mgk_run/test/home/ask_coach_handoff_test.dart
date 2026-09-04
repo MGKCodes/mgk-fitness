@@ -4,6 +4,8 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
+import 'package:mgk_run/src/features/coaching/presentation/coach_gate_sheet.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
@@ -52,6 +54,12 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Pinned, because this drives a coach hand-off and the coach is
+          // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
+          // until 2026-09-04, when the gate moved into `_askCoach`: five
+          // tests were exercising six ungated doors into the paid product,
+          // which is how the hole survived review.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => runs(),
           coach: FakeCoachService(),
@@ -85,6 +93,12 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Pinned, because this drives a coach hand-off and the coach is
+          // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
+          // until 2026-09-04, when the gate moved into `_askCoach`: five
+          // tests were exercising six ungated doors into the paid product,
+          // which is how the hole survived review.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => runs(),
           coach: FakeCoachService(),
@@ -117,6 +131,12 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Pinned, because this drives a coach hand-off and the coach is
+          // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
+          // until 2026-09-04, when the gate moved into `_askCoach`: five
+          // tests were exercising six ungated doors into the paid product,
+          // which is how the hole survived review.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => runs(),
           initialTab: 2,
@@ -126,5 +146,56 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ask about this'), findsNothing);
+  });
+
+  /// **The hand-off is the paid half, and for a month it was not gated.**
+  ///
+  /// `_openCoach` checked the tier. `_askCoach` did not, and six callers
+  /// reached it: adjust-this-week, the plan-finish screen, ask-about-this-run
+  /// from a finished run and from the log, the missed-session card, the Plan
+  /// tab and Profile. A free runner taking any of them opened a conversation
+  /// onto an Edge Function 402, rendered as *"The coach hit a problem. Please
+  /// try again."* -- untrue, unactionable, and the exact sentence
+  /// `CoachGateSheet` exists to replace (ADR-0030).
+  ///
+  /// It is asserted here rather than at each call site on purpose. Six tests
+  /// each pinning their own door would leave the seventh caller unguarded,
+  /// which is how this happened; the check now lives in `_askCoach` itself, and
+  /// this proves a free runner meets the door instead of the failure.
+  testWidgets('a free runner asking from Profile meets the door, not a 402', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final chat = _RecordingChat();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: HomeShell(
+          access: CoachAccess.free,
+          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          historySource: () async => runs(),
+          coach: FakeCoachService(),
+          chatClient: chat,
+          initialTab: 2,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The affordance is offered to a free runner -- `ProfileScreen.onAskCoach`
+    // is passed unconditionally -- which is the point: the door has to hold,
+    // because the handle is visible.
+    expect(find.text('Ask about this'), findsOneWidget);
+    await tester.tap(find.text('Ask about this'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CoachGateSheet), findsOneWidget);
+    expect(
+      chat.asked,
+      isEmpty,
+      reason: 'nothing may reach the coach before it has been paid for',
+    );
   });
 }

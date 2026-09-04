@@ -8,6 +8,7 @@ import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/history/data/drift_run_repository.dart';
 import 'package:mgk_run/src/features/history/data/run_editor.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/data/location_source.dart';
 import 'package:mgk_run/src/features/recording/data/recording_run_recorder.dart';
@@ -82,6 +83,10 @@ void main() {
   Widget shell({CoachChatClient? chat}) => MaterialApp(
     theme: AppTheme.dark,
     home: HomeShell(
+      // Pinned, because one of these asks the coach about the run on screen,
+      // and the coach is the paid half (ADR-0030). Unpinned it was `free`, and
+      // passed -- which is what an ungated `_askCoach` looks like from a test.
+      access: CoachAccess.subscribed,
       auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
       historySource: DriftRunRepository(db).fetchRuns,
       runEditor: RunEditor(db: db),

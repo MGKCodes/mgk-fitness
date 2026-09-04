@@ -380,6 +380,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     unawaited(_resolveAccess());
     unawaited(_identifyForPurchases());
+    // **Signing in does not rebuild this shell.** `_ensureAccount` and the
+    // Settings row both push a route over a shell that stays mounted, and
+    // `AuthGate` returns `_shell(auth)` from both branches at the same position
+    // so Flutter reuses the element -- `initState` never runs again. Three
+    // things depended on it and all three were wrong afterwards: the tier
+    // stayed `free` for somebody who had just signed in as a subscriber (which
+    // is why build 12 needed a relaunch before the coach appeared), RevenueCat
+    // stayed on an anonymous id so a purchase could not be attributed, and the
+    // restore never ran. Re-running them on the auth stream is what makes
+    // signing in mid-session mean anything.
+    _authWatch = widget.auth.authChanges().listen((_) {
+      unawaited(_refreshAccess());
+      unawaited(_identifyForPurchases());
+    });
 
     final client = _chatClient;
     if (client != null) {
@@ -429,6 +443,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_authWatch?.cancel());
     super.dispose();
   }
 
@@ -842,7 +857,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   /// Opens the conversation on a question already written — the hand-off from
   /// a session brief.
+  ///
+  /// **The gate lives here rather than at the call sites**, and that is the
+  /// whole fix. Six callers reached this method -- adjust-this-week, the
+  /// plan-finish screen, ask-about-this-run from both a finished run and the
+  /// log, the missed-session card, the Plan tab and Profile -- and not one of
+  /// them checked the tier. Only the coach mark and `HomeTab.onOpenCoach` went
+  /// through [_openCoach], which does. So a free runner had six doors into the
+  /// paid half, every one of which opened onto an Edge Function 402 rendered as
+  /// *"The coach hit a problem. Please try again."* -- the exact sentence
+  /// `CoachGateSheet` was built to delete (ADR-0030).
+  ///
+  /// Found by the build 12 field test, where it looked like the coach briefly
+  /// unlocking after a purchase that had in fact granted nothing.
   void _askCoach(String opener) {
+    if (!_access.isSubscribed) {
+      _showCoachGate();
+      return;
+    }
     final chat = _chat;
     if (chat == null) return;
     unawaited(
@@ -862,6 +894,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// At the shell rather than on the Plan tab, which is the whole point of a
   /// floating mark: the dock it replaces could only ever exist on one screen,
   /// so the coach was present on a third of the app and absent from the rest.
+  /// Watches for a sign-in that happens while this shell stays mounted.
+  StreamSubscription<void>? _authWatch;
+
   /// The tier the UI draws with. Starts at whatever a caller pinned, or free,
   /// and is replaced once `core.entitlements` has been read.
   late CoachAccess _access = widget.access ?? CoachAccess.free;
@@ -1744,8 +1779,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // Only an observation the runner has not been shown. Once it
                 // has played the mark rests, and it does not play again until
                 // the coach notices something new.
-                note: _noteDelivered ? null : _note,
-                hasUnread: _note != null && !_coachSeen,
+                //
+                // **And only for somebody who has bought it.** `_note` is
+                // derived on the device from the run log, so it cost nothing to
+                // compute and was shown to everybody -- which handed a free
+                // runner the coach's reading of them, the thing
+                // `coach_access.dart` says the subscription is. The mark itself
+                // stays: it is the door to the gate sheet, and a door is not
+                // the room.
+                note: _access.isSubscribed && !_noteDelivered ? _note : null,
+                hasUnread: _access.isSubscribed && _note != null && !_coachSeen,
                 onTap: _openCoach,
                 onFinished: () {
                   if (mounted) setState(() => _noteDelivered = true);
