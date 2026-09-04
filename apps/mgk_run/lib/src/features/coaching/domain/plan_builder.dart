@@ -118,11 +118,26 @@ PlanSkeleton buildSkeleton(
 /// one long run, one workout (unless deloading), the rest easy, on the runner's
 /// available days. Built to satisfy [validateWeek] by construction for a
 /// realistic profile (three or more training days).
-TrainingWeek buildFallbackWeek(SkeletonWeek slot, RunnerProfile profile) {
+/// [unusableWeekdays] are days this particular week cannot use even though the
+/// runner is generally available on them: days already gone in the current
+/// week, and race day in the final one. **The builder is told which days,
+/// never which dates** -- the plan model carries no dates by design, and the
+/// caller that owns the calendar ([PlanRepository]) is the one that can work
+/// them out. Ignored when it would leave nothing to train on, because a week
+/// with one session is a better answer than a crash.
+TrainingWeek buildFallbackWeek(
+  SkeletonWeek slot,
+  RunnerProfile profile, {
+  Set<int> unusableWeekdays = const <int>{},
+}) {
   if (shapeOf(profile) == PlanShape.rhythm) {
     return _buildRhythmWeek(slot, profile);
   }
-  final available = profile.availableWeekdays.toList()..sort();
+  final usable = profile.availableWeekdays
+      .where((d) => !unusableWeekdays.contains(d))
+      .toList();
+  final available =
+      (usable.isEmpty ? profile.availableWeekdays.toList() : usable)..sort();
   final n = profile.daysPerWeek.clamp(1, available.length);
   final days = _spread(available, n);
 

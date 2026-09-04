@@ -109,8 +109,9 @@ class PlanService {
   /// invariants; deterministic (provisional) fallback if the model fails.
   Future<PlanResult<TrainingWeek>> generateWeek(
     SkeletonWeek slot,
-    RunnerProfile profile,
-  ) async {
+    RunnerProfile profile, {
+    int? raceWeekday,
+  }) async {
     var violations = const <String>[];
     var attempts = 0;
     for (var attempt = 1; attempt <= maxModelAttempts; attempt++) {
@@ -122,6 +123,7 @@ class PlanService {
             slot: slot,
             profile: profile,
             violations: violations,
+            raceWeekday: raceWeekday,
           ),
         );
       } on CoachLimitException catch (e) {

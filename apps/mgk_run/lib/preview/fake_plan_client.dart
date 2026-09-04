@@ -46,5 +46,6 @@ class FakePlanClient implements PlanClient {
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations = const <String>[],
+    int? raceWeekday,
   }) async => null;
 }

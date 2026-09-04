@@ -16,10 +16,17 @@ abstract interface class PlanClient {
   });
 
   /// A proposed week of sessions for the skeleton [slot].
+  ///
+  /// [raceWeekday] is set only for the week that contains race day, and says
+  /// which weekday it falls on. Nothing may be scheduled there (ADR-0027) —
+  /// the validator refuses it either way, but a refusal the model cannot act
+  /// on only burns both attempts and falls through to Dart. Null for every
+  /// other week, and for a plan with no race in it at all.
   Future<TrainingWeek?> proposeWeek({
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations,
+    int? raceWeekday,
   });
 
   /// A revision of [week] that honours the runner's natural-language [request]

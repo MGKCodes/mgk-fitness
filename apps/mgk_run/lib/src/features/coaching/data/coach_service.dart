@@ -238,11 +238,15 @@ class CoachService
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations = const <String>[],
+    int? raceWeekday,
   }) async {
     final data = await _invokeSurface('week', <String, dynamic>{
       'slot': skeletonWeekToJson(slot),
       'profile': runnerProfileToJson(profile),
       'violations': violations,
+      // Omitted rather than sent as null: the surface tests for a number, and
+      // a key present but empty is a third state nobody wants to reason about.
+      if (raceWeekday != null) 'race_weekday': raceWeekday,
     });
     return data == null
         ? null

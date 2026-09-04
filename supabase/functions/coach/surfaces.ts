@@ -746,6 +746,10 @@ Rules the week MUST follow (a validator rejects violations):
   distance_meters 0 — it adds no running volume — and it does not count toward
   days_per_week. Do not prescribe what is in it; Runio plans running, and the
   runner's lifting lives elsewhere.
+- If a race_weekday is given, NOTHING may be scheduled on it — no run, no
+  strength, no recovery. That day is the race: the thing the whole block has
+  been building toward. A training session on it means the week was written
+  without noticing what it was for.
 Distances are in METERS. Weekdays are 1=Monday..7=Sunday.`;
 
 const WEEK_SCHEMA = {
@@ -787,12 +791,25 @@ function weekMessages(body: Body): Message[] {
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const system = `${RUN_PERSONA}\n\n${WEEK_INSTRUCTIONS}` +
     violationNote(body.violations);
+  // The weekday the race falls on, when this week contains it.
+  //
+  // **The model had no way to know.** This surface was handed a slot and a
+  // profile and nothing else — no dates, no today, no race — so it filled the
+  // final week exactly like every other: the long run on the latest available
+  // day, which for a Sunday race is the race. The validator refuses that now,
+  // and a refusal the model cannot act on only burns both attempts and falls
+  // through to Dart. Telling it is the half that makes the rule cheap.
+  const raceWeekday = body.race_weekday;
+  const race = typeof raceWeekday === "number"
+    ? "\n\nrace_weekday: " + raceWeekday +
+      " — the race is on this day. Schedule nothing on it."
+    : "";
   return [
     { role: "system", content: system },
     {
       role: "user",
       content: `Skeleton slot:\n${JSON.stringify(slot)}\n\n` +
-        `Runner profile:\n${JSON.stringify(profile)}`,
+        `Runner profile:\n${JSON.stringify(profile)}${race}`,
     },
   ];
 }

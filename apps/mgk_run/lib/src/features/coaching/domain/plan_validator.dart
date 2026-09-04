@@ -44,7 +44,14 @@ class PlanRules {
     this.requireExactSessionCount = true,
     this.requireTaper = true,
     this.requireDeloadCadence = true,
+    this.rejectPastDays = true,
   });
+
+  /// Whether a session may fall on a day that has already gone.
+  ///
+  /// True while a plan is being *generated*, false while a runner is adapting
+  /// one they are already living in. See [PlanRules.adaptation].
+  final bool rejectPastDays;
 
   /// The rules for a change the **runner asked for**.
   ///
@@ -74,7 +81,12 @@ class PlanRules {
       // day for still is, so the check becomes a ceiling rather than an equals.
       requireExactSessionCount = false,
       requireTaper = true,
-      requireDeloadCadence = true;
+      requireDeloadCadence = true,
+      // **Off for an adaptation, and this is load-bearing.** A runner adjusting
+      // on Thursday is holding a week that already contains Monday, and telling
+      // them Monday is in the past would refuse every mid-week change they
+      // could possibly make.
+      rejectPastDays = false;
 
   /// The rules for a plan that **holds a level** rather than climbing to one —
   /// a [PlanShape.rhythm].
@@ -96,7 +108,8 @@ class PlanRules {
       longRunTolerance = 0.40,
       requireExactSessionCount = false,
       requireTaper = false,
-      requireDeloadCadence = false;
+      requireDeloadCadence = false,
+      rejectPastDays = true;
 
   /// The rules for a [PlanShape.horizon] — ramps like a block, with nothing to
   /// taper into.
@@ -111,7 +124,8 @@ class PlanRules {
       longRunTolerance = 0.05,
       requireExactSessionCount = true,
       requireTaper = false,
-      requireDeloadCadence = true;
+      requireDeloadCadence = true,
+      rejectPastDays = true;
 
   /// The rule set for [shape]. The one place the mapping lives, so a new shape
   /// is a compile error here rather than a silently-wrong validation.
@@ -277,6 +291,8 @@ ValidationResult validateWeek(
   SkeletonWeek slot,
   RunnerProfile profile, {
   PlanRules rules = const PlanRules(),
+  DateTime? weekStart,
+  DateTime? now,
 }) {
   final v = <Violation>[];
   final runs = week.runs.toList();
@@ -309,6 +325,67 @@ ValidationResult validateWeek(
           'a session falls on weekday ${s.weekday}, which is not available',
         ),
       );
+    }
+  }
+
+  // **The two date rules, and the only ones in this file.**
+  //
+  // Everything else here is about shape -- volume, ramp, spacing -- and none of
+  // it has ever needed a calendar. That was the gap: a plan generated on a
+  // Friday put the current week's sessions on the Tuesday, Wednesday and
+  // Thursday that had already gone, and the final week prescribed a 5 km run on
+  // race day itself. Both passed every check, because no check could see a
+  // date.
+  //
+  // They are opt-in through [weekStart] rather than mandatory, because the plan
+  // model deliberately carries no dates at all -- a [PlannedSession] knows only
+  // its weekday, and dates are reattached by [StoredPlan] at read time. The
+  // caller that has the calendar passes it; the many that do not are unchanged.
+  if (weekStart != null) {
+    final DateTime start = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
+    final DateTime? today = now == null
+        ? null
+        : DateTime(now.year, now.month, now.day);
+    final DateTime? race = profile.eventDate == null
+        ? null
+        : DateTime(
+            profile.eventDate!.year,
+            profile.eventDate!.month,
+            profile.eventDate!.day,
+          );
+
+    for (final s in week.sessions) {
+      if (s.kind == SessionKind.rest) continue;
+      final DateTime on = start.add(Duration(days: s.weekday - 1));
+
+      // A day that has gone cannot be trained, and a plan that opens by
+      // prescribing three of them starts life owing the runner an apology.
+      if (rules.rejectPastDays && today != null && on.isBefore(today)) {
+        v.add(
+          Violation(
+            'session_in_the_past',
+            'a session falls on weekday ${s.weekday}, which was '
+                '${today.difference(on).inDays} day(s) ago',
+          ),
+        );
+      }
+
+      // **Race day is the event, not a training day** (ADR-0027). The whole
+      // block is built to arrive at it, and the deterministic builder puts the
+      // long run on the latest available weekday -- which in the final week is
+      // usually the Sunday the race is on.
+      if (race != null && on.isAtSameMomentAs(race)) {
+        v.add(
+          Violation(
+            'session_on_race_day',
+            'a ${s.kind.name} session falls on race day, which is the event',
+          ),
+        );
+      }
     }
   }
 

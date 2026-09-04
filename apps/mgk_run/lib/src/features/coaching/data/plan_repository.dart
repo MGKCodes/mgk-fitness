@@ -161,12 +161,51 @@ class PlanRepository {
     if (stored != null) return stored;
 
     final generator = _generator;
+    final unusable = _unusableWeekdays(plan, slot);
     final week = (allowModel && generator != null)
-        ? (await generator.generateWeek(slot, plan.profile)).plan
-        : buildFallbackWeek(slot, plan.profile);
+        ? (await generator.generateWeek(
+            slot,
+            plan.profile,
+            // At most one day, and only in the week that holds the race.
+            raceWeekday: unusable.isEmpty ? null : unusable.first,
+          )).plan
+        : buildFallbackWeek(slot, plan.profile, unusableWeekdays: unusable);
     await _store.saveWeek(plan, week);
     await _pushWeek(plan, week);
     return week;
+  }
+
+  /// Days this week has that cannot carry a session, whatever the runner said.
+  ///
+  /// **The only place in the plan stack where weekdays meet dates.**
+  ///
+  /// Race day, and for now only race day. It is the event (ADR-0027), the whole
+  /// block is built to arrive at it, and the deterministic builder puts the
+  /// long run on the latest available weekday -- which in the final week is
+  /// usually the Sunday the race is on. Found on a phone, as row D4.
+  ///
+  /// **The sibling defect is not fixed here, deliberately.** A plan built on a
+  /// Friday also opens with Monday to Thursday behind it, because the grid is
+  /// anchored to `mondayOf(now)`. Excluding those days the same way was tried
+  /// and reverted: it leaves week 1 with three usable days carrying a whole
+  /// week's prescribed volume, which trades a week nobody can complete for a
+  /// week nobody should. The real fix is the anchor -- start on the coming
+  /// Monday, or count the block backwards from race day as ADR-0027 already
+  /// says it does -- and that changes what every plan looks like, so it is a
+  /// decision rather than a patch. `now` is kept here for it.
+  Set<int> _unusableWeekdays(StoredPlan plan, SkeletonWeek slot) {
+    final DateTime? event = plan.profile.eventDate;
+    final DateTime? race = event == null
+        ? null
+        : DateTime(event.year, event.month, event.day);
+
+    final out = <int>{};
+    for (var weekday = 1; weekday <= 7; weekday++) {
+      final DateTime on = plan.dateFor(weekIndex: slot.index, weekday: weekday);
+      final DateTime day = DateTime(on.year, on.month, on.day);
+      if (race != null && day.isAtSameMomentAs(race)) out.add(weekday);
+    }
+    return out;
   }
 
   /// Fills the coming week's sessions from the model, if they are not there yet.
