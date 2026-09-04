@@ -45,15 +45,28 @@ extracted slots. Terminate when required slots are full.
 
 ## Requirements
 
-- **Batch questions.** "What are you training for, and when is it?" Target 4–5
-  exchanges. A twelve-turn conversation is worse than a form.
+- **One question per turn.** *Reversed 2026-09-04.* This said "batch questions"
+  and targeted 4–5 exchanges, and `INTAKE_INSTRUCTIONS` obeyed it: the build 12
+  field test met an opening message carrying roughly four questions at once.
+  Batching reads well in a prompt and badly in a chat bubble — a person answers
+  the one they remember and the model re-asks the rest, so it does not even buy
+  the exchanges it was meant to save. "A twelve-turn conversation is worse than
+  a form" was the fear; an unanswerable four-part question is worse than both.
 - **React, don't just collect.** Acknowledging an answer before the next
   question is the difference between a coach and an interrogation.
 - **Accept overshoot.** If a user answers three things in one paragraph, extract
   all three and skip ahead.
 - **Confirmation screen at the end.** Editable. The plan is built on these
   numbers and extraction will sometimes be wrong.
-- **Turn cap (6–7)** to prevent loops.
+- **Turn cap (12)** to prevent loops, and *only* to prevent loops. It was 6–7,
+  sized for the batching above. From `IntakeSlots.requiredSlots`, a block is the
+  deepest shape at six required slots and a runner whose shape is unknown spends
+  one more settling it — so seven turns is the *perfect* case, every question
+  answered cleanly first time. A cap is a loop-breaker rather than a budget:
+  reaching it drops the runner on the confirmation screen with holes in their
+  profile, and a hole where the training days go leaves that screen's build
+  button doing nothing. It should be hit by a model that has stopped listening,
+  never by a runner who asked something back.
 - **Sanity-check extractions in Dart, not in the prompt.** Date in the future,
   volume within plausible human bounds, time trial parseable. The model will
   happily accept 200 miles a week.

@@ -246,7 +246,7 @@ class CoachService
       'violations': violations,
       // Omitted rather than sent as null: the surface tests for a number, and
       // a key present but empty is a third state nobody wants to reason about.
-      if (raceWeekday != null) 'race_weekday': raceWeekday,
+      'race_weekday': ?raceWeekday,
     });
     return data == null
         ? null
