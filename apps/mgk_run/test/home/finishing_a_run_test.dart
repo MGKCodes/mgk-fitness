@@ -14,6 +14,7 @@ import 'package:mgk_run/src/features/recording/data/location_source.dart';
 import 'package:mgk_run/src/features/recording/data/recording_run_recorder.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
+import 'package:mgk_run/src/features/recording/presentation/run_start_screen.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -121,6 +122,17 @@ void main() {
     await settle(tester);
 
     await tester.tap(find.text('Record a run'));
+    await settle(tester);
+
+    // **The clock no longer starts on that tap.** `RunStartScreen` comes first
+    // and the recorder is not built until its count-in ends, so the first
+    // seconds of a run are no longer spent putting a phone away. Four pumps of
+    // a second each: three for the count, one for the tick that fires `onStart`.
+    expect(find.byType(RunStartScreen), findsOneWidget);
+    await tester.tap(find.text('Start'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
     await settle(tester);
     expect(find.byType(RecordingScreen), findsOneWidget);
 
@@ -234,6 +246,12 @@ void main() {
     await tester.pumpWidget(shell());
     await settle(tester);
     await tester.tap(find.text('Record a run'));
+    await settle(tester);
+
+    await tester.tap(find.text('Start'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
     await settle(tester);
 
     await tester.tap(find.byTooltip('Cancel run'));

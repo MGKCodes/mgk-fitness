@@ -64,6 +64,7 @@ import '../../onboarding/domain/intro_store.dart';
 import '../../history/presentation/run_form_screen.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../settings/data/backup_eraser.dart';
+import '../../recording/presentation/run_start_screen.dart';
 import '../../recording/presentation/run_summary_screen.dart';
 
 /// The authenticated app: Home / Coach / Profile tabs.
@@ -1393,37 +1394,47 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       return;
     }
-    final profile = _planProfile;
     // Read before the recorder exists, and kept for after it is gone: this is
     // how the finished run is found again. A run that ends from here on is the
     // run this screen recorded, and nothing else is — see
     // [RunDetailSource.runFinishedSince] for why it is not simply "the newest
     // run in the log".
     final openedAt = DateTime.now();
+    final PlannedSession? session = withSession
+        ? _thisWeek?.runOn(DateTime.now().weekday)
+        : null;
     Navigator.of(context)
         .push<bool>(
           MaterialPageRoute<bool>(
-            builder: (routeContext) => RecordingScreen(
-              recorder: factory(),
+            // **The clock no longer starts on the tap that opens the screen.**
+            // It used to, so the first seconds of every run were spent putting
+            // a phone away and were recorded as running — at whatever pace a
+            // pocket happens to be. The count-in screen comes first now, and
+            // `RecordingScreen` is pushed by it, replacing it so Back from a
+            // run does not land on a Start button for the run still going.
+            builder: (routeContext) => RunStartScreen(
               unit: _unit,
-              // Today's prescribed run, so the in-run screen can show how far
-              // through the coach's session they are. Null on a rest day, an
-              // unplanned day, or with no plan at all — and then the block is
-              // simply absent rather than an empty one.
-              plannedSession: withSession
-                  ? _thisWeek?.runOn(DateTime.now().weekday)
-                  : null,
-              // The coach's numbers, so the screen can say whether the runner
-              // is inside the band today's session asked for. Derived in Dart
-              // from the profile's time trial and null without one, which the
-              // screen renders as no verdict rather than a guessed one.
-              paces: profile == null ? null : pacesFor(profile),
-              // **Finished and discarded are not the same exit.** They both
-              // used to pop with nothing, so the shell could not tell an hour
-              // of running from a mistap on the close button — which is part of
-              // why finishing led nowhere. The result says which happened.
-              onFinish: () => Navigator.of(routeContext).pop(true),
+              plannedSession: session,
               onCancel: () => Navigator.of(routeContext).pop(false),
+              // **Pushed and forwarded, not replaced.** `pushReplacement`
+              // completes the *replaced* route's future the moment it happens,
+              // so the `.then` below fired with null at the end of the
+              // count-in and the summary screen never opened at all. The run's
+              // own result is carried back out through this route instead.
+              onStart: () async {
+                final bool? finished = await Navigator.of(routeContext)
+                    .push<bool>(
+                      MaterialPageRoute<bool>(
+                        // The recorder is built here rather than above, so it
+                        // starts when the count-in ends rather than when the
+                        // screen opened.
+                        builder: (recordContext) =>
+                            _recordingScreen(recordContext, session, factory()),
+                      ),
+                    );
+                if (!routeContext.mounted) return;
+                Navigator.of(routeContext).pop(finished ?? false);
+              },
             ),
           ),
         )
@@ -1434,6 +1445,40 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           await _refreshHome();
           if (finished == true && mounted) await _showFinishedRun(openedAt);
         });
+  }
+
+  /// The in-run screen itself, built once the count-in has finished.
+  ///
+  /// A method rather than an inline builder because it is now constructed from
+  /// a *different* route than the one Home pushed — the count-in screen
+  /// replaces itself with this — and the arguments it needs are the same ones
+  /// they always were.
+  Widget _recordingScreen(
+    BuildContext routeContext,
+    PlannedSession? session,
+    RunRecorder recorder,
+  ) {
+    final profile = _planProfile;
+    return RecordingScreen(
+      recorder: recorder,
+      unit: _unit,
+      // Today's prescribed run, so the in-run screen can show how far through
+      // the coach's session they are. Null on a rest day, an unplanned day, or
+      // with no plan at all — and then the block is simply absent rather than
+      // an empty one.
+      plannedSession: session,
+      // The coach's numbers, so the screen can say whether the runner is inside
+      // the band today's session asked for. Derived in Dart from the profile's
+      // time trial and null without one, which the screen renders as no verdict
+      // rather than a guessed one.
+      paces: profile == null ? null : pacesFor(profile),
+      // **Finished and discarded are not the same exit.** They both used to pop
+      // with nothing, so the shell could not tell an hour of running from a
+      // mistap on the close button — which is part of why finishing led
+      // nowhere. The result says which happened.
+      onFinish: () => Navigator.of(routeContext).pop(true),
+      onCancel: () => Navigator.of(routeContext).pop(false),
+    );
   }
 
   /// The run just recorded, on the screen built to receive it.
