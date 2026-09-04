@@ -24,6 +24,7 @@ import '../../recording/domain/run_recorder.dart';
 import '../../recording/domain/run_summary.dart';
 import '../data/auth_repository.dart';
 import '../../onboarding/presentation/intro_screen.dart';
+import '../../settings/data/backup_eraser.dart';
 import 'sign_in_screen.dart';
 
 /// Routes between the sign-in flow and the app shell based on auth state.
@@ -37,6 +38,7 @@ class AuthGate extends StatefulWidget {
     this.runEditor,
     this.restore,
     this.consentStore,
+    this.eraser,
     this.coach,
     this.planClient,
     this.planStore,
@@ -76,6 +78,9 @@ class AuthGate extends StatefulWidget {
 
   /// Where the backup answer lives, so the shell can ask once before it pulls.
   final BackupConsentStore? consentStore;
+
+  /// Removes what is already stored when consent is withdrawn.
+  final BackupErasure? eraser;
   final CoachClient? coach;
   final PlanClient? planClient;
   final PlanStore? planStore;
@@ -290,6 +295,7 @@ class _AuthGateState extends State<AuthGate> {
     runEditor: widget.runEditor,
     restore: widget.restore,
     consentStore: widget.consentStore,
+    eraser: widget.eraser,
     coach: widget.coach,
     planClient: widget.planClient,
     planStore: widget.planStore,

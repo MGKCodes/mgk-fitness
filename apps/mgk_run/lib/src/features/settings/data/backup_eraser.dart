@@ -18,7 +18,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// DELETE is deliberately kept for exactly this (see the coach_memory
 /// migration). So the runner deletes their own rows with their own token,
 /// which needs no privileged function and cannot reach anyone else's data.
-class BackupEraser {
+/// The seam, so the switch can be tested without a Supabase project.
+///
+/// Withdrawal deleting nothing is not a bug a widget test can catch through
+/// the concrete class: its constructor reaches `Supabase.instance`, so any test
+/// touching it needs a live project and is therefore never written. That is how
+/// this shipped unwired -- `legal_copy_test.dart` pinned the *words* of the
+/// promise in four places while nothing asserted the behaviour at all.
+abstract class BackupErasure {
+  /// Deletes what the runner has stored. True when it all went.
+  Future<bool> eraseAll();
+}
+
+class BackupEraser implements BackupErasure {
   BackupEraser({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
@@ -37,6 +49,7 @@ class BackupEraser {
   /// switch is the runner asking for their cloud backup to go — and their
   /// conversations are part of that. What it must never do is take a sibling
   /// app's training data, which is why nothing here reaches into `lift`.
+  @override
   Future<bool> eraseAll() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return false;

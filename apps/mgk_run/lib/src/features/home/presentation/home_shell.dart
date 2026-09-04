@@ -63,6 +63,7 @@ import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../../history/presentation/run_form_screen.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
+import '../../settings/data/backup_eraser.dart';
 import '../../recording/presentation/run_summary_screen.dart';
 
 /// The authenticated app: Home / Coach / Profile tabs.
@@ -89,6 +90,7 @@ class HomeShell extends StatefulWidget {
     this.runEditor,
     this.restore,
     this.consentStore,
+    this.eraser,
     this.initialTab = 0,
     this.justSignedUp = false,
     this.access,
@@ -118,6 +120,15 @@ class HomeShell extends StatefulWidget {
   /// Where the backup answer lives. Null skips the prompt, which is what the
   /// preview harness and tests want.
   final BackupConsentStore? consentStore;
+
+  /// Erases what is already on the server when backup is switched off.
+  ///
+  /// **Was declared on `SettingsScreen` and never passed.** The switch
+  /// therefore stopped future uploads and deleted nothing, while the
+  /// published privacy policy said withdrawal "deletes what is already
+  /// there" -- a false statement about a UK GDPR right, on special-category
+  /// data. Found by the build 12 field test, 2026-09-04.
+  final BackupErasure? eraser;
 
   /// The coach for onboarding. Null hides the Plan tab's build-a-plan action
   /// (e.g. a build with no backend).
@@ -1573,6 +1584,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           // with nobody signed in is a promise with no server behind it.
           ensureAccount: _ensureAccount,
           consentStore: widget.consentStore,
+          eraser: widget.eraser,
           onUnitChanged: (unit) {
             if (!mounted) return;
             setState(() => _unit = unit);

@@ -18,6 +18,7 @@ import 'src/features/coaching/data/supabase_plan_backup.dart';
 import 'src/features/coaching/data/consented_backups.dart';
 import 'src/features/history/data/consented_run_backup.dart';
 import 'src/features/settings/data/backup_consent_factory.dart';
+import 'src/features/settings/data/backup_eraser.dart';
 import 'src/features/settings/data/backup_health_factory.dart';
 import 'src/features/history/data/drift_run_repository.dart';
 import 'src/features/history/data/reported_run_backup.dart';
@@ -201,6 +202,11 @@ class _AppRootState extends State<_AppRoot> {
       runEditor: RunEditor(db: db, backup: runBackup),
       restore: restore,
       consentStore: consent,
+      // What makes withdrawing consent honest rather than a pause. Null
+      // for a persona, by the same rule as every other line here: invented
+      // data never reaches the shared project, so there is nothing of the
+      // runner's to erase from it.
+      eraser: seed == null ? BackupEraser() : null,
       coach: CoachService(),
       planClient: CoachService(),
       // The plan is owned by the on-device database; Supabase only

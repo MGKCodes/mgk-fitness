@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
+import 'package:mgk_run/src/features/settings/data/backup_eraser.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
@@ -33,6 +34,7 @@ void main() {
     Future<bool> Function()? ensureAccount,
     AuthRepository? auth,
     ValueChanged<String?>? onNameChanged,
+    BackupErasure? eraser,
   }) async {
     final intro = InMemoryIntroStore(done: true, name: name);
     await tester.binding.setSurfaceSize(const Size(420, 1600));
@@ -48,6 +50,7 @@ void main() {
           consentStore: consent ?? InMemoryBackupConsent(),
           ensureAccount: ensureAccount,
           onNameChanged: onNameChanged,
+          eraser: eraser,
         ),
       ),
     );
@@ -279,4 +282,79 @@ void main() {
       expect(await store.read(), BackupConsent.declined);
     });
   });
+
+  /// **Withdrawal has to actually erase, and until 2026-09-04 it did not.**
+  ///
+  /// `BackupEraser` was written, documented, and never constructed anywhere in
+  /// `lib/`: `HomeShell` built `SettingsScreen` without an `eraser`, so
+  /// `_setConsent` fell to its `?? true` default, reported success, and deleted
+  /// nothing. Meanwhile the published privacy policy said in as many words that
+  /// turning the switch off "deletes what is already there" -- about
+  /// special-category health data, under a UK GDPR right.
+  ///
+  /// `legal_copy_test.dart` pins that sentence in four places. None of them is
+  /// a behaviour, which is exactly why the gap survived: the promise was tested
+  /// and the act was not. These tests assert the act.
+  group('withdrawing consent erases what is stored', () {
+    testWidgets('the eraser is asked, and only on withdrawal', (tester) async {
+      final eraser = _RecordingEraser();
+      final store = InMemoryBackupConsent(BackupConsent.granted);
+      await pumpSignedOut(tester, consent: store, eraser: eraser);
+
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), BackupConsent.declined);
+      expect(eraser.calls, 1);
+
+      // And turning it back on does not erase: granting is not a withdrawal,
+      // and an erase here would delete the data the runner just asked us to
+      // keep.
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), BackupConsent.granted);
+      expect(eraser.calls, 1);
+    });
+
+    testWidgets('a failed erase is said out loud, not swallowed', (
+      tester,
+    ) async {
+      // The switch is already off locally by this point, so uploads have
+      // stopped either way. What must not happen is silence: the runner has
+      // withdrawn consent and their data is still on a server, and they can
+      // only try again if they are told.
+      final eraser = _RecordingEraser(succeeds: false);
+      await pumpSignedOut(
+        tester,
+        consent: InMemoryBackupConsent(BackupConsent.granted),
+        eraser: eraser,
+      );
+
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      expect(eraser.calls, 1);
+      expect(
+        find.textContaining('could not be removed'),
+        findsOneWidget,
+        reason: 'a silent failure leaves data on a server nobody knows about',
+      );
+    });
+  });
+}
+
+/// Counts the asking. The real one needs a Supabase project, which is how the
+/// unwired switch went unnoticed for as long as it did.
+class _RecordingEraser implements BackupErasure {
+  _RecordingEraser({this.succeeds = true});
+
+  final bool succeeds;
+  int calls = 0;
+
+  @override
+  Future<bool> eraseAll() async {
+    calls++;
+    return succeeds;
+  }
 }

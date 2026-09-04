@@ -104,7 +104,7 @@ class SettingsScreen extends StatefulWidget {
 
   /// Removes what is already stored when consent is withdrawn. Null skips the
   /// erase, which is what the preview harness wants.
-  final BackupEraser? eraser;
+  final BackupErasure? eraser;
 
   /// The other home for the runner's name — the one that answers when there is
   /// no account.
