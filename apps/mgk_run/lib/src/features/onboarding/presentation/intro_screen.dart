@@ -100,6 +100,61 @@ class _IntroScreenState extends State<IntroScreen> {
   /// requests, which on Android surfaces as a prompt that will not dismiss.
   bool _asking = false;
 
+  /// Turns that are in the transcript but have not been revealed yet.
+  ///
+  /// **This is the join between the screen's two clocks**, and its absence was
+  /// the bug. The transcript is paced by [SequencedReveal], which lands one
+  /// turn per beat off a `Timer`; the answer area was a plain `switch` on
+  /// [_step] that rebuilt in the same frame as the tap. So tapping "Sounds
+  /// good" queued "What should I call you?" a beat away while swapping in a
+  /// `TextField` with `autofocus: true` immediately — the keyboard arrived
+  /// ~620ms before the question it was there to answer. The very first frame
+  /// had the same fault in miniature: [_step] starts at [IntroStep.greeting],
+  /// so the button was painted before the greeting had been said at all.
+  ///
+  /// Counted as turns *pending* rather than turns *revealed* on purpose. A
+  /// transcript that shrinks — [SequencedReveal] handles that case, so this
+  /// must too — moves both ends of the comparison at once, and a delta clamped
+  /// at zero stays correct where an absolute count would drift and hold the
+  /// input back forever.
+  late int _pending = _transcript().length;
+
+  /// Opens the gate if the reveal never says it has caught up.
+  ///
+  /// See [_revealBudget]: the input must always arrive.
+  Timer? _failsafe;
+
+  /// The OS asked for less movement.
+  ///
+  /// [SequencedReveal] paints everything in one frame in that case and — since
+  /// it never waits — never fires its `onRevealed` at all, so the gate would
+  /// wait on a callback that is not coming. Asking the same question here is
+  /// what stops that. Widget tests take this path too, which is why the flow
+  /// tests still find their buttons on the frame they tap them.
+  bool _reducedMotion = false;
+
+  /// How long the gate will wait on one pending turn before opening itself.
+  ///
+  /// [SequencedReveal] beats at 620ms, so this is headroom rather than a race,
+  /// and it is only ever reached when a reveal callback goes missing entirely.
+  /// **The input must always arrive.** A gate whose only key is a callback is
+  /// one dropped callback away from a runner stranded on a conversation with
+  /// nothing to tap and no way back — a far worse failure than the mistimed
+  /// keyboard the gate exists to fix.
+  static const Duration _revealBudget = Duration(milliseconds: 900);
+
+  /// Slack on top of [_revealBudget], so the failsafe cannot fire in the gap
+  /// between the last beat landing and its callback being handled.
+  static const Duration _revealSlack = Duration(seconds: 1);
+
+  /// The height the answer area holds even while it is empty.
+  ///
+  /// Matches the primary button's minimum height in `AppTheme`. Without it the
+  /// transcript lurches upward the moment the input arrives, and the gate ends
+  /// up reading as the screen resizing rather than as the coach finishing
+  /// their sentence.
+  static const double _answerSlotHeight = 52;
+
   /// The last thing that went wrong, in the coach's voice.
   ///
   /// It is a line in the transcript rather than red text under a field,
@@ -109,10 +164,69 @@ class _IntroScreenState extends State<IntroScreen> {
   String? _trouble;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    // The opening three turns are queued before any tap, so the failsafe has
+    // to cover them too — a cold screen whose reveal never starts is the one
+    // place a stranded runner could not even go back.
+    _armFailsafe();
+  }
+
+  @override
   void dispose() {
+    _failsafe?.cancel();
     _name.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Whether the runner may answer yet.
+  ///
+  /// The input is held back until the turn it answers is on screen. Under
+  /// reduced motion there is no wait to hold it back for.
+  bool get _canAnswer => _reducedMotion || _pending == 0;
+
+  /// The one way this screen changes what is in the transcript.
+  ///
+  /// Every mutation goes through here so the pending count cannot be forgotten
+  /// at a call site added later: a `setState` that queues a turn without
+  /// telling the gate would let the input back in a beat early, which is
+  /// precisely the defect being fixed. Taking the length before and after also
+  /// means no caller has to know *how many* turns their change produced —
+  /// granting a permission adds two, and stepping into the permissions adds
+  /// the prompt plus the first explanation.
+  void _say(VoidCallback change) {
+    final before = _transcript().length;
+    setState(() {
+      change();
+      final after = _transcript().length;
+      // Clamped at both ends: a shrinking transcript makes the delta negative,
+      // and nothing can be pending that is not in the list.
+      _pending = (_pending + after - before).clamp(0, after);
+    });
+    _armFailsafe();
+    _toEnd();
+  }
+
+  /// A turn landed. One fewer thing between the runner and the input.
+  void _onRevealed() {
+    if (_pending > 0) setState(() => _pending--);
+    _armFailsafe();
+    _toEnd();
+  }
+
+  void _armFailsafe() {
+    _failsafe?.cancel();
+    _failsafe = null;
+    if (_reducedMotion || _pending == 0) return;
+    _failsafe = Timer(_revealBudget * _pending + _revealSlack, () {
+      _failsafe = null;
+      if (!mounted || _pending == 0) return;
+      // The reveal has gone quiet with turns still queued. Better a question
+      // answered slightly early than a screen that can no longer be left.
+      setState(() => _pending = 0);
+    });
   }
 
   void _toEnd() {
@@ -126,16 +240,13 @@ class _IntroScreenState extends State<IntroScreen> {
     });
   }
 
-  void _advance(IntroStep to) {
-    setState(() => _step = to);
-    _toEnd();
-  }
+  void _advance(IntroStep to) => _say(() => _step = to);
 
   void _submitName() {
     // Anything is accepted. A name is not a format, and Settings is where a
     // mistyped one gets fixed.
     final given = _name.text.trim();
-    setState(() {
+    _say(() {
       _answeredName = given.isEmpty ? null : given;
     });
     _afterName();
@@ -161,17 +272,16 @@ class _IntroScreenState extends State<IntroScreen> {
       introPermissions[_permissionIndex],
     );
     if (!mounted) return;
-    setState(() {
+    // Two turns at once: what the OS was told, and what the coach says back.
+    _say(() {
       _outcomes[_permissionIndex] = granted;
       _asking = false;
     });
-    _toEnd();
   }
 
   void _afterPermission() {
     if (_permissionIndex + 1 < introPermissions.length) {
-      setState(() => _permissionIndex++);
-      _toEnd();
+      _say(() => _permissionIndex++);
       return;
     }
     // **The intro ends here, and no longer hands off to an account.**
@@ -190,7 +300,6 @@ class _IntroScreenState extends State<IntroScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final reached = _step.index;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -247,27 +356,8 @@ class _IntroScreenState extends State<IntroScreen> {
                           // already filled itself in. A conversation arrives a
                           // line at a time, with somebody composing in between.
                           SequencedReveal(
-                            onRevealed: _toEnd,
-                            children: <Widget>[
-                              Said(introPrompt(IntroStep.greeting)),
-                              Said(introWhoIAm),
-                              Said(introHowItWorks),
-                              if (!_knewName && reached >= IntroStep.name.index)
-                                Said(introPrompt(IntroStep.name)),
-                              if (!_knewName && _answeredName != null)
-                                Replied(_answeredName!),
-                              if (reached >=
-                                  IntroStep.permissions.index) ...<Widget>[
-                                Said(
-                                  introPrompt(
-                                    IntroStep.permissions,
-                                    name: _answeredName,
-                                  ),
-                                ),
-                                ..._permissionTranscript(),
-                              ],
-                              if (_trouble != null) Said(_trouble!),
-                            ],
+                            onRevealed: _onRevealed,
+                            children: _transcript(),
                           ),
                         ],
                       ),
@@ -286,13 +376,52 @@ class _IntroScreenState extends State<IntroScreen> {
                 // address and the password are asked a step apart, so without
                 // a group spanning both the platform sees two unrelated fields
                 // and offers to save neither.
-                child: AutofillGroup(child: _answer(theme)),
+                child: AutofillGroup(
+                  // **Nothing at all until the question has been asked.** Not
+                  // a disabled control and not a hidden one: a `TextField`
+                  // that is merely invisible still takes `autofocus`, and the
+                  // keyboard rising ahead of the question is the whole defect.
+                  // The slot keeps its height either way so the transcript
+                  // does not jump when the input turns up.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: _answerSlotHeight,
+                    ),
+                    child: _canAnswer
+                        ? _answer(theme)
+                        : const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// The conversation so far, oldest turn first.
+  ///
+  /// Lifted out of `build` because the input gate needs to *count* it, not
+  /// just draw it: [_say] takes its length before and after every change to
+  /// work out how many turns are now queued behind a beat. Derived from the
+  /// step counter rather than accumulated, so a rebuild cannot duplicate a
+  /// turn and stepping back cannot leave an orphan on screen.
+  List<Widget> _transcript() {
+    final reached = _step.index;
+    return <Widget>[
+      Said(introPrompt(IntroStep.greeting)),
+      Said(introWhoIAm),
+      Said(introHowItWorks),
+      if (!_knewName && reached >= IntroStep.name.index)
+        Said(introPrompt(IntroStep.name)),
+      if (!_knewName && _answeredName != null) Replied(_answeredName!),
+      if (reached >= IntroStep.permissions.index) ...<Widget>[
+        Said(introPrompt(IntroStep.permissions, name: _answeredName)),
+        ..._permissionTranscript(),
+      ],
+      if (_trouble != null) Said(_trouble!),
+    ];
   }
 
   /// Every permission asked so far: what it was for, what they answered, and

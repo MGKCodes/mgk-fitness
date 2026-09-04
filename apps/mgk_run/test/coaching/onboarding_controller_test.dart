@@ -3,6 +3,7 @@ import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_service.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_conversation.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
+import 'package:mgk_run/src/features/coaching/domain/plan_shape.dart';
 import 'package:mgk_run/src/features/coaching/presentation/onboarding_controller.dart';
 
 /// Returns queued turns in order, repeating the last once exhausted.
@@ -142,6 +143,68 @@ void main() {
     expect(c.turnCapReached, isTrue);
     expect(c.isFinished, isTrue);
     expect(c.canSend, isFalse);
+  });
+
+  group('the default cap is sized for one question per turn', () {
+    // The intake prompt used to tell the model to batch two or three questions
+    // per message, and a cap of 7 was generous against that. A build 12 field
+    // test met the batching as four questions in one bubble, so the prompt now
+    // asks exactly one thing per turn — which turns the same 7 into a cap that
+    // ends the conversation part way through the questions.
+    test('a block can be filled a slot at a time without being cut off', () {
+      // The deepest shape: six required slots, plus one turn to settle the
+      // shape when it did not arrive from the chips. Answered perfectly, that
+      // is seven runner turns, and the cap has to sit clear of it.
+      const block = IntakeSlots(shape: PlanShape.block);
+      expect(block.requiredSlots, hasLength(6));
+
+      final c = OnboardingController(coach: _ScriptedCoach(<IntakeTurn>[]));
+      expect(
+        c.turnCapReached,
+        isFalse,
+        reason: 'a cap cannot already be met before anybody has spoken',
+      );
+    });
+
+    test('and leaves room for a runner who does not answer cleanly', () async {
+      // Seven perfect answers is the floor, not the expectation. Somebody who
+      // asks what a time trial is, or gives a distance in the wrong unit and
+      // corrects it, must not be dropped on the confirmation screen for it.
+      final c = OnboardingController(
+        coach: _ScriptedCoach(<IntakeTurn>[
+          const IntakeTurn(reply: 'and?', extracted: IntakeSlots()),
+        ]),
+        now: () => now,
+      );
+      await c.start();
+      for (var i = 0; i < 10; i++) {
+        expect(
+          c.canSend,
+          isTrue,
+          reason: 'cut off after $i turns, before the questions can be asked',
+        );
+        await c.send('turn $i');
+      }
+    });
+
+    test(
+      'but it is still a cap, so a stuck model cannot run forever',
+      () async {
+        final c = OnboardingController(
+          coach: _ScriptedCoach(<IntakeTurn>[
+            const IntakeTurn(reply: 'and?', extracted: IntakeSlots()),
+          ]),
+          now: () => now,
+        );
+        await c.start();
+        for (var i = 0; i < 40 && c.canSend; i++) {
+          await c.send('turn $i');
+        }
+
+        expect(c.turnCapReached, isTrue);
+        expect(c.messages.where((m) => m.isUser).length, lessThan(20));
+      },
+    );
   });
 
   test('a coach error surfaces without appending an assistant turn', () async {

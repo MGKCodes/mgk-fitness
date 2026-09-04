@@ -925,6 +925,50 @@ Deno.test("intake asks which weekdays, not only how many", () => {
   assertStringIncludes(system, "which weekdays");
 });
 
+Deno.test("both intakes ask one question per turn, and say so identically", () => {
+  // A build 12 field test met an opening message carrying four questions at
+  // once. The instruction that caused it — "Batch two or three questions per
+  // turn" — was written twice, once here and once for Lift, so a fix applied
+  // to one would have left a lifter talking to a different coach. This asserts
+  // the pair together for that reason.
+  const intakes = [
+    systemOf(
+      SURFACES.intake.messages({ slots: {}, missing: [], history: [] } as Body),
+    ),
+    systemOf(liftIntakeMessages({})),
+  ];
+  for (const system of intakes) {
+    assertStringIncludes(system, "one question at a time");
+    assertStringIncludes(system, "Ask exactly ONE question per turn");
+    assert(
+      !/[Bb]atch (two|three)/.test(system),
+      "batching is what put four questions in one bubble",
+    );
+    // The half the tester said worked. Collecting without acknowledging is an
+    // interrogation, and one question per turn makes that worse, not better.
+    assertStringIncludes(system, "Acknowledge what they just told you");
+  }
+});
+
+Deno.test("neither intake names a turn target the turn cap contradicts", () => {
+  // "Aim for four to five turns total" was the other half of the batching
+  // instruction: a budget the model could only meet by asking several things
+  // at once. Turn budgets belong to Dart — `OnboardingController.turnCap` is
+  // what actually ends a loop — so the prompt no longer races it.
+  const intakes = [
+    systemOf(
+      SURFACES.intake.messages({ slots: {}, missing: [], history: [] } as Body),
+    ),
+    systemOf(liftIntakeMessages({})),
+  ];
+  for (const system of intakes) {
+    assert(
+      !/Aim for \w+ (to|or) \w+ turns/.test(system),
+      "a turn target is how batching gets reinvented",
+    );
+  }
+});
+
 Deno.test("chat may raise a log_run intent, for a run already done", () => {
   const schema = CHAT_SCHEMA;
   const kinds = ((schema.properties as Record<string, Record<string, unknown>>)

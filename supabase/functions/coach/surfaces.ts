@@ -498,10 +498,28 @@ export function summariseMessages(body: Body): Message[] {
 }
 
 // ---- intake -----------------------------------------------------------------
+//
+// ## One question per turn
+//
+// This prompt and `LIFT_INTAKE_INSTRUCTIONS` below both used to say "batch two
+// or three questions per turn", and both were wrong in the same way — **change
+// one and you must change the other, or the two intakes drift apart.**
+//
+// A build 12 field test met an opening message carrying roughly four questions.
+// Batching reads fine in a prompt and terribly in a chat bubble: a person
+// answers the first thing they were asked, forgets the rest, and the coach has
+// to re-ask — so the batch does not even buy the turns it was supposed to. It
+// also stops the conversation being one, which is the entire reason intake is
+// not a form.
+//
+// The reflect-back is kept, because it is the half the tester said worked.
+// Turn budgets are Dart's job and always were: `OnboardingController.turnCap`
+// is what actually stops a loop, and it has been resized for one question per
+// turn. A prompt that also names a target just races it.
 
 const INTAKE_INSTRUCTIONS = `You are running the onboarding conversation. Your
-job is to gather exactly the inputs needed to build this runner's plan, in as
-few exchanges as possible. Aim for four to five turns total.
+job is to gather exactly the inputs needed to build this runner's plan,
+one question at a time.
 
 FIRST, work out what kind of plan they are after, and set "shape". It decides
 what else is worth asking, and asking for the wrong things is the app not
@@ -533,10 +551,13 @@ Then gather what that shape needs:
 Ask which weekdays they can run, not just how many. The plan is laid out on
 named days, so "five days" alone cannot be turned into a week. If they do not
 mind which, say so in "available_weekdays" by listing the days you propose.
+That is one question and not two: the days they name give you the count too.
 
 Rules:
-- Batch two or three questions per turn. Acknowledge what they just told you
-  before asking for what is still missing.
+- Ask exactly ONE question per turn. Acknowledge what they just told you, then
+  ask for the single next thing you still need. Never put two questions in one
+  message, even short ones, and never list what is still to come. A runner
+  reading four questions answers the first and forgets the other three.
 - If they answer several things in one message, capture all of them and skip
   ahead. Never re-ask for something you already have.
 - Do NOT judge whether a value is plausible. Just extract what they said; a
@@ -1288,10 +1309,14 @@ export function liftSummariseMessages(body: Body): Message[] {
 // That is ADR-0003 at its strongest: the model cannot propose a weight, so no
 // validator has to catch one.
 
+// **One question per turn, the same as Run.** This is the second half of the
+// pair described above `INTAKE_INSTRUCTIONS`; the two say the same thing on
+// purpose and have to be edited together, or a lifter and a runner get
+// different coaches.
+
 const LIFT_INTAKE_INSTRUCTIONS =
   `You are running the conversation that sets up a lifter's training block. Your
-job is to gather what a plan needs, in as few exchanges as possible. Aim for
-three or four turns.
+job is to gather what a plan needs, one question at a time.
 
 What a plan needs:
 - what they are training for, in their own words
@@ -1303,11 +1328,14 @@ What a plan needs:
 
 Ask which weekdays, not just how many. A block is laid out on named days, so
 "four days" alone cannot be turned into a week. If they do not mind which, say
-so by listing the days you propose.
+so by listing the days you propose. That is one question and not two: the days
+they name give you the count too.
 
 Rules:
-- Batch two or three questions per turn. Acknowledge what they just told you
-  before asking for what is still missing.
+- Ask exactly ONE question per turn. Acknowledge what they just told you, then
+  ask for the single next thing you still need. Never put two questions in one
+  message, even short ones, and never list what is still to come. A lifter
+  reading four questions answers the first and forgets the other three.
 - If they answer several things at once, capture all of them and skip ahead.
   Never re-ask for something you already have.
 - Do NOT judge whether an answer is plausible, and do not talk them out of a

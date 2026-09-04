@@ -13,7 +13,7 @@ class OnboardingController extends ChangeNotifier {
   OnboardingController({
     required CoachClient coach,
     DateTime Function() now = DateTime.now,
-    int turnCap = 7,
+    int turnCap = 12,
     IntakeSlots initialSlots = const IntakeSlots(),
   }) : _coach = coach,
        _now = now,
@@ -25,6 +25,28 @@ class OnboardingController extends ChangeNotifier {
 
   /// A hard cap so a bad extraction loop can't trap the user (onboarding.md).
   /// Counts the runner's own messages.
+  ///
+  /// **Sized for one question per turn.** It was 7, which fitted an intake
+  /// prompt that told the model to batch two or three questions into every
+  /// message. A build 12 field test met the result — four questions in one
+  /// bubble — so `INTAKE_INSTRUCTIONS` now asks exactly one thing per turn,
+  /// and a cap sized for batching became a cap that ends the conversation
+  /// mid-question.
+  ///
+  /// The arithmetic, from [IntakeSlots.requiredSlots]: a block is the deepest
+  /// shape at six required slots (goal, event date, weekly volume, longest
+  /// run, days per week, time trial), and a runner whose shape is not yet
+  /// known spends one more turn settling it. Which weekdays they can run is
+  /// not a seventh: it is asked in the same breath as how many, and the prompt
+  /// says so. So seven turns is the *perfect* case — every question answered
+  /// cleanly, first time, nothing misheard.
+  ///
+  /// 12 puts five spare turns on top of that. A cap is a loop-breaker, not a
+  /// budget: hitting it drops the runner on the confirmation screen with holes
+  /// in their profile, and a hole where the training days should be leaves
+  /// that screen's build button doing nothing at all. It should be reached by
+  /// a model that has stopped listening, never by a runner who asked what a
+  /// time trial was.
   final int _turnCap;
 
   final List<IntakeMessage> _messages = <IntakeMessage>[];
