@@ -63,5 +63,27 @@ abstract interface class RunDetailSource {
 /// Here for the same reason as [RunWriter]: `SupabaseRestore` needs the
 /// database, and the shell only ever needs to say "go".
 abstract interface class DataRestore {
-  Future<void> restoreAll();
+  Future<RestoreResult> restoreAll();
+}
+
+/// What a restore actually brought back.
+///
+/// **Lives here, and is returned rather than discarded.** `DataRestore` used to
+/// answer `Future<void>`: `SupabaseRestore` counted every row it pulled, built
+/// this, and handed it to a caller whose contract could not receive it. Every
+/// step inside that class also swallows its own throws by design, so a total
+/// failure and a clean no-op were indistinguishable at the seam and identical
+/// on screen -- a runner signing in on a new phone saw an empty log either way.
+class RestoreResult {
+  RestoreResult();
+
+  factory RestoreResult.skipped() => RestoreResult()..skipped = true;
+
+  /// True when consent had not been given, so nothing was attempted.
+  bool skipped = false;
+  int runs = 0;
+  int plans = 0;
+  int turns = 0;
+
+  bool get restoredAnything => runs > 0 || plans > 0 || turns > 0;
 }

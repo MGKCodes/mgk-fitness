@@ -56,6 +56,7 @@ class SettingsScreen extends StatefulWidget {
     this.consentStore,
     this.backupHealthStore,
     this.eraser,
+    this.onBackupGranted,
     this.health,
     this.introStore,
     this.onNameChanged,
@@ -105,6 +106,15 @@ class SettingsScreen extends StatefulWidget {
   /// Removes what is already stored when consent is withdrawn. Null skips the
   /// erase, which is what the preview harness wants.
   final BackupErasure? eraser;
+
+  /// Pushes what this phone already holds, once consent has just been given.
+  ///
+  /// **Granting used to write the answer and stop.** `backfill()` had exactly
+  /// two callers, both at launch inside `HomeShell`, so a runner who created an
+  /// account in Settings and turned backup on uploaded nothing at all -- not
+  /// then, and not until the next cold start. They had said yes and watched
+  /// nothing happen, which is the same evidence as a backup that does not work.
+  final Future<void> Function()? onBackupGranted;
 
   /// The other home for the runner's name — the one that answers when there is
   /// no account.
@@ -236,6 +246,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     var erased = true;
     if (next == BackupConsent.declined) {
       erased = await widget.eraser?.eraseAll() ?? true;
+    } else if (next == BackupConsent.granted) {
+      // After the consent write, never before: the mirror reads consent on
+      // every call, so a backfill started first would push under an answer that
+      // had not been recorded yet.
+      await widget.onBackupGranted?.call();
     }
     if (!mounted) return;
     setState(() => _consentBusy = false);

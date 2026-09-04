@@ -393,6 +393,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _authWatch = widget.auth.authChanges().listen((_) {
       unawaited(_refreshAccess());
       unawaited(_identifyForPurchases());
+      // Signing in is the moment a restore becomes possible: before it there is
+      // no user to attribute rows to, and the runner's history is sitting on
+      // the server behind an id the app did not have.
+      //
+      // **Without asking.** Every mid-session sign-in arrives out of a flow
+      // that has already settled consent -- the Home prompt asks and then
+      // fetches the account, and the Settings switch writes the answer itself.
+      // Asking again here puts a second dialog on top of the first and steals
+      // the answer to it, which is what happened the moment this listener was
+      // added: the prompt's grant was still unwritten, so `needsAsking` was
+      // true and the runner met the same question twice.
+      unawaited(_restoreThenLoad(askConsent: false));
     });
 
     final client = _chatClient;
@@ -1012,7 +1024,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// replace it, which reads as data appearing out of nowhere. The restore is
   /// a no-op on a phone that already has its data, so this costs nothing after
   /// the first launch.
-  Future<void> _restoreThenLoad() async {
+  Future<void> _restoreThenLoad({bool askConsent = true}) async {
     // **A new account takes a different road.** There is nothing on the server
     // to restore — the account was made seconds ago — so the restore is a
     // no-op, and the consent question in front of it would be asking permission
@@ -1036,9 +1048,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Ask before anything moves. The answer decides whether there is a restore
     // at all, and asking afterwards would mean either uploading first and
     // apologising, or restoring nothing and never saying why.
-    await _askConsentIfNeeded();
+    if (askConsent) await _askConsentIfNeeded();
 
-    await widget.restore?.restoreAll();
+    final RestoreResult? restored = await widget.restore?.restoreAll();
+    // **Said out loud, because a silent restore and a broken one look the
+    // same.** The result used to be discarded here, and every step inside
+    // `SupabaseRestore` swallows its own throws by design -- so a runner
+    // signing in on a new phone watched an empty log and had no way to tell
+    // whether their history was gone, still coming, or never asked for.
+    if (mounted && restored != null && restored.restoredAnything) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_restoredSentence(restored))));
+    }
     // Then send anything this phone has that the backup does not: runs from
     // before the mirror existed, or from a spell with backup switched off.
     // After the restore, so a run that just came down is not pushed back up.
@@ -1060,6 +1082,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           Future<int>.value(0),
     );
     if (mounted) await _refreshHome();
+  }
+
+  /// What came back, in the runner's terms rather than a row count per table.
+  String _restoredSentence(RestoreResult r) {
+    final parts = <String>[
+      if (r.runs > 0) '${r.runs} ${r.runs == 1 ? 'run' : 'runs'}',
+      if (r.plans > 0) 'your plan',
+      if (r.turns > 0) 'what the coach remembers',
+    ];
+    if (parts.length == 1) return 'Restored ${parts.first}.';
+    final last = parts.removeLast();
+    return 'Restored ${parts.join(', ')} and $last.';
   }
 
   Future<void> _askConsentIfNeeded() async {
@@ -1620,6 +1654,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ensureAccount: _ensureAccount,
           consentStore: widget.consentStore,
           eraser: widget.eraser,
+          // The same backfill launch runs, from the other moment it matters.
+          // Never throws (`RunEditor.backfill` guarantees it), and every push
+          // inside reports its own failure where Settings already shows it.
+          onBackupGranted: () async {
+            await widget.runEditor?.backfill();
+          },
           onUnitChanged: (unit) {
             if (!mounted) return;
             setState(() => _unit = unit);

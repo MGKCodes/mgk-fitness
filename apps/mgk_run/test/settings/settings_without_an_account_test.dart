@@ -35,6 +35,7 @@ void main() {
     AuthRepository? auth,
     ValueChanged<String?>? onNameChanged,
     BackupErasure? eraser,
+    Future<void> Function()? onBackupGranted,
   }) async {
     final intro = InMemoryIntroStore(done: true, name: name);
     await tester.binding.setSurfaceSize(const Size(420, 1600));
@@ -51,6 +52,7 @@ void main() {
           ensureAccount: ensureAccount,
           onNameChanged: onNameChanged,
           eraser: eraser,
+          onBackupGranted: onBackupGranted,
         ),
       ),
     );
@@ -340,6 +342,42 @@ void main() {
         findsOneWidget,
         reason: 'a silent failure leaves data on a server nobody knows about',
       );
+    });
+  });
+
+  /// **Granting consent has to upload what is already here.**
+  ///
+  /// `backfill()` had two callers, both at launch inside `HomeShell`. A runner
+  /// who created an account in Settings and turned backup on therefore wrote a
+  /// `granted` and uploaded nothing -- not then, and not until the next cold
+  /// start. They had said yes and watched nothing happen, which from the
+  /// outside is indistinguishable from a backup that does not work. Reported as
+  /// E5 by the build 12 field test: "existing runs did not upload after backup
+  /// was enabled".
+  group('granting consent uploads what the phone already holds', () {
+    testWidgets('the backfill runs, and only on the grant', (tester) async {
+      var backfills = 0;
+      final store = InMemoryBackupConsent();
+      await pumpSignedOut(
+        tester,
+        auth: FakeAuthRepository(signedIn: true, email: 'sam@example.com'),
+        consent: store,
+        onBackupGranted: () async => backfills++,
+      );
+
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), BackupConsent.granted);
+      expect(backfills, 1);
+
+      // And withdrawing does not upload. Obvious, and worth pinning: the two
+      // branches sit one line apart and both end in a network call.
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), BackupConsent.declined);
+      expect(backfills, 1);
     });
   });
 }

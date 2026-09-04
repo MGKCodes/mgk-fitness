@@ -389,16 +389,3 @@ class SupabaseRestore implements DataRestore {
 }
 
 /// What a restore pulled, for a caller that wants to say so.
-class RestoreResult {
-  RestoreResult();
-
-  factory RestoreResult.skipped() => RestoreResult()..skipped = true;
-
-  /// True when consent had not been given, so nothing was attempted.
-  bool skipped = false;
-  int runs = 0;
-  int plans = 0;
-  int turns = 0;
-
-  bool get restoredAnything => runs > 0 || plans > 0 || turns > 0;
-}

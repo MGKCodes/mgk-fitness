@@ -369,7 +369,15 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
       _at = signUp ? _Signed.intro : _Signed.form;
       if (signUp) _answers = const IntroAnswers();
     });
-    widget.onSignUpIntent?.call(signUp);
+    // **Deliberately does not claim a sign-up.** `signUp: true` opens the
+    // *intro*, which since ADR-0019 ends on Home with nothing signed in -- so
+    // announcing one here set `_justSignedUp` for any runner who merely tapped
+    // "Get started", and nothing ever cleared it. `HomeShell` reads that flag
+    // to decide there is nothing on the server worth restoring, so the whole
+    // session then skipped both the restore and the launch backfill, whoever
+    // signed in afterwards. `SignInScreen` already reports this accurately --
+    // it claims a sign-up before calling `signUp` and takes the claim back when
+    // no session comes of it -- and it is now the only thing that reports it.
   }
 
   @override
