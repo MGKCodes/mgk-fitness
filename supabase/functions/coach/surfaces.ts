@@ -846,13 +846,48 @@ rejects violations):
 - Never two hard sessions (threshold or interval) on consecutive days.
 Change as little as needed to satisfy the request. Return the FULL revised week
 (every session), not just what changed. Distances are METERS, weekdays
-1=Monday..7=Sunday.`;
+1=Monday..7=Sunday.
+
+If week_so_far is given, the week is already part-run. It is NOT a week you are
+writing from scratch, and the four lists are four different instructions:
+- done — these sessions have been RUN. Return each one exactly as it is: same
+  weekday, same kind, same distance. Moving, resizing or dropping one rewrites a
+  run the runner went out and did, and a validator refuses the whole revision
+  for it.
+- unplanned — a run on a day the plan asked nothing of. That is training already
+  banked, so ask for LESS from the days that are left rather than adding it to
+  the week. Schedule nothing on that day, and keep hard sessions off the day
+  after it.
+- missed — these days have gone. Drop them. Do not pile their distance onto the
+  weekend: a missed easy run is written off, and only a missed long run is worth
+  moving to a day that is still free.
+- remaining — the only sessions you may rewrite, and only onto days that have
+  not passed.
+Fit the week around what happened. Rearranging days that are already settled is
+not an adjustment, it is a different week.`;
 
 function adaptMessages(body: Body): Message[] {
   const week = (body.week as Record<string, unknown>) ?? {};
   const slot = (body.slot as Record<string, unknown>) ?? {};
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const request = typeof body.request === "string" ? body.request : "";
+  // What has already happened in the week the runner is asking to change.
+  //
+  // **The model had no way to know, and it showed.** This surface was handed a
+  // week, a slot and a sentence — nothing about the runner's log — so a runner
+  // who went out on a Wednesday the plan left blank and then asked to have the
+  // week adjusted got all seven days shuffled as though the week were still
+  // ahead of them. The same gap `race_weekday` closed on the `week` surface: a
+  // fact the validator holds the answer to, withheld from the only participant
+  // who could act on it, so the refusal burns the attempt instead of preventing
+  // it.
+  //
+  // Absent for a week nothing has happened in yet — there is nothing to fit
+  // around, and a key present but empty is a third state to reason about.
+  const soFar = body.week_so_far;
+  const happened = soFar && typeof soFar === "object"
+    ? `\n\nWhat has already happened this week:\n${JSON.stringify(soFar)}`
+    : "";
   return [
     { role: "system", content: `${RUN_PERSONA}\n\n${ADAPT_INSTRUCTIONS}` },
     {
@@ -860,7 +895,7 @@ function adaptMessages(body: Body): Message[] {
       content: `The runner asked: "${request}"\n\n` +
         `This week's sessions:\n${JSON.stringify(week)}\n\n` +
         `Skeleton slot:\n${JSON.stringify(slot)}\n\n` +
-        `Runner profile:\n${JSON.stringify(profile)}`,
+        `Runner profile:\n${JSON.stringify(profile)}${happened}`,
     },
   ];
 }

@@ -5,6 +5,7 @@ import 'prescribed_distance.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
 import 'training_plan.dart';
+import 'week_progress.dart';
 
 /// Deterministic plan construction — the non-LLM path. Two uses (both from
 /// docs/architecture/plan-generation.md):
@@ -141,65 +142,19 @@ TrainingWeek buildFallbackWeek(
   final n = profile.daysPerWeek.clamp(1, available.length);
   final days = _spread(available, n);
 
-  final total = slot.volumeMeters;
-  // The long run is the slot's own declared long run, not a fresh calculation.
-  // The plan arc already shows the slot's number, so deriving it again here let
-  // the arc and the week disagree about the same session. Rounding it to the
-  // prescribed grid below does not bring that back: the arc shows whole
-  // kilometres too, so both screens still say 19 km — what they can no longer
-  // do is start from two different numbers.
-  final longRun = slot.longRunMeters;
-  final others = n - 1;
-  final remainder = total - longRun;
-  final shape = _fitUnderLongRun(
-    _weekShape(others, isDeload: slot.isDeload),
-    remainder: remainder,
-    longRun: longRun,
-  );
-
-  // The share table is arithmetic, not a prescription: it hands back 4,137 m
-  // for a Tuesday because that is what 40 km divided by a shape comes to. This
-  // is where it becomes something a coach would say out loud — at the session,
-  // rather than at the arc above, because the arc is the plan's working and the
-  // session is what the runner is asked to run.
-  //
-  // The long run and the rest go on the grid by different routes, and
-  // deliberately.
-  //
-  // The long run is rounded on its own, because it has to keep matching the
-  // number the plan arc shows for the same week and rounding moves it by at
-  // most half a kilometre. Apportioning it with the others was tried and is
-  // worse: it can move a full kilometre, and the arc and the week start
-  // disagreeing again — the exact bug the slot copy above exists to prevent.
-  //
-  // The rest are *apportioned*, because rounding them one at a time throws the
-  // week away: seven days of 1.14 km each fall to 1 km apiece and an 8 km week
-  // arrives as 7. Then capped at the long run, because two roundings going
-  // opposite ways can otherwise hand a Tuesday more kilometres than the long
-  // run kept — 2.5 km rounding up to 3 past a 2.4 km long run rounding down to
-  // 2. Capping can leave the week a kilometre short of the arc, which is inside
-  // what the validator allows and is the lesser of the two wrongs.
-  final longGridded = roundPrescribed(longRun);
-  final shares = <double>[
-    for (final m in prescribeAcross(<double>[
-      for (var k = 0; k < others; k++) remainder * shape[k].share,
-    ]))
-      math.min(m, longGridded),
-  ];
   final sessions = <PlannedSession>[
-    for (var k = 0; k < n; k++)
-      if (k == n - 1)
-        PlannedSession(
-          weekday: days[k],
-          kind: SessionKind.long,
-          distanceMeters: longGridded,
-        )
-      else
-        PlannedSession(
-          weekday: days[k],
-          kind: shape[k].kind,
-          distanceMeters: shares[k],
-        ),
+    // The long run is the slot's own declared long run, not a fresh
+    // calculation. The plan arc already shows the slot's number, so deriving it
+    // again here let the arc and the week disagree about the same session.
+    // Rounding it to the prescribed grid does not bring that back: the arc shows
+    // whole kilometres too, so both screens still say 19 km — what they can no
+    // longer do is start from two different numbers.
+    ..._fillDays(
+      days,
+      total: slot.volumeMeters,
+      longRun: slot.longRunMeters,
+      isDeload: slot.isDeload,
+    ),
     for (final day in _strengthDays(
       available,
       days,
@@ -213,6 +168,261 @@ TrainingWeek buildFallbackWeek(
     sessions: sessions,
     provisional: true,
   );
+}
+
+/// Shares [total] metres over [days], making the last of them the long run when
+/// [longRun] is positive and shaping the rest around it.
+///
+/// Lifted out of [buildFallbackWeek] so [refitWeek] can use the same arithmetic
+/// rather than forming a second opinion about what a training week looks like.
+/// Two builders shaping weeks differently is how a runner ends up with a
+/// rebalanced week that does not resemble the plan it came from.
+///
+/// The share table is arithmetic, not a prescription: it hands back 4,137 m for
+/// a Tuesday because that is what 40 km divided by a shape comes to. This is
+/// where it becomes something a coach would say out loud — at the session,
+/// rather than at the arc, because the arc is the plan's working and the session
+/// is what the runner is asked to run.
+///
+/// The long run and the rest go on the grid by different routes, and
+/// deliberately.
+///
+/// The long run is rounded on its own, because it has to keep matching the
+/// number the plan arc shows for the same week and rounding moves it by at most
+/// half a kilometre. Apportioning it with the others was tried and is worse: it
+/// can move a full kilometre, and the arc and the week start disagreeing again —
+/// the exact bug taking the slot's own long run exists to prevent.
+///
+/// The rest are *apportioned*, because rounding them one at a time throws the
+/// week away: seven days of 1.14 km each fall to 1 km apiece and an 8 km week
+/// arrives as 7. Then capped at the long run, because two roundings going
+/// opposite ways can otherwise hand a Tuesday more kilometres than the long run
+/// kept — 2.5 km rounding up to 3 past a 2.4 km long run rounding down to 2.
+/// Capping can leave the week a kilometre short of the arc, which is inside what
+/// the validator allows and is the lesser of the two wrongs.
+///
+/// A zero [longRun] means the week has no long run to place — the refit's case,
+/// where the runner has already been out and done it. The cap goes with it: a
+/// cap at zero would round the whole week away to nothing.
+List<PlannedSession> _fillDays(
+  List<int> days, {
+  required double total,
+  required double longRun,
+  required bool isDeload,
+}) {
+  if (days.isEmpty) return const <PlannedSession>[];
+  final n = days.length;
+  final hasLong = longRun > 0;
+  final others = hasLong ? n - 1 : n;
+  final remainder = hasLong ? total - longRun : total;
+  final shape = _fitUnderLongRun(
+    _weekShape(others, isDeload: isDeload),
+    remainder: remainder,
+    longRun: longRun,
+  );
+
+  final longGridded = roundPrescribed(longRun);
+  final shares = <double>[
+    for (final m in prescribeAcross(<double>[
+      for (var k = 0; k < others; k++) remainder * shape[k].share,
+    ]))
+      hasLong ? math.min(m, longGridded) : m,
+  ];
+  return <PlannedSession>[
+    for (var k = 0; k < others; k++)
+      PlannedSession(
+        weekday: days[k],
+        kind: shape[k].kind,
+        distanceMeters: shares[k],
+      ),
+    if (hasLong)
+      PlannedSession(
+        weekday: days[n - 1],
+        kind: SessionKind.long,
+        distanceMeters: longGridded,
+      ),
+  ];
+}
+
+/// Refits what is **left** of [week] around what has already happened in it.
+///
+/// The deterministic half of "adjust my week", and the answer to the complaint
+/// that named it: the coach "just reshuffles the week generically" when a run
+/// lands on a rest day instead of noticing the run and fitting around it. The
+/// model does this properly when it is reachable and told what happened;
+/// [AdaptationService] reaches for this when it is not, so a runner whose
+/// provider is down still gets a week that has looked at their log.
+///
+/// Three rules, and they are the whole of it.
+///
+/// **1. A day that has been run is settled.** Whatever the week prescribed on it
+/// stays exactly as it was — the session happened, and a plan that quietly moved
+/// or resized it afterwards would be rewriting the runner's own week under them.
+/// The validator holds the same line as `session_already_done`; this builder
+/// simply cannot break it, which is the point of the two agreeing.
+///
+/// **2. A refit never asks for more than the week already asked for.** The
+/// budget for what remains is the smaller of two numbers: what the plan still
+/// had ahead of it, and what is left of the slot's target once everything
+/// already run is counted. Both matter and neither alone is enough.
+///
+/// The first stops missed distance being piled onto the weekend. A coach does
+/// not make you run Tuesday on top of Sunday, and the arithmetic answer — "you
+/// owe 42 km and have two days" — is how a runner who missed two sessions gets
+/// handed a 36 km weekend. Missed work is written off, with one exception: a
+/// missed *long run* is carried, because missing an easy run is a Tuesday that
+/// got away and missing the long run is a week that did not happen
+/// ([MissedSession.isKey] draws the same line about the same week).
+///
+/// The second is the case the runner actually complained about. An unplanned
+/// Wednesday is training already banked, so it is credited by asking for *less*
+/// from the days that are left, not by pretending it did not happen. Counted
+/// against the **slot** rather than the week, so refitting twice cannot ratchet
+/// the target down each time.
+///
+/// **3. Days that have gone are not scheduled.** Only today and later, only days
+/// the runner said they are free, and never a day already run. Today is fair
+/// game: the evening is still theirs.
+TrainingWeek refitWeek({
+  required TrainingWeek week,
+  required SkeletonWeek slot,
+  required RunnerProfile profile,
+  required WeekAsRun soFar,
+}) {
+  final settled = soFar.settledWeekdays;
+
+  // Everything on a settled day survives verbatim — the run, and any strength
+  // work sharing the day with it.
+  final kept = <PlannedSession>[
+    for (final s in week.sessions)
+      if (settled.contains(s.weekday)) s,
+  ];
+
+  // Strength still ahead survives too. The runner is rebalancing their
+  // *running*, and re-placing gym days they did not ask about is the generic
+  // reshuffle this exists to stop. Strength on a day that has gone goes with the
+  // runs on it: it cannot be done now.
+  final keptStrength = <PlannedSession>[
+    for (final s in week.support)
+      if (!settled.contains(s.weekday) && !_hasPassed(soFar, s.weekday)) s,
+  ];
+
+  // The days a refit may use. Already in weekday order, because [soFar] is.
+  final open = <int>[
+    for (final d in soFar.days)
+      if (!d.hasPassed &&
+          d.ranMeters == 0 &&
+          profile.availableWeekdays.contains(d.weekday))
+        d.weekday,
+  ];
+
+  // A day already run has been spent, prescribed or not. An unplanned Wednesday
+  // used one of the days the runner told us they could train, and prescribing as
+  // though it had not is how someone who said five days ends the week having
+  // been asked for six.
+  final n = (profile.daysPerWeek - settled.length).clamp(0, open.length);
+
+  final longDay = _longRunDay(soFar);
+  // Owed unless it has been run, or waved off. A skipped long run is the
+  // runner's decision, and re-prescribing it would be the plan overruling them.
+  final longOwed = longDay != null && !longDay.isDone && !longDay.isSkipped;
+  final rescued = longDay != null && longDay.isMissed
+      ? longDay.prescribed!.distanceMeters
+      : 0.0;
+
+  final budget = math.max(
+    0.0,
+    math.min(
+      soFar.remainingMeters + rescued,
+      slot.volumeMeters - soFar.ranMeters,
+    ),
+  );
+
+  final fresh = n == 0 || budget <= 0
+      ? const <PlannedSession>[]
+      : _fillDays(
+          _spread(open, n),
+          total: budget,
+          longRun: longOwed ? _refitLongRun(slot, budget: budget, days: n) : 0,
+          isDeload: slot.isDeload,
+        );
+
+  return TrainingWeek(
+    skeletonIndex: week.skeletonIndex,
+    sessions: <PlannedSession>[
+      ...kept,
+      ...keptStrength,
+      ..._easeBeside(fresh, kept),
+    ]..sort((a, b) => a.weekday.compareTo(b.weekday)),
+    // Deterministic, not generated — the same claim [buildFallbackWeek] makes,
+    // and for the same reason: the runner should be able to see that no model
+    // wrote this and ask for it again when one is reachable.
+    provisional: true,
+  );
+}
+
+/// The long run, sized to the days that are actually left.
+///
+/// [SkeletonWeek.longRunMeters] is what the week wanted, and it gets it whenever
+/// the budget can carry it — the plan arc shows that number, and a refit that
+/// derived its own would put the arc and the week back to disagreeing about the
+/// same session. The ceiling is the only thing that overrules it: a kilometre is
+/// left for every other day, so nothing is prescribed at zero and nothing rounds
+/// away to it.
+///
+/// Deliberately no floor. Squeezing the long run toward the average day when the
+/// budget is tight was tried and it walks straight into the 40% share rule — a
+/// long run pushed *up* to half of a two-day remainder is the lopsided week that
+/// rule exists to catch. The other days are already held under the long run by
+/// [_fillDays], so a tie is the worst this can produce, and a tie is harmless:
+/// the long run is the session whose kind says so, never the biggest number in
+/// the week.
+double _refitLongRun(
+  SkeletonWeek slot, {
+  required double budget,
+  required int days,
+}) => math.min(slot.longRunMeters, math.max(1000, budget - (days - 1) * 1000));
+
+/// The day this week's long run was prescribed on, and what became of it.
+DayAsRun? _longRunDay(WeekAsRun soFar) {
+  for (final d in soFar.days) {
+    if (d.prescribed?.kind == SessionKind.long) return d;
+  }
+  return null;
+}
+
+bool _hasPassed(WeekAsRun soFar, int weekday) =>
+    soFar.days.any((d) => d.weekday == weekday && d.hasPassed);
+
+/// Softens a new quality session that would land beside one already run.
+///
+/// The kept days are history and cannot move, so the new session is the one that
+/// gives way. It is downgraded rather than shuffled: the shape's ordering is
+/// what puts the recovery run after the quality session and the gentle day
+/// before the long run, and reordering the week to dodge one adjacency costs all
+/// of that to fix a single day.
+List<PlannedSession> _easeBeside(
+  List<PlannedSession> fresh,
+  List<PlannedSession> kept,
+) {
+  final hardKept = <int>{
+    for (final s in kept)
+      if (s.kind.isHard) s.weekday,
+  };
+  if (hardKept.isEmpty) return fresh;
+  return <PlannedSession>[
+    for (final s in fresh)
+      if (s.kind.isHard &&
+          (hardKept.contains(s.weekday - 1) ||
+              hardKept.contains(s.weekday + 1)))
+        PlannedSession(
+          weekday: s.weekday,
+          kind: SessionKind.easy,
+          distanceMeters: s.distanceMeters,
+        )
+      else
+        s,
+  ];
 }
 
 /// A rhythm week: the commitments they made, plus easy runs to fill out the

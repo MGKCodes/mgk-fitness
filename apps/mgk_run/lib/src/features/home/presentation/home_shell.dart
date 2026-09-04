@@ -602,9 +602,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return null;
     }
 
-    final proposal = await AdaptationService(
-      client: client,
-    ).propose(week: week, slot: slot, profile: plan.profile, request: request);
+    // **What has already happened this week, so the revision refits rather
+    // than reshuffles.** Without this the adaptation is handed a prescription
+    // and a sentence and nothing else, so it rearranges seven days as though
+    // none of them had been lived — which is what the build 12 field test
+    // meant by "it just reshuffles the week generically". A run that happened
+    // on a rest day was invisible to it, and a session already completed could
+    // be moved out from under the runner who ran it.
+    //
+    // `since` is decided here rather than inside the service because this is
+    // where the week-1 rule lives: a plan's first week is anchored to
+    // `mondayOf(now)`, so its earlier days predate the plan itself and cannot
+    // have been missed. A second opinion about that in the service would be a
+    // second place for it to be wrong.
+    final now = DateTime.now();
+    final proposal = await AdaptationService(client: client).propose(
+      week: week,
+      slot: slot,
+      profile: plan.profile,
+      request: request,
+      soFar: weekAsRun(
+        week: week,
+        weekStart: plan.dateFor(weekIndex: slot.index, weekday: 1, on: now),
+        now: now,
+        runs: _allRuns,
+        since: slot.index == 1 ? now : plan.startDate,
+      ),
+    );
     if (proposal == null) return null;
     return ChatProposal(week: proposal.week, changes: proposal.changes);
   }
@@ -2186,6 +2210,15 @@ class _PlanTabState extends State<_PlanTab> {
           paces: paces,
           focusedWeekday: weekday,
           profile: plan.profile,
+          // **Without `soFar`, unlike the chat path, and knowingly so.** This
+          // reaches `WeekAdjustSheet`, which holds a week, a slot and a
+          // profile — no runs and no dates — so carrying what has already
+          // happened means threading it through two more screens. The sheet is
+          // also the surface `_adjustThisWeek` deliberately moved away from:
+          // the conversation is where a change is asked for now, and that path
+          // does refit. Written down rather than left to be discovered,
+          // because an argument nobody passed is the shape of three separate
+          // defects this release has already had.
           adaptation: planClient == null
               ? null
               : AdaptationService(client: planClient),

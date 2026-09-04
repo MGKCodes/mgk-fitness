@@ -9,6 +9,7 @@ import '../domain/intake_conversation.dart';
 import '../domain/intake_slots.dart';
 import '../domain/runner_profile.dart';
 import '../domain/training_plan.dart';
+import '../domain/week_progress.dart';
 import 'coach_errors.dart';
 import 'coach_client.dart';
 import '../../history/domain/run_draft.dart';
@@ -22,8 +23,9 @@ import 'plan_mappers.dart';
 /// returns a structured proposal; the caller re-validates before using it.
 ///
 /// Implements every seam: [CoachClient] (conversational intake),
-/// [CoachChatClient] (the open conversation) and [PlanClient] (skeleton/week
-/// generation).
+/// [CoachChatClient] (the open conversation) and [WeekAwarePlanClient] — which
+/// is [PlanClient] (skeleton/week generation) plus the adaptation call that
+/// knows what the runner has already done this week.
 class CoachService
     implements
         CoachClient,
@@ -32,7 +34,7 @@ class CoachService
         CoachLogRunClient,
         CoachEditRunClient,
         CoachSetGoalClient,
-        PlanClient {
+        WeekAwarePlanClient {
   CoachService({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
@@ -259,12 +261,44 @@ class CoachService
     required SkeletonWeek slot,
     required RunnerProfile profile,
     required String request,
+  }) => _adapt(week: week, slot: slot, profile: profile, request: request);
+
+  @override
+  Future<TrainingWeek?> proposeRefit({
+    required TrainingWeek week,
+    required SkeletonWeek slot,
+    required RunnerProfile profile,
+    required String request,
+    required WeekAsRun soFar,
+  }) => _adapt(
+    week: week,
+    slot: slot,
+    profile: profile,
+    request: request,
+    soFar: soFar,
+  );
+
+  /// The `adapt` surface. One body builder for both calls, because they are the
+  /// same request with one more fact in it.
+  Future<TrainingWeek?> _adapt({
+    required TrainingWeek week,
+    required SkeletonWeek slot,
+    required RunnerProfile profile,
+    required String request,
+    WeekAsRun? soFar,
   }) async {
     final data = await _invokeSurface('adapt', <String, dynamic>{
       'week': trainingWeekToJson(week),
       'slot': skeletonWeekToJson(slot),
       'profile': runnerProfileToJson(profile),
       'request': request,
+      // Sent only when there is something to say, the same shape as
+      // `race_weekday` on the `week` surface: the surface tests for the key's
+      // presence, and a key that is present but describes a week nothing has
+      // happened in is a third state nobody wants to reason about — least of
+      // all a model being asked what to leave alone.
+      if (soFar != null && soFar.hasHistory)
+        'week_so_far': weekAsRunToJson(soFar),
     });
     return data == null
         ? null

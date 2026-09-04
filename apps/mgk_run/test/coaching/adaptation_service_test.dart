@@ -4,7 +4,10 @@ import 'package:mgk_run/src/features/coaching/data/plan_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_validator.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
+import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
+import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
+import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
 /// Returns a fixed revised week (or null / throws) for proposeAdaptation.
 class _AdaptClient implements PlanClient {
@@ -36,6 +39,45 @@ class _AdaptClient implements PlanClient {
     List<String> violations = const <String>[],
     int? raceWeekday,
   }) async => null;
+}
+
+/// A client that can be told what already happened, and records whether it was.
+///
+/// The point of the pair: the tally must reach a client that offers the richer
+/// call, and must not be quietly dropped on one that does not.
+class _AwareClient extends _AdaptClient implements WeekAwarePlanClient {
+  _AwareClient(super.revised);
+
+  WeekAsRun? sawStanding;
+  bool sawPlainCall = false;
+
+  @override
+  Future<TrainingWeek?> proposeAdaptation({
+    required TrainingWeek week,
+    required SkeletonWeek slot,
+    required RunnerProfile profile,
+    required String request,
+  }) async {
+    sawPlainCall = true;
+    return super.proposeAdaptation(
+      week: week,
+      slot: slot,
+      profile: profile,
+      request: request,
+    );
+  }
+
+  @override
+  Future<TrainingWeek?> proposeRefit({
+    required TrainingWeek week,
+    required SkeletonWeek slot,
+    required RunnerProfile profile,
+    required String request,
+    required WeekAsRun soFar,
+  }) async {
+    sawStanding = soFar;
+    return revised;
+  }
 }
 
 void main() {
@@ -142,5 +184,190 @@ void main() {
 
   test('a thrown proposal yields no proposal', () async {
     expect(await propose(base, thr: true), isNull);
+  });
+
+  // ---- the week the runner is actually living in ---------------------------
+  //
+  // "Adjust my week" used to be answered from the plan alone, so a runner who
+  // went out on a Wednesday the plan left blank got the same generic reshuffle
+  // as a runner who had done nothing at all.
+
+  // 2026-07-27 is a Monday.
+  final monday = DateTime(2026, 7, 27);
+
+  RunSummary runAt(DateTime at, {required double meters}) => RunSummary(
+    startedAt: at,
+    duration: Duration(minutes: (meters / 200).round()),
+    distanceMeters: meters,
+  );
+
+  WeekAsRun standing(DateTime when, List<RunSummary> runs) => weekAsRun(
+    week: base,
+    weekStart: monday,
+    now: when,
+    runs: runs,
+    since: monday,
+  );
+
+  /// Monday run as prescribed, Tuesday missed, and 12 km on the Wednesday the
+  /// plan asked nothing of. The field report's week, on the Thursday.
+  WeekAsRun diverged() => standing(addDays(monday, 3), <RunSummary>[
+    runAt(monday, meters: 8000),
+    runAt(addDays(monday, 2), meters: 12000),
+  ]);
+
+  group('what happened reaches the model when the client can take it', () {
+    test('a week-aware client is asked the richer question', () async {
+      final client = _AwareClient(null);
+      final soFar = diverged();
+
+      await AdaptationService(client: client).propose(
+        week: base,
+        slot: slot,
+        profile: profile,
+        request: 'rebalance what is left',
+        soFar: soFar,
+      );
+
+      expect(client.sawStanding, same(soFar));
+      expect(client.sawPlainCall, isFalse);
+    });
+
+    test(
+      'and is asked the plain one when there is nothing to tell it',
+      () async {
+        // No tally, no richer call: the argument is what the extra question is
+        // for, and asking it empty would be paying to say nothing.
+        final client = _AwareClient(null);
+
+        await AdaptationService(client: client).propose(
+          week: base,
+          slot: slot,
+          profile: profile,
+          request: 'change it',
+        );
+
+        expect(client.sawPlainCall, isTrue);
+        expect(client.sawStanding, isNull);
+      },
+    );
+
+    test('a client that cannot take it still works, unchanged', () async {
+      // Every fake in the app implements the plain seam and most answer a
+      // different method entirely. None of them may break for this.
+      final proposal = await AdaptationService(client: _AdaptClient(null))
+          .propose(
+            week: base,
+            slot: slot,
+            profile: profile,
+            request: 'change it',
+            soFar: standing(monday, const <RunSummary>[]),
+          );
+      expect(proposal, isNull);
+    });
+  });
+
+  group('a revision may not rewrite what the runner has already run', () {
+    test('dropping a completed session is refused, with the reason', () async {
+      final soFar = diverged();
+      final withoutMonday = TrainingWeek(
+        skeletonIndex: base.skeletonIndex,
+        sessions: <PlannedSession>[
+          for (final s in base.sessions)
+            if (s.weekday != DateTime.monday) s,
+        ],
+      );
+
+      await expectLater(
+        AdaptationService(client: _AwareClient(withoutMonday)).propose(
+          week: base,
+          slot: slot,
+          profile: profile,
+          request: 'rebalance what is left',
+          soFar: soFar,
+        ),
+        throwsA(
+          isA<AdaptationRefused>().having(
+            (e) => e.violations.map((v) => v.code),
+            'violations',
+            contains('session_already_done'),
+          ),
+        ),
+      );
+    });
+
+    test('and the refusal says so without validator vocabulary', () {
+      const refused = AdaptationRefused(<Violation>[
+        Violation('session_already_done', 'weekday 1 was already run'),
+      ]);
+      expect(refused.message, contains('already run'));
+      expect(refused.message, isNot(contains('weekday')));
+      expect(refused.message, isNot(contains('session_already_done')));
+    });
+  });
+
+  group('with no model to hand, Dart still has an answer', () {
+    test('a week that has diverged gets a deterministic refit', () async {
+      // This used to be a flat null, and null reaches the runner as "try
+      // telling me what you want differently" — advice that cannot work when
+      // the coach is unreachable rather than confused.
+      final soFar = diverged();
+      final proposal = await AdaptationService(client: _AdaptClient(null))
+          .propose(
+            week: base,
+            slot: slot,
+            profile: profile,
+            request: 'rebalance what is left',
+            soFar: soFar,
+          );
+
+      expect(proposal, isNotNull);
+      expect(proposal!.changes, isNotEmpty);
+      // What happened is still there, and Wednesday is not claimed.
+      expect(
+        proposal.week.runOn(DateTime.monday)?.distanceMeters,
+        base.runOn(DateTime.monday)?.distanceMeters,
+      );
+      expect(proposal.week.runOn(DateTime.wednesday), isNull);
+      expect(
+        validateWeek(
+          proposal.week,
+          slot,
+          profile,
+          rules: const PlanRules.adaptation(),
+          soFar: soFar,
+        ).isValid,
+        isTrue,
+      );
+    });
+
+    test('a week that has not diverged is left alone', () async {
+      // The deterministic refit answers a *situation*, not a sentence. It knows
+      // nothing about "make Sunday easier", and rearranging an on-track week in
+      // reply to it is the generic reshuffle by another door.
+      final proposal = await AdaptationService(client: _AdaptClient(null))
+          .propose(
+            week: base,
+            slot: slot,
+            profile: profile,
+            request: 'make Sunday easier',
+            soFar: standing(monday, const <RunSummary>[]),
+          );
+      expect(proposal, isNull);
+    });
+
+    test('and a provider that fell over is the same case', () async {
+      final proposal =
+          await AdaptationService(
+            client: _AdaptClient(null, throwIt: true),
+          ).propose(
+            week: base,
+            slot: slot,
+            profile: profile,
+            request: 'rebalance what is left',
+            soFar: diverged(),
+          );
+      expect(proposal, isNotNull);
+    });
   });
 }

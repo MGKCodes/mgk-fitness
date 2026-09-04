@@ -109,6 +109,187 @@ Map<int, DayOutcome> weekOutcomes({
   return out;
 }
 
+/// One day of the week, as the plan asked for it and as it actually went.
+///
+/// The unit [weekAsRun] is made of, and the thing [weekOutcomes] cannot say. A
+/// day the plan asked nothing of has no entry there at all — rest days are
+/// absent rather than present-and-empty, which is right for drawing a week and
+/// wrong for rewriting one. A run on a rest day is invisible to it, and that
+/// run is precisely what the coach was missing: a runner who went out on a
+/// Wednesday the plan left blank and then asked to have their week adjusted got
+/// all seven days reshuffled as though Wednesday had never happened.
+class DayAsRun {
+  const DayAsRun({
+    required this.weekday,
+    required this.date,
+    required this.hasPassed,
+    required this.ranMeters,
+    this.prescribed,
+    this.outcome,
+  });
+
+  /// `DateTime.monday`..`DateTime.sunday`.
+  final int weekday;
+
+  final DateTime date;
+
+  /// The day is behind us. **Today has not passed** — the evening is still
+  /// theirs, which is the same line [outcomeOn] draws when it refuses to call
+  /// today missed.
+  final bool hasPassed;
+
+  /// What the plan asked for, or null on a day it asked for nothing.
+  ///
+  /// Runs only. A strength day prescribes no distance at all (ADR-0010), so a
+  /// run on one is as unplanned as a run on a rest day — the gym session it
+  /// shares the day with is not the thing that got run.
+  final PlannedSession? prescribed;
+
+  /// What became of that prescription — null exactly when there was none.
+  ///
+  /// There is nothing to complete on a day the plan asked nothing of, and
+  /// marking such a day [DayOutcome.done] would be the app congratulating
+  /// itself for a session it never wrote.
+  final DayOutcome? outcome;
+
+  /// Every metre run on the day, summed. Two runs on a Wednesday are one
+  /// Wednesday: the day is what the plan schedules against, not the run.
+  final double ranMeters;
+
+  bool get isDone => outcome == DayOutcome.done;
+  bool get isMissed => outcome == DayOutcome.missed;
+  bool get isSkipped => outcome == DayOutcome.skipped;
+
+  /// A run on a day the plan prescribed nothing — the case this whole file was
+  /// widened for.
+  bool get isUnplanned => prescribed == null && ranMeters > 0;
+
+  /// A prescription still to come: today or later, with nothing run against it
+  /// and not waved off.
+  bool get isRemaining =>
+      prescribed != null && !hasPassed && ranMeters == 0 && !isSkipped;
+}
+
+/// The week measured against its own plan, day by day — what was done, what
+/// went, what was never asked for, and what is still ahead.
+///
+/// **Richer than `weekStanding` on purpose, and it had to be.** That one answers
+/// "am I behind?" with two totals and a count, which is exactly right for a tile
+/// on Home and useless to anything that has to *rewrite* the week: it cannot
+/// name the Tuesday that went, and it cannot see a run on a day the plan left
+/// empty at all. Those two are the whole of what an adaptation needs to know,
+/// so this derives them rather than inventing a second, disagreeing tally —
+/// every outcome here comes back through [outcomeOn], the one place that decides
+/// what became of a day.
+class WeekAsRun {
+  const WeekAsRun({required this.days});
+
+  /// Monday to Sunday, always seven, in order. Days the plan asked nothing of
+  /// are present and empty here — unlike [weekOutcomes], because a blank day
+  /// is somewhere a session can be *put*, and a refit has to be able to see it.
+  final List<DayAsRun> days;
+
+  Iterable<DayAsRun> get done => days.where((d) => d.isDone);
+  Iterable<DayAsRun> get missed => days.where((d) => d.isMissed);
+  Iterable<DayAsRun> get skipped => days.where((d) => d.isSkipped);
+  Iterable<DayAsRun> get unplanned => days.where((d) => d.isUnplanned);
+  Iterable<DayAsRun> get remaining => days.where((d) => d.isRemaining);
+
+  /// The weekdays a run happened on, prescribed or not.
+  ///
+  /// A day that has been run is **settled**: nothing may be scheduled onto it
+  /// and nothing may be taken off it. This is the set both the validator rule
+  /// and the deterministic refit are written against.
+  Set<int> get settledWeekdays => <int>{
+    for (final d in days)
+      if (d.ranMeters > 0) d.weekday,
+  };
+
+  /// Every metre run inside the week, prescribed or not.
+  double get ranMeters => days.fold<double>(0, (sum, d) => sum + d.ranMeters);
+
+  /// The metres run on days the plan asked nothing of.
+  ///
+  /// Kept apart from [ranMeters] because it is the part of the week no
+  /// prescription accounts for. The long-run share rule in `plan_validator.dart`
+  /// adds it back before dividing, or a runner's extra Wednesday gets reported
+  /// as a lopsided week.
+  double get unplannedMeters =>
+      unplanned.fold<double>(0, (sum, d) => sum + d.ranMeters);
+
+  /// What the plan still has ahead of it, in prescribed metres.
+  double get remainingMeters =>
+      remaining.fold<double>(0, (sum, d) => sum + d.prescribed!.distanceMeters);
+
+  /// Whether the week has departed from its plan at all.
+  ///
+  /// The gate on the deterministic refit. With nothing missed, nothing waved
+  /// off and nothing run off-plan there is no situation to fit around, and
+  /// offering a rearranged week anyway would be answering a question nobody
+  /// asked — which is the "reshuffles the week generically" complaint arriving
+  /// by a different door.
+  bool get hasDiverged =>
+      missed.isNotEmpty || skipped.isNotEmpty || unplanned.isNotEmpty;
+
+  /// Whether anything has happened in the week yet.
+  ///
+  /// What decides whether this is worth sending to the model: a week nothing
+  /// has happened in yet says nothing a revision could use, and paying to tell
+  /// it so is how a prompt fills up with noise.
+  bool get hasHistory => done.isNotEmpty || hasDiverged;
+}
+
+/// The week as it actually went, day by day — the tally an adaptation is fitted
+/// around.
+///
+/// [statusFor] and [since] mean exactly what they mean to [missedSessions], and
+/// [since] is the caller's to decide for the same reason: a plan cannot be
+/// behind on days that predate it, and only the caller knows which those are.
+/// See `home_shell.dart`, which passes today for a plan still in its first week
+/// because nothing stored can date it more precisely.
+WeekAsRun weekAsRun({
+  required TrainingWeek week,
+  required DateTime weekStart,
+  required DateTime now,
+  required List<RunSummary> runs,
+  SessionStatus Function(int weekday)? statusFor,
+  DateTime? since,
+}) {
+  final days = <DayAsRun>[];
+  for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
+    final date = addDays(weekStart, weekday - 1);
+    final prescribed = week.runOn(weekday);
+
+    var ran = 0.0;
+    for (final run in runs) {
+      if (daysBetweenDates(run.startedAt, date) == 0) {
+        ran += run.distanceMeters;
+      }
+    }
+
+    days.add(
+      DayAsRun(
+        weekday: weekday,
+        date: date,
+        // Negative days are days already gone; zero is today, which has not.
+        hasPassed: daysBetweenDates(now, date) < 0,
+        ranMeters: ran,
+        prescribed: prescribed,
+        outcome: prescribed == null
+            ? null
+            : outcomeOn(
+                date: date,
+                now: now,
+                runs: runs,
+                status: statusFor?.call(weekday) ?? SessionStatus.planned,
+                since: since,
+              ),
+      ),
+    );
+  }
+  return WeekAsRun(days: days);
+}
+
 /// A prescribed day that came and went with no run against it.
 class MissedSession {
   const MissedSession({required this.date, required this.session});
