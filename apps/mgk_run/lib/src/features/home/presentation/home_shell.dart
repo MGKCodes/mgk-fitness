@@ -391,21 +391,42 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // stayed on an anonymous id so a purchase could not be attributed, and the
     // restore never ran. Re-running them on the auth stream is what makes
     // signing in mid-session mean anything.
-    _authWatch = widget.auth.authChanges().listen((_) {
-      unawaited(_refreshAccess());
-      unawaited(_identifyForPurchases());
-      // Signing in is the moment a restore becomes possible: before it there is
-      // no user to attribute rows to, and the runner's history is sitting on
-      // the server behind an id the app did not have.
-      //
-      // **Without asking.** Every mid-session sign-in arrives out of a flow
-      // that has already settled consent -- the Home prompt asks and then
-      // fetches the account, and the Settings switch writes the answer itself.
-      // Asking again here puts a second dialog on top of the first and steals
-      // the answer to it, which is what happened the moment this listener was
-      // added: the prompt's grant was still unwritten, so `needsAsking` was
-      // true and the runner met the same question twice.
-      unawaited(_restoreThenLoad(askConsent: false));
+    //
+    // **Reacted to by identity, not by event.** Seeded here so the
+    // `initialSession` that arrives moments from now for the person already
+    // signed in is recognised as the one `initState` has just handled, rather
+    // than as news. Two *different* people signing in must both restore; the
+    // same one arriving twice must not, and on build 13 it did -- repeatedly,
+    // because a token refresh also announced itself as a change.
+    _lastAuthUserId = widget.auth.currentUserId;
+    _authWatch = widget.auth.authChanges().listen((change) {
+      final String? id = widget.auth.currentUserId;
+      switch (change) {
+        case AuthChange.signedIn:
+          if (id != null && id == _lastAuthUserId) return;
+          _lastAuthUserId = id;
+          unawaited(_refreshAccess());
+          unawaited(_identifyForPurchases());
+          // Signing in is the moment a restore becomes possible: before it
+          // there is no user to attribute rows to, and the runner's history is
+          // sitting on the server behind an id the app did not have.
+          //
+          // **Without asking.** Every mid-session sign-in arrives out of a flow
+          // that has already settled consent -- the Home prompt asks and then
+          // fetches the account, and the Settings switch writes the answer
+          // itself. Asking again here puts a second dialog on top of the first
+          // and steals the answer to it, which is what happened the moment this
+          // listener was added: the prompt's grant was still unwritten, so
+          // `needsAsking` was true and the runner met the same question twice.
+          unawaited(_restoreThenLoad(askConsent: false));
+        case AuthChange.signedOut:
+          _lastAuthUserId = null;
+          // Drops to free. Nothing to restore and nobody to identify.
+          unawaited(_refreshAccess());
+        case AuthChange.userUpdated:
+          // A rename. The gate above re-reads the name; nothing else moves.
+          break;
+      }
     });
 
     final client = _chatClient;
@@ -932,7 +953,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// floating mark: the dock it replaces could only ever exist on one screen,
   /// so the coach was present on a third of the app and absent from the rest.
   /// Watches for a sign-in that happens while this shell stays mounted.
-  StreamSubscription<void>? _authWatch;
+  StreamSubscription<AuthChange>? _authWatch;
+
+  /// Who the last handled `signedIn` was for, so gotrue re-announcing the
+  /// session already in hand is not mistaken for somebody arriving.
+  String? _lastAuthUserId;
 
   /// The tier the UI draws with. Starts at whatever a caller pinned, or free,
   /// and is replaced once `core.entitlements` has been read.
@@ -1043,17 +1068,43 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     setState(() => _unit = unit);
   }
 
-  /// Restores first, then loads.
+  /// The restore in flight, or null.
   ///
-  /// Sequential on purpose: loading first would paint an empty log and then
-  /// replace it, which reads as data appearing out of nowhere. The restore is
-  /// a no-op on a phone that already has its data, so this costs nothing after
-  /// the first launch.
-  Future<void> _restoreThenLoad({bool askConsent = true}) async {
+  /// **Structural rather than a boolean**, for two reasons.
+  /// [_doRestoreThenLoad] has four exit paths and a flag has to be cleared on
+  /// every one of them; and a second caller arriving mid-pull should *join* the
+  /// one already running rather than be turned away, which a flag cannot
+  /// express. Both matter on the launch path, where `initState` and the auth
+  /// stream's `initialSession` reach here within a frame of each other -- which
+  /// is how build 13 stacked two restores, and behind them two consent dialogs.
+  Future<void>? _restoring;
+
+  /// Loads what the phone already holds, then restores what it does not.
+  ///
+  /// **The local read comes first, and that is the whole of the ordering.** It
+  /// used to come last, behind a modal consent dialog and an unbounded network
+  /// call -- so a runner with three years of running on the device watched a
+  /// blank Profile until the server answered, or indefinitely if it did not.
+  /// Everything Profile and the log draw comes from `_allRuns`, which only
+  /// [_refreshHome] fills.
+  ///
+  /// The argument this replaces was that painting twice "reads as data
+  /// appearing out of nowhere". That is true, and it is now only *reached* when
+  /// data genuinely did appear out of nowhere -- the second paint happens only
+  /// if the restore actually inserted something.
+  Future<void> _restoreThenLoad({bool askConsent = true}) =>
+      _restoring ??= _doRestoreThenLoad(
+        askConsent: askConsent,
+      ).whenComplete(() => _restoring = null);
+
+  Future<void> _doRestoreThenLoad({bool askConsent = true}) async {
+    // The phone's own log, before anything that can block or fail.
+    await _refreshHome();
+
     // **A new account takes a different road.** There is nothing on the server
     // to restore — the account was made seconds ago — so the restore is a
     // no-op, and the consent question in front of it would be asking permission
-    // to store data that does not exist yet, before the runner had seen Runio
+    // to store data that does not exist yet, before the runner had seen the app
     // do anything at all (ADR-0012).
     //
     // Nothing else happens here any more. This used to push the plan flow the
@@ -1065,10 +1116,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // have had a chance to use the app — which is what ADR-0012 wanted in the
     // first place. Asking it after the first *recorded run* would be better
     // still, and wants a hook that does not exist yet.
-    if (widget.justSignedUp) {
-      await _refreshHome();
-      return;
-    }
+    if (widget.justSignedUp) return;
 
     // Ask before anything moves. The answer decides whether there is a restore
     // at all, and asking afterwards would mean either uploading first and
@@ -1106,7 +1154,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       widget.runEditor?.backfill().catchError((Object _) => 0) ??
           Future<int>.value(0),
     );
-    if (mounted) await _refreshHome();
+    // Only when something arrived. `_refreshHome` already ran at the top, so
+    // this is the repaint for new data rather than the first paint.
+    if (mounted && (restored?.restoredAnything ?? false)) await _refreshHome();
   }
 
   /// What came back, in the runner's terms rather than a row count per table.
@@ -1150,14 +1200,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// runner would actually mind.
   static const int _runsBeforeOfferingBackup = 2;
 
-  /// Whether this session has already put the question, so a refresh does not
-  /// raise it twice.
+  /// Whether this session has already put the question, so a *later* refresh
+  /// does not raise it twice.
   ///
   /// The consent store is the durable record — a decline writes [BackupConsent
   /// .declined] and `needsAsking` is false forever after — but the store is
   /// written *after* the dialog closes, and [_refreshHome] can easily run again
   /// while it is still open.
+  ///
+  /// **This flag cannot answer for two refreshes that overlap**, and that is
+  /// what [_offering] is for. It is set after `await store.read()`, so two
+  /// callers arriving together both passed it and both opened a dialog — E1 on
+  /// the build 13 sheet, and a guaranteed pair once the launch path was running
+  /// the restore twice.
   bool _offeredBackup = false;
+
+  /// The offer in flight, or null. The concurrent half of the guard; see
+  /// [_offeredBackup] for the sequential half, and [_restoring] for why this
+  /// shape rather than another boolean.
+  Future<void>? _offering;
 
   /// Offers backup to a runner with no account, once they have a log worth
   /// keeping.
@@ -1173,7 +1234,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// rows to. Abandoning that sign-up writes nothing at all: the question stays
   /// unanswered and is put again next time, which is right — they did not
   /// decline, they were interrupted.
-  Future<void> _offerBackupIfEarned() async {
+  Future<void> _offerBackupIfEarned() => _offering ??= _doOfferBackupIfEarned()
+      .whenComplete(() => _offering = null);
+
+  Future<void> _doOfferBackupIfEarned() async {
     final store = widget.consentStore;
     if (store == null || _offeredBackup) return;
     if (widget.auth.isSignedIn) return;
@@ -1195,10 +1259,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Consent given; now the account it needs. Nothing is written unless one
     // arrives — consent to store data somewhere that does not exist is not a
     // state worth persisting, and it would leave the switch reading On.
-    if (!await _ensureAccount()) {
-      _offeredBackup = false;
-      return;
-    }
+    //
+    // **The question stays open, but it is not asked again in this session.**
+    // Backing out of the sign-up used to clear [_offeredBackup], which meant
+    // every later [_refreshHome] raised the dialog afresh — after a finished
+    // run, after an edit, after a unit change — and `_refreshHome` runs often.
+    // That is E1 on the build 13 sheet: "the backup prompt appears repeatedly".
+    // Writing nothing to the store is what keeps it open for next launch, which
+    // is the whole of ADR-0012's "they did not decline, they were interrupted";
+    // re-raising it thirty seconds later is badgering, not asking.
+    if (!await _ensureAccount()) return;
     await store.write(BackupConsent.granted);
     // The account is new, so this phone's runs are the only copy there is.
     // Pushing them is the thing the runner just said yes to; without it the

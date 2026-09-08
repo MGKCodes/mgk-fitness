@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
+import 'package:mgk_run/src/features/history/domain/run_writer.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
@@ -40,6 +41,7 @@ void main() {
     required int runs,
     required BackupConsentStore consent,
     FakeAuthRepository? auth,
+    DataRestore? restore,
   }) async {
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -49,6 +51,7 @@ void main() {
         home: HomeShell(
           auth: auth ?? FakeAuthRepository(),
           consentStore: consent,
+          restore: restore,
           historySource: () async => <RunSummary>[
             for (var i = 1; i <= runs; i++) run(i),
           ],
@@ -167,6 +170,54 @@ void main() {
       expect(find.byType(SignInScreen), findsNothing);
       expect(await consent.read(), BackupConsent.unknown);
     });
+
+    testWidgets('and is not asked again in the same session', (tester) async {
+      // **E1 on the build 13 sheet: "the backup prompt appears repeatedly".**
+      //
+      // Backing out used to clear the in-session flag, so the next reload
+      // raised the dialog afresh -- and `_refreshHome` runs after a finished
+      // run, after an edit, after a unit change. The question staying open for
+      // next launch is ADR-0012's intent and is asserted above, on the store;
+      // asking again thirty seconds later is badgering.
+      //
+      // The restore is what makes the shell reload a second time within one
+      // launch, which is the shape the field test was in.
+      final consent = InMemoryBackupConsent();
+      await pumpShell(
+        tester,
+        runs: 2,
+        consent: consent,
+        restore: _RestoredSomething(),
+      );
+
+      await tester.tap(find.text('Back them up'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Keep these safe?'), findsNothing);
+      expect(await consent.read(), BackupConsent.unknown);
+    });
+  });
+
+  testWidgets('two reloads in one launch raise one dialog, not two', (
+    tester,
+  ) async {
+    // The concurrent half. The in-session flag is set *after* `store.read()`,
+    // so two reloads that overlap both passed it and both opened a dialog --
+    // and the launch path reloads twice whenever a restore actually brought
+    // something back. Guarded by a single-flight future rather than a second
+    // boolean, because the second caller should join the first rather than be
+    // turned away.
+    final consent = InMemoryBackupConsent();
+    await pumpShell(
+      tester,
+      runs: 2,
+      consent: consent,
+      restore: _RestoredSomething(),
+    );
+
+    expect(find.text('Keep these safe?'), findsOneWidget);
   });
 
   testWidgets('a runner who has an account is asked the other way, at launch', (
@@ -186,4 +237,11 @@ void main() {
     expect(find.text('Keep a copy of your training?'), findsOneWidget);
     expect(find.text('Keep these safe?'), findsNothing);
   });
+}
+
+/// A restore that brought something back, so the shell reloads a second time
+/// after it — the only way to get two reloads out of one launch.
+class _RestoredSomething implements DataRestore {
+  @override
+  Future<RestoreResult> restoreAll() async => RestoreResult()..runs = 3;
 }
