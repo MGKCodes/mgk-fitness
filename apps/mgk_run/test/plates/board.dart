@@ -198,7 +198,7 @@ void main() {
       final FakeRunRecorder rec = recorder();
       await shot(
         tester,
-        '09-panned',
+        '23-panned',
         screen(rec),
         drive: (WidgetTester t) async {
           await advance(125)(t);
@@ -206,6 +206,27 @@ void main() {
           // detector here would be plating flutter_map rather than this screen.
           t.widget<RouteMap>(find.byType(RouteMap)).onUserPan!();
           await advance(5)(t);
+        },
+      );
+      await rec.stop();
+    });
+
+    testWidgets('peeked, with the map full screen', (
+      WidgetTester tester,
+    ) async {
+      // The third detent (ADR-0031): a handle and two figures, so the map has
+      // the screen. Dragged down rather than set, because what is worth seeing
+      // is that the drag lands there and that the content swapped rather than
+      // being clipped.
+      final FakeRunRecorder rec = recorder();
+      await shot(
+        tester,
+        '24-peek',
+        screen(rec),
+        drive: (WidgetTester t) async {
+          await advance(125)(t);
+          await t.drag(find.text('DISTANCE'), const Offset(0, 300));
+          await advance(20)(t);
         },
       );
       await rec.stop();

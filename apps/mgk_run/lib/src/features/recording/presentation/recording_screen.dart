@@ -126,12 +126,35 @@ bool briefFitsOn(
 }
 
 /// The panel's full extent, as a fraction of the screen.
-///
-/// **Two resting places, not three.** A middle detent sounds generous and costs
-/// the gesture its meaning: with three stops a drag lands somewhere the runner
-/// did not choose, and they have to look to find out where. Two is a toggle you
-/// can work without reading — the numbers, or everything.
 const double _fullFraction = 0.92;
+
+/// The peek detent's content: a handle and one row of two figures.
+///
+/// Summed the way [_panelContentHeight] is, and for the reason its doc gives —
+/// this box holds a fixed thing, so a *fraction* of a shorter screen would be a
+/// smaller box holding the same content. 84 is Material's `NavigationBar`
+/// height plus the handle, which is what "nav-bar height" means on this screen.
+const double _peekContentHeight =
+    AppSpacing.md + // top padding
+    16 + // sheet handle and its gap
+    40 + // one row: label over value, twice
+    AppSpacing.lg; // bottom padding
+
+/// The peek detent for a screen of [height].
+///
+/// **Three resting places, and the third earns its keep by being a different
+/// screen rather than a different size.** Two used to be the decision, on the
+/// grounds that "with three stops a drag lands somewhere the runner did not
+/// choose, and they have to look to find out where" — a toggle you can work
+/// without reading. That holds for two stops of the *same* content and fails
+/// here: the build 13 field test asked for the map full-screen with time and
+/// distance only, which is not a smaller version of the collapsed panel but a
+/// different one. You cannot land on it by accident, because it shows something
+/// else. See ADR-0031.
+double peekFractionFor(double height, {double bottomInset = 0}) {
+  if (height <= 0) return 0.10;
+  return ((_peekContentHeight + bottomInset) / height).clamp(0.08, 0.30);
+}
 
 /// The collapsed detent for a screen of [height], as the fraction
 /// [DraggableScrollableSheet] wants.
@@ -257,6 +280,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
     if (!_following) setState(() => _following = true);
   }
 
+  /// The panel's live extent, or 0 before it has reported one.
+  ///
+  /// **A notifier rather than state**, so a drag does not rebuild the map. The
+  /// map owns a [MapController] and schedules post-frame camera moves; putting
+  /// it through `setState` sixty times a second during a drag would rebuild all
+  /// of that for a change only the `Positioned` around it cares about.
+  final ValueNotifier<double> _sheetExtent = ValueNotifier<double>(0);
+
   /// Held across frames so the verdict can be sticky. See [_standingFor].
   PaceStanding _standing = PaceStanding.unknown;
 
@@ -345,6 +376,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   @override
   void dispose() {
+    _sheetExtent.dispose();
     _pointSub?.cancel();
     _statusSub?.cancel();
     _problemSub?.cancel();
@@ -712,16 +744,21 @@ class _RecordingScreenState extends State<RecordingScreen> {
           // which is behind the panel. Shifting the whole map up by the panel's
           // half-height puts the dot in the middle of the part you can actually
           // see, without lying to the map about where its centre is.
-          final mapTop = ((1 - collapsed) / 2 - 0.5) * height;
+          //
+          // **Driven by the live extent, not by the collapsed fraction.** It
+          // was computed once from `collapsed` and never moved, so the dot was
+          // correctly placed at exactly one of the panel's resting places and
+          // wrong at the others — visibly so with the sheet open at 0.92, where
+          // the visible strip is a fifth of the screen and the dot sat off it.
+          // A third detent would have made that worse in the other direction.
 
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              Positioned(
-                top: mapTop,
-                left: 0,
-                right: 0,
-                height: height,
+              ValueListenableBuilder<double>(
+                valueListenable: _sheetExtent,
+                // Built once and passed through: the map must not be rebuilt on
+                // every frame of a drag.
                 child: RouteMap(
                   points: _points,
                   focus: _focus,
@@ -738,6 +775,16 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   // answer to the same question.
                   emptyLabel: _problem == null ? 'Finding you' : null,
                 ),
+                builder: (context, extent, child) {
+                  final double at = extent == 0 ? collapsed : extent;
+                  return Positioned(
+                    top: ((1 - at) / 2 - 0.5) * height,
+                    left: 0,
+                    right: 0,
+                    height: height,
+                    child: child!,
+                  );
+                },
               ),
 
               // Positioned, not a bare Stack child: `StackFit.expand` stretches
@@ -772,9 +819,15 @@ class _RecordingScreenState extends State<RecordingScreen> {
               // which is the honest way round: the state worth announcing is
               // the unusual one.
               if (!_following)
-                Positioned(
-                  right: AppSpacing.lg,
-                  bottom: collapsed * height + AppSpacing.md,
+                ValueListenableBuilder<double>(
+                  valueListenable: _sheetExtent,
+                  builder: (context, extent, child) => Positioned(
+                    right: AppSpacing.lg,
+                    bottom:
+                        (extent == 0 ? collapsed : extent) * height +
+                        AppSpacing.md,
+                    child: child!,
+                  ),
                   child: _Scrim(
                     circular: true,
                     child: IconButton(
@@ -788,6 +841,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
               _Panel(
                 collapsedFraction: collapsed,
+                peekFraction: peekFractionFor(
+                  height,
+                  bottomInset: MediaQuery.paddingOf(context).bottom,
+                ),
+                onExtent: (double extent) => _sheetExtent.value = extent,
                 distanceM: _distanceM,
                 elapsed: _elapsed,
                 unit: widget.unit,
@@ -932,9 +990,11 @@ class _TopStrip extends StatelessWidget {
 }
 
 /// The readout, as a glass sheet that drags up.
-class _Panel extends StatelessWidget {
+class _Panel extends StatefulWidget {
   const _Panel({
     required this.collapsedFraction,
+    required this.peekFraction,
+    required this.onExtent,
     required this.distanceM,
     required this.elapsed,
     required this.unit,
@@ -963,6 +1023,14 @@ class _Panel extends StatelessWidget {
   });
 
   final double collapsedFraction;
+
+  /// The lowest resting place: a handle and two figures, map full screen.
+  final double peekFraction;
+
+  /// Reports the sheet's live extent, so the map's offset and the recentre
+  /// control can follow it rather than a static fraction.
+  final ValueChanged<double> onExtent;
+
   final double distanceM;
   final Duration elapsed;
   final UnitSystem unit;
@@ -1001,14 +1069,80 @@ class _Panel extends StatelessWidget {
   final Future<void> Function() onFinish;
 
   @override
+  State<_Panel> createState() => _PanelState();
+}
+
+class _PanelState extends State<_Panel> {
+  final DraggableScrollableController _sheet = DraggableScrollableController();
+
+  /// Whether the panel is showing the peek row rather than the full readout.
+  bool _peeking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheet.addListener(_onExtentChanged);
+  }
+
+  @override
+  void dispose() {
+    _sheet.removeListener(_onExtentChanged);
+    _sheet.dispose();
+    super.dispose();
+  }
+
+  /// **Deferred to after the frame, and it has to be.**
+  /// `DraggableScrollableController` notifies during layout, so both things
+  /// this does — writing the extent notifier the map's `Positioned` listens to,
+  /// and swapping the panel's content — would mark widgets dirty mid-build.
+  /// That is an assertion failure, not a subtle bug, and it took out six tests
+  /// the moment the notifier was wired.
+  void _onExtentChanged() {
+    if (!_sheet.isAttached || _pending) return;
+    _pending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pending = false;
+      if (!mounted || !_sheet.isAttached) return;
+      final double extent = _sheet.size;
+      widget.onExtent(extent);
+
+      // **Hysteresis, not a midpoint.** A single threshold swaps the content
+      // back and forth while a finger rests on the boundary, which is a
+      // flicker in the one place a runner is trying to read a number.
+      final double span = widget.collapsedFraction - widget.peekFraction;
+      if (span <= 0) return;
+      final bool peek = _peeking
+          ? extent < widget.peekFraction + span * 0.65
+          : extent < widget.peekFraction + span * 0.35;
+      if (peek != _peeking) setState(() => _peeking = peek);
+    });
+  }
+
+  /// One callback in flight at a time. A drag notifies every frame, and
+  /// queueing a post-frame callback per notification would pile them up.
+  bool _pending = false;
+
+  @override
   Widget build(BuildContext context) {
+    // A pathologically short screen can compute a peek at or above the
+    // collapsed detent, and `DraggableScrollableSheet` asserts its snap sizes
+    // are strictly increasing. Fall back to the two it has always had.
+    final bool hasPeek = widget.peekFraction < widget.collapsedFraction;
+
     return DraggableScrollableSheet(
-      initialChildSize: collapsedFraction,
-      minChildSize: collapsedFraction,
+      controller: _sheet,
+      // **Unchanged, deliberately.** The peek is somewhere you can go, not
+      // where you start: a runner opening a run wants the numbers. It also
+      // means every existing test and every plate starts where it always did.
+      initialChildSize: widget.collapsedFraction,
+      minChildSize: hasPeek ? widget.peekFraction : widget.collapsedFraction,
       maxChildSize: _fullFraction,
       snap: true,
-      // No intermediate snap: the sheet is a toggle, not a dial.
-      snapSizes: <double>[collapsedFraction, _fullFraction],
+      snapSizes: <double>[
+        if (hasPeek) widget.peekFraction,
+        widget.collapsedFraction,
+        _fullFraction,
+      ],
       builder: (context, controller) => GlassSurface(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppRadius.sheet),
@@ -1018,317 +1152,360 @@ class _Panel extends StatelessWidget {
         // across its top edge is the only thing giving it a lit direction.
         child: ListView(
           controller: controller,
+          // At the peek detent the content no longer overflows its viewport, so
+          // without this the list has nothing to scroll and the drag that
+          // expands the sheet stops being offered.
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl,
             AppSpacing.md,
             AppSpacing.xl,
             AppSpacing.lg,
           ),
-          children: <Widget>[
-            const SheetHandle(),
-
-            if (problem != null) ...<Widget>[
-              _ProblemLine(problem: problem!, onAskAgain: onAskAgain),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // The one number the screen is for, unchallenged.
-            //
-            // `animate: false` because this figure is *live*. CountUp tweens
-            // over 420ms, which is right for a summary appearing and wrong for
-            // a distance ticking up: the number on screen is never the number,
-            // and at the start of a run it disagrees visibly with the readouts
-            // beside it — a 0.01 km hero next to a rolling pace that cannot
-            // exist under 25 m of movement.
-            //
-            // `w300` rather than the default hairline, and tracking eased from
-            // -2 to -1. Picked off a side-by-side plate (`?screen=hero-weights`,
-            // w100 to w400) as the lightest cut that still holds when the screen
-            // is read at arm's length while moving: below w300 the figure washes
-            // out, above it the numeral stops looking designed and starts
-            // looking like a default. The supporting row below — bold at w600 —
-            // had also out-shouted a figure three times its size, so weight was
-            // what inverted the hierarchy, not scale.
-            //
-            // The decimal point is a separate fix and not a matter of weight at
-            // all: see HeroNumeral._spans, which spares separators the tabular
-            // digit cell that made `0.45` read as two numbers.
-            HeroNumeral(
-              label: 'DISTANCE',
-              value: Distance.meters(distanceM).inDisplayUnit(unit),
-              unit: unit.distanceSuffix,
-              size: _heroSize,
-              weight: FontWeight.w300,
-              letterSpacing: -1,
-              animate: false,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Three values, and the unit lives in the label so they fit.
-            //
-            // `w400` rather than the scale's `w600`: these support the hero,
-            // and a bold supporting row is what made a 96pt figure read as the
-            // quieter thing. `shrinkToFit` because elapsed time is the one
-            // value here with no upper bound — crossing an hour adds two
-            // characters, and a `Text` in a tight `Expanded` clips silently.
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: StatBlock(
-                    label: 'TIME',
-                    value: elapsed.hoursMinutesSeconds,
-                    size: StatSize.hero,
-                    align: CrossAxisAlignment.center,
-                    valueWeight: FontWeight.w400,
-                    shrinkToFit: true,
+          children: _peeking
+              // **A different screen, not a smaller one.** DISTANCE is a 96pt
+              // numeral and TIME is one of three columns beneath it; neither
+              // truncates into a nav-bar strip, so the peek is its own ordering
+              // rather than the collapsed panel scaled down. One `ListView`
+              // throughout, though — swapping the list itself would detach the
+              // `ScrollController` mid-drag.
+              ? <Widget>[
+                  const SheetHandle(),
+                  const SizedBox(height: AppSpacing.sm),
+                  _PeekRow(
+                    distanceM: widget.distanceM,
+                    elapsed: widget.elapsed,
+                    unit: widget.unit,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _PaceStat(
-                    label: 'PACE ${unit.paceSuffix}',
-                    value: currentPace,
-                    absent: currentPace == dashes,
+                ]
+              : <Widget>[
+                  const SheetHandle(),
+
+                  if (widget.problem != null) ...<Widget>[
+                    _ProblemLine(
+                      problem: widget.problem!,
+                      onAskAgain: widget.onAskAgain,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+
+                  // The one number the screen is for, unchallenged.
+                  //
+                  // `animate: false` because this figure is *live*. CountUp tweens
+                  // over 420ms, which is right for a summary appearing and wrong for
+                  // a distance ticking up: the number on screen is never the number,
+                  // and at the start of a run it disagrees visibly with the readouts
+                  // beside it — a 0.01 km hero next to a rolling pace that cannot
+                  // exist under 25 m of movement.
+                  //
+                  // `w300` rather than the default hairline, and tracking eased from
+                  // -2 to -1. Picked off a side-by-side plate (`?screen=hero-weights`,
+                  // w100 to w400) as the lightest cut that still holds when the screen
+                  // is read at arm's length while moving: below w300 the figure washes
+                  // out, above it the numeral stops looking designed and starts
+                  // looking like a default. The supporting row below — bold at w600 —
+                  // had also out-shouted a figure three times its size, so weight was
+                  // what inverted the hierarchy, not scale.
+                  //
+                  // The decimal point is a separate fix and not a matter of weight at
+                  // all: see HeroNumeral._spans, which spares separators the tabular
+                  // digit cell that made `0.45` read as two numbers.
+                  HeroNumeral(
+                    label: 'DISTANCE',
+                    value: Distance.meters(
+                      widget.distanceM,
+                    ).inDisplayUnit(widget.unit),
+                    unit: widget.unit.distanceSuffix,
+                    size: _heroSize,
+                    weight: FontWeight.w300,
+                    letterSpacing: -1,
+                    animate: false,
                   ),
-                ),
-                // On a planned session the third column is what is *left*,
-                // not what has averaged.
-                //
-                // Average pace is the only figure on this row a runner cannot
-                // act on: it reports how the run has gone, which is the
-                // summary screen's job and told better there, and for the
-                // opening minutes it reserves a third of the row for `--:--`.
-                // What is left answers the question the pace band provokes —
-                // hold this, and for how much longer — and it has a value from
-                // the first metre. Without a plan there is no distance to
-                // count down to, so the average keeps the slot.
-                const SizedBox(width: AppSpacing.sm),
-                // Without a plan there is nothing to count down to, so the
-                // average keeps the slot.
-                //
-                // Dropping to two columns was tried and reverted. The empty
-                // `--:--` that prompted it lasts under a minute — the average
-                // appears at [_paceFloorMeters], 100 m — and it is already the
-                // quietest thing on the row. Removing a runner's only summary
-                // figure for the whole of every unplanned run, to save forty
-                // seconds of a dash that is deliberately faint, is a worse
-                // screen than the one it fixes.
-                Expanded(
-                  child: session == null
-                      ? _PaceStat(
-                          label: 'AVG ${unit.paceSuffix}',
-                          value: averagePace,
-                          absent: averagePace == dashes || averageStale,
-                        )
-                      : Builder(
-                          builder: (context) {
-                            // Label and figure from one call, so they cannot
-                            // disagree about which side of the prescription the
-                            // runner is on — a `TO GO` heading over a count
-                            // going back up is the exact failure this column
-                            // already had once.
-                            final left = _remaining(session!, distanceM, unit);
-                            return StatBlock(
-                              label: left.label,
-                              value: left.value,
-                              size: StatSize.hero,
-                              align: CrossAxisAlignment.center,
-                              valueWeight: FontWeight.w400,
-                              shrinkToFit: true,
-                            );
-                          },
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Three values, and the widget.unit lives in the label so they fit.
+                  //
+                  // `w400` rather than the scale's `w600`: these support the hero,
+                  // and a bold supporting row is what made a 96pt figure read as the
+                  // quieter thing. `shrinkToFit` because widget.elapsed time is the one
+                  // value here with no upper bound — crossing an hour adds two
+                  // characters, and a `Text` in a tight `Expanded` clips silently.
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: StatBlock(
+                          label: 'TIME',
+                          value: widget.elapsed.hoursMinutesSeconds,
+                          size: StatSize.hero,
+                          align: CrossAxisAlignment.center,
+                          valueWeight: FontWeight.w400,
+                          shrinkToFit: true,
                         ),
-                ),
-              ],
-            ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _PaceStat(
+                          label: 'PACE ${widget.unit.paceSuffix}',
+                          value: widget.currentPace,
+                          absent: widget.currentPace == widget.dashes,
+                        ),
+                      ),
+                      // On a planned widget.session the third column is what is *left*,
+                      // not what has averaged.
+                      //
+                      // Average pace is the only figure on this row a runner cannot
+                      // act on: it reports how the run has gone, which is the
+                      // summary screen's job and told better there, and for the
+                      // opening minutes it reserves a third of the row for `--:--`.
+                      // What is left answers the question the pace widget.band provokes —
+                      // hold this, and for how much longer — and it has a value from
+                      // the first metre. Without a plan there is no distance to
+                      // count down to, so the average keeps the slot.
+                      const SizedBox(width: AppSpacing.sm),
+                      // Without a plan there is nothing to count down to, so the
+                      // average keeps the slot.
+                      //
+                      // Dropping to two columns was tried and reverted. The empty
+                      // `--:--` that prompted it lasts under a minute — the average
+                      // appears at [_paceFloorMeters], 100 m — and it is already the
+                      // quietest thing on the row. Removing a runner's only summary
+                      // figure for the whole of every unplanned run, to save forty
+                      // seconds of a dash that is deliberately faint, is a worse
+                      // screen than the one it fixes.
+                      Expanded(
+                        child: widget.session == null
+                            ? _PaceStat(
+                                label: 'AVG ${widget.unit.paceSuffix}',
+                                value: widget.averagePace,
+                                absent:
+                                    widget.averagePace == widget.dashes ||
+                                    widget.averageStale,
+                              )
+                            : Builder(
+                                builder: (context) {
+                                  // Label and figure from one call, so they cannot
+                                  // disagree about which side of the prescription the
+                                  // runner is on — a `TO GO` heading over a count
+                                  // going back up is the exact failure this column
+                                  // already had once.
+                                  final left = _remaining(
+                                    widget.session!,
+                                    widget.distanceM,
+                                    widget.unit,
+                                  );
+                                  return StatBlock(
+                                    label: left.label,
+                                    value: left.value,
+                                    size: StatSize.hero,
+                                    align: CrossAxisAlignment.center,
+                                    valueWeight: FontWeight.w400,
+                                    shrinkToFit: true,
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
 
-            // The coach's verdict: the band the plan asked for, and where the
-            // runner is inside it. Deterministic — derived from the profile's
-            // time trial in Dart, never from a model, and absent entirely when
-            // there is no plan or no time trial to derive it from.
-            // Suppressed while recording has failed, and the two flags have
-            // to agree: `collapsedFractionFor` is told the same thing, or the
-            // detent reserves height for a block that is not drawn.
-            //
-            // The screen has just said in plain English that nothing is being
-            // tracked. Rendering FINDING YOUR PACE under that claims to be
-            // looking for a pace on a run that never started — the same lie as
-            // a confident figure over fixes that stopped arriving, except this
-            // one contradicts a sentence two lines above it.
-            if (band != null && problem == null) ...<Widget>[
-              const SizedBox(height: AppSpacing.lg),
-              // The band's edges are written under the ends of the rail rather
-              // than as a range beside the verdict. As a range they said what
-              // the target was; on the rail they say which way is which, which
-              // is the only thing that makes the marker's position mean
-              // anything. It also stops an instruction and a reference figure
-              // sharing one line at equal weight.
-              PaceBandMeter(
-                standing: standing,
-                position: railPosition,
-                slowLabel: bandSlowLabel,
-                fastLabel: bandFastLabel,
-                // Uppercased to sit with the other labels on this panel; the
-                // meter appends it to each pace and adds the direction words
-                // itself, so the caller hands over bare figures.
-                unitSuffix: unit.paceSuffix.toUpperCase(),
-                // Lit from the rail's start on a capped session, so the lit
-                // region means "acceptable" in both cases rather than meaning
-                // "the band" in one and something narrower in the other.
-                bandStart: effortCapped ? 0 : PaceBandMeter.defaultBandStart,
-              ),
-              const SizedBox(height: 6),
-              SectionLabel(
-                verdict ?? 'FINDING YOUR PACE',
-                emphasis: LabelEmphasis.stat,
-              ),
-            ],
+                  // The coach's verdict: the widget.band the plan asked for, and where the
+                  // runner is inside it. Deterministic — derived from the profile's
+                  // time trial in Dart, never from a model, and absent entirely when
+                  // there is no plan or no time trial to derive it from.
+                  // Suppressed while widget.recording has failed, and the two flags have
+                  // to agree: `collapsedFractionFor` is told the same thing, or the
+                  // detent reserves height for a block that is not drawn.
+                  //
+                  // The screen has just said in plain English that nothing is being
+                  // tracked. Rendering FINDING YOUR PACE under that claims to be
+                  // looking for a pace on a run that never started — the same lie as
+                  // a confident figure over fixes that stopped arriving, except this
+                  // one contradicts a sentence two lines above it.
+                  if (widget.band != null &&
+                      widget.problem == null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.lg),
+                    // The widget.band's edges are written under the ends of the rail rather
+                    // than as a range beside the widget.verdict. As a range they said what
+                    // the target was; on the rail they say which way is which, which
+                    // is the only thing that makes the marker's position mean
+                    // anything. It also stops an instruction and a reference figure
+                    // sharing one line at equal weight.
+                    PaceBandMeter(
+                      standing: widget.standing,
+                      position: widget.railPosition,
+                      slowLabel: widget.bandSlowLabel,
+                      fastLabel: widget.bandFastLabel,
+                      // Uppercased to sit with the other labels on this panel; the
+                      // meter appends it to each pace and adds the direction words
+                      // itself, so the caller hands over bare figures.
+                      unitSuffix: widget.unit.paceSuffix.toUpperCase(),
+                      // Lit from the rail's start on a capped widget.session, so the lit
+                      // region means "acceptable" in both cases rather than meaning
+                      // "the widget.band" in one and something narrower in the other.
+                      bandStart: widget.effortCapped
+                          ? 0
+                          : PaceBandMeter.defaultBandStart,
+                    ),
+                    const SizedBox(height: 6),
+                    SectionLabel(
+                      widget.verdict ?? 'FINDING YOUR PACE',
+                      emphasis: LabelEmphasis.stat,
+                    ),
+                  ],
 
-            // What the session is for, while the band is still holding its
-            // tongue. The two are deliberately the same threshold: the screen
-            // either tells you what to do, or tells you what you are here to
-            // do, and never neither.
-            if (showBrief && session != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.lg),
-              _EffortBrief(effort: effortFor(session!.kind), maxLines: 2),
-            ],
+                  // What the widget.session is for, while the widget.band is still holding its
+                  // tongue. The two are deliberately the same threshold: the screen
+                  // either tells you what to do, or tells you what you are here to
+                  // do, and never neither.
+                  if (widget.showBrief && widget.session != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.lg),
+                    _EffortBrief(
+                      effort: effortFor(widget.session!.kind),
+                      maxLines: 2,
+                    ),
+                  ],
 
-            const SizedBox(height: AppSpacing.xl),
-            // **Finishing is two acts, and only the first is on this row while
-            // the runner is running.**
-            //
-            // Lap, Pause and Finish used to sit side by side with Finish as the
-            // filled one — the loudest control on the screen, the one a thumb
-            // finds without looking, and the only one of the three that cannot
-            // be undone. An hour of effort was one mistap from over, and the
-            // mistap was the *easy* target. Nothing about that is fixable by
-            // adding a confirmation dialog to it: the answer is that a run
-            // cannot end from the running state at all.
-            //
-            // So: Pause and Lap while moving, Resume and Finish once stopped.
-            // Two buttons either way, so the row keeps one height and the
-            // collapsed detent's sum stays true — and the filled one is always
-            // the reversible one, because that is the button being aimed at.
-            Row(
-              children: <Widget>[
-                if (recording) ...<Widget>[
-                  // Lap is on the row rather than below the fold: it is the one
-                  // control that is useless unless it is under the thumb at the
-                  // moment the runner crests the hill. It goes when paused,
-                  // where there is no lap being run to cut.
-                  Expanded(
-                    child: _ControlButton(
-                      label: 'Lap',
-                      icon: Icons.flag_outlined,
-                      onPressed: onLap,
-                    ),
+                  const SizedBox(height: AppSpacing.xl),
+                  // **Finishing is two acts, and only the first is on this row while
+                  // the runner is running.**
+                  //
+                  // Lap, Pause and Finish used to sit side by side with Finish as the
+                  // filled one — the loudest control on the screen, the one a thumb
+                  // finds without looking, and the only one of the three that cannot
+                  // be undone. An hour of effort was one mistap from over, and the
+                  // mistap was the *easy* target. Nothing about that is fixable by
+                  // adding a confirmation dialog to it: the answer is that a run
+                  // cannot end from the running state at all.
+                  //
+                  // So: Pause and Lap while moving, Resume and Finish once stopped.
+                  // Two buttons either way, so the row keeps one height and the
+                  // collapsed detent's sum stays true — and the filled one is always
+                  // the reversible one, because that is the button being aimed at.
+                  Row(
+                    children: <Widget>[
+                      if (widget.recording) ...<Widget>[
+                        // Lap is on the row rather than below the fold: it is the one
+                        // control that is useless unless it is under the thumb at the
+                        // moment the runner crests the hill. It goes when paused,
+                        // where there is no lap being run to cut.
+                        Expanded(
+                          child: _ControlButton(
+                            label: 'Lap',
+                            icon: Icons.flag_outlined,
+                            onPressed: widget.onLap,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: _ControlButton(
+                            label: 'Pause',
+                            icon: Icons.pause,
+                            filled: true,
+                            onPressed: widget.onTogglePause,
+                          ),
+                        ),
+                      ] else ...<Widget>[
+                        // Resume is filled and Finish is not, which inverts the old
+                        // row on purpose: a runner who paused at a crossing is far
+                        // more likely to be carrying on than stopping, and the button
+                        // that ends the run should be the one they have to look for.
+                        Expanded(
+                          child: _ControlButton(
+                            label: 'Resume',
+                            icon: Icons.play_arrow,
+                            filled: true,
+                            onPressed: widget.onTogglePause,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: _ControlButton(
+                            label: 'Finish',
+                            icon: Icons.sports_score,
+                            onPressed: widget.onFinish,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: _ControlButton(
-                      label: 'Pause',
-                      icon: Icons.pause,
-                      filled: true,
-                      onPressed: onTogglePause,
+
+                  // --- below the fold ---------------------------------------------
+                  //
+                  // Enough to keep "TODAY" off the collapsed edge, and no more.
+                  //
+                  // It was 96, back when the collapsed height was a guessed fraction
+                  // and the gap had to absorb the error. Now that the detent is
+                  // derived from this content the edge lands just past the controls,
+                  // so the gap only has to be a section break — and a 96pt one read
+                  // as a hole once the sheet was open, which is the state it is
+                  // actually looked at in.
+                  const SizedBox(height: AppSpacing.xxl + AppSpacing.sm),
+
+                  if (widget.session != null) ...<Widget>[
+                    TargetBand(
+                      title: _sessionTitle(widget.session!),
+                      unit: widget.unit,
+                      doneMeters: widget.distanceM,
+                      targetMeters: widget.session!.distanceMeters,
                     ),
-                  ),
-                ] else ...<Widget>[
-                  // Resume is filled and Finish is not, which inverts the old
-                  // row on purpose: a runner who paused at a crossing is far
-                  // more likely to be carrying on than stopping, and the button
-                  // that ends the run should be the one they have to look for.
-                  Expanded(
-                    child: _ControlButton(
-                      label: 'Resume',
-                      icon: Icons.play_arrow,
-                      filled: true,
-                      onPressed: onTogglePause,
+                    // What the widget.session is *for*, and how it should feel from the
+                    // inside. This is the half of the coach that survives having no
+                    // network: `effortFor` is a pure function over the widget.session kind,
+                    // so it is here on a run in a tunnel, and it answers the question
+                    // the widget.band above provokes — the meter says ease off, and this
+                    // says what easy is supposed to feel like.
+                    //
+                    // Uncapped down here, and absent entirely while it is above the
+                    // fold: the same paragraph twice on one sheet reads as a bug.
+                    if (!widget.showBrief) ...<Widget>[
+                      const SizedBox(height: AppSpacing.lg),
+                      _EffortBrief(effort: effortFor(widget.session!.kind)),
+                    ],
+                  ],
+
+                  if (widget.climbMeters != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xxl),
+                    // One label, not two: a CLIMB heading over an ASCENT stat spends
+                    // a line of type saying the same word twice.
+                    StatBlock(
+                      label: 'CLIMB',
+                      // Feet for a runner working in miles. Metres everywhere used to
+                      // be the only option, because there was no Elevation type and a
+                      // local conversion here would have been the second number for
+                      // one thing that mgk_units exists to prevent.
+                      value: Elevation.metres(
+                        widget.climbMeters!,
+                      ).label(widget.unit),
+                      size: StatSize.standard,
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: _ControlButton(
-                      label: 'Finish',
-                      icon: Icons.sports_score,
-                      onPressed: onFinish,
+                  ],
+
+                  // No weekly load here any more.
+                  //
+                  // A THIS WEEK widget.band carried "including this run" against the week's
+                  // target, on the argument that a plan is about a block rather than
+                  // a run. True, and it is a dashboard's argument: nobody eight
+                  // kilometres into a Sunday long run needs to be told what Thursday
+                  // looks like, and it was drawn on the one screen where every pixel
+                  // is either the run in front of them or noise. Home is where the
+                  // week is answered.
+                  if (widget.laps.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xxl),
+                    const SectionLabel('LAPS'),
+                    const SizedBox(height: AppSpacing.md),
+                    SplitList(
+                      splits: widget.laps,
+                      unit: widget.unit,
+                      newestFirst: true,
                     ),
-                  ),
+                  ],
+
+                  if (widget.splits.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xxl),
+                    const SectionLabel('SPLITS'),
+                    const SizedBox(height: AppSpacing.md),
+                    SplitList(splits: widget.splits, unit: widget.unit),
+                  ],
                 ],
-              ],
-            ),
-
-            // --- below the fold ---------------------------------------------
-            //
-            // Enough to keep "TODAY" off the collapsed edge, and no more.
-            //
-            // It was 96, back when the collapsed height was a guessed fraction
-            // and the gap had to absorb the error. Now that the detent is
-            // derived from this content the edge lands just past the controls,
-            // so the gap only has to be a section break — and a 96pt one read
-            // as a hole once the sheet was open, which is the state it is
-            // actually looked at in.
-            const SizedBox(height: AppSpacing.xxl + AppSpacing.sm),
-
-            if (session != null) ...<Widget>[
-              TargetBand(
-                title: _sessionTitle(session!),
-                unit: unit,
-                doneMeters: distanceM,
-                targetMeters: session!.distanceMeters,
-              ),
-              // What the session is *for*, and how it should feel from the
-              // inside. This is the half of the coach that survives having no
-              // network: `effortFor` is a pure function over the session kind,
-              // so it is here on a run in a tunnel, and it answers the question
-              // the band above provokes — the meter says ease off, and this
-              // says what easy is supposed to feel like.
-              //
-              // Uncapped down here, and absent entirely while it is above the
-              // fold: the same paragraph twice on one sheet reads as a bug.
-              if (!showBrief) ...<Widget>[
-                const SizedBox(height: AppSpacing.lg),
-                _EffortBrief(effort: effortFor(session!.kind)),
-              ],
-            ],
-
-            if (climbMeters != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.xxl),
-              // One label, not two: a CLIMB heading over an ASCENT stat spends
-              // a line of type saying the same word twice.
-              StatBlock(
-                label: 'CLIMB',
-                // Feet for a runner working in miles. Metres everywhere used to
-                // be the only option, because there was no Elevation type and a
-                // local conversion here would have been the second number for
-                // one thing that mgk_units exists to prevent.
-                value: Elevation.metres(climbMeters!).label(unit),
-                size: StatSize.standard,
-              ),
-            ],
-
-            // No weekly load here any more.
-            //
-            // A THIS WEEK band carried "including this run" against the week's
-            // target, on the argument that a plan is about a block rather than
-            // a run. True, and it is a dashboard's argument: nobody eight
-            // kilometres into a Sunday long run needs to be told what Thursday
-            // looks like, and it was drawn on the one screen where every pixel
-            // is either the run in front of them or noise. Home is where the
-            // week is answered.
-            if (laps.isNotEmpty) ...<Widget>[
-              const SizedBox(height: AppSpacing.xxl),
-              const SectionLabel('LAPS'),
-              const SizedBox(height: AppSpacing.md),
-              SplitList(splits: laps, unit: unit, newestFirst: true),
-            ],
-
-            if (splits.isNotEmpty) ...<Widget>[
-              const SizedBox(height: AppSpacing.xxl),
-              const SectionLabel('SPLITS'),
-              const SizedBox(height: AppSpacing.md),
-              SplitList(splits: splits, unit: unit),
-            ],
-          ],
         ),
       ),
     );
@@ -1401,6 +1578,52 @@ class _ControlButton extends StatelessWidget {
 ///
 /// The map is somebody else's imagery and its brightness is not ours to
 /// predict, so every control floating on it carries its own ground.
+/// The peek detent's whole readout: how far, and how long.
+///
+/// **DISTANCE then TIME, left to right** — the order the collapsed panel reads
+/// them top to bottom. Reversing them here would invert a hierarchy the rest of
+/// the screen asserts, on the one surface where there is no room to explain it.
+///
+/// Built from the same `distanceM` and `elapsed` the full panel uses, so the
+/// two orderings cannot disagree about the run they are describing.
+class _PeekRow extends StatelessWidget {
+  const _PeekRow({
+    required this.distanceM,
+    required this.elapsed,
+    required this.unit,
+  });
+
+  final double distanceM;
+  final Duration elapsed;
+  final UnitSystem unit;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      Expanded(
+        child: StatBlock(
+          // The suffix rides in the value here rather than in the label, unlike
+          // the collapsed panel's column headers: with two figures and no
+          // headroom, a unit hidden in a 12pt label is a unit nobody reads.
+          label: 'DISTANCE',
+          value: Distance.meters(distanceM).format(unit),
+          align: CrossAxisAlignment.start,
+          shrinkToFit: true,
+        ),
+      ),
+      const SizedBox(width: AppSpacing.lg),
+      Expanded(
+        child: StatBlock(
+          label: 'TIME',
+          value: elapsed.hoursMinutesSeconds,
+          align: CrossAxisAlignment.end,
+          shrinkToFit: true,
+        ),
+      ),
+    ],
+  );
+}
+
 class _Scrim extends StatelessWidget {
   const _Scrim({
     required this.child,
