@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_start_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -20,6 +22,7 @@ void main() {
     VoidCallback? onCancel,
     PlannedSession? session,
     Duration countIn = const Duration(seconds: 3),
+    LatLng? focus,
   }) => MaterialApp(
     theme: AppTheme.dark,
     home: RunStartScreen(
@@ -27,8 +30,42 @@ void main() {
       onCancel: onCancel,
       plannedSession: session,
       countIn: countIn,
+      focus: focus,
     ),
   );
+
+  // ---- the map -------------------------------------------------------------
+  //
+  // **C13: there was no map on this screen at all.** `focus` was declared and
+  // passed by nobody, so `RouteMap` took the null, reached its "nothing to show
+  // and nowhere to look" branch, and drew the word *Finding you* on a plain
+  // ground for as long as anybody cared to look at it. A runner's first sight
+  // of a map was the in-run one, after Start.
+  //
+  // The screen fills it from `Geolocator.getLastKnownPosition` now, which no
+  // widget test can supply — so what is asserted here is the seam either side
+  // of it: given somewhere to look it draws a map, and given nowhere it still
+  // says so honestly rather than drawing somewhere the runner has never been.
+
+  testWidgets('somewhere to look means a map, not a word', (tester) async {
+    await tester.pumpWidget(
+      host(onStart: () {}, focus: const LatLng(51.545, -0.15)),
+    );
+    await tester.pump();
+
+    expect(find.text('Finding you'), findsNothing);
+    expect(find.byType(RouteMap), findsOneWidget);
+  });
+
+  testWidgets('and nowhere to look still says so', (tester) async {
+    // Not a regression: a phone with no cached fix and no permission has
+    // nothing truthful to draw, and inventing a location is worse than saying
+    // nothing. This is the state the screen was stuck in, not a bad state.
+    await tester.pumpWidget(host(onStart: () {}));
+    await tester.pump();
+
+    expect(find.text('Finding you'), findsOneWidget);
+  });
 
   testWidgets('nothing starts until the count-in has finished', (tester) async {
     var started = 0;

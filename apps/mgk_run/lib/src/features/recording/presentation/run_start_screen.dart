@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart' show Geolocator;
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -60,8 +61,19 @@ class RunStartScreen extends StatefulWidget {
 
   final UnitSystem unit;
 
-  /// Where to look while there is no route yet. Null shows the acquiring state,
-  /// which is the truthful answer before a first fix.
+  /// Where to look while there is no route yet.
+  ///
+  /// **An injection seam, not the only source.** This was declared and passed
+  /// by nobody — `HomeShell` builds this screen without it — so `RouteMap` took
+  /// the null, hit its "nothing to show and nowhere to look" branch, and drew
+  /// the word *Finding you* on a plain ground forever. The map on this screen
+  /// never appeared at all, and the first one a runner saw was the in-run map
+  /// after pressing Start. Reported as C13 on the build 13 sheet, and the fifth
+  /// defect in this release of the same shape: an argument nobody passed.
+  ///
+  /// Left null by the app and filled by [_RunStartScreenState._loadFocus],
+  /// which is where [RecordingScreen] gets the same answer. Supplied by tests
+  /// and the preview harness, neither of which has a location plugin.
   final LatLng? focus;
 
   /// Overridable so a widget test does not have to wait three real seconds.
@@ -75,6 +87,30 @@ class _RunStartScreenState extends State<RunStartScreen> {
   /// Seconds left, or null while the runner has not started the count-in.
   int? _remaining;
   Timer? _ticker;
+
+  /// The last fix the phone already had, so the map can draw before this screen
+  /// has one of its own. Null until it answers, and on a phone that has none.
+  LatLng? _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadFocus());
+  }
+
+  /// Lifted from [RecordingScreen], which does exactly this for the same
+  /// reason: a cached fix costs nothing, arrives immediately, and is the
+  /// difference between a map and a word.
+  Future<void> _loadFocus() async {
+    try {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last == null || !mounted) return;
+      setState(() => _focus = LatLng(last.latitude, last.longitude));
+    } catch (_) {
+      // No cached fix, or no permission to read one. The acquiring state is
+      // then the truthful answer rather than a failure.
+    }
+  }
 
   @override
   void dispose() {
@@ -118,7 +154,8 @@ class _RunStartScreenState extends State<RunStartScreen> {
     final ThemeData theme = Theme.of(context);
     final int? remaining = _remaining;
     final PlannedSession? session = widget.plannedSession;
-    final LatLng? focus = widget.focus;
+    // The injected one wins, so a test or the harness can pin where to look.
+    final LatLng? focus = widget.focus ?? _focus;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
