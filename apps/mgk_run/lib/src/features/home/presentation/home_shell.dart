@@ -472,6 +472,32 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // conversation, and one who comes back after the school run does not.
     if (state != AppLifecycleState.resumed) return;
     unawaited(_chat?.endStaleConversation() ?? Future<bool>.value(false));
+
+    // **The tier is re-read on resume, and this is D14.**
+    //
+    // It used to be a launch-time snapshot: resolved once in `initState`, and
+    // otherwise only after an auth event or a purchase. So a subscription that
+    // lapsed, was refunded or was revoked kept working until the app was killed
+    // — and on the build 13 sheet that showed up as the coach opening for a
+    // free account, because the entitlement row had been deleted while the
+    // shell stayed mounted. A tier the server has withdrawn is not something to
+    // keep drawing with.
+    //
+    // Through [_resolveAccess] rather than [_refreshAccess], so a caller that
+    // pinned a tier deliberately still wins.
+    //
+    // **Not throttled on a clock, deliberately.** Android hands `resumed` back
+    // for something as small as a notification-shade pull, so a time window was
+    // the obvious guard — and the only thing it buys is a saved round trip on
+    // one indexed row, against the risk of drawing a tier the server has
+    // already withdrawn. Staleness is the defect being fixed here; erring
+    // toward freshness is the whole point. Single-flight instead, so a burst of
+    // resumes coalesces into one read rather than stacking.
+    //
+    // **The log is deliberately not refreshed here.** `_refreshHome` offers
+    // backup, so doing that on resume would put the consent dialog on screen
+    // every time the app came back.
+    unawaited(_resolveAccess());
   }
 
   @override
@@ -968,6 +994,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // A pinned tier wins: tests and the plate board set one deliberately, and
     // a network read would race them.
     if (source == null || widget.access != null) return;
+    return _resolvingAccess ??= _doResolveAccess(
+      source,
+    ).whenComplete(() => _resolvingAccess = null);
+  }
+
+  /// The tier read in flight, or null. Every resume asks, so this is what keeps
+  /// a burst of them to one round trip; see [didChangeAppLifecycleState].
+  Future<void>? _resolvingAccess;
+
+  Future<void> _doResolveAccess(EntitlementRepository source) async {
     final resolved = await source.access();
     if (mounted && resolved != _access) setState(() => _access = resolved);
   }
@@ -985,6 +1021,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final id = widget.auth.currentUser?.id;
     if (client == null || id == null) return;
     await client.identify(id);
+  }
+
+  /// An account, then the price, then the paid surface — in that order.
+  ///
+  /// **The order is the whole of this method, and getting it backwards was
+  /// tried first.** Naming the price before asking for the account reads better
+  /// as a principle — nobody should sign up to discover there is a charge — and
+  /// it produces a dead end here: `PurchaseScreen` refuses a signed-out buyer
+  /// with *"Sign in first, then try again"* (the G3a fix, because the webhook
+  /// keys the row on a Supabase id and will not write one to an
+  /// `RCAnonymousID:`), and that message offers no way to sign in. A runner
+  /// would meet the price, tap buy, and be told to go and do something the
+  /// screen gives them no means of doing.
+  ///
+  /// So the account comes first, which is also what ADR-0019 says: it is asked
+  /// at the two moments it buys something, and a plan is one of them. The price
+  /// follows immediately, which is what ADR-0030 says: a refusal must arrive as
+  /// a door rather than as a 402 rendered as *"The coach hit a problem"*.
+  ///
+  /// The tier is re-read in between, because a runner who has just signed **in**
+  /// may already own a subscription and the shell's copy predates the session.
+  Future<bool> _ensureCoachAccess() async {
+    if (!await _ensureAccount()) return false;
+    await _refreshAccess();
+    if (_access.isSubscribed) return true;
+    if (mounted) _showCoachGate();
+    return false;
   }
 
   /// The door a free runner meets, from either end.
@@ -1916,7 +1979,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onPlanChanged: _refreshHome,
                 onAskCoach: _askCoach,
                 runnerName: _runnerName,
-                ensureAccount: _ensureAccount,
+                ensureAccount: _ensureCoachAccess,
+                subscribed: _access.isSubscribed,
               ),
               // The runner and their record, on one page: totals, bests, the goal,
               // then every run. Reads the shell's own log rather than calling the
@@ -2021,6 +2085,7 @@ class _PlanTab extends StatefulWidget {
     required this.plans,
     required this.unit,
     required this.onPlanChanged,
+    required this.subscribed,
     this.coach,
     this.chat,
     this.runs,
@@ -2032,10 +2097,24 @@ class _PlanTab extends StatefulWidget {
     this.ensureAccount,
   });
 
-  /// Raises sign-up when a plan is asked for without an account, and reports
-  /// whether there is a session afterwards. Null means do not gate, which is
+  /// Raises sign-up and then the price when a plan is asked for, and reports
+  /// whether the runner may actually have one. Null means do not gate, which is
   /// what a widget test wiring this tab directly wants.
+  ///
+  /// One callback rather than an account check and a tier flag, because the
+  /// *order* of those two is a decision — see `_ensureCoachAccess` — and a tab
+  /// holding both halves would be free to get it wrong again.
   final Future<bool> Function()? ensureAccount;
+
+  /// Whether the coach has been paid for.
+  ///
+  /// **Required, not defaulted.** Adjusting a week is a model call, and it was
+  /// gated on having an *account* rather than an entitlement, leaving the Edge
+  /// Function's 402 to refuse it — and that 402 renders as "The coach hit a
+  /// problem", the exact sentence `CoachGateSheet` exists to delete (ADR-0030).
+  /// A default here would let the next caller reopen the hole by saying
+  /// nothing, which is how four defects in this release already happened.
+  final bool subscribed;
 
   final PlanRepository plans;
   final UnitSystem unit;
@@ -2190,6 +2269,9 @@ class _PlanTabState extends State<_PlanTab> {
   Future<void> _startCoaching() async {
     final coach = widget.coach;
     if (coach == null) return;
+    // An account and then the price, both behind one call. This used to be the
+    // account alone, and relied on the Edge Function refusing afterwards —
+    // which reached the runner as a failure rather than as a price (ADR-0030).
     if (!await (widget.ensureAccount?.call() ?? Future<bool>.value(true))) {
       return;
     }
@@ -2289,7 +2371,11 @@ class _PlanTabState extends State<_PlanTab> {
           // does refit. Written down rather than left to be discovered,
           // because an argument nobody passed is the shape of three separate
           // defects this release has already had.
-          adaptation: planClient == null
+          // Null for a free runner as well as for a shell with no client, so
+          // `WeekDetailScreen` hides the control through the path it already
+          // has rather than through a second gate. A model call is what this
+          // reaches, and the coach is the paid half.
+          adaptation: planClient == null || !widget.subscribed
               ? null
               : AdaptationService(client: planClient),
           onRevised: (revised) => widget.plans.saveRevisedWeek(plan, revised),

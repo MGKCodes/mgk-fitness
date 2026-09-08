@@ -198,4 +198,51 @@ void main() {
       reason: 'nothing may reach the coach before it has been paid for',
     );
   });
+  testWidgets('a free runner asking for a plan meets the door, not a 402', (
+    tester,
+  ) async {
+    // **The second half of D14, and it was never behind `_askCoach` at all.**
+    //
+    // Building a plan pushes `CoachFlow`, which calls the model — `skeleton`
+    // and `week` are the coach as much as `chat` is (ADR-0030). It was gated on
+    // having an *account* and left the Edge Function to refuse afterwards, and
+    // that 402 renders as "The coach hit a problem": a sentence that describes
+    // a fault where the truth is a price.
+    //
+    // Signed in here, because that is the case the gate is for. A signed-*out*
+    // runner meets sign-up first and always did — asserted in
+    // `account_when_it_buys_something_test.dart`, and the order is deliberate:
+    // naming the price first sounds fairer and dead-ends, because
+    // `PurchaseScreen` refuses a signed-out buyer with "Sign in first" and
+    // offers no way to do it.
+    await tester.binding.setSurfaceSize(const Size(420, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final chat = _RecordingChat();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: HomeShell(
+          access: CoachAccess.free,
+          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          historySource: () async => runs(),
+          coach: FakeCoachService(),
+          chatClient: chat,
+          initialTab: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Build a plan'), findsOneWidget);
+    await tester.tap(find.text('Build a plan'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CoachGateSheet), findsOneWidget);
+    expect(
+      find.text('Build a plan'),
+      findsOneWidget,
+      reason: 'the Plan tab is still behind the door, not replaced by a flow',
+    );
+  });
 }
