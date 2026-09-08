@@ -1,5 +1,29 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// What the app reacts to: **the identity changed**, not "gotrue emitted".
+///
+/// The stream this names used to be `Stream<void>` — type-erased, on the
+/// reasoning that a listener only needs to know *that* something moved and can
+/// re-read [AuthRepository.isSignedIn] itself. That is true of routing, which
+/// is all it had when it was written, and false of everything added since.
+///
+/// `onAuthStateChange` also emits `tokenRefreshed`, **periodically and on every
+/// resume**. Once a listener hung a restore off it, build 13 showed the cost:
+/// the "restored your runs" message arrived again every time the token turned
+/// over, which reads as the app repeatedly discovering the same history. A
+/// listener cannot filter what the stream declined to tell it, so the type is
+/// the fix rather than a condition at the far end.
+enum AuthChange {
+  /// A session now exists that did not before, or belongs to somebody else.
+  signedIn,
+
+  /// The session is gone.
+  signedOut,
+
+  /// Same person, changed details — a rename. Not a reason to restore.
+  userUpdated,
+}
+
 /// The single seam the UI uses for authentication, so screens never touch the
 /// Supabase client directly.
 ///
@@ -41,10 +65,46 @@ class AuthRepository {
   /// display identity without importing Supabase's [User] type.
   String? get currentEmail => _client.auth.currentUser?.email;
 
-  /// Fires whenever auth state changes. Type-erased to `void` so the widget
-  /// layer reacts to *that it changed* via [isSignedIn], not to Supabase's
-  /// [AuthState] payload.
-  Stream<void> authChanges() => _client.auth.onAuthStateChange.map((_) {});
+  /// Who is signed in, as an opaque id, or null when nobody is.
+  ///
+  /// Exposed for the same reason [currentEmail] is — a caller comparing "is
+  /// this the same person as last time" should not have to import Supabase's
+  /// [User] to do it. `HomeShell` uses exactly that comparison to tell a
+  /// genuine sign-in from gotrue re-announcing the one already in hand.
+  String? get currentUserId => currentUser?.id;
+
+  /// Fires when the signed-in identity changes. See [AuthChange] for why this
+  /// carries a value rather than being erased to `void`.
+  ///
+  /// **Deliberately not de-duplicated here.** Two consecutive `signedIn` events
+  /// for the same person are dropped by the listener that acts on them, not by
+  /// this method: knowing whether an identity is *the same as last time* needs
+  /// per-subscriber state, and this class is `const` (six call sites construct
+  /// it as a default argument). A `distinct()` here would also be wrong for two
+  /// subscribers, which is exactly what the app has — [AuthGate] routes on it
+  /// and `HomeShell` restores on it, and they must not share a filter.
+  Stream<AuthChange> authChanges() => _client.auth.onAuthStateChange
+      .map(_classify)
+      .where((AuthChange? change) => change != null)
+      .cast<AuthChange>();
+
+  /// Null for events the app has no reaction to, which are then filtered out.
+  ///
+  /// `tokenRefreshed` is the important omission and the reason this exists:
+  /// it fires on a timer and on resume, and it says nothing about identity.
+  /// `passwordRecovery` and `mfaChallengeVerified` are likewise not identity.
+  ///
+  /// `initialSession` is classified by whether there *is* one, because that is
+  /// the event [AuthGate] needs on a cold launch with a restored session — it
+  /// is the only one that will arrive.
+  static AuthChange? _classify(AuthState state) => switch (state.event) {
+    AuthChangeEvent.signedIn => AuthChange.signedIn,
+    AuthChangeEvent.signedOut => AuthChange.signedOut,
+    AuthChangeEvent.userUpdated => AuthChange.userUpdated,
+    AuthChangeEvent.initialSession =>
+      state.session == null ? AuthChange.signedOut : AuthChange.signedIn,
+    _ => null,
+  };
 
   Future<void> signIn({required String email, required String password}) async {
     await _client.auth

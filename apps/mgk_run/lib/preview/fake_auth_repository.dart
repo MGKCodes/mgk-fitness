@@ -25,7 +25,16 @@ class FakeAuthRepository extends AuthRepository {
   bool _signedIn;
   String? _email;
   String? _name;
-  final StreamController<void> _changes = StreamController<void>.broadcast();
+  final StreamController<AuthChange> _changes =
+      StreamController<AuthChange>.broadcast();
+
+  /// Who is signed in. Settable, so a test can drive two *different* people
+  /// signing in one after the other — the case the shell's de-duplication must
+  /// not swallow. The real repository answers this from the gotrue session;
+  /// [currentUser] here is null, so without this seam every fake identity would
+  /// compare equal and the de-duplication would look correct while being
+  /// untested.
+  String? userId = 'fake-user';
 
   String? lastEmail;
   String? lastPassword;
@@ -57,7 +66,17 @@ class FakeAuthRepository extends AuthRepository {
   User? get currentUser => null;
 
   @override
-  Stream<void> authChanges() => _changes.stream;
+  String? get currentUserId => _signedIn ? userId : null;
+
+  @override
+  Stream<AuthChange> authChanges() => _changes.stream;
+
+  /// Replays an event the real stream emits and the app must ignore.
+  ///
+  /// There is no other way to reproduce the repeating restore offline: the real
+  /// cause is gotrue announcing a session the app already has, and nothing in
+  /// this fake does that on its own.
+  void emit(AuthChange change) => _changes.add(change);
 
   @override
   Future<void> signIn({required String email, required String password}) async {
@@ -67,7 +86,7 @@ class FakeAuthRepository extends AuthRepository {
     if (error != null) throw error;
     _email = email;
     _signedIn = true;
-    _changes.add(null);
+    _changes.add(AuthChange.signedIn);
     // Through the real wrapper rather than [ensureProfile] directly. The point
     // of that seam is that the profile write cannot fail an authentication, and
     // a fake that reached past it would leave exactly that untested.
@@ -91,7 +110,7 @@ class FakeAuthRepository extends AuthRepository {
     _email = email;
     _name = name;
     _signedIn = true;
-    _changes.add(null);
+    _changes.add(AuthChange.signedIn);
     await ensureProfileBestEffort();
     // True because the account exists, which is what this answer is about. The
     // real repository says the same thing for the same reason, whatever the
@@ -125,14 +144,14 @@ class FakeAuthRepository extends AuthRepository {
   Future<void> updateName(String? name) async {
     final trimmed = name?.trim();
     _name = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    _changes.add(null);
+    _changes.add(AuthChange.userUpdated);
   }
 
   @override
   Future<void> signOut() async {
     _signedIn = false;
     _email = null;
-    _changes.add(null);
+    _changes.add(AuthChange.signedOut);
   }
 
   @override

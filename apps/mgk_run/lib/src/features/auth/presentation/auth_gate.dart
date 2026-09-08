@@ -140,6 +140,15 @@ class _AuthGateState extends State<AuthGate> {
   /// marker is being read, which is one or two frames.
   bool? _introDone;
 
+  /// Subscribed once, **not** rebuilt in `build`.
+  ///
+  /// `StreamBuilder` compares streams by identity and resubscribes when it gets
+  /// a new one, and `auth.authChanges()` returns a fresh object every call — so
+  /// calling it inline meant every rebuild of this widget started a new
+  /// subscription, and gotrue replays `initialSession` to each new subscriber.
+  /// That is one of the three reasons the restore ran more than once per launch.
+  late final Stream<AuthChange> _authChanges = widget.auth.authChanges();
+
   /// What the runner told the coach to call them, when there is no account
   /// holding it. Null for anybody signed in, who has it on their profile.
   String? _localName;
@@ -211,8 +220,8 @@ class _AuthGateState extends State<AuthGate> {
     final accounts =
         widget.devAccounts ??
         (kDebugMode ? AppConfig.current.devAccounts : const <DevAccount>[]);
-    return StreamBuilder<void>(
-      stream: auth.authChanges(),
+    return StreamBuilder<AuthChange>(
+      stream: _authChanges,
       builder: (context, _) {
         if (!auth.isSignedIn) {
           // **An account is not the price of using this.**

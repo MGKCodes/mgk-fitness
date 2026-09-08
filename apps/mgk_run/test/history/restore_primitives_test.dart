@@ -60,6 +60,43 @@ void main() {
     expect(await db.allRuns(), hasLength(1));
   });
 
+  // ---- what it reports ------------------------------------------------------
+  //
+  // The count is the whole content of the sentence a runner is shown after a
+  // restore, and it was the *fetched* row count until 2026-09-08 — so a phone
+  // that already had everything still reported restoring all of it, on every
+  // launch, forever. Build 13 saw that as the message arriving again and again.
+  // Asserted at this level because it is a claim about the database, not about
+  // a screen.
+
+  test(
+    'a restore reports the rows it inserted, not the rows offered',
+    () async {
+      expect(
+        await db.restoreRuns(<RunsCompanion>[run('r1', 5000), run('r2', 8000)]),
+        2,
+      );
+    },
+  );
+
+  test('a second identical restore reports nothing', () async {
+    await db.restoreRuns(<RunsCompanion>[run('r1', 5000)]);
+    expect(
+      await db.restoreRuns(<RunsCompanion>[run('r1', 5000)]),
+      0,
+      reason: 'nothing arrived, so there is nothing to announce',
+    );
+  });
+
+  test('a mixed batch counts only what was new', () async {
+    await db.upsertRun(run('r1', 5500));
+    expect(
+      await db.restoreRuns(<RunsCompanion>[run('r1', 5000), run('r2', 8000)]),
+      1,
+      reason: 'r1 was already held and lost the conflict',
+    );
+  });
+
   // ---- the trace -----------------------------------------------------------
 
   test('restored points do not duplicate a trace already held', () async {

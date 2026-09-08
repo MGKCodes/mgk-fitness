@@ -423,11 +423,33 @@ class AppDatabase extends _$AppDatabase {
   // restore, which can only ever add, into a sync, which can lose. Runio has
   // one device, so there is nothing a merge could resolve that this cannot.
 
-  /// Inserts runs the phone does not have. Existing rows are left untouched.
-  Future<void> restoreRuns(List<RunsCompanion> rows) async {
+  /// Inserts runs the phone does not have, and returns **how many it added**.
+  ///
+  /// The count is taken here rather than by the caller because this is the only
+  /// place that knows. Writes are insert-or-ignore, so the number of rows handed
+  /// in says nothing about the number that landed — and [SupabaseRestore] used
+  /// to return the length of what it *fetched*, which meant a runner with 21
+  /// runs on the server was told "restored 21 runs" on every launch forever,
+  /// having restored nothing at all since the first one. The same question asked
+  /// of a plan and of the coach's memory is already answered against the
+  /// database, by [hasNoPlan] and [hasNoCoachMemory]; runs merge rather than
+  /// gate, so they need a delta instead of a flag.
+  ///
+  /// In one transaction so the two counts cannot straddle another write.
+  Future<int> restoreRuns(List<RunsCompanion> rows) => transaction(() async {
+    final before = await _runCount();
     await batch(
       (b) => b.insertAll(runs, rows, mode: InsertMode.insertOrIgnore),
     );
+    return await _runCount() - before;
+  });
+
+  Future<int> _runCount() async {
+    final count = runs.id.count();
+    final row = await (selectOnly(
+      runs,
+    )..addColumns(<Expression<Object>>[count])).getSingle();
+    return row.read(count) ?? 0;
   }
 
   Future<void> restoreRunPoints(List<RunPointsCompanion> rows) async {
