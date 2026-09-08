@@ -41,6 +41,21 @@ const double kBasemapOpacity = 0.85;
 /// is deliberate: shipping a hard-coded provider would mean calling a host the
 /// policy doesn't declare. Tiles load over the network, so widget tests and
 /// offline use show only the polyline either way.
+/// Every gesture this app's maps accept: drag, pinch-zoom, double-tap, fling —
+/// and **not** rotation, and **not** `pinchMove`.
+///
+/// **Rotation is declined, not unimplemented** ([ADR-0022]). A north-up map is
+/// the decision; `InteractiveFlag.all` would quietly undo it, which is why the
+/// set is named here once rather than spelled at each call site.
+///
+/// **`pinchMove` is excluded for the sheet's sake.** It drags the map on a
+/// two-finger move at a low threshold, which is close enough to the vertical
+/// drag that opens the in-run panel to be worth not finding out about on a
+/// phone. Nothing else in the set competes: the panel is opaque and sits above
+/// the map, so a one-finger drag belongs to whichever of them it landed on.
+const int kMapGestures =
+    InteractiveFlag.all & ~InteractiveFlag.rotate & ~InteractiveFlag.pinchMove;
+
 class RouteMap extends StatefulWidget {
   const RouteMap({
     super.key,
@@ -49,6 +64,9 @@ class RouteMap extends StatefulWidget {
     this.reveal = 1,
     this.strokeWidth = 4,
     this.interactive = true,
+    this.interactionFlags = kMapGestures,
+    this.follow = true,
+    this.onUserPan,
     this.followZoom = 16,
     this.basemapOpacity = kBasemapOpacity,
     this.focus,
@@ -89,6 +107,29 @@ class RouteMap extends StatefulWidget {
 
   final double strokeWidth;
   final bool interactive;
+
+  /// Which gestures the map accepts when [interactive].
+  ///
+  /// Defaults to [kMapGestures], which is everything **except rotation**.
+  /// `InteractiveFlag.all` includes it, and ADR-0022 declines rotation as a
+  /// decision rather than an omission — so turning panning on with `all` would
+  /// have reversed that ADR by the back door, silently and in one word.
+  final int interactionFlags;
+
+  /// Whether the camera chases the newest fix.
+  ///
+  /// **False parks it where the runner left it.** The follow used to be
+  /// unconditional, which is fine for a map nobody can touch and useless the
+  /// moment one can: a pan would be undone by the next GPS fix, roughly once a
+  /// second, so the map would fight the finger holding it.
+  final bool follow;
+
+  /// The runner moved the camera themselves.
+  ///
+  /// Reported rather than acted on, because whether a pan should suspend
+  /// following is the caller's decision — the finished-run map has no follow to
+  /// suspend, and the in-run one does.
+  final VoidCallback? onUserPan;
 
   /// Where to look before there is a route — the device's last known position,
   /// supplied by the caller.
@@ -144,6 +185,31 @@ class RouteMap extends StatefulWidget {
 class _RouteMapState extends State<RouteMap> {
   final MapController _controller = MapController();
   int? _lastLength;
+
+  /// Snaps back to the runner when following is switched back on.
+  ///
+  /// **This is the whole of the recentre control.** Flipping [RouteMap.follow]
+  /// false to true is the entire API — no controller to hand out, no key to
+  /// hold, no callback to fire. The alternative was exposing the [MapController]
+  /// so a button could call `move` on it, which would put a second thing in
+  /// charge of a camera this widget is already driving from `build`.
+  @override
+  void didUpdateWidget(RouteMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.follow || oldWidget.follow) return;
+    final List<LatLng> all = <LatLng>[
+      for (final segment in _segments) ...segment,
+    ];
+    if (all.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _controller.move(all.last, _controller.camera.zoom);
+      } catch (_) {
+        // Map not ready. The next fix follows anyway, now that it may.
+      }
+    });
+  }
 
   /// The trace, accuracy-filtered and broken wherever recording stopped.
   ///
@@ -219,7 +285,12 @@ class _RouteMapState extends State<RouteMap> {
 
     // First build fits the route (via initialCameraFit below); later growth
     // follows the newest fix without changing zoom.
-    if (_lastLength != null && all.length != _lastLength && all.isNotEmpty) {
+    // `_lastLength` is updated below whether or not the camera moved, so a map
+    // parked by a pan does not lurch to catch up the moment it is recentred.
+    if (widget.follow &&
+        _lastLength != null &&
+        all.length != _lastLength &&
+        all.isNotEmpty) {
       final target = all.last;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -252,9 +323,15 @@ class _RouteMapState extends State<RouteMap> {
             backgroundColor: AppColors.bg,
             interactionOptions: InteractionOptions(
               flags: widget.interactive
-                  ? InteractiveFlag.all
+                  ? widget.interactionFlags
                   : InteractiveFlag.none,
             ),
+            // `hasGesture` is false for a programmatic `move`, so recentring
+            // cannot report itself as a pan and immediately cancel the follow
+            // it just restored.
+            onPositionChanged: (MapCamera camera, bool hasGesture) {
+              if (hasGesture) widget.onUserPan?.call();
+            },
           ),
           children: <Widget>[
             // Only ever the configured provider — the one the privacy policy

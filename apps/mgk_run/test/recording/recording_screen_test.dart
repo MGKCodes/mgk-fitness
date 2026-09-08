@@ -245,7 +245,11 @@ void main() {
 
     // Dragged from a point inside the panel, not from the sheet widget's
     // centre: DraggableScrollableSheet lays out across the whole screen, so its
-    // centre is over the map, and a drag there hits nothing.
+    // centre is over the map — and since the map became pannable (ADR-0031) a
+    // drag there pans it rather than doing nothing. That this drag still opens
+    // the sheet is the assertion that the two do not contend: the panel is an
+    // opaque surface above the map, so a pointer landing on it is the sheet's
+    // for the whole gesture.
     await tester.dragFrom(const Offset(196, 700), const Offset(0, -420));
     // Fixed pumps, not pumpAndSettle: the fake recorder emits on a repeating
     // timer, so the tree never goes quiet and settling waits forever. Same trap

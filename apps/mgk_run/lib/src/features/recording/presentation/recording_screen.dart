@@ -174,12 +174,26 @@ double collapsedFractionFor(
 /// anybody reads while moving. Its collapsed height is derived from its own
 /// content, not from a fraction of the screen — see [collapsedFractionFor].
 ///
-/// **The map takes no gestures.** It follows the runner and is not pannable,
-/// which is both the right in-run behaviour — panning mid-run loses your own
-/// position, and the summary screen is where a route is explored — and the
-/// thing that keeps the sheet drag unambiguous. A pannable map under a
-/// draggable sheet is a gesture-arena fight, and the strip layout lost it:
-/// taps on its body did nothing at all.
+/// **The map pans, and following is a mode** ([ADR-0031]). It took no gestures
+/// at all until 2026-09-08, on the reasoning that panning mid-run loses your
+/// own position and that the summary screen is where a route gets explored.
+/// The first half was answered by making the follow suspendable rather than
+/// absent — a pan parks the camera, and the recentre control puts it back — and
+/// the second turned out not to be true of everybody: the build 13 field test
+/// asked for this directly, wanting to see what was coming up.
+///
+/// **The gesture-arena fight it was refused to avoid is real, and does not
+/// apply to this layout.** A pannable map under a draggable sheet lost that
+/// fight on the strip layout so completely that taps on the map did nothing.
+/// Here the map is Stack child 0 and the panel is an opaque [GlassSurface]
+/// above it, so a pointer that goes down on the sheet belongs to the sheet for
+/// the whole gesture; the two never contend for the same pixel. `pinchMove` is
+/// excluded with rotation for the same reason — it is the one flag that takes
+/// slow vertical drags at a low threshold.
+///
+/// Following is **never** restored on a timer. A camera that yanks itself back
+/// while somebody is reading a junction is worse than one that cannot move at
+/// all, because it does it unasked.
 ///
 /// Driven entirely by the [RunRecorder] seam, so it renders against a fake in
 /// the preview and tests, and against the real geolocator-backed recorder on
@@ -225,6 +239,23 @@ class _RecordingScreenState extends State<RecordingScreen> {
   late RecorderStatus _status = widget.recorder.status;
   RecorderProblem? _problem;
   LatLng? _focus;
+
+  /// Whether the map is still chasing the runner.
+  ///
+  /// **False only because somebody moved it, and true again only because they
+  /// asked.** Never restored on a timer: an auto-resume that yanks the camera
+  /// back while a runner is reading a junction is exactly the behaviour panning
+  /// was refused to prevent, and it would be worse than not panning at all
+  /// because it happens without being asked for. See ADR-0031.
+  bool _following = true;
+
+  void _stopFollowing() {
+    if (_following) setState(() => _following = false);
+  }
+
+  void _recentre() {
+    if (!_following) setState(() => _following = true);
+  }
 
   /// Held across frames so the verdict can be sticky. See [_standingFor].
   PaceStanding _standing = PaceStanding.unknown;
@@ -691,20 +722,21 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 left: 0,
                 right: 0,
                 height: height,
-                // Takes no gestures at all — see the class doc.
-                child: IgnorePointer(
-                  child: RouteMap(
-                    points: _points,
-                    focus: _focus,
-                    interactive: false,
-                    showPosition: true,
-                    followZoom: 16,
-                    // Silent when recording has failed. The panel has just said
-                    // why there is nothing to draw; a map claiming to be
-                    // looking for you underneath it is a second, contradictory
-                    // answer to the same question.
-                    emptyLabel: _problem == null ? 'Finding you' : null,
-                  ),
+                child: RouteMap(
+                  points: _points,
+                  focus: _focus,
+                  // Pannable, and the recentre control below is the other half
+                  // of that — see the class doc and ADR-0031.
+                  interactive: true,
+                  follow: _following,
+                  onUserPan: _stopFollowing,
+                  showPosition: true,
+                  followZoom: 16,
+                  // Silent when recording has failed. The panel has just said
+                  // why there is nothing to draw; a map claiming to be
+                  // looking for you underneath it is a second, contradictory
+                  // answer to the same question.
+                  emptyLabel: _problem == null ? 'Finding you' : null,
                 ),
               ),
 
@@ -732,6 +764,27 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   ),
                 ),
               ),
+
+              // **Only while the map is parked.** A recentre button on a map
+              // that is already centred is furniture, and on this screen every
+              // pixel not showing the route or the numbers is in the way. Its
+              // absence is also the only indication the map *is* following,
+              // which is the honest way round: the state worth announcing is
+              // the unusual one.
+              if (!_following)
+                Positioned(
+                  right: AppSpacing.lg,
+                  bottom: collapsed * height + AppSpacing.md,
+                  child: _Scrim(
+                    circular: true,
+                    child: IconButton(
+                      onPressed: _recentre,
+                      tooltip: 'Recentre',
+                      icon: const Icon(Icons.my_location),
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
 
               _Panel(
                 collapsedFraction: collapsed,

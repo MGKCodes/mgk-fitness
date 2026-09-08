@@ -6,6 +6,7 @@ import 'package:mgk_run/src/features/coaching/domain/session_effort.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
+import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import 'plate.dart';
@@ -185,6 +186,26 @@ void main() {
           // starts contradicting its own splits — a plate that looks like a
           // bug is worse than no plate.
           await advance(20)(t);
+        },
+      );
+      await rec.stop();
+    });
+
+    testWidgets('panned away from the runner', (WidgetTester tester) async {
+      // The recentre control, which appears **only** once somebody has moved
+      // the map (ADR-0031) — so it exists in no other plate and can be looked
+      // at nowhere else on this machine.
+      final FakeRunRecorder rec = recorder();
+      await shot(
+        tester,
+        '09-panned',
+        screen(rec),
+        drive: (WidgetTester t) async {
+          await advance(125)(t);
+          // Through the widget's own callback: driving flutter_map's gesture
+          // detector here would be plating flutter_map rather than this screen.
+          t.widget<RouteMap>(find.byType(RouteMap)).onUserPan!();
+          await advance(5)(t);
         },
       );
       await rec.stop();
