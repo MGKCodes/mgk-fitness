@@ -310,15 +310,23 @@ class _RouteMapState extends State<RouteMap> {
                   if (widget.showPosition)
                     _position(all.last)
                   else
-                    // The head of the line, not the end of the route.
-                    //
-                    // While the route is drawing itself these differ, and
-                    // pinning the true end would put a dot ahead of the line —
-                    // on a closed loop it hides under the start and on an
-                    // out-and-back it floats in open space, which reads as a
-                    // rendering fault rather than as an effect. Following the
-                    // head instead makes it the point being traced, and it
-                    // arrives at the real end exactly when the line does.
+                  // The head of the line, not the end of the route.
+                  //
+                  // While the route is drawing itself these differ, and
+                  // pinning the true end would put a dot ahead of the line —
+                  // on a closed loop it hides under the start and on an
+                  // out-and-back it floats in open space, which reads as a
+                  // rendering fault rather than as an effect. Following the
+                  // head instead makes it the point being traced, and it
+                  // arrives at the real end exactly when the line does.
+                  //
+                  // **The flag waits for it.** A finish flag planted on a
+                  // moving head reads as a fault rather than as an effect, so
+                  // the dot keeps the head company through the reveal and the
+                  // flag is raised only once the line has arrived.
+                  if (widget.reveal >= 1)
+                    _finish(all.last)
+                  else
                     _endpoint(
                       drawn.isEmpty ? all.last : drawn.last.last,
                       filled: true,
@@ -391,6 +399,32 @@ class _RouteMapState extends State<RouteMap> {
         border: Border.all(color: AppColors.textPrimary, width: 2),
       ),
     ),
+  );
+
+  /// Where the run ended.
+  ///
+  /// **A flag rather than the filled dot the start also uses.** The two ends of
+  /// a route are not the same kind of fact, and drawing them as one glyph in
+  /// two fills asked the reader to remember which was which — on a closed loop,
+  /// where they sit on top of one another, it could not be answered at all.
+  /// Asked for directly off the build 13 field test.
+  ///
+  /// Top-right aligned so the pole stands **on** the point. A centred glyph
+  /// puts the flag's middle on the coordinate, which reads as having finished
+  /// somewhat north-east of where the run actually stopped.
+  ///
+  /// **No tooltip**, deliberately. The split pins carry one because a numbered
+  /// circle does not say what it means; a flag has nothing to add that the
+  /// summary beneath it does not say better, and `route_map_test.dart` counts
+  /// tooltips to assert exactly that the pins are the only things carrying one.
+  Marker _finish(LatLng at) => Marker(
+    point: at,
+    width: _kFlagWidth,
+    height: _kFlagHeight,
+    // The marker box is pushed up and right of the coordinate, which puts its
+    // bottom-left — the foot of the pole — exactly on the point.
+    alignment: Alignment.topRight,
+    child: const FinishFlag(),
   );
 
   /// Where the runner is now: a bright dot with a soft halo, so it reads as a
@@ -478,3 +512,72 @@ class _Attribution extends StatelessWidget {
 String _clock(DateTime at) =>
     '${at.hour.toString().padLeft(2, '0')}:'
     '${at.minute.toString().padLeft(2, '0')}';
+
+const double _kFlagWidth = 24;
+const double _kFlagHeight = 26;
+
+/// A chequered flag on a pole, drawn rather than set.
+///
+/// Public so a test can assert the end of a route carries one, which a private
+/// widget could only be checked for by a key or by its pixel size.
+///
+/// **`Icons.sports_score` was tried first and does not survive the size.** The
+/// glyph carries no pole worth seeing below about 40pt, so at marker size it
+/// read as a small chequered smudge sitting near the route rather than as a
+/// flag planted at the end of it — and this lands on listing screenshot H3,
+/// where "near the route" is the whole difference between a finish and an
+/// artefact. Looked at on a plate, which is the only reason it was caught.
+///
+/// Geometry instead, so it is crisp at any scale and the pole is unambiguous.
+/// The pale chequers alternate against [AppColors.bg] rather than against
+/// nothing, so the pattern holds over a basemap as well as over the ground.
+class FinishFlag extends StatelessWidget {
+  const FinishFlag({super.key});
+
+  /// One chequer. Four across and two down is the fewest that still reads as a
+  /// pattern rather than as a striped rectangle.
+  static const double _cell = 5;
+  static const int _cols = 4;
+  static const int _rows = 2;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.end,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.bg, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (var row = 0; row < _rows; row++)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (var col = 0; col < _cols; col++)
+                    SizedBox(
+                      width: _cell,
+                      height: _cell,
+                      child: ColoredBox(
+                        color: (row + col).isEven
+                            ? AppColors.textPrimary
+                            : AppColors.bg,
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+      // The pole. Two points wide so it survives a low pixel ratio, and drawn
+      // under the flag so the two meet without a seam.
+      Container(
+        width: 2,
+        height: _kFlagHeight - (_rows * _cell) - 2,
+        color: AppColors.textPrimary,
+      ),
+    ],
+  );
+}

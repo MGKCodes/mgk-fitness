@@ -88,7 +88,13 @@ double _panelContentHeight({
     (hasBrief ? _briefBlockHeight : 0) +
     (hasProblem ? _problemBlockHeight : 0) +
     AppSpacing.xl + // gap
-    48 + // the control row — two buttons, whichever pair is showing
+    // **52, not 48.** `_ControlButton` sets only `padding`, so `minimumSize`
+    // falls through to `mgk_ui`'s `filledButtonTheme` / `outlinedButtonTheme`,
+    // both `Size(0, 52)`. The sum under-reserved by four points for as long as
+    // it has existed — invisible on a tall phone and exactly the kind of margin
+    // that strands a control at 320pt. Corrected here rather than by shrinking
+    // the button, which is a real 52 and a deliberate touch target.
+    52 + // the control row — two buttons, whichever pair is showing
     AppSpacing.lg; // bottom padding
 
 /// The most of the screen the collapsed panel may take *because of the brief*.
@@ -1158,12 +1164,17 @@ class _Panel extends StatelessWidget {
                   // moment the runner crests the hill. It goes when paused,
                   // where there is no lap being run to cut.
                   Expanded(
-                    child: _ControlButton(label: 'Lap', onPressed: onLap),
+                    child: _ControlButton(
+                      label: 'Lap',
+                      icon: Icons.flag_outlined,
+                      onPressed: onLap,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _ControlButton(
                       label: 'Pause',
+                      icon: Icons.pause,
                       filled: true,
                       onPressed: onTogglePause,
                     ),
@@ -1176,13 +1187,18 @@ class _Panel extends StatelessWidget {
                   Expanded(
                     child: _ControlButton(
                       label: 'Resume',
+                      icon: Icons.play_arrow,
                       filled: true,
                       onPressed: onTogglePause,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: _ControlButton(label: 'Finish', onPressed: onFinish),
+                    child: _ControlButton(
+                      label: 'Finish',
+                      icon: Icons.sports_score,
+                      onPressed: onFinish,
+                    ),
                   ),
                 ],
               ],
@@ -1275,14 +1291,27 @@ class _Panel extends StatelessWidget {
 /// in the exact moment a runner is reaching for it. Two buttons have room to
 /// spare, but the guard costs nothing and the row has been three before:
 /// tighter padding, a single line, and scale-down as the last resort.
+///
+/// **The icon is inside that guarantee, not beside it.** Asked for off the
+/// build 13 field test: text alone was hard to hit at a glance while moving.
+/// The glyph and the word are scaled together by the same [FittedBox], so an
+/// icon cannot push a label onto a second line — it can only make both slightly
+/// smaller, on the narrow screen where that trade is the right one.
+///
+/// **The label stays.** An icon-only control asks a runner to recognise a glyph
+/// at arm's length while out of breath, and `Finish` and `Pause` are not worth
+/// guessing at. Every existing test finds these buttons by their text, which is
+/// the behaviour those tests were protecting rather than an accident.
 class _ControlButton extends StatelessWidget {
   const _ControlButton({
     required this.label,
     required this.onPressed,
+    required this.icon,
     this.filled = false,
   });
 
   final String label;
+  final IconData icon;
   final VoidCallback? onPressed;
   final bool filled;
 
@@ -1290,7 +1319,14 @@ class _ControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final child = FittedBox(
       fit: BoxFit.scaleDown,
-      child: Text(label, maxLines: 1, softWrap: false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 18),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label, maxLines: 1, softWrap: false),
+        ],
+      ),
     );
     final padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm);
 

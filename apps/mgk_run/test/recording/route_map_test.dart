@@ -128,6 +128,49 @@ void main() {
       expect(find.text('2'), findsOneWidget);
     });
 
+    testWidgets('and the end is a finish flag, not a second dot', (
+      tester,
+    ) async {
+      // Asked for off the build 13 field test. Start and finish were the same
+      // 16pt circle in two fills, which on a closed loop sit on top of each
+      // other and cannot be told apart at all.
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+        ),
+      );
+
+      expect(find.byType(FinishFlag), findsOneWidget);
+      expect(
+        markersOf(tester),
+        hasLength(4),
+        reason: 'it replaces the end dot rather than joining it',
+      );
+      expect(
+        tester.widgetList<Tooltip>(find.byType(Tooltip)),
+        hasLength(2),
+        reason: 'the flag says nothing the summary does not say better',
+      );
+    });
+
+    testWidgets('and the flag waits for the line to arrive', (tester) async {
+      // Mid-reveal the end marker follows the *head* of the drawn line, not the
+      // true end. A flag planted on a moving head reads as a rendering fault;
+      // the dot keeps it company until the line gets there.
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+          reveal: 0.5,
+        ),
+      );
+
+      expect(find.byType(FinishFlag), findsNothing);
+    });
+
     testWidgets('carry the crossing time, without shouting it', (tester) async {
       // The number is on the map and the time is one press away: ten pins each
       // carrying a clock reading is a route you cannot see for the labels on

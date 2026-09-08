@@ -64,6 +64,16 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Pause'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, 'Lap'), findsOneWidget);
       expect(find.text('Finish'), findsNothing);
+      // Each control carries a glyph as well as its word, asked for off the
+      // build 13 field test: text alone is hard to hit at a glance while
+      // moving. **Both**, not one — the word is asserted above, because an
+      // icon-only control asks somebody out of breath to recognise a glyph at
+      // arm's length, and `Finish` is not worth guessing at.
+      expect(find.widgetWithIcon(FilledButton, Icons.pause), findsOneWidget);
+      expect(
+        find.widgetWithIcon(OutlinedButton, Icons.flag_outlined),
+        findsOneWidget,
+      );
 
       // Advance: fixes land, so the label settles to Recording, the clock
       // moves off the recorder's wall time, and distance leaves zero.
