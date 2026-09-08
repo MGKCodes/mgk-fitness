@@ -59,6 +59,36 @@ tiles, and the map is half of what makes the in-run shot worth showing. Take
 them off a device on TestFlight, drop them in `captured/` named `listing-*.png`,
 and the script will check the dimensions.
 
+### There are stand-ins, and they are not submittable
+
+`derived/stand-ins/` holds six captures at the right dimensions, taken on
+2026-09-08 from the **Android emulator** with `wm size 1290x2796` and
+`wm density 480` — which is the 6.7" iPhone's geometry, so they pass
+`--check` — driven through `lib/preview/main.dart`'s screen keys. The captioned
+versions are in `derived/mockups/`.
+
+**They exist to settle composition and caption copy, and for nothing else.**
+Three reasons they cannot be submitted:
+
+1. **They are an Android render of an iOS app.** The emulator's own status bar
+   and gesture pill are cropped out of the mockups, but the widgets underneath
+   are Material's, not UIKit's.
+2. **There are no basemap tiles.** Same absence the plates have, for a different
+   reason — the preview harness points at a keyless dev basemap and the emulator
+   has no MapTiler key. The in-run and finished-run shots draw the route on the
+   charcoal ground.
+3. **The fixtures show what the app does not.** `_demoSummary()` fills
+   `avgHr`, `caloriesEst` and elevation; a recorded run fills none of the three
+   (`recording_run_recorder.dart` never sets them, and there is no barometric
+   source). The finished-run shot therefore advertises three stats the shipped
+   build leaves out. Deliberate, decided 2026-09-08, and recorded here so it is
+   a choice rather than a surprise.
+
+**They live in `derived/` on purpose.** `captured/` is where the real device
+shots go, and a stand-in sitting there under the name the script expects is
+exactly the file somebody drags into App Store Connect by mistake. `derived/`
+is gitignored, so nothing here is committed either.
+
 The six worth shooting are named in
 [app-store-listing.md](../apps/mgk_run/docs/app-store-listing.md), chosen off
 [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190).

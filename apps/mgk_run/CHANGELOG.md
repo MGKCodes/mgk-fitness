@@ -16,7 +16,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Nothing has been released. The app has been built to TestFlight but has never
-been on a store, so everything Runio does is still listed here.
+been on a store, so everything the app does is still listed here.
+
+### Build 14 — the build 13 field test's answers
+
+- The in-run map pans, and following is a mode: a pan parks the camera and a
+  recentre control puts it back. Rotation stays declined (ADR-0022).
+- A third resting place on the in-run panel: a strip showing distance and time
+  with the map full screen.
+- Icons on the in-run controls, and a chequered finish flag where the route
+  ends.
+- One floating nav pill, shared by Run and Lift from `mgk_ui` rather than
+  hand-written twice.
+- A plan starts on the coming Monday, so week one no longer opens with days
+  already spent.
+- Profile says where the runner's training actually is, and paints from the
+  phone before the network.
+- The restore announces itself once per sign-in rather than on every token
+  refresh, and reports the runs it added rather than the runs it fetched.
+- The coach's tier is re-read when the app comes back, so a withdrawn
+  subscription closes the door without a relaunch.
+- The run start screen draws a map instead of the word "Finding you".
+
+### Removed
+
+- `NSHealthUpdateUsageDescription` from `Info.plist`. The app requests read
+  access for workouts and steps and nothing else, so this described a
+  permission the binary never exercises — Guideline 5.1.1. It goes back in the
+  same commit as the write, not before.
 
 ### Added
 

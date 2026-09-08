@@ -93,12 +93,14 @@
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Read your workouts and step count from Health, so runs you recorded on a watch or another app appear in your training log and your coach sees the whole picture.</string>
-	<!-- The app does not write to Health yet. This describes what the entitlement
-	     permits and what the app is built toward: workout_dedup.dart already
-	     treats the app's own recordings as the preferred source of a run, which
-	     only means anything once they are there. -->
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
+	<!-- NSHealthUpdateUsageDescription was here and is deliberately gone.
+	     health_read_types.dart requests HealthDataAccess.READ for WORKOUT and
+	     STEPS and nothing else, and HealthDataAccess appears nowhere else in
+	     lib/ - so this was a purpose string for a permission the binary never
+	     exercises. At best noise a reviewer reads and cannot verify, at worst
+	     Guideline 5.1.1: requesting access the app does not use. The comment it
+	     carried admitted as much, describing what the app was "built toward".
+	     Put it back in the same commit as the write, not before. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
