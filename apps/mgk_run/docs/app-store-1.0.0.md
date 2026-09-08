@@ -453,9 +453,18 @@ art, and the choices only you can make.
       (`CFBundleDisplayName`), which is deliberate — iOS truncates at roughly
       twelve characters and `MGKFitness: Run` and `MGKFitness: Lift` would both
       render as `MGKFitness:…` on the same phone.
-- [ ] **Subtitle** (30) — **three drafted, one to pick.** Recommended:
-      `Track runs. Get a real plan.` (28). It sits under the name in every search
-      result and is the second thing anybody reads.
+- [x] **Subtitle** (30) — **`Track runs. Get a real plan.`** (28). It sits under
+      the name in every search result and is the second thing anybody reads.
+
+      **This said "three drafted, one to pick" until 2026-09-07, and it had been
+      settled for five days.** [app-store-listing.md](app-store-listing.md)
+      chose option 1 on 2026-09-02 and says so; this page went on carrying it as
+      open, and "The order" below counted it as the unfinished half of step 6.
+      A third copy of a decision, disagreeing with the document this page itself
+      names as where the writing lives — the same failure recorded about the
+      RevenueCat offering and about the six screenshots, found a third time by
+      reading the two pages side by side rather than by anything going wrong.
+      The listing document owns the copy; this page ticks the box.
 - [x] **Primary category** Health & Fitness, **secondary** Sports.
 - [ ] **Content rights.** Run does not ship third-party content the way Lift does
       (Lift's exercise illustrations are CC BY-SA), but the **MapTiler basemap**
@@ -597,15 +606,38 @@ art, and the choices only you can make.
 
 ## Gate 6 — Documents that were wrong
 
-Cleared 2026-09-01, and again on 2026-09-02. Recorded rather than deleted,
-because this is the kind of staleness that is invisible until somebody acts on
-it.
+Cleared 2026-09-01, again on 2026-09-02, and again on 2026-09-07. Recorded
+rather than deleted, because this is the kind of staleness that is invisible
+until somebody acts on it.
 
 - [x] **`compliance.md` described a function that no longer existed** —
       `runio_delete_account` sweeping "every table in the `runio` schema", a
       month after that schema was renamed to `run`. **The code was right and the
       document defending it to a regulator was not**, which is the worse way
       round.
+- [x] **The same file's deletion table was wrong in four places, and the fix
+      above is why nobody looked.** Corrected 2026-09-07, found by reading the
+      file rather than by anything failing. Thirty lines below the paragraph
+      recording that `runio` had been corrected, the table describing the *same
+      function* still said `runio.*`, still put the shared rows in `public`
+      rather than `core`, and was silent on the coach data that
+      `20260807140000_delete_account_scopes_the_coach.sql` made erasable per app.
+
+      **The fourth is the one that matters, and it points the wrong way.** The
+      table said `dob` and `weight_kg` were **always cleared**;
+      `20260806130300_account_deletion.sql` had deliberately stopped clearing
+      them on a partial deletion a month earlier — *"a real change in meaning,
+      not an oversight"*. So the document defending erasure to a regulator
+      **claimed more erasure than the function performs**, which is the same
+      shape as the backup-consent defect build 12 found on a phone: the policy
+      promised deletion and the code did none.
+
+      A correction applied to the prose and not to the table beside it is how
+      one document disagrees with itself. Both halves are now checked against
+      the migrations rather than against each other, and the live prose no
+      longer says "Runio" — the three remaining uses are quotations of the
+      error, which is what [naming.md](../../../docs/naming.md) keeps on
+      purpose.
 - [x] **`codemagic.yaml`'s header contradicted its own workflow list.**
 - [x] **`roadmap.md`** retitled and reconciled with this document rather than
       maintained beside it — two checklists being how one goes stale.
@@ -687,9 +719,10 @@ the useful part and a list that only shows what remains loses it.
 4. ~~**Run a TestFlight build.**~~ Build 12, 2026-09-02, every step green.
 5. ~~**Gate 3, the wiring**~~ — the two dashboards, the webhook, the SDK, the
    purchase screen. Everything except the sandbox purchase itself.
-6. ~~**Write Gate 4's copy.**~~ Description, keywords and promotional text
-   drafted and machine-checked by `tool/check_listing.py`. The subtitle is three
-   drafts with one still to pick.
+6. ~~**Write Gate 4's copy.**~~ Description, keywords, promotional text and the
+   subtitle, drafted and machine-checked by `tool/check_listing.py`. Struck
+   through in full on 2026-09-07: the subtitle was settled on 2026-09-02 and
+   only this page still called it open.
 
 Then what is actually left:
 

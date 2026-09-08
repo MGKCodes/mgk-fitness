@@ -1,6 +1,7 @@
 # Compliance & legal
 
-Runio processes **special-category health data under UK GDPR** and prescribes
+MGKFitness: Run processes **special-category health data under UK GDPR** and
+prescribes
 physical load. These are prerequisites for App Store submission, not
 follow-ups.
 
@@ -39,7 +40,7 @@ Requirements before submission:
 ## Named sub-processors
 
 The privacy policy must name every third party that processes user data. For
-Runio:
+the app:
 
 | Sub-processor | Purpose | Data shared |
 |---|---|---|
@@ -48,7 +49,7 @@ Runio:
 | **RevenueCat** | Subscription purchases and the entitlement state behind them ([ADR-0028](decisions/0028-revenuecat-is-the-purchase-path.md)) | The Supabase `user_id` as a pseudonymous app user id, and purchase records. **No training, health or message content.** |
 | **MapTiler** | Basemap tiles | Approximate viewport coordinates |
 
-**Pick the model provider before writing the policy, not after.** Runio calls
+**Pick the model provider before writing the policy, not after.** The app calls
 the model through **OpenRouter**, a gateway: the specific model is a server-side
 `COACH_MODEL` secret, so it can change without an app release
 ([ADR-0007](decisions/0007-secrets-via-backend-proxy.md),
@@ -139,33 +140,56 @@ wording stays reachable from the in-app legal screen.
 
 ## Deletion on a shared account
 
-Runio shares one `auth.users` pool and `public.profiles` /
-`public.user_settings` with Liftio
-([ADR-0008](decisions/0008-shared-supabase-platform.md)). Deleting the login
-would therefore delete **Liftio's** account and cascade away its workouts,
+The app shares one `auth.users` pool and `core.profiles` / `core.user_settings`
+with **MGKFitness: Lift** ([ADR-0008](decisions/0008-shared-supabase-platform.md)).
+Deleting the login would therefore delete **the sibling app's** account and
+cascade away its workouts,
 exercises, sets, and progress photos — erasing data from an app the user did not
 ask to leave. A naive "delete the auth row" implementation is a data-loss bug
 wearing a compliance badge.
 
-So deletion is scoped by what the account actually holds:
+So deletion is scoped by what the account actually holds. `core.delete_account`
+takes the asking app and enumerates tables from the catalogue, so this table
+describes a mechanism rather than a list somebody maintains:
 
-| | Always | Only if the account holds no Liftio data |
+| | On `delete_account(user, 'run')` | Only if the sibling app holds no data |
 |---|---|---|
-| Every `runio.*` row for the user | yes | |
-| `public.profiles.dob`, `.weight_kg` (Runio's health columns) | cleared | |
-| `public.user_settings` row | | deleted |
-| `public.profiles` row | | deleted |
+| Every `run.*` row for the user | erased | |
+| `coach.conversations`, `coach.turns`, `coach.summaries` **tagged `run`** | erased | |
+| `coach.usage` (the rate limiter's ledger — counts and costs, no content) | retained | deleted |
+| `core.profiles.dob`, `.weight_kg` | **retained** | cleared with the row |
+| `core.user_settings` row | | deleted |
+| `core.profiles` row | | deleted |
 | `auth.users` row (the login) | | deleted |
 
-Runio's erasure obligation covers the data Runio controls, and that is always
-fully met. A login surviving with no data behind it is recoverable; erasing the
-sibling app's data is not, so the tie breaks that way. When the login is retained
-the app says so plainly and points at hello@mgkcodes.com for removing it.
+A login surviving with no data behind it is recoverable; erasing the sibling
+app's data is not, so the tie breaks that way. When the login is retained the app
+says so plainly and points at hello@mgkcodes.com for removing it.
 
-Revisit this when Liftio joins the platform properly: once both apps are on the
-same stack, deletion should be a single platform-level surface that offers "leave
-Runio" and "close my MGKCodes account" as distinct choices, rather than one app
-inferring the other's usage.
+**This table was wrong in four places until 2026-09-07, and one of them was a
+promise the code had stopped keeping.** It named the `runio` schema, renamed to
+`run` by `20260806130000_restructure_schemas.sql`; it put the shared rows in
+`public` rather than `core`; it was silent on coach data, which
+`20260807140000_delete_account_scopes_the_coach.sql` made erasable per app,
+closing a real gap where a lifter deleting their running data left those
+conversations behind; and it said `dob` and `weight_kg` were **always cleared**
+when `20260806130300_account_deletion.sql` had deliberately stopped clearing
+them on a partial deletion — *"they now live in `core.profiles`, belong to the
+person, and survive as long as the profile does. That is a real change in
+meaning, not an oversight."*
+
+**That last one is the direction that matters**: the document defending erasure
+to a regulator claimed more erasure than the function performs. It is the same
+shape as the defect the build 12 field test found in backup consent — the policy
+promised deletion and the code did none — and the same shape as the `runio`
+error recorded thirty lines above, which was corrected in the paragraph that
+described the function while the table describing the same function was missed.
+Both halves are checked against the migrations now, not against each other.
+
+Deletion should still become a single platform-level surface offering "leave the
+running app" and "close my MGKCodes account" as distinct choices, rather than one
+app inferring the other's usage. The sibling app is on the same stack now, so
+what was once blocked on that is only unbuilt.
 
 ## App Store review
 
