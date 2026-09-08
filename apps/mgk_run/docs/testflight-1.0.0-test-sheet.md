@@ -10,31 +10,49 @@ pass is not. Silence on a row is read as untested, never as passed.
 The boxes below get filled in afterwards, from your note, in the commit that
 records the build — not by you, one-handed, outdoors.
 
-**Rewritten 2026-09-04 for build 13.** Build 12's filled-in sheet is not kept
-beside this one. Every finding it produced is either fixed and named in the row
-that re-tests it, or recorded in [app-store-1.0.0.md](app-store-1.0.0.md); the
-sheet itself is at commit `02a9214` if the raw record is ever wanted. Two sheets
-carrying state about the same release is how one of them goes stale, and this
-document is consumed rather than maintained.
+**Rewritten 2026-09-08 for build 14.** The earlier filled-in sheets are not
+kept beside this one. Every finding they produced is either fixed and named in
+the row that re-tests it, or recorded in
+[app-store-1.0.0.md](app-store-1.0.0.md); build 12's sheet is at commit
+`02a9214` and build 13's at `0930105` if the raw record is ever wanted. Two
+sheets carrying state about the same release is how one of them goes stale, and
+this document is consumed rather than maintained.
 
-## What build 13 is
+## What build 14 is
 
-Build 13 (`75a89df`) is **eighteen commits of fixes on top of build 12**, and
-almost none of it has been on a phone. Build 12's sitting on 2026-09-04 answered
-A to F and then ran out of afternoon.
+Build 14 is **thirteen commits on top of build 13**, closing that build's five
+defects and its seven UI requests. Almost none of it has been on a phone.
 
-**Two facts shape this sheet.** First, **sections G and H have never run** — the
+**Three facts shape this sheet.**
+
+**First, sections G and H have now failed to run three builds running.** The
 purchase chain and the listing screenshots are the two things a submission
-actually needs, and neither has been proven once. Second, everything marked
-**FIXED** is a change made in response to build 12 and verified only in a test
-suite; a suite cannot tell you whether a three-second count feels long, or
-whether a refusal reads as an insult.
+actually needs, and neither has been proven once. Build 13's sitting stopped at
+G's *setup*. **They are the reason this sitting exists.** Everything above them
+is the fast part.
 
-What build 12 did establish, and what is therefore not re-litigated: recording
+**Second, the gesture and layout work was verified on hardware** — an Android
+emulator at the 6.7" iPhone's geometry — which is new. The peek detent lands, a
+pan parks the camera without disturbing the panel, the recentre control restores
+follow, and Profile scrolled fully clears the floating nav bar. What that
+*cannot* tell you is how any of it feels under a thumb while moving, or how it
+behaves against iOS's own gesture handling at the screen edges. That is what
+rows C16 to C19 are for.
+
+**Third, everything marked FIXED is verified only in a test suite.** A suite
+cannot tell you whether a three-second count feels long, whether a refusal reads
+as an insult, or whether a plan that starts next Monday reads as sensible or as
+a delay.
+
+What build 12 established, and what is therefore not re-litigated: recording
 works (C1–C10 all passed), the permission strings read correctly, the app opens
 on a working tracker with no account, and account creation, decline and deletion
 behave. Those rows are still here — a build that broke them would be worse than
-one that fixed nothing — but they are the fast part.
+one that fixed nothing.
+
+**Row B6 is gone.** It asked whether iOS ever requests Health *write* access;
+`NSHealthUpdateUsageDescription` has been removed, so there is nothing left to
+ask.
 
 ---
 
@@ -45,14 +63,14 @@ one-handed outdoors is how findings get lost, and the ones most easily lost are
 the ones only a phone can produce.
 
 **Dictate into one note.** Open Notes, start a single note called
-`run 1.0.0 build 13`, and hold the **microphone key on the keyboard** — not
+`run 1.0.0 build 14`, and hold the **microphone key on the keyboard** — not
 Voice Memos, which gives an audio file that has to be transcribed before anybody
 can read it.
 
 **Or use the scribe.** From `apps/mgk_run`:
 
 ```
-python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 13
+python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 14
 ```
 
 That produces this sheet with a brief telling a Claude Desktop session how to
@@ -76,9 +94,13 @@ safe direction and the reason this works.
 |---|---|
 | A3 | Whether the 23 Aug run is in the log **after signing in**. Build 12 could not answer this because restore was broken |
 | B4 | Whether Health re-prompted for Steps on an install that already had the app. **Still nobody knows** |
-| B6 | Whether iOS ever asked for Health **write** access. Decides whether an `Info.plist` key gets dropped |
 | C12 | How many haptics per kilometre, and whether signal loss buzzed once or repeatedly. **Never once felt** |
 | C14 | Whether three seconds feels right — long enough to pocket a phone, short enough not to resent |
+| C16 | Whether the third detent is easy to land on, or something you have to aim at |
+| C17 | **Whether the panel stayed put while you panned.** The one thing the emulator cannot settle |
+| C19 | Whether the map fights iOS's edge swipe |
+| D16 | Whether a plan starting next Monday reads as sensible or as a delay |
+| E12 | What Profile's backup line says, word for word |
 | D12 | Whether the refitted week reads as *thought about* or as *rearranged* |
 | E10 | What the erase confirmation says, word for word |
 | E11 | Whether Settings now reads as organised, and whether backup consent is easy to find |
@@ -165,10 +187,13 @@ moving.
 
 ## Known gaps — do not report these
 
-- **Climb and high point read "not recorded".** No barometric source
-  ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). *Whether it
-  reads as deliberate is a finding, not a gap — and it is now also two empty
-  tiles in listing shot H3.*
+- **Climb and high point read "not recorded", and so do heart rate and
+  calories.** No barometric source
+  ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)), and the
+  recorder never sets `avgHr` or `caloriesEst`. **Decided 2026-09-08:** the
+  tiles stay visible and unfilled for 1.0.0; the Health read is specified for
+  1.0.1 in [after-1.0.0.md](after-1.0.0.md). Row C20 asks you to look at the
+  grid anyway, because *how empty it looks* is still worth a sentence.
 - **Heart rate, cadence and active energy are absent by design.**
 - **No in-run audio** ([ADR-0006](decisions/0006-in-run-audio-deferred.md)).
 - **The app is iPhone-only.** It runs on an iPad in compatibility mode.
@@ -184,6 +209,8 @@ moving.
 | A3 | **Sign in, then look for the 23 Aug run** | **FIXED.** Build 12 restored nothing: `_justSignedUp` was set by tapping *Get started* and never cleared, short-circuiting restore for the session. The history should arrive | ☐ |
 | A4 | Watch what it says when it arrives | **NEW.** A message naming what was restored. Silence used to be indistinguishable from failure | ☐ |
 | A5 | Portrait-first, nothing clipped | Notch and home indicator respected | ☐ |
+| A6 | **The nav bar, on all three tabs** | **NEW.** A floating pill over the content, not a bar beneath it. Scroll each tab to its very bottom: **nothing may sit under it** | ☐ |
+| A7 | **The nav bar against the home indicator** | **NEW.** It reads the safe-area inset itself. Say whether it sits too close to the indicator or too far above it | ☐ |
 
 ## B. Permissions
 
@@ -194,7 +221,6 @@ moving.
 | B3 | Settings › Run › Location | Listed as **Run**; the in-app copy matches | ☐ |
 | B4 | **On an install that already had the app**, does Health re-prompt for Steps? | Still unknown. Answer it either way | ☐ |
 | B5 | Deny location, then read the banner | Names an **iOS** path | ☐ |
-| B6 | Is Health *write* access ever requested? | It should not be. If iOS asks, that is Guideline 5.1.1 and a key gets dropped | ☐ |
 
 ## C. Recording, and the new way into it
 
@@ -215,6 +241,11 @@ moving.
 | C10 | Airplane mode, record a short run, finish | Records and saves with no network | ☐ |
 | C11 | On a finished run, the locked stat card | Reads *"See what a coach adds"* and opens the gate sheet | ☐ |
 | C12 | **Count the haptics across the whole run** | One per kilometre, **not** one per fix; one on signal loss, not one a second. **Never felt** | ☐ |
+| C16 | **Drag the panel down** | **NEW.** A third resting place: distance and time only, map full screen. Say whether you land on it cleanly or have to aim | ☐ |
+| C17 | **Drag the map with one finger** | **NEW.** It pans, and a recentre control appears. **The panel must not move.** This reverses a decision (ADR-0031) and the panel not moving is the whole bet | ☐ |
+| C18 | **Tap the recentre control** | **NEW.** Snaps back to you and the control goes. It must *never* recentre on its own — if it does, say so loudly | ☐ |
+| C19 | **Pan near the left and right screen edges** | **NEW.** iOS puts its own back-swipe there. Say whether the map fights it | ☐ |
+| C20 | Read the finished run's stat grid | Elevation reads "not recorded" and always will on this build — **known, decided, not a defect**. Heart rate and calories are absent for the same reason | ☐ |
 
 ## D. The coach and the plan
 
@@ -237,6 +268,7 @@ D1–D8, D12, D13 need the entitlement row. D9–D11, D14, D15 need it **deleted
 | D11 | With the row deleted, tap the coach mark | The **gate sheet**; its button reaches the paywall | ☐ |
 | D14 | **With the row deleted, try every other way in** | **FIXED.** *Ask about this* on Profile and on a finished run, the missed-session card, adjust-this-week, the Plan tab. **All of them must meet the door**, never a 402 | ☐ |
 | D15 | With the row deleted, look at Home's coach mark | **FIXED.** The mark is there — it is the door — but **no observation**. That reading is the paid product | ☐ |
+| D16 | **Build a plan on a day that is not Monday** | **NEW.** Week 1 starts on the *coming* Monday, so it opens with no days already spent (ADR-0034). Say whether the wait reads as sensible or as a delay | ☐ |
 
 ## E. Account, backup, deletion
 
@@ -252,6 +284,7 @@ D1–D8, D12, D13 need the entitlement row. D9–D11, D14, D15 need it **deleted
 | E7 | Settings with no account | States the position; no Sign out or Delete account | ☐ |
 | E11 | **Read Settings as a whole** | **CHANGED.** Four bands. Say whether it reads as organised, and whether backup consent is findable | ☐ |
 | E10 | **Turn backup off** | **FIXED.** It says what was deleted, **and the rows actually go** — check `run.runs`. It previously deleted nothing while the privacy policy promised it did | ☐ |
+| E12 | **Profile, signed in with backup on** | **NEW.** A line saying where the training is: "Backing up…", a last-backed-up time, or a failure that says the phone still has it. It must never claim *everything* is backed up | ☐ |
 | E8 | Delete account | Confirmation first, then the data goes | ☐ |
 
 ## F. The long one

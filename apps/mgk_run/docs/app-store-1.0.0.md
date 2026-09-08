@@ -21,10 +21,12 @@ the same reason.
 
 Green, and worth stating so the list below is read as short rather than long:
 
-- **1,450 tests pass, analyzer and format clean** — verified 2026-09-04 at
-  `75a89df`, after the build 12 field-test fixes (3 skipped by design,
+- **1,501 tests pass, analyzer and format clean** — verified 2026-09-08 at
+  `6f71c3c`, after the build 13 field-test fixes (3 skipped by design,
   `@Tags(['live'])`, they hit the real backend). 199 Deno tests pass alongside
-  them.
+  them, and since the nav bar became shared: 293 in `apps/mgk_lift` and 49 in
+  `packages/mgk_ui`, with the analyzer clean across the whole workspace rather
+  than this app alone.
 
   **The count is not evidence about the defects that afternoon found.** All of
   them were caught by reading, by a device, or by somebody saying so — never by
@@ -33,9 +35,22 @@ Green, and worth stating so the list below is read as short rather than long:
   `naming_test.dart`, which fails the build if a retired product name reaches a
   string a runner reads.
 
-  **Build 12 is superseded. Build 13 (`75a89df`) was triggered 2026-09-04** and
-  carries eighteen commits of fixes, none of them yet on a device. What is
-  written below as done on hardware was done on *build 12*.
+  **Builds 12 and 13 are both superseded, and build 14 is not yet cut.** Build
+  13 went to a phone on 2026-09-07 and the sitting stopped at section G's setup,
+  so **G and H have now failed to run three builds running**. It returned five
+  defects and seven UI requests; all are fixed or built, at `6f71c3c`, and none
+  of it has been on a device.
+
+  **What is different this time is that the gesture and layout work was
+  verified on hardware anyway** — an Android emulator resized to the 6.7"
+  iPhone's geometry. The peek detent lands, a pan parks the camera without
+  disturbing the sheet, the recentre control restores follow, and Profile
+  scrolled fully clears the floating pill. That last one is IMG_4700's exact
+  failure. A widget test at a fixed surface could not have answered any of it,
+  which is why [ADR-0033](decisions/0033-the-bottom-chrome-floats.md) says so.
+
+  What is written below as done on hardware was done on *build 12*, except
+  where it names the emulator.
   [The test sheet](testflight-1.0.0-test-sheet.md) is rewritten for build 13:
   86 rows, with section G moved **before** the outdoor run because it is the
   most submission-critical thing on it and has never once run — last time it sat
@@ -571,36 +586,39 @@ art, and the choices only you can make.
       alongside `Distance`, `Pace` and `Mass`, following the **distance** system
       rather than having a unit of its own — kilometres with pounds is an
       ordinary combination, miles with metres of climb is not.
-- [ ] **`NSHealthUpdateUsageDescription` describes a write that never happens.**
-      `health_read_types.dart` requests `HealthDataAccess.READ` for `WORKOUT` and
-      `STEPS` and nothing else, but `Info.plist` carries a purpose string saying
-      *"Save the runs you record here into Health"*. The comment beside it admits
-      the app does not write yet. A purpose string for a permission the binary
-      never exercises is at best noise a reviewer reads and cannot verify, and at
-      worst Guideline 5.1.1 — requesting access it does not use. Either build the
-      write or drop the key; do not ship the sentence.
-- [ ] **Decide what elevation does at launch.** The tiles are built end to end
-      and permanently read "not recorded", because there is no barometric source
-      ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). That is
-      defensible — absent beats a plausible wrong number — but a reviewer or a
-      tester sees a metric the app advertises and never fills. Either build
-      `CMAltimeter`, or make sure it reads as deliberate rather than broken.
-      **The only item on this page that could reasonably change what 1.0.0
-      contains**, which is why it is decided last.
+- [x] **`NSHealthUpdateUsageDescription` described a write that never happens.**
+      Dropped 2026-09-08 at `6f71c3c`. `health_read_types.dart` requests
+      `HealthDataAccess.READ` for `WORKOUT` and `STEPS`, and `HealthDataAccess`
+      appears nowhere else in `lib/` — so this was a purpose string for a
+      permission the binary never exercises: at best noise a reviewer reads and
+      cannot verify, at worst Guideline 5.1.1. The comment beside it admitted
+      the position, describing what the app was "built toward". The read key
+      stays; a comment marks where the write key was, so the next person adds it
+      back in the same commit as the write. **This also settles test-sheet row
+      B6**, which existed to find out whether iOS ever asked for write access.
 
-      **It costs more than it looked, found 2026-09-03 by looking at the
-      plate.** `run-complete` is the finished-run screen, and it is also listing
-      screenshot **H3**. The plate shows a six-tile grid with elevation gain and
-      max elevation filled in, because its fixture supplies altitude; on a
-      device both read "not recorded". So the App Store shot has **two of six
-      tiles empty** — and the plate is precisely why nobody noticed, since it
-      renders a state the app cannot produce.
 
-      That reframes the decision. It is not only whether absence reads as
-      deliberate to a reviewer, it is whether a third of the stat grid reads as
-      deliberate in a picture chosen to sell the app. Three ways out: build
-      `CMAltimeter`, drop the two tiles for 1.0.0, or shoot H3 framed on the
-      splits instead. **The phone answers which.**
+- [x] **Elevation at launch: the tiles stay, and stay empty.** Decided
+      2026-09-08. They are built end to end and read "not recorded" on every
+      device, because there is no barometric source at all — not on the
+      emulator, and not on an iPhone either
+      ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). The
+      hardware barometer is not the blocker; no code reads it.
+
+      **Three options were on the table and the middle one was taken.** Hiding
+      the tiles when there is no source was drafted and reversed on the call
+      that they should always show. Building `CMAltimeter` was declined for
+      1.0.0: iOS-only, so unverifiable from Windows, and it would have reached a
+      device untested. So the tiles ship visible and unfilled.
+
+      **The listing shot fills them, and that is a deliberate choice rather than
+      an oversight** — recorded here because the release plan is where a choice
+      like this has to be findable. `_demoSummary()` supplies elevation, and
+      also heart rate and calories, which a recorded run fills for none of the
+      three. `store-assets/README.md` states it against the stand-ins, and the
+      Health read is specified for 1.0.1 in
+      [after-1.0.0.md](after-1.0.0.md).
+
 
 ---
 
@@ -684,21 +702,28 @@ Recorded so nobody re-opens them under deadline:
 somebody else.** What is left is one sitting on a phone, one form-filling
 session in App Store Connect, and one decision.
 
-⚠ **Step 7 happened on 2026-09-04 and did not close.** The sitting stopped at
-section F, so the purchase chain (G, 22 rows) and the listing screenshots
-(H, 6 rows) were never reached — the two things build 12 was cut to test. It
-found four blockers and a fifth nobody had filed as one, all now fixed and none
-of them on a device. **Step 7 is therefore still open, against build 13**, and
-the rows it never reached are still the rows that decide whether 1.0.0 can be
-submitted at all.
+⚠ **Step 7 has now failed to close twice, on builds 12 and 13.** Build 13 went
+to a phone on 2026-09-07 and stopped at section G's *setup* — so the purchase
+chain (G, 23 rows) and the listing screenshots (H, 6 rows) have never run on any
+build, and they are the two things that decide whether 1.0.0 can be submitted at
+all.
 
-A new open item, from the same afternoon: **plans anchor week 1 to
-`mondayOf(now)`**, so a plan built on a Friday opens with Monday to Thursday
-already behind it. Race day is fixed (a session may no longer land on it); this
-half is a decision rather than a patch, because the fix is the anchor — start
-on the coming Monday, or count the block backwards from race day as ADR-0027
-already claims it does — and either changes what every plan looks like.
-`PlanRules.rejectPastDays` exists ready for it.
+It was not wasted either time. Build 13 returned five defects and seven UI
+requests, all closed at `6f71c3c`. Three of the five defects were **one**
+defect: an auth stream that said something happened rather than who, and state
+resolved once at launch
+([ADR-0032](decisions/0032-identity-is-an-event-and-the-tier-is-re-read.md)).
+D14's door was never broken — the tier it checked was stale, which is also what
+a cancelled subscription looks like to anyone who leaves the app open.
+
+**Step 7 is therefore still open, against a build 14 that is not yet cut.**
+Unset `REVENUECAT_ACCEPT_SANDBOX` when it is over.
+
+~~A new open item, from the same afternoon: **plans anchor week 1 to
+`mondayOf(now)`**.~~ **Closed 2026-09-08**: a plan starts on the coming Monday
+([ADR-0034](decisions/0034-a-plan-starts-on-the-coming-monday.md)). Counting the
+block backwards from race day remains the better fix and the larger one; it is
+recorded in that ADR as the answer if this one reads as a delay on a phone.
 
 *Said "six" until 2026-09-03, while only five were struck through. Step 2 is
 sent, not finished — counting a posted email as done is how the one item with

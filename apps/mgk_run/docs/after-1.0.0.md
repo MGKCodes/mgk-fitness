@@ -1,4 +1,4 @@
-# After 1.0.0 — the two items that are not yet work
+# After 1.0.0 — the edge of the push
 
 Two things came out of the build 12 field test on 2026-09-04 that **cannot be
 built as written**, because neither of them is specified. They are not deferred
@@ -13,9 +13,16 @@ are recorded against their rows in
 [testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md). Nothing on
 this page is a defect and nothing on it blocks submission.
 
-**This document exists so these two are not mistaken for either done or
+**This document exists so these are not mistaken for either done or
 forgotten** — which is the only fate available to an unspecified item that lives
 nowhere.
+
+**A third entry was added on 2026-09-08 and is a different shape.** Heart rate
+and calories from Health *is* specified; it is deferred on cost rather than
+stranded on meaning. It is here because this is where the edge of the 1.0.0 push
+is written down, and the filing rule below applies to it in one direction only:
+it needs no specification, so it is ready to become work whenever the release
+after this one has room.
 
 It is a work document, so it has an end date: it ends when both entries have
 either a specification or a written decision not to build them, and it is
@@ -55,6 +62,44 @@ specified and *is* 1.0.0 scope: whether elevation reading "not recorded" on two
 of six tiles looks deliberate or broken
 ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). That one has
 a decision to make. This one does not have a question yet.
+
+## 3. Heart rate and calories, read from Health
+
+**Unlike the two above, this one is specified.** It is here because it was
+deferred on cost at submission time, not because nobody could say what it means.
+
+The finished-run screen has `avgHr` and `caloriesEst` fields on `RunSummary`
+and tiles ready to draw them. `recording_run_recorder.dart` never sets either,
+so a recorded run shows neither, and the preview fixture that *does* fill them
+is why the plate looked richer than the product. Same shape as the elevation
+tiles and [ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md): built
+end to end, fed by nothing.
+
+**The decision, taken 2026-09-08:** keep the tiles, populate them from HealthKit
+over the run's own time window, and show an unavailable state otherwise. Not
+built for 1.0.0.
+
+**What it would have cost on submission day**, which is why:
+
+1. **A wider permission sheet.** `HEART_RATE` and `ACTIVE_ENERGY_BURNED` join
+   `kHealthReadTypes`, and that file's own doc says adding a type *"widens the
+   sheet the runner is shown, so it is a product decision as much as a technical
+   one"*.
+2. **A regenerated and redeployed privacy policy.** The policy names exactly
+   what health data is read; it is generated, and `legal_copy_test.dart` pins it
+   word for word across three renderings — the source, `legal_copy.dart`, and
+   the live `mgkfitness.mgkcodes.com/run/privacy`. All three move together.
+3. **Changed App Privacy declarations** in App Store Connect, against a table
+   [compliance.md](compliance.md) says must agree with four other places.
+
+And it is iOS-only, so none of it can be exercised from Windows — it would have
+reached a device untested, on a TestFlight list that already had 23 unproven
+purchase rows on it.
+
+**The acceptance criteria are already writable**, which is what makes this a
+1.0.1 item rather than a subject: a run recorded in the app shows an average
+heart rate and an energy figure matching what Health holds for the same window,
+and shows an unavailable state on a phone that has neither.
 
 ---
 
