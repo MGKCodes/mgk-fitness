@@ -172,9 +172,6 @@ moving.
 - **Heart rate, cadence and active energy are absent by design.**
 - **No in-run audio** ([ADR-0006](decisions/0006-in-run-audio-deferred.md)).
 - **The app is iPhone-only.** It runs on an iPad in compatibility mode.
-- **Week 1 of a plan can contain days already past.** A plan built on a Friday
-  anchors to that Monday. Known, and an open decision rather than a bug: race
-  day is fixed, this half changes what every plan looks like.
 
 ---
 

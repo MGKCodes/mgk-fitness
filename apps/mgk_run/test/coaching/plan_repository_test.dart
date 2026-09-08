@@ -163,10 +163,56 @@ void main() {
   tearDown(() => db.close());
 
   group('create', () {
+    test('starts on the coming Monday, whatever day it is built on', () async {
+      // **The build 12 field test's other finding, and it is the anchor**
+      // (ADR-0034). A plan built on a Friday opened with Monday to Thursday
+      // already behind it — four days of a seven-day week gone, on the screen
+      // a runner had just asked for a plan on.
+      //
+      // Excluding those days the way race day is excluded was tried and
+      // reverted: it leaves week 1 with three usable days carrying a whole
+      // week's volume, trading a week nobody can complete for one nobody
+      // should. Every weekday is covered because the defect was invisible on
+      // the two the fixtures happened to use.
+      for (var day = 1; day <= 7; day++) {
+        // 2026-08-03 is a Monday, so `day` is the weekday number.
+        final built = DateTime(2026, 8, 2 + day, 9, 30);
+        final plan = await repo(now: () => built).create(aProfile());
+
+        expect(plan.startDate.weekday, DateTime.monday, reason: 'day $day');
+        expect(
+          plan.startDate.isBefore(DateTime(built.year, built.month, built.day)),
+          isFalse,
+          reason: 'a plan may not begin in the past — day $day',
+        );
+        for (var weekday = 1; weekday <= 7; weekday++) {
+          expect(
+            plan
+                .dateFor(weekIndex: 1, weekday: weekday)
+                .isBefore(plan.startDate),
+            isFalse,
+            reason: 'week 1 holds no day before the plan — day $day',
+          );
+        }
+      }
+    });
+
+    test('and a Monday starts today rather than in a week', () async {
+      // The boundary the helper exists for. "Coming Monday" on a Monday is
+      // today: pushing it a week would make Monday the one day you cannot
+      // start on, which is the opposite of the point.
+      final monday = DateTime(2026, 8, 3, 9, 30);
+      final plan = await repo(now: () => monday).create(aProfile());
+      expect(plan.startDate, DateTime(2026, 8, 3));
+    });
+
     test('persists the plan and its current week', () async {
       final plan = await repo().create(aProfile());
 
-      expect(plan.startDate, DateTime(2026, 7, 27)); // the Monday of that week
+      // The **coming** Monday, not the one this Wednesday belongs to
+      // (ADR-0034). Anchored to `mondayOf(now)` a plan built today would open
+      // with Monday and Tuesday already spent.
+      expect(plan.startDate, DateTime(2026, 8, 3));
       expect(plan.skeleton.weeks, isNotEmpty);
 
       // Read back through a completely fresh repository — a relaunch.
@@ -287,16 +333,19 @@ void main() {
       () async {
         final plan = await repo().create(aProfile());
 
-        // Week 1 on creation day.
+        // Week 1 on creation day — which is now *before* the plan starts, and
+        // still week 1: a progressing plan clamps at its own beginning.
         expect((await repo().today(plan)).slot.index, 1);
 
-        // Nine days later the runner is in week 2 — the bug persistence exposes:
-        // a stored plan must not keep insisting it is week 1 forever.
-        final later = repo(now: () => DateTime(2026, 8, 5, 7));
+        // Nine days after the start the runner is in week 2 — the bug
+        // persistence exposes: a stored plan must not keep insisting it is
+        // week 1 forever. Counted from the start date rather than from
+        // creation day, which since ADR-0034 are five days apart.
+        final later = repo(now: () => DateTime(2026, 8, 12, 7));
         expect((await later.today(plan)).slot.index, 2);
 
-        // Four weeks later, week 5.
-        final muchLater = repo(now: () => DateTime(2026, 8, 26, 7));
+        // Four weeks after that, week 5.
+        final muchLater = repo(now: () => DateTime(2026, 9, 2, 7));
         expect((await muchLater.today(plan)).slot.index, 5);
       },
     );

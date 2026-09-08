@@ -116,7 +116,9 @@ class PlanRepository {
       id: _newId(),
       profile: profile,
       skeleton: skeleton,
-      startDate: mondayOf(now),
+      // The coming Monday, not this one (ADR-0034). A plan built on a Friday
+      // used to open with Monday to Thursday already behind it.
+      startDate: comingMondayFrom(now),
     );
     await _store.savePlan(plan);
     await _pushPlan(plan);
@@ -125,7 +127,13 @@ class PlanRepository {
     // ahead is what plan-generation.md specifies, and doing it here rather than
     // lazily is what keeps [weekFor] off the network: by the time any screen
     // asks, the horizon the Coach tab shows is already on disk.
-    final current = plan.weekOn(now);
+    // **From the plan's own start, not from `now`.** Since ADR-0034 a plan
+    // begins on the coming Monday, so on creation day `now` is *before* it —
+    // and a rhythm's week index wraps for such a date, which would have had a
+    // brand-new plan materialise the last week of its cycle and then fail to
+    // find a next one. Asking the start date gives week 1 for either shape,
+    // which is what "the week this plan opens on" has always meant.
+    final current = plan.weekOn(plan.startDate);
     await weekFor(plan, current, allowModel: true);
     final next = plan.skeleton.weeks.firstWhere(
       (w) => w.index == current.index + 1,
@@ -184,15 +192,13 @@ class PlanRepository {
   /// long run on the latest available weekday -- which in the final week is
   /// usually the Sunday the race is on. Found on a phone, as row D4.
   ///
-  /// **The sibling defect is not fixed here, deliberately.** A plan built on a
-  /// Friday also opens with Monday to Thursday behind it, because the grid is
-  /// anchored to `mondayOf(now)`. Excluding those days the same way was tried
-  /// and reverted: it leaves week 1 with three usable days carrying a whole
-  /// week's prescribed volume, which trades a week nobody can complete for a
-  /// week nobody should. The real fix is the anchor -- start on the coming
-  /// Monday, or count the block backwards from race day as ADR-0027 already
-  /// says it does -- and that changes what every plan looks like, so it is a
-  /// decision rather than a patch. `now` is kept here for it.
+  /// **The sibling defect is fixed at the anchor, not here** (ADR-0034).
+  /// A plan built on a Friday used to open with Monday to Thursday behind it,
+  /// because the grid was anchored to `mondayOf(now)`. Excluding those days the
+  /// way race day is excluded was tried and reverted: it leaves week 1 with
+  /// three usable days carrying a whole week's prescribed volume, which trades
+  /// a week nobody can complete for a week nobody should. Plans start on the
+  /// coming Monday instead, so week 1 has no past days to exclude.
   Set<int> _unusableWeekdays(StoredPlan plan, SkeletonWeek slot) {
     final DateTime? event = plan.profile.eventDate;
     final DateTime? race = event == null

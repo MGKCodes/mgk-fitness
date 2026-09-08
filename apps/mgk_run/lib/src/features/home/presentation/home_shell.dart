@@ -658,10 +658,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // be moved out from under the runner who ran it.
     //
     // `since` is decided here rather than inside the service because this is
-    // where the week-1 rule lives: a plan's first week is anchored to
-    // `mondayOf(now)`, so its earlier days predate the plan itself and cannot
-    // have been missed. A second opinion about that in the service would be a
-    // second place for it to be wrong.
+    // where the week-1 rule lives. It used to be that a plan's first week was
+    // anchored to `mondayOf(now)`, so its earlier days predated the plan and
+    // could not have been missed. Since ADR-0034 a plan starts on the coming
+    // Monday, so week 1 has no such days at all — the rule is simpler, and the
+    // reason for deciding it in one place is unchanged: a second opinion about
+    // it in the service would be a second place for it to be wrong.
     final now = DateTime.now();
     final proposal = await AdaptationService(client: client).propose(
       week: week,
