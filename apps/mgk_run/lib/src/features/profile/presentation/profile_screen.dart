@@ -3,6 +3,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
+
+import '../domain/backup_state.dart';
+import 'backup_card.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/plan_history.dart';
 import '../../coaching/domain/prescribed_distance.dart';
@@ -63,7 +66,17 @@ class ProfileScreen extends StatefulWidget {
     this.onAddRun,
     this.onAskCoach,
     this.onOpenSettings,
+    this.backup,
   });
+
+  /// Where the runner's training actually is, or null to say nothing.
+  ///
+  /// Null on an unwired shell, in the preview harness and in the thirty-odd
+  /// tests that pump this screen directly — which is why the card is absent
+  /// rather than empty in all of them. A runner with no account and no consent
+  /// also gets null: there is nothing to report, and an empty status line is
+  /// furniture on a page whose own doc says a zero is a claim.
+  final ProfileBackupState? backup;
 
   final RunnerStats stats;
 
@@ -211,6 +224,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Entrance(
                     child: _Lifetime(stats: stats, unit: widget.unit),
                   ),
+
+                  // Under the lifetime figures, because it is about all of
+                  // them. "Is this safe?" is a question you ask while looking
+                  // at the thing you would lose, which is why it is here as
+                  // well as in Settings rather than only there.
+                  if (widget.backup case final ProfileBackupState state)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.md),
+                      child: BackupCard(state: state),
+                    ),
 
                   // Shown on an empty log as well, which reverses the decision
                   // this comment used to record. The old reasoning was that the

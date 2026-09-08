@@ -6,6 +6,9 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/history/domain/run_writer.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/profile/presentation/backup_card.dart';
+import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
+import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 /// **The log is on the phone, so it must not wait for the server.**
@@ -62,6 +65,60 @@ void main() {
       reason: 'the phone knew this before the server was asked',
     );
     expect(restore.asked, isTrue, reason: 'and the restore did still start');
+  });
+
+  testWidgets('and it says the backup is running while it is', (tester) async {
+    // The other half of the same field-test note: "Profile needs a visible sync
+    // state — showing whether data has reached the back end." Asserted through
+    // the shell because the state is assembled there, from three things that
+    // live in three places: the auth session, the consent store, and the local
+    // health record `main.dart` used to say nothing outside Settings read.
+    await tester.binding.setSurfaceSize(const Size(430, 2600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final restore = _NeverAnswers();
+    addTearDown(restore.abandon);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: HomeShell(
+          auth: FakeAuthRepository(signedIn: true, email: 'sam@example.com'),
+          initialTab: 2,
+          restore: restore,
+          consentStore: InMemoryBackupConsent(BackupConsent.granted),
+          backupHealth: InMemoryBackupHealth(),
+          historySource: () async => <RunSummary>[run(1)],
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Backing up…'), findsOneWidget);
+  });
+
+  testWidgets('and says nothing at all without an account', (tester) async {
+    // No account means nowhere for the data to go, which is a state to leave
+    // unremarked rather than to warn about (ADR-0019).
+    await tester.binding.setSurfaceSize(const Size(430, 2600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: HomeShell(
+          auth: FakeAuthRepository(),
+          initialTab: 2,
+          consentStore: InMemoryBackupConsent(BackupConsent.granted),
+          backupHealth: InMemoryBackupHealth(),
+          historySource: () async => <RunSummary>[run(1)],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BackupCard), findsNothing);
   });
 }
 

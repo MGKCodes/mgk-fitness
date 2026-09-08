@@ -59,6 +59,8 @@ import '../../recording/presentation/recording_screen.dart';
 import '../../history/domain/run_writer.dart';
 import '../../history/domain/run_draft.dart';
 import '../../settings/domain/backup_consent.dart';
+import '../../settings/domain/backup_health.dart';
+import '../../profile/domain/backup_state.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../../history/presentation/run_form_screen.dart';
@@ -91,6 +93,7 @@ class HomeShell extends StatefulWidget {
     this.runEditor,
     this.restore,
     this.consentStore,
+    this.backupHealth,
     this.eraser,
     this.initialTab = 0,
     this.justSignedUp = false,
@@ -121,6 +124,15 @@ class HomeShell extends StatefulWidget {
   /// Where the backup answer lives. Null skips the prompt, which is what the
   /// preview harness and tests want.
   final BackupConsentStore? consentStore;
+
+  /// The local record of what the backup last did.
+  ///
+  /// **Threaded now, and `main.dart` used to say why it was not.** Its comment
+  /// read: "Nothing else reads it here — it is for Settings… threading it
+  /// through the shell would mean four widgets holding a dependency only the
+  /// last of them uses." True until Profile grew a line about where the
+  /// runner's training actually is, which is the question the record answers.
+  final BackupHealthStore? backupHealth;
 
   /// Erases what is already on the server when backup is switched off.
   ///
@@ -377,6 +389,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // session, not just a fresh sign-in).
     unawaited(widget.auth.ensureProfile());
     unawaited(_loadUnit());
+    if (_index == _profileTab) unawaited(_loadBackupState());
     unawaited(_restoreThenLoad());
 
     unawaited(_resolveAccess());
@@ -1127,6 +1140,79 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// Metric until the stored choice arrives. [UnitSettings.load] is contractually
   /// non-throwing and prefers its local cache, so this is a fast no-op on every
   /// launch after the first.
+  /// What the backup last did, and whether it was asked for. Both local reads,
+  /// both cheap, both refreshed whenever something might have changed them.
+  BackupHealth _backupHealth = const BackupHealth();
+  BackupConsent _backupConsent = BackupConsent.unknown;
+
+  /// Runs the last backfill pushed. Zero is the ordinary state and says
+  /// nothing; a positive number is the only line on the card that reports an
+  /// event rather than a condition.
+  int _justSent = 0;
+
+  /// Profile's index in the shell's three tabs.
+  static const int _profileTab = 2;
+
+  /// Reads the two local records Profile's backup line is built from.
+  ///
+  /// **Only ever called for the Profile tab**, which is the only place the line
+  /// appears. That is worth doing on merit — a runner who never opens Profile
+  /// should not pay for two file reads at launch — and it is load-bearing for a
+  /// second reason: `onboarding_flow_test.dart` counts reads of the consent
+  /// store to prove that finishing sign-up asks nothing about backing up data
+  /// that does not exist yet (ADR-0012). A status read is not that question,
+  /// but a store that has been read is indistinguishable from one that has
+  /// been, so keeping the read where the line is keeps the proof honest.
+  Future<void> _loadBackupState() async {
+    final health = await widget.backupHealth?.read();
+    final consent = await widget.consentStore?.read();
+    if (!mounted) return;
+    setState(() {
+      if (health != null) _backupHealth = health;
+      if (consent != null) _backupConsent = consent;
+    });
+  }
+
+  /// Pushes whatever the server is missing, and **keeps the count**.
+  ///
+  /// `SupabaseRunBackup.backfill` has always returned how many runs it sent,
+  /// and both callers threw it away with `.catchError((_) => 0)`. It is the one
+  /// figure Profile's backup line has that says something happened.
+  ///
+  /// Still not awaited by the caller — it pushes every run the server lacks and
+  /// Home has no business waiting behind that — but no longer fired into the
+  /// void: an unhandled async error here is how a backup fails in silence
+  /// (ADR-0023).
+  Future<void> _backfillAndReport() async {
+    final editor = widget.runEditor;
+    if (editor == null) return;
+    int sent = 0;
+    try {
+      sent = await editor.backfill();
+    } on Object {
+      // Already written down where Settings will show it, by
+      // `ReportedRunBackup`. Nothing to add here.
+    }
+    await _loadBackupState();
+    if (mounted && sent > 0) setState(() => _justSent = sent);
+  }
+
+  /// What Profile is told about the backup, or null to say nothing.
+  ProfileBackupState? get _backupState {
+    final bool signedIn = widget.auth.isSignedIn;
+    final bool consented = _backupConsent.allowsBackup;
+    if (!signedIn || !consented) return null;
+    return ProfileBackupState(
+      signedIn: signedIn,
+      consented: consented,
+      // The restore and the backfill are the two things that move data, and
+      // `_restoring` is already the flag for one of them.
+      syncing: _restoring != null,
+      justSent: _justSent,
+      health: _backupHealth,
+    );
+  }
+
   Future<void> _loadUnit() async {
     final unit = await _unitSettings.load();
     if (!mounted || unit == _unit) return;
@@ -1215,10 +1301,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // `ReportedRunBackup`, so the failure is already written down where
     // Settings will show it. This handler exists so the error ends somewhere
     // deliberate rather than in the zone.
-    unawaited(
-      widget.runEditor?.backfill().catchError((Object _) => 0) ??
-          Future<int>.value(0),
-    );
+    unawaited(_backfillAndReport());
     // Only when something arrived. `_refreshHome` already ran at the top, so
     // this is the repaint for new data rather than the first paint.
     if (mounted && (restored?.restoredAnything ?? false)) await _refreshHome();
@@ -1339,10 +1422,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Pushing them is the thing the runner just said yes to; without it the
     // switch reads On and the server stays empty until the next launch.
     if (!mounted) return;
-    unawaited(
-      widget.runEditor?.backfill().catchError((Object _) => 0) ??
-          Future<int>.value(0),
-    );
+    unawaited(_backfillAndReport());
     setState(() {});
   }
 
@@ -1990,6 +2070,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               // the same load.
               ProfileScreen(
                 stats: stats,
+                // Null unless there is somewhere for the data to go: a runner
+                // with no account or no consent has nothing to report, and an
+                // empty status line is furniture on a page whose own rule is
+                // that a zero is a claim.
+                backup: _backupState,
                 profile: _planProfile,
                 // Derived here rather than cached, exactly like the stats above:
                 // it reads the display unit, and a stored copy stayed in kilometres
@@ -2024,7 +2109,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             bottom: AppSpacing.lg + MediaQuery.paddingOf(context).bottom,
             child: FloatingNavBar(
               selectedIndex: _index,
-              onSelected: (i) => setState(() => _index = i),
+              onSelected: (int i) {
+                setState(() => _index = i);
+                // Refreshed on arrival rather than held current: the record
+                // changes underneath this screen every time a run is pushed.
+                if (i == _profileTab) unawaited(_loadBackupState());
+              },
               destinations: const <NavPillDestination>[
                 NavPillDestination(
                   icon: Icons.home_outlined,

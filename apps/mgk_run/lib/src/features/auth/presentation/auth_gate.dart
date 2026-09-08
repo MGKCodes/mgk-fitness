@@ -9,6 +9,7 @@ import '../../coaching/data/plan_client.dart';
 import '../../coaching/data/coach_memory_store.dart';
 import '../../history/domain/run_writer.dart';
 import '../../settings/domain/backup_consent.dart';
+import '../../settings/domain/backup_health.dart';
 import '../../coaching/data/plan_store.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../coaching/data/purchase_client.dart';
@@ -38,6 +39,7 @@ class AuthGate extends StatefulWidget {
     this.runEditor,
     this.restore,
     this.consentStore,
+    this.backupHealth,
     this.eraser,
     this.coach,
     this.planClient,
@@ -78,6 +80,9 @@ class AuthGate extends StatefulWidget {
 
   /// Where the backup answer lives, so the shell can ask once before it pulls.
   final BackupConsentStore? consentStore;
+
+  /// Forwarded to the shell for Profile's backup line.
+  final BackupHealthStore? backupHealth;
 
   /// Removes what is already stored when consent is withdrawn.
   final BackupErasure? eraser;

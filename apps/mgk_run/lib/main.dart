@@ -150,10 +150,14 @@ class _AppRootState extends State<_AppRoot> {
     // each wrapper so all three read the same answer — three stores could
     // disagree, and the disagreement would be silent.
     final consent = createBackupConsentStore();
-    // Where a failed push is written down. Nothing else reads it here — it is
-    // for Settings, which builds its own store from the same factory and reads
-    // the same file. Threading it through the shell would mean four widgets
-    // holding a dependency only the last of them uses.
+    // Where a failed push is written down. Read in two places now: Settings,
+    // which builds its own store from the same factory over the same file, and
+    // Profile's backup line, which is threaded the store from here.
+    //
+    // This comment used to say the opposite — that nothing else read it and
+    // threading it through the shell would mean four widgets holding a
+    // dependency only the last of them uses. That was true until Profile had a
+    // reason to ask where the runner's training actually is.
     final backupHealth = createBackupHealthStore();
     // Gated at construction: nothing below ever holds an ungated backup, so
     // there is no call path that can skip the check.
@@ -202,6 +206,7 @@ class _AppRootState extends State<_AppRoot> {
       runEditor: RunEditor(db: db, backup: runBackup),
       restore: restore,
       consentStore: consent,
+      backupHealth: backupHealth,
       // What makes withdrawing consent honest rather than a pause. Null
       // for a persona, by the same rule as every other line here: invented
       // data never reaches the shared project, so there is nothing of the
