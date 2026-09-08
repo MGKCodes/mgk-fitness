@@ -319,13 +319,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // above: built lazily, it costs one row per screen no matter how
             // many years of running sit below the fold.
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.xl,
                 0,
                 AppSpacing.xl,
-                // The coach mark floats over this tab too, so the last row of
-                // the log needs the same room the Plan tab leaves it.
-                kCoachMarkClearance,
+                // The nav pill and the coach mark both float over this tab, so
+                // the last row of the log needs the room they take together.
+                kFloatingChromeClearance + MediaQuery.paddingOf(context).bottom,
               ),
               sliver: SliverList.separated(
                 itemCount: runs.length,

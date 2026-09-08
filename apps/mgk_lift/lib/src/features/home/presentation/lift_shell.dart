@@ -161,6 +161,22 @@ class _LiftShellState extends State<LiftShell> {
   /// being full-width.
   static const double _coachMarkReserve = 64;
 
+  /// Everything floating at the foot: the nav pill, the gap above it, and the
+  /// mark when there is one.
+  ///
+  /// **The nav bar floats now** (ADR-0033), so the `Scaffold` no longer takes
+  /// its height off the body and the reserve has to. Reserved here rather than
+  /// at each surface for the reason the mark's own reserve gives: the mark is
+  /// conditional, so three surfaces reserving it themselves left dead space
+  /// above the bar whenever the coach was absent.
+  ///
+  /// Run does the opposite — it pads inside each scroll view — because its
+  /// surfaces had already stopped absorbing a bottom inset. Two mechanisms for
+  /// one problem, deliberately: each app's surfaces already handled insets one
+  /// way, and changing that was the larger risk.
+  double _floatingChromeReserve(bool hasCoach) =>
+      kNavPillHeight + AppSpacing.md + (hasCoach ? _coachMarkReserve : 0);
+
   /// Held at the shell rather than on a surface, because Track logs in these
   /// units and Profile reports in them — one load, so the two cannot disagree.
   UnitPreferences _units = const UnitPreferences();
@@ -305,7 +321,7 @@ class _LiftShellState extends State<LiftShell> {
             data: MediaQuery.of(context).copyWith(
               padding: MediaQuery.of(
                 context,
-              ).padding.copyWith(bottom: coach == null ? 0 : _coachMarkReserve),
+              ).padding.copyWith(bottom: _floatingChromeReserve(coach != null)),
             ),
             child: IndexedStack(
               index: _index,
@@ -345,6 +361,40 @@ class _LiftShellState extends State<LiftShell> {
               ],
             ),
           ),
+          // **Floating, not `Scaffold.bottomNavigationBar`** (ADR-0033), and
+          // shared with Run rather than hand-written a second time — the two
+          // apps kept separate copies of the same construct until this.
+          Positioned(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            bottom: AppSpacing.lg + MediaQuery.paddingOf(context).bottom,
+            child: FloatingNavBar(
+              selectedIndex: _index,
+              onSelected: _go,
+              destinations: const <NavPillDestination>[
+                // "Track", not "Home". In Run the front page is a summary of
+                // the day; here it is the thing you are actually doing in the
+                // gym, and the label should say so. The component takes its
+                // destinations as data for exactly this reason.
+                NavPillDestination(
+                  icon: Icons.fitness_center_outlined,
+                  selectedIcon: Icons.fitness_center,
+                  label: 'Track',
+                ),
+                NavPillDestination(
+                  icon: Icons.calendar_month_outlined,
+                  selectedIcon: Icons.calendar_month,
+                  label: 'Plan',
+                ),
+                NavPillDestination(
+                  icon: Icons.person_outline,
+                  selectedIcon: Icons.person,
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
+
           // Over every surface, which is the entire point.
           //
           // Right-aligned and only as wide as its label, **not** stretched to
@@ -355,36 +405,16 @@ class _LiftShellState extends State<LiftShell> {
           if (coach != null)
             Positioned(
               right: AppSpacing.lg,
-              bottom: AppSpacing.lg,
+              bottom:
+                  AppSpacing.lg +
+                  MediaQuery.paddingOf(context).bottom +
+                  kNavPillHeight +
+                  AppSpacing.md,
               child: CoachMark(
                 hasUnread: widget.hasCoachNote,
                 onTap: _openCoach,
               ),
             ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _go,
-        destinations: const <NavigationDestination>[
-          // "Track", not "Home". In Run the front page is a summary of the day;
-          // here it is the thing you are actually doing in the gym, and the
-          // label should say so.
-          NavigationDestination(
-            icon: Icon(Icons.fitness_center_outlined),
-            selectedIcon: Icon(Icons.fitness_center),
-            label: 'Track',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Plan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
         ],
       ),
     );

@@ -135,15 +135,23 @@ class PlanScreen extends StatelessWidget {
         scrim: ScrimStrength.grounded,
         opacity: 0.34,
         alignment: Alignment.topCenter,
+        // **`bottom: false`, and this is the widget that caused IMG_4700.**
+        // With the nav bar in the Scaffold slot, this `SafeArea` measured a
+        // viewport that had already had the bar's height taken off it, and a
+        // fake bottom inset on top of that sliced the last card and left a
+        // black band. The bar floats now (ADR-0033) and the scroll padding
+        // below does the whole job, so the mechanism is deleted rather than
+        // tuned. Matches `home_tab.dart`, which has always done it this way.
         child: SafeArea(
+          bottom: false,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.lg,
-              // Room for the floating mark, so the last card is never tucked
-              // under it.
-              kCoachMarkClearance,
+              // Room for everything floating at the foot: the nav pill, and the
+              // coach mark stacked above it.
+              kFloatingChromeClearance + MediaQuery.paddingOf(context).bottom,
             ),
             children: <Widget>[
               if (current != null) ...<Widget>[

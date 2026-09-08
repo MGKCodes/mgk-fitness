@@ -20,6 +20,14 @@ abstract final class AppRadius {
   /// Sheets and modals, which want a softer edge than a card.
   static const double sheet = 20;
 
+  /// Fully rounded ends. Large rather than computed, so it does not need the
+  /// height it is applied to — the corner clamps at half the shorter side.
+  ///
+  /// Deliberately the one radius the scale does not moderate: a pill is a
+  /// shape, not a softness, and picking 28 or 32 by eye is how the drift this
+  /// class exists to stop begins again.
+  static const double pill = 999;
+
   static const BorderRadius chipAll = BorderRadius.all(Radius.circular(chip));
   static const BorderRadius controlAll = BorderRadius.all(
     Radius.circular(control),

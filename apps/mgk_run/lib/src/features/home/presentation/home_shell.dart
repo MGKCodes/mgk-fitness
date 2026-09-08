@@ -2013,11 +2013,59 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           // present on a third of the app and absent from the rest.
           // Absent rather than inert when there is no coach behind it. A mark
           // that cannot open anything is worse than no mark.
+          // **Floating, not `Scaffold.bottomNavigationBar`** (ADR-0033). It no
+          // longer reserves its own height, so every scrolling surface pads its
+          // foot by `kFloatingChromeClearance` instead.
+          Positioned(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            bottom: AppSpacing.lg + MediaQuery.paddingOf(context).bottom,
+            child: FloatingNavBar(
+              selectedIndex: _index,
+              onSelected: (i) => setState(() => _index = i),
+              destinations: const <NavPillDestination>[
+                NavPillDestination(
+                  icon: Icons.home_outlined,
+                  selectedIcon: Icons.home,
+                  label: 'Home',
+                ),
+                // "Plan", not "Coach". The tab was named for a conversation
+                // that moved out of it — the dock it was built around became a
+                // mark floating over all three tabs. What is left under the
+                // label is the headline, this week, the arc and the calendar
+                // (ADR-0017).
+                //
+                // Not the sparkle either, for the reason `CoachButton` gives
+                // for avoiding it: `Icons.auto_awesome` is on every AI feature
+                // shipped in the last three years, and this tab is not even the
+                // AI one.
+                NavPillDestination(
+                  icon: Icons.calendar_month_outlined,
+                  selectedIcon: Icons.calendar_month,
+                  label: 'Plan',
+                ),
+                NavPillDestination(
+                  icon: Icons.person_outline,
+                  selectedIcon: Icons.person,
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
+
+          // Stacked **above** the pill rather than beside it. Both are full
+          // width — the reveal expands to deliver a note as prose, so
+          // right-aligning it the way Lift's mark is would break the reveal —
+          // and two full-width things cannot share the same band.
           if (_chat != null)
             Positioned(
               left: AppSpacing.lg,
               right: AppSpacing.lg,
-              bottom: AppSpacing.lg,
+              bottom:
+                  AppSpacing.lg +
+                  MediaQuery.paddingOf(context).bottom +
+                  kNavPillHeight +
+                  AppSpacing.md,
               child: CoachReveal(
                 // Only an observation the runner has not been shown. Once it
                 // has played the mark rests, and it does not play again until
@@ -2038,35 +2086,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 },
               ),
             ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          // "Plan", not "Coach". The tab was named for a conversation that
-          // moved out of it — the dock it was built around became a mark
-          // floating over all three tabs. What is left under the label is the
-          // headline, this week, the arc and the calendar (ADR-0017).
-          //
-          // Not the sparkle either, for the reason `CoachButton` gives for
-          // avoiding it: `Icons.auto_awesome` is on every AI feature shipped in
-          // the last three years, and this tab is not even the AI one.
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Plan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
         ],
       ),
     );

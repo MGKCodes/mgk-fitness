@@ -217,13 +217,13 @@ class HomeTab extends StatelessWidget {
         child: SafeArea(
           bottom: false,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.xl,
               AppSpacing.xl,
               AppSpacing.xl,
-              // The coach mark floats over this tab too, so the last card needs
-              // the same room the Plan tab leaves it.
-              kCoachMarkClearance,
+              // The nav pill and the coach mark both float over this tab, so
+              // the last card needs the room they take together.
+              kFloatingChromeClearance + MediaQuery.paddingOf(context).bottom,
             ),
             children: <Widget>[
               Entrance(

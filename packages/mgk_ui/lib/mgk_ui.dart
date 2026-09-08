@@ -24,6 +24,7 @@ export 'src/theme/app_theme.dart';
 export 'src/widgets/app_buttons.dart';
 export 'src/widgets/app_card.dart';
 export 'src/widgets/conversation_bubble.dart';
+export 'src/widgets/floating_nav_bar.dart';
 export 'src/widgets/glass_surface.dart';
 export 'src/widgets/hero_numeral.dart';
 export 'src/widgets/pace_band_meter.dart';
