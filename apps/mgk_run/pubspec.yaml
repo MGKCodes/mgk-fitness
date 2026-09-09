@@ -4,13 +4,27 @@ publish_to: none
 
 # The build number after the + is the real one, read straight from here by both
 # release workflows. It was +1 while codemagic.yaml passed --build-number from
-# Codemagic's project-wide counter, so this line said 1 while TestFlight held 12
-# and 13 — the file was simply wrong, and nothing read it.
+# $PROJECT_BUILD_NUMBER, so nothing ever read this line.
 #
-# Bump this before every submission; the stores refuse a number already used for
-# this version. Builds 12 and 13 have been tested, so 14 is next, and the test
-# sheet is already written for it.
-version: 1.0.0+14
+# 21, NOT 14, AND THE GAP IS THE POINT. Every document in this repo names builds
+# by the index shown in Codemagic's UI, which is per-workflow. The number baked
+# into the binary came from $PROJECT_BUILD_NUMBER, which counts every build in
+# the project across all workflows, Lift's included. The two agreed until
+# 2026-08-20 and then came apart:
+#
+#     what the docs call it   what TestFlight received
+#     build 11                18
+#     build 12                19
+#     build 13                20   (commit 75a89df, the newest)
+#
+# Read off the artefact metadata of each Codemagic build, not inferred. A Lift
+# build took 16, which is where most of the gap opened. So the next Run build is
+# 21; 14 would be refused as lower than one already uploaded.
+#
+# Bump this before every submission — the stores refuse a number already used
+# for this version — and from here the number in the docs and the number in the
+# binary are the same number, because this line is the only source of it.
+version: 1.0.0+21
 
 environment:
   sdk: ^3.11.5
