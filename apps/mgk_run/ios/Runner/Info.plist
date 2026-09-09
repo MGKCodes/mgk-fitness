@@ -93,14 +93,32 @@
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Read your workouts and step count from Health, so runs you recorded on a watch or another app appear in your training log and your coach sees the whole picture.</string>
-	<!-- NSHealthUpdateUsageDescription was here and is deliberately gone.
+	<!-- NSHealthUpdateUsageDescription IS REQUIRED, and removing it fails the
+	     UPLOAD, not the review. 6f71c3c took it out on the reasoning that
 	     health_read_types.dart requests HealthDataAccess.READ for WORKOUT and
-	     STEPS and nothing else, and HealthDataAccess appears nowhere else in
-	     lib/ - so this was a purpose string for a permission the binary never
-	     exercises. At best noise a reviewer reads and cannot verify, at worst
-	     Guideline 5.1.1: requesting access the app does not use. The comment it
-	     carried admitted as much, describing what the app was "built toward".
-	     Put it back in the same commit as the write, not before. -->
+	     STEPS and nothing else, and that HealthDataAccess appears nowhere else
+	     in lib/. All of that is true about our Dart and none of it is what
+	     Apple checks. App Store Connect refused the upload of 1.0.0+21 with
+	     error 90683, in terms that answer the argument directly:
+
+	       "If you're using external libraries or SDKs, they may reference APIs
+	        that require a purpose string. While your app might not use these
+	        APIs, a purpose string is still required."
+
+	     health 13.2.0 links HKHealthStore's write methods and
+	     com.apple.developer.healthkit is in Runner.entitlements, so the static
+	     scan sees write access whatever our code asks for. The string below is
+	     never shown to anybody: the prompt only appears when an app requests
+	     write authorisation, and this one never does.
+
+	     That also disposes of the Guideline 5.1.1 worry that motivated the
+	     removal - a purpose string is not a request. This key can go when the
+	     health dependency or the entitlement goes, and not before.
+
+	     DO NOT REMOVE without running a real release build. No test in this
+	     repo can catch it; 1,501 of them passed on the commit that broke it. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
