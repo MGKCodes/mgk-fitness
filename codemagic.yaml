@@ -459,9 +459,30 @@ workflows:
         # --dart-define-from-file is load-bearing: AppConfig reads every value
         # from it, so an IPA built without this flag launches and then cannot
         # sign anybody in.
+        #
+        # NO --build-number, deliberately. The build number is `version:` in
+        # apps/mgk_run/pubspec.yaml and nowhere else, which is where Flutter
+        # reads it from when the flag is absent.
+        #
+        # It used to be $PROJECT_BUILD_NUMBER. That is Codemagic's PROJECT-wide
+        # counter — "Number of the build for this project", incrementing on
+        # every workflow run, not per workflow ($BUILD_NUMBER is the per-workflow
+        # one). Two things followed, and both were invisible because the stores
+        # only require the number to increase:
+        #
+        #   1. iOS and Android built from the SAME commit got numbers one apart,
+        #      because they are two workflow runs. The note on the Android side
+        #      claimed the shared variable stopped the two stores disagreeing
+        #      about which build is newer. Same variable is not the same value.
+        #   2. A Lift build moved Run's next number. "Build 14" meant the
+        #      project's 14th build, not Run's.
+        #
+        # The cost of this fix is a manual bump before each submission, and a
+        # repeated number is refused at upload. The gain is that the number is
+        # in git, on the commit that gets tagged, and one string feeds both
+        # stores — which is what actually keeps them in agreement.
         script: |
           flutter build ipa --release \
-            --build-number=$(($PROJECT_BUILD_NUMBER)) \
             --dart-define-from-file=config/app_config.json \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
@@ -851,8 +872,14 @@ workflows:
         # --dart-define-from-file is load-bearing for the same reason it is on
         # iOS: AppConfig reads every value from it, and a build without it
         # launches and then cannot sign anybody in.
+        #
+        # No --build-number: it comes from apps/mgk_run/pubspec.yaml, the same
+        # string run-ios-release reads, which is what actually makes the two
+        # stores agree about which build is newer. See the long note in
+        # run-ios-release for what the $PROJECT_BUILD_NUMBER version got wrong.
         script: |
-          flutter build apk --release             --build-number=$(($PROJECT_BUILD_NUMBER))             --dart-define-from-file=config/app_config.json
+          flutter build apk --release \
+            --dart-define-from-file=config/app_config.json
     artifacts:
       # Both paths, for the same reason the iOS workflow lists both: these globs
       # resolve relative to `working_directory`, and a build that publishes

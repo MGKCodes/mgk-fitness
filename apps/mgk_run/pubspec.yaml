@@ -2,7 +2,15 @@ name: mgk_run
 description: "Running: tracking, plans, and the AI coach. Part of the MGKCodes fitness suite."
 publish_to: none
 
-version: 1.0.0+1
+# The build number after the + is the real one, read straight from here by both
+# release workflows. It was +1 while codemagic.yaml passed --build-number from
+# Codemagic's project-wide counter, so this line said 1 while TestFlight held 12
+# and 13 — the file was simply wrong, and nothing read it.
+#
+# Bump this before every submission; the stores refuse a number already used for
+# this version. Builds 12 and 13 have been tested, so 14 is next, and the test
+# sheet is already written for it.
+version: 1.0.0+14
 
 environment:
   sdk: ^3.11.5
