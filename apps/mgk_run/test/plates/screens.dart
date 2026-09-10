@@ -495,6 +495,30 @@ void main() {
     );
   });
 
+  testWidgets('or says what it would cost', (tester) async {
+    await plate(
+      tester,
+      'coach-locked',
+      const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: CoachReveal(note: null, locked: true),
+          ),
+        ),
+      ),
+      size: const Size(393, 240),
+      pixelRatio: 3,
+      // Same instant as `coach-speaking`, so the two plates are comparable:
+      // the whole question here is whether the locked line reads as a sign
+      // rather than as a broken observation, and that is a judgement about the
+      // two side by side.
+      drive: (t) => t.pump(const Duration(milliseconds: 1400)),
+    );
+  });
+
   testWidgets('and then goes back to its corner', (tester) async {
     await plate(
       tester,

@@ -2084,6 +2084,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // No plan goes in. Where they are in a block is the Plan tab's
                 // subject and today is Home's; this is the long view of the runner.
                 standing: TrainingStanding.read(runs: _allRuns, unit: _unit),
+                // Computed either way — the card needs a standing to *be* a
+                // card, and the locked copy replaces its two lines rather than
+                // its existence. Nothing about it reaches the network, so this
+                // costs a free runner no request and no wait.
+                standingLocked: !_access.isSubscribed,
                 // Past plans only — the current one is the Coach tab's subject.
                 pastPlans: _pastPlans,
                 runs: _allRuns,
@@ -2171,6 +2176,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // stays: it is the door to the gate sheet, and a door is not
                 // the room.
                 note: _access.isSubscribed && !_noteDelivered ? _note : null,
+                // The locked line, once, for a runner who has not bought the
+                // coach. The mark alone was silent furniture: it is the door to
+                // the gate sheet and nothing on screen said so, so the only way
+                // to find out what it cost was to press an unlabelled C.
+                //
+                // Gated on `_noteDelivered` alongside the paid line, and on the
+                // same flag deliberately — the two share one "has this bar
+                // already played" budget, so a runner who pays mid-session does
+                // not get the locked sign and then the observation.
+                locked: !_access.isSubscribed && !_noteDelivered,
                 hasUnread: _access.isSubscribed && _note != null && !_coachSeen,
                 onTap: _openCoach,
                 onFinished: () {

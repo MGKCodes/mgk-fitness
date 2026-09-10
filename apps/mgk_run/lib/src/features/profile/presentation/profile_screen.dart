@@ -59,6 +59,7 @@ class ProfileScreen extends StatefulWidget {
     this.pastPlans = const <LabelledPlan>[],
     this.profile,
     this.standing,
+    this.standingLocked = false,
     this.runs = const <RunSummary>[],
     this.now,
     this.unit = UnitSystem.metric,
@@ -101,6 +102,15 @@ class ProfileScreen extends StatefulWidget {
   /// worked it out rather than for a runner who has no standing, since every
   /// runner has one.
   final TrainingStanding? standing;
+
+  /// Whether the standing is withheld because the coach has not been bought.
+  ///
+  /// Separate from passing a null [standing], and the distinction is the point:
+  /// null means *there is nothing to show* and hides the card, this means
+  /// *there is something and it costs money* and keeps it as a door. Defaults
+  /// to false so the thirty-odd tests that pump this screen directly, and the
+  /// preview harness, keep showing the real card.
+  final bool standingLocked;
 
   /// The training log, newest first. The caller orders it — this screen shows
   /// what it is given rather than re-sorting a list it did not build.
@@ -263,6 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: _Standing(
                         standing: widget.standing!,
                         onAsk: widget.onAskCoach,
+                        locked: widget.standingLocked,
                       ),
                     ),
                   ],
@@ -442,10 +453,39 @@ class _LogHeader extends StatelessWidget {
 /// a statement about them, and the thing a runner wants to do with a statement
 /// about them is take it up with someone.
 class _Standing extends StatelessWidget {
-  const _Standing({required this.standing, required this.onAsk});
+  const _Standing({
+    required this.standing,
+    required this.onAsk,
+    this.locked = false,
+  });
 
   final TrainingStanding standing;
   final void Function(String opener)? onAsk;
+
+  /// Whether to withhold the standing itself from a runner who has not bought
+  /// the coach.
+  ///
+  /// **This card was the last free copy of the paid thing.** `TrainingStanding`
+  /// is derived on the device, so it cost nothing to compute and was shown to
+  /// everybody — but `coach_access.dart` says the subscription buys *the
+  /// coach's reading* of the runner's own numbers, and "64.0 km, up from 36.0
+  /// km the four before" is exactly that reading. The coach note on Home was
+  /// gated for this reason (ADR-0030) and this was missed in the same pass.
+  ///
+  /// The card stays rather than disappearing, for the reason the note's mark
+  /// stays: it is a door, and a door removed is a door nobody finds. The
+  /// heading, the frame and the tap are unchanged; only the two lines that
+  /// state the reading are replaced.
+  final bool locked;
+
+  /// What the card says when it is not bought. Deliberately not a teaser — no
+  /// blurred number, no "you ran ██ km". A censored figure is still a claim
+  /// that there is a figure worth having, made by a surface that has not
+  /// earned the right to make it.
+  static const String _lockedHeadline = 'Your coach reads your training.';
+  static const String _lockedDetail =
+      'Where you stand, what has changed, and what to do about it. '
+      'Included with a subscription.';
 
   /// What the tap asks on the runner's behalf.
   ///
@@ -478,17 +518,22 @@ class _Standing extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                standing.headline,
+                locked ? _lockedHeadline : standing.headline,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   height: 1.25,
+                  // Dimmed to the same token the locked coach bubble uses, so
+                  // the two locked surfaces read as one state of one product.
+                  color: locked ? AppColors.textTertiary : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                standing.detail,
+                locked ? _lockedDetail : standing.detail,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
+                  color: locked
+                      ? AppColors.textTertiary
+                      : AppColors.textSecondary,
                   height: 1.45,
                 ),
               ),
