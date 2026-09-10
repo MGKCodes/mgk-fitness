@@ -850,15 +850,23 @@ workflows:
         # step on an empty SUPABASE_URL.
         - mgk_fitness_run_env
         - mgk_fitness_supabase
-        # Holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — the Play Developer API
-        # service-account JSON. MGKCodes already has one from frunt's listing;
-        # the same account can publish this listing once it is granted access to
-        # it in Play Console (Users and permissions → the service account →
-        # add app). CONFIRM THE GROUP NAME before the first run: a name that
-        # does not exist fails the build immediately with "group not found",
-        # which is loud, cheap, and better than a publish step that silently
-        # has no credentials.
-        - mgk_play_publishing
+        # Holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — the whole Play Developer
+        # API service-account JSON, pasted as a secure string.
+        #
+        # `mgk-fitness-play-publisher@mgk-fitness.iam.gserviceaccount.com`,
+        # created 2026-09-10 in its own GCP project. **Deliberately not frunt's
+        # `frunt-play-publisher`**, which was sitting there and would have
+        # worked: this credential does two jobs for the suite, publishing
+        # builds AND validating every Play purchase for RevenueCat, and those
+        # have very different rotation costs. Rotating a publish-only key is an
+        # inconvenience; rotating one RevenueCat depends on costs up to 36
+        # hours of degraded purchase validation. Sharing one credential across
+        # both products would let a rotation forced by frunt drag Run and
+        # Lift's billing through that window for reasons of its own.
+        #
+        # Suite-scoped rather than Run-scoped for the same reason the RevenueCat
+        # project is: Lift joins it, and wants this exact credential.
+        - mgk_fitness_play
       flutter: stable
       java: 17
     scripts:
