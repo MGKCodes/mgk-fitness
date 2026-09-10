@@ -88,7 +88,38 @@ says so.
 For a local release build, copy `android/key.properties.example` to
 `android/key.properties` and fill in the four values.
 
-- [ ] Keystore created and backed up
+### The key that was actually created, 2026-09-10
+
+Recorded because a fingerprint is the only way to answer "was this signed with
+the right key?" after the fact, and because Android developer verification
+(step 8b) asks for one. **None of this is secret** — a certificate fingerprint
+is derivable from any signed artefact and Play Console displays it. The
+password and the `.jks` are the secrets, and neither is here.
+
+```
+Alias          upload
+Owner          CN=Matthew Kay, OU=Unknown, O=MGKCodes, L=London, ST=London, C=GB
+Created        10 Sep 2026
+Valid until    26 Jan 2054
+Algorithm      2048-bit RSA, SHA256withRSA
+
+SHA-1     EC:4D:11:C1:E7:EA:1C:B7:57:4F:5F:B5:71:ED:96:33:C1:C3:33:CF
+SHA-256   A5:0B:EE:F9:77:8A:B6:91:06:F4:0B:67:98:D9:4E:47:17:C3:46:FE:
+          BD:28:75:87:44:E8:9E:0D:7A:16:12:06
+```
+
+The validity is not arbitrary: **Play requires an upload key valid beyond 22
+October 2033**, and `-validity 10000` clears that by two decades. A key with a
+default one-year validity is accepted at upload and becomes an unfixable
+problem later.
+
+To re-derive at any time:
+
+```powershell
+keytool -list -v -keystore run-upload.jks -alias upload
+```
+
+- [x] Keystore created and backed up
 - [ ] Uploaded to Codemagic as `run_upload`
 
 ## 2. Create the app in Play Console
