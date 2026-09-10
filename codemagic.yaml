@@ -1,25 +1,34 @@
 # Codemagic CI/CD for the suite — Run and Lift
 # (see apps/mgk_run/docs/decisions/0020-codemagic-is-the-build-path.md).
 #
-# Three manual-trigger workflows: Run → TestFlight, Lift → TestFlight, and
-# Lift → Play. The iOS pair runs on macOS cloud machines, so shipping never
-# depends on having a Mac to hand — which matters here, because both apps are
-# developed on Windows against an Android emulator and neither has ever been
-# built locally for its actual target. The Android one runs on Linux, because
-# nothing about it needs Xcode and the macOS instance costs several times more
-# per minute.
+# Four manual-trigger workflows plus `checks`: Run → TestFlight, Lift →
+# TestFlight, Run → Play, Lift → Play. The iOS pair runs on macOS cloud
+# machines, so shipping never depends on having a Mac to hand — which matters
+# here, because both apps are developed on Windows against an Android emulator
+# and neither has ever been built locally for its actual target. The Android
+# pair runs on Linux, because nothing about them needs Xcode and the macOS
+# instance costs several times more per minute.
 #
-# **Run has no Android RELEASE, deliberately** (ADR-0001). `run-android-release`
-# below builds an installable APK and stops: it carries no `publishing:` block,
-# because its Android build is a verification harness for design work on Windows
-# rather than a product, and a store pipeline would imply otherwise. That
-# decision is Run's alone: Lift ships to both stores as part of 2.0.0, which is
-# why the asymmetry below is intended rather than unfinished.
+# **RUN SHIPS TO PLAY, as of 2026-09-10.** `run-android-release` builds a signed
+# AAB alongside the APK and carries a `publishing:` block — commented until the
+# first bundle has been uploaded to the listing by hand, which the Play
+# Developer API requires before it will accept an API publish. See
+# `apps/mgk_run/docs/play-setup.md`.
 #
-# This comment read "Run has no Android workflow" until 2026-09-01, while
-# `run-android-release` sat a few hundred lines below it. The intent was right
-# and the sentence was not, which is the kind of staleness that sends a reader
-# looking for something that is already there.
+# THIS PARAGRAPH HAS NOW BEEN WRONG TWICE, IN THE SAME PLACE, ABOUT THE SAME
+# WORKFLOW. It read "Run has no Android workflow" until 2026-09-01 while
+# `run-android-release` sat a few hundred lines below it. It was corrected to
+# "Run has no Android RELEASE, deliberately (ADR-0001)" — a verification
+# harness for design work on Windows, and a store pipeline would imply
+# otherwise — and that survived nine days before Run acquired a Play listing,
+# a keystore and a publishing block.
+#
+# Worth keeping rather than tidying away, because the failure has a shape: this
+# header states a POLICY about the workflows, the workflows below state the
+# FACTS, and nothing checks the two against each other. A reader trusts the
+# header because it is first. If the third correction is ever needed, the
+# honest fix is probably to stop asserting policy up here at all and let each
+# workflow speak for itself.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -690,11 +699,11 @@ workflows:
   #     this repository. **It is already made** — one key signs every MGKCodes
   #     Android app, and Run created it on 2026-09-10:
   #
-  #       keytool -genkey -v -keystore mgkcodes-upload.jks \
+  #       keytool -genkey -v -keystore mgkfitness-upload.jks \
   #         -keyalg RSA -keysize 2048 -validity 10000 -alias upload
   #
   #     Upload it to Codemagic ▸ Team settings ▸ Code signing identities ▸
-  #     Android keystores, referenced below as `mgkcodes_upload`. Codemagic then
+  #     Android keystores, referenced below as `mgkfitness_upload`. Codemagic then
   #     exports CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS /
   #     CM_KEY_PASSWORD, which `app/build.gradle.kts` reads in preference to a
   #     local `key.properties`. The build REFUSES to fall back to the debug key
@@ -737,7 +746,7 @@ workflows:
         # uploaded to Codemagic** — the only one there was frunt's. So this
         # workflow would have failed on its first run, and nothing said so,
         # because it has never had a Play listing to publish to.
-        - mgkcodes_upload
+        - mgkfitness_upload
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
@@ -838,7 +847,7 @@ workflows:
         # name. Declaring it is what exports CM_KEYSTORE_PATH and its three
         # companions, which apps/mgk_run/android/app/build.gradle.kts reads.
         #
-        # ONE UPLOAD KEY FOR EVERY MGKCODES ANDROID APP. A Play listing records
+        # ONE UPLOAD KEY FOR EVERY MGKFITNESS APP. A Play listing records
         # the upload certificate it expects; nothing requires that certificate
         # to be unique to one listing, and the same key signs Run, Lift and
         # whatever comes after.
@@ -854,7 +863,7 @@ workflows:
         # frunt is the permanent exception. It is live on Play under
         # `frunt_upload`, and a shipped listing's upload key cannot be swapped
         # without going through that same support request for no gain.
-        - mgkcodes_upload
+        - mgkfitness_upload
       groups:
         # The same two groups as iOS, and the split is deliberate: the Supabase
         # values belong to the suite (ADR-0008 — one project for both apps), the

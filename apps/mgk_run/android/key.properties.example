@@ -6,10 +6,10 @@
 # from the keystore uploaded to it, and app/build.gradle.kts prefers those.
 #
 # ---------------------------------------------------------------------------
-# ONE UPLOAD KEY FOR EVERY MGKCODES ANDROID APP — Run, Lift, and whatever comes
+# ONE UPLOAD KEY FOR EVERY MGKFITNESS APP — Run, Lift, and whatever comes
 # after. It already exists (created 2026-09-10); do not make a second one.
 #
-#   keytool -genkey -v -keystore mgkcodes-upload.jks \
+#   keytool -genkey -v -keystore mgkfitness-upload.jks \
 #     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 #
 # A Play listing records the upload certificate it expects. Nothing requires
@@ -35,7 +35,7 @@
 # `storeFile` is an absolute path, or one relative to android/app/.
 # ---------------------------------------------------------------------------
 
-storeFile=/absolute/path/to/mgkcodes-upload.jks
+storeFile=/absolute/path/to/mgkfitness-upload.jks
 storePassword=
 keyAlias=upload
 keyPassword=
