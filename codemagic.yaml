@@ -186,7 +186,21 @@ workflows:
   # ───────────────────────────────────────────────────────────────────────────
   checks:
     name: Checks — Deno, pgTAP, Flutter
-    instance_type: linux_x2
+    # macOS, not Linux — see the long note in `run-android-release`.
+    #
+    # **THIS WORKFLOW HAD NEVER RUN.** It declared `linux_x2`, which is not
+    # available on this account's plan, so every push since it was written died
+    # before a machine started. The comment below says a check you have to
+    # trigger is a check you skip; this one could not be triggered at all, and
+    # nothing said so loudly enough to notice.
+    #
+    # Worth stating plainly because it explains a pattern: every defect this
+    # release has found — four arguments nobody passed, a build number the docs
+    # invented, a keystore reference pointing at nothing — was caught by
+    # reading, by a device, or by somebody saying so. None was caught by CI. The
+    # obvious reading was that the suite does not cover those cases, and the
+    # actual reason is that the suite was never running.
+    instance_type: mac_mini_m2
     max_build_duration: 20
 
     # Unlike the release workflows, this one is meant to run without being
@@ -728,7 +742,10 @@ workflows:
   # ─────────────────────────────────────────────────────────────────────────
   lift-android-release:
     name: Lift — Android internal
-    instance_type: linux_x2
+    # macOS, not Linux — see the long note in `run-android-release`. Linux is a
+    # paid-plan instance this account does not have, and a workflow declaring it
+    # fails before a machine starts.
+    instance_type: mac_mini_m2
     max_build_duration: 45
 
     cache:
@@ -834,7 +851,21 @@ workflows:
     # Linux, not macOS: an Android build has no reason to run on a Mac instance
     # and a metered plan charges the difference. This is the cheapest machine
     # Codemagic offers that can build Flutter for Android.
-    instance_type: linux_x2
+    #
+    # ALL OF WHICH IS TRUE AND NONE OF WHICH SURVIVED THE BILLING PLAN. This
+    # said `linux_x2` until 2026-09-10, when the first build that ever tried it
+    # died before starting: "The selected instance type is not available with
+    # the current billing plan." Linux is a paid-plan instance here; macOS is
+    # the one this account has. So the cheapest machine Codemagic offers is not
+    # the cheapest machine available to us, and the argument above was reasoning
+    # about a catalogue rather than about an account.
+    #
+    # macOS builds Android perfectly well — the image carries the JDK and the
+    # Android SDK, and it is what the iOS workflows already run on. It costs
+    # more per minute than Linux would; Linux costs a plan upgrade, so this is
+    # cheaper today. Revisit if Android builds become frequent enough that the
+    # per-minute difference outweighs the subscription.
+    instance_type: mac_mini_m2
     max_build_duration: 30
     cache:
       cache_paths:
