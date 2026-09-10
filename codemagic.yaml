@@ -866,7 +866,13 @@ workflows:
         #
         # Suite-scoped rather than Run-scoped for the same reason the RevenueCat
         # project is: Lift joins it, and wants this exact credential.
-        - mgk_fitness_play
+        #
+        # COMMENTED IN STEP WITH THE `publishing:` BLOCK AT THE END OF THIS
+        # WORKFLOW — uncomment both together or neither. This group exists only
+        # to feed that block, and Codemagic fails a build outright on a group
+        # name it cannot resolve, so referencing it while publishing is still
+        # off breaks a build over a credential it never reads.
+        # - mgk_fitness_play
       flutter: stable
       java: 17
     scripts:
@@ -965,6 +971,10 @@ workflows:
     # `submit_as_draft: true` on the first real publish: it puts the release in
     # Play Console for review rather than rolling it to testers, so a mistake
     # is a draft to delete instead of a build somebody has installed.
+    #
+    # UNCOMMENT THE `mgk_fitness_play` GROUP ABOVE AT THE SAME TIME. It holds
+    # the credentials this block reads, and it is commented for the same reason
+    # this is.
     # publishing:
     #   google_play:
     #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
