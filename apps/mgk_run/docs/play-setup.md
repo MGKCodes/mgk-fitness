@@ -177,6 +177,22 @@ flutter build appbundle --release --dart-define-from-file=config/app_config.json
 
 Upload it at **Testing ▸ Internal testing ▸ Create new release**.
 
+**The opt-in link, once the track exists:**
+
+```
+https://play.google.com/apps/internaltest/4701369090633386524
+```
+
+Open it in a browser signed into an account on the testers list, accept, and
+Play offers the install. It grants nothing to anybody not on that list, which is
+why it can sit here.
+
+**Install from Play, never by sideloading.** A `flutter run` or `adb install`
+build has the right signature and still cannot transact: Play Billing checks
+that Play delivered the app. The failure is an empty product list or
+`BILLING_UNAVAILABLE`, which reads exactly like a configuration mistake and
+sends you looking in the wrong four places.
+
 - [x] First AAB uploaded manually — 1.0.0 (22), internal testing, 2026-09-10
 
 ## 4. The declarations that gate every release
@@ -359,15 +375,27 @@ indistinguishable from none of them working at all.
 supabase secrets set REVENUECAT_ACCEPT_SANDBOX=true
 ```
 
-**Remove it before the production release.** It is the one setting here that
-turns free money on.
+**It is already `true`, and has been since it was introduced** (confirmed
+2026-09-10). So nothing needs setting before a test purchase — but the
+consequence runs the other way and is worth stating plainly:
+
+> **Sandbox purchases have been granting real entitlements in production this
+> whole time.**
+
+The exposure today is close to nothing: there are no public users, and a
+sandbox purchase needs a tester account on a list we control. It stops being
+nothing the moment the app is public, because then anybody who can obtain a
+sandbox tester account can grant themselves a coach — which is precisely what
+`entitlement_event.ts` refuses by default and what this flag switches off.
+
+So this is **not a step to remember**. It is a launch blocker:
 
 ```bash
 supabase secrets unset REVENUECAT_ACCEPT_SANDBOX
 ```
 
-- [ ] Flag set for testing
-- [ ] Flag removed before production
+- [x] Flag set for testing — was already on
+- [ ] **Flag removed before either store goes public** ← blocks production
 
 
 Add your account under **Play Console ▸ Setup ▸ License testing** so purchases
