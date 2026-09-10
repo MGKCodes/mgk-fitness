@@ -30,7 +30,7 @@ The dependencies are real and mostly one-way. Doing these out of order is how a
 day disappears.
 
 ```
-MERCHANT ACCOUNT ──────────────────────────▶ (days, Google's clock)
+MERCHANT ACCOUNT ──────────────────────────▶ (minutes here; do not assume)
      │                                              │
      │  keystore ──▶ signed AAB ──▶ listing + FIRST MANUAL UPLOAD
                                       │
@@ -139,7 +139,7 @@ keytool -list -v -keystore mgkfitness-upload.jks -alias upload
 ```
 
 - [x] Keystore created and backed up
-- [ ] Uploaded to Codemagic as `mgkfitness_upload`
+- [x] Uploaded to Codemagic as `mgkfitness_upload`
 
 ## 2. Create the app in Play Console
 
@@ -157,7 +157,7 @@ is no 12-tester, 14-day clock. Production access is available immediately.
 **The package name is fixed by the first upload and can never be changed:**
 `com.mgkcodes.fitness.run`.
 
-- [ ] App created
+- [x] App created
 
 ## 3. First AAB upload — by hand
 
@@ -177,7 +177,7 @@ flutter build appbundle --release --dart-define-from-file=config/app_config.json
 
 Upload it at **Testing ▸ Internal testing ▸ Create new release**.
 
-- [ ] First AAB uploaded manually
+- [x] First AAB uploaded manually — 1.0.0 (22), internal testing, 2026-09-10
 
 ## 4. The declarations that gate every release
 
@@ -229,18 +229,19 @@ step 4, developer verification and every iOS path are unaffected. The bundle is
 already live to internal testers without it.
 
 What it wants: MGKCodes Ltd's registered details, a bank account for payouts,
-and tax information. The form is twenty minutes. **Google's verification of it
-is days**, sometimes longer if they ask for documents, and there is no way to
-expedite it.
+and tax information.
 
-So the honest sequencing is that **Play cannot sell on the day the listing is
-created**, however well the build goes. Start this the moment the Play account
-exists — before the keystore, before the AAB — because it is the only step here
-whose clock is measured in days and it is the one nothing else can proceed
-without.
+**It went through in minutes on 2026-09-10, not days.** This section warned of a
+multi-day verification when it was written an hour earlier, on the general case;
+for an already-verified organisation account with company details on file,
+Google cleared it immediately and Subscriptions opened straight after. Recorded
+because the warning was the more useful thing to be wrong about — but do not
+plan a day around it being slow, and do not plan one around it being fast
+either. Start it early because it costs nothing to have done, not because it is
+guaranteed to take a while.
 
-- [ ] Merchant account submitted
-- [ ] Verified by Google
+- [x] Merchant account submitted
+- [x] Verified — same sitting
 
 ## 5. Create the subscriptions
 
@@ -265,7 +266,7 @@ an id it does not recognise is logged as `unmapped_product` **and the log names
 it**. Make the sandbox purchase in step 9, read the log, and add exactly what it
 says. That is step 10.
 
-- [ ] Two subscriptions created with base plans
+- [x] Two subscriptions created with base plans — active, £1 and £3 inclusive
 
 ## 6. RevenueCat — the Google app
 
@@ -288,8 +289,8 @@ offering.
 Finally, **Project settings ▸ API keys**: copy the **Google** public SDK key,
 which begins `goog_`.
 
-- [ ] Google app added to RevenueCat
-- [ ] Service account granted access to this app, JSON uploaded
+- [x] Google app added to RevenueCat — `Run (Play Store)`
+- [x] Service account granted access to this app, JSON uploaded — `mgk-fitness-play-publisher@mgk-fitness.iam.gserviceaccount.com`, its own GCP project
 - [ ] Products attached to the existing entitlement and offering
 - [ ] `goog_` key copied
 
