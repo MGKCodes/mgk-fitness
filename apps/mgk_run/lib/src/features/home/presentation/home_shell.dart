@@ -620,10 +620,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       plan: plan,
       profile: plan?.profile,
       recalled: recalled,
-      // Read off the session every turn rather than cached: it costs nothing,
-      // and a name that arrived on a later device should not wait for a
-      // restart to be used.
-      name: widget.auth.currentName,
+      // `name:` used to be passed here, off the session every turn. It is gone,
+      // and so is the parameter — the published privacy policy says we never
+      // send the runner's name to a model, and the brief goes into the system
+      // prompt verbatim. See the long note in `coach_brief.dart`.
       rollingSummary: remembered?.text,
       // What they have tried before. Local, cheap, and the thing the coach was
       // most obviously missing: every plan was still on disk and it read every

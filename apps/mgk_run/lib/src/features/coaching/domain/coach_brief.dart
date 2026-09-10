@@ -43,13 +43,44 @@ class CoachBrief {
   /// The rendered brief, ready to drop into the system prompt.
   final String text;
 
-  /// What to call them, as its own line. Empty where they never said, so the
-  /// brief simply does not mention a name rather than inventing one.
-  static String _calledLine(String? name) {
-    final trimmed = name?.trim();
-    if (trimmed == null || trimmed.isEmpty) return '';
-    return 'The runner is called $trimmed. ';
-  }
+  // **The runner's name is deliberately absent from this file, and there is no
+  // parameter to pass one.**
+  //
+  // There was: `_calledLine(name)` rendered `The runner is called <name>.` and
+  // led the brief, on the reasoning that a coach told a name and not using it
+  // is worse than one that never asked. That reasoning is fine and it was
+  // overruled by a sentence we had already published.
+  //
+  // `docs/privacy-policy.md`, live at mgkfitness.mgkcodes.com/run/privacy and
+  // pinned by CI, says without qualification:
+  //
+  // > We never send your **name, email, or account identifier**
+  //
+  // `legal_copy.dart` says the same thing to the runner in Settings. The brief
+  // goes into the system prompt verbatim (`surfaces.ts`), so every coach turn
+  // made that sentence false, for a first name the runner gave at sign-up.
+  //
+  // **Removed rather than made conditional, and the parameter removed with
+  // it.** A `name` argument that must never be supplied is a loaded gun: the
+  // next person to want a warmer opener passes it, analyze stays green, tests
+  // stay green, and a published privacy promise breaks silently. The only way
+  // to make the guarantee structural is for there to be nothing to pass.
+  //
+  // **What this does NOT cover**, and is worth knowing before anyone claims
+  // the policy is now true end to end:
+  //
+  //   * The last twenty conversation turns go verbatim, so a runner who types
+  //     their own name has sent it. The policy discloses that explicitly —
+  //     "your last twenty messages, as you wrote them" — so it is disclosed
+  //     rather than contradicted.
+  //   * `rollingSummary` is model-written prose from earlier turns. Summaries
+  //     written BEFORE this change may contain a name, and they persist in
+  //     `coach.summaries` and are re-sent on every turn. Code cannot undo
+  //     that; it needs a decision about existing rows.
+  //
+  // If a name is ever wanted here again, the policy and `legal_copy.dart` have
+  // to change first — in that order, and with the site redeployed, because the
+  // published page is the artefact CI pins.
 
   @override
   String toString() => text;
@@ -58,11 +89,6 @@ class CoachBrief {
   ///
   /// [recentRuns] should be newest-first. [now] is injected so the relative
   /// dates ("yesterday", "three days ago") are testable.
-  /// [name] is what the runner asked to be called, when they said. It leads the
-  /// brief because a coach that has been told a name and does not use it is
-  /// worse than one that never asked — and it is the only line here that is
-  /// about the person rather than the training.
-  ///
   /// [recalled] is the on-demand tier of the coach's memory: a few turns from
   /// past conversations that matched what is being asked now. They are rendered
   /// **dated and attributed**, never as facts — see [_recollections].
@@ -70,7 +96,6 @@ class CoachBrief {
     required List<RunSummary> recentRuns,
     StoredPlan? plan,
     RunnerProfile? profile,
-    String? name,
     String? rollingSummary,
     List<LabelledPlan> history = const <LabelledPlan>[],
     List<CoachTurn> recalled = const <CoachTurn>[],
@@ -95,16 +120,12 @@ class CoachBrief {
     // than as an opening.
     if (runner == null && plan == null && recentRuns.isEmpty) {
       final opening = rollingSummary?.trim();
-      // The one exchange where a name matters most: this brief is what the
-      // coach opens onboarding with, so without it the first thing it ever
-      // says is addressed to nobody.
-      final called = _calledLine(name);
       final first = <String>[
         opening == null || opening.isEmpty
-            ? '${called}You have not coached this runner before and they have '
+            ? 'You have not coached this runner before and they have '
                   'not logged any runs yet. Find out what they want from their '
                   'running before suggesting anything.'
-            : '${called}You have not coached this runner before and they have '
+            : 'You have not coached this runner before and they have '
                   'not logged any runs yet.\n\n$opening',
         // The refusal goes in even here, where there is least to invent. It is
         // the *first* conversation that is most likely to be asked "what did I
@@ -117,9 +138,6 @@ class CoachBrief {
     }
 
     final paragraphs = <String>[];
-
-    final called = _calledLine(name);
-    if (called.isNotEmpty) paragraphs.add(called.trim());
 
     final training = _training(plan, runner, today, unit, readiness);
     if (training != null) paragraphs.add(training);

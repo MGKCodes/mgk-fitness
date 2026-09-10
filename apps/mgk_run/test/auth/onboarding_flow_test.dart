@@ -4,7 +4,6 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
-import 'package:mgk_run/src/features/coaching/domain/coach_brief.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_shape.dart';
 import 'package:mgk_run/src/core/config/app_config.dart';
@@ -245,23 +244,6 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(2));
     // And no pitch: a returning runner is not deciding.
     expect(find.text('Every run tracked, and every run kept'), findsNothing);
-  });
-
-  group('the coach is told what to call them', () {
-    test('a name leads the brief', () {
-      final brief = CoachBrief.write(recentRuns: const [], name: 'Sam').text;
-      expect(brief, contains('called Sam'));
-    });
-
-    test('and no name means no mention rather than an invented one', () {
-      final brief = CoachBrief.write(recentRuns: const []).text;
-      expect(brief.toLowerCase(), isNot(contains('called')));
-    });
-
-    test('blank is the same as absent', () {
-      final brief = CoachBrief.write(recentRuns: const [], name: '   ').text;
-      expect(brief.toLowerCase(), isNot(contains('called')));
-    });
   });
 
   group('the intake bar counts the slots this shape actually needs', () {
