@@ -7,8 +7,9 @@
   "_comment_attribution": "REQUIRED whenever MAP_TILE_URL_TEMPLATE is set — the CI build fails on tiles without credit, because serving a provider's tiles uncredited breaches their terms and the app cannot detect it at runtime.",
   "MAP_ATTRIBUTION": "© MapTiler © OpenStreetMap contributors",
 
-  "_comment_revenuecat": "RevenueCat's PUBLIC SDK key (Project settings > API keys > App-specific, the one beginning appl_ for iOS). It is designed to ship in a client and can only present offerings and start a purchase. The secret that matters is REVENUECAT_WEBHOOK_SECRET, which lives in Supabase and never in a build. Leave this empty and the coach gate still explains what a subscription buys, with no button to press — a working state, not an error.",
+  "_comment_revenuecat": "RevenueCat's PUBLIC SDK keys (Project settings > API keys > App-specific). TWO keys, one per store, and they are different strings: REVENUECAT_PUBLIC_KEY is the Apple one beginning appl_, REVENUECAT_GOOGLE_KEY is the Google one beginning goog_. The app picks between them at runtime via AppConfig.storeKey — configuring the SDK with the other store's key does not degrade, it fails outright with no offerings. Both are designed to ship in a client and can only present offerings and start a purchase; the secret that matters is REVENUECAT_WEBHOOK_SECRET, which lives in Supabase and never in a build. Leave either empty and that platform's coach gate still explains what a subscription buys, with no button to press — a working state, not an error.",
   "REVENUECAT_PUBLIC_KEY": "",
+  "REVENUECAT_GOOGLE_KEY": "",
 
   "_comment_dev_accounts": "OPTIONAL. Debug-only quick sign-in buttons on the sign-in screen (rendered only in debug builds, never release). Put real test-account credentials in your local, gitignored config/app_config.json — do NOT commit them. Up to three accounts via DEV_ACCOUNT_2_* and DEV_ACCOUNT_3_*. An account appears only when its EMAIL and PASSWORD are both non-empty.",
   "DEV_ACCOUNT_1_LABEL": "Runner A",

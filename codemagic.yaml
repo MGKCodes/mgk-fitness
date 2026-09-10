@@ -827,6 +827,15 @@ workflows:
         - $HOME/.gradle/caches
     working_directory: apps/mgk_run
     environment:
+      android_signing:
+        # The upload keystore, uploaded to Codemagic once under this reference
+        # name. Declaring it is what exports CM_KEYSTORE_PATH and its three
+        # companions, which apps/mgk_run/android/app/build.gradle.kts reads.
+        #
+        # Run's own key, not Lift's `liftio_upload`: two Play listings, two
+        # applicationIds, two independent uploads. A shared key would let a
+        # reset on one listing reach the other for no benefit.
+        - run_upload
       groups:
         # The same two groups as iOS, and the split is deliberate: the Supabase
         # values belong to the suite (ADR-0008 — one project for both apps), the
@@ -841,6 +850,15 @@ workflows:
         # step on an empty SUPABASE_URL.
         - mgk_fitness_run_env
         - mgk_fitness_supabase
+        # Holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — the Play Developer API
+        # service-account JSON. MGKCodes already has one from frunt's listing;
+        # the same account can publish this listing once it is granted access to
+        # it in Play Console (Users and permissions → the service account →
+        # add app). CONFIRM THE GROUP NAME before the first run: a name that
+        # does not exist fails the build immediately with "group not found",
+        # which is loud, cheap, and better than a publish step that silently
+        # has no credentials.
+        - mgk_play_publishing
       flutter: stable
       java: 17
     scripts:
@@ -850,12 +868,35 @@ workflows:
       - name: Generate config/app_config.json from secure vars
         script: |
           mkdir -p config
+          # REVENUECAT_GOOGLE_KEY, not REVENUECAT_PUBLIC_KEY. The two keys are
+          # different strings and the wrong one does not degrade — the SDK
+          # fails to configure, `offers()` returns nothing, and the paywall
+          # renders as an empty shop with no error anywhere. `AppConfig.storeKey`
+          # reads the Google one on Android; handing this step the Apple key
+          # would produce a build that looks able to sell and cannot.
+          if [ -z "${REVENUECAT_GOOGLE_KEY:-}" ]; then
+            echo "WARNING: REVENUECAT_GOOGLE_KEY is unset. This build cannot"
+            echo "take a payment on Android — the coach gate will explain the"
+            echo "subscription with no button. That is the correct state for"
+            echo "the FIRST upload (Play will not create in-app products until"
+            echo "an AAB exists), and a defect for every upload after it."
+          else
+            case "$REVENUECAT_GOOGLE_KEY" in
+              goog_*) ;;
+              *)
+                echo "REVENUECAT_GOOGLE_KEY must be the Google key, which"
+                echo "begins goog_. An appl_ key here configures nothing."
+                exit 1
+                ;;
+            esac
+          fi
           cat > config/app_config.json <<JSON
           {
             "SUPABASE_URL": "$SUPABASE_URL",
             "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
             "MAP_TILE_URL_TEMPLATE": "$MAP_TILE_URL_TEMPLATE",
-            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION"
+            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION",
+            "REVENUECAT_GOOGLE_KEY": "${REVENUECAT_GOOGLE_KEY:-}"
           }
           JSON
       - name: Flutter packages
@@ -868,7 +909,11 @@ workflows:
         # Cheap here in a way it is not on a Mac instance, and this suite is the
         # only thing that checks the in-run screen against real phone widths.
         script: flutter test
-      - name: Build APK
+      - name: Build AAB
+        # An app bundle, not an APK: Play has required .aab for new apps since
+        # 2021, and this listing does not exist yet, so there is no legacy APK
+        # path available even as a fallback.
+        #
         # --dart-define-from-file is load-bearing for the same reason it is on
         # iOS: AppConfig reads every value from it, and a build without it
         # launches and then cannot sign anybody in.
@@ -877,16 +922,43 @@ workflows:
         # string run-ios-release reads, which is what actually makes the two
         # stores agree about which build is newer. See the long note in
         # run-ios-release for what the $PROJECT_BUILD_NUMBER version got wrong.
+        # Play requires versionCode to increase and never repeat, which the
+        # pubspec string already guarantees across both stores.
+        script: |
+          flutter build appbundle --release \
+            --dart-define-from-file=config/app_config.json
+      - name: Build APK
+        # Kept alongside the bundle, and not as a fallback: an .aab cannot be
+        # sideloaded onto a phone, so without this there is no artifact anyone
+        # can install to test a Play build before it is a Play build.
         script: |
           flutter build apk --release \
             --dart-define-from-file=config/app_config.json
     artifacts:
-      # Both paths, for the same reason the iOS workflow lists both: these globs
-      # resolve relative to `working_directory`, and a build that publishes
-      # nothing reports success with an empty artifact list.
+      # Both paths for each, for the same reason the iOS workflow lists both:
+      # these globs resolve relative to `working_directory`, and a build that
+      # publishes nothing reports success with an empty artifact list.
+      - build/app/outputs/bundle/**/*.aab
+      - apps/mgk_run/build/app/outputs/bundle/**/*.aab
       - build/app/outputs/flutter-apk/*.apk
       - apps/mgk_run/build/app/outputs/flutter-apk/*.apk
-      - build/app/outputs/**/mapping.txt
-    # No `publishing:` block. Google Play wants an AAB, a signed one, and a
-    # track to publish to — none of which exists yet. Until it does, the APK is
-    # an artifact you download, which is exactly what testing on a device needs.
+      # The mapping file. Without it Play shows obfuscated stack traces and
+      # there is no way to symbolicate a crash after the fact.
+      - build/app/outputs/mapping/**/mapping.txt
+      - apps/mgk_run/build/app/outputs/mapping/**/mapping.txt
+    # KEEP THIS COMMENTED UNTIL THE FIRST AAB HAS BEEN UPLOADED BY HAND.
+    #
+    # Codemagic can publish to a track; it cannot create the listing, and the
+    # Play Developer API refuses an app whose first bundle has never been
+    # uploaded through the console. Uncommenting before that turns a working
+    # build into a failing one — which is exactly what the Lift workflow's own
+    # commented block below has been saying, unexercised, since August.
+    #
+    # `submit_as_draft: true` on the first real publish: it puts the release in
+    # Play Console for review rather than rolling it to testers, so a mistake
+    # is a draft to delete instead of a build somebody has installed.
+    # publishing:
+    #   google_play:
+    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    #     track: internal
+    #     submit_as_draft: true

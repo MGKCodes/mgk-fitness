@@ -1,0 +1,29 @@
+# Copy to android/key.properties and fill in. That file is gitignored, as are
+# *.jks and *.keystore — the upload key must never enter this repository.
+#
+# Only needed for a LOCAL release build. Codemagic supplies the same four values
+# as CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS / CM_KEY_PASSWORD
+# from the keystore uploaded to it, and app/build.gradle.kts prefers those.
+#
+# ---------------------------------------------------------------------------
+# Creating the upload key (once, and keep the backup somewhere you trust):
+#
+#   keytool -genkey -v -keystore run-upload.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Play uses Google Play App Signing: this key signs the UPLOAD, and Google holds
+# the key that signs what users install. Losing it is recoverable — Google can
+# reset it — but only through a support request, so treat it as precious rather
+# than irreplaceable.
+#
+# This is a SEPARATE key from Lift's. One keystore per Play listing: they are
+# different applicationIds, they upload independently, and a shared key means a
+# compromise or a reset on one listing reaches the other for no benefit at all.
+#
+# `storeFile` is an absolute path, or one relative to android/app/.
+# ---------------------------------------------------------------------------
+
+storeFile=/absolute/path/to/run-upload.jks
+storePassword=
+keyAlias=upload
+keyPassword=

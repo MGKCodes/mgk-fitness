@@ -28,8 +28,10 @@ import 'purchase_client.dart';
 /// made before the RevenueCat account existed. [isAvailable] answers it, and
 /// the paywall says so plainly instead of showing an empty shop.
 class RevenueCatPurchases implements PurchaseClient {
+  /// [AppConfig.storeKey], not `revenueCatKey`: the key differs per store and
+  /// the wrong one does not degrade, it fails to configure at all.
   RevenueCatPurchases({String? apiKey})
-    : _apiKey = apiKey ?? AppConfig.current.revenueCatKey;
+    : _apiKey = apiKey ?? AppConfig.current.storeKey;
 
   final String _apiKey;
 

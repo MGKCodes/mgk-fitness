@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// A pre-seeded developer account for the debug-only quick sign-in buttons.
 ///
 /// Sourced from **local, gitignored** config — never committed. This repo is
@@ -28,6 +30,7 @@ class AppConfig {
     this.mapTileUrlTemplate = '',
     this.mapAttribution = '',
     this.revenueCatKey = '',
+    this.revenueCatGoogleKey = '',
   });
 
   final String supabaseUrl;
@@ -45,7 +48,8 @@ class AppConfig {
   /// Attribution required by the tile provider's terms, shown on the map.
   final String mapAttribution;
 
-  /// RevenueCat's **public** SDK key.
+  /// RevenueCat's **public** SDK key for the **Apple** store, beginning
+  /// `appl_`.
   ///
   /// Designed to ship in a client, exactly like [supabasePublishableKey]: it
   /// can present offerings and start a purchase and nothing else. The secret
@@ -55,7 +59,19 @@ class AppConfig {
   /// Empty is a normal state, not an error. A build made before the RevenueCat
   /// account existed cannot sell anything, and the paywall says so rather than
   /// showing an empty shop. See [canSell].
+  ///
+  /// **Read [storeKey], not this**, anywhere that is about to configure the
+  /// SDK. This field is the Apple half of a pair.
   final String revenueCatKey;
+
+  /// RevenueCat's public SDK key for the **Google** store, beginning `goog_`.
+  ///
+  /// A second field rather than one key reused, because RevenueCat issues a
+  /// *different* key per platform within the same project and configuring the
+  /// SDK with the other store's key does not degrade — it fails outright, with
+  /// no offerings and no purchase. There is no single value that could be
+  /// correct on both, which is why this cannot be one variable set twice.
+  final String revenueCatGoogleKey;
 
   /// Whether this build can actually reach a backend.
   ///
@@ -82,9 +98,33 @@ class AppConfig {
   /// configured, which is a normal state rather than an error.
   bool get hasBasemap => mapTileUrlTemplate.isNotEmpty;
 
+  /// The RevenueCat key for the store this build will actually be sold
+  /// through — the only one worth configuring the SDK with.
+  ///
+  /// Resolved at runtime rather than at build time because one `AppConfig` is
+  /// compiled per *build*, and a build knows its platform; the alternative was
+  /// a single `REVENUECAT_PUBLIC_KEY` set to whichever key the workflow
+  /// happened to mean, which is how the Android build shipped with the Apple
+  /// key latent in it and no way for the app to notice.
+  ///
+  /// Web is empty on purpose. `purchases_flutter` has no web implementation,
+  /// so the preview harness must fall through to [canSell] being false and get
+  /// the gate's no-button state rather than a paywall that cannot transact.
+  String get storeKey {
+    if (kIsWeb) return '';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => revenueCatGoogleKey,
+      _ => revenueCatKey,
+    };
+  }
+
   /// Whether this build can take a payment. False leaves the coach gate as a
   /// statement of what a subscription buys, with no button to press.
-  bool get canSell => revenueCatKey.isNotEmpty;
+  ///
+  /// Keyed on [storeKey], so an Android build with only the Apple key
+  /// configured reports false — which is the honest answer, since that build
+  /// could not have completed a purchase.
+  bool get canSell => storeKey.isNotEmpty;
 
   /// The configuration baked in at build time.
   static const AppConfig current = AppConfig(
@@ -93,6 +133,7 @@ class AppConfig {
     mapTileUrlTemplate: String.fromEnvironment('MAP_TILE_URL_TEMPLATE'),
     mapAttribution: String.fromEnvironment('MAP_ATTRIBUTION'),
     revenueCatKey: String.fromEnvironment('REVENUECAT_PUBLIC_KEY'),
+    revenueCatGoogleKey: String.fromEnvironment('REVENUECAT_GOOGLE_KEY'),
   );
 
   // Optional developer quick-sign-in accounts, injected only in local builds
