@@ -926,12 +926,13 @@ workflows:
         # Suite-scoped rather than Run-scoped for the same reason the RevenueCat
         # project is: Lift joins it, and wants this exact credential.
         #
-        # COMMENTED IN STEP WITH THE `publishing:` BLOCK AT THE END OF THIS
-        # WORKFLOW — uncomment both together or neither. This group exists only
-        # to feed that block, and Codemagic fails a build outright on a group
-        # name it cannot resolve, so referencing it while publishing is still
-        # off breaks a build over a credential it never reads.
-        # - mgk_fitness_play
+        # LIVE SINCE 2026-09-10, in step with the `publishing:` block at the end
+        # of this workflow. They are one switch: this group exists only to feed
+        # that block, and Codemagic fails a build outright on a group name it
+        # cannot resolve, so referencing it while publishing was off broke a
+        # build over a credential it never read. If publishing is ever turned
+        # back off, comment this out with it.
+        - mgk_fitness_play
       flutter: stable
       java: 17
     scripts:
@@ -1019,23 +1020,29 @@ workflows:
       # there is no way to symbolicate a crash after the fact.
       - build/app/outputs/mapping/**/mapping.txt
       - apps/mgk_run/build/app/outputs/mapping/**/mapping.txt
-    # KEEP THIS COMMENTED UNTIL THE FIRST AAB HAS BEEN UPLOADED BY HAND.
+    # LIVE SINCE 2026-09-10, and it could not have been before.
     #
     # Codemagic can publish to a track; it cannot create the listing, and the
     # Play Developer API refuses an app whose first bundle has never been
-    # uploaded through the console. Uncommenting before that turns a working
-    # build into a failing one — which is exactly what the Lift workflow's own
-    # commented block below has been saying, unexercised, since August.
+    # uploaded through the console. That upload happened on 2026-09-10 —
+    # 1.0.0 (22), by hand, to internal testing — so this is now the one thing
+    # that was actually blocking it.
     #
-    # `submit_as_draft: true` on the first real publish: it puts the release in
-    # Play Console for review rather than rolling it to testers, so a mistake
-    # is a draft to delete instead of a build somebody has installed.
+    # `submit_as_draft: true` puts the release in Play Console rather than
+    # rolling it straight to testers, so a mistake is a draft to delete instead
+    # of a build somebody has installed. Worth keeping past the first few
+    # publishes: the cost is one click, and the thing it prevents is a bad
+    # bundle reaching a phone that then has to be told to update.
     #
-    # UNCOMMENT THE `mgk_fitness_play` GROUP ABOVE AT THE SAME TIME. It holds
-    # the credentials this block reads, and it is commented for the same reason
-    # this is.
-    # publishing:
-    #   google_play:
-    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-    #     track: internal
-    #     submit_as_draft: true
+    # THE `mgk_fitness_play` GROUP ABOVE IS PART OF THIS. It holds the
+    # credentials this block reads; turn one off and turn the other off with it,
+    # or the build fails on a group it cannot resolve.
+    #
+    # Lift's equivalent, a few hundred lines up, stays commented — it has no
+    # Play listing to publish to, and uncommenting it would fail on the listing
+    # rather than on anything in this repository.
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
