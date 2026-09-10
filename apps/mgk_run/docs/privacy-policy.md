@@ -41,9 +41,8 @@
 >    purchase SDK typically also collects an install identifier, a store country
 >    and an OS version for itself. Check their privacy manifest before filing
 >    the App Store's privacy labels.
-> 4. The publication date below.
 
-**Last updated:** [date] · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 10 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 ## Summary

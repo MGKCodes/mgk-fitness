@@ -18,7 +18,7 @@
 > the two disagree about an App Store purchase, Apple's wins; these terms govern
 > everything else.
 
-**Last updated:** [date] · **Provider:** MGKCodes Ltd (England and Wales) ·
+**Last updated:** 10 September 2026 · **Provider:** MGKCodes Ltd (England and Wales) ·
 **Contact:** hello@mgkcodes.com
 
 ## 1. Who we are, and what this covers
