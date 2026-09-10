@@ -233,7 +233,51 @@ Users and permissions) or the publish step 403s.
 
 - [ ] Publishing block uncommented, build green, bundle lands in internal
 
+## 8b. Register for Android developer verification
+
+New since this runbook was first written (Google notice, 2026-09-08): every app
+must be registered for **Android developer verification by 30 September 2026**
+or it stops being installable on certified devices in some countries.
+
+The account banner saying *"All of your apps have been successfully
+registered"* refers to the apps that existed when it was shown — **frunt**. A
+newly created listing is not covered by it.
+
+**Android developer verification** is its own item at the bottom of the Play
+Console account-level sidebar. It wants the package name and the signing
+certificate, which is why this sits after the first upload rather than before.
+
+- [ ] `com.mgkcodes.fitness.run` registered
+
 ## 9. A real purchase, on a real device
+
+### Before you buy anything: the sandbox flag
+
+**Google license-tester purchases arrive at the webhook as `environment:
+"SANDBOX"`, and the webhook ignores them by default.** See
+`entitlement_event.ts` — a sandbox purchase is a real event from a fake payment,
+and honouring those in production would let anyone with a tester account grant
+themselves a coach.
+
+So without this flag the test *looks* like a total failure: the purchase
+succeeds, RevenueCat shows it, and `core.entitlements` stays empty, so the coach
+never unlocks. Every layer is working correctly and the symptom is
+indistinguishable from none of them working at all.
+
+```bash
+supabase secrets set REVENUECAT_ACCEPT_SANDBOX=true
+```
+
+**Remove it before the production release.** It is the one setting here that
+turns free money on.
+
+```bash
+supabase secrets unset REVENUECAT_ACCEPT_SANDBOX
+```
+
+- [ ] Flag set for testing
+- [ ] Flag removed before production
+
 
 Add your account under **Play Console ▸ Setup ▸ License testing** so purchases
 are free and renew fast. Install from the internal testing link — **not** a
