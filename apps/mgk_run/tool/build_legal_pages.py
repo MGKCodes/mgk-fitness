@@ -73,6 +73,13 @@ BLOCKERS = [
 PAGES = [
     ("privacy-policy.md", "privacy-policy.html"),
     ("medical-disclaimer.md", "medical-disclaimer.html"),
+    # Added 2026-09-10, and the only one of the three that is not also rendered
+    # in-app. Apple's standard EULA stood in for terms until now, which the App
+    # Store permits and Google Play does not: a Play listing selling a
+    # subscription wants terms the developer publishes. So this page IS the
+    # terms of use rather than a second copy of them, and the app links out to
+    # it.
+    ("terms-of-use.md", "terms-of-use.html"),
 ]
 
 CSS = """

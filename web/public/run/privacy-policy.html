@@ -44,13 +44,13 @@ color:var(--muted);font-size:.9rem}
 <p>MGKFitness: Run is a running coach. Your runs and plans live on your phone; backing up to our servers is optional and off until you ask. To coach you it sends your training context, and what you say in the conversation, to an AI provider. We do not sell your data. You can delete everything at any time.</p>
 <h2>What we collect</h2>
 <ul><li>
-<strong>Account data</strong> — email / auth identifier.
+<strong>Account data</strong> — your email address and the account identifier it is keyed to. Only if you create an account; the app works without one.
 </li><li>
-<strong>Profile data</strong> — date of birth, weight, unit preference, and running profile (current volume, longest run, available days, a recent race/time trial, optional injury notes).
+<strong>Profile data</strong> — your unit preference, and your running profile: current volume, longest run, available days, a recent race or time trial, and any injury notes you choose to give. We do <strong>not</strong> ask for your date of birth or your weight.
 </li><li>
-<strong>Activity data</strong> — runs you record or that sync from Apple Health: route points, distance, duration, pace, elevation, heart rate, cadence, and estimated calories.
+<strong>Activity data</strong> — the runs you record, and any you add by hand: route points, distance, duration and pace. If you give Apple Health permission we also read your <strong>step count</strong> for the run. A heart rate is stored only if you type one in; we do not read heart rate from a watch or a chest strap.
 </li><li>
-<strong>Training data</strong> — generated plans, sessions, check-ins, and RPE, including the plans you have finished with, so your coach knows what you have already tried.
+<strong>Training data</strong> — generated plans and sessions, whether each session was marked done or skipped, your rating of how hard it felt (RPE), and the plans you have finished with, so your coach knows what you have already tried.
 </li><li>
 <strong>What you say to your coach</strong> — your messages, the coach's replies, and a short rolling summary of what matters across conversations. This is free text you wrote, so it may contain anything you chose to tell it, including how you feel and where you hurt. Treat it as the most personal thing here, because it is.
 </li><li>
@@ -58,8 +58,9 @@ color:var(--muted);font-size:.9rem}
 </li></ul>
 <p>We collect only what the coaching product needs (data minimisation).</p>
 <h2>Health data</h2>
-<p>Activity, heart-rate, and profile data are <strong>health data — special-category data under UK GDPR</strong>. We process it to provide the coaching service you request (the lawful basis is your consent, which you can withdraw by deleting your data).</p>
-<p>Apple <strong>HealthKit</strong> data is read (and written back as workouts) only with your explicit permission, and is used solely to power your training. HealthKit data is never used for advertising and is not shared with third parties for their own purposes.</p>
+<p>Activity and profile data are <strong>health data — special-category data under UK GDPR</strong>. We process it to provide the coaching service you request (the lawful basis is your consent, which you can withdraw by deleting your data).</p>
+<p>Apple <strong>HealthKit</strong> data is read only with your explicit permission, and <strong>we never write anything to Health</strong>. We ask for two things: your workouts, which we read to show you how many Health has recorded and then discard without storing, and your <strong>step count for a run</strong>, which we do store alongside that run. HealthKit data is never used for advertising and is not shared with third parties for their own purposes.</p>
+<p>On Android the app requests no health permissions at all.</p>
 <h2>Who we share it with (sub-processors)</h2>
 <ul><li>
 <strong>Supabase</strong> — hosts our database, authentication, and server functions.
@@ -71,34 +72,39 @@ To <strong>generate or adapt a plan</strong>: your training profile and the plan
 </li><li>
 To <strong>hold a conversation</strong>: a written summary of your training <em>and up to your last twenty messages, as you wrote them</em>. If you told your coach about an injury, a symptom or how you are feeling, that text is sent.
 </li></ul>
-<p>We never send your <strong>name, email, or account identifier</strong>, and we never send <strong>raw GPS traces</strong>. But we will not pretend the rest is anonymous: taken together it is health information about one person, and if you would rather it did not leave the app, do not use the coach.</p>
+<p>We never send your <strong>name, email, or account identifier</strong>, and we never send <strong>raw GPS traces</strong>. One honest qualification on the first of those: your messages go as you wrote them, so if you type your own name into the conversation, you have sent it. We do not add it.</p>
+<p>We will not pretend the rest is anonymous: taken together it is health information about one person, and if you would rather it did not leave the app, do not use the coach.</p>
 <p><strong>What we control, and what we do not.</strong> Every request we make asks OpenRouter to route only to providers that do not keep or train on what we send. That setting is on for all of them, and it is the strongest control available to us. What we cannot do is audit the provider that ultimately serves a request, so treat that as a control we apply rather than a promise we can make for them. We will say so here if that ever changes.</p>
 </li><li>
-<strong>RevenueCat</strong> — handles subscription purchases and tells our server whether yours is active. It receives your account identifier and your purchase history, and nothing else: no runs, no training data, and nothing you said to your coach.
+<strong>RevenueCat</strong> — handles subscription purchases and tells our server whether yours is active. <strong>We</strong> send it your account identifier and nothing else: no runs, no training data, and nothing you said to your coach. Like any purchase SDK it also collects technical information of its own about the install, such as a device-scoped identifier, your store country and your app version.
 </li><li>
-<strong>MapTiler</strong> — serves the basemap tiles behind your route; receives approximate map viewport coordinates. Configured per build (<code>MAP_TILE_URL_TEMPLATE</code>); a build with no tile provider draws routes with no basemap and contacts no one.
+<strong>MapTiler</strong> — serves the basemap tiles behind your route while you run; receives the map coordinates being displayed and, like any web request, your IP address. This happens whether or not you have an account. Configured per build; a build with no tile provider draws routes with no basemap and contacts no one.
 </li></ul>
-<p>We do not sell personal data, and we do not use it for third-party advertising.</p>
+<p>We do not sell personal data, and we do not use it for third-party advertising. The app contains <strong>no analytics, no advertising SDK and no crash reporter</strong>, and reads no advertising identifier.</p>
 <h2>Where data is stored</h2>
 <p>Your runs, plans and conversations live <strong>on your device</strong>, which is the copy the app actually works from — it records, reads and plans with no network at all. Data in transit is encrypted (HTTPS/TLS).</p>
 <h2>Backing up is optional, and off until you ask</h2>
-<p>Nothing above leaves your phone for our servers unless you turn on <strong>Back up my data</strong> in Settings. It starts off. With it off, your phone is the only copy, and an uninstall loses everything — which is the trade we let you make rather than make for you, because this is health information.</p>
-<p>With it on:</p>
+<p><strong>Nothing about your training</strong> leaves your phone for our servers unless you turn on <strong>Back up my data</strong> in Settings. It starts off. With it off, your phone is the only copy, and an uninstall loses everything — which is the trade we let you make rather than make for you, because this is health information.</p>
+<p>Two things are not covered by that switch, because they are what an account <em>is</em> rather than something it stores: your <strong>email address</strong>, which we need to sign you in, and your <strong>unit preference</strong>, which follows you to a new phone so the app opens in miles if that is how you left it. Both are written when you sign in and change, whatever the backup switch says. Neither is training data.</p>
+<p>With backup on:</p>
 <ul><li>
-Your runs, routes, heart rate, plans and coach conversations are copied to our Supabase project in <strong>eu-west-1 (Ireland)</strong>.
+Your runs, routes, plans and coach conversations are copied to our Supabase project in <strong>eu-west-1 (Ireland)</strong>.
 </li><li>
 Signing in on a new phone pulls them back down, so a lost or replaced device does not lose your training. The restore only ever <strong>adds</strong> — it will not overwrite anything already on the new phone.
 </li><li>
-<strong>Turning it back off deletes what we have stored.</strong> Your phone keeps its own copy.
+<strong>Turning it back off deletes your training data from our servers.</strong> Your phone keeps its own copy. Your account itself, and the usage records described under Retention, are not part of that — use <strong>Delete account</strong> for those.
 </li></ul>
 <p>The AI requests described above are a separate thing and happen either way: the coach cannot answer without sending your training context, so using the coach sends it whether or not backup is on.</p>
-<p>Our Supabase project is shared with our lifting app <strong>MGKFitness: Lift</strong> (see Your rights below). This app's own data lives in its own schema, separated per user by row-level security.</p>
+<h2>Sharing with our lifting app</h2>
+<p>Our Supabase project is shared with our lifting app <strong>MGKFitness: Lift</strong>, and one login serves both. Each app's own data lives in its own area, separated per user by row-level security, and neither app can read the other's.</p>
+<p>One thing does cross, and it is worth naming: when a run is backed up, a short summary of it — the date, how long it lasted, how far it went, and how hard it felt — is copied into a <strong>shared activity feed</strong> on your account, alongside your lifting sessions. It exists so that one app can show you a complete picture of a week's training. It is readable only by you, holds no route and no conversation, and is deleted with the run it came from.</p>
 <h2>Your rights</h2>
 <p>Under UK GDPR you can access, correct, export, or delete your data, and withdraw consent. There are two in-app controls, and they do different things:</p>
 <ul><li>
-<strong>Back up my data → off</strong> withdraws consent to storing your data on our servers and deletes what is already there. Your phone keeps its copy.
+<strong>Back up my data → off</strong> withdraws consent to storing your training on our servers and deletes what is already there. Your phone keeps its copy.
 </li><li>
-<strong>Delete account</strong> removes <strong>every</strong> record we hold for you — runs, route points, splits, plans, sessions, your runner profile, your coach conversations and your usage records. It is written to sweep every table keyed to your account rather than a list someone has to remember to update, so a feature added later is covered by that design rather than by our diligence.
+<strong>Delete account</strong> removes every record this app holds for you — runs, route points, splits, plans, sessions, your runner profile, and your coach conversations and their summary. It sweeps every table keyed to your account rather than a list someone has to remember to update, so a feature added later is covered by that design rather than by our diligence.
+<p>Two deliberate exceptions. Your <strong>usage records</strong> survive, because they are the meter that enforces fair-use limits and erasing them would let a deletion reset a spend cap; they hold no training data and nothing you wrote, and they are pruned after 31 days regardless. And your <strong>login</strong> survives if our lifting app still holds data on it — see below.</p>
 </li></ul>
 <p>To exercise any right, use those controls or contact hello@mgkcodes.com.</p>
 <p>Your login is your <strong>MGKFitness profile</strong>, shared with our lifting app <strong>MGKFitness: Lift</strong>. If the profile holds no data from Lift, deletion removes the profile itself. If it does, we delete everything this app holds and keep only the profile, so your data in Lift survives — email hello@mgkcodes.com to remove the profile as well.</p>

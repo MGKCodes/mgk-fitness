@@ -156,10 +156,69 @@ void main() {
       for (final phrase in <String>[
         'off until you ask',
         'It starts off',
-        'Turning it back off deletes what we have stored',
+        'Turning it back off deletes your training data from our servers',
       ]) {
         expect(app, contains(phrase));
         expect(doc, contains(phrase));
+      }
+    });
+
+    test('does not claim to collect what it has never asked for', () {
+      // The 2026-09-10 audit found this policy over-declaring in three places,
+      // which is the less obvious direction and still wrong: a form filled from
+      // an over-declaring policy is a false declaration, and on Apple's labels
+      // it drags the app into a stricter review bracket for nothing.
+      //
+      // Date of birth and weight are Liftio's columns and this app has never
+      // asked for either. Cadence and estimated calories have columns that are
+      // never written. Elevation is deliberately absent until there is a
+      // barometric source (ADR-0024), so a trace records none.
+      for (final text in <String>[doc, app]) {
+        expect(text, isNot(contains('date of birth, weight')));
+        expect(text, isNot(contains('cadence')));
+        expect(text, isNot(contains('estimated calories')));
+      }
+    });
+
+    test('does not describe a HealthKit write that never happens', () {
+      // `kHealthReadAccess` is READ throughout. The purpose string in
+      // Info.plist survives only because Apple's static SDK scan rejects the
+      // upload without it (error 90683) — it is never shown, because write
+      // authorisation is never requested. The policy said otherwise.
+      for (final text in <String>[doc, app]) {
+        expect(text, isNot(contains('written back as workouts')));
+        expect(text, contains('never write anything to Health'));
+      }
+    });
+
+    test('discloses the two things backup consent does not gate', () {
+      // An email is what an account IS, and a unit preference has to follow
+      // the runner to a new phone for the account to be worth having. Both are
+      // written whatever the switch says, so "nothing leaves your phone" was
+      // false as an unqualified claim. Narrowed to training, and the carve-out
+      // is stated rather than left to be discovered.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('Nothing about your training'));
+        expect(text, contains('unit preference'));
+      }
+    });
+
+    test('discloses the shared cross-app activity feed', () {
+      // `core.sync_activity_from_run` copies a run summary into a feed shared
+      // with Lift. Small, RLS-scoped and cascade-deleted — but undisclosed,
+      // while the policy said each app's data lives in its own area.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('shared activity feed'));
+      }
+    });
+
+    test('is honest that usage records survive a deletion', () {
+      // They do, by design: they are the spend ledger, and erasing them would
+      // let a deletion reset a rate limit. The policy previously listed them
+      // among what Delete account removes — which became false the moment the
+      // client started asking for an app-scoped deletion.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('usage records survive'));
       }
     });
 

@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
         source: "/run/medical-disclaimer",
         destination: "/run/medical-disclaimer.html",
       },
+      // `/run/terms` is load-bearing in a way the other two are not: the app
+      // LINKS to it rather than rendering it, so this rewrite is the whole
+      // document as far as a runner is concerned. It is also the URL that goes
+      // in the Play listing's terms field and App Store Connect's EULA field,
+      // neither of which can be corrected without a resubmission.
+      { source: "/run/terms", destination: "/run/terms-of-use.html" },
     ];
   },
   // One URL per document. Files in `public/` are served at their own path
@@ -57,6 +63,11 @@ const nextConfig: NextConfig = {
       {
         source: "/run/medical-disclaimer.html",
         destination: "/run/medical-disclaimer",
+        permanent: true,
+      },
+      {
+        source: "/run/terms-of-use.html",
+        destination: "/run/terms",
         permanent: true,
       },
     ];

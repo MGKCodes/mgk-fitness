@@ -34,9 +34,14 @@ class LegalScreen extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
-  /// Apple hosts the Terms of Use, so this leaves the app rather than pushing a
-  /// [LegalDocument] like the two rows above it. Says where they are when the
-  /// browser will not open, because a dead legal link is worse than a long one.
+  /// The Terms of Use are ours and are published rather than embedded, so this
+  /// leaves the app rather than pushing a [LegalDocument] like the two rows
+  /// above it. Says where they are when the browser will not open, because a
+  /// dead legal link is worse than a long one.
+  ///
+  /// They were Apple's standard EULA until 2026-09-10, which Google Play does
+  /// not accept from a listing selling a subscription. See [kTermsOfUseUrl] for
+  /// why these stay a link while the policy and the disclaimer are rendered.
   Future<void> _openTerms(BuildContext context) async {
     final Uri uri = Uri.parse(kTermsOfUseUrl);
     if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
@@ -82,7 +87,7 @@ class LegalScreen extends StatelessWidget {
             SettingsTile(
               icon: Icons.description_outlined,
               title: 'Terms of use',
-              subtitle: "Apple's standard licence agreement",
+              subtitle: 'How the subscription works, and what it is not',
               onTap: () => _openTerms(context),
             ),
             const Divider(color: AppColors.elevated, height: 32),

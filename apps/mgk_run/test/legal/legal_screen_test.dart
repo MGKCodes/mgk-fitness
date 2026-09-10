@@ -47,13 +47,22 @@ void main() {
     await pumpLegal(tester);
 
     expect(find.text('Terms of use'), findsOneWidget);
-    expect(find.text("Apple's standard licence agreement"), findsOneWidget);
+    expect(
+      find.text('How the subscription works, and what it is not'),
+      findsOneWidget,
+    );
 
-    // Apple hosts it, so the row opens a URL rather than pushing a document.
-    // Assert the destination rather than mocking the launcher, which is what
-    // the paywall's own test does with the same constant.
-    expect(kTermsOfUseUrl, contains('apple.com'));
-    expect(kTermsOfUseUrl, contains('stdeula'));
+    // Published rather than embedded, so the row opens a URL rather than
+    // pushing a document. Assert the destination rather than mocking the
+    // launcher, which is what the paywall's own test does with the same
+    // constant.
+    //
+    // This asserted `apple.com` and `stdeula` until 2026-09-10. The terms are
+    // ours now — Play will not take a store's EULA from a subscription
+    // listing, and section 3 of ours carries the medical disclaimer that
+    // Apple's could never have covered.
+    expect(kTermsOfUseUrl, contains('mgkfitness.mgkcodes.com'));
+    expect(kTermsOfUseUrl, endsWith('/run/terms'));
   });
 
   testWidgets('the disclaimer opens read-only, with no accept button', (

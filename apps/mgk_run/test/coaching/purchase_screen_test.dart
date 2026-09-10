@@ -99,10 +99,16 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
       expect(find.text('Terms of use'), findsOneWidget);
-      // Apple's own, hosted by Apple. ADR-0005 is why that is available to an
-      // AGPL app: sole copyright holder, the Signal position.
-      expect(kTermsOfUseUrl, contains('apple.com'));
-      expect(kTermsOfUseUrl, contains('stdeula'));
+      // **Ours now, not Apple's.** This pinned `apple.com` and `stdeula` until
+      // 2026-09-10, when the app got terms of its own — Google Play does not
+      // accept a store's EULA from a listing selling a subscription, and
+      // Apple's has nothing to say about a product that prescribes exercise.
+      //
+      // Pinned on our own host so that a revert to the EULA, or a typo in the
+      // path, fails here rather than at App Review. Guideline 3.1.2 requires
+      // this link to work from the purchase surface.
+      expect(kTermsOfUseUrl, contains('mgkfitness.mgkcodes.com'));
+      expect(kTermsOfUseUrl, endsWith('/run/terms'));
     });
 
     testWidgets('a link to the privacy policy', (tester) async {
