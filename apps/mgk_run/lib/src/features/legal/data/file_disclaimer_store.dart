@@ -34,7 +34,18 @@ class FileDisclaimerStore implements DisclaimerStore {
   @override
   Future<bool> isAcknowledged() async {
     try {
-      return (await _markerFile()).exists();
+      // `await` before returning, and it is load-bearing rather than a style
+      // choice. Returning the Future unawaited hands it to the caller OUTSIDE
+      // this try, so a filesystem failure inside `exists()` escaped the catch
+      // and surfaced as an unhandled exception — the one outcome the comment
+      // above promises cannot happen, in the store that gates a medical
+      // disclaimer. `CoachFlow` states the same guarantee: every failure mode
+      // resolves to showing the gate again, never to skipping it.
+      //
+      // Found by `flutter analyze` on CI (unawaited_return_in_try_block), which
+      // is a newer lint than the local SDK carries — analyze was clean here and
+      // red there.
+      return await (await _markerFile()).exists();
     } on Object {
       return false;
     }

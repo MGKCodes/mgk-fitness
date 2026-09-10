@@ -35,7 +35,11 @@ class FileIntroStore implements IntroStore {
   @override
   Future<bool> isDone() async {
     try {
-      return (await _markerFile()).exists();
+      // `await` before returning — see the same fix in `FileDisclaimerStore`.
+      // Without it the Future leaves this try unawaited, so a filesystem
+      // failure escapes the catch instead of reading as "not done", and the
+      // intro is skipped by an exception rather than run again.
+      return await (await _markerFile()).exists();
     } on Object {
       return false;
     }
