@@ -18,7 +18,7 @@ and a second RevenueCat app.
 - `AppConfig.revenueCatGoogleKey` + `AppConfig.storeKey` — the Apple and Google
   SDK keys are *different strings* and the wrong one does not degrade, it
   configures nothing. `storeKey` picks by platform at runtime.
-- `codemagic.yaml` `run-android-release` — declares `android_signing: run_upload`,
+- `codemagic.yaml` `run-android-release` — declares `android_signing: mgkcodes_upload`,
   builds an **AAB** as well as an APK, emits `REVENUECAT_GOOGLE_KEY`, and
   carries a commented `publishing:` block.
 
@@ -68,7 +68,7 @@ Play has already seen cannot be swapped without a Google support request, so
 creating one silently is worse than failing.
 
 ```bash
-keytool -genkey -v -keystore run-upload.jks \
+keytool -genkey -v -keystore mgkcodes-upload.jks \
   -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 ```
 
@@ -76,12 +76,29 @@ keytool -genkey -v -keystore run-upload.jks \
   `android/key.properties`, but the safe place is not "ignored", it is "not
   there".
 - Back it up somewhere you would still have after a disk failure.
-- Run's own key, **not Lift's `liftio_upload`**. Two listings, two
-  applicationIds, two independent uploads; a shared key means a reset on one
-  reaches the other for nothing.
+- **One key for every MGKCodes Android app** — Run, Lift, and whatever follows.
+  A Play listing records the upload certificate it expects; nothing requires
+  that certificate to be unique to a listing, and the benefit of sharing is one
+  secret to hold rather than several.
+
+  This document argued the opposite for a few hours on 2026-09-10 — a separate
+  key per listing, because "a shared key means a reset on one reaches the
+  other for nothing". The premise was a blast-radius argument with no scenario
+  behind it, and both failure modes resolve identically anyway: Google resets a
+  lost **or** compromised upload key by support request.
+
+  It also collided with a fact nobody had checked. `lift-android-release`
+  declared `liftio_upload` and **no keystore of that name had ever been
+  uploaded to Codemagic** — only frunt's. That workflow would have failed on
+  its first run, and nothing surfaced it, because Lift has never had a Play
+  listing to publish to.
+
+- **frunt is the permanent exception.** It is live on Play under `frunt_upload`,
+  and a shipped listing's upload key cannot be swapped without that same support
+  request, for nothing in return. Leave it alone.
 
 Then, in Codemagic → **Teams ▸ Code signing identities ▸ Android keystores**,
-upload it with reference name **`run_upload`**. That exact string is what
+upload it with reference name **`mgkcodes_upload`**. That exact string is what
 `codemagic.yaml` declares; a different one fails the build with a message that
 says so.
 
@@ -116,11 +133,11 @@ problem later.
 To re-derive at any time:
 
 ```powershell
-keytool -list -v -keystore run-upload.jks -alias upload
+keytool -list -v -keystore mgkcodes-upload.jks -alias upload
 ```
 
 - [x] Keystore created and backed up
-- [ ] Uploaded to Codemagic as `run_upload`
+- [ ] Uploaded to Codemagic as `mgkcodes_upload`
 
 ## 2. Create the app in Play Console
 
@@ -352,7 +369,7 @@ Promote the internal release. The declarations from step 4 must all be green.
 ## What this does not cover
 
 - **Lift.** `lift-android-release` builds an AAB and already declares
-  `liftio_upload`, but its `publishing:` block is commented and it has no Play
+  `mgkcodes_upload`, but its `publishing:` block is commented and it has no Play
   listing either. Everything above applies to it with the ids changed, and none
   of it is done.
 - **Play App Signing key rotation**, which is a Google support request and has

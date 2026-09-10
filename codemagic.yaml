@@ -687,13 +687,14 @@ workflows:
   # ONE-TIME SETUP:
   #
   #  1. **An upload keystore**, created once and backed up somewhere that is not
-  #     this repository:
+  #     this repository. **It is already made** — one key signs every MGKCodes
+  #     Android app, and Run created it on 2026-09-10:
   #
-  #       keytool -genkey -v -keystore liftio-upload.jks \
+  #       keytool -genkey -v -keystore mgkcodes-upload.jks \
   #         -keyalg RSA -keysize 2048 -validity 10000 -alias upload
   #
   #     Upload it to Codemagic ▸ Team settings ▸ Code signing identities ▸
-  #     Android keystores, referenced below as `liftio_upload`. Codemagic then
+  #     Android keystores, referenced below as `mgkcodes_upload`. Codemagic then
   #     exports CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS /
   #     CM_KEY_PASSWORD, which `app/build.gradle.kts` reads in preference to a
   #     local `key.properties`. The build REFUSES to fall back to the debug key
@@ -731,7 +732,12 @@ workflows:
     working_directory: apps/mgk_lift
     environment:
       android_signing:
-        - liftio_upload
+        # The suite-wide key, same as run-android-release. This said
+        # `liftio_upload` until 2026-09-10 and **no such keystore had ever been
+        # uploaded to Codemagic** — the only one there was frunt's. So this
+        # workflow would have failed on its first run, and nothing said so,
+        # because it has never had a Play listing to publish to.
+        - mgkcodes_upload
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
@@ -832,10 +838,23 @@ workflows:
         # name. Declaring it is what exports CM_KEYSTORE_PATH and its three
         # companions, which apps/mgk_run/android/app/build.gradle.kts reads.
         #
-        # Run's own key, not Lift's `liftio_upload`: two Play listings, two
-        # applicationIds, two independent uploads. A shared key would let a
-        # reset on one listing reach the other for no benefit.
-        - run_upload
+        # ONE UPLOAD KEY FOR EVERY MGKCODES ANDROID APP. A Play listing records
+        # the upload certificate it expects; nothing requires that certificate
+        # to be unique to one listing, and the same key signs Run, Lift and
+        # whatever comes after.
+        #
+        # This said `run_upload` for a few hours on 2026-09-10, on the reasoning
+        # that a compromise or a reset on one listing would reach the other "for
+        # no benefit at all". The last clause was simply false — the benefit is
+        # one secret to hold, back up and not lose, which for a studio this size
+        # outweighs a blast radius neither of us could name a scenario for. Both
+        # failure modes are recoverable the same way regardless: Google resets a
+        # lost or compromised upload key by support request.
+        #
+        # frunt is the permanent exception. It is live on Play under
+        # `frunt_upload`, and a shipped listing's upload key cannot be swapped
+        # without going through that same support request for no gain.
+        - mgkcodes_upload
       groups:
         # The same two groups as iOS, and the split is deliberate: the Supabase
         # values belong to the suite (ADR-0008 — one project for both apps), the

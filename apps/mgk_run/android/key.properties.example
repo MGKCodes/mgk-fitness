@@ -6,24 +6,36 @@
 # from the keystore uploaded to it, and app/build.gradle.kts prefers those.
 #
 # ---------------------------------------------------------------------------
-# Creating the upload key (once, and keep the backup somewhere you trust):
+# ONE UPLOAD KEY FOR EVERY MGKCODES ANDROID APP — Run, Lift, and whatever comes
+# after. It already exists (created 2026-09-10); do not make a second one.
 #
-#   keytool -genkey -v -keystore run-upload.jks \
+#   keytool -genkey -v -keystore mgkcodes-upload.jks \
 #     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 #
-# Play uses Google Play App Signing: this key signs the UPLOAD, and Google holds
-# the key that signs what users install. Losing it is recoverable — Google can
-# reset it — but only through a support request, so treat it as precious rather
-# than irreplaceable.
+# A Play listing records the upload certificate it expects. Nothing requires
+# that certificate to be unique to one listing, so the same key serves all of
+# them, and the benefit is the obvious one: a single secret to hold, back up
+# and not lose.
 #
-# This is a SEPARATE key from Lift's. One keystore per Play listing: they are
-# different applicationIds, they upload independently, and a shared key means a
-# compromise or a reset on one listing reaches the other for no benefit at all.
+# This file argued the opposite for a few hours — "one keystore per Play
+# listing... a shared key means a compromise or a reset on one listing reaches
+# the other for no benefit at all". The last clause was false, and the rest
+# was a blast-radius argument with no scenario behind it. Both failure modes
+# are recoverable identically anyway: Google resets a lost OR compromised
+# upload key by support request.
+#
+# frunt is the permanent exception — live on Play under its own key, and a
+# shipped listing's upload key cannot be swapped without that same support
+# request for nothing in return.
+#
+# Play uses Google Play App Signing: this key signs the UPLOAD, and Google holds
+# the key that signs what users install. Treat it as precious rather than
+# irreplaceable.
 #
 # `storeFile` is an absolute path, or one relative to android/app/.
 # ---------------------------------------------------------------------------
 
-storeFile=/absolute/path/to/run-upload.jks
+storeFile=/absolute/path/to/mgkcodes-upload.jks
 storePassword=
 keyAlias=upload
 keyPassword=

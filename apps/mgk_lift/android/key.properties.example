@@ -6,10 +6,18 @@
 # from the keystore uploaded to it, and app/build.gradle.kts prefers those.
 #
 # ---------------------------------------------------------------------------
-# Creating the upload key (once, and keep the backup somewhere you trust):
+# ONE UPLOAD KEY FOR EVERY MGKCODES ANDROID APP, Lift included. It already
+# exists — Run created it on 2026-09-10 — so there is nothing to generate here.
+# **Do not make a Lift-specific one**; a second key would mean a second secret
+# to lose for no gain, and Lift has no Play listing yet to be locked to either.
 #
-#   keytool -genkey -v -keystore liftio-upload.jks \
+#   keytool -genkey -v -keystore mgkcodes-upload.jks \
 #     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Codemagic holds it as `mgkcodes_upload`, which both Android workflows declare.
+# This workflow declared `liftio_upload` until 2026-09-10 and no keystore of
+# that name had ever been uploaded — so it would have failed on its first run,
+# silently, because it has never had a listing to publish to.
 #
 # Play uses Google Play App Signing: this key signs the UPLOAD, and Google holds
 # the key that signs what users install. Losing it is recoverable — Google can
@@ -19,7 +27,7 @@
 # `storeFile` is an absolute path, or one relative to android/app/.
 # ---------------------------------------------------------------------------
 
-storeFile=/absolute/path/to/liftio-upload.jks
+storeFile=/absolute/path/to/mgkcodes-upload.jks
 storePassword=
 keyAlias=upload
 keyPassword=
