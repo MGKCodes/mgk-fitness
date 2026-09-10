@@ -30,7 +30,9 @@ The dependencies are real and mostly one-way. Doing these out of order is how a
 day disappears.
 
 ```
-keystore ──▶ signed AAB ──▶ Play listing + FIRST MANUAL UPLOAD
+MERCHANT ACCOUNT ──────────────────────────▶ (days, Google's clock)
+     │                                              │
+     │  keystore ──▶ signed AAB ──▶ listing + FIRST MANUAL UPLOAD
                                       │
                                       ├──▶ in-app products can be created
                                       │             │
@@ -199,6 +201,46 @@ stalls. Several can be filled in now, before any of the billing work.
 - [ ] **Health apps declaration**, if prompted — the app reads HealthKit on iOS
       but on Android reads no Health Connect data, so this should be a short
       answer.
+
+## 4b. A Google Payments merchant account — the real long pole
+
+**Found on 2026-09-10 by walking into it.** Monetise ▸ Subscriptions refuses to
+open at all:
+
+> Missing requirements for accessing this page — you need to set up a Google
+> Payments merchant account to access this page.
+
+**Why it was not obvious.** MGKCodes has shipped to Play before, and never
+needed one: frunt is free on Play and bills through Stripe on the web. Run is
+the first product in the account to take money *through Google*, so this is the
+first time Google needs to know where to send it. Nothing in the Play Console
+mentions it until you try to create a product.
+
+**It gates the entire revenue path**, and everything below in this document
+sits behind it:
+
+- creating the two subscriptions
+- importing them into RevenueCat
+- the `goog_` key having anything to sell
+- the sandbox purchase, and therefore step 10's product-id mapping
+
+**It gates nothing else.** The listing, internal testing, the declarations in
+step 4, developer verification and every iOS path are unaffected. The bundle is
+already live to internal testers without it.
+
+What it wants: MGKCodes Ltd's registered details, a bank account for payouts,
+and tax information. The form is twenty minutes. **Google's verification of it
+is days**, sometimes longer if they ask for documents, and there is no way to
+expedite it.
+
+So the honest sequencing is that **Play cannot sell on the day the listing is
+created**, however well the build goes. Start this the moment the Play account
+exists — before the keystore, before the AAB — because it is the only step here
+whose clock is measured in days and it is the one nothing else can proceed
+without.
+
+- [ ] Merchant account submitted
+- [ ] Verified by Google
 
 ## 5. Create the subscriptions
 
