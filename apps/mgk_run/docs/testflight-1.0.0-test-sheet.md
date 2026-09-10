@@ -286,6 +286,13 @@ D1–D8, D12, D13 need the entitlement row. D9–D11, D14, D15 need it **deleted
 | E10 | **Turn backup off** | **FIXED.** It says what was deleted, **and the rows actually go** — check `run.runs`. It previously deleted nothing while the privacy policy promised it did | ☐ |
 | E12 | **Profile, signed in with backup on** | **NEW.** A line saying where the training is: "Backing up…", a last-backed-up time, or a failure that says the phone still has it. It must never claim *everything* is backed up | ☐ |
 | E8 | Delete account | Confirmation first, then the data goes | ☐ |
+| E13 | **Delete account with Lift data on the same login** | **FIXED, AND UNVERIFIED.** The client now sends `{"app":"run"}`; it previously sent no body at all, and an absent `app` is the function's "erase everything, everywhere" branch. Seed a `lift.workouts` row first, delete the Run account, then check **`lift.*` still holds it** and the login survived with `sibling_app_data`. The privacy policy promises exactly this | ☐ |
+| E14 | **Turn backup off with a Lift coach conversation stored** | **FIXED, AND UNVERIFIED.** The `coach.*` deletes now filter on `app = 'run'`; they previously matched on `user_id` alone, so Run's backup switch erased the runner's **Lift** conversations and lifting memory. Seed a `coach.conversations` row with `app = 'lift'`, turn Run's backup off, then check that row **is still there** | ☐ |
+
+**E13 and E14 are the two rows on this sheet that no test covers.** Both are
+Supabase-boundary code, where a unit test would assert against a mock rather
+than against behaviour — so a device is the only thing that can answer them, and
+both were wrong in the direction of deleting a sibling app's data.
 
 ## F. The long one
 

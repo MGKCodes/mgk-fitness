@@ -49,6 +49,18 @@ class BackupEraser implements BackupErasure {
   /// switch is the runner asking for their cloud backup to go — and their
   /// conversations are part of that. What it must never do is take a sibling
   /// app's training data, which is why nothing here reaches into `lift`.
+  ///
+  /// **That rule was right and the code did not keep it.** Staying out of the
+  /// `lift` schema is not enough, because `coach` is shared *within* itself:
+  /// `coach.conversations` and `coach.summaries` are keyed per (person, app),
+  /// so deleting on `user_id` alone erased the runner's LIFT conversations and
+  /// their lifting memory as well — a sibling app's data, reached without ever
+  /// touching a sibling app's schema.
+  ///
+  /// The columns have been there since `20260807130000_coach_memory_per_app`,
+  /// whose own header says the to-do is for every client to "name the app
+  /// explicitly — that is the whole to-do, and it is one line here". This is
+  /// one of the places that never did.
   @override
   Future<bool> eraseAll() async {
     final userId = _client.auth.currentUser?.id;
@@ -58,7 +70,11 @@ class BackupEraser implements BackupErasure {
         await _run.from(table).delete().eq('user_id', userId);
       }
       for (final table in const <String>['conversations', 'summaries']) {
-        await _coach.from(table).delete().eq('user_id', userId);
+        await _coach
+            .from(table)
+            .delete()
+            .eq('user_id', userId)
+            .eq('app', 'run');
       }
       return true;
     } on Object {

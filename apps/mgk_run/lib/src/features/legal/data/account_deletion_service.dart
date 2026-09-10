@@ -24,7 +24,30 @@ class AccountDeletionService implements AccountDeleter {
   Future<AccountDeletionResult> deleteAccount() async {
     final Object? data;
     try {
-      final res = await _client.functions.invoke('delete-account');
+      // **`app` is not optional here, whatever the wire contract says.**
+      //
+      // The function treats an absent `app` as "erase everything, everywhere,
+      // and the login" — its own comment calls that safe-by-omission, on the
+      // reasoning that a client which forgets to say gets the full erasure it
+      // asked for in plain English. This client forgot to say. It sent no body
+      // at all, so every Run account deletion took the whole-suite branch and
+      // erased `lift.*` with it.
+      //
+      // Nothing else in this feature agreed with that. `AccountDeletionResult`
+      // carries `loginRetainedForSiblingApp`, the server can answer
+      // `sibling_app_data`, and `DeleteAccountScreen` tells the runner in as
+      // many words: "we delete everything this app holds and keep only the
+      // profile, so your data in Lift survives". The published privacy policy
+      // says the same. Every layer was built for app-scoped deletion except
+      // the one line that had to name the app.
+      //
+      // See the decision *Account deletion is scoped by the app asking, not by
+      // which binary deployed last* — this is that decision's client half,
+      // which never landed.
+      final res = await _client.functions.invoke(
+        'delete-account',
+        body: <String, String>{'app': 'run'},
+      );
       data = res.data;
     } on FunctionException catch (e) {
       throw AccountDeletionException(_messageForError(_codeFrom(e.details)));
