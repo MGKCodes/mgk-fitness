@@ -105,14 +105,27 @@ void main() {
 
   /// Taps the coach's mark.
   ///
-  /// [CoachButton] rather than [CoachReveal]: the reveal is a full-width
+  /// [CoachMarkGlyph] rather than [CoachReveal]: the reveal is a full-width
   /// `Positioned` that the mark sits at one end of, so its *centre* — where a
   /// tap by type lands — is out over the tab's scrolling content. The tap
   /// reported a miss and the plate drew an unopened sheet, which is the failure
   /// this board is least able to notice: nothing is wrong with the picture
   /// except that it is of the wrong thing.
+  ///
+  /// **And [CoachMarkGlyph] rather than [CoachButton], which is what this was
+  /// until the locked coach bar landed on 2026-09-10.** A free runner now meets
+  /// a line of locked copy that plays and retracts, and while it is playing the
+  /// reveal renders the open bar — `CoachMarkSurface` and `CoachMarkGlyph` —
+  /// with no `CoachButton` in the tree at all. Every free-tier plate here
+  /// failed on a finder that matched nothing, which is the loud version of this
+  /// failure and the lucky one.
+  ///
+  /// The glyph is the right target on its own merits: it is the mark itself in
+  /// both states, so it is present whether the bar is open or resting, and its
+  /// centre is the mark's centre either way. That is the property the paragraph
+  /// above actually wanted.
   Future<void> tapCoach(WidgetTester tester) async {
-    await tester.tap(find.byType(CoachButton));
+    await tester.tap(find.byType(CoachMarkGlyph));
     // Up, then the fake's 650ms think, then the reply painting.
     await settle(tester);
     await settle(tester);
