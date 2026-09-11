@@ -258,6 +258,95 @@ void main() {
     });
   });
 
+  /// **The list of what is collected, pinned across all three renderings.**
+  ///
+  /// Every test above pins a *claim* — the sub-processors, the lawful basis,
+  /// what never leaves. None of them pinned the list itself, and that is the
+  /// gap two separate drifts went through in one day:
+  ///
+  ///   * `c3d7df8`, whose entire subject was "the policy did not mention the
+  ///     name it collects", edited `docs/privacy-policy.md` and the generated
+  ///     page and **never touched `legal_copy.dart`**. The app went on
+  ///     under-disclosing while the commit message said it had been fixed.
+  ///   * The profile photo, the same day, the same way.
+  ///
+  /// Both shipped. Build 25 reached TestFlight and Play internal testing with
+  /// an in-app policy that omitted two categories of data the published one
+  /// declared — which is exactly the comparison a reviewer makes, and exactly
+  /// what this file says at the top it exists to prevent.
+  ///
+  /// So the list is the thing pinned now, in all three places at once: the
+  /// bundled copy the app renders, the markdown that is the source, and the
+  /// bytes served at /run/privacy. Adding a category to one and not the others
+  /// fails here.
+  group('what we collect says the same thing in all three renderings', () {
+    /// One phrase per category, chosen to be specific enough that a rewrite
+    /// which drops the category fails, and loose enough that rewording the
+    /// sentence around it does not.
+    const categories = <String, String>{
+      'the email address': 'email address',
+      'the name given to the coach': 'name you give the coach',
+      'the profile photo': 'profile photo',
+      'the running profile': 'running profile',
+      'the runs themselves': 'route points',
+      'the training plan': 'generated plans',
+      'the coach conversation': 'what you say to your coach',
+      'the usage meter': 'how many tokens',
+    };
+
+    /// Lower case with runs of whitespace collapsed.
+    ///
+    /// The markdown wraps at 80 columns and the generated HTML keeps those
+    /// newlines, so a phrase like "route points" is split across a line in two
+    /// of the three sources and matches in none of them without this. The
+    /// first version of this group failed on exactly that and it was the
+    /// comparison at fault, not the policy.
+    String flat(String text) =>
+        text.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+    String appCopy() {
+      final section = privacyPolicy.sections.firstWhere(
+        (s) => s.heading == 'What we collect',
+      );
+      return flat(section.bullets.join(' '));
+    }
+
+    String markdown() =>
+        flat(File('docs/privacy-policy.md').readAsStringSync());
+
+    categories.forEach((name, phrase) {
+      test('$name is declared in the app, the doc and the page', () {
+        final needle = flat(phrase);
+        expect(
+          appCopy(),
+          contains(needle),
+          reason:
+              'legal_copy.dart no longer declares $name. This is the copy the '
+              'app renders, and under-disclosing here while the published page '
+              'declares it is the drift this group exists for.',
+        );
+        expect(
+          markdown(),
+          contains(needle),
+          reason: 'docs/privacy-policy.md no longer declares $name',
+        );
+        // The served bytes, read here rather than through the helper in the
+        // group below -- this check is about the same list in three places,
+        // and it should not depend on that group's order.
+        final page = flat(
+          File('../../web/public/run/privacy-policy.html').readAsStringSync(),
+        );
+        expect(
+          page,
+          contains(needle),
+          reason:
+              'the published page no longer declares $name. If the markdown '
+              'has it, run `python tool/build_legal_pages.py`.',
+        );
+      });
+    });
+  });
+
   test('every document has a title and some content', () {
     for (final document in <LegalDocument>[medicalDisclaimer, privacyPolicy]) {
       expect(document.title, isNotEmpty);

@@ -213,10 +213,7 @@ void main() {
       expect(find.text('Create an account'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('on this phone only'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('on this phone only'), findsOneWidget);
     });
 
     testWidgets('and all three change back once there is one', (tester) async {

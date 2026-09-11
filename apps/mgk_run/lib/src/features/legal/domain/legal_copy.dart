@@ -51,9 +51,16 @@ const LegalDocument privacyPolicy = LegalDocument(
     LegalSection(
       heading: 'What we collect',
       bullets: <String>[
-        'Account data — your email address and the account identifier it is '
-            'keyed to. Only if you create an account; the app works without '
-            'one.',
+        'Account data — your email address, the account identifier it is '
+            'keyed to, and the name you give the coach, if you give one. Only '
+            'if you create an account; the app works without one. The name is '
+            'optional, you can change or remove it at any time, and it is '
+            'never sent to the AI provider.',
+        'A profile photo, if you choose one — and it is the one thing here '
+            'that never leaves your phone. It is copied into the app’s own '
+            'storage, it is not uploaded, not sent to your coach, and not '
+            'included in backup, so a new phone starts again with your '
+            'initials. Remove it in Account, or by deleting the app.',
         'Profile data — your unit preference, and your running profile: '
             'current volume, longest run, available days, a recent race or '
             'time trial, and any injury notes you choose to give. We do not '

@@ -24,7 +24,7 @@ publish_to: none
 # Bump this before every submission — the stores refuse a number already used
 # for this version — and from here the number in the docs and the number in the
 # binary are the same number, because this line is the only source of it.
-version: 1.0.0+25
+version: 1.0.0+26
 
 environment:
   sdk: ^3.11.5
