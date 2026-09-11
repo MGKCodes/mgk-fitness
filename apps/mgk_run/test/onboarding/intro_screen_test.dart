@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -138,16 +139,31 @@ void main() {
       await tester.enterText(find.byType(TextField), 'Sam');
       await tapAndBuild(tester, find.byTooltip('Continue'));
 
-      expect(find.text(introPermissions.first.cta), findsNothing);
+      expect(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+        findsNothing,
+      );
 
       // Reply, "nearly there", then the explanation itself.
       await settleTurns(tester, 2);
-      expect(find.text(introPermissions.first.explain), findsNothing);
-      expect(find.text(introPermissions.first.cta), findsNothing);
+      expect(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.explain),
+        findsNothing,
+      );
+      expect(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+        findsNothing,
+      );
 
       await settleTurns(tester, 1);
-      expect(find.text(introPermissions.first.explain), findsOneWidget);
-      expect(find.text(introPermissions.first.cta), findsOneWidget);
+      expect(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.explain),
+        findsOneWidget,
+      );
+      expect(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+        findsOneWidget,
+      );
     });
   });
 
@@ -177,7 +193,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Sam');
     await tapAndBuild(tester, find.byTooltip('Continue'));
 
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
       // Reply, "nearly there" on the first pass, then the explanation.
       await settleTurns(tester, 3);
       expect(
@@ -230,6 +246,9 @@ void main() {
 
     expect(find.byType(TextField), findsNothing);
     expect(find.text(introPrompt(IntroStep.name)), findsNothing);
-    expect(find.text(introPermissions.first.cta), findsOneWidget);
+    expect(
+      find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+      findsOneWidget,
+    );
   });
 }

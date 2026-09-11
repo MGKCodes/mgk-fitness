@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
@@ -92,6 +93,20 @@ class _IntroScreenState extends State<IntroScreen> {
 
   /// Which permission is on screen. Only meaningful at [IntroStep.permissions].
   int _permissionIndex = 0;
+
+  /// The permissions this platform can actually ask for, resolved once.
+  ///
+  /// Not `introPermissions` directly: Android has no Health Connect permissions
+  /// in its manifest, so offering the Health step there produces a tap that
+  /// silently resolves to "Not now" — the runner taps Allow and is told they
+  /// declined. See `introPermissionsFor`.
+  ///
+  /// Read once into a field rather than called at each use, so the list cannot
+  /// change length between `_afterName` deciding there is a step and
+  /// `_afterPermission` deciding there is not.
+  late final List<IntroPermission> _permissions = introPermissionsFor(
+    defaultTargetPlatform,
+  );
 
   /// What the OS said, per permission index. Absent means "not asked yet".
   final Map<int, bool> _outcomes = <int, bool>{};
@@ -254,7 +269,7 @@ class _IntroScreenState extends State<IntroScreen> {
 
   /// Where the conversation goes once the name is settled, however it was.
   void _afterName() {
-    if (introPermissions.isNotEmpty) {
+    if (_permissions.isNotEmpty) {
       _advance(IntroStep.permissions);
       return;
     }
@@ -269,7 +284,7 @@ class _IntroScreenState extends State<IntroScreen> {
     if (_asking) return;
     setState(() => _asking = true);
     final granted = await widget.requestPermission(
-      introPermissions[_permissionIndex],
+      _permissions[_permissionIndex],
     );
     if (!mounted) return;
     // Two turns at once: what the OS was told, and what the coach says back.
@@ -280,7 +295,7 @@ class _IntroScreenState extends State<IntroScreen> {
   }
 
   void _afterPermission() {
-    if (_permissionIndex + 1 < introPermissions.length) {
+    if (_permissionIndex + 1 < _permissions.length) {
       _say(() => _permissionIndex++);
       return;
     }
@@ -431,24 +446,18 @@ class _IntroScreenState extends State<IntroScreen> {
   /// the form can still scroll up and see what they agreed to.
   List<Widget> _permissionTranscript() {
     final last = _step.index > IntroStep.permissions.index
-        ? introPermissions.length - 1
+        ? _permissions.length - 1
         : _permissionIndex;
     return <Widget>[
-      for (
-        var i = 0;
-        i <= last && i < introPermissions.length;
-        i++
-      ) ...<Widget>[
-        Said(introPermissions[i].explain),
+      for (var i = 0; i <= last && i < _permissions.length; i++) ...<Widget>[
+        Said(_permissions[i].explain),
         if (_outcomes[i] != null) ...<Widget>[
           // The runner did not type this, they answered a system dialog — but
           // showing it as their turn keeps the screen a conversation rather
           // than a form with a log stapled underneath.
           Replied(_outcomes[i]! ? 'Allowed' : 'Not now'),
           Said(
-            _outcomes[i]!
-                ? introPermissions[i].granted
-                : introPermissions[i].denied,
+            _outcomes[i]! ? _permissions[i].granted : _permissions[i].denied,
           ),
         ],
       ],
@@ -488,7 +497,7 @@ class _IntroScreenState extends State<IntroScreen> {
     IntroStep.permissions =>
       _outcomes[_permissionIndex] == null
           ? PrimaryButton(
-              label: introPermissions[_permissionIndex].cta,
+              label: _permissions[_permissionIndex].cta,
               busy: _asking,
               onPressed: _ask,
             )

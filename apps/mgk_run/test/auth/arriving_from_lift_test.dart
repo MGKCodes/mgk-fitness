@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -74,7 +75,10 @@ void main() {
 
     // Straight to the permissions, which are the only thing this install has
     // genuinely never answered.
-    expect(find.text(introPermissions.first.explain), findsOneWidget);
+    expect(
+      find.text(introPermissionsFor(defaultTargetPlatform).first.explain),
+      findsOneWidget,
+    );
     expect(find.text(introPrompt(IntroStep.name)), findsNothing);
   });
 
@@ -88,7 +92,7 @@ void main() {
 
     await tester.tap(find.text('Sounds good'));
     await tester.pumpAndSettle();
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
       // **No field, at any point.** This used to assert the absence of the
       // intro's account prompt; that step no longer exists, so the assertion
       // had become vacuous. The rule it was protecting is still real - nobody
@@ -145,7 +149,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Sam');
     await tester.tap(find.byTooltip('Continue'));
     await tester.pumpAndSettle();
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
       await tester.tap(find.text(permission.cta));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Continue'));

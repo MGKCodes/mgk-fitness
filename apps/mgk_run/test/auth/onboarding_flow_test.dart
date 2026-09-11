@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -38,7 +39,7 @@ class _RecordingConsent implements BackupConsentStore {
 /// form, because there is no longer one to walk: the profile is created in the
 /// conversation itself.
 ///
-/// Driven off `introPermissions` rather than a fixed list of taps, so adding or
+/// Driven off `introPermissionsFor(defaultTargetPlatform)` rather than a fixed list of taps, so adding or
 /// removing a permission does not silently strand every flow test on a screen
 /// it does not know how to leave.
 Future<void> _throughIntro(WidgetTester tester, {String? name}) async {
@@ -49,7 +50,7 @@ Future<void> _throughIntro(WidgetTester tester, {String? name}) async {
   if (name != null) await tester.enterText(find.byType(TextField), name);
   await tester.tap(find.byTooltip('Continue'));
   await tester.pumpAndSettle();
-  for (final permission in introPermissions) {
+  for (final permission in introPermissionsFor(defaultTargetPlatform)) {
     await tester.tap(find.text(permission.cta));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
