@@ -93,13 +93,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   /// Two names rather than one, because they are not interchangeable: a person
   /// has an Apple ID or a Google Play account, and the shop is the App Store or
   /// Google Play.
-  static String get _account => defaultTargetPlatform == TargetPlatform.android
-      ? 'Google Play account'
-      : 'Apple ID';
+  static String get _account => storeAccountName(defaultTargetPlatform);
 
-  static String get _store => defaultTargetPlatform == TargetPlatform.android
-      ? 'Google Play'
-      : 'the App Store';
+  static String get _store => storeName(defaultTargetPlatform);
 
   late final Future<List<CoachOffer>> _offers = widget.purchases.offers();
   String? _busyId;
@@ -429,6 +425,23 @@ const String _googleRenewal =
 /// Top-level and public so a test can read both without pumping a widget: the
 /// bug this exists to prevent was a `const` string nothing ever asserted on,
 /// correct for the only platform anybody had run.
+/// What the shop is called on this platform.
+///
+/// Top-level and platform-taking rather than a getter on the paywall, because
+/// settings needs the same two names to say where a subscription is managed,
+/// and a second copy of this is a second chance to name the wrong store — which
+/// is the defect `the_paywall_names_the_right_store_test.dart` exists for.
+String storeName(TargetPlatform platform) =>
+    platform == TargetPlatform.android ? 'Google Play' : 'the App Store';
+
+/// What the *person's* account with that shop is called.
+///
+/// Two names rather than one, because they are not interchangeable: a person
+/// has an Apple ID or a Google Play account, and the shop is the App Store or
+/// Google Play.
+String storeAccountName(TargetPlatform platform) =>
+    platform == TargetPlatform.android ? 'Google Play account' : 'Apple ID';
+
 String renewalWording(TargetPlatform platform) =>
     platform == TargetPlatform.android ? _googleRenewal : _appleRenewal;
 

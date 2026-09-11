@@ -1,6 +1,7 @@
 import '../src/features/coaching/data/entitlement_repository.dart';
 import '../src/features/coaching/data/purchase_client.dart';
 import '../src/features/coaching/domain/coach_access.dart';
+import '../src/features/coaching/domain/coach_subscription.dart';
 import '../src/features/coaching/domain/coach_offer.dart';
 
 /// A shop with no store behind it.
@@ -94,4 +95,15 @@ class FakeEntitlements implements EntitlementRepository {
 
   @override
   Future<CoachAccess> access() async => answer;
+
+  /// Derived from [answer] so a plate cannot draw a tier the gate disagrees
+  /// with. Premium is not reachable here: the plates that need it can pass a
+  /// [CoachSubscription] of their own when one exists to draw.
+  @override
+  Future<CoachSubscription> subscription() async => answer.isSubscribed
+      ? const CoachSubscription(
+          tier: CoachTier.coach,
+          standing: SubscriptionStanding.active,
+        )
+      : CoachSubscription.none;
 }

@@ -80,9 +80,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsWidgets);
-    expect(find.text('Miles'), findsOneWidget);
-    // The account facts moved here off Profile.
+    // The account facts moved here off Profile. Still above the fold: Account
+    // is the first band on the page.
     expect(find.text('dev@runio.app'), findsOneWidget);
+    // Scrolled to, for the reason given below about Privacy & legal, and for
+    // the second time: Settings grew a subscription row in the Account band on
+    // 2026-09-11 and Miles went under the fold with it. A fixed-viewport
+    // assertion here tests the page's height, which is not what this test is
+    // about -- it is about Settings being reachable and the unit being in it.
+    await tester.scrollUntilVisible(
+      find.text('Miles'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Miles'), findsOneWidget);
     // The compliance surfaces moved under Settings rather than a second icon.
     // Scrolled to, because Settings grew a Permissions section above it and
     // the list builds lazily — asserting from a fixed viewport was asserting

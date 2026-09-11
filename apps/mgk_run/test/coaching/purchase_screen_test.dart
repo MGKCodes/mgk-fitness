@@ -5,6 +5,7 @@ import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/data/entitlement_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_subscription.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_offer.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_gate_copy.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_gate_sheet.dart';
@@ -29,6 +30,15 @@ class _ScriptedEntitlements implements EntitlementRepository {
     reads++;
     return answer;
   }
+
+  @override
+  Future<CoachSubscription> subscription() async =>
+      (await access()).isSubscribed
+      ? const CoachSubscription(
+          tier: CoachTier.coach,
+          standing: SubscriptionStanding.active,
+        )
+      : CoachSubscription.none;
 }
 
 void main() {
@@ -161,7 +171,8 @@ void main() {
       expect(
         find.text(renewalWording(defaultTargetPlatform)),
         findsOneWidget,
-        reason: 'the screen must show the disclosure for the store it is '
+        reason:
+            'the screen must show the disclosure for the store it is '
             'actually running on',
       );
     });

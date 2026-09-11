@@ -1028,11 +1028,12 @@ workflows:
     # 1.0.0 (22), by hand, to internal testing — so this is now the one thing
     # that was actually blocking it.
     #
-    # `submit_as_draft: true` puts the release in Play Console rather than
-    # rolling it straight to testers, so a mistake is a draft to delete instead
-    # of a build somebody has installed. Worth keeping past the first few
-    # publishes: the cost is one click, and the thing it prevents is a bad
-    # bundle reaching a phone that then has to be told to update.
+    # `submit_as_draft` was `true` here and is now `false`. The argument for
+    # the draft was that a mistake becomes something to delete rather than
+    # something somebody has installed — which describes a public track, not
+    # this one. The internal track already only reaches a tester list, so the
+    # draft guarded nothing and charged a manual rollout per build. See the
+    # note on the flag itself for what that cost on build 24.
     #
     # THE `mgk_fitness_play` GROUP ABOVE IS PART OF THIS. It holds the
     # credentials this block reads; turn one off and turn the other off with it,
@@ -1043,6 +1044,36 @@ workflows:
     # rather than on anything in this repository.
     publishing:
       google_play:
+        # **This name is deprecated and has to change, but not on its own.**
+        # Build 24's publish step warned, inside an otherwise green log:
+        #
+        #   Warning: Using environment variable GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        #   to define argument value is deprecated and will be removed in a
+        #   future release. Use GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS instead.
+        #
+        # Changing this line alone breaks publishing: the variable group holds
+        # the old name, so the new one resolves to empty and the upload fails
+        # with a credential error rather than a missing-variable one. The order
+        # is: add GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS to `mgk_fitness_play`
+        # with the same JSON, THEN change this line, THEN delete the old
+        # variable once a build has gone green.
+        #
+        # Left on the deprecated name deliberately. It still works, and a
+        # warning is cheaper than a failed release.
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
-        submit_as_draft: true
+        # **false, deliberately, and it was `true` until 2026-09-11.**
+        #
+        # The draft was written as a safety: "a mistake is a draft to delete
+        # rather than a build someone has installed". That reasoning does not
+        # survive contact with the internal track, which *is* the safety — it
+        # reaches a tester list and nobody else. So the draft protected nothing
+        # and cost a manual rollout on every build.
+        #
+        # It cost one on build 24, invisibly: the bundle uploaded, the build
+        # went green, and the app never appeared for testers because the track
+        # held `draft: [24]` behind `completed: [23]`. An hour went into
+        # looking at the emulator for a fault that was in the release state.
+        #
+        # Keep it `true` for any track that reaches the public.
+        submit_as_draft: false

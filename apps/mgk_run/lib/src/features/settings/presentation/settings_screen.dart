@@ -19,6 +19,9 @@ import '../data/backup_health_factory.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
 import '../../health/domain/workout_source.dart';
+import '../../coaching/presentation/purchase_screen.dart' show storeName;
+import '../../coaching/domain/coach_subscription.dart';
+import '../../coaching/data/entitlement_repository.dart';
 import '../../onboarding/domain/intro_store.dart';
 import 'backup_section.dart';
 import 'permissions_section.dart';
@@ -104,6 +107,7 @@ class SettingsScreen extends StatefulWidget {
     this.introStore,
     this.onNameChanged,
     this.ensureAccount,
+    this.entitlements = const SupabaseEntitlements(),
   });
 
   /// Where workouts recorded elsewhere come from.
@@ -133,6 +137,12 @@ class SettingsScreen extends StatefulWidget {
 
   final AuthRepository auth;
   final AccountDeleter deleter;
+
+  /// Read to **print** where the runner stands, never to unlock anything.
+  ///
+  /// The coach's own gate is the server's; this screen only ever draws a
+  /// sentence. See [CoachSubscription].
+  final EntitlementRepository entitlements;
 
   /// Where the backup answer lives. Defaults to the platform store.
   final BackupConsentStore? consentStore;
@@ -227,6 +237,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     unawaited(_loadConsent());
     unawaited(_loadBackupHealth());
     unawaited(_loadName());
+    unawaited(_loadSubscription());
+  }
+
+  /// Null until the read lands, which is not the same as [CoachSubscription.none]
+  /// — one means "we have not looked yet", the other "you have nothing". The
+  /// row draws nothing at all while it is null, because a settings screen that
+  /// flashes *Free* at a paying subscriber for half a second is worse than one
+  /// that takes half a second to fill in.
+  CoachSubscription? _subscription;
+
+  Future<void> _loadSubscription() async {
+    final CoachSubscription read = await widget.entitlements.subscription();
+    if (!mounted) return;
+    setState(() => _subscription = read);
   }
 
   /// Fills in the name for a runner whose account does not hold one.
@@ -600,6 +624,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // of the page under a heading of its own — filed correctly *and*
             // hard to reach by accident, rather than one at the cost of the
             // other.
+            // Where you stand with the coach, above Sign out because it is the
+            // question somebody opens this screen to answer and signing out is
+            // the one they leave by.
+            //
+            // **Signed-in only, and not because of squeamishness.** A purchase
+            // is refused outright without an account (`PurchaseScreen` checks
+            // before it reaches the store), so a subscription row for a signed
+            // out runner could only ever say "Free" and could not be acted on.
+            if (signedIn && _subscription != null)
+              Entrance(
+                index: 2,
+                child: _SubscriptionTile(subscription: _subscription!),
+              ),
             if (signedIn)
               Entrance(
                 index: 2,
@@ -827,6 +864,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// The two blocks at the top of the page do not use this: "You" and "Account"
 /// each pad a whole column rather than a lone label, so their headings sit
 /// inside that padding instead of carrying their own.
+/// One row saying which subscription this is and whether it is paid up.
+///
+/// Added 2026-09-11, the day the first Play purchase went through and there was
+/// nowhere in the app to see that it had. The coach unlocking is evidence, but
+/// it is indirect evidence and it is the only kind the app offered: a runner
+/// who wanted to know what they were paying for had to go to the store to find
+/// out.
+///
+/// **The three states are not one state with adjectives.** Free, paid up, and
+/// "the store is chasing a payment" want different sentences and one of them
+/// wants a colour. The third is the reason this row is worth building at all —
+/// it is the only case where somebody believes they are paying, the coach is
+/// locked, and the app would otherwise say nothing.
+class _SubscriptionTile extends StatelessWidget {
+  const _SubscriptionTile({required this.subscription});
+
+  final CoachSubscription subscription;
+
+  @override
+  Widget build(BuildContext context) {
+    final String store = storeName(defaultTargetPlatform);
+    return switch (subscription.standing) {
+      // Nothing bought. Says what the free app *is* rather than what it lacks:
+      // recording is the product, not a trial of one (ADR-0030).
+      SubscriptionStanding.none => const SettingsTile(
+        icon: Icons.person_outline,
+        title: 'Free',
+        subtitle: 'Recording is free. The coach is a subscription.',
+        showChevron: false,
+      ),
+      SubscriptionStanding.active => SettingsTile(
+        icon: Icons.check_circle_outline,
+        title: subscription.tier.label,
+        subtitle: 'Active — manage or cancel it in $store',
+        showChevron: false,
+      ),
+      // The one that earns a colour. The coach is locked and the runner has
+      // not cancelled anything, so the sentence has to carry both facts or it
+      // reads as the app losing their subscription.
+      SubscriptionStanding.billingRetry => SettingsTile(
+        icon: Icons.error_outline,
+        title: subscription.tier.label,
+        subtitle:
+            'Payment did not go through. $store is retrying it, and the '
+            'coach is locked until it does.',
+        tint: AppColors.danger,
+        showChevron: false,
+      ),
+      SubscriptionStanding.ended => SettingsTile(
+        icon: Icons.person_outline,
+        title: 'Free',
+        subtitle: 'Your ${subscription.tier.label} subscription has ended.',
+        showChevron: false,
+      ),
+    };
+  }
+}
+
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading(this.text);
 

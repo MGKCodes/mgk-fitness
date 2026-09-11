@@ -109,14 +109,42 @@ function uuid(value: unknown): string | null {
  */
 export function productMap(raw: string | undefined): Map<string, ProductSale> {
   const out = new Map<string, ProductSale>();
-  if (!raw) return out;
+  // Unset is a real state -- a project that has not configured products yet --
+  // and it is not the same as a value that failed to parse.
+  if (!raw) {
+    console.error("revenuecat REVENUECAT_PRODUCTS is unset: nothing can map");
+    return out;
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
+    // **Loud, because this failure is otherwise perfect.**
+    //
+    // On 2026-09-11 this value was set through a Windows PowerShell that
+    // strips double quotes when passing arguments to a native executable. The
+    // stored string became `{run.coach.monthly:{app:run,...}}` -- invalid
+    // JSON, accepted without complaint by the CLI. Returning an empty map kept
+    // the function alive, which is right, and meant every event from BOTH
+    // stores logged `unmapped_product` and granted nothing. Apple had been
+    // renewing correctly for a week and silently stopped.
+    //
+    // Nothing said so. The webhook kept answering 200, the sandbox renewals
+    // kept arriving, and the only symptom was a coach that would not unlock.
+    // One line here turns that hour into a log search.
+    console.error(
+      "revenuecat REVENUECAT_PRODUCTS is not valid JSON: every event will be " +
+        "unmapped_product until it is fixed",
+    );
     return out;
   }
-  if (parsed === null || typeof parsed !== "object") return out;
+  if (parsed === null || typeof parsed !== "object") {
+    console.error(
+      "revenuecat REVENUECAT_PRODUCTS parsed but is not an object: every " +
+        "event will be unmapped_product until it is fixed",
+    );
+    return out;
+  }
   for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
     const v = value as { app?: unknown; product?: unknown };
     const app = str(v?.app);
@@ -126,6 +154,14 @@ export function productMap(raw: string | undefined): Map<string, ProductSale> {
       continue;
     }
     out.set(id, { app, product });
+  }
+  // A syntactically fine value that maps nothing is the same outcome by a
+  // different route, and worth separating from "one id is missing".
+  if (out.size === 0) {
+    console.error(
+      "revenuecat REVENUECAT_PRODUCTS has no usable entries: every event " +
+        "will be unmapped_product",
+    );
   }
   return out;
 }

@@ -5,6 +5,7 @@ import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/data/entitlement_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_subscription.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_gate_sheet.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -139,6 +140,14 @@ class _MutableEntitlements implements EntitlementRepository {
     reads++;
     return answer;
   }
+
+  @override
+  Future<CoachSubscription> subscription() async => answer.isSubscribed
+      ? const CoachSubscription(
+          tier: CoachTier.coach,
+          standing: SubscriptionStanding.active,
+        )
+      : CoachSubscription.none;
 }
 
 class _RecordingChat implements CoachChatClient {
