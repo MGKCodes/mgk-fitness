@@ -23,6 +23,11 @@ coverage/
 # would try to swallow. See the Branching section of CONTRIBUTING.md.
 .claude/worktrees/
 
+# Per-machine Claude Code permission grants. These authorise real actions with
+# real credentials on the machine that holds them (see scripts/codemagic-build.sh),
+# so they are one person's decision rather than the repo's.
+.claude/settings.local.json
+
 # IDE
 .idea/
 .vscode/
