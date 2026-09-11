@@ -58,8 +58,14 @@ provider. We do not sell your data. You can delete everything at any time.
 
 ## What we collect
 
-- **Account data** — your email address and the account identifier it is keyed
-  to. Only if you create an account; the app works without one.
+- **Account data** — your email address, the account identifier it is keyed to,
+  and **the name you give the coach**, if you give one. Only if you create an
+  account; the app works without one.
+
+  The name is optional and you can change or remove it at any time — clear the
+  field and the coach stops using one. It is stored with your login rather than
+  with your training, so it is what the app calls you and nothing more. It is
+  **never sent to the AI provider**; see the sub-processors below.
 - **Profile data** — your unit preference, and your running profile: current
   volume, longest run, available days, a recent race or time trial, and any
   injury notes you choose to give. We do **not** ask for your date of birth or
@@ -209,7 +215,10 @@ consent. There are two in-app controls, and they do different things:
   are pruned after 31 days regardless. And your **login** survives if our
   lifting app still holds data on it — see below.
 
-To exercise any right, use those controls or contact hello@mgkcodes.com.
+To exercise any right, use those controls or contact hello@mgkcodes.com. If
+you have already uninstalled the app, ask us at
+https://mgkfitness.mgkcodes.com/run/delete-account — the in-app control is
+faster and complete, but it is no use to you once the app is gone.
 
 Your login is your **MGKFitness profile**, shared with our lifting app
 **MGKFitness: Lift**. If the profile holds no data from Lift, deletion removes
