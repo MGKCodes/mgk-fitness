@@ -66,6 +66,11 @@ provider. We do not sell your data. You can delete everything at any time.
   field and the coach stops using one. It is stored with your login rather than
   with your training, so it is what the app calls you and nothing more. It is
   **never sent to the AI provider**; see the sub-processors below.
+- **A profile photo, if you choose one** — and it is the one thing here that
+  **never leaves your phone**. It is copied into the app's own storage, it is
+  not uploaded, not sent to your coach, and not included in backup, so a new
+  phone starts again with your initials. Remove it in Account, or by deleting
+  the app.
 - **Profile data** — your unit preference, and your running profile: current
   volume, longest run, available days, a recent race or time trial, and any
   injury notes you choose to give. We do **not** ask for your date of birth or

@@ -261,7 +261,17 @@ given after the table:
 
 **Everything else is "not collected"**, and the notable absences are worth
 knowing you can answer cleanly: no crash logs, no diagnostics, no advertising ID,
-no contacts, photos, files, web history or installed apps. The app carries no
+no contacts, files, web history or installed apps.
+
+**Photos is the one that needs saying out loud**, because the app gained a
+profile photo on 2026-09-11 and the answer is still *not collected*. Play
+defines collection as data **transmitted off the device**; this photo is copied
+into the app's own storage and is deliberately excluded from the backup mirror,
+so nothing transmits it. The same reasoning keeps Apple's App Privacy on "Data
+Not Collected" and keeps it out of `PrivacyInfo.xcprivacy`. **If the photo is
+ever synced, all three of those answers become false at once** — that is the
+whole reason it is a rule in `ProfilePhotoStore` rather than an accident of
+where the file happens to live. The app carries no
 analytics, no ad SDK and no crash reporter, which is a rare set of honest zeroes
 on this form.
 
