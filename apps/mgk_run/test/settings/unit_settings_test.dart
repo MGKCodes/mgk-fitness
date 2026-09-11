@@ -104,11 +104,11 @@ void main() {
     final settings = InMemoryUnitSettings();
     UnitSystem? announced;
 
-    // The unit picker sits in band 3 of Settings, below the two bands that
-    // decide something about the runner's data — it is a one-time preference
-    // shared with Lift, not a daily control. That puts it past the default
-    // 800×600 test viewport, and a `ListView` does not build what it cannot
-    // show, so the surface is sized to the whole page rather than the fold.
+    // The unit row is near the top of Settings now — it was at the bottom,
+    // below the two bands that decide something about the runner's data, on
+    // the reasoning that a one-time preference does not outrank them. True,
+    // and an argument for it being cheap to pass rather than hard to find.
+    // The choice itself is a sheet, so this taps the row and then the option.
     await tester.binding.setSurfaceSize(const Size(420, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -122,6 +122,8 @@ void main() {
       ),
     );
 
+    await tester.tap(find.text('Distance'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Miles'));
     await tester.pumpAndSettle();
 
@@ -148,7 +150,13 @@ void main() {
       ),
     );
 
-    // One account across both apps — surprising if unexplained.
+    // One account across both apps — surprising if unexplained. Said in the
+    // sheet where the choice is made rather than on the index, which is the
+    // whole shape of the rewrite: the explanation goes where somebody is
+    // deciding, not where they are checking.
+    expect(find.textContaining('Lift'), findsNothing);
+    await tester.tap(find.text('Distance'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Lift'), findsOneWidget);
   });
 }

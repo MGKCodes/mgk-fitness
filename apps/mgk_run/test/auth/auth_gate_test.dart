@@ -199,8 +199,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('dev@runio.app'), findsOneWidget);
 
-    final signOutRow = find.widgetWithText(ListTile, 'Sign out');
-    await tester.scrollUntilVisible(signOutRow, 200, scrollable: scrollable);
+    // On the account screen, one tap from the card at the top of Settings.
+    // It was a ListTile below the fold until Settings was rewritten on
+    // 2026-09-11, then briefly a button on the index.
+    await tester.tap(find.text('dev@runio.app'));
+    await tester.pumpAndSettle();
+    final signOutRow = find.widgetWithText(OutlinedButton, 'Sign out');
     await tester.tap(signOutRow);
     await tester.pumpAndSettle();
 

@@ -9,7 +9,6 @@ import 'package:mgk_units/mgk_units.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../legal/data/account_deletion_service.dart';
 import '../../legal/domain/account_deleter.dart';
-import '../../legal/presentation/delete_account_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
 import '../../../dev/dev_coach_model_controls.dart';
 import '../../../dev/dev_persona_controls.dart';
@@ -23,7 +22,11 @@ import '../../coaching/presentation/purchase_screen.dart' show storeName;
 import '../../coaching/domain/coach_subscription.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../onboarding/domain/intro_store.dart';
-import 'backup_section.dart';
+import 'settings_row.dart';
+import 'permissions_screen.dart';
+import 'account_screen.dart';
+import 'backup_screen.dart';
+import 'package:geolocator/geolocator.dart';
 import 'permissions_section.dart';
 import '../domain/unit_settings.dart';
 
@@ -238,6 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     unawaited(_loadBackupHealth());
     unawaited(_loadName());
     unawaited(_loadSubscription());
+    unawaited(_loadLocation());
   }
 
   /// Null until the read lands, which is not the same as [CoachSubscription.none]
@@ -357,6 +361,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ///
   /// Cleared rather than rejected when left blank, so "do not use a name" is a
   /// reachable answer rather than a validation error.
+
+  /// What Geolocator says right now, for the Permissions row's value.
+  ///
+  /// Read here as well as inside `PermissionsSection` rather than plumbed down
+  /// from it: the index shows the value without opening the screen that owns
+  /// it, so the index has to be able to ask. It is one cheap platform call on
+  /// a screen that is already doing three.
+  LocationPermission? _location;
+
+  Future<void> _loadLocation() async {
+    try {
+      final p = await Geolocator.checkPermission();
+      if (mounted) setState(() => _location = p);
+    } on Object {
+      // A platform without location is not an error state, it is a blank one.
+      if (mounted) setState(() => _location = null);
+    }
+  }
+
+  /// Distance, as a sheet rather than a segmented control on the index.
+  ///
+  /// The control itself was fine; what it cost was the two lines under it
+  /// explaining that the setting is shared with Lift and that runs are stored
+  /// in metric regardless. Both are worth saying and neither is worth saying
+  /// every time somebody opens Settings, so they say it here, where the choice
+  /// is made.
+  Future<void> _pickUnit() async {
+    final picked = await showModalBottomSheet<UnitSystem>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sheet),
+        ),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.md,
+              AppSpacing.xl,
+              AppSpacing.xl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Center(child: SheetHandle()),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Distance', style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                for (final option in UnitSystem.values)
+                  SettingsRow(
+                    title: option == UnitSystem.metric ? 'Kilometres' : 'Miles',
+                    trailing: option == _unit
+                        ? const Icon(
+                            Icons.check,
+                            size: 20,
+                            color: AppColors.textPrimary,
+                          )
+                        : const SizedBox(width: 20),
+                    onTap: () => Navigator.of(sheetContext).pop(option),
+                  ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Shared with Lift — changing it here changes it there too. '
+                  'Your runs are always stored in metric.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (picked != null && picked != _unit) await _select(picked);
+  }
+
+  Future<void> _openAccount() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AccountScreen(
+          auth: widget.auth,
+          deleter: widget.deleter,
+          subscription: _subscription,
+          memberSince: widget.memberSince,
+          onSignOut: _signOut,
+        ),
+      ),
+    );
+    // The account may have been deleted or the plan changed while that screen
+    // was open, so the card is re-read rather than trusted.
+    if (mounted) {
+      await _loadSubscription();
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _openBackup() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // A [StatefulBuilder] so the pushed screen can redraw itself. The
+        // consent lives in THIS state — the gate, the erase and the backfill
+        // all hang off it — so the screen reads it rather than owning it, and
+        // needs telling when it changes. Calling only the index's setState
+        // would leave a switch that has been flipped still drawn as it was.
+        builder: (_) => StatefulBuilder(
+          builder: (_, setScreenState) => BackupScreen(
+            consent: _consent,
+            health: _backupHealth,
+            busy: _consentBusy,
+            onChanged: (next) async {
+              await _setConsent(next);
+              setScreenState(() {});
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openPermissions() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PermissionsScreen(health: widget.health),
+      ),
+    );
+    // The runner may have changed a permission in the OS settings app while
+    // that screen was open, so the value on the index is re-read rather than
+    // trusted.
+    if (mounted) await _loadLocation();
+  }
+
   Future<void> _editName() async {
     // `TextFormField` with an `initialValue` rather than a controller of our
     // own, deliberately: a controller created here has to be disposed here,
@@ -476,331 +620,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final email = widget.auth.currentEmail;
     final signedIn = widget.auth.isSignedIn;
 
+    // ── The shape of this screen ────────────────────────────────────────────
+    //
+    // **An index, not an essay.** What stood here was four bands of rows, each
+    // with a sentence under it, plus three explanatory paragraphs — roughly two
+    // and a half screens of scrolling to reach a version number. Every sentence
+    // was true and each was written to be read once; together they meant a
+    // runner opening Settings for the fifth time read five explanations to
+    // check one switch.
+    //
+    // A settings index has one job: show what everything is set to, without
+    // touching anything. So each row now carries its value on the right —
+    // `Miles`, `Off`, `On` — and the explanations moved to the screens where
+    // the settings are actually changed. Both platforms' own settings apps are
+    // this shape, for this reason.
+    //
+    // Two of those moves were not cosmetic:
+    //
+    //  * **Backup.** Its paragraph was the only disclosure on the path where a
+    //    runner finds the switch in Settings and flips it — no prompt is raised
+    //    there. So the switch moved WITH the words, to [BackupScreen], rather
+    //    than the words being cut. See that file.
+    //  * **Permissions.** Four rows and a five-line iOS-paths paragraph, on a
+    //    screen everybody opens, for text nobody reads until the day they need
+    //    it. Now one row saying whether location is on.
+    //
+    // Order follows how often something is changed rather than how much it
+    // matters: the two preferences first, the two data decisions second, the
+    // ways out last. Distance in particular was at the bottom, on the reasoning
+    // that it is set once and then read forever — which is an argument for it
+    // being cheap to pass, not for it being hard to find.
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
           children: <Widget>[
-            // ── Band 1 · where you stand ────────────────────────────────────
-            //
-            // **The runner, before the account.**
-            //
-            // These two rows used to sit under an "Account" heading, behind a
-            // condition that hid them unless there was an email or a run on
-            // record. Neither is an account fact: the name is what the coach
-            // was told in a conversation that no longer ends in an account, and
-            // "running since" is read off the log on this phone. Under the old
-            // arrangement the ordinary new runner - introduced, signed out, no
-            // runs yet - opened Settings and found nothing about themselves at
-            // all, including the one thing they had actually been asked for.
+            // Who this is and what they are paying — the two account facts, in
+            // one card, where there was a heading, a bare address and a row.
             Entrance(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.sm,
-                  AppSpacing.xl,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SectionLabel('You'),
-                    const SizedBox(height: AppSpacing.sm),
-
-                    // The only thing onboarding gathers, and until this
-                    // existed it was permanent: written once at sign-up and
-                    // read back forever.
-                    InkWell(
-                      onTap: _editName,
-                      borderRadius: AppRadius.cardAll,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm,
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Coach calls you',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    // Not "not set", which reads as an error.
-                                    // No name is a choice the coach handles.
-                                    _name ?? 'Nothing in particular',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textTertiary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              color: AppColors.textTertiary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (widget.memberSince != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Running since ${_monthYear(widget.memberSince!)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+              child: _AccountCard(
+                email: signedIn ? email : null,
+                subscription: _subscription,
+                memberSince: widget.memberSince,
+                onCreateAccount: signedIn ? null : _createAccount,
+                onOpen: signedIn ? _openAccount : null,
               ),
             ),
+            const SizedBox(height: AppSpacing.lg),
 
-            // **The account, including when there is not one.**
-            //
-            // This section used to assume one existed: it printed an address,
-            // and offered Sign out and Delete account unconditionally. After
-            // the app stopped requiring an account, that left a runner who had
-            // never made one being offered a way to sign out of nothing and to
-            // delete an account that does not exist - two rows that could only
-            // fail, in the place somebody looks to find out where they stand.
             Entrance(
               index: 1,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.sm,
-                  AppSpacing.xl,
-                  AppSpacing.xs,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SectionLabel('Account'),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (signedIn && email != null)
-                      Text(
-                        email,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    else if (!signedIn)
-                      Text(
-                        // States the position rather than selling the fix. The
-                        // row below says what an account is for; this says what
-                        // is true right now, which is the thing somebody came
-                        // to this screen to find out.
-                        'You do not have one. Everything you have recorded is '
-                        'on this phone, and only on this phone.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                          height: 1.4,
-                        ),
-                      ),
-                  ],
-                ),
+              child: SettingsGroup(
+                label: 'You',
+                children: <Widget>[
+                  SettingsRow(
+                    title: 'Coach calls you',
+                    // Not "not set", which reads as an error. No name is a
+                    // choice the coach handles.
+                    value: _name ?? 'Nothing in particular',
+                    onTap: _editName,
+                  ),
+                  SettingsRow(
+                    title: 'Distance',
+                    value: _unit == UnitSystem.metric ? 'Kilometres' : 'Miles',
+                    onTap: _saving ? null : _pickUnit,
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: AppSpacing.lg),
 
-            // **Sign out stays with the account. Delete account does not.**
-            //
-            // Both rows were hoisted up here together, off the far side of the
-            // unit picker, when Account became a labelled section: the board
-            // drew ACCOUNT, then DISTANCE, then Sign out and Delete account —
-            // two account actions filed under distance, one heading away from
-            // their own. What that fix was correcting was the *heading*, not
-            // the height, and the two rows never deserved the same answer.
-            // Signing out is undone by signing back in and the runs never left
-            // the phone; deleting is the one act on this screen that cannot be
-            // undone at all. So the reversible half stays here under the
-            // heading it belongs to, and the destructive half goes to the foot
-            // of the page under a heading of its own — filed correctly *and*
-            // hard to reach by accident, rather than one at the cost of the
-            // other.
-            // Where you stand with the coach, above Sign out because it is the
-            // question somebody opens this screen to answer and signing out is
-            // the one they leave by.
-            //
-            // **Signed-in only, and not because of squeamishness.** A purchase
-            // is refused outright without an account (`PurchaseScreen` checks
-            // before it reaches the store), so a subscription row for a signed
-            // out runner could only ever say "Free" and could not be acted on.
-            if (signedIn && _subscription != null)
-              Entrance(
-                index: 2,
-                child: _SubscriptionTile(subscription: _subscription!),
+            Entrance(
+              index: 2,
+              child: SettingsGroup(
+                label: 'Your data',
+                children: <Widget>[
+                  SettingsRow(
+                    title: 'Back up my data',
+                    value: backupRowValue(_consent),
+                    onTap: _openBackup,
+                  ),
+                  SettingsRow(
+                    title: 'Permissions',
+                    value: locationRowValue(_location),
+                    onTap: _openPermissions,
+                  ),
+                ],
               ),
-            if (signedIn)
-              Entrance(
-                index: 2,
-                child: SettingsTile(
-                  icon: Icons.logout,
-                  title: 'Sign out',
-                  subtitle: 'Your runs stay on this device',
-                  showChevron: false,
-                  onTap: _signOut,
-                ),
-              )
-            // Exactly the two things an account buys, named as such — the same
-            // two gates the app actually raises one at (ADR-0019). Anything
-            // more would be selling it.
-            else
-              Entrance(
-                index: 2,
-                child: SettingsTile(
-                  icon: Icons.person_add_alt,
-                  title: 'Create an account',
-                  subtitle: 'Back up your training, and ask for a plan',
-                  onTap: _createAccount,
-                ),
-              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
 
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            // ── Band 2 · what the app may do with your running ──────────────
+            // A button rather than a row, because it is a place to go rather
+            // than a setting: as a row it read as a reading list.
             //
-            // The two decisions on this page with any weight, and now the two
-            // immediately under the fold-line rather than beyond it. Consent
-            // first because it governs what *leaves* the phone, permissions
-            // second because they govern what the app may *read* off it — and
-            // because the app can act on the first and can only report on the
-            // second (iOS will not let it revoke its own permissions, or ask
-            // twice).
-            //
-            // Still above the legal rows rather than inside them: this is a
-            // decision the runner makes, not a document they read.
+            // **Sign out and Delete account used to sit beside it and now live
+            // on the account screen.** Two things were wrong with them here.
+            // They kept the two acts a person could regret in permanent view of
+            // somebody who opened Settings to change their units — and Delete
+            // account appeared twice in the app, because one already existed
+            // inside Privacy & legal where the law expects to find it. Both are
+            // one tap from the card at the top, which is where a person looks
+            // for them anyway.
             Entrance(
               index: 3,
-              child: BackupSection(
-                consent: _consent,
-                health: _backupHealth,
-                busy: _consentBusy,
-                onChanged: _setConsent,
-              ),
-            ),
-
-            PermissionsSection(health: widget.health, startIndex: 4),
-
-            const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-
-            // ── Band 3 · what neither of those touches ──────────────────────
-            //
-            // How a distance is printed, and what the app says about itself.
-            // The unit picker used to sit above the backup switch on the
-            // strength of being tapped more often, which is not true of it
-            // anyway: it is shared with Lift and set once, in the first week,
-            // and then read for the life of the install. Nothing here changes
-            // what is recorded or where it goes, so nothing here outranks a
-            // band that does.
-            const Entrance(index: 6, child: _SectionHeading('Distance')),
-            Entrance(
-              index: 6,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.xs,
-                  AppSpacing.xl,
-                  AppSpacing.sm,
-                ),
-                child: SegmentedButton<UnitSystem>(
-                  segments: const <ButtonSegment<UnitSystem>>[
-                    ButtonSegment<UnitSystem>(
-                      value: UnitSystem.metric,
-                      label: Text('Kilometres'),
-                    ),
-                    ButtonSegment<UnitSystem>(
-                      value: UnitSystem.imperial,
-                      label: Text('Miles'),
-                    ),
-                  ],
-                  selected: <UnitSystem>{_unit},
-                  showSelectedIcon: false,
-                  onSelectionChanged: _saving
-                      ? null
-                      : (selected) => _select(selected.first),
-                ),
-              ),
-            ),
-            Entrance(
-              index: 6,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  0,
-                  AppSpacing.xl,
-                  AppSpacing.sm,
-                ),
-                child: Text(
-                  'Shared with Lift — changing it here changes it there too. '
-                  'Your runs are always stored in metric.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ),
-
-            // No rule before this one: About shares band 3 with the units.
-            // Both are read-only as far as the runner's record is concerned,
-            // and a rule between them would claim a break that is not there.
-            const Entrance(index: 7, child: _SectionHeading('About')),
-            Entrance(
-              index: 7,
-              child: SettingsTile(
-                icon: Icons.shield_outlined,
-                title: 'Privacy & legal',
-                subtitle: 'Disclaimer, privacy policy, your data',
-                onTap: () => Navigator.of(context).push(
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) =>
                         LegalScreen(auth: widget.auth, deleter: widget.deleter),
                   ),
                 ),
+                child: const Text('Privacy & legal'),
               ),
             ),
 
-            // ── Band 4 · leaving ────────────────────────────────────────────
-            //
-            // One row, alone, behind a rule, at the foot of everything a
-            // runner uses. Also reachable inside Privacy & legal, which is
-            // where the law wants it; it is *here* too because this is where
-            // somebody looks for it, and a deletion that exists only one
-            // screen deeper reads as hidden.
-            //
-            // The whole band is signed-in only. Offering to delete an account
-            // that was never created is a row that can only fail, in the place
-            // somebody came to find out where they stand — and an empty band
-            // would leave its rule as the last thing on the page, pointing at
-            // nothing.
-            if (signedIn) ...<Widget>[
-              const Divider(height: AppSpacing.xxl, color: AppColors.elevated),
-              const Entrance(index: 8, child: _SectionHeading('Leaving')),
-              Entrance(
-                index: 8,
-                child: SettingsTile(
-                  icon: Icons.delete_outline,
-                  title: 'Delete account',
-                  subtitle: 'Permanently remove your runs, profile, and plans',
-                  tint: AppColors.danger,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => DeleteAccountScreen(
-                        auth: widget.auth,
-                        deleter: widget.deleter,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
             // Debug builds only: enter the app as a seeded runner. Last, under
             // a divider, because it is a tool rather than a setting — and
             // absent entirely from a release bundle.
@@ -821,22 +760,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: AppSpacing.xl),
             Center(
-              child: Column(
-                children: <Widget>[
-                  Text(
-                    '$kProductName ${widget.appVersion}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'MGKCodes',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
+              child: Text(
+                '$kProductName ${widget.appVersion} · MGKCodes',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
             ),
           ],
@@ -846,103 +774,187 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-/// A heading over a section of the settings list, at the list's own gutter.
+const List<String> _months = <String>[
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+String _monthYear(DateTime at) => '${_months[at.month - 1]} ${at.year}';
+
+/// Who this is, and what they are paying — the whole account band, in a card.
 ///
-/// The same eight lines of padding were spelled out at every heading that
-/// stands on its own line, which is how a page ends up with headings that do
-/// not quite line up with one another — and a band structure only reads as one
-/// if the labels share an edge. One place to change it means the alignment is
-/// a decision made once, which is the argument [SectionLabel] itself was
-/// extracted on.
+/// It used to be a `SectionLabel`, a bare bold address that was the only thing
+/// on the screen not in a row, a subscription row and a Sign out row. Four
+/// elements for two facts. The two facts are the address and the plan, and
+/// neither is something you change here, so neither needs to be a row.
 ///
-/// `BackupSection` and `PermissionsSection` still write theirs out by hand.
-/// They are the same eight lines and they agree today; they are left alone
-/// because this change is a reordering, and a private widget cannot be
-/// imported across the two files anyway. If a third file needs it, the answer
-/// is `mgk_ui`, not an export from here.
-///
-/// The two blocks at the top of the page do not use this: "You" and "Account"
-/// each pad a whole column rather than a lone label, so their headings sit
-/// inside that padding instead of carrying their own.
-/// One row saying which subscription this is and whether it is paid up.
-///
-/// Added 2026-09-11, the day the first Play purchase went through and there was
-/// nowhere in the app to see that it had. The coach unlocking is evidence, but
-/// it is indirect evidence and it is the only kind the app offered: a runner
-/// who wanted to know what they were paying for had to go to the store to find
-/// out.
+/// **The plan line is the reason this is not just an address.** Settings had no
+/// subscription state at all until 2026-09-11 — the first Google Play purchase
+/// went through and the only evidence of it anywhere in the app was the coach
+/// unlocking. Somebody who wanted to know what they were paying for had to
+/// leave and ask the store.
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({
+    required this.email,
+    required this.subscription,
+    required this.memberSince,
+    required this.onCreateAccount,
+    required this.onOpen,
+  });
+
+  /// Null when signed out, which is an ordinary state: the app opens on a
+  /// working tracker with no account (ADR-0019).
+  final String? email;
+
+  /// Null until the read lands, which is not the same as [CoachSubscription.none]
+  /// — one means "we have not looked yet", the other "you have nothing". The
+  /// line is omitted entirely while it is null, because a card that flashes
+  /// *Free* at a paying subscriber for half a second is worse than one that
+  /// takes half a second to fill in.
+  final CoachSubscription? subscription;
+
+  final DateTime? memberSince;
+  final VoidCallback? onCreateAccount;
+
+  /// Opens the account screen. Null when signed out, where the card's tap
+  /// raises sign-up instead — there is no account to look at yet.
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (email == null) {
+      return AppCard(
+        onTap: onCreateAccount,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Create an account',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              // States the position rather than selling the fix, then names
+              // the two things an account buys — the same two gates the app
+              // actually raises one at (ADR-0019).
+              'You do not have one. Everything you have recorded is on this '
+              'phone, and only on this phone. An account backs up your '
+              'training, and lets you ask for a plan.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return AppCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  email!,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (onOpen != null)
+                const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: AppColors.textTertiary,
+                ),
+            ],
+          ),
+          if (subscription != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            _PlanLine(subscription!),
+          ],
+          if (memberSince != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Running since ${_monthYear(memberSince!)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One line naming the tier and its standing.
 ///
 /// **The three states are not one state with adjectives.** Free, paid up, and
 /// "the store is chasing a payment" want different sentences and one of them
-/// wants a colour. The third is the reason this row is worth building at all —
-/// it is the only case where somebody believes they are paying, the coach is
-/// locked, and the app would otherwise say nothing.
-class _SubscriptionTile extends StatelessWidget {
-  const _SubscriptionTile({required this.subscription});
+/// wants a colour. The third is the reason this is worth drawing at all: it is
+/// the only case where somebody believes they are paying, the coach is locked,
+/// and the app would otherwise say nothing.
+class _PlanLine extends StatelessWidget {
+  const _PlanLine(this.subscription);
 
   final CoachSubscription subscription;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final String store = storeName(defaultTargetPlatform);
-    return switch (subscription.standing) {
+
+    final (String text, Color colour) = switch (subscription.standing) {
       // Nothing bought. Says what the free app *is* rather than what it lacks:
       // recording is the product, not a trial of one (ADR-0030).
-      SubscriptionStanding.none => const SettingsTile(
-        icon: Icons.person_outline,
-        title: 'Free',
-        subtitle: 'Recording is free. The coach is a subscription.',
-        showChevron: false,
+      SubscriptionStanding.none => (
+        'Free — recording is free, the coach is a subscription',
+        AppColors.textTertiary,
       ),
-      SubscriptionStanding.active => SettingsTile(
-        icon: Icons.check_circle_outline,
-        title: subscription.tier.label,
-        subtitle: 'Active — manage or cancel it in $store',
-        showChevron: false,
+      SubscriptionStanding.active => (
+        '${subscription.tier.label} — manage it in $store',
+        AppColors.textTertiary,
       ),
       // The one that earns a colour. The coach is locked and the runner has
       // not cancelled anything, so the sentence has to carry both facts or it
       // reads as the app losing their subscription.
-      SubscriptionStanding.billingRetry => SettingsTile(
-        icon: Icons.error_outline,
-        title: subscription.tier.label,
-        subtitle:
-            'Payment did not go through. $store is retrying it, and the '
-            'coach is locked until it does.',
-        tint: AppColors.danger,
-        showChevron: false,
+      SubscriptionStanding.billingRetry => (
+        '${subscription.tier.label} — payment did not go through. $store is '
+            'retrying it, and the coach is locked until it does.',
+        AppColors.danger,
       ),
-      SubscriptionStanding.ended => SettingsTile(
-        icon: Icons.person_outline,
-        title: 'Free',
-        subtitle: 'Your ${subscription.tier.label} subscription has ended.',
-        showChevron: false,
+      SubscriptionStanding.ended => (
+        'Free — your ${subscription.tier.label} subscription has ended',
+        AppColors.textTertiary,
       ),
     };
+
+    return Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(color: colour, height: 1.4),
+    );
   }
 }
 
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.xl,
-      AppSpacing.sm,
-      AppSpacing.xl,
-      AppSpacing.xs,
-    ),
-    child: SectionLabel(text),
-  );
-}
-
-/// One row in a settings list: icon, title, supporting line, chevron.
-///
-/// Shared so settings and the legal screen cannot drift into two slightly
-/// different list rows.
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     super.key,
@@ -1002,20 +1014,3 @@ class SettingsTile extends StatelessWidget {
     );
   }
 }
-
-const List<String> _months = <String>[
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _monthYear(DateTime at) => '${_months[at.month - 1]} ${at.year}';

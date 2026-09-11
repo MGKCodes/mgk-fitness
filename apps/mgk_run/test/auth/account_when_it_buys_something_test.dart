@@ -160,13 +160,12 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
 
-    final backup = find.text('Back up my data');
-    await tester.scrollUntilVisible(
-      backup,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(backup);
+    // The row opens the backup screen; the switch on it is what asks. Two
+    // taps since the 2026-09-11 rewrite, where it used to be one — the switch
+    // moved to sit beside the paragraph that makes its consent informed.
+    await tester.tap(find.text('Back up my data'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
 
     expect(find.byType(SignInScreen), findsOneWidget);

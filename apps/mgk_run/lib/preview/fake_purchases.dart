@@ -89,21 +89,32 @@ class FakePurchases implements PurchaseClient {
 /// is right and is also indistinguishable from a bug. This says what it means,
 /// so a plate of the paid product is evidence rather than coincidence.
 class FakeEntitlements implements EntitlementRepository {
-  FakeEntitlements([this.answer = CoachAccess.free]);
+  /// The common case: say whether the coach is unlocked and let the tier
+  /// follow from it.
+  FakeEntitlements([CoachAccess answer = CoachAccess.free])
+    : subscribed = answer.isSubscribed
+          ? const CoachSubscription(
+              tier: CoachTier.coach,
+              standing: SubscriptionStanding.active,
+            )
+          : CoachSubscription.none;
 
-  final CoachAccess answer;
+  /// The case a boolean cannot express.
+  ///
+  /// Premium, and `grace`, are states the settings row draws differently and
+  /// [CoachAccess] flattens — `grace` in particular is a locked coach that is
+  /// **not** the free app, which is the whole reason [CoachSubscription]
+  /// exists. A plate that wants to show one has to be able to say so.
+  const FakeEntitlements.of(this.subscribed);
+
+  final CoachSubscription subscribed;
+
+  /// Derived, so a plate cannot draw an unlocked coach beside a row that says
+  /// the payment failed.
+  @override
+  Future<CoachAccess> access() async =>
+      subscribed.isSubscribed ? CoachAccess.subscribed : CoachAccess.free;
 
   @override
-  Future<CoachAccess> access() async => answer;
-
-  /// Derived from [answer] so a plate cannot draw a tier the gate disagrees
-  /// with. Premium is not reachable here: the plates that need it can pass a
-  /// [CoachSubscription] of their own when one exists to draw.
-  @override
-  Future<CoachSubscription> subscription() async => answer.isSubscribed
-      ? const CoachSubscription(
-          tier: CoachTier.coach,
-          standing: SubscriptionStanding.active,
-        )
-      : CoachSubscription.none;
+  Future<CoachSubscription> subscription() async => subscribed;
 }

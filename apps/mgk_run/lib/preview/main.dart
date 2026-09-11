@@ -62,6 +62,8 @@ import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/onboarding/presentation/welcome_screen.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_subscription.dart';
+import 'fake_purchases.dart';
 import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -391,11 +393,33 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Settings: the account block, the display-unit toggle, the compliance
   // surfaces, deleting the account and the version — everything about the app
   // rather than about the running.
-  'settings': (_) => SettingsScreen(
-    unit: UnitSystem.metric,
-    settings: InMemoryUnitSettings(),
-    auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
-    memberSince: RunnerStats.from(_demoRuns()).firstRunAt,
+  'settings': (_) => _settingsPreview(CoachSubscription.none),
+  // The three the free plate cannot show. Settings grew a subscription row on
+  // 2026-09-11 and its states are not one state with adjectives: paid up,
+  // paid up at the dearer tier, and "the store is chasing a payment" want
+  // different sentences and one of them wants a colour.
+  //
+  // `settings-billing-retry` is the one worth looking at. It is the only
+  // screen in the app where the coach is locked and the runner has cancelled
+  // nothing, so it is the only place the app has to explain itself rather
+  // than just refuse.
+  'settings-subscribed': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.coach,
+      standing: SubscriptionStanding.active,
+    ),
+  ),
+  'settings-premium': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.premiumCoach,
+      standing: SubscriptionStanding.active,
+    ),
+  ),
+  'settings-billing-retry': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.coach,
+      standing: SubscriptionStanding.billingRetry,
+    ),
   ),
   // Profile: lifetime totals, what the coach makes of them, records, the goal,
   // then the whole log. The demo set deliberately earns no coach note, so this
@@ -450,6 +474,17 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
 ///
 /// **Because the shell is most of the screen.** The nav bar and the floating
 /// coach mark are HomeShell's, not the tab's, so a preview that renders
+
+/// Settings at one subscription standing. Everything else about the screen is
+/// held still so the only difference between these plates is the row.
+Widget _settingsPreview(CoachSubscription subscription) => SettingsScreen(
+  unit: UnitSystem.metric,
+  settings: InMemoryUnitSettings(),
+  auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
+  memberSince: RunnerStats.from(_demoRuns()).firstRunAt,
+  entitlements: FakeEntitlements.of(subscription),
+);
+
 /// ProfileScreen or PlanScreen on its own is missing two of the three things
 /// a runner sees — and, being pushed onto the index, gains a back arrow that
 /// tab has nowhere to point. All three were reported as bugs in the screen.

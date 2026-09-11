@@ -1,4 +1,5 @@
 import '../../../core/brand.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -22,6 +23,22 @@ import 'settings_screen.dart' show SettingsTile;
 ///
 /// Anything that promised to "turn these off" would be a button that quietly
 /// does nothing.
+/// The one-word version of the location state, for the settings index.
+///
+/// Short on purpose: the index prints what a setting is *set to* and this is
+/// the only permission whose state the app can actually read. The sentence
+/// version, with what to do about it, is on the screen this row opens.
+/// Names the permission, not just its state. A row called *Permissions* whose
+/// value reads `Off` says the whole section is off, which is not what is being
+/// reported — location is the only permission whose state the app can read, and
+/// on Android it is the only one it asks for at all.
+String locationRowValue(LocationPermission? p) => switch (p) {
+  LocationPermission.always || LocationPermission.whileInUse => 'Location on',
+  LocationPermission.denied ||
+  LocationPermission.deniedForever => 'Location off',
+  LocationPermission.unableToDetermine || null => 'Not set',
+};
+
 class PermissionsSection extends StatefulWidget {
   const PermissionsSection({super.key, this.health, this.startIndex = 4});
 
@@ -149,19 +166,29 @@ class _PermissionsSectionState extends State<PermissionsSection> {
           ),
         ),
 
-        Entrance(
-          index: widget.startIndex,
-          child: SettingsTile(
-            icon: Icons.favorite_border,
-            title: 'Apple Health',
-            subtitle: _healthBusy
-                ? 'Reading…'
-                : _healthResult ??
-                      'Bring in runs from your watch or another app',
-            showChevron: false,
-            onTap: _healthBusy ? null : _readHealth,
+        // **Apple Health does not exist on Android, and this row said it did.**
+        //
+        // Found 2026-09-11 by opening Settings on an Android emulator. The
+        // intro had the same defect and was fixed in fe14c82
+        // (`introPermissionsFor`); this screen keeps its own copy of the list
+        // and was never touched, so the fix reached the first run and not the
+        // place somebody goes to check afterwards. Run requests no health
+        // permission on Android at all, so the row offered something the
+        // platform cannot grant.
+        if (defaultTargetPlatform != TargetPlatform.android)
+          Entrance(
+            index: widget.startIndex,
+            child: SettingsTile(
+              icon: Icons.favorite_border,
+              title: 'Apple Health',
+              subtitle: _healthBusy
+                  ? 'Reading…'
+                  : _healthResult ??
+                        'Bring in runs from your watch or another app',
+              showChevron: false,
+              onTap: _healthBusy ? null : _readHealth,
+            ),
           ),
-        ),
 
         Entrance(
           index: widget.startIndex + 1,
@@ -187,13 +214,30 @@ class _PermissionsSectionState extends State<PermissionsSection> {
             // than linked because the Health path is four levels deep and
             // nobody finds it by guessing, and because iOS offers no
             // App-Store-safe deep link to it at all.
+            //
+            // Two texts, because the platforms differ in the way that matters
+            // here: iOS asks once and never again, Android lets a permission
+            // be changed back and forth from its own settings. The iOS version
+            // was shown on both until 2026-09-11, telling Android runners about
+            // a Health permission this app never requests there and a
+            // "Privacy & Security" path their phone does not have.
             child: Text(
-              'iOS only asks once. To be asked again, or to turn either off:\n\n'
-              '• Location — Settings › $kAppName › Location\n'
-              '• Health — Settings › Privacy & Security › Health › $kAppName, '
-              'or the Health app › Sharing › Apps › $kAppName\n\n'
-              'Deleting and reinstalling the app resets both prompts, and takes '
-              'any runs that have not been backed up with it.',
+              defaultTargetPlatform == TargetPlatform.android
+                  ? 'To change location access: Settings › Apps › $kAppName › '
+                        'Permissions › Location.\n\n'
+                        'Choose "Allow all the time" if runs stop recording '
+                        'when the screen locks — some phones also hold a '
+                        'separate battery setting that suspends background '
+                        'apps.'
+                  : 'iOS only asks once. To be asked again, or to turn either '
+                        'off:\n\n'
+                        '• Location — Settings › $kAppName › Location\n'
+                        '• Health — Settings › Privacy & Security › Health › '
+                        '$kAppName, or the Health app › Sharing › Apps › '
+                        '$kAppName\n\n'
+                        'Deleting and reinstalling the app resets both '
+                        'prompts, and takes any runs that have not been backed '
+                        'up with it.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textTertiary,
                 height: 1.5,

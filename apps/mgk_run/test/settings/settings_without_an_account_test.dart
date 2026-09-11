@@ -7,6 +7,7 @@ import 'package:mgk_run/src/features/settings/data/backup_eraser.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
+import 'package:mgk_run/src/features/settings/presentation/settings_row.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
@@ -27,6 +28,17 @@ import 'package:mgk_units/mgk_units.dart';
 ///     could only fail, in the place somebody looks to find out where they
 ///     stand.
 void main() {
+  /// Opens Settings' backup screen, where the switch now lives.
+  ///
+  /// It was a `SwitchListTile` on the index until 2026-09-11. The switch moved
+  /// with the paragraph that made its consent informed — see `BackupScreen` —
+  /// so every test that flips it now walks the tap a runner walks.
+  Future<Finder> openBackup(WidgetTester tester) async {
+    await tester.tap(find.widgetWithText(SettingsRow, 'Back up my data'));
+    await tester.pumpAndSettle();
+    return find.byType(Switch);
+  }
+
   Future<IntroStore> pumpSignedOut(
     WidgetTester tester, {
     String? name,
@@ -182,10 +194,15 @@ void main() {
         auth: FakeAuthRepository(signedIn: true, email: 'sam@example.com'),
       );
 
-      expect(find.text('Sign out'), findsOneWidget);
-      expect(find.text('Delete account'), findsOneWidget);
       expect(find.text('Create an account'), findsNothing);
       expect(find.text('sam@example.com'), findsOneWidget);
+
+      // The two ways out came back with the account — one tap in, on the
+      // account screen, rather than on the index beside the units.
+      await tester.tap(find.text('sam@example.com'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign out'), findsOneWidget);
+      expect(find.text('Delete account'), findsOneWidget);
     });
 
     testWidgets('the rows that work without one still do, in one band', (
@@ -199,15 +216,17 @@ void main() {
       await pumpSignedOut(tester, name: 'Sam');
 
       expect(find.text('Coach calls you'), findsOneWidget);
+      expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Kilometres'), findsOneWidget);
       expect(find.text('Privacy & legal'), findsOneWidget);
 
-      // And they are still in the stated order, with no band left empty.
+      // And still in the stated order, with nothing left pointing at a group
+      // that has no rows in it.
       double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
       expect(topOf('YOU'), lessThan(topOf('YOUR DATA')));
-      expect(topOf('YOUR DATA'), lessThan(topOf('DISTANCE')));
-      expect(topOf('DISTANCE'), lessThan(topOf('ABOUT')));
-      expect(find.text('LEAVING'), findsNothing);
+      expect(topOf('YOUR DATA'), lessThan(topOf('Privacy & legal')));
+      expect(find.text('Sign out'), findsNothing);
+      expect(find.text('Delete account'), findsNothing);
     });
 
     testWidgets('creating one from the row raises the same gate', (
@@ -241,8 +260,9 @@ void main() {
       // ADR-0012's cost function: consent that has to be discovered is not
       // really offered, and the runner with no account is exactly the one the
       // amended ADR expects to reach their second week without ever being
-      // asked in a dialog. So the switch has to be in the first screenful of
-      // an ordinary phone here too — not only for somebody signed in.
+      // asked in a dialog. So the *row* has to be in the first screenful of an
+      // ordinary phone here too — not only for somebody signed in. The switch
+      // itself moved to `BackupScreen` on 2026-09-11, one tap beyond it.
       const fold = 844.0;
       await tester.binding.setSurfaceSize(const Size(390, fold));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -261,7 +281,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        tester.getBottomLeft(find.byType(SwitchListTile)).dy,
+        tester
+            .getBottomLeft(find.widgetWithText(SettingsRow, 'Back up my data'))
+            .dy,
         lessThan(fold),
       );
     });
@@ -280,7 +302,7 @@ void main() {
         },
       );
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(raised, 1);
@@ -288,10 +310,7 @@ void main() {
       // gate is asked *before* the optimistic flip for this reason: a switch
       // that slides on and then back reads as the app changing its mind.
       expect(await store.read(), BackupConsent.unknown);
-      expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isFalse,
-      );
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
     });
 
     testWidgets('and grants it once the account arrives', (tester) async {
@@ -307,14 +326,11 @@ void main() {
         },
       );
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(await store.read(), BackupConsent.granted);
-      expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isTrue,
-      );
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     });
 
     testWidgets('withdrawing is never gated, whatever the session', (
@@ -334,7 +350,7 @@ void main() {
         },
       );
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(raised, 0);
@@ -360,7 +376,7 @@ void main() {
       final store = InMemoryBackupConsent(BackupConsent.granted);
       await pumpSignedOut(tester, consent: store, eraser: eraser);
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(await store.read(), BackupConsent.declined);
@@ -369,7 +385,7 @@ void main() {
       // And turning it back on does not erase: granting is not a withdrawal,
       // and an erase here would delete the data the runner just asked us to
       // keep.
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(await store.read(), BackupConsent.granted);
@@ -390,7 +406,7 @@ void main() {
         eraser: eraser,
       );
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(eraser.calls, 1);
@@ -422,7 +438,7 @@ void main() {
         onBackupGranted: () async => backfills++,
       );
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(await store.read(), BackupConsent.granted);
@@ -430,7 +446,7 @@ void main() {
 
       // And withdrawing does not upload. Obvious, and worth pinning: the two
       // branches sit one line apart and both end in a network call.
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(await openBackup(tester));
       await tester.pumpAndSettle();
 
       expect(await store.read(), BackupConsent.declined);
