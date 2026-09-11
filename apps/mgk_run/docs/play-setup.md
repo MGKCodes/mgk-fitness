@@ -204,7 +204,14 @@ stalls. Several can be filled in now, before any of the billing work.
       Already live and already CI-pinned; see the decision *The published legal
       page is the artefact CI pins*.
 - [ ] **Data safety form.** Must agree with the privacy policy, which names the
-      sub-processors. Location and health data are both collected.
+      sub-processors. The answers are worked out below.
+- [ ] **Account deletion URL** — `https://mgkfitness.mgkcodes.com/run/delete-account`.
+      Required for any app offering account creation, and the rule is specific:
+      somebody who has **uninstalled** the app must still be able to ask. Run's
+      in-app Delete account is better for anyone who still has the app and no
+      use at all to the person this rule protects, which is why the page exists
+      (added 2026-09-11; Apple has no equivalent requirement, which is why it
+      was missing).
 - [ ] **Content rating questionnaire.**
 - [ ] **Target audience and content.**
 - [ ] **Foreground service permission declaration.** Run declares
@@ -217,6 +224,81 @@ stalls. Several can be filled in now, before any of the billing work.
 - [ ] **Health apps declaration**, if prompted — the app reads HealthKit on iOS
       but on Android reads no Health Connect data, so this should be a short
       answer.
+
+### The Data safety answers, worked out
+
+Filled in from the privacy policy rather than from memory, because the form and
+the policy are compared and a disagreement between them is a rejection. Where a
+judgement was made rather than read off, it says so.
+
+**This describes the Android app.** Apple Health does not exist here — Run asks
+for no health permissions on Android at all — so nothing HealthKit-shaped
+belongs in these answers, even though the policy discusses it for iOS.
+
+Three top-level questions:
+
+| Question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | **Yes** |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** — HTTPS/TLS throughout |
+| Do you provide a way for users to request that their data is deleted? | **Yes** — in-app, and the URL above |
+
+Then, per type. Everything below is **collected and not shared**, for the reason
+given after the table:
+
+| Category | Type | Optional? | Purpose | Where it comes from |
+|---|---|---|---|---|
+| Personal info | Name | Optional | App functionality, Account management | `AuthRepository.signUp` / `updateName`, auth metadata |
+| Personal info | Email address | Optional | Account management | Supabase auth; the app works signed out |
+| Personal info | User IDs | Required | Account management, App functionality | the Supabase user id, which is also the RevenueCat app user id |
+| Financial info | Purchase history | Optional | App functionality | `core.entitlements` — product and status |
+| Location | Approximate location | Required | App functionality | `ACCESS_COARSE_LOCATION` |
+| Location | Precise location | Required | App functionality | `ACCESS_FINE_LOCATION`, the route trace |
+| Health and fitness | Fitness info | Required | App functionality | runs, distance, pace, plans, sessions |
+| Health and fitness | Health info | Optional | App functionality | injury notes, RPE, a heart rate if typed in |
+| Messages | Other in-app messages | Optional | App functionality | coach conversations and their rolling summary |
+| Device or other IDs | Device or other IDs | Required | App functionality | RevenueCat's own device-scoped identifier |
+
+**Everything else is "not collected"**, and the notable absences are worth
+knowing you can answer cleanly: no crash logs, no diagnostics, no advertising ID,
+no contacts, photos, files, web history or installed apps. The app carries no
+analytics, no ad SDK and no crash reporter, which is a rare set of honest zeroes
+on this form.
+
+**Why nothing is marked "shared".** Play's definition of sharing excludes
+transfer to a service provider processing on the developer's behalf, and all
+four sub-processors are exactly that under Article 28 — Supabase, OpenRouter,
+RevenueCat, MapTiler. **This is the one judgement call on the form.** If it is
+ever wrong, it is wrong about OpenRouter, which receives training data and
+message text; the defence is that it processes on our instruction and does not
+use it for its own purposes, which is also what the policy tells the runner. Do
+not quietly change the answer without changing the policy with it.
+
+**Two answers that look like the opposite choice.** *Location marked Required*
+even though runs can be added by hand and the app technically functions without
+it — recording a run is the app, and "optional" would understate. *Device IDs
+marked collected* even though we neither read nor store one: RevenueCat's SDK
+collects it directly, and Play counts what an SDK collects as what the app
+collects.
+
+### Content rating, and target audience
+
+The one answer that changes everything on the rating questionnaire: **the app
+has no user-to-user interaction.** The coach is a model, not a person, and no
+runner can see, message, or find another. Saying yes there pulls in social
+features declarations and a much heavier rating for nothing.
+
+Otherwise: no violence, no sexual content, no profanity, no controlled
+substances, no gambling. It **does** sell digital goods (the subscription), and
+it **does** share the user's location with the app itself but never with other
+users. Expect PEGI 3 / Everyone.
+
+**Target audience: 18 and over, only.** The terms set the floor at 16 and the
+policy says the app is not directed at under-16s, so 16–17 would be defensible —
+but selecting any bracket below 18 pulls the listing into the Families policy,
+which brings its own review, ad rules and content requirements for an app that
+has no business being marketed to children. Health data and a medical disclaimer
+argue the same way. Choose 18+ and the question stops costing anything.
 
 ## 4b. A Google Payments merchant account — the real long pole
 
