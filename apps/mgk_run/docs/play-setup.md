@@ -274,6 +274,55 @@ Apple's shape — Apple has a subscription group with two products. Keep the
 subscription ids aligned with the Apple product ids (`run.coach.monthly`,
 `run.coach.premium.monthly`) and give each a single monthly base plan.
 
+### Play takes the price EXCLUSIVE of tax. The App Store takes it inclusive.
+
+**The single most expensive thing to get wrong in this document**, because it is
+silent: type the Apple price into Play and Play grosses it up. Entering `0.99`
+against Great Britain showed **£1.19** in the price table, VAT at 20% added on
+top — so a UK customer would have paid **20% more on Android than on iOS for the
+same subscription**, and nothing anywhere would have flagged it. The paywall
+prints `storeProduct.priceString` and does not reason about it; the two stores
+would simply have disagreed.
+
+It also quietly invalidates the cost model. [ADR-0029](decisions/0029-what-a-tier-costs-and-buys.md)
+does its arithmetic on the **ex-VAT** column, and every ceiling in
+`supabase/functions/coach/limits.ts` is sized at roughly three quarters of the
+net revenue that column produces. A 20% overshoot on the gross is not free
+money; it is a model that no longer describes the product.
+
+**So enter the ex-VAT figure that grosses up to the Apple price point**, not the
+price itself. Divide by 1.2 and let Play add the tax back:
+
+| Product | Apple charges | Enter into Play (ex-VAT) | Play then shows |
+|---|---|---|---|
+| `run.coach.monthly` | £0.99 | **£0.825** | £0.99 |
+| `run.coach.premium.monthly` | £2.99 | **£2.49** | £2.99 |
+
+(£2.49 grosses to £2.988, which Play rounds to £2.99. Check the rounding in the
+price table before saving; a market where it lands a penny out wants the figure
+nudged.)
+
+ADR-0029's *Ex-VAT* column is the same arithmetic on its own round £1/£3
+figures; these are the same column recomputed against the App Store price points
+actually in use.
+
+**Entered 2026-09-10; verified 2026-09-11 from the app rather than from the
+console:** build 23's paywall on an Android emulator rendered
+
+```
+Coach          £0.99 / month
+Premium Coach  £2.99 / month
+```
+
+which is what App Store Connect charges, to the penny. The console's own price
+table is the wrong place to check this — it shows the gross-up working, not what
+the customer sees. The app is the check, because `priceString` is the localised
+price actually charged.
+
+Repeat the same reasoning for any market added later: Play's bulk-price tool
+converts whatever figure it is given, so a tax-exclusive base converts to a
+tax-exclusive price everywhere and the relationship holds.
+
 **Do not guess the product id string the webhook will see.** RevenueCat reports
 Play subscriptions in a `subscriptionId:basePlanId` form that differs by SDK
 generation, so mirroring a guess into `REVENUECAT_PRODUCTS` is how you get a
@@ -282,7 +331,8 @@ an id it does not recognise is logged as `unmapped_product` **and the log names
 it**. Make the sandbox purchase in step 9, read the log, and add exactly what it
 says. That is step 10.
 
-- [x] Two subscriptions created with base plans — active, £1 and £3 inclusive
+- [x] Two subscriptions created with base plans — active, entered ex-VAT, and
+      verified rendering as £0.99 / £2.99 in build 23 on 2026-09-11
 
 ## 6. RevenueCat — the Google app
 
