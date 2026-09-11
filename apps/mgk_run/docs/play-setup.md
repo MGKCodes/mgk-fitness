@@ -448,6 +448,22 @@ supabase secrets unset REVENUECAT_ACCEPT_SANDBOX
 - [ ] **Flag removed before either store goes public** ← blocks production
 
 
+### Buy through build 24, not build 23
+
+Build 23 reached internal testing and is the build the price check above was
+made on, which is all it was needed for. **Do not make the purchase through
+it.** Two things landed after it was cut, both on the path a buyer walks:
+
+- The paywall told Android customers payment would be charged to their **Apple
+  ID** and to cancel it in Apple ID settings (`4ae7615`). That is the one
+  sentence on the screen Google actually reviews, and it was false.
+- The intro asked Android for Apple Health permission (`fe14c82`), a step that
+  cannot be granted on the platform being tested.
+
+Build 24 is the first build that is both purchase-capable and honest about which
+store is taking the money. Testing through 23 would produce a purchase that
+works and a screen that could not ship.
+
 Add your account under **Play Console ▸ Setup ▸ License testing** so purchases
 are free and renew fast. Install from the internal testing link — **not** a
 sideloaded APK, which cannot transact.
