@@ -10,16 +10,18 @@ differently.
 ```
 web/
 ├─ app/
-│  ├─ page.tsx              the index
-│  └─ run/support/page.tsx  Apple requires a support URL that resolves
+│  ├─ page.tsx                     the index
+│  └─ run/
+│     ├─ support/page.tsx          both stores require a support URL that resolves
+│     └─ delete-account/page.tsx   Play requires a deletion URL. Apple does not
 ├─ public/run/              GENERATED. Do not edit. See below.
 └─ next.config.ts           the rewrites that give each document one URL
 ```
 
 ## The legal pages are generated, not written
 
-`public/run/privacy-policy.html` and `public/run/medical-disclaimer.html` are
-written by `apps/mgk_run/tool/build_legal_pages.py` from
+`public/run/privacy-policy.html`, `public/run/terms-of-use.html` and
+`public/run/medical-disclaimer.html` are written by `apps/mgk_run/tool/build_legal_pages.py` from
 `apps/mgk_run/docs/*.md`, and served **verbatim**. They are complete
 self-contained documents with their CSS inline and no dependencies at all: no
 webfont, no CDN, no analytics. A privacy policy that leaks the reader's IP
@@ -49,9 +51,21 @@ not run Python, so an uncommitted page is a deploy that serves nothing.
 | URL | Serves |
 |---|---|
 | `/run/privacy` | `public/run/privacy-policy.html` |
+| `/run/terms` | `public/run/terms-of-use.html` |
 | `/run/medical-disclaimer` | `public/run/medical-disclaimer.html` |
 | `/run/support` | a real page, not generated |
-| `/run/terms` | nothing. The EULA is Apple's, hosted by Apple |
+| `/run/delete-account` | a real page, not generated |
+
+This table said `/run/terms` served **nothing** until 2026-09-11, on the
+reasoning that the EULA is Apple's and Apple hosts it. That stopped being true
+twice over: Run has its own terms now, and Play has no Apple EULA to fall back
+on, so the field has to point somewhere real.
+
+`/run/delete-account` is a Play requirement with no Apple equivalent — an app
+offering account creation must let somebody who has **uninstalled** it still ask
+for deletion, which the in-app control cannot do by construction. It is written
+rather than generated because it is a route out of the product, not a legal
+document the app has to reproduce word for word.
 
 The `.html` paths redirect to the clean ones, so each document answers at one
 address. A legal URL that works two ways is one that gets copied into App Store
