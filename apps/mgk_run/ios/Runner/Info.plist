@@ -91,6 +91,17 @@
 	     its own, this key has to be revisited rather than left. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- The profile photo, and nothing else. **Its absence is a crash, not a
+	     refusal** — iOS terminates an app that reaches the photo library with
+	     no usage string, so removing this does not disable the feature, it
+	     kills the app the moment somebody taps the avatar.
+
+	     The photo is copied into the app documents directory and never leaves
+	     the phone, which is what keeps App Privacy on "Data Not Collected":
+	     Apple defines collection as transmission off the device. It is also
+	     excluded from backup for the same reason. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo for your profile. It stays on this phone — it is never uploaded, never sent to your coach, and is not included in backup.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Read your workouts and step count from Health, so runs you recorded on a watch or another app appear in your training log and your coach sees the whole picture.</string>
 	<!-- NSHealthUpdateUsageDescription IS REQUIRED, and removing it fails the

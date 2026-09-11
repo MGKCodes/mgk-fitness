@@ -52,6 +52,17 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path_provider: ^2.1.6
   path: ^1.9.1
+  # Picks the profile photo, and nothing else. **It is why
+  # NSPhotoLibraryUsageDescription exists in Info.plist** -- iOS terminates an
+  # app that reaches a protected resource with no usage string, so the missing
+  # string is a crash rather than a refusal.
+  #
+  # The photo it returns is copied into the app documents directory and never
+  # leaves the phone. That is load-bearing for the store declarations: both
+  # Apple and Google define collection as transmission off the device, so a
+  # local-only avatar is not collected data and neither Data safety nor App
+  # Privacy changes. Back it up and both of those become false.
+  image_picker: ^1.1.2
   supabase_flutter: ^2.16.0
   geolocator: ^14.0.3
   flutter_map: ^8.3.1

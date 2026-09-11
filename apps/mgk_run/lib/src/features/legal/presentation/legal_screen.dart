@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../settings/presentation/settings_screen.dart' show SettingsTile;
+import '../../settings/presentation/settings_tile.dart';
 import '../data/account_deletion_service.dart';
 import '../domain/account_deleter.dart';
 import '../domain/legal_urls.dart';

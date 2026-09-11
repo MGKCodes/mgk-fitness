@@ -40,3 +40,11 @@ library;
 /// position Signal is in. Section 7 of the terms leaves that licence's grants
 /// intact rather than purporting to remove them.
 const String kTermsOfUseUrl = 'https://mgkfitness.mgkcodes.com/run/terms';
+
+/// Where a runner reaches a person.
+///
+/// Live and CI-pinned since the site went up, named on both store listings —
+/// and until 2026-09-11 nothing inside the app pointed at it, so somebody whose
+/// backup was failing had no route to anybody. Settings' About group is that
+/// route.
+const String kSupportUrl = 'https://mgkfitness.mgkcodes.com/run/support';

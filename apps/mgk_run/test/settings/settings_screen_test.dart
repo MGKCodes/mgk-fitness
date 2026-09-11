@@ -9,6 +9,7 @@ import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_row.dart';
+import 'package:mgk_run/src/features/settings/presentation/avatar.dart';
 
 /// Settings is where everything that is not itself training lives. The account
 /// facts moved here off Profile, and the controls a runner goes looking for —
@@ -41,8 +42,17 @@ void main() {
   ) async {
     await pump(tester, memberSince: DateTime(2026, 7, 4));
 
+    // The header states identity; the rest is a tap in. "Running since" and
+    // the editable name moved to Account when the card became a profile --
+    // the name was otherwise on this screen twice, as the card's headline and
+    // as a row's value.
     expect(find.text('dev@runio.app'), findsOneWidget);
-    expect(find.textContaining('since July 2026'), findsOneWidget);
+    expect(find.textContaining('since July 2026'), findsNothing);
+
+    await tester.tap(find.text('dev@runio.app'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('July 2026'), findsOneWidget);
+    expect(find.text('Coach calls you'), findsOneWidget);
   });
 
   testWidgets('a runner with no runs gets no invented joining date', (
@@ -59,6 +69,14 @@ void main() {
   /// name was written once at sign-up and read back forever. The comment
   /// claiming it was fixable "on the confirmation screen at the end of intake"
   /// pointed at a screen that edits `IntakeSlots`, a type with no name in it.
+  /// Opens the account screen, where the name lives. It was a row on the
+  /// index until the header became a profile and put the name on the screen
+  /// twice.
+  Future<void> openAccount(WidgetTester tester) async {
+    await tester.tap(find.byType(Avatar).first);
+    await tester.pumpAndSettle();
+  }
+
   group('what the coach calls you can be changed', () {
     Future<FakeAuthRepository> pumpWithName(
       WidgetTester tester,
@@ -88,13 +106,22 @@ void main() {
     testWidgets('the current one is shown', (tester) async {
       await pumpWithName(tester, 'Sam');
 
-      expect(find.text('Coach calls you'), findsOneWidget);
+      // On the index the name is the card's headline, and only there -- it was
+      // also a row's value until the header became a profile, which put it on
+      // one screen twice.
       expect(find.text('Sam'), findsOneWidget);
+      expect(find.text('Coach calls you'), findsNothing);
+
+      await openAccount(tester);
+      expect(find.text('Coach calls you'), findsOneWidget);
+      // The heading under the avatar, and the row's value.
+      expect(find.text('Sam'), findsNWidgets(2));
     });
 
     testWidgets('and a typo can be corrected', (tester) async {
       final auth = await pumpWithName(tester, 'Smaa');
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Sam');
@@ -102,7 +129,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.currentName, 'Sam');
-      expect(find.text('Sam'), findsOneWidget);
+      expect(find.text('Sam'), findsNWidgets(2));
     });
 
     testWidgets('leaving it empty clears it rather than storing blank', (
@@ -115,6 +142,7 @@ void main() {
       // how to read.
       final auth = await pumpWithName(tester, 'Sam');
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '   ');
@@ -130,6 +158,7 @@ void main() {
       // difference is destructive in one direction.
       final auth = await pumpWithName(tester, 'Sam');
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Something else');
@@ -148,23 +177,27 @@ void main() {
     // half viewports, so each of these was reached with `scrollUntilVisible`
     // and the test could not tell "present" from "present eventually".
     for (final control in <String>[
-      'Coach calls you',
       'Distance',
       'Back up my data',
       'Permissions',
+      'Support',
       'Privacy & legal',
     ]) {
       expect(find.text(control), findsOneWidget, reason: control);
     }
 
+    // Support is the row that was missing entirely: the page has been live and
+    // CI-pinned the whole time, both store listings name it, and nothing in
+    // the app pointed at it.
+
     // Sign out and Delete account are one tap away, on the account screen,
     // rather than in permanent view of somebody changing their units.
     expect(find.text('Sign out'), findsNothing);
     expect(find.text('Delete account'), findsNothing);
-    await tester.tap(find.text('dev@runio.app'));
-    await tester.pumpAndSettle();
+    await openAccount(tester);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
+    expect(find.text('Coach calls you'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -234,12 +267,13 @@ void main() {
       // existing at all asserts that every row drew.
       final order = <String>[
         'dev@runio.app',
-        'YOU',
-        'Coach calls you',
+        'PREFERENCES',
         'Distance',
         'YOUR DATA',
         'Back up my data',
         'Permissions',
+        'ABOUT',
+        'Support',
         'Privacy & legal',
       ];
       final tops = <double>[for (final label in order) topOf(label)];
@@ -261,8 +295,7 @@ void main() {
       // Privacy & legal, which is two Delete accounts in one app.
       expect(find.text('Delete account'), findsNothing);
 
-      await tester.tap(find.text('dev@runio.app'));
-      await tester.pumpAndSettle();
+      await openAccount(tester);
 
       final delete = tester.getTopLeft(find.text('Delete account')).dy;
       expect(
@@ -276,8 +309,7 @@ void main() {
       tester,
     ) async {
       await pumpWhole(tester);
-      await tester.tap(find.text('dev@runio.app'));
-      await tester.pumpAndSettle();
+      await openAccount(tester);
 
       // The only sanctioned use of colour here (ADR-0009). A deletion moved
       // behind a tap and then greyed to match its neighbour would trade one
@@ -289,19 +321,26 @@ void main() {
       expect(find.widgetWithText(OutlinedButton, 'Sign out'), findsOneWidget);
     });
 
-    testWidgets('the card does not open an account that does not exist', (
-      tester,
-    ) async {
+    testWidgets('the card still opens without an account, because the '
+        'profile exists first', (tester) async {
       await pumpWhole(tester, signedIn: false);
 
-      // Signed out the card offers to make one instead. An account screen for
-      // a runner with no account is a page of blanks and two controls that can
-      // only fail.
       expect(find.text('Create an account'), findsOneWidget);
+      // Not on the index: two controls that could only fail.
       expect(find.text('Delete account'), findsNothing);
       expect(find.text('Sign out'), findsNothing);
       // The documents belong to everybody.
       expect(find.text('Privacy & legal'), findsOneWidget);
+
+      // **This assertion was once the opposite.** It read "the card does not
+      // open an account that does not exist", on the reasoning that the screen
+      // would be a page of blanks. That was wrong: the name and the photo are
+      // profile, they exist before an account does, and gating the screen on a
+      // session took away the only place to correct a name the intro gathered.
+      await tester.tap(find.byType(Avatar).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Coach calls you'), findsOneWidget);
+      expect(find.text('Sign out'), findsNothing);
     });
   });
 

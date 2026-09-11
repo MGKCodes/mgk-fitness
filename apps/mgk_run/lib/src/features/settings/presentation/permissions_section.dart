@@ -8,7 +8,7 @@ import '../../health/data/health_kit_workouts.dart';
 import '../../health/domain/workout_source.dart';
 import '../../onboarding/data/intro_permission_requester.dart';
 import '../../onboarding/presentation/intro_screen.dart';
-import 'settings_screen.dart' show SettingsTile;
+import 'settings_tile.dart';
 
 /// Location and Health: what they are set to, and how to change them.
 ///

@@ -55,9 +55,13 @@ class SettingsRow extends StatelessWidget {
     final Color valueColor = tint ?? AppColors.textTertiary;
 
     final row = Padding(
+      // 16 rather than 12. The tighter row was chosen when the screen was
+      // fighting for vertical space; once the prose moved out it was spending
+      // the saving on empty charcoal at the bottom instead. A settings row is
+      // a touch target before it is a line of text.
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xl,
-        vertical: AppSpacing.md,
+        vertical: AppSpacing.lg,
       ),
       child: Row(
         children: <Widget>[

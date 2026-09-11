@@ -8,6 +8,7 @@ import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_row.dart';
+import 'package:mgk_run/src/features/settings/presentation/avatar.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
@@ -28,6 +29,17 @@ import 'package:mgk_units/mgk_units.dart';
 ///     could only fail, in the place somebody looks to find out where they
 ///     stand.
 void main() {
+  /// Opens the account screen, where the name is edited. It was a row on the
+  /// settings index until the header became a profile, which put the name on
+  /// that screen twice -- as the card's headline and as the row's value.
+  ///
+  /// Signed out there is no account screen, so the card raises sign-up
+  /// instead; those tests pass `signedOut: true` and edit from where they can.
+  Future<void> openAccount(WidgetTester tester) async {
+    await tester.tap(find.byType(Avatar).first);
+    await tester.pumpAndSettle();
+  }
+
   /// Opens Settings' backup screen, where the switch now lives.
   ///
   /// It was a `SwitchListTile` on the index until 2026-09-11. The switch moved
@@ -83,9 +95,15 @@ void main() {
       // "Nothing in particular" to a runner who had just introduced themselves.
       await pumpSignedOut(tester, name: 'Sam');
 
-      expect(find.text('Coach calls you'), findsOneWidget);
+      // On the card now rather than in a row: the header states identity, and
+      // it does so with no account, which is the point of this group.
       expect(find.text('Sam'), findsOneWidget);
       expect(find.text('Nothing in particular'), findsNothing);
+
+      await openAccount(tester);
+      expect(find.text('Coach calls you'), findsOneWidget);
+      // Twice over: the heading under the avatar, and the row's value.
+      expect(find.text('Sam'), findsNWidgets(2));
     });
 
     testWidgets('correcting it writes where the coach will read it', (
@@ -93,6 +111,7 @@ void main() {
     ) async {
       final intro = await pumpSignedOut(tester, name: 'Smaa');
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Sam');
@@ -103,7 +122,8 @@ void main() {
       // own state and persists nothing looks identical on screen, and that is
       // precisely the failure being replaced.
       expect(await intro.readName(), 'Sam');
-      expect(find.text('Sam'), findsOneWidget);
+      // The heading under the avatar, and the row's value.
+      expect(find.text('Sam'), findsNWidgets(2));
     });
 
     testWidgets('clearing it stays reachable with no account either', (
@@ -111,6 +131,7 @@ void main() {
     ) async {
       final intro = await pumpSignedOut(tester, name: 'Sam');
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '   ');
@@ -138,6 +159,7 @@ void main() {
         },
       );
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Sam');
@@ -161,6 +183,7 @@ void main() {
       );
       final intro = await pumpSignedOut(tester, auth: auth);
 
+      await openAccount(tester);
       await tester.tap(find.text('Coach calls you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Sam');
@@ -182,8 +205,16 @@ void main() {
       // What is offered instead, and what an account is actually for — the two
       // gates the app raises one at, named rather than sold.
       expect(find.text('Create an account'), findsOneWidget);
+      // And the two acts stay absent one level in, where the invitation takes
+      // their place rather than sitting beside them.
+      await openAccount(tester);
+      expect(find.text('Sign out'), findsNothing);
+      expect(find.text('Delete account'), findsNothing);
+      expect(find.text('Create an account'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       expect(
-        find.textContaining('on this phone, and only on this phone'),
+        find.textContaining('on this phone only'),
         findsOneWidget,
       );
     });
@@ -215,16 +246,16 @@ void main() {
       // be the exact failure this file was opened for, one layout later.
       await pumpSignedOut(tester, name: 'Sam');
 
-      expect(find.text('Coach calls you'), findsOneWidget);
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Kilometres'), findsOneWidget);
+      expect(find.text('Support'), findsOneWidget);
       expect(find.text('Privacy & legal'), findsOneWidget);
 
       // And still in the stated order, with nothing left pointing at a group
       // that has no rows in it.
       double topOf(String label) => tester.getTopLeft(find.text(label)).dy;
-      expect(topOf('YOU'), lessThan(topOf('YOUR DATA')));
-      expect(topOf('YOUR DATA'), lessThan(topOf('Privacy & legal')));
+      expect(topOf('PREFERENCES'), lessThan(topOf('YOUR DATA')));
+      expect(topOf('YOUR DATA'), lessThan(topOf('ABOUT')));
       expect(find.text('Sign out'), findsNothing);
       expect(find.text('Delete account'), findsNothing);
     });
@@ -241,7 +272,10 @@ void main() {
         },
       );
 
-      await tester.tap(find.text('Create an account'));
+      // The card leads to the profile; the invitation lives there, where it
+      // can be explained rather than asserted in a row.
+      await openAccount(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Create an account'));
       await tester.pumpAndSettle();
 
       expect(raised, 1);
