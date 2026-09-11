@@ -439,8 +439,8 @@ which begins `goog_`.
 
 - [x] Google app added to RevenueCat — `Run (Play Store)`
 - [x] Service account granted access to this app, JSON uploaded — `mgk-fitness-play-publisher@mgk-fitness.iam.gserviceaccount.com`, its own GCP project
-- [ ] Products attached to the existing entitlement and offering
-- [ ] `goog_` key copied
+- [x] Products attached to the existing entitlement and offering — 2026-09-10
+- [x] `goog_` key copied
 
 ## 7. Codemagic — the Google key
 
@@ -457,8 +457,11 @@ workflow currently names **`mgk_play_publishing`**; if frunt's credentials live
 under a different group name, change the reference in `codemagic.yaml` to match.
 A name that does not exist fails the build immediately, which is loud and cheap.
 
-- [ ] `REVENUECAT_GOOGLE_KEY` set in `mgk_fitness_run_env`
-- [ ] Publishing group name confirmed and corrected if needed
+- [x] `REVENUECAT_GOOGLE_KEY` set in `mgk_fitness_run_env` — and **proved** by
+      build 24 rather than taken on trust: the config step rejects a key that
+      does not begin `goog_`, and the build went green
+- [x] Publishing group name confirmed — the publish step succeeded, which it
+      cannot do against a group that does not exist
 
 ## 8. Turn on publishing
 
@@ -470,7 +473,9 @@ someone has installed.
 Grant the Codemagic service account access to this app first (Play Console ▸
 Users and permissions) or the publish step 403s.
 
-- [ ] Publishing block uncommented, build green, bundle lands in internal
+- [x] Publishing block uncommented, build green, bundle lands in internal —
+      **build 24, 2026-09-11**, every step green including `Publishing`. First
+      fully automated Play release from a commit.
 
 ## 8b. Register for Android developer verification
 
@@ -557,7 +562,7 @@ while RevenueCat is identified with a Supabase user id, never an
 `RCAnonymousID:`. `PurchaseScreen` refuses that case up front — confirm the
 refusal reads as *"sign in first"* and not as a failed payment.
 
-- [ ] Licence tester configured
+- [x] Licence tester configured — 2026-09-10
 - [ ] Purchase completes and the coach unlocks
 
 ## 10. Map the Play product ids
