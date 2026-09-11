@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -81,6 +82,25 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     Duration(seconds: 5),
   ];
 
+  /// What to call the store this runner is actually buying from.
+  ///
+  /// Every sentence on this screen named Apple until 2026-09-11, when it was
+  /// opened on Android and told a Play customer their **Apple ID** would be
+  /// charged, that no subscription was found on their **Apple ID**, and that we
+  /// could not reach the **App Store**. All three were false and all three sat
+  /// within a tap of a payment.
+  ///
+  /// Two names rather than one, because they are not interchangeable: a person
+  /// has an Apple ID or a Google Play account, and the shop is the App Store or
+  /// Google Play.
+  static String get _account => defaultTargetPlatform == TargetPlatform.android
+      ? 'Google Play account'
+      : 'Apple ID';
+
+  static String get _store => defaultTargetPlatform == TargetPlatform.android
+      ? 'Google Play'
+      : 'the App Store';
+
   late final Future<List<CoachOffer>> _offers = widget.purchases.offers();
   String? _busyId;
   bool _restoring = false;
@@ -132,14 +152,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       case PurchaseOutcome.nothingToRestore:
         setState(() {
           _restoring = false;
-          _note = 'No previous subscription found on this Apple ID.';
+          _note = 'No previous subscription found on this $_account.';
         });
       case PurchaseOutcome.cancelled:
       case PurchaseOutcome.notIdentified:
       case PurchaseOutcome.failed:
         setState(() {
           _restoring = false;
-          _note = 'Could not reach the App Store. Try again in a moment.';
+          _note = 'Could not reach $_store. Try again in a moment.';
         });
     }
   }
@@ -373,7 +393,45 @@ class _NothingToSell extends StatelessWidget {
   }
 }
 
-/// The auto-renew disclosure, in the words Apple expects to see.
+/// The auto-renew disclosure, in the words each store expects to see.
+///
+/// **It named the Apple ID on both platforms until 2026-09-11**, when the
+/// paywall was opened on Android for the first time and told a Play customer
+/// that their Apple ID would be charged and that they should cancel in their
+/// Apple ID settings. Both sentences were false, on the screen immediately
+/// before somebody parts with money — and a billing disclosure naming the wrong
+/// payment method is the kind of thing Google checks rather than the kind it
+/// overlooks.
+///
+/// The Apple wording is Apple's own required phrasing and is unchanged. The
+/// Play wording says the same things about the same subscription: that it
+/// renews, when it is charged, how much notice cancelling needs, and where to
+/// do it. Play does not prescribe the sentence the way Apple does; what it
+/// wants is that the terms are stated before purchase and that they are true.
+/// Apple's phrasing, kept verbatim because Apple prescribes the sentence.
+const String _appleRenewal =
+    'Subscriptions renew every month until cancelled. Payment is charged to '
+    'your Apple ID at confirmation of purchase, and renews within 24 hours '
+    'before the period ends unless auto-renew is switched off at least 24 '
+    'hours before then. Manage or cancel it in your Apple ID settings.';
+
+/// The same four facts, about the store actually taking the money. Play
+/// prescribes the facts rather than the wording.
+const String _googleRenewal =
+    'Subscriptions renew every month until cancelled. Payment is charged to '
+    'your Google Play account at confirmation of purchase, and renews within '
+    '24 hours before the period ends unless auto-renew is switched off at '
+    'least 24 hours before then. Manage or cancel it in the Play Store under '
+    'Payments and subscriptions.';
+
+/// Which disclosure [platform] needs.
+///
+/// Top-level and public so a test can read both without pumping a widget: the
+/// bug this exists to prevent was a `const` string nothing ever asserted on,
+/// correct for the only platform anybody had run.
+String renewalWording(TargetPlatform platform) =>
+    platform == TargetPlatform.android ? _googleRenewal : _appleRenewal;
+
 class _Renewal extends StatelessWidget {
   const _Renewal();
 
@@ -381,10 +439,7 @@ class _Renewal extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Text(
-      'Subscriptions renew every month until cancelled. Payment is charged to '
-      'your Apple ID at confirmation of purchase, and renews within 24 hours '
-      'before the period ends unless auto-renew is switched off at least 24 '
-      'hours before then. Manage or cancel it in your Apple ID settings.',
+      renewalWording(defaultTargetPlatform),
       style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
     );
   }

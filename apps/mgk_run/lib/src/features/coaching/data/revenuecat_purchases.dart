@@ -27,6 +27,31 @@ import 'purchase_client.dart';
 /// normal state rather than an error: a local build without one, or a build
 /// made before the RevenueCat account existed. [isAvailable] answers it, and
 /// the paywall says so plainly instead of showing an empty shop.
+/// The product's name, with the app's name taken back off it.
+///
+/// **Google Play returns a product title as `"Coach (App Name)"`**, appending
+/// the app it belongs to; the App Store returns `"Coach"`. Printed straight
+/// through, the Android paywall read
+///
+/// > Coach (com.mgkcodes.fitness.run (unreviewed))
+///
+/// because before review Play uses the package name as the app name. Even
+/// after review it would say "Coach (MGKFitness: Run)" — the app's own name,
+/// repeated inside its own paywall, on every row.
+///
+/// Found 2026-09-11 the first time the paywall was opened on Android with a
+/// real `goog_` key behind it. Nothing could have caught it earlier: the
+/// preview harness and every test use fakes whose titles are written by hand,
+/// so the only source of a Play-shaped title is Play.
+///
+/// **Strips a trailing parenthetical, greedily from the first `(`.** That
+/// matters for the nested case above — cutting at the *last* `(` would leave
+/// `"Coach (com.mgkcodes.fitness.run"`, which is worse than the bug. Applied to
+/// every store rather than only Android, because a title that ends in its own
+/// app name is wrong wherever it comes from, and Apple never produces one.
+String productTitle(String raw) =>
+    raw.replaceFirst(RegExp(r'\s*\(.*\)\s*$'), '').trim();
+
 class RevenueCatPurchases implements PurchaseClient {
   /// [AppConfig.storeKey], not `revenueCatKey`: the key differs per store and
   /// the wrong one does not degrade, it fails to configure at all.
@@ -122,7 +147,7 @@ class RevenueCatPurchases implements PurchaseClient {
         for (final Package p in packages)
           CoachOffer(
             id: p.storeProduct.identifier,
-            title: p.storeProduct.title,
+            title: productTitle(p.storeProduct.title),
             description: p.storeProduct.description,
             // Formatted by the store, in the runner's own currency. The app
             // prints this and does not parse it.

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_purchases.dart';
@@ -141,13 +142,28 @@ void main() {
         purchases: FakePurchases(),
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
+      // The facts Guideline 3.1.2 and Play both require, in whichever wording
+      // this platform gets. **This asserted 'charged to your Apple ID' until
+      // 2026-09-11**, which passed for the wrong reason: flutter_test runs with
+      // defaultTargetPlatform == android, so the test was rendering the Android
+      // paywall and checking it named an Apple ID — and it agreed, because the
+      // disclosure was one const string that named Apple on both platforms.
+      //
+      // Which store gets which wording is pinned in
+      // `the_paywall_names_the_right_store_test.dart`, where the platform is
+      // stated rather than inherited from the test runner.
       for (final phrase in <String>[
         'renew every month until cancelled',
-        'charged to your Apple ID',
         'auto-renew is switched off at least 24',
       ]) {
         expect(find.textContaining(phrase), findsOneWidget, reason: phrase);
       }
+      expect(
+        find.text(renewalWording(defaultTargetPlatform)),
+        findsOneWidget,
+        reason: 'the screen must show the disclosure for the store it is '
+            'actually running on',
+      );
     });
   });
 
