@@ -19,6 +19,102 @@ the same reason.
 
 ## Where we actually are
 
+**Updated 2026-09-12 at `628c3a3`.** The section below this one was written for
+build 13 and is kept for its reasoning; the numbers in it are stale and this
+block supersedes them.
+
+### Build 25 is on both stores' test tracks and needs one sitting
+
+| | |
+|---|---|
+| **TestFlight** | 1.0.0 (25), published 2026-09-11 |
+| **Play internal** | 1.0.0 (25), published 2026-09-11, straight to testers |
+| **Release candidate** | **build 26** — see the blocker below |
+| Suites at `628c3a3` | Run 1,543 · Lift 293 · Deno 216 · mgk_ui 49, analyzer clean |
+
+**Build 25 cannot be promoted**, and the reason is worth reading rather than
+skipping: its in-app privacy policy was two disclosures behind the published
+one. It omitted the name the app collects and the profile photo it now holds,
+both of which `/run/privacy` declared. An in-app policy that under-discloses
+against the published page is precisely the comparison a reviewer makes, and
+with `NSPhotoLibraryUsageDescription` now in the binary it is the comparison
+they are most likely to make.
+
+Fixed in `628c3a3`, which is build 26. **Nothing else differs between 25 and
+26** — the payment path, settings, icons and photo picker are identical — so
+everything learned testing 25 carries, and 26 is cut once with the policy fix
+plus whatever that sitting finds.
+
+### What still has to happen on build 25
+
+The tracks are live; the testing is not done. In order of what would hurt most:
+
+- [ ] **A premium purchase on Android.** `run.coach.premium.monthly:monthly` is
+      the one key in `REVENUECAT_PRODUCTS` that was inferred rather than read
+      off a real webhook payload. If it is wrong the £2.99 tier takes money and
+      grants nothing — the exact failure the standard tier had on 2026-09-11,
+      found by walking into it.
+- [ ] **A sandbox purchase on iOS.** Section G of the test sheet, which has now
+      failed to run across four builds. The Apple path has been renewing in
+      sandbox correctly for over a week and maps to a real entitlement, so the
+      risk is lower than Android's was — but "never actually completed" is
+      still true.
+- [ ] **The new Settings on a device**, both platforms: the profile header, the
+      photo picker (iOS prompts, Android does not), the account screen.
+- [ ] **The icon**, which is new on both platforms and new to Lift entirely.
+
+### What blocks production, regardless of how that sitting goes
+
+- [ ] **`REVENUECAT_ACCEPT_SANDBOX` comes off.** Still `true`. Today a sandbox
+      purchase grants a real entitlement, which is harmless while access is a
+      tester list and an open door the moment it is not. It is a Supabase
+      secret rather than something in the binary, so it is a rollout step, not
+      a build step.
+- [ ] **The Play declarations** — Data safety, content rating, target audience,
+      the foreground-service justification. The answers are worked out in
+      [play-setup.md](play-setup.md); the form-filling is not done.
+- [ ] **The 512px Play listing tile** — `design/store/play-listing-icon-512.png`,
+      uploaded by hand. It is not in the bundle, so no build carries it.
+- [ ] **Android developer verification** for `com.mgkcodes.fitness.run`.
+- [ ] **Promotion is manual on both stores.** `submit_to_app_store` is
+      commented out in `codemagic.yaml` and Play publishes to `track: internal`.
+      A green build reaches testers and stops, deliberately.
+
+### What landed on 2026-09-10 to 09-12
+
+The Play half of the product, and a design pass that was overdue:
+
+- **Google Play, end to end.** Upload keystore (`mgkfitness_upload`, shared
+  across the suite), the listing, a merchant account, two subscriptions priced
+  **ex-VAT** so Android and iOS charge the same, the RevenueCat Google app, and
+  `run-android-release` publishing itself. Build 24 was the first fully
+  automated Play release from a commit.
+- **The first working purchase on Android**, which took finding that
+  `REVENUECAT_PRODUCTS` had no Play id — Play reports
+  `run.coach.monthly:monthly` where the map held `run.coach.monthly`. Setting
+  it then banded on a Windows PowerShell that strips quotes from native
+  arguments, which silently unmapped **both** stores for thirteen minutes.
+  `productMap` now says so out loud.
+- **`/run/delete-account`**, which Play requires for any app offering account
+  creation and which did not exist. `/run/support` was Apple-only prose and now
+  names both stores.
+- **Settings rebuilt**: an index with values on the right rather than two and a
+  half screens of explanation, a profile header with an avatar, an Account
+  screen, and a Support row pointing at a page that had been live and unlinked
+  the whole time.
+- **Real app icons**, generated for both apps from `tool/build_app_icons.py`.
+  Both were shipping Flutter's template logo on Android with no adaptive icon;
+  Lift had none anywhere.
+- **Three privacy defects fixed**: the runner's name reaching the model
+  provider, account deletion reaching into Lift's data, and backup-off erasing
+  Lift's coach conversations.
+
+---
+
+## Where we were, build 13 (kept for the reasoning)
+
+
+
 Green, and worth stating so the list below is read as short rather than long:
 
 - **1,501 tests pass, analyzer and format clean** — verified 2026-09-08 at

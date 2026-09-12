@@ -24,6 +24,21 @@ and a second RevenueCat app.
 
 ---
 
+## Where this got to
+
+**Build 25 is on the internal track as of 2026-09-11**, published automatically
+from a commit — the whole chain in this document works. The first real purchase
+went through on 2026-09-11 after step 10's product-id mapping turned out to be
+the thing standing in the way, exactly as this document warned it would be.
+
+**What is left is in [app-store-1.0.0.md](app-store-1.0.0.md)**, which carries
+the live status for both stores rather than having it in two places. The short
+version: a premium purchase is still untested, the declarations in step 4 are
+still unanswered, the 512px tile still needs uploading by hand, and
+`REVENUECAT_ACCEPT_SANDBOX` still has to come off before anything is public.
+
+---
+
 ## The order, and what actually blocks what
 
 The dependencies are real and mostly one-way. Doing these out of order is how a
