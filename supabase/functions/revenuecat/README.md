@@ -69,13 +69,20 @@ because a wrong secret should be loud.
 
 | Event | `status` |
 |---|---|
-| `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_EXTENDED` | `active` |
+| `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_EXTENDED`, `REFUND_REVERSED` | `active` |
 | `CANCELLATION` | `active` — auto-renew off, access until it lapses |
+| `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` | `refunded` — this is how a refund arrives |
 | `EXPIRATION`, `SUBSCRIPTION_PAUSED` | `expired` |
+| `EXPIRATION` with `expiration_reason: CUSTOMER_SUPPORT` | `refunded` |
 | `BILLING_ISSUE` | `grace` |
-| `REFUND` | `refunded` |
-| `TRANSFER` | `revoked` |
+| `TRANSFER` | `revoked` (in practice ignored: a transfer carries no `app_user_id`) |
 | anything else | ignored, logged, not guessed |
+
+**There is no `REFUND` event type.** This table used to list one, and until
+2026-09-29 the function mapped it — so a real refund, which RevenueCat sends as
+a `CANCELLATION` whose reason is `CUSTOMER_SUPPORT`, was treated like any other
+cancellation and the subscriber kept the coach. Found when Lift's branch
+webhook, which had it right, was folded into this one.
 
 `CANCELLATION` is the one worth reading twice: it does **not** end access.
 Treating it as the end takes away time somebody paid for. `EXPIRATION` is what
@@ -109,5 +116,17 @@ they did. None of that should need a deployed function to assert.
 ## Still to do
 
 - Real product ids, once they exist in App Store Connect.
+- **Liftio's legacy product ids, mapped to `lift` / `paid`, before Lift 2.0.0
+  ships.** Liftio is live under the same bundle id and its subscriptions keep
+  renewing; an unmapped product writes nothing, so without the mapping a
+  long-standing Liftio subscriber opens 2.0.0 as unpaid. (Lift's branch webhook
+  granted `paid` to any unknown product instead. That default was not kept —
+  this function's rule is that nothing grants by default.)
+- **Decide the sandbox setting before either app is submitted.** App Review
+  and TestFlight both purchase in the sandbox, so with
+  `REVENUECAT_ACCEPT_SANDBOX` off a reviewer's purchase unlocks nothing and the
+  paid half cannot be reviewed. Leaving it on lets a TestFlight tester unlock
+  the coach without paying — people you invited. The earlier plan to switch it
+  off at rollout predates noticing the first half.
 - The SDK in both apps, and the purchase screen behind `onUpgrade`.
 - An end-to-end sandbox purchase on a device.
