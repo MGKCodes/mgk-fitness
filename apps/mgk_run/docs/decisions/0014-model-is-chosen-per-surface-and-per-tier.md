@@ -91,6 +91,18 @@ the split stops paying for itself.
 If a single model ever becomes cheap enough that the dearest tier's price is
 irrelevant, the tier machinery is dead weight and should go.
 
+**Amended, 2026-09-01 — there is no free tier to route.**
+[ADR-0030](0030-the-coach-is-the-paid-half.md) refuses an unentitled caller on
+both apps, so `tierFor` never returns `"free"` and no request is ever served on
+the free tier's model. The tier itself is kept: `PRODUCT_TIERS` still maps it,
+`configFromEnv` still defaults to it, and both are the cheapest-not-dearest
+fallback this record asks for. It is now a floor nothing stands on rather than a
+tier anybody is served from.
+
+Everything else here is unchanged. The model is still chosen per surface and per
+tier, still server-side, and an unknown product still resolves to the cheapest
+thing rather than the dearest.
+
 ## Consequences
 
 - The privacy policy must name the providers that may process health data.

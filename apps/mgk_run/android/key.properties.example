@@ -1,0 +1,41 @@
+# Copy to android/key.properties and fill in. That file is gitignored, as are
+# *.jks and *.keystore — the upload key must never enter this repository.
+#
+# Only needed for a LOCAL release build. Codemagic supplies the same four values
+# as CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS / CM_KEY_PASSWORD
+# from the keystore uploaded to it, and app/build.gradle.kts prefers those.
+#
+# ---------------------------------------------------------------------------
+# ONE UPLOAD KEY FOR EVERY MGKFITNESS APP — Run, Lift, and whatever comes
+# after. It already exists (created 2026-09-10); do not make a second one.
+#
+#   keytool -genkey -v -keystore mgkfitness-upload.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# A Play listing records the upload certificate it expects. Nothing requires
+# that certificate to be unique to one listing, so the same key serves all of
+# them, and the benefit is the obvious one: a single secret to hold, back up
+# and not lose.
+#
+# This file argued the opposite for a few hours — "one keystore per Play
+# listing... a shared key means a compromise or a reset on one listing reaches
+# the other for no benefit at all". The last clause was false, and the rest
+# was a blast-radius argument with no scenario behind it. Both failure modes
+# are recoverable identically anyway: Google resets a lost OR compromised
+# upload key by support request.
+#
+# frunt is the permanent exception — live on Play under its own key, and a
+# shipped listing's upload key cannot be swapped without that same support
+# request for nothing in return.
+#
+# Play uses Google Play App Signing: this key signs the UPLOAD, and Google holds
+# the key that signs what users install. Treat it as precious rather than
+# irreplaceable.
+#
+# `storeFile` is an absolute path, or one relative to android/app/.
+# ---------------------------------------------------------------------------
+
+storeFile=/absolute/path/to/mgkfitness-upload.jks
+storePassword=
+keyAlias=upload
+keyPassword=

@@ -67,9 +67,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Runio uses your location to record your run's route, distance, and pace.</string>
+	<string>Record your run's route, distance, and pace.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Runio keeps recording your run in the background so tracking continues with the screen locked.</string>
+	<string>Keep recording your run in the background so tracking continues with the screen locked.</string>
 	<!-- Required the moment the binary links HealthKit: App Store Connect
 	     rejects an upload that references the framework without a purpose
 	     string, so this is a build blocker rather than a nicety.
@@ -87,18 +87,49 @@
 
 	     False is the accurate answer, not the convenient one: the only
 	     cryptography here is HTTPS to Supabase and to the coach function, which
-	     is exempt under the standard TLS exemption. If Runio ever ships crypto of
+	     is exempt under the standard TLS exemption. If the app ever ships crypto of
 	     its own, this key has to be revisited rather than left. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- The profile photo, and nothing else. **Its absence is a crash, not a
+	     refusal** — iOS terminates an app that reaches the photo library with
+	     no usage string, so removing this does not disable the feature, it
+	     kills the app the moment somebody taps the avatar.
+
+	     The photo is copied into the app documents directory and never leaves
+	     the phone, which is what keeps App Privacy on "Data Not Collected":
+	     Apple defines collection as transmission off the device. It is also
+	     excluded from backup for the same reason. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo for your profile. It stays on this phone — it is never uploaded, never sent to your coach, and is not included in backup.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Runio reads your workouts from Health so runs you recorded on a watch or another app appear in your training log, and so your coach sees the whole picture.</string>
-	<!-- Runio does not write to Health yet. This describes what the entitlement
-	     permits and what the app is built toward: workout_dedup.dart already
-	     treats Runio's own recordings as the preferred source of a run, which
-	     only means anything once they are there. -->
+	<string>Read your workouts and step count from Health, so runs you recorded on a watch or another app appear in your training log and your coach sees the whole picture.</string>
+	<!-- NSHealthUpdateUsageDescription IS REQUIRED, and removing it fails the
+	     UPLOAD, not the review. 6f71c3c took it out on the reasoning that
+	     health_read_types.dart requests HealthDataAccess.READ for WORKOUT and
+	     STEPS and nothing else, and that HealthDataAccess appears nowhere else
+	     in lib/. All of that is true about our Dart and none of it is what
+	     Apple checks. App Store Connect refused the upload of 1.0.0+21 with
+	     error 90683, in terms that answer the argument directly:
+
+	       "If you're using external libraries or SDKs, they may reference APIs
+	        that require a purpose string. While your app might not use these
+	        APIs, a purpose string is still required."
+
+	     health 13.2.0 links HKHealthStore's write methods and
+	     com.apple.developer.healthkit is in Runner.entitlements, so the static
+	     scan sees write access whatever our code asks for. The string below is
+	     never shown to anybody: the prompt only appears when an app requests
+	     write authorisation, and this one never does.
+
+	     That also disposes of the Guideline 5.1.1 worry that motivated the
+	     removal - a purpose string is not a request. This key can go when the
+	     health dependency or the entitlement goes, and not before.
+
+	     DO NOT REMOVE without running a real release build. No test in this
+	     repo can catch it; 1,501 of them passed on the commit that broke it. -->
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Runio can save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
+	<string>Save the runs you record here into Health, so your training sits alongside everything else your phone keeps.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

@@ -52,9 +52,22 @@ PlanHeadline planHeadline(
       return PlanHeadline(
         // "Marathon", not "Marathon goal" — the word is already the goal.
         goal: raceName(goalMeters!) ?? '$goal goal',
-        position: days < 0
-            ? 'Event passed'
-            : '$days days · week $current of $weeks',
+        // **A countdown stops being a countdown at zero.** "0 days · week 16 of
+        // 16" is arithmetic where the runner wants the word, and "Event passed"
+        // was a shrug at the most significant day in the plan — it said the
+        // date had gone by and nothing about the block being over or about
+        // anybody being asked how it went (ADR-0027). Both were the same
+        // mistake: carrying a subtraction all the way to the screen.
+        position: switch (days) {
+          0 => 'race day · week $current of $weeks',
+          1 => 'tomorrow · week $current of $weeks',
+          // The line's job is "where are you in this", and after the date the
+          // honest answer is not a week number — it is that the block is over
+          // and the app is waiting to be told how it went. A plan only stays
+          // here for a fortnight before it closes itself.
+          < 0 => 'waiting on your result',
+          _ => '$days days · week $current of $weeks',
+        },
       );
 
     case PlanShape.horizon:

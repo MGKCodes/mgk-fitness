@@ -43,7 +43,7 @@ void main() {
     Future<bool> Function(GoalProposal)? apply,
   }) => ChatController(
     client: _Coach(intent: intent),
-    brief: () async => 'a brief',
+    brief: (_) async => 'a brief',
     onSetGoalRequest: propose,
     onApplyGoal: apply,
     now: () => now,

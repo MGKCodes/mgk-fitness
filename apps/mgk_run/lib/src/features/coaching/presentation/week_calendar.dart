@@ -364,7 +364,7 @@ class _Day extends StatelessWidget {
       if (session == null)
         'rest day'
       else ...<String>[
-        kindLabel(session!.kind),
+        sessionName(session!),
         Distance.meters(session!.distanceMeters).format(unit),
       ],
       if (isToday) 'today',

@@ -31,7 +31,7 @@ and never appears in the repo, the `.env`, or the app bundle.
 ### How the ceilings are enforced
 
 Settled when the limiter was built; the mechanics and exact numbers live in
-[`supabase/functions/coach/README.md`](../../supabase/functions/coach/README.md).
+[`supabase/functions/coach/README.md`](../../../../supabase/functions/coach/README.md).
 
 - **Rate limits are per surface, not flat.** A plan generation legitimately
   bursts (one skeleton plus several weeks, each retried once against the

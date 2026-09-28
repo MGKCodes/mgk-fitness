@@ -23,6 +23,11 @@ coverage/
 # would try to swallow. See the Branching section of CONTRIBUTING.md.
 .claude/worktrees/
 
+# Per-machine Claude Code permission grants. These authorise real actions with
+# real credentials on the machine that holds them (see scripts/codemagic-build.sh),
+# so they are one person's decision rather than the repo's.
+.claude/settings.local.json
+
 # IDE
 .idea/
 .vscode/
@@ -38,6 +43,25 @@ coverage/
 **/android/app/*.jks
 **/android/app/*.keystore
 **/android/**/GeneratedPluginRegistrant.java
+
+# Google Cloud service-account keys.
+#
+# The Play Developer API key that publishes builds and validates every Play
+# purchase downloads as a plain .json with an unremarkable name, and Google
+# keeps no copy of it. THIS REPOSITORY IS PUBLIC, so a stray one is a
+# publishing credential and a billing credential handed to everybody.
+#
+# Anchored on the shape of the filename rather than a directory, because the
+# failure is somebody dropping it wherever they happen to be working — which is
+# the only way it ever gets committed. The upload keystore is covered above; it
+# lives at a known path, and this one does not.
+#
+# The real rule is that neither belongs in the working tree at all. This is the
+# backstop for the day that rule is forgotten.
+*-play-publisher*.json
+**/gcloud-service-account*.json
+**/service-account*.json
+**/*service_account*.json
 
 # iOS / macOS
 **/ios/Pods/

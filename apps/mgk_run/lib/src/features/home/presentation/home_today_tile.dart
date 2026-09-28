@@ -1,0 +1,880 @@
+import 'package:flutter/material.dart';
+
+import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
+import '../../coaching/data/plan_repository.dart';
+import '../../coaching/domain/prescribed_distance.dart';
+import '../../coaching/domain/race_day.dart';
+import '../../coaching/domain/session_effort.dart';
+import '../../coaching/domain/training_plan.dart';
+import '../../coaching/domain/week_progress.dart';
+import '../../coaching/presentation/session_labels.dart';
+import '../../recording/domain/run_summary.dart';
+
+/// What today is, in one sentence, over the button that starts it.
+///
+/// ## The sentence
+///
+/// This card used to read `TODAY` in an eyebrow with `Threshold` underneath it
+/// — two headings and no sentence, naming a physiological zone rather than a
+/// thing a person does (IMG_4702). It reads `TODAY · MONDAY 25 AUG` over
+/// `Afternoon threshold run` now: the eyebrow is a date, which is information
+/// and cannot be mistaken for a title, and the headline is the activity.
+///
+/// The time of day comes from [sessionNameAt], which is honest here and
+/// nowhere else on the plan surfaces: today is one of exactly two occasions the
+/// app really knows the hour of. A Wednesday four days out gets [sessionName]
+/// with no hour attached, because nothing has told us when its owner intends to
+/// run it.
+///
+/// ## The runner with no plan
+///
+/// **Today is answered by the log rather than by the plan.** A free runner is
+/// not shown a plan-shaped hole where a session would be — no "no plan yet"
+/// placeholder, no empty prescription — because the counter-signal
+/// [ADR-0019](../../../../docs/decisions/0019-onboarding-is-two-moments.md)
+/// watches for is exactly that: a paid screen with its contents removed. What
+/// they get instead is a true fact about their own running today, which is
+/// either the run they have already done or the fact that they have not done
+/// one yet. Both are information; neither mentions a plan.
+///
+/// ## Race day
+///
+/// **The day a plan was aimed at does not read like a Tuesday.** It used to:
+/// race day was the last row of the last week, a distance and an effort cue,
+/// with nothing anywhere to say that sixteen weeks were about to conclude
+/// (ADR-0027). Three states now exist above the ordinary one — the run-up, the
+/// day, and the morning after — and every one of them arrives as a resolved
+/// [RaceOutlook] rather than as a question this card asks about the plan. Null
+/// is the ordinary day and is what a rhythm, a horizon and a log get on every
+/// day of their lives, so nothing here branches on a [PlanShape] (ADR-0011).
+class HomeTodayTile extends StatelessWidget {
+  const HomeTodayTile({
+    super.key,
+    required this.now,
+    required this.unit,
+    required this.onFreeRun,
+    required this.onStartSession,
+    required this.onOpenPlan,
+    this.today,
+    this.lastRun,
+    this.outcomes = const <int, DayOutcome>{},
+    this.onOpenCoach,
+    this.onAdjustWeek,
+    this.onCloseRace,
+  });
+
+  /// One reading of the clock for the whole card, handed down rather than taken
+  /// here — the same reason the shell reads it once. A card whose eyebrow and
+  /// whose session name disagreed about the hour would be a bug that only ever
+  /// fired at noon and at six.
+  final DateTime now;
+
+  final UnitSystem unit;
+
+  /// Starts a run with **no session attached**, so nothing counts down and
+  /// nothing is judged against a prescription the runner did not choose.
+  final VoidCallback onFreeRun;
+
+  /// Starts today's prescribed session, handing the recorder what was asked
+  /// for so the in-run screen can say what is left of it.
+  ///
+  /// Falls back to a free run where there is no session, which is what makes
+  /// the no-plan card work without a second code path.
+  final VoidCallback onStartSession;
+  final VoidCallback onOpenPlan;
+
+  /// Today's prescribed session, when a plan exists.
+  final TodayView? today;
+
+  /// The newest run on record, whenever it was. Read only to answer "have they
+  /// run today" and, for a runner with no plan, to say what that run was.
+  final RunSummary? lastRun;
+
+  final Map<int, DayOutcome> outcomes;
+  final VoidCallback? onOpenCoach;
+  final VoidCallback? onAdjustWeek;
+
+  /// Opens the flow that records what they ran and ends the plan.
+  ///
+  /// One callback for both answers — "here is my time" and "I did not race" —
+  /// because they are the same question and the sheet behind this asks it once.
+  /// Null hides the offer rather than showing a control that does nothing,
+  /// which is the same rule [onAdjustWeek] follows.
+  final VoidCallback? onCloseRace;
+
+  /// Whether a run is already on record for today.
+  ///
+  /// Two sources because there are two kinds of runner. The outcome map is
+  /// derived against the plan's week and is what the ribbon draws, so a plan
+  /// runner and their own ribbon can never disagree; the log answers for
+  /// everybody else, who has no week for an outcome to hang on.
+  bool get _ranToday {
+    final last = lastRun;
+    if (last != null && _sameDay(last.startedAt, now)) return true;
+    return outcomes[now.weekday] == DayOutcome.done;
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = today;
+    final race = session?.race;
+    // The two states where the race *is* the day. The run-up is not one of
+    // them: there is still a session to run on the Thursday before a Sunday
+    // marathon, and replacing it with a countdown would take the instruction
+    // off the one screen that carries it.
+    final racing =
+        race != null &&
+        (race.phase == RacePhase.today || race.phase == RacePhase.awaiting);
+
+    return GlassSurface(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      tintOpacity: 0.12,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // A date, not a second title. The heading itself is resolved by the
+          // repository rather than branched on here: a phase is block
+          // vocabulary and this card must not know which shapes have one
+          // (ADR-0011).
+          SectionLabel(
+            '${session?.heading ?? 'Today'} · '
+            '${weekdayLongName(now.weekday)} ${now.day} '
+            '${monthShortName(now.month)}',
+            emphasis: LabelEmphasis.stat,
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // The taper week knowing what it is for. Above the session rather
+          // than instead of it — a runner three days out still has a run to do
+          // today, and the countdown is context for it.
+          if (race != null && race.phase == RacePhase.approaching) ...<Widget>[
+            _RaceStrip(race: race),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+
+          if (racing && race.phase == RacePhase.today)
+            _RaceDay(
+              race: race,
+              unit: unit,
+              ranToday: _ranToday,
+              onStart: onStartSession,
+              onCloseRace: onCloseRace,
+            )
+          else if (racing)
+            _AfterTheRace(
+              race: race,
+              onCloseRace: onCloseRace,
+              onRecord: onFreeRun,
+            )
+          else if (session?.session != null)
+            _PrescribedDay(
+              session: session!.session!,
+              now: now,
+              unit: unit,
+              ranToday: _ranToday,
+              onFreeRun: onFreeRun,
+              onStartSession: onStartSession,
+            )
+          else if (session != null)
+            // A rest day has no session to start, so both paths are the same
+            // run: whatever they go and do is unplanned by definition.
+            _RestDay(session: session, onRecord: onFreeRun)
+          else
+            _NoPlanDay(
+              lastRun: _ranToday ? lastRun : null,
+              unit: unit,
+              onRecord: onFreeRun,
+            ),
+
+          // Nothing links out of here any more.
+          //
+          // "Talk to your coach" went first: the coach has a way in on every
+          // tab that costs this card no space at all ([CoachReveal]), and
+          // offering one to a runner who has not bought one was the card
+          // advertising rather than informing.
+          //
+          // "See the week" went with it, for a plainer reason — the week tile
+          // is the next thing on the page. A control whose destination is
+          // already on screen is a line spent sending somebody somewhere they
+          // can see from where they are standing.
+
+          // Under everything and quiet, but on Home rather than three taps into
+          // the Plan tab. A plan that will not bend is this category's loudest
+          // complaint, and the runner who needs to bend it is ill, sore or
+          // already behind — not in the mood to compose a paragraph at a chat
+          // box, which was the only way in.
+          //
+          // On a rest day too: "I'm ill" is not a thing that waits for a
+          // session to be scheduled before it is true.
+          //
+          // Not on race day and not afterwards. There is nothing left to bend:
+          // the week the runner would be adjusting is the one they have
+          // already run, and the coach cannot move a session that has been the
+          // point of the whole block since January.
+          if (onAdjustWeek != null && !racing) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            Align(
+              alignment: Alignment.centerLeft,
+              // A bordered control rather than a dimmed line. It does
+              // something — it opens the flow that rewrites the week — and a
+              // thing that does something should look like it can be pressed
+              // rather than like a sentence that happens to be tappable.
+              child: _SecondaryAction(
+                label: 'Adjust this week',
+                onPressed: onAdjustWeek,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The race, on a day that is not it yet.
+///
+/// **A taper week that does not say why it is small is a plan that looks like
+/// it has given up.** The countdown is the reassurance: the volume has dropped
+/// because the work is finished, not because something went wrong. Both lines
+/// are written in the domain, so this draws two strings and asks nothing.
+class _RaceStrip extends StatelessWidget {
+  const _RaceStrip({required this.race});
+
+  final RaceOutlook race;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: AppColors.elevated),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.flag_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  race.headline,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  race.detail,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The day itself.
+///
+/// **The heading is the occasion, not the distance.** Every other day on this
+/// card leads with how far, because how far is the instruction and a runner
+/// opening the app at seven in the morning wants to know what to go and do.
+/// Today they already know: they have known since January. What they do not
+/// have is anyone saying the day has arrived, so that is the line, and the
+/// distance sits underneath where it has always been.
+///
+/// The result is offered here as well as tomorrow, because a runner who
+/// finishes at eleven and opens the app at noon should not be told to come back
+/// in the morning. It is a second action rather than the first, since the day's
+/// first job is still to start the race — and because a run already on record
+/// today might be the shakeout before the start rather than the race itself,
+/// which this card has no way to tell apart and does not try to.
+class _RaceDay extends StatelessWidget {
+  const _RaceDay({
+    required this.race,
+    required this.unit,
+    required this.ranToday,
+    required this.onStart,
+    this.onCloseRace,
+  });
+
+  final RaceOutlook race;
+  final UnitSystem unit;
+  final bool ranToday;
+  final VoidCallback onStart;
+  final VoidCallback? onCloseRace;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          race.headline,
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          // "Marathon · 42.2 km". The name and the number, because on this one
+          // day the runner wants both: the word is what they entered and the
+          // figure is what they are about to cover.
+          '${race.name} · '
+          '${Distance.meters(race.distanceMeters).format(unit, fractionDigits: 1)}',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          race.detail,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        StartRunButton(label: 'Start the race', onTap: onStart),
+        if (ranToday && onCloseRace != null) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _SecondaryAction(
+              label: 'Add your result',
+              onPressed: onCloseRace,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The morning after, and every morning until somebody says what happened.
+///
+/// **This card is the only thing that can end a plan on the runner's terms**,
+/// so it persists rather than appearing once and being missed. It stays for
+/// [kRaceGraceDays], after which the app closes the plan itself from the log
+/// ([overdueClosureFor]) — which is a worse ending than this one and exists
+/// only because the alternative is a marathon block that stays active forever.
+///
+/// Recording a run stays available underneath it. A runner who raced on Sunday
+/// and jogged on Wednesday should not find the app's core action missing
+/// because it is busy asking them a question.
+class _AfterTheRace extends StatelessWidget {
+  const _AfterTheRace({
+    required this.race,
+    required this.onRecord,
+    this.onCloseRace,
+  });
+
+  final RaceOutlook race;
+  final VoidCallback onRecord;
+  final VoidCallback? onCloseRace;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          race.headline,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          race.detail,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        if (onCloseRace != null) ...<Widget>[
+          // Filled, because for these few days it is the most useful thing on
+          // the screen — and because what is behind it is the end of sixteen
+          // weeks rather than a form.
+          PrimaryButton(label: 'Add your result', onPressed: onCloseRace),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _SecondaryAction(label: 'Record a run', onPressed: onRecord),
+        ),
+      ],
+    );
+  }
+}
+
+/// A day the plan has asked for a run on.
+class _PrescribedDay extends StatelessWidget {
+  const _PrescribedDay({
+    required this.session,
+    required this.now,
+    required this.unit,
+    required this.ranToday,
+    required this.onFreeRun,
+    required this.onStartSession,
+  });
+
+  final PlannedSession session;
+  final DateTime now;
+  final UnitSystem unit;
+  final bool ranToday;
+  final VoidCallback onFreeRun;
+  final VoidCallback onStartSession;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        // **The distance is the instruction, so it gets the size.**
+        //
+        // This used to lead with "Afternoon threshold run" and hang the figure
+        // off the end of it. Two things were wrong with that. The hour is not
+        // information — a runner opening this at seven in the morning does not
+        // need telling it is morning — and "threshold" is a physiological zone
+        // rather than an instruction: it names the adaptation being chased, not
+        // the thing to go and do. What a runner can act on without opening
+        // anything is *how far*.
+        //
+        // The effort has not gone, it has moved behind a tap. It is the answer
+        // to the second question rather than the first, and a card that answers
+        // both at once answers neither loudly.
+        Text(
+          formatPrescribed(session.distanceMeters, unit),
+          style: theme.textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: 4),
+        _EffortLine(kind: session.kind, session: session, unit: unit),
+        const SizedBox(height: AppSpacing.lg),
+        // The action *is* today's session. There is no "Mark done" beside it: a
+        // session is complete when a run exists on the day, which the app can
+        // see for itself, and a button asserting otherwise wrote a status no
+        // run backed (ADR-0017).
+        //
+        // Already run today? Then this reads as an offer of a second run rather
+        // than an instruction.
+        if (ranToday)
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.check_circle,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Run recorded today.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              AppTextButton(label: 'Record another', onPressed: onFreeRun),
+            ],
+          )
+        else
+          // **One button, because a prescription is not a rule.**
+          //
+          // This briefly had a second, quieter start beside it for a run with
+          // no session attached. It came out again on the argument that the
+          // plan is a suggestion and always was: pressing Start and then
+          // running five easy kilometres instead is already allowed, and the
+          // countdown that results reads as *you are short of the session*,
+          // which is true and is the sort of thing a runner might want to know.
+          // Spending the most valuable line on the screen letting somebody
+          // pre-declare that they are going off-plan buys nothing the app does
+          // not already do.
+          //
+          // [onFreeRun] stays, because a rest day and a runner with no plan
+          // both need it and neither has a session to attach.
+          //
+          // The plain word on the button. It used to read "Start · 9 km
+          // threshold run", which restated the two lines directly above it and
+          // was the longest thing on the card.
+          StartRunButton(label: 'Start', onTap: onStartSession),
+      ],
+    );
+  }
+}
+
+/// The effort cue, with the rest of it behind a tap.
+///
+/// A cue — "comfortably hard" — is what a runner needs at the door. The rest
+/// (what the session is for, the RPE it should sit at, how it should feel) is
+/// what they want when they are deciding whether they can face it, which is a
+/// different moment and does not belong on the same line.
+///
+/// Expanded in place rather than pushed as a sheet: the question is "what does
+/// that mean", and an answer that replaces the screen it was asked on makes the
+/// runner navigate back to where they already were.
+class _EffortLine extends StatefulWidget {
+  const _EffortLine({
+    required this.kind,
+    required this.session,
+    required this.unit,
+  });
+
+  final SessionKind kind;
+  final PlannedSession session;
+  final UnitSystem unit;
+
+  @override
+  State<_EffortLine> createState() => _EffortLineState();
+}
+
+class _EffortLineState extends State<_EffortLine> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final effort = effortFor(widget.kind);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Semantics(
+          button: true,
+          expanded: _open,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _open = !_open),
+            child: Row(
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    effort.cue,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  _open ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: AppColors.textTertiary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_open) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            effort.feel,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            // What it is for. A session a runner understands the point of is a
+            // session they are more likely to run as asked.
+            effort.purpose,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            // The number the runner asked for. Stated as the range it is, not
+            // a single figure: an effort is a band and pretending otherwise is
+            // the same mistake as prescribing a pace to the second.
+            'Effort ${effort.rpeLow}–${effort.rpeHigh} out of 10',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A day the plan has not asked for a run on — rest, or work this app does not
+/// prescribe.
+class _RestDay extends StatelessWidget {
+  const _RestDay({required this.session, required this.onRecord});
+
+  final TodayView session;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final support = session.support;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          support == null ? 'Rest day' : kindLabel(support.kind),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          // A day carrying strength is not a rest day, and saying "nothing
+          // scheduled" over one contradicted the Plan tab reading the same
+          // week. What is *in* the session is Liftio's to say, not Runio's
+          // (ADR-0010) — so this says when, and stops.
+          support == null
+              ? 'Nothing scheduled. Rest is part of the plan.'
+              // Dashed rather than a second sentence: the cues are written
+              // lowercase for the week list, where they trail a session name,
+              // so a full stop in front of one reads as a typo.
+              : 'No run today — ${effortFor(support.kind).cue}.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        // **The same button in every state.** Recording is what this app is
+        // for, so it keeps one shape and one place — the label is the only
+        // thing that changes with the day. A previous pass made the contextual
+        // version prominent and demoted the generic one to a text link, which
+        // meant the core action of a running app vanished on every day the plan
+        // did not ask for a run.
+        StartRunButton(label: 'Record a run', onTap: onRecord),
+      ],
+    );
+  }
+}
+
+/// Today for a runner with no plan: the run they have done, or the one they
+/// have not.
+///
+/// Nothing here is a placeholder for a session. "No run yet today" is a
+/// complete statement about their running, in the way "No plan yet" — which is
+/// what this card used to say — is a statement about their billing.
+class _NoPlanDay extends StatelessWidget {
+  const _NoPlanDay({
+    required this.lastRun,
+    required this.unit,
+    required this.onRecord,
+  });
+
+  /// Today's run, when there is one. Non-null only for a run recorded today —
+  /// the caller has already decided that.
+  final RunSummary? lastRun;
+
+  final UnitSystem unit;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final run = lastRun;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                // "Afternoon run" — the same vocabulary a planned session gets,
+                // off the run's own start time rather than off the clock.
+                run == null ? 'No run yet today' : runName(run.startedAt),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (run != null) ...<Widget>[
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                // **A decimal, deliberately.** This is a distance the runner
+                // covered, not one the app asked for, and prescriptions round
+                // where achievements do not.
+                Distance.meters(
+                  run.distanceMeters,
+                ).format(unit, fractionDigits: 1),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          run == null
+              // "the app", not the product name and not a bare "Run" — see
+              // docs/naming.md. Runio was retired as a user-facing name on
+              // 2026-08-21, and a bare "Run" is worse than either, because
+              // "your Run data" and "your run data" are the same sentence.
+              ? 'Press start and the app tracks the route, the splits and the '
+                    'pace.'
+              : _describe(run, unit),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        StartRunButton(
+          label: run == null ? 'Record a run' : 'Record another run',
+          onTap: onRecord,
+        ),
+      ],
+    );
+  }
+
+  /// "58:28 · 5:44 /km". The stored average pace where there is one, derived
+  /// from the totals otherwise, and omitted entirely for a run with no distance
+  /// — `0:00 /km` would be a lie rather than a blank.
+  static String _describe(RunSummary run, UnitSystem unit) {
+    final stored = run.avgPaceSecondsPerKm;
+    final pace = stored != null
+        ? Pace.secondsPerKilometer(stored)
+        : run.distanceMeters > 0
+        ? Pace.from(Distance.meters(run.distanceMeters), run.duration)
+        : null;
+    return <String>[
+      run.duration.hoursMinutesSeconds,
+      ?pace?.format(unit),
+    ].join('  ·  ');
+  }
+}
+
+/// The one physical action on Home: start tracking.
+///
+/// It used to be a full-width slab beneath the Today card reading "Record a
+/// run" — generic, in the one place the app knows exactly what the runner is
+/// meant to be doing, and the loudest thing on screen on a rest day. It carries
+/// the session now and lives inside the card, so the prescription and the
+/// button that starts it are one object rather than two strangers.
+class StartRunButton extends StatelessWidget {
+  const StartRunButton({super.key, required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: AppColors.primary,
+      borderRadius: AppRadius.cardAll,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Icon(
+                Icons.play_arrow_rounded,
+                color: AppColors.onPrimary,
+                size: 24,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.onPrimary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A bordered control for the second thing a card can do.
+///
+/// **An action looks like a control.** The quiet link this replaces was an
+/// `AppTextButton` dimmed and squeezed until it read as a sentence that
+/// happened to be tappable — which is exactly how a runner comes to miss it, or
+/// worse, to press it by accident while reading. A border costs eight pixels
+/// and answers "can I press this" without anybody having to try.
+///
+/// Still second: outlined rather than filled, so it never argues with the
+/// start button above it.
+class _SecondaryAction extends StatelessWidget {
+  const _SecondaryAction({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textPrimary,
+        side: const BorderSide(color: AppColors.elevated),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        visualDensity: VisualDensity.compact,
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}

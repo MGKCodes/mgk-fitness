@@ -61,6 +61,9 @@ import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/onboarding/presentation/welcome_screen.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_subscription.dart';
+import 'fake_purchases.dart';
+import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
@@ -240,8 +243,8 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
     planClient: FakePlanClient(),
   ),
   // The in-run screen on a planned day, with the coach's numbers behind it:
-  // a real session, real derived zones and the week so far, so the live pace
-  // band is computed the way it is on device rather than mocked.
+  // a real session and real derived zones, so the live pace band is computed
+  // the way it is on device rather than mocked.
   'recording': (context) => RecordingScreen(
     recorder: FakeRunRecorder(),
     plannedSession: const PlannedSession(
@@ -253,8 +256,6 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
       Distance.meters(5000),
       const Duration(minutes: 24, seconds: 30),
     ),
-    weekDoneMeters: 26800,
-    weekTargetMeters: 42000,
     onCancel: () => ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Run discarded.'))),
@@ -391,11 +392,33 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Settings: the account block, the display-unit toggle, the compliance
   // surfaces, deleting the account and the version — everything about the app
   // rather than about the running.
-  'settings': (_) => SettingsScreen(
-    unit: UnitSystem.metric,
-    settings: InMemoryUnitSettings(),
-    auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
-    memberSince: RunnerStats.from(_demoRuns()).firstRunAt,
+  'settings': (_) => _settingsPreview(CoachSubscription.none),
+  // The three the free plate cannot show. Settings grew a subscription row on
+  // 2026-09-11 and its states are not one state with adjectives: paid up,
+  // paid up at the dearer tier, and "the store is chasing a payment" want
+  // different sentences and one of them wants a colour.
+  //
+  // `settings-billing-retry` is the one worth looking at. It is the only
+  // screen in the app where the coach is locked and the runner has cancelled
+  // nothing, so it is the only place the app has to explain itself rather
+  // than just refuse.
+  'settings-subscribed': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.coach,
+      standing: SubscriptionStanding.active,
+    ),
+  ),
+  'settings-premium': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.premiumCoach,
+      standing: SubscriptionStanding.active,
+    ),
+  ),
+  'settings-billing-retry': (_) => _settingsPreview(
+    const CoachSubscription(
+      tier: CoachTier.coach,
+      standing: SubscriptionStanding.billingRetry,
+    ),
   ),
   // Profile: lifetime totals, what the coach makes of them, records, the goal,
   // then the whole log. The demo set deliberately earns no coach note, so this
@@ -450,6 +473,17 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
 ///
 /// **Because the shell is most of the screen.** The nav bar and the floating
 /// coach mark are HomeShell's, not the tab's, so a preview that renders
+
+/// Settings at one subscription standing. Everything else about the screen is
+/// held still so the only difference between these plates is the row.
+Widget _settingsPreview(CoachSubscription subscription) => SettingsScreen(
+  unit: UnitSystem.metric,
+  settings: InMemoryUnitSettings(),
+  auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
+  memberSince: RunnerStats.from(_demoRuns()).firstRunAt,
+  entitlements: FakeEntitlements.of(subscription),
+);
+
 /// ProfileScreen or PlanScreen on its own is missing two of the three things
 /// a runner sees — and, being pushed onto the index, gains a back arrow that
 /// tab has nowhere to point. All three were reported as bugs in the screen.
@@ -819,13 +853,20 @@ class _ChatPreviewState extends State<_ChatPreview> {
         : widget.client!;
     _chat = ChatController(
       client: client,
-      brief: () async => CoachBrief.write(
+      brief: (String message) async => CoachBrief.write(
         recentRuns: _demoRuns(),
         plan: widget.withPlan ? _plan : null,
         profile: _profile,
         // The always-loaded tier. Read from the store rather than hard-coded so
         // the preview exercises the same path the app does.
         rollingSummary: (await _memory.summary())?.text,
+        // And the on-demand tier, wired the same way the shell wires it, so the
+        // harness shows what a recollection actually looks like in a brief
+        // rather than a brief that never has one.
+        recalled: recollectionsFrom(
+          await _memory.recall(message),
+          exceptConversation: _chat?.conversationId,
+        ),
       ).text,
       onAdaptRequest: widget.adapt ? _propose : null,
       onApplyRevision: widget.adapt ? _apply : null,
@@ -1152,6 +1193,15 @@ RunSummary _demoSummary() => RunSummary(
   maxHr: 167,
   caloriesEst: 358,
   points: demoRunTrace(),
+  bestEfforts: const <BestEffort>[
+    // 5 km inside a 5.23 km run, a little under its average — the shape a real
+    // record takes. See [_demoBests] for why these are written down rather than
+    // measured off the trace above.
+    BestEffort(
+      distanceMeters: 5000,
+      duration: Duration(minutes: 26, seconds: 25),
+    ),
+  ],
   splits: const <RunSplit>[
     RunSplit(
       index: 1,
@@ -1192,6 +1242,35 @@ RunSummary _demoSummary() => RunSummary(
   ],
 );
 
+/// The records a demo run of this shape would have set — every standard
+/// distance it contains, a shade under its own average pace.
+///
+/// **Invented rather than measured, and it has to be.** The real path is
+/// `bestEffortsFor(trace)` over the persisted points, but the one demo trace is
+/// a two-kilometre loop reused at four different stated distances, so measuring
+/// it would answer "no records" for a 10 km run. That is the fixture being thin
+/// rather than the feature being empty. The shade under average is the shape a
+/// real record takes: the fastest continuous 10 km inside a run is always
+/// quicker than the whole of it, which is the difference ADR-0026 exists over.
+///
+/// A run with no trace gets none, which is the rule and not a shortcut here.
+List<BestEffort> _demoBests(
+  double meters,
+  Duration duration, {
+  bool traced = true,
+}) => <BestEffort>[
+  if (traced)
+    for (final double distance in kRecordDistancesMeters)
+      if (meters >= distance)
+        BestEffort(
+          distanceMeters: distance,
+          duration: Duration(
+            milliseconds: (duration.inMilliseconds * (distance / meters) * 0.97)
+                .round(),
+          ),
+        ),
+];
+
 /// A canned training log for the history preview. Distinct thumbnails come from
 /// slicing/reversing the one demo trace; treadmill and manual runs have none.
 List<RunSummary> _demoRuns() {
@@ -1206,6 +1285,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 88,
       avgHr: 151,
       points: trace.reversed.toList(),
+      bestEfforts: _demoBests(10120, const Duration(minutes: 54, seconds: 12)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 14, 18, 20),
@@ -1215,6 +1295,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 55,
       avgHr: 165,
       points: trace.sublist(0, 250),
+      bestEfforts: _demoBests(8000, const Duration(minutes: 38, seconds: 2)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 10, 7),
@@ -1232,6 +1313,7 @@ List<RunSummary> _demoRuns() {
       elevationGainMeters: 30,
       avgHr: 145,
       points: trace.sublist(120),
+      bestEfforts: _demoBests(6000, const Duration(minutes: 33, seconds: 30)),
     ),
     RunSummary(
       startedAt: DateTime(2026, 7, 5, 9),

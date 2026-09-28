@@ -5,7 +5,6 @@ import 'package:mgk_units/mgk_units.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
-import 'block_arc.dart';
 import 'session_brief_sheet.dart';
 import 'session_labels.dart';
 import '../../recording/domain/run_summary.dart';
@@ -19,8 +18,9 @@ import 'week_list.dart';
 /// Weeks are generated one ahead (docs/architecture/plan-generation.md) and each
 /// one is shaped by how the previous went — an adaptation, a missed long run, a
 /// niggle. Printing a fixed session for three weeks' time would present a guess
-/// as a commitment. Beyond the horizon the runner sees the *shape* of the block,
-/// which is the part that really is decided.
+/// as a commitment. Beyond the horizon there is only the *shape* of the block,
+/// which is the part that really is decided — drawn on `PlanBlockScreen`, a tap
+/// away on the goal, rather than on this tab under a heading of its own.
 const int kPlannedWeekHorizon = 2;
 
 /// The coach: a conversation, and the plan when there is one.
@@ -72,6 +72,13 @@ class PlanScreen extends StatelessWidget {
   final VoidCallback? onReplacePlan;
 
   /// Opens the week-by-week view of the whole block.
+  ///
+  /// **It hangs off the goal, not off a section of its own.** A card headed
+  /// "The whole block" sitting under the week read as a second, competing plan
+  /// — two things on one screen both claiming to be what the runner is doing.
+  /// The week *is* the plan; the block is background to it, and the line that
+  /// already says "week 3 of 9" is the one place a runner is asking about the
+  /// block when they read it.
   final VoidCallback? onOpenBlock;
 
   /// Opens the scrollable calendar of every week.
@@ -115,7 +122,7 @@ class PlanScreen extends StatelessWidget {
         ],
       ),
       // The photograph is what makes the glass above it mean anything: over a
-      // flat fill a BackdropFilter blurs nothing (docs/design/design-system.md).
+      // flat fill a BackdropFilter blurs nothing (docs/history/design-system.md).
       // `quiet`, because this screen is dense — the picture is texture here
       // rather than subject.
       body: PhotoBackdrop(
@@ -127,15 +134,23 @@ class PlanScreen extends StatelessWidget {
         scrim: ScrimStrength.grounded,
         opacity: 0.34,
         alignment: Alignment.topCenter,
+        // **`bottom: false`, and this is the widget that caused IMG_4700.**
+        // With the nav bar in the Scaffold slot, this `SafeArea` measured a
+        // viewport that had already had the bar's height taken off it, and a
+        // fake bottom inset on top of that sliced the last card and left a
+        // black band. The bar floats now (ADR-0033) and the scroll padding
+        // below does the whole job, so the mechanism is deleted rather than
+        // tuned. Matches `home_tab.dart`, which has always done it this way.
         child: SafeArea(
+          bottom: false,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.lg,
-              // Room for the floating mark, so the last card is never tucked
-              // under it.
-              kCoachMarkClearance,
+              // Room for everything floating at the foot: the nav pill, and the
+              // coach mark stacked above it.
+              kFloatingChromeClearance + MediaQuery.paddingOf(context).bottom,
             ),
             children: <Widget>[
               if (current != null) ...<Widget>[
@@ -145,6 +160,7 @@ class PlanScreen extends StatelessWidget {
                     today: today,
                     unit: unit,
                     runs: runs,
+                    onOpenBlock: onOpenBlock,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -170,10 +186,6 @@ class PlanScreen extends StatelessWidget {
   ) {
     final currentIndex = plan.weekIndexOn(today);
     final planWeeks = plan.skeleton.weeks;
-    final lastDetailed = (currentIndex + kPlannedWeekHorizon - 1).clamp(
-      1,
-      planWeeks.length,
-    );
 
     return <Widget>[
       // Only the week the runner is in. Next week used to sit beneath it at
@@ -205,29 +217,10 @@ class PlanScreen extends StatelessWidget {
             paces: paces,
             unit: unit,
             onAskCoach: onAskAboutSession,
+            now: today,
           ),
         ),
       ),
-
-      if (lastDetailed < planWeeks.length) ...<Widget>[
-        const SizedBox(height: AppSpacing.xl),
-        Entrance(
-          index: 3,
-          child: _BlockCard(
-            weeks: planWeeks,
-            currentIndex: currentIndex,
-            outlook: planOutlook(
-              plan,
-              unit: unit,
-              // A horizon has no date to count down to, so this is the only
-              // thing it is progressing toward — and the moment it arrives is
-              // the one worth interrupting for (ADR-0011).
-              readiness: assessReadiness(plan.profile, runs, now: today),
-            ),
-            onOpen: onOpenBlock,
-          ),
-        ),
-      ],
     ];
   }
 }
@@ -415,18 +408,26 @@ class _WeekLoading extends StatelessWidget {
 
 /// What the block is for, and how long is left of it. The coach screen without
 /// this answers "what am I doing" but never "why".
+///
+/// **It is also the way into the block**, since the block stopped having a card
+/// of its own. Both lines here are about the whole thing rather than this week
+/// — a race, and how far through the weeks toward it the runner is — so a
+/// runner reading "week 3 of 9" and wanting to see the other six taps the words
+/// that raised the question.
 class _GoalStrip extends StatelessWidget {
   const _GoalStrip({
     required this.plan,
     required this.today,
     required this.unit,
     this.runs = const <RunSummary>[],
+    this.onOpenBlock,
   });
 
   final StoredPlan plan;
   final DateTime today;
   final UnitSystem unit;
   final List<RunSummary> runs;
+  final VoidCallback? onOpenBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +444,7 @@ class _GoalStrip extends StatelessWidget {
       readiness: assessReadiness(plan.profile, runs, now: today),
     );
 
-    return Row(
+    final strip = Row(
       children: <Widget>[
         Expanded(
           child: Text(
@@ -459,73 +460,25 @@ class _GoalStrip extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// The rest of the block, as one card rather than a row per week.
-///
-/// The list this replaces was fourteen bars of weeks the runner cannot act on,
-/// under a line saying they will change — the least actionable content on the
-/// screen taking the most of it. The arc says the same thing in a glance: it
-/// climbs, it dips, it tapers, and here is where you are.
-class _BlockCard extends StatelessWidget {
-  const _BlockCard({
-    required this.weeks,
-    required this.currentIndex,
-    required this.outlook,
-    this.onOpen,
-  });
-
-  final List<SkeletonWeek> weeks;
-  final int currentIndex;
-
-  /// What to head the card and what to say under the arc — written in the
-  /// domain, because a rhythm has no peak and nothing to taper into.
-  final PlanOutlook outlook;
-
-  final VoidCallback? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return GlassSurface(
-      onTap: onOpen,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              SectionLabel(outlook.title),
-              const Spacer(),
-              if (onOpen != null)
-                const Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: AppColors.textTertiary,
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          BlockArc(weeks: weeks, currentIndex: currentIndex),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            outlook.caption,
-            style: theme.textTheme.bodySmall?.copyWith(
+        if (onOpenBlock != null)
+          const Padding(
+            padding: EdgeInsets.only(left: 2),
+            child: Icon(
+              Icons.chevron_right,
+              size: 18,
               color: AppColors.textTertiary,
-              height: 1.4,
             ),
           ),
-        ],
-      ),
+      ],
+    );
+
+    if (onOpenBlock == null) return strip;
+    return GestureDetector(
+      onTap: onOpenBlock,
+      // Opaque, so the gap between the goal and the position is part of the
+      // target rather than a hole in it.
+      behavior: HitTestBehavior.opaque,
+      child: strip,
     );
   }
 }

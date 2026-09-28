@@ -373,7 +373,7 @@ void main() {
       final saturday = week.runOn(DateTime.saturday)!;
 
       expect(saturday.kind, SessionKind.timeTrial);
-      expect(sessionLabel(saturday), 'parkrun');
+      expect(sessionName(saturday), 'parkrun');
       expect(effortFor(saturday.kind).rpeHigh, 10);
     });
 

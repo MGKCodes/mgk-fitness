@@ -178,7 +178,12 @@ class ConsistencyGrid extends StatelessWidget {
           const SectionLabel('Turning up'),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '$total runs over ${grid.length} weeks',
+            // Both counted, because both reach one. "1 runs over 8 weeks" was
+            // on screen in every screenshot of the first field test, and the
+            // week half gets it too — a runner in their first week is exactly
+            // the person reading this card most carefully.
+            '$total ${total == 1 ? 'run' : 'runs'} over '
+            '${grid.length} ${grid.length == 1 ? 'week' : 'weeks'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),

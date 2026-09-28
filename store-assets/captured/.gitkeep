@@ -1,0 +1,7 @@
+Screenshots off a real device live here, and ARE committed: a picture of a run
+somebody actually did cannot be regenerated, and an App Store asset that exists
+on one laptop is a liability rather than an asset.
+
+Name them so the checker knows what they are:
+  listing-*.png   6.9in listing screenshots, 1320x2868 or 1290x2796
+  icon-1024.png   the marketing icon, exactly 1024x1024, no alpha

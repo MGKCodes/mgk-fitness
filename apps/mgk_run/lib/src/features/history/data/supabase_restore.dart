@@ -35,9 +35,23 @@ class SupabaseRestore implements DataRestore {
     required AppDatabase db,
     required BackupConsentStore consent,
     SupabaseClient? client,
+    this.timeout = const Duration(seconds: 20),
   }) : _db = db,
        _consent = consent,
        _client = client ?? Supabase.instance.client;
+
+  /// How long **one step** of the restore may take before it counts as failed.
+  ///
+  /// Per step rather than for the whole thing, so a slow pull of the runs does
+  /// not cost the plan and the coach's memory their chance to arrive.
+  ///
+  /// This had no deadline at all, and it is awaited on the launch path — so a
+  /// connection that hung left the app holding an empty log behind it. Twenty
+  /// seconds is [AuthRepository.timeout]'s bound, chosen to match rather than to
+  /// introduce a third number: both are on the critical path of a launch, and
+  /// both would rather report a dead radio than wait on it. Longer than the
+  /// best-effort reads at 5s because this one moves real data.
+  final Duration timeout;
 
   final AppDatabase _db;
   final BackupConsentStore _consent;
@@ -80,7 +94,7 @@ class SupabaseRestore implements DataRestore {
     );
     if (rows.isEmpty) return 0;
 
-    await _db.restoreRuns(<RunsCompanion>[
+    final added = await _db.restoreRuns(<RunsCompanion>[
       for (final r in rows) _runCompanion(r),
     ]);
 
@@ -92,7 +106,7 @@ class SupabaseRestore implements DataRestore {
     for (final id in recent) {
       await _guard(() => _restoreTrace(id));
     }
-    return rows.length;
+    return added;
   }
 
   Future<void> _restoreTrace(String runId) async {
@@ -267,6 +281,17 @@ class SupabaseRestore implements DataRestore {
     ),
     avgPaceSPerKm: Value((r['avg_pace_s_per_km'] as num?)?.toDouble()),
     elevationGainM: Value((r['elevation_gain_m'] as num?)?.toDouble()),
+    elevationMaxM: Value((r['elevation_max_m'] as num?)?.toDouble()),
+    steps: Value((r['steps'] as num?)?.toInt()),
+    // Both arrive now. `run.runs` gained them on 2026-09-01; until then this
+    // comment explained why a run restored onto a new phone came back without
+    // its high point and its step count.
+    //
+    // A row mirrored BEFORE that migration has null for both, which is
+    // indistinguishable from a run that never had them — and correctly so, since
+    // absence is the designed state for each: `steps` needs a Health permission
+    // that may be refused, and `elevation_max_m` needs a barometric source that
+    // is not wired at all (ADR-0024).
     avgHr: Value((r['avg_hr'] as num?)?.toInt()),
     maxHr: Value((r['max_hr'] as num?)?.toInt()),
     cadence: Value((r['cadence'] as num?)?.toInt()),
@@ -370,24 +395,12 @@ class SupabaseRestore implements DataRestore {
   /// continued next time.
   Future<void> _guard(Future<void> Function() body) async {
     try {
-      await body();
+      await body().timeout(timeout);
     } on Object {
-      // Deliberate — see above.
+      // Deliberate — see above. A TimeoutException lands here like any other
+      // failure, which is why the deadline needs no branch of its own.
     }
   }
 }
 
 /// What a restore pulled, for a caller that wants to say so.
-class RestoreResult {
-  RestoreResult();
-
-  factory RestoreResult.skipped() => RestoreResult()..skipped = true;
-
-  /// True when consent had not been given, so nothing was attempted.
-  bool skipped = false;
-  int runs = 0;
-  int plans = 0;
-  int turns = 0;
-
-  bool get restoredAnything => runs > 0 || plans > 0 || turns > 0;
-}

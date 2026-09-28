@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
 import 'plan_shape.dart';
+import 'prescribed_distance.dart';
 import 'runner_profile.dart';
 import 'training_plan.dart';
+import 'week_progress.dart';
 
 /// A single broken invariant.
 class Violation {
@@ -41,7 +45,14 @@ class PlanRules {
     this.requireExactSessionCount = true,
     this.requireTaper = true,
     this.requireDeloadCadence = true,
+    this.rejectPastDays = true,
   });
+
+  /// Whether a session may fall on a day that has already gone.
+  ///
+  /// True while a plan is being *generated*, false while a runner is adapting
+  /// one they are already living in. See [PlanRules.adaptation].
+  final bool rejectPastDays;
 
   /// The rules for a change the **runner asked for**.
   ///
@@ -71,7 +82,12 @@ class PlanRules {
       // day for still is, so the check becomes a ceiling rather than an equals.
       requireExactSessionCount = false,
       requireTaper = true,
-      requireDeloadCadence = true;
+      requireDeloadCadence = true,
+      // **Off for an adaptation, and this is load-bearing.** A runner adjusting
+      // on Thursday is holding a week that already contains Monday, and telling
+      // them Monday is in the past would refuse every mid-week change they
+      // could possibly make.
+      rejectPastDays = false;
 
   /// The rules for a plan that **holds a level** rather than climbing to one —
   /// a [PlanShape.rhythm].
@@ -93,7 +109,8 @@ class PlanRules {
       longRunTolerance = 0.40,
       requireExactSessionCount = false,
       requireTaper = false,
-      requireDeloadCadence = false;
+      requireDeloadCadence = false,
+      rejectPastDays = true;
 
   /// The rules for a [PlanShape.horizon] — ramps like a block, with nothing to
   /// taper into.
@@ -108,7 +125,8 @@ class PlanRules {
       longRunTolerance = 0.05,
       requireExactSessionCount = true,
       requireTaper = false,
-      requireDeloadCadence = true;
+      requireDeloadCadence = true,
+      rejectPastDays = true;
 
   /// The rule set for [shape]. The one place the mapping lives, so a new shape
   /// is a compile error here rather than a silently-wrong validation.
@@ -135,7 +153,9 @@ class PlanRules {
   /// How far a generated week's long run may drift from the long run its
   /// skeleton slot declares. Tighter than [weekVolumeTolerance] because the
   /// slot's long run is shown to the runner on the plan arc as a single number,
-  /// so drift here reads as two screens contradicting each other.
+  /// so drift here reads as two screens contradicting each other. Floored at
+  /// [prescribedGridSlackMeters] where it is applied, since the week rounds to
+  /// whole kilometres and the slot does not.
   final double longRunTolerance;
 
   /// Whether the final week must be a taper below peak. Only a block has an
@@ -267,11 +287,20 @@ ValidationResult validateSkeleton(
 }
 
 /// Validates a generated week against its skeleton [slot] and the profile.
+///
+/// [soFar] is what has already happened in the week, when the caller knows. It
+/// is opt-in for the same reason [weekStart] is — most callers have no log to
+/// offer and generation has nothing to compare against at all — and it turns on
+/// the one rule about the past, plus the correction to the long-run share that
+/// rule makes necessary.
 ValidationResult validateWeek(
   TrainingWeek week,
   SkeletonWeek slot,
   RunnerProfile profile, {
   PlanRules rules = const PlanRules(),
+  DateTime? weekStart,
+  DateTime? now,
+  WeekAsRun? soFar,
 }) {
   final v = <Violation>[];
   final runs = week.runs.toList();
@@ -304,6 +333,122 @@ ValidationResult validateWeek(
           'a session falls on weekday ${s.weekday}, which is not available',
         ),
       );
+    }
+  }
+
+  // **The two date rules, and the only ones in this file.**
+  //
+  // Everything else here is about shape -- volume, ramp, spacing -- and none of
+  // it has ever needed a calendar. That was the gap: a plan generated on a
+  // Friday put the current week's sessions on the Tuesday, Wednesday and
+  // Thursday that had already gone, and the final week prescribed a 5 km run on
+  // race day itself. Both passed every check, because no check could see a
+  // date.
+  //
+  // They are opt-in through [weekStart] rather than mandatory, because the plan
+  // model deliberately carries no dates at all -- a [PlannedSession] knows only
+  // its weekday, and dates are reattached by [StoredPlan] at read time. The
+  // caller that has the calendar passes it; the many that do not are unchanged.
+  if (weekStart != null) {
+    final DateTime start = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
+    final DateTime? today = now == null
+        ? null
+        : DateTime(now.year, now.month, now.day);
+    final DateTime? race = profile.eventDate == null
+        ? null
+        : DateTime(
+            profile.eventDate!.year,
+            profile.eventDate!.month,
+            profile.eventDate!.day,
+          );
+
+    for (final s in week.sessions) {
+      if (s.kind == SessionKind.rest) continue;
+      final DateTime on = start.add(Duration(days: s.weekday - 1));
+
+      // A day that has gone cannot be trained, and a plan that opens by
+      // prescribing three of them starts life owing the runner an apology.
+      if (rules.rejectPastDays && today != null && on.isBefore(today)) {
+        v.add(
+          Violation(
+            'session_in_the_past',
+            'a session falls on weekday ${s.weekday}, which was '
+                '${today.difference(on).inDays} day(s) ago',
+          ),
+        );
+      }
+
+      // **Race day is the event, not a training day** (ADR-0027). The whole
+      // block is built to arrive at it, and the deterministic builder puts the
+      // long run on the latest available weekday -- which in the final week is
+      // usually the Sunday the race is on.
+      if (race != null && on.isAtSameMomentAs(race)) {
+        v.add(
+          Violation(
+            'session_on_race_day',
+            'a ${s.kind.name} session falls on race day, which is the event',
+          ),
+        );
+      }
+    }
+  }
+
+  // **The third date rule, and the only one about the past.**
+  //
+  // A session the runner has already been out and run is not up for
+  // negotiation. The revision may do what it likes with the days ahead; the
+  // days behind are a matter of record.
+  //
+  // This exists because `adapt` is the one surface handed a week the runner is
+  // living *inside*. Asked to rebalance on a Thursday, the model is looking at
+  // three days it can tidy up, and tidying Monday means the runner is shown a
+  // diff reading "Monday: 8 km easy — removed" for a run they did. The plan
+  // stops describing their week and starts contradicting it, and Home, which
+  // derives completion from the log rather than storing it (ADR-0017), then
+  // reads a day that was done as a day that was never asked for.
+  //
+  // **Why a rule and not just the prompt.** The prompt carries the same
+  // instruction (`ADAPT_INSTRUCTIONS` in supabase/functions/coach/surfaces.ts)
+  // and it earns its place: a model told what happened gets it right first time,
+  // and a refusal the model cannot act on only burns the attempt. But telling
+  // is not the same as enforcing. The house rule is that the model proposes and
+  // the validator disposes, and of everything a model can be wrong about, a
+  // claim about what the runner did last Monday is the last one to take on
+  // trust — it is the only claim here the app can check against something that
+  // actually happened. The prompt makes it likely; this makes it true.
+  //
+  // Note what it does **not** do. It adds no fidelity-to-plan requirement to any
+  // day still ahead: [PlanRules.adaptation] deliberately lets a runner drop
+  // sessions and move volume around, and every one of those relaxations is
+  // untouched. The past is pinned, the future is as free as it ever was — which
+  // is the difference between a runner deviating on purpose and a model
+  // rewriting their history.
+  if (soFar != null) {
+    for (final day in soFar.done) {
+      final ran = day.prescribed!;
+      final kept = week.runOn(day.weekday);
+      // Same day, same kind, same distance. The tolerance is the prescribed
+      // grid's own slack: both numbers are prescriptions on the whole-kilometre
+      // grid, so anything inside half a kilometre is the same session written
+      // twice, and refusing on it would be refusing on our own arithmetic.
+      final unchanged =
+          kept != null &&
+          kept.kind == ran.kind &&
+          (kept.distanceMeters - ran.distanceMeters).abs() <=
+              prescribedGridSlackMeters;
+      if (!unchanged) {
+        v.add(
+          Violation(
+            'session_already_done',
+            'weekday ${day.weekday} was already run and the revision '
+                '${kept == null ? 'drops it' : 'changes it'}',
+          ),
+        );
+      }
     }
   }
 
@@ -351,12 +496,38 @@ ValidationResult validateWeek(
     }
   }
 
-  // Long run within a sane fraction of the week, and under the absolute ceiling.
-  if (week.longRunMeters > week.volumeMeters * rules.longRunMaxFraction + 1) {
+  // Long run within a sane fraction of the week.
+  //
+  // **This rule is about what is being asked for, measured against what will be
+  // run**, and both halves of that move once [soFar] is in play — because after
+  // a refit most of the week is history rather than prescription, and a rule
+  // that cannot tell the two apart starts objecting to the runner's own log.
+  //
+  // The numerator skips a long run that has already happened. There is nothing
+  // the runner could change to satisfy it: they went out on Saturday and ran
+  // 17 km, and refusing the week for it would leave them holding a refusal with
+  // no action in it.
+  //
+  // The denominator adds back the metres run on days the plan asked nothing of.
+  // A refit credits an unplanned 12 km Wednesday by prescribing 12 km *less*, so
+  // the week the runner actually runs is unchanged while the number this divides
+  // by is 12 km smaller — and a long run that is 34% of their week gets reported
+  // as 45% of it. Only the unplanned metres are added: the days the plan did ask
+  // for are already in [TrainingWeek.volumeMeters], and counting them twice
+  // would make the week look bigger than it is.
+  //
+  // The ceiling below stays on the week's actual longest run, unconditionally.
+  // That one is not about balance, it is about what a body can be asked for, and
+  // it applies whether or not the run has happened.
+  final judgedLongRun = soFar == null
+      ? week.longRunMeters
+      : _longRunAhead(week, soFar);
+  final judgedVolume = week.volumeMeters + (soFar?.unplannedMeters ?? 0);
+  if (judgedLongRun > judgedVolume * rules.longRunMaxFraction + 1) {
     v.add(
       Violation(
         'long_run_fraction',
-        'long run (${week.longRunMeters.round()} m) exceeds '
+        'long run (${judgedLongRun.round()} m) exceeds '
             '${(rules.longRunMaxFraction * 100).round()}% of weekly volume',
       ),
     );
@@ -388,9 +559,18 @@ ValidationResult validateWeek(
   // so a week that quietly picks its own contradicts what the runner was shown
   // for that very week — checked separately from the fraction/ceiling bounds
   // above, which a divergent long run can satisfy perfectly well.
+  //
+  // Floored at half a kilometre because the week prescribes on the whole-
+  // kilometre grid while the slot keeps the plan's exact working, so the two
+  // legitimately differ by up to that much. Without the floor a 5.7 km slot
+  // prescribed as 6 km is 330 m out against a 285 m band, and the app rejects
+  // its own arithmetic — a rounding reported as a contradiction.
+  final longRunBand = math.max(
+    slot.longRunMeters * rules.longRunTolerance,
+    prescribedGridSlackMeters,
+  );
   if (slot.longRunMeters > 0 &&
-      (week.longRunMeters - slot.longRunMeters).abs() >
-          slot.longRunMeters * rules.longRunTolerance) {
+      (week.longRunMeters - slot.longRunMeters).abs() > longRunBand) {
     v.add(
       Violation(
         'long_run_slot',
@@ -402,6 +582,21 @@ ValidationResult validateWeek(
   }
 
   return ValidationResult(v);
+}
+
+/// The longest run in [week] that has **not** already been run.
+///
+/// Zero when everything left in the week is behind the runner, which is the
+/// right answer: a week with nothing still to do cannot be asking too much of
+/// them.
+double _longRunAhead(TrainingWeek week, WeekAsRun soFar) {
+  final settled = soFar.settledWeekdays;
+  var longest = 0.0;
+  for (final s in week.runs) {
+    if (settled.contains(s.weekday)) continue;
+    if (s.distanceMeters > longest) longest = s.distanceMeters;
+  }
+  return longest;
 }
 
 void _checkLongRuns(

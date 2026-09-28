@@ -498,10 +498,28 @@ export function summariseMessages(body: Body): Message[] {
 }
 
 // ---- intake -----------------------------------------------------------------
+//
+// ## One question per turn
+//
+// This prompt and `LIFT_INTAKE_INSTRUCTIONS` below both used to say "batch two
+// or three questions per turn", and both were wrong in the same way — **change
+// one and you must change the other, or the two intakes drift apart.**
+//
+// A build 12 field test met an opening message carrying roughly four questions.
+// Batching reads fine in a prompt and terribly in a chat bubble: a person
+// answers the first thing they were asked, forgets the rest, and the coach has
+// to re-ask — so the batch does not even buy the turns it was supposed to. It
+// also stops the conversation being one, which is the entire reason intake is
+// not a form.
+//
+// The reflect-back is kept, because it is the half the tester said worked.
+// Turn budgets are Dart's job and always were: `OnboardingController.turnCap`
+// is what actually stops a loop, and it has been resized for one question per
+// turn. A prompt that also names a target just races it.
 
 const INTAKE_INSTRUCTIONS = `You are running the onboarding conversation. Your
-job is to gather exactly the inputs needed to build this runner's plan, in as
-few exchanges as possible. Aim for four to five turns total.
+job is to gather exactly the inputs needed to build this runner's plan,
+one question at a time.
 
 FIRST, work out what kind of plan they are after, and set "shape". It decides
 what else is worth asking, and asking for the wrong things is the app not
@@ -533,10 +551,13 @@ Then gather what that shape needs:
 Ask which weekdays they can run, not just how many. The plan is laid out on
 named days, so "five days" alone cannot be turned into a week. If they do not
 mind which, say so in "available_weekdays" by listing the days you propose.
+That is one question and not two: the days they name give you the count too.
 
 Rules:
-- Batch two or three questions per turn. Acknowledge what they just told you
-  before asking for what is still missing.
+- Ask exactly ONE question per turn. Acknowledge what they just told you, then
+  ask for the single next thing you still need. Never put two questions in one
+  message, even short ones, and never list what is still to come. A runner
+  reading four questions answers the first and forgets the other three.
 - If they answer several things in one message, capture all of them and skip
   ahead. Never re-ask for something you already have.
 - Do NOT judge whether a value is plausible. Just extract what they said; a
@@ -746,6 +767,10 @@ Rules the week MUST follow (a validator rejects violations):
   distance_meters 0 — it adds no running volume — and it does not count toward
   days_per_week. Do not prescribe what is in it; Runio plans running, and the
   runner's lifting lives elsewhere.
+- If a race_weekday is given, NOTHING may be scheduled on it — no run, no
+  strength, no recovery. That day is the race: the thing the whole block has
+  been building toward. A training session on it means the week was written
+  without noticing what it was for.
 Distances are in METERS. Weekdays are 1=Monday..7=Sunday.`;
 
 const WEEK_SCHEMA = {
@@ -787,12 +812,25 @@ function weekMessages(body: Body): Message[] {
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const system = `${RUN_PERSONA}\n\n${WEEK_INSTRUCTIONS}` +
     violationNote(body.violations);
+  // The weekday the race falls on, when this week contains it.
+  //
+  // **The model had no way to know.** This surface was handed a slot and a
+  // profile and nothing else — no dates, no today, no race — so it filled the
+  // final week exactly like every other: the long run on the latest available
+  // day, which for a Sunday race is the race. The validator refuses that now,
+  // and a refusal the model cannot act on only burns both attempts and falls
+  // through to Dart. Telling it is the half that makes the rule cheap.
+  const raceWeekday = body.race_weekday;
+  const race = typeof raceWeekday === "number"
+    ? "\n\nrace_weekday: " + raceWeekday +
+      " — the race is on this day. Schedule nothing on it."
+    : "";
   return [
     { role: "system", content: system },
     {
       role: "user",
       content: `Skeleton slot:\n${JSON.stringify(slot)}\n\n` +
-        `Runner profile:\n${JSON.stringify(profile)}`,
+        `Runner profile:\n${JSON.stringify(profile)}${race}`,
     },
   ];
 }
@@ -808,13 +846,48 @@ rejects violations):
 - Never two hard sessions (threshold or interval) on consecutive days.
 Change as little as needed to satisfy the request. Return the FULL revised week
 (every session), not just what changed. Distances are METERS, weekdays
-1=Monday..7=Sunday.`;
+1=Monday..7=Sunday.
+
+If week_so_far is given, the week is already part-run. It is NOT a week you are
+writing from scratch, and the four lists are four different instructions:
+- done — these sessions have been RUN. Return each one exactly as it is: same
+  weekday, same kind, same distance. Moving, resizing or dropping one rewrites a
+  run the runner went out and did, and a validator refuses the whole revision
+  for it.
+- unplanned — a run on a day the plan asked nothing of. That is training already
+  banked, so ask for LESS from the days that are left rather than adding it to
+  the week. Schedule nothing on that day, and keep hard sessions off the day
+  after it.
+- missed — these days have gone. Drop them. Do not pile their distance onto the
+  weekend: a missed easy run is written off, and only a missed long run is worth
+  moving to a day that is still free.
+- remaining — the only sessions you may rewrite, and only onto days that have
+  not passed.
+Fit the week around what happened. Rearranging days that are already settled is
+not an adjustment, it is a different week.`;
 
 function adaptMessages(body: Body): Message[] {
   const week = (body.week as Record<string, unknown>) ?? {};
   const slot = (body.slot as Record<string, unknown>) ?? {};
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const request = typeof body.request === "string" ? body.request : "";
+  // What has already happened in the week the runner is asking to change.
+  //
+  // **The model had no way to know, and it showed.** This surface was handed a
+  // week, a slot and a sentence — nothing about the runner's log — so a runner
+  // who went out on a Wednesday the plan left blank and then asked to have the
+  // week adjusted got all seven days shuffled as though the week were still
+  // ahead of them. The same gap `race_weekday` closed on the `week` surface: a
+  // fact the validator holds the answer to, withheld from the only participant
+  // who could act on it, so the refusal burns the attempt instead of preventing
+  // it.
+  //
+  // Absent for a week nothing has happened in yet — there is nothing to fit
+  // around, and a key present but empty is a third state to reason about.
+  const soFar = body.week_so_far;
+  const happened = soFar && typeof soFar === "object"
+    ? `\n\nWhat has already happened this week:\n${JSON.stringify(soFar)}`
+    : "";
   return [
     { role: "system", content: `${RUN_PERSONA}\n\n${ADAPT_INSTRUCTIONS}` },
     {
@@ -822,7 +895,7 @@ function adaptMessages(body: Body): Message[] {
       content: `The runner asked: "${request}"\n\n` +
         `This week's sessions:\n${JSON.stringify(week)}\n\n` +
         `Skeleton slot:\n${JSON.stringify(slot)}\n\n` +
-        `Runner profile:\n${JSON.stringify(profile)}`,
+        `Runner profile:\n${JSON.stringify(profile)}${happened}`,
     },
   ];
 }
@@ -1271,10 +1344,14 @@ export function liftSummariseMessages(body: Body): Message[] {
 // That is ADR-0003 at its strongest: the model cannot propose a weight, so no
 // validator has to catch one.
 
+// **One question per turn, the same as Run.** This is the second half of the
+// pair described above `INTAKE_INSTRUCTIONS`; the two say the same thing on
+// purpose and have to be edited together, or a lifter and a runner get
+// different coaches.
+
 const LIFT_INTAKE_INSTRUCTIONS =
   `You are running the conversation that sets up a lifter's training block. Your
-job is to gather what a plan needs, in as few exchanges as possible. Aim for
-three or four turns.
+job is to gather what a plan needs, one question at a time.
 
 What a plan needs:
 - what they are training for, in their own words
@@ -1286,11 +1363,14 @@ What a plan needs:
 
 Ask which weekdays, not just how many. A block is laid out on named days, so
 "four days" alone cannot be turned into a week. If they do not mind which, say
-so by listing the days you propose.
+so by listing the days you propose. That is one question and not two: the days
+they name give you the count too.
 
 Rules:
-- Batch two or three questions per turn. Acknowledge what they just told you
-  before asking for what is still missing.
+- Ask exactly ONE question per turn. Acknowledge what they just told you, then
+  ask for the single next thing you still need. Never put two questions in one
+  message, even short ones, and never list what is still to come. A lifter
+  reading four questions answers the first and forgets the other three.
 - If they answer several things at once, capture all of them and skip ahead.
   Never re-ask for something you already have.
 - Do NOT judge whether an answer is plausible, and do not talk them out of a

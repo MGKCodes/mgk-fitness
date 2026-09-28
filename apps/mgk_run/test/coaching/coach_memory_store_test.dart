@@ -322,6 +322,88 @@ void main() {
         expect(await store.loadTurns('new-chat'), hasLength(1));
       });
     });
+
+    // Sessions mean the dock no longer opens on last week's transcript
+    // (ADR-0025), so last week's transcript needs somewhere to be. Both stores
+    // answer the same question in the same order — the phone and the preview
+    // disagreeing about which conversation is the most recent would be close
+    // to unfindable.
+    group('$name — previous conversations', () {
+      Future<void> say(
+        CoachMemoryStore store,
+        String id,
+        String text,
+        DateTime at,
+      ) => store.appendTurn(
+        conversationId: id,
+        role: CoachRole.user,
+        text: text,
+        at: at,
+      );
+
+      test('are listed by when they were last spoken in', () async {
+        final store = build();
+        await say(store, 'monday', 'I have entered a half.', t0);
+        await say(store, 'friday', 'My calf is tight.', t0.add(_days(4)));
+        // Monday's conversation picked back up on Saturday, so it is the most
+        // recent one — ordering is by the last turn, not by the first.
+        await say(store, 'monday', 'Still on for April.', t0.add(_days(5)));
+
+        final listed = await store.recentConversations();
+        expect(listed.map((c) => c.id), <String>['monday', 'friday']);
+      });
+
+      test('carry what opened them, and how long they ran', () async {
+        final store = build();
+        await say(store, 'c1', 'I have entered a half in April.', t0);
+        await store.appendTurn(
+          conversationId: 'c1',
+          role: CoachRole.assistant,
+          text: 'Good. We will build to it.',
+          at: t0.add(const Duration(seconds: 30)),
+        );
+
+        final listed = await store.recentConversations();
+        expect(listed.single.opening, 'I have entered a half in April.');
+        expect(listed.single.turns, 2);
+        expect(listed.single.startedAt.isAtSameMomentAs(t0), isTrue);
+        expect(
+          listed.single.lastTurnAt.isAtSameMomentAs(
+            t0.add(const Duration(seconds: 30)),
+          ),
+          isTrue,
+        );
+      });
+
+      test('are bounded by the limit asked for', () async {
+        final store = build();
+        for (var i = 0; i < 5; i++) {
+          await say(store, 'c$i', 'line $i', t0.add(_days(i)));
+        }
+        expect(await store.recentConversations(limit: 2), hasLength(2));
+      });
+
+      test('a runner who has never spoken has none', () async {
+        expect(await build().recentConversations(), isEmpty);
+      });
+
+      // A conversation pruned out of existence is not a conversation, and must
+      // not survive in the list as a row with nothing behind it.
+      test('a pruned conversation leaves the list', () async {
+        final store = build();
+        await say(store, 'ancient', 'last year', t0.subtract(_days(400)));
+        await say(store, 'recent', 'this week', t0);
+
+        await store.prune(
+          const CoachMemoryRetention(maxAge: Duration(days: 180)),
+          now: t0,
+        );
+
+        expect((await store.recentConversations()).map((c) => c.id), <String>[
+          'recent',
+        ]);
+      });
+    });
   });
 
   // --- device-specific: durability across a relaunch ---------------------------
@@ -447,3 +529,6 @@ void main() {
   //
   //     supabase/tests/coach_contract.sql   ->  supabase test db
 }
+
+/// Whole days, so a fixture reads as a calendar rather than as arithmetic.
+Duration _days(int n) => Duration(days: n);

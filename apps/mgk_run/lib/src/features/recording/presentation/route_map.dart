@@ -4,8 +4,10 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_config.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
+import '../domain/split_marker.dart';
 
 /// How much of the basemap shows through, over the app's charcoal base.
 ///
@@ -39,12 +41,32 @@ const double kBasemapOpacity = 0.85;
 /// is deliberate: shipping a hard-coded provider would mean calling a host the
 /// policy doesn't declare. Tiles load over the network, so widget tests and
 /// offline use show only the polyline either way.
+/// Every gesture this app's maps accept: drag, pinch-zoom, double-tap, fling —
+/// and **not** rotation, and **not** `pinchMove`.
+///
+/// **Rotation is declined, not unimplemented** ([ADR-0022]). A north-up map is
+/// the decision; `InteractiveFlag.all` would quietly undo it, which is why the
+/// set is named here once rather than spelled at each call site.
+///
+/// **`pinchMove` is excluded for the sheet's sake.** It drags the map on a
+/// two-finger move at a low threshold, which is close enough to the vertical
+/// drag that opens the in-run panel to be worth not finding out about on a
+/// phone. Nothing else in the set competes: the panel is opaque and sits above
+/// the map, so a one-finger drag belongs to whichever of them it landed on.
+const int kMapGestures =
+    InteractiveFlag.all & ~InteractiveFlag.rotate & ~InteractiveFlag.pinchMove;
+
 class RouteMap extends StatefulWidget {
   const RouteMap({
     super.key,
     required this.points,
+    this.splitMarkers = const <SplitMarker>[],
+    this.reveal = 1,
     this.strokeWidth = 4,
     this.interactive = true,
+    this.interactionFlags = kMapGestures,
+    this.follow = true,
+    this.onUserPan,
     this.followZoom = 16,
     this.basemapOpacity = kBasemapOpacity,
     this.focus,
@@ -56,8 +78,58 @@ class RouteMap extends StatefulWidget {
        _attribution = attribution;
 
   final List<RunPoint> points;
+
+  /// Where each kilometre turned over, pinned on the route.
+  ///
+  /// **Empty in-run, and that is the point.** A runner mid-effort is looking at
+  /// a number, not reading their own route back; pins would be ten pieces of
+  /// furniture on the one part of the screen that is meant to just show where
+  /// they are. Afterwards they are the whole reason to look at the map at all —
+  /// which kilometre was the hill, where the run came apart — so the finished
+  /// run's map passes them and the live one does not.
+  final List<SplitMarker> splitMarkers;
+
+  /// How much of the route is drawn, 0 to 1.
+  ///
+  /// Exists so a finished run can draw itself on rather than appear finished:
+  /// the shape of an hour arriving over a second is the one moment this screen
+  /// has to feel like an arrival rather than a record. Kept as a plain fraction
+  /// rather than an animation so this widget stays still — the caller owns the
+  /// clock, which is also what lets a test pin the route half-drawn.
+  ///
+  /// **Markers follow the line rather than waiting for it.** A pin for a
+  /// kilometre the drawing has not reached yet is a pin on a route that does
+  /// not exist, and reads as a rendering fault rather than as an effect.
+  ///
+  /// 1 is the whole route and the default, so every existing caller — the
+  /// in-run map above all — is untouched.
+  final double reveal;
+
   final double strokeWidth;
   final bool interactive;
+
+  /// Which gestures the map accepts when [interactive].
+  ///
+  /// Defaults to [kMapGestures], which is everything **except rotation**.
+  /// `InteractiveFlag.all` includes it, and ADR-0022 declines rotation as a
+  /// decision rather than an omission — so turning panning on with `all` would
+  /// have reversed that ADR by the back door, silently and in one word.
+  final int interactionFlags;
+
+  /// Whether the camera chases the newest fix.
+  ///
+  /// **False parks it where the runner left it.** The follow used to be
+  /// unconditional, which is fine for a map nobody can touch and useless the
+  /// moment one can: a pan would be undone by the next GPS fix, roughly once a
+  /// second, so the map would fight the finger holding it.
+  final bool follow;
+
+  /// The runner moved the camera themselves.
+  ///
+  /// Reported rather than acted on, because whether a pan should suspend
+  /// following is the caller's decision — the finished-run map has no follow to
+  /// suspend, and the in-run one does.
+  final VoidCallback? onUserPan;
 
   /// Where to look before there is a route — the device's last known position,
   /// supplied by the caller.
@@ -114,6 +186,31 @@ class _RouteMapState extends State<RouteMap> {
   final MapController _controller = MapController();
   int? _lastLength;
 
+  /// Snaps back to the runner when following is switched back on.
+  ///
+  /// **This is the whole of the recentre control.** Flipping [RouteMap.follow]
+  /// false to true is the entire API — no controller to hand out, no key to
+  /// hold, no callback to fire. The alternative was exposing the [MapController]
+  /// so a button could call `move` on it, which would put a second thing in
+  /// charge of a camera this widget is already driving from `build`.
+  @override
+  void didUpdateWidget(RouteMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.follow || oldWidget.follow) return;
+    final List<LatLng> all = <LatLng>[
+      for (final segment in _segments) ...segment,
+    ];
+    if (all.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _controller.move(all.last, _controller.camera.zoom);
+      } catch (_) {
+        // Map not ready. The next fix follows anyway, now that it may.
+      }
+    });
+  }
+
   /// The trace, accuracy-filtered and broken wherever recording stopped.
   ///
   /// Segments rather than one polyline because a paused run — or a signal lost
@@ -127,10 +224,56 @@ class _RouteMapState extends State<RouteMap> {
       ],
   ];
 
+  /// [_segments], cut to [RouteMap.reveal].
+  ///
+  /// Cut by **point count across the whole trace** rather than by distance:
+  /// fixes arrive at a steady cadence, so counting them draws at roughly the
+  /// speed the run was actually run at, and a runner watching their own route
+  /// appear sees their own pacing in it. Cutting by distance would draw a slow
+  /// hill at the same rate as a fast descent, which is a smoother animation and
+  /// a less true one.
+  List<List<LatLng>> get _drawnSegments {
+    final segments = _segments;
+    if (widget.reveal >= 1) return segments;
+    final total = segments.fold<int>(0, (n, s) => n + s.length);
+    var budget = (total * widget.reveal.clamp(0, 1)).round();
+    final out = <List<LatLng>>[];
+    for (final segment in segments) {
+      if (budget <= 0) break;
+      // Two points minimum, or the segment is a dot rather than a line.
+      out.add(
+        budget >= segment.length ? segment : segment.take(budget).toList(),
+      );
+      budget -= segment.length;
+    }
+    return <List<LatLng>>[
+      for (final s in out)
+        if (s.length > 1) s,
+    ];
+  }
+
+  /// The markers the drawing has reached.
+  List<SplitMarker> get _drawnMarkers {
+    if (widget.reveal >= 1) return widget.splitMarkers;
+    final total = widget.points.length;
+    if (total == 0) return const <SplitMarker>[];
+    final reached = total * widget.reveal.clamp(0, 1);
+    // A marker's position in the trace is its position in time, and the trace
+    // is ordered — so the marker index over the split count is the same
+    // fraction the line is drawn to, near enough for a one-second effect.
+    final count = widget.splitMarkers.length;
+    if (count == 0) return const <SplitMarker>[];
+    final show = (count * (reached / total)).floor();
+    return widget.splitMarkers.take(show).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final segments = _segments;
-    final drawn = segments.where((s) => s.length >= 2).toList();
+    // The line as far as it has been drawn; the bounds and the endpoints still
+    // come from the whole trace below, so the map does not pan and rescale
+    // while the route grows into it.
+    final drawn = _drawnSegments.where((s) => s.length >= 2).toList();
     final all = <LatLng>[for (final segment in segments) ...segment];
     final hasRoute = all.isNotEmpty;
 
@@ -142,7 +285,12 @@ class _RouteMapState extends State<RouteMap> {
 
     // First build fits the route (via initialCameraFit below); later growth
     // follows the newest fix without changing zoom.
-    if (_lastLength != null && all.length != _lastLength && all.isNotEmpty) {
+    // `_lastLength` is updated below whether or not the camera moved, so a map
+    // parked by a pan does not lurch to catch up the moment it is recentred.
+    if (widget.follow &&
+        _lastLength != null &&
+        all.length != _lastLength &&
+        all.isNotEmpty) {
       final target = all.last;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -175,9 +323,15 @@ class _RouteMapState extends State<RouteMap> {
             backgroundColor: AppColors.bg,
             interactionOptions: InteractionOptions(
               flags: widget.interactive
-                  ? InteractiveFlag.all
+                  ? widget.interactionFlags
                   : InteractiveFlag.none,
             ),
+            // `hasGesture` is false for a programmatic `move`, so recentring
+            // cannot report itself as a pan and immediately cancel the follow
+            // it just restored.
+            onPositionChanged: (MapCamera camera, bool hasGesture) {
+              if (hasGesture) widget.onUserPan?.call();
+            },
           ),
           children: <Widget>[
             // Only ever the configured provider — the one the privacy policy
@@ -226,11 +380,34 @@ class _RouteMapState extends State<RouteMap> {
             if (hasRoute)
               MarkerLayer(
                 markers: <Marker>[
+                  // Under the endpoints, so a kilometre that happens to turn
+                  // over on the start line does not hide where the run began.
+                  for (final marker in _drawnMarkers) _split(marker),
                   _endpoint(all.first, filled: false), // start (outlined)
                   if (widget.showPosition)
                     _position(all.last)
                   else
-                    _endpoint(all.last, filled: true), // end
+                  // The head of the line, not the end of the route.
+                  //
+                  // While the route is drawing itself these differ, and
+                  // pinning the true end would put a dot ahead of the line —
+                  // on a closed loop it hides under the start and on an
+                  // out-and-back it floats in open space, which reads as a
+                  // rendering fault rather than as an effect. Following the
+                  // head instead makes it the point being traced, and it
+                  // arrives at the real end exactly when the line does.
+                  //
+                  // **The flag waits for it.** A finish flag planted on a
+                  // moving head reads as a fault rather than as an effect, so
+                  // the dot keeps the head company through the reveal and the
+                  // flag is raised only once the line has arrived.
+                  if (widget.reveal >= 1)
+                    _finish(all.last)
+                  else
+                    _endpoint(
+                      drawn.isEmpty ? all.last : drawn.last.last,
+                      filled: true,
+                    ),
                 ],
               ),
           ],
@@ -247,6 +424,47 @@ class _RouteMapState extends State<RouteMap> {
     );
   }
 
+  /// A kilometre, pinned where it turned over and labelled with its number.
+  ///
+  /// **The number is on the map and the time is one press away.** Ten pins each
+  /// carrying a number and a clock reading is a route you cannot see for the
+  /// labels on it, and on a loop the later kilometres would sit on top of the
+  /// early ones. The index alone is enough to read the shape of the run — where
+  /// four was, how far apart six and seven fell — and the crossing time is on
+  /// the tooltip for the one somebody actually wants to know about.
+  ///
+  /// Both times, because they answer different questions: the clock says when
+  /// they were there, the elapsed figure says how far into the run that was.
+  Marker _split(SplitMarker marker) => Marker(
+    point: LatLng(marker.latitude, marker.longitude),
+    width: 22,
+    height: 22,
+    child: Tooltip(
+      message:
+          '${marker.index} km · ${_clock(marker.at)} · '
+          '${marker.elapsed.hoursMinutesSeconds} elapsed',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.textPrimary, width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            '${marker.index}',
+            style: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 11,
+              height: 1,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   Marker _endpoint(LatLng at, {required bool filled}) => Marker(
     point: at,
     width: 16,
@@ -258,6 +476,32 @@ class _RouteMapState extends State<RouteMap> {
         border: Border.all(color: AppColors.textPrimary, width: 2),
       ),
     ),
+  );
+
+  /// Where the run ended.
+  ///
+  /// **A flag rather than the filled dot the start also uses.** The two ends of
+  /// a route are not the same kind of fact, and drawing them as one glyph in
+  /// two fills asked the reader to remember which was which — on a closed loop,
+  /// where they sit on top of one another, it could not be answered at all.
+  /// Asked for directly off the build 13 field test.
+  ///
+  /// Top-right aligned so the pole stands **on** the point. A centred glyph
+  /// puts the flag's middle on the coordinate, which reads as having finished
+  /// somewhat north-east of where the run actually stopped.
+  ///
+  /// **No tooltip**, deliberately. The split pins carry one because a numbered
+  /// circle does not say what it means; a flag has nothing to add that the
+  /// summary beneath it does not say better, and `route_map_test.dart` counts
+  /// tooltips to assert exactly that the pins are the only things carrying one.
+  Marker _finish(LatLng at) => Marker(
+    point: at,
+    width: _kFlagWidth,
+    height: _kFlagHeight,
+    // The marker box is pushed up and right of the coordinate, which puts its
+    // bottom-left — the foot of the pole — exactly on the point.
+    alignment: Alignment.topRight,
+    child: const FinishFlag(),
   );
 
   /// Where the runner is now: a bright dot with a soft halo, so it reads as a
@@ -335,4 +579,82 @@ class _Attribution extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A wall-clock time of day, for a split marker's tooltip.
+///
+/// Hours and minutes only. A kilometre is not a stopwatch reading — the second
+/// it turned over on is in the elapsed figure beside it, where it means
+/// something.
+String _clock(DateTime at) =>
+    '${at.hour.toString().padLeft(2, '0')}:'
+    '${at.minute.toString().padLeft(2, '0')}';
+
+const double _kFlagWidth = 24;
+const double _kFlagHeight = 26;
+
+/// A chequered flag on a pole, drawn rather than set.
+///
+/// Public so a test can assert the end of a route carries one, which a private
+/// widget could only be checked for by a key or by its pixel size.
+///
+/// **`Icons.sports_score` was tried first and does not survive the size.** The
+/// glyph carries no pole worth seeing below about 40pt, so at marker size it
+/// read as a small chequered smudge sitting near the route rather than as a
+/// flag planted at the end of it — and this lands on listing screenshot H3,
+/// where "near the route" is the whole difference between a finish and an
+/// artefact. Looked at on a plate, which is the only reason it was caught.
+///
+/// Geometry instead, so it is crisp at any scale and the pole is unambiguous.
+/// The pale chequers alternate against [AppColors.bg] rather than against
+/// nothing, so the pattern holds over a basemap as well as over the ground.
+class FinishFlag extends StatelessWidget {
+  const FinishFlag({super.key});
+
+  /// One chequer. Four across and two down is the fewest that still reads as a
+  /// pattern rather than as a striped rectangle.
+  static const double _cell = 5;
+  static const int _cols = 4;
+  static const int _rows = 2;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.end,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.bg, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (var row = 0; row < _rows; row++)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (var col = 0; col < _cols; col++)
+                    SizedBox(
+                      width: _cell,
+                      height: _cell,
+                      child: ColoredBox(
+                        color: (row + col).isEven
+                            ? AppColors.textPrimary
+                            : AppColors.bg,
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+      // The pole. Two points wide so it survives a low pixel ratio, and drawn
+      // under the flag so the two meet without a seam.
+      Container(
+        width: 2,
+        height: _kFlagHeight - (_rows * _cell) - 2,
+        color: AppColors.textPrimary,
+      ),
+    ],
+  );
 }

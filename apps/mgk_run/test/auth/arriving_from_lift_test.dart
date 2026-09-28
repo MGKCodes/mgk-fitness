@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
+import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_script.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -20,19 +22,26 @@ import 'package:mgk_ui/mgk_ui.dart';
 /// trying to begin — which is the exact scenario ADR-0019 moved permissions
 /// into onboarding to avoid.
 void main() {
-  Future<void> pumpGate(WidgetTester tester, FakeAuthRepository auth) async {
+  Future<void> pumpGate(
+    WidgetTester tester,
+    FakeAuthRepository auth, {
+    IntroStore? intro,
+  }) async {
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
         home: AuthGate(
+          introStore: intro ?? InMemoryIntroStore(),
           auth: auth,
           historySource: () async => const [],
           requestPermission: (_) async => true,
         ),
       ),
     );
+    // The gate reads its intro marker asynchronously, so frame one is blank.
+    await tester.pump();
     await tester.pumpAndSettle();
   }
 
@@ -66,7 +75,10 @@ void main() {
 
     // Straight to the permissions, which are the only thing this install has
     // genuinely never answered.
-    expect(find.text(introPermissions.first.explain), findsOneWidget);
+    expect(
+      find.text(introPermissionsFor(defaultTargetPlatform).first.explain),
+      findsOneWidget,
+    );
     expect(find.text(introPrompt(IntroStep.name)), findsNothing);
   });
 
@@ -80,9 +92,14 @@ void main() {
 
     await tester.tap(find.text('Sounds good'));
     await tester.pumpAndSettle();
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
+      // **No field, at any point.** This used to assert the absence of the
+      // intro's account prompt; that step no longer exists, so the assertion
+      // had become vacuous. The rule it was protecting is still real - nobody
+      // is asked for credentials in this conversation - so it is asserted on
+      // the thing that would carry them.
       expect(
-        find.text(introPrompt(IntroStep.signUp)),
+        find.byType(TextField),
         findsNothing,
         reason: 'they have a profile; asking again dead-ends on it',
       );
@@ -94,7 +111,7 @@ void main() {
 
     // The conversation is over, the fact is recorded, and Home is underneath.
     expect(auth.coachMarks, 1);
-    expect(find.text(introPrompt(IntroStep.signUp)), findsNothing);
+    expect(find.byType(TextField), findsNothing);
   });
 
   testWidgets('a runner who has met the coach goes straight to the shell', (
@@ -111,11 +128,19 @@ void main() {
     );
   });
 
-  testWidgets('creating a profile here records the fact too', (tester) async {
-    // Otherwise the runner who signs up on this phone is shown the whole
-    // conversation again on their next one.
+  testWidgets('finishing the conversation is recorded against the install', (
+    tester,
+  ) async {
+    // **There is no account to record it against.** That is the whole change:
+    // the intro no longer creates one, so `markCoachMet` has nothing to write
+    // to and the gate would replay the conversation on every single launch if
+    // the marker were not local.
+    //
+    // Both mechanisms are kept and either satisfies the gate. This is the half
+    // that answers for a runner with no account, which is now the ordinary case.
     final auth = FakeAuthRepository(metCoach: false);
-    await pumpGate(tester, auth);
+    final intro = InMemoryIntroStore();
+    await pumpGate(tester, auth, intro: intro);
 
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
@@ -124,22 +149,21 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Sam');
     await tester.tap(find.byTooltip('Continue'));
     await tester.pumpAndSettle();
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
       await tester.tap(find.text(permission.cta));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
     }
-    await tester.enterText(find.byType(TextField), 'sam@runio.app');
-    await tester.tap(find.byTooltip('Continue'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'password');
-    await tester.tap(find.byTooltip('Create my profile'));
-    await tester.pumpAndSettle();
 
-    expect(auth.coachMarks, 1);
+    expect(intro.markCount, 1);
+    expect(
+      auth.coachMarks,
+      0,
+      reason: 'nobody signed up, so there is no metadata to write it to',
+    );
     // And the conversation they just finished is not immediately replayed by
-    // the gate above, which has not seen the write land yet.
+    // the gate above.
     expect(find.text(introWhoIAm), findsNothing);
   });
 }

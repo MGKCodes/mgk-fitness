@@ -28,6 +28,7 @@ run_splits        run_id, seq, distance_m, duration_s, avg_hr
 
 plans             id, user_id, goal_distance_m, goal_time_s, event_date,
                   start_date, weeks, status, created_at,
+                  finished_at, race_time_s          (local only — see below)
                   + runner profile snapshot: current_weekly_m,
                     longest_recent_m, days_per_week, available_weekdays[],
                     time_trial_distance_m, time_trial_seconds, injury_notes
@@ -89,21 +90,38 @@ makes the memory affordable.
 
 | | Written | Read |
 |---|---|---|
-| `coach_turns` | every turn, as it happens | on launch (restore the dock) and on recall |
-| `coach_summaries` | when a **conversation ends** | into every brief |
+| `coach_turns` | every turn, as it happens | on launch (only if the conversation is still open), on recall, and in the Previous conversations list |
+| `coach_summaries` | when the conversation sheet closes | into every brief |
+
+**A conversation is a session**, ended by 30 minutes of silence rather than by
+anything the runner presses — see
+[ADR-0025](../decisions/0025-a-coach-conversation-is-a-session.md). On launch
+the dock picks a conversation back up only if its `last_turn_at` is inside that
+window, which is what `last_turn_at` being denormalised onto the conversation
+row makes cheap. Anything older is kept and readable under Previous
+conversations, and reaches the coach through `recall` rather than by being
+replayed into the context.
 
 **A turn is stored before the model is called**, not after it answers. A
 question asked in a tunnel is still a question the runner asked, and the
 repository's contract is that the write completes on disk — so a force-quit
 mid-sentence keeps it.
 
-**The summary is rewritten only when the conversation ends** — when the dock is
-closed, or the tab is disposed. Not per turn: the summarise surface is rate
-limited to six an hour, so a rewrite per turn would spend the allowance in ten
-minutes, and it would produce a copy of a copy besides (the surface is
-regenerate-only for the same reason `coach_summaries` is keyed on `user_id`).
-The rewrite is guarded on there being unsummarised turns, so closing a dock
-nobody spoke into costs nothing.
+**The summary is rewritten when the conversation sheet closes**, and at a
+session boundary. Not per turn: the summarise surface is rate limited to six an
+hour, so a rewrite per turn would spend the allowance in ten minutes, and it
+would produce a copy of a copy besides (the surface is regenerate-only for the
+same reason `coach_summaries` is keyed on `user_id`). The rewrite is guarded on
+there being unsummarised turns, so closing a sheet nobody spoke into costs
+nothing.
+
+Closing the sheet is a **fold**, not the end of the conversation. Only the turns
+said since the last fold are handed to the summariser, so a runner who shuts the
+sheet and reopens it two minutes later carries on in the same stored
+conversation and the summariser never sees a turn twice. One gap this leaves,
+recorded on ADR-0025 rather than closed: a conversation abandoned by
+force-quitting the app mid-sentence is folded by nothing, so its turns may never
+reach the summary. They stay in the transcript and stay reachable by recall.
 
 **A failed rewrite is not a forgotten runner.** The summariser returns null when
 it could not run — dead network, spent allowance — and null means *keep what you
@@ -118,6 +136,14 @@ the summary last, in the runner's own terms. The summary therefore holds only
 what a schema cannot: shift work, a knee that complains on hills, a route they
 will not run in the dark. Anything typed would be a second source of truth that
 eventually disagrees with the first.
+
+**The transcript is what is loaded on demand.** `CoachMemoryRepository.recall`
+searches it with the message being sent and returns at most four of the
+runner's own past turns, each rendered with when it was said and fenced behind a
+paragraph saying they are recollections rather than the current picture. The
+coach's own past replies are excluded: they were derived from a brief rebuilt
+every turn, so re-injecting one would launder a stale derivation back in as if
+it were a fact.
 
 ## Notes
 
@@ -143,9 +169,22 @@ eventually disagrees with the first.
   plan. `runner_profiles` remains the *current* profile; the snapshot is the one
   the plan was generated against.
 - **`plans.status`** is `active | superseded | completed | abandoned`, with a
-  partial unique index enforcing at most one `active` plan per user. Running the
-  coach again **supersedes** the previous plan rather than deleting it — a plan
-  is a record of what the runner committed to.
+  partial unique index enforcing at most one `active` plan per user. The four
+  divide two ways. Running the coach again **supersedes** the previous plan
+  rather than deleting it — a plan is a record of what the runner committed to,
+  and being replaced says nothing about how it went. `completed` and
+  `abandoned` are the other kind: the plan reached its **own** end, on race day,
+  and the runner either ran it or did not ([ADR-0027](../decisions/0027-a-plan-ends-on-race-day.md)).
+- **The end of a plan is local only.** Schema 10 added `finished_at` and
+  `race_time_s` to the Drift `plans` table; the `run` Postgres schema has
+  neither, and `SupabasePlanBackup` enumerates columns explicitly, so the mirror
+  does not carry them — and `status` is pushed as a literal `'active'`, so a
+  block that finished with a race reads on the server as merely superseded. Same
+  position as `runs.steps` and `runs.elevation_max_m`
+  ([ADR-0024](../decisions/0024-elevation-is-barometric-or-absent.md)), and the
+  most expensive of the three, because a race result is a fact the runner
+  confirmed rather than one anything on the phone could recompute. These are the
+  columns to add when the `run` schema next moves.
 - **`plan_sessions` has one row per *training* day**; a rest day is the *absence*
   of a row. `(plan_id, week_number, weekday)` is unique, so regenerating or
   adapting a week updates it in place instead of duplicating sessions. Statuses
@@ -161,8 +200,12 @@ eventually disagrees with the first.
 ## Row Level Security
 
 Every table is scoped by `user_id`. RLS policies must guarantee a user can only
-read and write their own rows. This is a security-critical invariant — see
-[SECURITY.md](../../SECURITY.md).
+read and write their own rows. This is a security-critical invariant, and it is
+asserted against the live catalogue rather than described: see
+[`supabase/tests/`](../../../../supabase/tests/), run by `supabase test db`
+([ADR-0013 and the pgTAP contracts](../decisions/)).
+
+*This pointed at a `SECURITY.md` that has never existed in this repository.*
 
 ## Local mirror
 

@@ -48,4 +48,4 @@ Runio adopts a **greyscale design language, matching Liftio's tokens exactly.**
   route to reopening it.
 - Background imagery is generated (Replicate `flux-1.1-pro`) and treated as a
   design asset. Explorations live in the Figma file "Runio — Hero Explorations".
-- Full token/typography/component spec: [design-system.md](../design/design-system.md).
+- Full token/typography/component spec: [design-system.md](../history/design-system.md).

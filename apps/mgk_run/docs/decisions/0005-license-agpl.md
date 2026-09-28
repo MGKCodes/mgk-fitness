@@ -30,7 +30,7 @@ distribute the app under Apple's terms while every public fork stays open.
   Runio closed and compete.
 - The showcase goal is fully met — the code is 100% public and readable.
 - Contributors must sign off commits (`git commit -s`); unsigned commits are
-  asked to amend (see [CONTRIBUTING.md](../../CONTRIBUTING.md)).
+  asked to amend (see [CONTRIBUTING.md](../../../../CONTRIBUTING.md)).
 - MGKCodes, as sole copyright holder, retains the right to distribute via the
   App Store and to relicense if ever needed.
 - Reversible: switching to a permissive license later is a one-file change while

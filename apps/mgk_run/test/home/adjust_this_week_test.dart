@@ -11,6 +11,7 @@ import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/adjust_reasons_sheet.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 
 /// Records every message put to the coach. The reasons are pre-written
@@ -61,6 +62,7 @@ class _AdaptRecorder implements PlanClient {
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations = const <String>[],
+    int? raceWeekday,
   }) async => null;
 }
 
@@ -104,7 +106,7 @@ void main() {
     availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
   );
 
-  final adjust = find.text('Not feeling it? Adjust this week');
+  final adjust = find.text('Adjust this week');
 
   Future<_RecordingChat> pumpHome(
     WidgetTester tester, {
@@ -122,6 +124,12 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Pinned, because this drives a coach hand-off and the coach is
+          // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
+          // until 2026-09-04, when the gate moved into `_askCoach`: five
+          // tests were exercising six ungated doors into the paid product,
+          // which is how the hole survived review.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => const [],
           chatClient: chat,

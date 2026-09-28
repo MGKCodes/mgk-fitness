@@ -18,6 +18,7 @@ class SignInScreen extends StatefulWidget {
     this.initialSignUp = false,
     this.onBack,
     this.onSignUpIntent,
+    this.onAuthenticated,
     this.introName,
     this.devAccounts = const <DevAccount>[],
   });
@@ -34,6 +35,20 @@ class SignInScreen extends StatefulWidget {
   /// for the result learned about it one rebuild too late — the shell was
   /// already built, and `startOnboarding` is read once in `initState`.
   final ValueChanged<bool>? onSignUpIntent;
+
+  /// There is now a session. **Only a screen that was *pushed* needs this.**
+  ///
+  /// In the signed-out flow this screen is a state of `AuthGate`, and a
+  /// successful sign-in swaps the whole subtree for the shell — nothing has to
+  /// be dismissed, because the screen ceases to exist. A gate raised from
+  /// inside the running app is the opposite case: it is a route over a shell
+  /// that stays exactly where it is, so without this the runner signs up
+  /// successfully and is left sitting on the form they have just finished, with
+  /// the thing they asked for waiting behind a back gesture nobody told them to
+  /// make.
+  ///
+  /// Null keeps the flow behaviour, which needs no dismissal.
+  final VoidCallback? onAuthenticated;
 
   /// The name the coach already asked for, so the form does not ask again.
   /// Null when the runner skipped it or is signing back in.
@@ -92,17 +107,18 @@ class _SignInScreenState extends State<SignInScreen> {
               () => _message = 'Check your email to confirm your account.',
             );
           }
+        } else {
+          // A session exists. A pushed gate dismisses itself here; the flow
+          // passes nothing and is swapped out by the auth stream instead.
+          widget.onAuthenticated?.call();
         }
       } else {
         await widget.auth.signIn(email: email, password: password);
+        widget.onAuthenticated?.call();
       }
-    } on AuthException catch (e) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _message = e.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _message = 'Something went wrong. Try again.');
+        setState(() => _message = _messageFor(error));
       }
     } finally {
       if (mounted) {
@@ -127,13 +143,10 @@ class _SignInScreenState extends State<SignInScreen> {
         email: account.email,
         password: account.password,
       );
-    } on AuthException catch (e) {
+      widget.onAuthenticated?.call();
+    } catch (error) {
       if (mounted) {
-        setState(() => _message = e.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _message = 'Something went wrong. Try again.');
+        setState(() => _message = _messageFor(error));
       }
     } finally {
       if (mounted) {
@@ -336,6 +349,48 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
     );
   }
+}
+
+/// What to print when authenticating fails.
+///
+/// **A dead connection earns its own sentence.** This screen used to print
+/// `AuthException.message` and collapse everything else into "Something went
+/// wrong. Try again." — which describes a broken app, names nothing the runner
+/// can go and put right, and invites the one retry guaranteed to fail again.
+/// Build 12 was field-tested with aeroplane mode left on and that is the
+/// sentence it produced, after a spinner that had already run for as long as
+/// the runner was willing to wait.
+///
+/// [AuthRetryableFetchException] is tested **before its own supertype**, and
+/// that ordering is why this function exists at all. gotrue does not let a
+/// socket error out raw: it wraps every failed fetch in an `AuthException`
+/// whose `message` is the underlying error's `toString()`. So the branch that
+/// prints the server's own words — right for a wrong password, and the reason
+/// it is kept — was one line away from showing `ClientException with
+/// SocketException: Failed host lookup ...` to somebody who had simply left the
+/// radio off.
+///
+/// Those two types are the whole reachable set, which is worth saying because
+/// the instinct here is to reach for `dart:io`. A raw `SocketException` or
+/// `ClientException` cannot arrive: gotrue wraps its own, and the
+/// `core.profiles` write that goes out through postgrest is now best-effort
+/// inside [AuthRepository.ensureProfileBestEffort], so it throws nothing at
+/// this screen. [TimeoutException] is what [AuthRepository.timeout] raises when
+/// a call blows its deadline. Importing `dart:io` for a case that cannot happen
+/// would drag this screen out of the web preview harness's import graph for
+/// nothing.
+///
+/// The words are the ones the account-deletion path already uses for the same
+/// fact, because it is the same fact.
+String _messageFor(Object error) {
+  if (error is AuthRetryableFetchException || error is TimeoutException) {
+    return 'We could not reach the server. Check your connection and try '
+        'again.';
+  }
+  // A real answer from the server — wrong password, weak password, an address
+  // already registered — said in its own words rather than a paraphrase.
+  if (error is AuthException) return error.message;
+  return 'Something went wrong. Try again.';
 }
 
 /// What signing up is actually for, on the screen where someone is deciding.

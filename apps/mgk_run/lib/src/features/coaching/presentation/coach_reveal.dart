@@ -39,6 +39,7 @@ class CoachReveal extends StatefulWidget {
   const CoachReveal({
     super.key,
     required this.note,
+    this.locked = false,
     this.onTap,
     this.onFinished,
     this.hasUnread = false,
@@ -48,6 +49,44 @@ class CoachReveal extends StatefulWidget {
   /// What the coach has noticed. Null renders the resting mark and nothing
   /// else — there is no such thing as an empty announcement.
   final CoachNote? note;
+
+  /// Whether to play the **locked** line instead, for a runner who has not
+  /// bought the coach.
+  ///
+  /// ## Why this is not filler
+  ///
+  /// The obvious version of this was a placeholder observation — something
+  /// coach-shaped in the bubble so the mark has presence for everybody. It was
+  /// rejected, and the reason is written a few lines up in this same file:
+  /// the computed note was already at risk of reading as "a machine doing an
+  /// impression of noticing", and a line that is *actually* noticing nothing
+  /// is that failure on purpose. It would also train runners to ignore the
+  /// bubble, which costs the paid line its audience on the day it arrives.
+  ///
+  /// So the locked state says what it is. It occupies the same bar, moves the
+  /// same way and retracts into the same mark — but it is set in
+  /// [AppColors.textTertiary] rather than white, and it does **not** type
+  /// itself out. Typing is the coach speaking; this is a sign on a door.
+  final bool locked;
+
+  /// The line a free runner meets. One place, because the gate sheet says the
+  /// same thing at length and two surfaces drifting apart is how a paywall
+  /// starts contradicting itself.
+  ///
+  /// Two lines of detail rather than one, because the bar is a fixed height
+  /// sized for the paid note and a single line leaves a visible empty band
+  /// under it — which reads as a bubble that failed to load rather than as a
+  /// sign. Compare the `coach-locked` and `coach-speaking` plates.
+  ///
+  /// "buys", not "costs": the gate sheet deliberately quotes no price (the
+  /// store does, in the runner's own currency), and promising a figure that the
+  /// next screen does not show is a small lie the paywall does not need.
+  static const CoachNote lockedNote = CoachNote(
+    headline: 'Coaching is a subscription.',
+    detail:
+        'A plan that moves with you, and a coach reading your training. '
+        'Tap to see what it buys.',
+  );
 
   final VoidCallback? onTap;
 
@@ -126,8 +165,17 @@ class _CoachRevealState extends State<CoachReveal>
     _maybePlay();
   }
 
+  /// What this reveal actually plays: the observation when there is one, the
+  /// locked line when the coach has not been bought, and nothing otherwise.
+  ///
+  /// A real note wins over the locked line so that the two can never race — a
+  /// caller that passes both has a bug, and showing the observation is the
+  /// half of that bug a paying runner would not notice.
+  CoachNote? get _shown =>
+      widget.note ?? (widget.locked ? CoachReveal.lockedNote : null);
+
   void _maybePlay() {
-    if (_played || widget.note == null) return;
+    if (_played || _shown == null) return;
     _played = true;
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
       // Nothing to watch. The mark is simply there and the note is one tap
@@ -154,7 +202,7 @@ class _CoachRevealState extends State<CoachReveal>
 
   @override
   Widget build(BuildContext context) {
-    final note = widget.note;
+    final note = _shown;
     if (note == null) {
       // Right-aligned like the open state retracts to. The caller stretches
       // this full width so the line has somewhere to unroll into, which would
@@ -223,7 +271,11 @@ class _CoachRevealState extends State<CoachReveal>
                             right: AppSpacing.md,
                             bottom: AppSpacing.md,
                           ),
-                          child: _TypedNote(note: note, progress: _anim),
+                          child: _TypedNote(
+                            note: note,
+                            progress: _anim,
+                            muted: widget.locked,
+                          ),
                         ),
                       ),
                     ],
@@ -271,10 +323,18 @@ class _CoachRevealState extends State<CoachReveal>
 /// listening to its own animation, so typing rebuilds this and not the bar
 /// around it.
 class _TypedNote extends StatelessWidget {
-  const _TypedNote({required this.note, required this.progress});
+  const _TypedNote({
+    required this.note,
+    required this.progress,
+    this.muted = false,
+  });
 
   final CoachNote note;
   final Animation<double> progress;
+
+  /// The locked line: dimmer, and shown whole rather than typed. See
+  /// [CoachReveal.locked] for why it does not type.
+  final bool muted;
 
   /// Quick. Slow typing is a novelty the first time and an obstacle every time
   /// after, and the runner came here for the sentence rather than the effect.
@@ -293,7 +353,8 @@ class _TypedNote extends StatelessWidget {
       animation: progress,
       builder: (context, _) {
         final t = progress.value;
-        final shown = (total * _type.transform(t)).round();
+        // Whole from the first frame when muted — a sign does not write itself.
+        final shown = muted ? total : (total * _type.transform(t)).round();
 
         return Opacity(
           // Gone before the box finishes closing, so the last thing seen is the
@@ -308,8 +369,8 @@ class _TypedNote extends StatelessWidget {
                 maxLines: 1,
                 softWrap: false,
                 overflow: TextOverflow.clip,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: muted ? AppColors.textTertiary : AppColors.textPrimary,
                   fontSize: 14,
                   height: 1.25,
                   fontWeight: FontWeight.w700,
@@ -323,8 +384,10 @@ class _TypedNote extends StatelessWidget {
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.clip,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: muted
+                      ? AppColors.textTertiary
+                      : AppColors.textSecondary,
                   fontSize: 12.5,
                   height: 1.3,
                   fontWeight: FontWeight.w500,

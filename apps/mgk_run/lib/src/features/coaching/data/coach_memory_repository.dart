@@ -104,17 +104,43 @@ class CoachMemoryRepository {
     return turn;
   }
 
-  /// The conversation most recently spoken in, or null if there has never been
-  /// one.
+  /// The conversation still open at [window], or null when the last thing said
+  /// is older than that.
   ///
-  /// Derived from the turns rather than stored as a pointer: a pointer is one
-  /// more thing that can disagree with the table it points into, and the answer
-  /// is one row deep. Local only — restoring the dock must not wait on a
-  /// network.
-  Future<String?> lastConversationId() async {
+  /// **This is the session boundary** (ADR-0025). It replaces an unconditional
+  /// `lastConversationId()`, which is what the dock used to restore on launch —
+  /// so a conversation from last Tuesday was picked back up on Thursday and the
+  /// coach read week-old context as current. It once answered *"You ran 10 km
+  /// in 60 minutes yesterday"* about a run logged a week earlier, which was a
+  /// true memory placed in the wrong week rather than an invention. The
+  /// unconditional version is deliberately gone rather than kept alongside
+  /// this one: two ways to answer "which conversation?" is how the wrong one
+  /// gets reached for again.
+  ///
+  /// A gap, not a lifecycle event. One rule covers a cold start and a trip to
+  /// the home screen, and a runner who checks a notification and comes back in
+  /// ten seconds keeps their conversation. Derived from the turns rather than
+  /// stored as a pointer — a pointer is one more thing that can disagree with
+  /// the table it points into, and the answer is one row deep. Local only:
+  /// restoring the dock must not wait on a network.
+  Future<String?> openConversationId({
+    Duration window = coachSessionWindow,
+  }) async {
     final recent = await _store.recentTurns(limit: 1);
-    return recent.isEmpty ? null : recent.first.conversationId;
+    if (recent.isEmpty) return null;
+    final last = recent.first;
+    return _now().difference(last.at) > window ? null : last.conversationId;
   }
+
+  /// The conversations spoken in most recently, newest first — the "previous
+  /// chats" list.
+  ///
+  /// Sessions mean the dock no longer opens on last week's transcript, so this
+  /// is where last week's transcript went. Local only, and bounded: the coach's
+  /// memory is pruned to a rolling window ([CoachMemoryRetention]), so this
+  /// lists what is kept rather than everything ever said.
+  Future<List<CoachConversationSummary>> conversations({int limit = 20}) =>
+      _store.recentConversations(limit: limit);
 
   /// A conversation's turns, in the order they were spoken. Local only.
   Future<List<CoachTurn>> transcript(String conversationId) =>

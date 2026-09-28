@@ -25,6 +25,7 @@ class SessionBriefSheet extends StatelessWidget {
     this.paces,
     this.unit = UnitSystem.metric,
     this.onAskCoach,
+    this.now,
   });
 
   /// The session, or null for a rest day — which gets a brief of its own,
@@ -38,6 +39,11 @@ class SessionBriefSheet extends StatelessWidget {
   /// Opens the conversation with this session in hand.
   final void Function(String opener)? onAskCoach;
 
+  /// The clock, injected so [_title] is testable. Only ever compared against
+  /// [date] — the brief needs to know whether it is looking at today, not what
+  /// the time is anywhere else.
+  final DateTime? now;
+
   /// Shows the brief as a bottom sheet.
   static Future<void> show(
     BuildContext context, {
@@ -46,6 +52,7 @@ class SessionBriefSheet extends StatelessWidget {
     TrainingPaces? paces,
     UnitSystem unit = UnitSystem.metric,
     void Function(String opener)? onAskCoach,
+    DateTime? now,
   }) => showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -56,10 +63,29 @@ class SessionBriefSheet extends StatelessWidget {
       paces: paces,
       unit: unit,
       onAskCoach: onAskCoach,
+      now: now,
     ),
   );
 
   SessionKind get _kind => session?.kind ?? SessionKind.rest;
+
+  /// What to head the brief with.
+  ///
+  /// The brief is always opened on a named date, which is what lets it tell
+  /// today from Friday — and on today, and only today, there is an hour to put
+  /// in front of the activity. Tapping Friday gets "Threshold run"; tapping
+  /// today gets "Afternoon threshold run". The distinction is
+  /// [sessionNameAt]'s, and it is the reason this screen takes a clock at all.
+  String _title() {
+    final s = session;
+    if (s == null) return kindLabel(SessionKind.rest);
+    final clock = now ?? DateTime.now();
+    final isToday =
+        date.year == clock.year &&
+        date.month == clock.month &&
+        date.day == clock.day;
+    return isToday ? sessionNameAt(s, clock) : sessionName(s);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +122,7 @@ class SessionBriefSheet extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    session == null ? kindLabel(_kind) : sessionLabel(session!),
+                    _title(),
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 26,

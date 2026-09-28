@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester, {
     void Function(SkeletonWeek slot, int weekday)? onOpenWeek,
     VoidCallback? onOpenCalendar,
+    VoidCallback? onOpenBlock,
     SessionStatus? Function(int weekday)? statusFor,
   }) async {
     await tester.binding.setSurfaceSize(const Size(420, 2400));
@@ -49,6 +50,7 @@ void main() {
       MaterialApp(
         home: PlanScreen(
           onOpenCalendar: onOpenCalendar,
+          onOpenBlock: onOpenBlock,
           plan: plan,
           weeks: weeks,
           now: now,
@@ -167,6 +169,72 @@ void main() {
 
     expect(find.byIcon(Icons.check), findsOneWidget);
     expect(find.byIcon(Icons.close), findsOneWidget);
+  });
+
+  // Two things claiming to be the plan is one too many. The card headed "The
+  // whole block" sat under the week at card weight, so the screen read as a
+  // week *and* a plan rather than a week that is part of one.
+  testWidgets('the block has no section competing with the week', (
+    tester,
+  ) async {
+    await pumpCoach(tester, onOpenBlock: () {});
+
+    expect(find.text('THE WHOLE BLOCK'), findsNothing);
+    expect(find.textContaining('then tapers'), findsNothing);
+  });
+
+  // But it is still reachable, from the line that raises the question.
+  testWidgets('the goal is the way into the whole block', (tester) async {
+    var opened = 0;
+    await pumpCoach(tester, onOpenBlock: () => opened++);
+
+    // The position line — "99 days · week 1 of N" — is what a runner is
+    // reading at the moment they wonder about the other N-1.
+    await tester.tap(find.textContaining('· week 1 of'));
+    await tester.pump();
+
+    expect(opened, 1);
+  });
+
+  // Naming, on the screen that motivated it: the week says what the runner is
+  // doing, and never when — a planned Tuesday has no hour to report.
+  testWidgets('the week names activities and dates none of them', (
+    tester,
+  ) async {
+    await pumpCoach(tester);
+
+    expect(find.text('Long run'), findsWidgets);
+    expect(find.text('Easy run'), findsWidgets);
+    for (final word in <String>['Morning', 'Afternoon', 'Evening']) {
+      expect(
+        find.textContaining(word),
+        findsNothing,
+        reason: 'no planned day of the week knows what time it happens',
+      );
+    }
+  });
+
+  // Today is the exception, and only today: the brief opened on it is looking
+  // at a session whose hour is the clock's.
+  testWidgets("today's brief is the one place with an hour to give", (
+    tester,
+  ) async {
+    await pumpCoach(tester);
+
+    // `now` is the Saturday at midnight, so the occasion is a morning one.
+    await tester.tap(find.text('Sat'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Morning '), findsOneWidget);
+  });
+
+  testWidgets('and a brief opened on any other day has none', (tester) async {
+    await pumpCoach(tester);
+
+    await tester.tap(find.text('Thu'));
+    await tester.pumpAndSettle();
+    for (final word in <String>['Morning', 'Afternoon', 'Evening']) {
+      expect(find.textContaining(word), findsNothing);
+    }
   });
 
   testWidgets('next week carries no status — nothing has happened yet', (

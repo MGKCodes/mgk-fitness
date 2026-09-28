@@ -15,6 +15,7 @@ import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_widgets.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 
 /// A coach that always wants to change the week, and remembers the brief it was
 /// given. Standing in for the model, so the test is about what the app does
@@ -38,9 +39,13 @@ class _AdaptingChat implements CoachChatClient {
 
 /// Records what it was asked to adapt, and answers with [revision].
 ///
-/// [validRevision] shifts a kilometre between two easy days: the week still
-/// adds up, so the validator lets it through. [wildRevision] is nonsense the
-/// validator must refuse.
+/// [validRevision] takes a kilometre off a session still to come: a change the
+/// validator lets through. [wildRevision] is nonsense it must refuse.
+///
+/// Deliberately a plain [PlanClient] rather than a `WeekAwarePlanClient`. The
+/// shell now hands the adaptation what has already happened this week, and a
+/// client that cannot be told is the case that must keep working — every other
+/// stand-in in the app is one.
 class _AdaptRecorder implements PlanClient {
   _AdaptRecorder(this.revision);
 
@@ -69,27 +74,56 @@ class _AdaptRecorder implements PlanClient {
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations = const <String>[],
+    int? raceWeekday,
   }) async => null;
 }
 
+/// A revision the validator accepts: a kilometre off a session the runner has
+/// **not** already run.
+///
+/// This used to move a kilometre between the week's two easy days, which was
+/// fine while a revision could touch any day it liked. It cannot any more.
+/// `_proposeFromChat` hands the adaptation what has already happened this week,
+/// and `session_already_done` refuses a revision that moves or resizes a
+/// session somebody went out and did — so the old fixture was proposing exactly
+/// the thing the rule exists to stop. On a Friday, `someRuns()` lands on the
+/// plan's Monday and Thursday, and Thursday is one of the two easy days.
+///
+/// Nor can it simply pick two *other* easy days. How much of the week is still
+/// ahead depends on the day the test runs — five sessions on a Monday, one by
+/// Sunday — so any fixture needing two free days of a particular kind is right
+/// some days and broken the rest. This changes a single session instead: the
+/// last one still to come, which on every weekday is the long run. A sore calf
+/// is the right reason to shorten it, which is what the tests below ask for.
+///
+/// **Weekdays, not dates, and that is the safe comparison.** Every run
+/// `someRuns()` seeds is strictly before today, so one falling inside this week
+/// necessarily falls on an earlier weekday: everything from today onward is
+/// unrun by construction. Going the other way — deriving weekdays from the run
+/// offsets — is the trap, because a run four days ago can belong to *last*
+/// week, and ruling out this week's Thursday for it would leave a Monday run of
+/// the suite with nothing it is allowed to change.
 TrainingWeek? validRevision(TrainingWeek week) {
-  final sessions = week.sessions.toList();
-  final easy = <int>[
-    for (var i = 0; i < sessions.length; i++)
-      if (sessions[i].kind == SessionKind.easy) i,
-  ];
-  if (easy.length < 2) return null;
-  sessions[easy[0]] = PlannedSession(
-    weekday: sessions[easy[0]].weekday,
-    kind: SessionKind.easy,
-    distanceMeters: sessions[easy[0]].distanceMeters - 1000,
+  final ahead =
+      week.runs.where((s) => s.weekday >= DateTime.now().weekday).toList()
+        ..sort((a, b) => a.weekday.compareTo(b.weekday));
+  if (ahead.isEmpty) return null;
+
+  final last = ahead.last;
+  return TrainingWeek(
+    skeletonIndex: week.skeletonIndex,
+    sessions: <PlannedSession>[
+      for (final s in week.sessions)
+        if (!identical(s, last))
+          s
+        else
+          PlannedSession(
+            weekday: s.weekday,
+            kind: s.kind,
+            distanceMeters: s.distanceMeters - 1000,
+          ),
+    ],
   );
-  sessions[easy[1]] = PlannedSession(
-    weekday: sessions[easy[1]].weekday,
-    kind: SessionKind.easy,
-    distanceMeters: sessions[easy[1]].distanceMeters + 1000,
-  );
-  return TrainingWeek(skeletonIndex: week.skeletonIndex, sessions: sessions);
 }
 
 /// A week no validator should accept: one enormous session, nothing else.
@@ -120,6 +154,8 @@ void main() {
     timeTrialDuration: const Duration(minutes: 22),
   );
 
+  /// Two runs, yesterday and four days ago. The brief test reads "yesterday"
+  /// off the first, so these dates are load-bearing — see [ranWeekdays].
   List<RunSummary> someRuns() => <RunSummary>[
     RunSummary(
       startedAt: DateTime.now().subtract(const Duration(days: 1)),
@@ -154,6 +190,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // The coach is the paid half now (ADR-0030), so a test that
+          // opens it has to say it bought one. Pinned rather than read:
+          // these are tests about conversations, and where a tier comes
+          // from belongs to entitlement_repository_test.dart.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => someRuns(),
           chatClient: chat,
@@ -308,6 +349,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // The coach is the paid half now (ADR-0030), so a test that
+          // opens it has to say it bought one. Pinned rather than read:
+          // these are tests about conversations, and where a tier comes
+          // from belongs to entitlement_repository_test.dart.
+          access: CoachAccess.subscribed,
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => someRuns(),
           chatClient: chat,

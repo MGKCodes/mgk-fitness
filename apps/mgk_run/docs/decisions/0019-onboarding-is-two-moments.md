@@ -46,6 +46,11 @@ and the technical line are the same line, and onboarding was drawn across it.
 **Onboarding is two moments. The first is free and ends with an account. The
 second is entered only when a runner asks for a plan.**
 
+> **Superseded in part, 2026-08-27.** The first moment no longer ends with an
+> account — it ends on a working tracker with nothing signed in, and there are
+> now three moments rather than two. The split this ADR draws is unchanged and
+> is what the amendment builds on. See *there are three moments* below.
+
 ### Moment one — after install
 
 | Step | What happens |
@@ -53,7 +58,7 @@ second is entered only when a runner asks for a plan.**
 | Greeting | Hello, what it is (an AI, called Coach), and what the app does |
 | Name | What to call them. Anything accepted |
 | Permissions | One at a time: explained, then **the real OS dialog**, then answered |
-| Sign-up | The shared account |
+| ~~Sign-up~~ | ~~The shared account~~ — **retired 2026-08-27**, see the third amendment below |
 
 It ends on Home, with a working run tracker. Nothing in it asks what the runner
 is training for, and nothing in it mentions money, because neither is relevant
@@ -168,6 +173,60 @@ Still open: Settings replays the intro to re-ask permissions and has no `auth`
 to hand, so it still asks for a name the profile already knows. Harmless, and
 the same skip applies once the section is given one.
 
+## Amendment, 2026-08-28 — there are three moments, and the first one does not end with an account
+
+The title of this ADR is now off by one, and the "Moment one" table above still
+lists **Sign-up — the shared account** as its last step. It is not one any more.
+An account is not the price of using the app: `AuthGate` used to return the
+signed-out flow whenever there was no session, which put recording, the log, the
+year and Profile all behind an email and a password, and nothing about that was
+load-bearing. The on-device database has been the source of truth since the
+scaffold ([ADR-0004](0004-offline-first-local-source-of-truth.md)) and Supabase
+has always been a backup rather than the store. The gate asked for an account
+because the only door in happened to be built out of one.
+
+So moment one now ends on the **last permission**, on Home, with a working
+tracker and nothing signed in. Its steps are greeting, name, permissions — and
+that is all.
+
+The account did not disappear; it moved to the points where it earns itself.
+This ADR's own reasoning is what puts it at exactly two of them:
+
+| Moment | Trigger | Why an account is needed here |
+|---|---|---|
+| One — arrival | Install | **No account.** Nothing it delivers needs one |
+| Two — a plan | The runner asks for one | The coach is a model behind an Edge Function and every request costs money, so there has to be somebody to attribute it to ([ADR-0015](0015-spend-is-capped-over-three-windows.md)) |
+| Three — backup | Their **second** recorded run | The mirror writes rows attributed to a user; there is nowhere to put them otherwise ([ADR-0012](0012-backup-is-consented-restore-only-adds.md)) |
+
+**Both gates are raised as a pushed route, never by swapping the shell.** The
+runner is mid-intent, so backing out has to return them to the tab, the scroll
+and the thing they were doing — and a satisfied gate has to dismiss itself, or
+they finish a sign-up and sit on the completed form with what they asked for
+behind a back gesture nobody mentioned.
+
+**Moment three is the runner's side of the same bargain.** Two and three are not
+the same kind of ask and should not be run together: two is the app selling
+something, three is the app protecting something the runner already has. Putting
+three at the second run rather than at launch is what makes that distinction
+legible — it can point at a real log while it asks.
+
+**What this costs, and why it is accepted.** A runner can now use the app for
+months with no account, which means no cross-device history and nothing to
+restore if they lose the phone. That is the correct trade for a tracker whose
+whole cheap claim is "press start and I track your run": it is answered by
+telling them plainly (moment three, and the account section in Settings, which
+states the position rather than selling the fix) rather than by demanding
+credentials up front from somebody who has not decided anything yet.
+
+**Consequence for every screen that assumed a session.** Settings was written
+when everybody was signed in and went on assuming it — the name row read and
+wrote auth metadata only, so it was useless to exactly the people who had just
+supplied a name, and Sign out and Delete account were offered unconditionally to
+runners with neither. **A screen that shows an account fact must ask whether
+there is an account**, and the runner's name is not one of those facts: it is
+kept against the install as well as the profile, because the conversation that
+gathers it no longer ends in an account.
+
 ## The obvious alternative
 
 **Keep one flow and put the paywall in front of all of it.** Simpler to build,
@@ -189,6 +248,48 @@ removed, the split was administrative rather than real.
 The counter-signal is a plan-shaped hole appearing on a free screen: an empty
 week ribbon, a disabled Plan tab, a "no plan yet" placeholder where a card
 should be. Each one is the old assumption growing back.
+
+### Amendment, 2026-08-25 — a locked stat is not a hole, if it is a stat you never had
+
+This section, read literally, forbids the thing Home now does: a greyed
+*Upgrade to see this stat* block, on a free screen, where a card would be. That
+reading is too broad, and the line it was drawing needs restating rather than
+enforcing.
+
+**What the counter-signal is actually about is subtraction.** Every example it
+gives is a thing the runner *has* — their week, their plan tab, their own
+training — presented as an absence in order to sell it back. A free Home that
+is a paid Home with the contents removed teaches a runner that they are using a
+crippled product, and that is what makes the split administrative.
+
+The comparison against a coach's session is not that. It is not the runner's
+data with something taken out; it is **a second reading laid on top**, and it
+does not exist at all unless a coach set the session. So the rule the two cases
+separate on:
+
+| | Free shows | Locked |
+|---|---|---|
+| The runner's own numbers — distance, pace, time, history, the year | Everything | Nothing, ever |
+| The coach's reading of them — asked versus ran | — | The whole comparison |
+
+**A tracker that hides your own pace behind a paywall is not a tracker**, and
+nothing in the free product is a preview of a better one. What is sold is the
+coach, which is what [ADR-0014](0014-model-is-chosen-per-surface-and-per-tier.md)
+and this ADR's own consequences already say the subscription buys.
+
+Two rules keep this honest, and both are asserted in `test/home/last_run_test.dart`:
+
+- **A runner with no plan is never shown the lock.** With no session there is no
+  comparison to sell, and an upgrade prompt on that screen would be an advert
+  where a fact should be — which *is* the counter-signal above, exactly.
+- **The lock states what is behind it.** The rows are drawn in the shape they
+  will take, dimmed, with the offer named. A blurred rectangle tells a runner
+  they are missing something without telling them what of, which is a worse
+  offer and a ruder one.
+
+Nothing sets the paid value yet. `CoachAccess` defaults to `free` and resolves
+every unknown answer to `free`, for the reason ADR-0014 gives about tier
+parsing, applied to the client: a bug must not hand out what nobody bought.
 
 ## Disconfirming condition
 
@@ -245,6 +346,20 @@ nagging.
   also not true by default: backup is opt-in and off until asked for
   ([ADR-0012](0012-backup-is-consented-restore-only-adds.md)), so the promise
   outran the product. It now says what the account is actually for.
+- **The counter-signal fired, and not from the plan side.** The cost function
+  above watches for a plan-shaped hole; what appeared was a run-shaped one. A
+  runner with nothing recorded opened Profile to a single "No runs yet" card
+  over bare background — every other section on the page hidden behind an
+  `isEmpty` guard, including the coach's own read of them. Read against this
+  ADR that is the same failure with a different noun: a free screen announcing
+  its own emptiness instead of showing what the free product does. Fixed
+  2026-08-24 by giving each section an empty state rather than a fork, with
+  every figure held open as a dash. The general rule it leaves behind, for the
+  next screen somebody builds for a runner on day one: **a screen with no data
+  states its structure, and a dash is an absence where a zero would be a
+  claim.** Hiding a section is only right when the section is about something
+  that may never exist — past plans, for instance, which a runner on their
+  first has not got and is not waiting for.
 - The entitlement work that gates moment two is not decided here. It needs a
   verified App Store transaction rather than anything the client can assert
   ([ADR-0014](0014-model-is-chosen-per-surface-and-per-tier.md)), and it wants

@@ -1,0 +1,21 @@
+# Dependencies and build output
+/node_modules
+/.next
+/out
+next-env.d.ts
+*.tsbuildinfo
+
+# Env files. Nothing here should ever hold a secret, but the repository is
+# headed for public and this is the one directory that could acquire one.
+.env*
+!.env.example
+
+# Vercel
+.vercel
+
+# The legal pages are generated. They are committed on purpose, because Vercel
+# builds from the repository and does not run Python, so an uncommitted page is
+# a deploy that serves nothing. Regenerate with `npm run legal`; never edit them
+# here.
+# (No ignore rule. This note exists because "generated" usually means "ignored"
+#  and the next person to tidy this file needs to know why it does not.)

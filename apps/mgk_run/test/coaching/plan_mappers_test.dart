@@ -3,6 +3,8 @@ import 'package:mgk_run/src/features/coaching/data/plan_mappers.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
+import 'package:mgk_run/src/features/coaching/domain/week_progress.dart';
+import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
 void main() {
   final now = DateTime(2026, 7, 25);
@@ -104,5 +106,92 @@ void main() {
     for (final kind in SessionKind.values) {
       expect(sessionKindFromWire(sessionKindToWire(kind)), kind);
     }
+  });
+
+  group('what already happened goes up as four instructions', () {
+    // 2026-07-27 is a Monday. Monday run as prescribed, Tuesday missed, 12 km
+    // on the Wednesday the plan asked nothing of, Sunday still to come.
+    final monday = DateTime(2026, 7, 27);
+    final week = const TrainingWeek(
+      skeletonIndex: 6,
+      sessions: <PlannedSession>[
+        PlannedSession(
+          weekday: DateTime.monday,
+          kind: SessionKind.easy,
+          distanceMeters: 8000,
+        ),
+        PlannedSession(
+          weekday: DateTime.tuesday,
+          kind: SessionKind.threshold,
+          distanceMeters: 10000,
+        ),
+        PlannedSession(
+          weekday: DateTime.sunday,
+          kind: SessionKind.long,
+          distanceMeters: 17000,
+        ),
+      ],
+    );
+    final soFar = weekAsRun(
+      week: week,
+      weekStart: monday,
+      now: monday.add(const Duration(days: 3)),
+      runs: <RunSummary>[
+        RunSummary(
+          startedAt: monday,
+          duration: const Duration(minutes: 41),
+          distanceMeters: 8200,
+        ),
+        RunSummary(
+          startedAt: monday.add(const Duration(days: 2)),
+          duration: const Duration(minutes: 61),
+          distanceMeters: 12000,
+        ),
+      ],
+      since: monday,
+    );
+    final json = weekAsRunToJson(soFar);
+
+    test(
+      'a completed session carries both what was asked and what was run',
+      () {
+        // A run completes the day at any distance, so the two legitimately
+        // differ — and the model should see both rather than assume the
+        // prescription was met to the metre.
+        expect(json['done'], <Map<String, dynamic>>[
+          <String, dynamic>{
+            'weekday': DateTime.monday,
+            'kind': 'easy',
+            'distance_meters': 8000.0,
+            'ran_meters': 8200.0,
+          },
+        ]);
+      },
+    );
+
+    test('a run the plan never asked for is its own list', () {
+      // The case the whole payload exists for. It is not a completed session,
+      // and calling it one would have the plan claim a run it never wrote.
+      expect(json['unplanned'], <Map<String, dynamic>>[
+        <String, dynamic>{'weekday': DateTime.wednesday, 'ran_meters': 12000.0},
+      ]);
+    });
+
+    test('what went and what is left are kept apart', () {
+      expect((json['missed']! as List<dynamic>).single, <String, dynamic>{
+        'weekday': DateTime.tuesday,
+        'kind': 'threshold',
+        'distance_meters': 10000.0,
+      });
+      expect((json['remaining']! as List<dynamic>).single, <String, dynamic>{
+        'weekday': DateTime.sunday,
+        'kind': 'long',
+        'distance_meters': 17000.0,
+      });
+    });
+
+    test('and the week total saves the model adding the lists up', () {
+      expect(json['ran_meters'], 20200.0);
+    });
   });
 }

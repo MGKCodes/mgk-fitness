@@ -6,8 +6,16 @@ specific to the running app.
 
 ## Current state
 
-**Built and working, not yet released anywhere.** Tracking, plan generation and
-the coach all run; 917 tests pass. `lib/` holds ~178 Dart files.
+**In TestFlight, not yet submitted.** Build 12 (2026-09-02) is the first build
+carrying the payment arc — the RevenueCat SDK, `PurchaseScreen`, and the coach
+gate's real destination. Tracking, plan generation and the coach all run.
+`lib/` holds ~190 Dart files.
+
+Three tests are skipped by design (`@Tags(['live'])` — they hit the real
+backend). **The test count is deliberately not written here.** It sat at 1186 in
+this file while the suite passed 1352, because a number copied into a second
+place is a number that drifts. `docs/app-store-1.0.0.md` carries the current
+figure; read it there.
 
 This was previously a standalone repo called Runio. It moved into the monorepo
 on 2026-08-06 and was repointed at `packages/mgk_ui`. If you find a doc here
@@ -31,7 +39,11 @@ schema, it is stale — say so rather than working around it.
 4. **Store metric, convert at display.**
 5. **No Strava. No copyrighted training tables.** Do not integrate Strava in any
    form. Do not reproduce VDOT tables or published plan schedules — derive paces
-   from formulae (Riegel, % of threshold). This repo is public.
+   from formulae (Riegel, % of threshold). **The repo is private today and is
+   intended to go public** (a git-history secret scrub is the prerequisite; see
+   `docs/roadmap.md`). Write every line as though it already is - which is also
+   why `core.entitlements` has no client write path. A rule whose stated reason
+   is a false fact gets "corrected" later, and takes the rule with it.
 6. **Health data is special-category data.** Never log raw health values. A
    denied HealthKit read is indistinguishable from no data — design for absence,
    not error states.
@@ -75,12 +87,22 @@ schema, it is stale — say so rather than working around it.
 
 ## Where things live
 
-- `docs/product-spec.md` — the source-of-truth product definition.
-- `docs/architecture/` — run recording, plan generation, onboarding, LLM and
-  secrets.
-- `docs/decisions/` — 20 ADRs (the *why*).
-- `docs/roadmap.md` — phased build order.
-- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`.
+**Start at [`docs/README.md`](docs/README.md)**, which carries the filing rule:
+documents are tiered by lifecycle, not by topic.
+
+- `docs/decisions/` — 30 ADRs, the *why*. Superseded, never edited.
+- `docs/architecture/` — the *how*. Four of the six are untouched since
+  2026-08-06 and predate the purchase arc; trust `decisions/` where they
+  disagree, and fix what you find.
+- `docs/app-store-1.0.0.md` — the live release plan, and **the only checklist
+  carrying state**. `store-setup.md` is its runbook (dashboard fields and
+  troubleshooting); `app-store-listing.md` is listing copy parsed by
+  `tool/check_listing.py`, so it is source rather than prose.
+- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md` —
+  the legal source, generated into `legal-site/` and `web/public/run/`. Never
+  edit a generated copy.
+- `docs/history/product-spec.md` — **stale, and still titled Runio.** It was named here
+  as the source of truth and is not one. Read it as history.
 
 ## Definition of done
 

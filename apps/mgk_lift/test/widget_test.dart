@@ -70,6 +70,39 @@ void main() {
     expect(find.byType(CoachButton), findsOneWidget);
   });
 
+  testWidgets('the bar floats and shares its component with Run', (
+    WidgetTester tester,
+  ) async {
+    // Both apps hand-wrote the same `NavigationBar` until 2026-09-08 and
+    // neither knew the other had drifted; `mgk_ui` carried no navigation
+    // widget at all. It floats now (ADR-0033), so it no longer reserves its
+    // own height and the shell reserves for it instead — which is why the
+    // Scaffold slot being empty is worth asserting rather than assuming.
+    await tester.pumpWidget(const MaterialApp(home: LiftShell()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).first).bottomNavigationBar,
+      isNull,
+    );
+    // Lift's first tab is Track, not Home. The component takes destinations as
+    // data precisely so this stays true of one app and not the other.
+    expect(find.text('Track'), findsOneWidget);
+  });
+
+  testWidgets('and the coach mark clears it rather than sitting on it', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.byType(CoachButton)).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(FloatingNavBar)).top),
+    );
+  });
+
   testWidgets('the coach mark does not compete with the screen\'s own action', (
     WidgetTester tester,
   ) async {

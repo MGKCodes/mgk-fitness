@@ -39,6 +39,7 @@ class _FakePlanClient implements PlanClient {
     required SkeletonWeek slot,
     required RunnerProfile profile,
     List<String> violations = const <String>[],
+    int? raceWeekday,
   }) async {
     weekViolations.add(violations);
     if (throwEvery) throw Exception('provider down');

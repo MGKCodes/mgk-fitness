@@ -1,8 +1,12 @@
+import 'package:mgk_units/mgk_units.dart';
+
+import '../../recording/domain/run_summary.dart';
 import '../domain/plan_builder.dart';
 import '../domain/plan_headline.dart';
 import '../domain/plan_history.dart';
 import '../domain/plan_shape.dart';
 import '../domain/plan_validator.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
@@ -112,7 +116,9 @@ class PlanRepository {
       id: _newId(),
       profile: profile,
       skeleton: skeleton,
-      startDate: mondayOf(now),
+      // The coming Monday, not this one (ADR-0034). A plan built on a Friday
+      // used to open with Monday to Thursday already behind it.
+      startDate: comingMondayFrom(now),
     );
     await _store.savePlan(plan);
     await _pushPlan(plan);
@@ -121,7 +127,13 @@ class PlanRepository {
     // ahead is what plan-generation.md specifies, and doing it here rather than
     // lazily is what keeps [weekFor] off the network: by the time any screen
     // asks, the horizon the Coach tab shows is already on disk.
-    final current = plan.weekOn(now);
+    // **From the plan's own start, not from `now`.** Since ADR-0034 a plan
+    // begins on the coming Monday, so on creation day `now` is *before* it —
+    // and a rhythm's week index wraps for such a date, which would have had a
+    // brand-new plan materialise the last week of its cycle and then fail to
+    // find a next one. Asking the start date gives week 1 for either shape,
+    // which is what "the week this plan opens on" has always meant.
+    final current = plan.weekOn(plan.startDate);
     await weekFor(plan, current, allowModel: true);
     final next = plan.skeleton.weeks.firstWhere(
       (w) => w.index == current.index + 1,
@@ -157,12 +169,49 @@ class PlanRepository {
     if (stored != null) return stored;
 
     final generator = _generator;
+    final unusable = _unusableWeekdays(plan, slot);
     final week = (allowModel && generator != null)
-        ? (await generator.generateWeek(slot, plan.profile)).plan
-        : buildFallbackWeek(slot, plan.profile);
+        ? (await generator.generateWeek(
+            slot,
+            plan.profile,
+            // At most one day, and only in the week that holds the race.
+            raceWeekday: unusable.isEmpty ? null : unusable.first,
+          )).plan
+        : buildFallbackWeek(slot, plan.profile, unusableWeekdays: unusable);
     await _store.saveWeek(plan, week);
     await _pushWeek(plan, week);
     return week;
+  }
+
+  /// Days this week has that cannot carry a session, whatever the runner said.
+  ///
+  /// **The only place in the plan stack where weekdays meet dates.**
+  ///
+  /// Race day, and for now only race day. It is the event (ADR-0027), the whole
+  /// block is built to arrive at it, and the deterministic builder puts the
+  /// long run on the latest available weekday -- which in the final week is
+  /// usually the Sunday the race is on. Found on a phone, as row D4.
+  ///
+  /// **The sibling defect is fixed at the anchor, not here** (ADR-0034).
+  /// A plan built on a Friday used to open with Monday to Thursday behind it,
+  /// because the grid was anchored to `mondayOf(now)`. Excluding those days the
+  /// way race day is excluded was tried and reverted: it leaves week 1 with
+  /// three usable days carrying a whole week's prescribed volume, which trades
+  /// a week nobody can complete for a week nobody should. Plans start on the
+  /// coming Monday instead, so week 1 has no past days to exclude.
+  Set<int> _unusableWeekdays(StoredPlan plan, SkeletonWeek slot) {
+    final DateTime? event = plan.profile.eventDate;
+    final DateTime? race = event == null
+        ? null
+        : DateTime(event.year, event.month, event.day);
+
+    final out = <int>{};
+    for (var weekday = 1; weekday <= 7; weekday++) {
+      final DateTime on = plan.dateFor(weekIndex: slot.index, weekday: weekday);
+      final DateTime day = DateTime(on.year, on.month, on.day);
+      if (race != null && day.isAtSameMomentAs(race)) out.add(weekday);
+    }
+    return out;
   }
 
   /// Fills the coming week's sessions from the model, if they are not there yet.
@@ -221,7 +270,10 @@ class PlanRepository {
   ///
   /// Materialises the current week first, so a null session unambiguously means
   /// "rest day" rather than "not generated yet".
-  Future<TodayView> today(StoredPlan plan) async {
+  Future<TodayView> today(
+    StoredPlan plan, {
+    UnitSystem unit = UnitSystem.metric,
+  }) async {
     final now = _now();
     final slot = plan.weekOn(now);
     final week = await weekFor(plan, slot);
@@ -237,10 +289,75 @@ class PlanRepository {
       session: session,
       support: support,
       heading: todayHeading(plan.profile, slot),
+      // Resolved here for the reason [heading] is: whether today is race day,
+      // three days out, or the morning after is a property of the plan's
+      // shape, and the card takes the answer and asks nothing (ADR-0011).
+      // Null for a horizon, a rhythm and a log — none of which has a date to
+      // arrive at — and for the ordinary run of a block, which is most days.
+      race: raceOutlookFor(plan, now, unit: unit),
       status: session == null
           ? SessionStatus.planned
           : await _store.statusOn(plan, now) ?? SessionStatus.planned,
     );
+  }
+
+  /// Closes [plan] out — it reached its own end rather than being replaced.
+  ///
+  /// **The one write in this file the runner is watching.** Everything else
+  /// here is a screen loading; this is the moment sixteen weeks stop being the
+  /// plan, so it completes on disk before anything is shown (the same contract
+  /// [markToday] has, for the same reason).
+  ///
+  /// [raceTime] is what they confirmed they ran, and is dropped for a runner
+  /// who did not race — see [PlanStore.closePlan].
+  ///
+  /// **Not mirrored.** `finished_at` and `race_time_s` are schema 10 columns
+  /// with no counterpart in the `run` Postgres schema, so [PlanBackup] does not
+  /// carry them and there is nothing to push. That is the position `runs.steps`
+  /// and `elevation_max_m` are in (ADR-0024) and for the same reason: the
+  /// schema lives in `supabase/` at the repo root and is not this app's to
+  /// change. The cost is stated at the seam in `plan_backup_rows.dart`.
+  Future<void> finish(
+    StoredPlan plan, {
+    required PlanClosure closure,
+    Duration? raceTime,
+  }) => _store.closePlan(plan, closure: closure, raceTime: raceTime);
+
+  /// Closes a plan whose race is long past and which the runner never closed,
+  /// and answers how — or null when it is still theirs to close.
+  ///
+  /// **This is the runner who never races.** It is common: they get injured in
+  /// week eleven, or the entry never happened, or the event was cancelled, and
+  /// the thing they do next is stop opening the app. Nothing about that
+  /// produces a tap, so nothing would ever end the plan — the coach would keep
+  /// briefing against a marathon that happened last spring, and Profile would
+  /// never list it among the things they have trained for.
+  ///
+  /// Called from the refresh that loads the plan rather than from [load],
+  /// deliberately: a read that writes is a read nobody can reason about, and
+  /// there are half a dozen callers of [load] that have no business closing
+  /// anything.
+  ///
+  /// A store that refuses the close answers null rather than raising: the plan
+  /// is then exactly as it was, which is the state this exists to tidy and not
+  /// one that can hurt anybody in the meantime. Nobody asked for this and
+  /// nobody can see it, so there is nothing to report.
+  Future<PlanClosure?> closeIfOverdue(
+    StoredPlan plan,
+    List<RunSummary> runs,
+  ) async {
+    final closure = overdueClosureFor(plan, runs, _now());
+    if (closure == null) return null;
+    // Read from the log, which is the same evidence the runner would have been
+    // shown before confirming. Null for the didNotRace case by construction —
+    // [overdueClosureFor] only answers `raced` when there is a run to read.
+    final result = raceResultFor(plan, runs);
+    try {
+      await finish(plan, closure: closure, raceTime: result?.time);
+    } on PlanStoreException {
+      return null;
+    }
+    return closure;
   }
 
   /// Marks today's session done / skipped / planned again.
@@ -302,6 +419,7 @@ class TodayView {
     required this.status,
     required this.heading,
     this.support,
+    this.race,
   });
 
   /// The skeleton week today falls in.
@@ -318,6 +436,14 @@ class TodayView {
   /// genuine rest day and on a day that already has a run, so a non-null value
   /// means "no run, but the day is still spoken for".
   final PlannedSession? support;
+
+  /// The race, when it is close enough to matter — already resolved for the
+  /// plan's shape, so the card draws it without knowing there are shapes.
+  ///
+  /// Null on the overwhelming majority of days, and null for every plan that
+  /// is not aimed at a date. A card reading this must not treat null as an
+  /// error state: it means "an ordinary day", which is what most days are.
+  final RaceOutlook? race;
 
   /// Only meaningful when [session] is non-null.
   final SessionStatus status;

@@ -2,10 +2,12 @@ import '../../../core/brand.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../settings/presentation/settings_screen.dart' show SettingsTile;
+import '../../settings/presentation/settings_tile.dart';
 import '../data/account_deletion_service.dart';
 import '../domain/account_deleter.dart';
+import '../domain/legal_urls.dart';
 import 'delete_account_screen.dart';
 import 'medical_disclaimer_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -30,6 +32,23 @@ class LegalScreen extends StatelessWidget {
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  /// The Terms of Use are ours and are published rather than embedded, so this
+  /// leaves the app rather than pushing a [LegalDocument] like the two rows
+  /// above it. Says where they are when the browser will not open, because a
+  /// dead legal link is worse than a long one.
+  ///
+  /// They were Apple's standard EULA until 2026-09-10, which Google Play does
+  /// not accept from a listing selling a subscription. See [kTermsOfUseUrl] for
+  /// why these stay a link while the policy and the disclaimer are rendered.
+  Future<void> _openTerms(BuildContext context) async {
+    final Uri uri = Uri.parse(kTermsOfUseUrl);
+    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open the terms. They are at $uri')),
+    );
   }
 
   @override
@@ -64,6 +83,12 @@ class LegalScreen extends StatelessWidget {
               title: 'Privacy policy',
               subtitle: 'What we collect, and who we share it with',
               onTap: () => _push(context, const PrivacyPolicyScreen()),
+            ),
+            SettingsTile(
+              icon: Icons.description_outlined,
+              title: 'Terms of use',
+              subtitle: 'How the subscription works, and what it is not',
+              onTap: () => _openTerms(context),
             ),
             const Divider(color: AppColors.elevated, height: 32),
             Padding(

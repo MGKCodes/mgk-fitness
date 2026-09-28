@@ -56,39 +56,21 @@ enum IntroStep {
   /// `intro_permission.dart` for the list, and for why the dialog fires here
   /// rather than at the moment of first use.
   permissions,
-
-  /// The address the profile is made against.
-  ///
-  /// This used to be the whole account step: the coach said its piece and
-  /// handed off to a form on a screen of its own. The handoff was the problem.
-  /// A conversation that ends by pushing a form has not avoided the form, it
-  /// has put one behind a curtain, and the runner meets it at the moment they
-  /// were told the talking was over.
-  signUp,
-
-  /// The password, asked in the conversation like everything before it.
-  ///
-  /// Split from [signUp] rather than sharing a step because two fields at once
-  /// is a form, whatever it is dressed as. One question at a time is the only
-  /// thing making this a conversation.
-  password,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED IDENTITY — NAME PENDING
 //
-// Runio and Liftio share one Supabase project and therefore one `auth.users`
-// pool (ADR-0008), so an account made in either app already works in the other.
-// The intent is for that account to be branded as the platform identity across
+// This app and Lift share one Supabase project and therefore one `auth.users`
+// pool (ADR-0008), so an account made in either already works in the other. The
+// intent is for that account to be branded as the platform identity across
 // every MGKCodes health app, but **the platform has no agreed name yet**.
 //
-// [introPrompt] for `signUp` therefore names the two apps that exist rather
-// than a product that does not. When the name lands, say it here and check:
-//
-//   1. `test/onboarding/intro_script_test.dart` — asserts both apps are named.
-//   2. `lib/src/features/auth/presentation/sign_in_screen.dart` — the form's
-//      own copy.
-//   3. `docs/decisions/0008-shared-supabase-platform.md`.
+// The line that had to name it lived here, in the intro's account step. That
+// step is gone: the intro no longer creates an account. The copy that still has
+// to say it is `sign_in_screen.dart`, which is where the naming question now
+// belongs. When the name lands, check there and in
+// `docs/decisions/0008-shared-supabase-platform.md`.
 //
 // Do not invent one. A brand name shipped in onboarding is very hard to take
 // back, and this is a line of dialogue, not a positioning exercise.
@@ -108,41 +90,7 @@ String introPrompt(IntroStep step, {String? name}) => switch (step) {
   // carries a line per permission rather than one for the step.
   IntroStep.permissions =>
     name == null ? 'Nearly there.' : 'Nearly there, $name.',
-  IntroStep.signUp =>
-    'Last thing. Set up a profile so I know it is you, and your running '
-        'history stays yours. The same $kPlatformName profile works in Lift '
-        'too. What email should I use?',
-  IntroStep.password =>
-    'And a password. $kMinPasswordLength characters or more, which is the '
-        'only rule I have.',
 };
-
-/// The shortest password the backend will take.
-///
-/// Named here, and **said out loud before the password is asked for** rather
-/// than after one is refused. A coach that asks for something, waits, and then
-/// rejects it has spent the trust the conversation just built on a rule it
-/// could have mentioned a sentence earlier.
-const int kMinPasswordLength = 6;
-
-/// What the coach says when an address does not look like one.
-///
-/// Deliberately not "invalid email". It is a question, because the runner has
-/// almost certainly just mistyped and the screen is still a conversation.
-const String introBadEmail =
-    'That does not look quite like an email address. Mind checking it?';
-
-/// What the coach says when the password is too short.
-const String introShortPassword =
-    'A bit longer than that. $kMinPasswordLength characters is the minimum.';
-
-/// What the coach says when the profile was made but needs confirming first.
-///
-/// Not an error, and not phrased as one: the account exists, and the only
-/// thing left is a link in an inbox.
-const String introConfirmEmail =
-    'Nearly there. I have sent you an email to confirm the address, and then '
-    'you are in.';
 
 /// What the coach says when sign-up failed for a reason the runner cannot fix.
 ///

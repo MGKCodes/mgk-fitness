@@ -6,6 +6,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'chat_controller.dart';
 import 'chat_widgets.dart';
+import 'coach_history_sheet.dart';
 
 /// The conversation with the coach, as a sheet.
 ///
@@ -55,10 +56,15 @@ class CoachConversationSheet extends StatefulWidget {
         suggestions: suggestions,
         unit: unit,
       ),
-      // Dismissing the sheet is what ends a conversation, and ending one is
-      // what writes the rolling summary. The dock did this from its collapse
-      // handler; a sheet has several ways out — the button, the scrim, a
-      // back gesture — so it hangs off the route completing instead.
+      // Dismissing the sheet folds what was said into the rolling summary. The
+      // dock did this from its collapse handler; a sheet has several ways out —
+      // the button, the scrim, a back gesture — so it hangs off the route
+      // completing instead.
+      //
+      // It does not *end* the conversation. It used to, which meant a runner
+      // who shut the sheet and reopened it two minutes later saw the same
+      // transcript being written into a different stored conversation. What
+      // ends one is the session window lapsing (ADR-0025).
     ).whenComplete(
       () => unawaited(controller?.endConversation() ?? Future<void>.value()),
     );
@@ -108,6 +114,14 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     if (message.isEmpty || !controller.canSend) return;
     _input.clear();
     unawaited(controller.send(message));
+  }
+
+  /// A question the runner picked rather than typed. See the chip below for why
+  /// this is not [_send].
+  void _ask(String text) {
+    final controller = _c;
+    if (controller == null || !controller.canSend) return;
+    unawaited(controller.ask(text));
   }
 
   @override
@@ -212,26 +226,43 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     );
   }
 
-  Widget _header(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.lg,
-      AppSpacing.xs,
-      AppSpacing.sm,
-      AppSpacing.sm,
-    ),
-    child: Row(
-      children: <Widget>[
-        const Expanded(child: SectionLabel('Your coach')),
-        AppIconButton(
-          icon: Icons.close,
-          tooltip: 'Close the conversation',
-          onPressed: () => Navigator.of(context).maybePop(),
-          size: 22,
-          color: AppColors.textSecondary,
-        ),
-      ],
-    ),
-  );
+  Widget _header(BuildContext context) {
+    final controller = _c;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: <Widget>[
+          const Expanded(child: SectionLabel('Your coach')),
+          // The way back to what was said before. It matters more than it
+          // looks: a conversation now ends when the session window lapses
+          // rather than never, so opening the app no longer puts last week's
+          // transcript in front of the runner. This is where it went.
+          if (controller != null)
+            AppIconButton(
+              icon: Icons.history,
+              tooltip: 'Previous conversations',
+              onPressed: () => unawaited(
+                PastConversationsSheet.show(context, controller: controller),
+              ),
+              size: 22,
+              color: AppColors.textSecondary,
+            ),
+          AppIconButton(
+            icon: Icons.close,
+            tooltip: 'Close the conversation',
+            onPressed: () => Navigator.of(context).maybePop(),
+            size: 22,
+            color: AppColors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _transcript(ChatController controller) {
     final entries = controller.entries;
@@ -326,7 +357,13 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
                 for (final suggestion in widget.suggestions)
                   _SuggestionChip(
                     text: suggestion,
-                    onTap: () => _send(suggestion),
+                    // `ask`, not `send`: a suggested question starts its own
+                    // conversation. A chip is a subject a surface raised rather
+                    // than the next line of one the runner was already having,
+                    // and continuing into it is how a half-finished exchange
+                    // about a sore calf becomes the context for "how has my
+                    // training been going".
+                    onTap: () => _ask(suggestion),
                   ),
               ],
             ),

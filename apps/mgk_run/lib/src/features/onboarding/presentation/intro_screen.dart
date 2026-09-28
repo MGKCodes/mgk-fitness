@@ -1,11 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import '../../auth/data/auth_repository.dart';
 import '../../coaching/presentation/scripted_conversation.dart';
 import '../data/intro_permission_requester.dart';
 import '../domain/intro_permission.dart';
@@ -45,36 +43,18 @@ class IntroAnswers {
 class IntroScreen extends StatefulWidget {
   const IntroScreen({
     super.key,
-    this.auth,
-    this.onSignUpIntent,
     this.onFinished,
     this.onBack,
     this.initial = const IntroAnswers(),
     this.requestPermission = requestIntroPermission,
   });
 
-  /// Where the profile is actually created.
+  /// The conversation is over, carrying whatever the runner said to call them.
   ///
-  /// The conversation makes the account itself rather than handing a form the
-  /// details to make it with. On success there is nothing to call back to:
-  /// `AuthGate` is listening to the auth stream and swaps this whole subtree
-  /// for the shell the moment a session exists.
-  ///
-  /// **Null runs the conversation without its account steps**, ending after the
-  /// last permission with [onFinished]. That is what Settings replays: the
-  /// runner is already signed in, and walking them to a sign-up would either
-  /// make a second profile or dead-end on an address already in use.
-  final AuthRepository? auth;
-
-  /// Called when a conversation with no [auth] reaches its end.
-  final VoidCallback? onFinished;
-
-  /// Reports that the session about to appear was reached by creating a
-  /// profile rather than signing back into one.
-  ///
-  /// Taken back if the sign-up does not produce a session, so a later sign-in
-  /// does not inherit a claim this screen made and failed to honour.
-  final ValueChanged<bool>? onSignUpIntent;
+  /// The name travels out rather than being stored by this screen, because the
+  /// intro no longer creates the account that used to hold it - see
+  /// [IntroStore]. Null when they skipped the question.
+  final void Function(String? name)? onFinished;
 
   /// What was already said, when the runner is coming *back* from the form.
   ///
@@ -97,13 +77,9 @@ class IntroScreen extends StatefulWidget {
 
 class _IntroScreenState extends State<IntroScreen> {
   final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
   final _scroll = ScrollController();
 
-  late IntroStep _step = widget.initial.isFromIntro && widget.auth != null
-      ? IntroStep.signUp
-      : IntroStep.greeting;
+  late IntroStep _step = IntroStep.greeting;
   late String? _answeredName = widget.initial.name;
 
   /// The name was known before a word was said.
@@ -118,6 +94,20 @@ class _IntroScreenState extends State<IntroScreen> {
   /// Which permission is on screen. Only meaningful at [IntroStep.permissions].
   int _permissionIndex = 0;
 
+  /// The permissions this platform can actually ask for, resolved once.
+  ///
+  /// Not `introPermissions` directly: Android has no Health Connect permissions
+  /// in its manifest, so offering the Health step there produces a tap that
+  /// silently resolves to "Not now" — the runner taps Allow and is told they
+  /// declined. See `introPermissionsFor`.
+  ///
+  /// Read once into a field rather than called at each use, so the list cannot
+  /// change length between `_afterName` deciding there is a step and
+  /// `_afterPermission` deciding there is not.
+  late final List<IntroPermission> _permissions = introPermissionsFor(
+    defaultTargetPlatform,
+  );
+
   /// What the OS said, per permission index. Absent means "not asked yet".
   final Map<int, bool> _outcomes = <int, bool>{};
 
@@ -125,12 +115,60 @@ class _IntroScreenState extends State<IntroScreen> {
   /// requests, which on Android surfaces as a prompt that will not dismiss.
   bool _asking = false;
 
-  /// The address they gave, once it looks like one. Shown back as their turn.
-  String? _answeredEmail;
+  /// Turns that are in the transcript but have not been revealed yet.
+  ///
+  /// **This is the join between the screen's two clocks**, and its absence was
+  /// the bug. The transcript is paced by [SequencedReveal], which lands one
+  /// turn per beat off a `Timer`; the answer area was a plain `switch` on
+  /// [_step] that rebuilt in the same frame as the tap. So tapping "Sounds
+  /// good" queued "What should I call you?" a beat away while swapping in a
+  /// `TextField` with `autofocus: true` immediately — the keyboard arrived
+  /// ~620ms before the question it was there to answer. The very first frame
+  /// had the same fault in miniature: [_step] starts at [IntroStep.greeting],
+  /// so the button was painted before the greeting had been said at all.
+  ///
+  /// Counted as turns *pending* rather than turns *revealed* on purpose. A
+  /// transcript that shrinks — [SequencedReveal] handles that case, so this
+  /// must too — moves both ends of the comparison at once, and a delta clamped
+  /// at zero stays correct where an absolute count would drift and hold the
+  /// input back forever.
+  late int _pending = _transcript().length;
 
-  /// The account is being created. Same reason as [_asking]: two taps must not
-  /// become two sign-ups.
-  bool _creating = false;
+  /// Opens the gate if the reveal never says it has caught up.
+  ///
+  /// See [_revealBudget]: the input must always arrive.
+  Timer? _failsafe;
+
+  /// The OS asked for less movement.
+  ///
+  /// [SequencedReveal] paints everything in one frame in that case and — since
+  /// it never waits — never fires its `onRevealed` at all, so the gate would
+  /// wait on a callback that is not coming. Asking the same question here is
+  /// what stops that. Widget tests take this path too, which is why the flow
+  /// tests still find their buttons on the frame they tap them.
+  bool _reducedMotion = false;
+
+  /// How long the gate will wait on one pending turn before opening itself.
+  ///
+  /// [SequencedReveal] beats at 620ms, so this is headroom rather than a race,
+  /// and it is only ever reached when a reveal callback goes missing entirely.
+  /// **The input must always arrive.** A gate whose only key is a callback is
+  /// one dropped callback away from a runner stranded on a conversation with
+  /// nothing to tap and no way back — a far worse failure than the mistimed
+  /// keyboard the gate exists to fix.
+  static const Duration _revealBudget = Duration(milliseconds: 900);
+
+  /// Slack on top of [_revealBudget], so the failsafe cannot fire in the gap
+  /// between the last beat landing and its callback being handled.
+  static const Duration _revealSlack = Duration(seconds: 1);
+
+  /// The height the answer area holds even while it is empty.
+  ///
+  /// Matches the primary button's minimum height in `AppTheme`. Without it the
+  /// transcript lurches upward the moment the input arrives, and the gate ends
+  /// up reading as the screen resizing rather than as the coach finishing
+  /// their sentence.
+  static const double _answerSlotHeight = 52;
 
   /// The last thing that went wrong, in the coach's voice.
   ///
@@ -141,12 +179,69 @@ class _IntroScreenState extends State<IntroScreen> {
   String? _trouble;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    // The opening three turns are queued before any tap, so the failsafe has
+    // to cover them too — a cold screen whose reveal never starts is the one
+    // place a stranded runner could not even go back.
+    _armFailsafe();
+  }
+
+  @override
   void dispose() {
+    _failsafe?.cancel();
     _name.dispose();
-    _email.dispose();
-    _password.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Whether the runner may answer yet.
+  ///
+  /// The input is held back until the turn it answers is on screen. Under
+  /// reduced motion there is no wait to hold it back for.
+  bool get _canAnswer => _reducedMotion || _pending == 0;
+
+  /// The one way this screen changes what is in the transcript.
+  ///
+  /// Every mutation goes through here so the pending count cannot be forgotten
+  /// at a call site added later: a `setState` that queues a turn without
+  /// telling the gate would let the input back in a beat early, which is
+  /// precisely the defect being fixed. Taking the length before and after also
+  /// means no caller has to know *how many* turns their change produced —
+  /// granting a permission adds two, and stepping into the permissions adds
+  /// the prompt plus the first explanation.
+  void _say(VoidCallback change) {
+    final before = _transcript().length;
+    setState(() {
+      change();
+      final after = _transcript().length;
+      // Clamped at both ends: a shrinking transcript makes the delta negative,
+      // and nothing can be pending that is not in the list.
+      _pending = (_pending + after - before).clamp(0, after);
+    });
+    _armFailsafe();
+    _toEnd();
+  }
+
+  /// A turn landed. One fewer thing between the runner and the input.
+  void _onRevealed() {
+    if (_pending > 0) setState(() => _pending--);
+    _armFailsafe();
+    _toEnd();
+  }
+
+  void _armFailsafe() {
+    _failsafe?.cancel();
+    _failsafe = null;
+    if (_reducedMotion || _pending == 0) return;
+    _failsafe = Timer(_revealBudget * _pending + _revealSlack, () {
+      _failsafe = null;
+      if (!mounted || _pending == 0) return;
+      // The reveal has gone quiet with turns still queued. Better a question
+      // answered slightly early than a screen that can no longer be left.
+      setState(() => _pending = 0);
+    });
   }
 
   void _toEnd() {
@@ -160,16 +255,13 @@ class _IntroScreenState extends State<IntroScreen> {
     });
   }
 
-  void _advance(IntroStep to) {
-    setState(() => _step = to);
-    _toEnd();
-  }
+  void _advance(IntroStep to) => _say(() => _step = to);
 
   void _submitName() {
     // Anything is accepted. A name is not a format, and Settings is where a
     // mistyped one gets fixed.
     final given = _name.text.trim();
-    setState(() {
+    _say(() {
       _answeredName = given.isEmpty ? null : given;
     });
     _afterName();
@@ -177,7 +269,7 @@ class _IntroScreenState extends State<IntroScreen> {
 
   /// Where the conversation goes once the name is settled, however it was.
   void _afterName() {
-    if (introPermissions.isNotEmpty) {
+    if (_permissions.isNotEmpty) {
       _advance(IntroStep.permissions);
       return;
     }
@@ -188,121 +280,41 @@ class _IntroScreenState extends State<IntroScreen> {
     _afterPermission();
   }
 
-  /// **Deliberately permissive.** The only address this rejects is one that
-  /// cannot be an address at all, because the backend is the real authority on
-  /// what it will accept and a regex that is stricter than the server rejects
-  /// real people to no purpose.
-  static bool _looksLikeEmail(String value) {
-    final at = value.indexOf('@');
-    if (at <= 0 || at != value.lastIndexOf('@')) return false;
-    final domain = value.substring(at + 1);
-    return domain.contains('.') &&
-        !domain.startsWith('.') &&
-        !domain.endsWith('.') &&
-        !value.contains(' ');
-  }
-
-  void _submitEmail() {
-    final given = _email.text.trim();
-    if (!_looksLikeEmail(given)) {
-      setState(() => _trouble = introBadEmail);
-      _toEnd();
-      return;
-    }
-    setState(() {
-      _answeredEmail = given;
-      _trouble = null;
-      _step = IntroStep.password;
-    });
-    _toEnd();
-  }
-
-  Future<void> _createAccount() async {
-    if (_creating) return;
-    final password = _password.text;
-    if (password.length < kMinPasswordLength) {
-      setState(() => _trouble = introShortPassword);
-      _toEnd();
-      return;
-    }
-
-    setState(() {
-      _creating = true;
-      _trouble = null;
-    });
-    widget.onSignUpIntent?.call(true);
-
-    try {
-      final signedIn = await widget.auth!.signUp(
-        email: _answeredEmail!,
-        password: password,
-        name: _answeredName ?? '',
-      );
-      if (signedIn) {
-        // They have just had the conversation, so record it - otherwise the
-        // gate above would show it to them again on their next phone. Not
-        // awaited and not allowed to throw: the profile exists, and a failure
-        // here must not be reported as a failure to create it.
-        unawaited(widget.auth!.markCoachMet().catchError((_) {}));
-        // Tells iOS and Android the credentials that were just used are worth
-        // offering to save. Without it a password manager sees two fields in a
-        // conversation, no submitted form, and nothing to prompt about - which
-        // is the cost of moving a form into a chat, and it is paid here rather
-        // than discovered by somebody who cannot get back in.
-        TextInput.finishAutofillContext();
-        return;
-      }
-      // No session: the address needs confirming first. The claim goes back,
-      // because no shell is being built from this.
-      widget.onSignUpIntent?.call(false);
-      if (mounted) setState(() => _trouble = introConfirmEmail);
-    } on AuthException {
-      widget.onSignUpIntent?.call(false);
-      if (mounted) {
-        setState(() => _trouble = introTrouble(kSignUpCodeRefused));
-      }
-    } catch (_) {
-      widget.onSignUpIntent?.call(false);
-      if (mounted) {
-        setState(() => _trouble = introTrouble(kSignUpCodeUnreachable));
-      }
-    } finally {
-      if (mounted) setState(() => _creating = false);
-      _toEnd();
-    }
-  }
-
   Future<void> _ask() async {
     if (_asking) return;
     setState(() => _asking = true);
     final granted = await widget.requestPermission(
-      introPermissions[_permissionIndex],
+      _permissions[_permissionIndex],
     );
     if (!mounted) return;
-    setState(() {
+    // Two turns at once: what the OS was told, and what the coach says back.
+    _say(() {
       _outcomes[_permissionIndex] = granted;
       _asking = false;
     });
-    _toEnd();
   }
 
   void _afterPermission() {
-    if (_permissionIndex + 1 < introPermissions.length) {
-      setState(() => _permissionIndex++);
-      _toEnd();
+    if (_permissionIndex + 1 < _permissions.length) {
+      _say(() => _permissionIndex++);
       return;
     }
-    if (widget.auth == null) {
-      widget.onFinished?.call();
-      return;
-    }
-    _advance(IntroStep.signUp);
+    // **The intro ends here, and no longer hands off to an account.**
+    //
+    // It used to ask for an address and a password as two more turns, on the
+    // reasoning that a conversation ending in a pushed form has not avoided the
+    // form. That reasoning was right about forms and wrong about the account:
+    // the cheapest sign-up is the one not asked for. Everything this screen
+    // exists to do - meet the coach, get the permissions a tracker needs - is
+    // done, and the app works from here with nothing signed in.
+    //
+    // An account is asked for where it buys something: a plan, and backup.
+    widget.onFinished?.call(_answeredName);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final reached = _step.index;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -359,33 +371,8 @@ class _IntroScreenState extends State<IntroScreen> {
                           // already filled itself in. A conversation arrives a
                           // line at a time, with somebody composing in between.
                           SequencedReveal(
-                            onRevealed: _toEnd,
-                            children: <Widget>[
-                              Said(introPrompt(IntroStep.greeting)),
-                              Said(introWhoIAm),
-                              Said(introHowItWorks),
-                              if (!_knewName && reached >= IntroStep.name.index)
-                                Said(introPrompt(IntroStep.name)),
-                              if (!_knewName && _answeredName != null)
-                                Replied(_answeredName!),
-                              if (reached >=
-                                  IntroStep.permissions.index) ...<Widget>[
-                                Said(
-                                  introPrompt(
-                                    IntroStep.permissions,
-                                    name: _answeredName,
-                                  ),
-                                ),
-                                ..._permissionTranscript(),
-                              ],
-                              if (reached >= IntroStep.signUp.index)
-                                Said(introPrompt(IntroStep.signUp)),
-                              if (_answeredEmail != null)
-                                Replied(_answeredEmail!),
-                              if (reached >= IntroStep.password.index)
-                                Said(introPrompt(IntroStep.password)),
-                              if (_trouble != null) Said(_trouble!),
-                            ],
+                            onRevealed: _onRevealed,
+                            children: _transcript(),
                           ),
                         ],
                       ),
@@ -404,13 +391,52 @@ class _IntroScreenState extends State<IntroScreen> {
                 // address and the password are asked a step apart, so without
                 // a group spanning both the platform sees two unrelated fields
                 // and offers to save neither.
-                child: AutofillGroup(child: _answer(theme)),
+                child: AutofillGroup(
+                  // **Nothing at all until the question has been asked.** Not
+                  // a disabled control and not a hidden one: a `TextField`
+                  // that is merely invisible still takes `autofocus`, and the
+                  // keyboard rising ahead of the question is the whole defect.
+                  // The slot keeps its height either way so the transcript
+                  // does not jump when the input turns up.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: _answerSlotHeight,
+                    ),
+                    child: _canAnswer
+                        ? _answer(theme)
+                        : const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// The conversation so far, oldest turn first.
+  ///
+  /// Lifted out of `build` because the input gate needs to *count* it, not
+  /// just draw it: [_say] takes its length before and after every change to
+  /// work out how many turns are now queued behind a beat. Derived from the
+  /// step counter rather than accumulated, so a rebuild cannot duplicate a
+  /// turn and stepping back cannot leave an orphan on screen.
+  List<Widget> _transcript() {
+    final reached = _step.index;
+    return <Widget>[
+      Said(introPrompt(IntroStep.greeting)),
+      Said(introWhoIAm),
+      Said(introHowItWorks),
+      if (!_knewName && reached >= IntroStep.name.index)
+        Said(introPrompt(IntroStep.name)),
+      if (!_knewName && _answeredName != null) Replied(_answeredName!),
+      if (reached >= IntroStep.permissions.index) ...<Widget>[
+        Said(introPrompt(IntroStep.permissions, name: _answeredName)),
+        ..._permissionTranscript(),
+      ],
+      if (_trouble != null) Said(_trouble!),
+    ];
   }
 
   /// Every permission asked so far: what it was for, what they answered, and
@@ -420,24 +446,18 @@ class _IntroScreenState extends State<IntroScreen> {
   /// the form can still scroll up and see what they agreed to.
   List<Widget> _permissionTranscript() {
     final last = _step.index > IntroStep.permissions.index
-        ? introPermissions.length - 1
+        ? _permissions.length - 1
         : _permissionIndex;
     return <Widget>[
-      for (
-        var i = 0;
-        i <= last && i < introPermissions.length;
-        i++
-      ) ...<Widget>[
-        Said(introPermissions[i].explain),
+      for (var i = 0; i <= last && i < _permissions.length; i++) ...<Widget>[
+        Said(_permissions[i].explain),
         if (_outcomes[i] != null) ...<Widget>[
           // The runner did not type this, they answered a system dialog — but
           // showing it as their turn keeps the screen a conversation rather
           // than a form with a log stapled underneath.
           Replied(_outcomes[i]! ? 'Allowed' : 'Not now'),
           Said(
-            _outcomes[i]!
-                ? introPermissions[i].granted
-                : introPermissions[i].denied,
+            _outcomes[i]! ? _permissions[i].granted : _permissions[i].denied,
           ),
         ],
       ],
@@ -477,78 +497,10 @@ class _IntroScreenState extends State<IntroScreen> {
     IntroStep.permissions =>
       _outcomes[_permissionIndex] == null
           ? PrimaryButton(
-              label: introPermissions[_permissionIndex].cta,
+              label: _permissions[_permissionIndex].cta,
               busy: _asking,
               onPressed: _ask,
             )
           : PrimaryButton(label: 'Continue', onPressed: _afterPermission),
-
-    // Asked in the conversation rather than on a form of its own.
-    //
-    // The seam for "continue with Apple" is here: a provider button above this
-    // field, which on success skips [IntroStep.password] entirely. It is not
-    // built yet because none of it can work until the capability is added in
-    // Xcode, a Service ID exists, and the provider is enabled in Supabase - and
-    // a button that cannot complete is worse than no button.
-    IntroStep.signUp => Row(
-      children: <Widget>[
-        Expanded(
-          child: TextField(
-            controller: _email,
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            autofillHints: const <String>[
-              AutofillHints.newUsername,
-              AutofillHints.email,
-            ],
-            onSubmitted: (_) => _submitEmail(),
-            decoration: const InputDecoration(
-              hintText: 'you@example.com',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        IconButton.filled(
-          onPressed: _submitEmail,
-          icon: const Icon(Icons.arrow_forward),
-          tooltip: 'Continue',
-        ),
-      ],
-    ),
-
-    IntroStep.password => Row(
-      children: <Widget>[
-        Expanded(
-          child: TextField(
-            controller: _password,
-            autofocus: true,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            textInputAction: TextInputAction.done,
-            autofillHints: const <String>[AutofillHints.newPassword],
-            onSubmitted: (_) => _createAccount(),
-            decoration: const InputDecoration(
-              hintText: 'A password',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        IconButton.filled(
-          onPressed: _creating ? null : _createAccount,
-          icon: _creating
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          tooltip: 'Create my profile',
-        ),
-      ],
-    ),
   };
 }

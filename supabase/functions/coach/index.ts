@@ -401,7 +401,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    spent. The counters live in Postgres because Edge Function instances are
   //    ephemeral; the service-role key reaches them (the table is deliberately
   //    not user-writable, or a user could reset their own cap).
-  const limits = configFromEnv((k) => Deno.env.get(k));
+  // Keyed on the tier resolved above from `core.entitlements`, never on
+  // anything the client sent: the ceilings differ per tier now (ADR-0029), so
+  // a client that could name its tier could buy itself the sharp allowance.
+  const limits = configFromEnv((k) => Deno.env.get(k), tier);
   const store = new UsageStore(supabaseUrl, serviceKey);
   const now = Date.now();
   const snapshot = await store.window(

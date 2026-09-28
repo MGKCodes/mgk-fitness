@@ -7,7 +7,7 @@ import 'plan_backup_rows.dart';
 import 'plan_mappers.dart';
 import 'plan_store.dart';
 
-/// Mirrors the plan to the shared Supabase platform (the `runSchema` schema) so it
+/// Mirrors the plan to the shared Supabase platform (the `run` schema) so it
 /// survives losing the phone.
 ///
 /// This is a **backup, not the source of truth** (CLAUDE.md rule 1). It is

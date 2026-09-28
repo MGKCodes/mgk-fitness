@@ -3,10 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
+import 'package:mgk_run/src/features/recording/domain/split_marker.dart';
 import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 final _start = DateTime(2026, 1, 1, 8);
+
+/// A kilometre turning over at four seconds past a quarter past eight.
+final _crossing = DateTime(2026, 1, 1, 8, 15, 4);
 
 RunPoint _p(double lat, double lng, {double accuracy = 5, Duration? at}) =>
     RunPoint(
@@ -84,6 +88,124 @@ void main() {
         find.text('© MapTiler © OpenStreetMap contributors'),
         findsNothing,
       );
+    });
+  });
+
+  group('per-kilometre pins', () {
+    final List<SplitMarker> two = <SplitMarker>[
+      SplitMarker(
+        index: 1,
+        latitude: 51.501,
+        longitude: -0.121,
+        at: _crossing,
+        elapsed: Duration(minutes: 5, seconds: 7),
+      ),
+      SplitMarker(
+        index: 2,
+        latitude: 51.502,
+        longitude: -0.122,
+        at: _crossing,
+        elapsed: Duration(minutes: 10, seconds: 18),
+      ),
+    ];
+
+    List<Marker> markersOf(WidgetTester tester) =>
+        tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers;
+
+    testWidgets('are drawn on a finished run, with the two endpoints', (
+      tester,
+    ) async {
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+        ),
+      );
+
+      expect(markersOf(tester), hasLength(4)); // two pins, start, end
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+    });
+
+    testWidgets('and the end is a finish flag, not a second dot', (
+      tester,
+    ) async {
+      // Asked for off the build 13 field test. Start and finish were the same
+      // 16pt circle in two fills, which on a closed loop sit on top of each
+      // other and cannot be told apart at all.
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+        ),
+      );
+
+      expect(find.byType(FinishFlag), findsOneWidget);
+      expect(
+        markersOf(tester),
+        hasLength(4),
+        reason: 'it replaces the end dot rather than joining it',
+      );
+      expect(
+        tester.widgetList<Tooltip>(find.byType(Tooltip)),
+        hasLength(2),
+        reason: 'the flag says nothing the summary does not say better',
+      );
+    });
+
+    testWidgets('and the flag waits for the line to arrive', (tester) async {
+      // Mid-reveal the end marker follows the *head* of the drawn line, not the
+      // true end. A flag planted on a moving head reads as a rendering fault;
+      // the dot keeps it company until the line gets there.
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+          reveal: 0.5,
+        ),
+      );
+
+      expect(find.byType(FinishFlag), findsNothing);
+    });
+
+    testWidgets('carry the crossing time, without shouting it', (tester) async {
+      // The number is on the map and the time is one press away: ten pins each
+      // carrying a clock reading is a route you cannot see for the labels on
+      // it, and on a loop the later kilometres sit on top of the early ones.
+      await _pumpMap(
+        tester,
+        RouteMap(
+          points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)],
+          splitMarkers: two,
+        ),
+      );
+
+      final tooltips = tester
+          .widgetList<Tooltip>(find.byType(Tooltip))
+          .map((t) => t.message)
+          .toList();
+      expect(tooltips, hasLength(2));
+      expect(tooltips.first, contains('1 km'));
+      expect(tooltips.first, contains('08:15')); // the clock time it happened
+      expect(tooltips.first, contains('5:07')); // and how far into the run
+      expect(find.text('05:07'), findsNothing, reason: 'not on the map itself');
+    });
+
+    testWidgets('are absent in-run, where the map is for where you are', (
+      tester,
+    ) async {
+      // The default. A runner mid-effort is looking at a number, not reading
+      // their own route back.
+      await _pumpMap(
+        tester,
+        RouteMap(points: <RunPoint>[_p(51.5, -0.12), _p(51.503, -0.123)]),
+      );
+
+      expect(markersOf(tester), hasLength(2)); // start and end only
+      expect(find.byType(Tooltip), findsNothing);
     });
   });
 

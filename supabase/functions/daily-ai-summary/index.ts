@@ -1,5 +1,48 @@
 // Supabase Edge Function: daily-ai-summary
 //
+// ⚠️ THIS BELONGS TO THE LIVE LIFTIO APP. IT IS NOT RUN'S, AND IT IS NOT
+// apps/mgk_lift's. DO NOT DELETE IT.
+//
+// Its caller is the **React Native Liftio** currently shipping on the App
+// Store, which lives in a different repository. Nothing in THIS repository
+// calls it — and that is the trap, because the obvious conclusion from a
+// repo-wide grep is that it is dead code costing money, which it is not.
+// Deleting it breaks the summary on every phone running the shipped build.
+//
+// It was mistaken for orphaned on 2026-09-10 during a gating audit, on exactly
+// that evidence: all four `functions.invoke` calls across both Flutter apps
+// name `coach` or `delete-account`. The grep was right and the conclusion was
+// wrong. Hence this banner.
+//
+// ## Which function does what
+//
+//   coach              — both Flutter apps (apps/mgk_run, apps/mgk_lift).
+//                        Entitlement-gated: `tierFor` refuses an unpaid caller
+//                        with a 402 before a token is spent (ADR-0030).
+//   daily-ai-summary   — THIS ONE. Legacy Liftio (React Native) only.
+//   delete-account     — the whole suite, app-aware.
+//   revenuecat         — the store webhook; the only writer of core.entitlements.
+//
+// The Flutter rewrite does not use this function at all. Its coach prose goes
+// through `coach`, on the `lift_summarise` surface, and is gated there. When
+// the App Store build of Liftio is finally superseded by apps/mgk_lift, THIS
+// FUNCTION BECOMES DELETABLE — and that is the moment to do it, not before.
+// See the decision *Liftio is replaced, not relaunched*.
+//
+// ## Known gap, deliberately recorded rather than fixed here
+//
+// There is **no entitlement check** on this function: it authenticates a JWT
+// and spends a model call, where `coach` reads `core.entitlements` first. Any
+// signed-in account can therefore reach Haiku through it, once per day, capped
+// by the limits below rather than by what anybody bought. Whether that is a
+// defect depends on whether the summary was a paid feature in the shipped
+// Liftio and whether its gate was only client-side — a question this repository
+// cannot answer, because the client is not in it. It is bounded by the daily
+// per-user limit and the global circuit breaker, which is why it is written
+// down here instead of being changed in a hurry.
+//
+// ## What it does
+//
 // Generates a short editorial training observation using Claude Haiku 4.5.
 // Exactly 3 short sentences, observational tone, no motivational language.
 // The client sends pre-aggregated stats; the LLM never sees personal data.

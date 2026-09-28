@@ -94,7 +94,10 @@ void main() {
       const distance = UnitSystem.imperial;
       const mass = MassUnit.kilograms;
 
-      expect(Distance.kilometers(5).inDisplayUnit(distance), closeTo(3.107, 0.001));
+      expect(
+        Distance.kilometers(5).inDisplayUnit(distance),
+        closeTo(3.107, 0.001),
+      );
       expect(Mass.kilograms(100).label(mass), '100 kg');
     });
 

@@ -1,11 +1,15 @@
+import '../../../core/database/app_database.dart'
+    show planStatusAbandoned, planStatusCompleted;
 import '../domain/plan_shape.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/session_status.dart';
 import '../domain/training_plan.dart';
+import '../domain/week_progress.dart';
 
 /// Pure JSON ⇄ domain mapping for the coach `skeleton` and `week` surfaces —
 /// the request context sent up, and the model's proposal parsed back. Kept free
-/// of Supabase so it is testable without a network (the `run_mappers` pattern).
+/// of Supabase so it is testable without a network (the same split as `coach_mappers`).
 ///
 /// Response parsing is **tolerant**: anything malformed returns `null`, which
 /// the orchestrator treats as a failed attempt (and ultimately falls back to
@@ -49,6 +53,58 @@ Map<String, dynamic> trainingWeekToJson(TrainingWeek w) => <String, dynamic>{
         'distance_meters': s.distanceMeters,
       },
   ],
+};
+
+/// What has already happened this week, as JSON — sent to the `adapt` surface
+/// so a revision is fitted around the runner's real week rather than laid over
+/// the top of it.
+///
+/// **Four lists rather than seven days**, because the model is being asked to do
+/// four different things with them: leave `done` exactly as it is, treat
+/// `missed` as gone, count `unplanned` as work already banked and ask for less,
+/// and rewrite `remaining`. Handing over a day-by-day array would leave it to
+/// infer all four, and the failure this exists to fix is precisely a model
+/// inferring wrongly about days it could not see.
+///
+/// A day the plan asked nothing of and nothing happened on appears in none of
+/// them. It is a rest day, and there is nothing to say about it.
+Map<String, dynamic> weekAsRunToJson(WeekAsRun soFar) => <String, dynamic>{
+  'done': <Map<String, dynamic>>[
+    for (final d in soFar.done)
+      <String, dynamic>{
+        'weekday': d.weekday,
+        'kind': sessionKindToWire(d.prescribed!.kind),
+        'distance_meters': d.prescribed!.distanceMeters,
+        // What they actually covered, alongside what was asked. A run on the
+        // day completes the day at any distance (see `week_progress.dart`), so
+        // the two legitimately differ and the model should see both rather than
+        // assume the prescription was met to the metre.
+        'ran_meters': d.ranMeters,
+      },
+  ],
+  'missed': <Map<String, dynamic>>[
+    for (final d in soFar.missed)
+      <String, dynamic>{
+        'weekday': d.weekday,
+        'kind': sessionKindToWire(d.prescribed!.kind),
+        'distance_meters': d.prescribed!.distanceMeters,
+      },
+  ],
+  'unplanned': <Map<String, dynamic>>[
+    for (final d in soFar.unplanned)
+      <String, dynamic>{'weekday': d.weekday, 'ran_meters': d.ranMeters},
+  ],
+  'remaining': <Map<String, dynamic>>[
+    for (final d in soFar.remaining)
+      <String, dynamic>{
+        'weekday': d.weekday,
+        'kind': sessionKindToWire(d.prescribed!.kind),
+        'distance_meters': d.prescribed!.distanceMeters,
+      },
+  ],
+  // The week's running total, so the model does not have to add the lists up to
+  // work out how much of the slot is already spent.
+  'ran_meters': soFar.ranMeters,
 };
 
 // ---- response side (function → client), tolerant: null on any problem ------
@@ -131,6 +187,28 @@ SessionKind? sessionKindFromWire(Object? v) => switch (v) {
   'threshold' => SessionKind.threshold,
   'interval' => SessionKind.interval,
   _ => null,
+};
+
+/// How a plan's stored status reads as an ending, or null when it is not one.
+///
+/// Only two of the four statuses are endings. `active` is the plan the runner
+/// is on and `superseded` is one that was replaced mid-flight, which is a fact
+/// about the *next* plan rather than about this one — see [PlanClosure].
+///
+/// An unrecognised status answers null rather than throwing, unlike the strict
+/// decoding elsewhere in [DriftPlanStore]. A status this app does not know is
+/// still a plan the runner had, and refusing to list their own history over a
+/// vocabulary mismatch would lose the useful thing to protect a detail.
+PlanClosure? planClosureFromWire(Object? v) => switch (v) {
+  planStatusCompleted => PlanClosure.raced,
+  planStatusAbandoned => PlanClosure.didNotRace,
+  _ => null,
+};
+
+/// The stored status for an ending.
+String planClosureToWire(PlanClosure closure) => switch (closure) {
+  PlanClosure.raced => planStatusCompleted,
+  PlanClosure.didNotRace => planStatusAbandoned,
 };
 
 /// The same vocabulary as `plan_sessions.status` locally and in Postgres, so a

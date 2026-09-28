@@ -57,7 +57,9 @@ void main() {
         kind: SessionKind.easy,
         distanceMeters: 8000,
       );
-      expect(sessionName(easy), 'Easy');
+      // "Easy run", not "Easy". The kind names an intensity; on its own it
+      // tells a runner how hard and never what they are doing.
+      expect(sessionName(easy), 'Easy run');
     });
   });
 

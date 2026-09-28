@@ -5,7 +5,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 /// The brand entry point: a monochrome photo behind the RUNIO wordmark and a
 /// single silver call to action. Implements the greyscale photo-scrim treatment
-/// from docs/design/design-system.md.
+/// from docs/history/design-system.md.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({
     super.key,

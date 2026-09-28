@@ -55,6 +55,7 @@ mgk-fitness/
 │  ├─ migrations/          the schema — this repo is the source of truth
 │  ├─ functions/           Edge Functions: coach, delete-account, daily-ai-summary
 │  └─ tests/               pgTAP assertions against the real catalog
+├─ web/                    mgkfitness.mgkcodes.com — NOT AGPL, see NOTICE.md
 └─ docs/
    ├─ architecture.md      how the suite fits together
    └─ database.md          the schema, and why it looks like that
@@ -150,6 +151,12 @@ That's deliberate: this is a portfolio project meant to be read, and the licence
 keeps it that way. It follows the Signal precedent for App Store distribution —
 sole copyright holder, so the binaries on the store and the source here can
 coexist.
+
+**`web/` is not.** The website is proprietary, all rights reserved, under its
+own [`web/LICENSE`](web/LICENSE). Copyleft was chosen to stop somebody reskinning
+the *apps*; applied to marketing pages it would do the opposite, and AGPL's
+section 13 would oblige us to offer source to every visitor. Visible, not
+reusable, exactly like `getliftio.com`.
 
 **Assets are licensed separately** — see [NOTICE.md](NOTICE.md). In particular
 the exercise illustrations in `apps/mgk_lift/assets/exercises/` are

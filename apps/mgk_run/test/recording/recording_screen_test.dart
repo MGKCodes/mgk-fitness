@@ -58,8 +58,22 @@ void main() {
       expect(find.text('PACE /KM'), findsOneWidget);
       expect(find.text('AVG /KM'), findsOneWidget);
       expect(find.text('--:--'), findsNWidgets(2));
-      expect(find.widgetWithText(OutlinedButton, 'Pause'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'Finish'), findsOneWidget);
+      // Pause is the filled control while the run is going, and Finish is not
+      // on the screen at all — see the control row in `recording_screen.dart`
+      // and the group below for what the swap is protecting.
+      expect(find.widgetWithText(FilledButton, 'Pause'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Lap'), findsOneWidget);
+      expect(find.text('Finish'), findsNothing);
+      // Each control carries a glyph as well as its word, asked for off the
+      // build 13 field test: text alone is hard to hit at a glance while
+      // moving. **Both**, not one — the word is asserted above, because an
+      // icon-only control asks somebody out of breath to recognise a glyph at
+      // arm's length, and `Finish` is not worth guessing at.
+      expect(find.widgetWithIcon(FilledButton, Icons.pause), findsOneWidget);
+      expect(
+        find.widgetWithIcon(OutlinedButton, Icons.flag_outlined),
+        findsOneWidget,
+      );
 
       // Advance: fixes land, so the label settles to Recording, the clock
       // moves off the recorder's wall time, and distance leaves zero.
@@ -231,7 +245,11 @@ void main() {
 
     // Dragged from a point inside the panel, not from the sheet widget's
     // centre: DraggableScrollableSheet lays out across the whole screen, so its
-    // centre is over the map, and a drag there hits nothing.
+    // centre is over the map — and since the map became pannable (ADR-0031) a
+    // drag there pans it rather than doing nothing. That this drag still opens
+    // the sheet is the assertion that the two do not contend: the panel is an
+    // opaque surface above the map, so a pointer landing on it is the sheet's
+    // for the whole gesture.
     await tester.dragFrom(const Offset(196, 700), const Offset(0, -420));
     // Fixed pumps, not pumpAndSettle: the fake recorder emits on a repeating
     // timer, so the tree never goes quiet and settling waits forever. Same trap
@@ -320,7 +338,7 @@ void main() {
     expect(find.widgetWithText(TextButton, 'Open Settings'), findsNothing);
   });
 
-  testWidgets('pause swaps the control and status label', (tester) async {
+  testWidgets('pause swaps the controls and the status label', (tester) async {
     await tester.binding.setSurfaceSize(kPhone);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -335,14 +353,86 @@ void main() {
       ),
     );
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Pause'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Pause'));
     await tester.pump(); // deliver the status change
     await tester.pump();
 
     expect(find.text('Paused'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Resume'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Resume'), findsOneWidget);
+    // Lap goes with the running state: there is no lap in progress to cut.
+    expect(find.text('Lap'), findsNothing);
 
     await recorder.stop(); // cancel the replay timer before teardown
+  });
+
+  group('a run cannot end from the running state', () {
+    // The field test's own screenshot is the argument (`IMG_4685`): Lap, Pause
+    // and Finish side by side, with Finish the filled one — the loudest, most
+    // findable control on the screen, and the only one of the three that
+    // cannot be undone. An hour of running was one mistap from over.
+
+    Future<FakeRunRecorder> open(WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(kPhone);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final recorder = FakeRunRecorder(
+        interval: const Duration(milliseconds: 100),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RecordingScreen(recorder: recorder),
+        ),
+      );
+      return recorder;
+    }
+
+    testWidgets('Finish is absent while the run is going', (tester) async {
+      final recorder = await open(tester);
+
+      expect(find.text('Finish'), findsNothing);
+      expect(find.text('Pause'), findsOneWidget);
+      expect(find.text('Lap'), findsOneWidget);
+
+      await recorder.stop();
+    });
+
+    testWidgets('and appears once the runner pauses', (tester) async {
+      final recorder = await open(tester);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Pause'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Finish'), findsOneWidget);
+      // Outlined, not filled. A runner who stopped at a crossing is far more
+      // likely to be carrying on, so Resume is the one under the thumb and
+      // ending the run is the one they have to look for.
+      expect(find.widgetWithText(OutlinedButton, 'Finish'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Resume'), findsOneWidget);
+
+      await recorder.stop();
+    });
+
+    testWidgets('and Finish, once reached, still finishes', (tester) async {
+      final recorder = await open(tester);
+      var finished = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RecordingScreen(recorder: recorder, onFinish: () => finished++),
+        ),
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Pause'));
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Finish'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(finished, 1);
+      expect(recorder.status, RecorderStatus.stopped);
+    });
   });
 
   testWidgets('cancel confirms, then discards and fires onCancel', (
@@ -468,15 +558,30 @@ void main() {
 
         // Reachable means *on screen*, not merely built: a control the runner
         // has to scroll to find is one they cannot use mid-stride.
+        //
+        // Both states, because the row swaps: Lap and Pause while running, then
+        // Resume and Finish once paused. The detent is a computed sum, so a
+        // second row that laid out taller than the first would strand Finish
+        // exactly the way a guessed fraction used to strand all three.
         final screen = Offset.zero & entry.value;
-        for (final label in <String>['Lap', 'Pause', 'Finish']) {
-          final rect = tester.getRect(find.text(label));
-          expect(
-            screen.contains(rect.center),
-            isTrue,
-            reason: '$label is off-screen at ${entry.key}',
-          );
+        void expectReachable(List<String> labels) {
+          for (final label in labels) {
+            final rect = tester.getRect(find.text(label));
+            expect(
+              screen.contains(rect.center),
+              isTrue,
+              reason: '$label is off-screen at ${entry.key}',
+            );
+          }
         }
+
+        expectReachable(<String>['Lap', 'Pause']);
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Pause'));
+        await tester.pump();
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expectReachable(<String>['Resume', 'Finish']);
 
         // And the figure the screen exists for.
         expect(find.text('DISTANCE'), findsOneWidget);

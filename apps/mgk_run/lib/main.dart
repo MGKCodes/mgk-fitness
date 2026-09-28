@@ -18,10 +18,13 @@ import 'src/features/coaching/data/supabase_plan_backup.dart';
 import 'src/features/coaching/data/consented_backups.dart';
 import 'src/features/history/data/consented_run_backup.dart';
 import 'src/features/settings/data/backup_consent_factory.dart';
+import 'src/features/settings/data/backup_eraser.dart';
+import 'src/features/settings/data/backup_health_factory.dart';
+import 'src/features/history/data/drift_run_repository.dart';
+import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
 import 'src/features/history/data/supabase_restore.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
-import 'src/features/history/data/supabase_run_repository.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
 import 'src/features/recording/data/recording_run_recorder.dart';
 
@@ -147,11 +150,27 @@ class _AppRootState extends State<_AppRoot> {
     // each wrapper so all three read the same answer — three stores could
     // disagree, and the disagreement would be silent.
     final consent = createBackupConsentStore();
+    // Where a failed push is written down. Read in two places now: Settings,
+    // which builds its own store from the same factory over the same file, and
+    // Profile's backup line, which is threaded the store from here.
+    //
+    // This comment used to say the opposite — that nothing else read it and
+    // threading it through the shell would mean four widgets holding a
+    // dependency only the last of them uses. That was true until Profile had a
+    // reason to ask where the runner's training actually is.
+    final backupHealth = createBackupHealthStore();
     // Gated at construction: nothing below ever holds an ungated backup, so
     // there is no call path that can skip the check.
+    //
+    // The reporter sits *inside* the gate, so it only ever sees pushes consent
+    // allowed. A run that was not sent because the runner declined is not a
+    // failure and must not be reported as one — the switch is working.
     final runBackup = seed == null
         ? ConsentedRunBackup(
-            inner: SupabaseRunBackup(db: db),
+            inner: ReportedRunBackup(
+              inner: SupabaseRunBackup(db: db),
+              health: backupHealth,
+            ),
             consent: consent,
           )
         : null;
@@ -174,15 +193,25 @@ class _AppRootState extends State<_AppRoot> {
         // shared project.
         backup: runBackup,
       ),
-      historySource: seed?.history ?? SupabaseRunRepository().fetchRuns,
-      // Adding and correcting runs. Local write first, then the mirror — which
-      // is also what makes a run appear in the log at all, since the log is
-      // read from Supabase.
+      // **The log is read from the phone** (ADR-0023). This was Supabase, which
+      // meant a recorded run appeared only if it had been mirrored — so
+      // declining backup, or losing a push, made a runner's own runs invisible
+      // to them on the device that held them. Drift is the source of truth for
+      // a run (rule 1) and is now also what the log is read from.
+      historySource: seed?.history ?? DriftRunRepository(db).fetchRuns,
+      // Adding and correcting runs. Local write first, then the mirror, and the
+      // mirror is now only a mirror: the log shows the run either way.
       // `runBackup` is already the consent-gated wrapper (or null for a
       // persona), so this cannot reach Supabase without permission.
       runEditor: RunEditor(db: db, backup: runBackup),
       restore: restore,
       consentStore: consent,
+      backupHealth: backupHealth,
+      // What makes withdrawing consent honest rather than a pause. Null
+      // for a persona, by the same rule as every other line here: invented
+      // data never reaches the shared project, so there is nothing of the
+      // runner's to erase from it.
+      eraser: seed == null ? BackupEraser() : null,
       coach: CoachService(),
       planClient: CoachService(),
       // The plan is owned by the on-device database; Supabase only

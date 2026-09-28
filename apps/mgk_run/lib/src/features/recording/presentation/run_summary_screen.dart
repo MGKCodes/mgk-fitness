@@ -6,6 +6,11 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
+import '../domain/live_metrics.dart';
+import '../../coaching/domain/prescribed_distance.dart' show raceName;
+import '../domain/best_effort.dart';
+import '../domain/run_point.dart';
+import '../domain/split_marker.dart';
 import '../domain/run_summary.dart';
 import 'recording_readout.dart';
 import 'route_map.dart';
@@ -15,6 +20,15 @@ import 'route_map.dart';
 /// no HR, treadmill/manual) is simply not shown — never an error state, and the
 /// coach's note is no different: a run there is nothing true to say about shows
 /// nothing.
+///
+/// **Two arrivals at one screen, and only one of them is an arrival.** Opened
+/// from the log it is a record being looked up. Reached by pressing Finish it
+/// is the end of the thing the run was, and the first field test found out what
+/// happens when that is not distinguished: the screen was not reached at all —
+/// `_finish()` popped — so an hour of effort ended with the display going away.
+/// [justFinished] is what separates the two, and it is deliberately small: the
+/// title, the date line, and a Done that has somewhere to go. Everything else
+/// is the same screen because it is the same run.
 class RunSummaryScreen extends StatelessWidget {
   const RunSummaryScreen({
     super.key,
@@ -22,8 +36,10 @@ class RunSummaryScreen extends StatelessWidget {
     this.unit = UnitSystem.metric,
     this.onDone,
     this.onEdit,
+    this.onAskCoach,
     this.history = const <RunSummary>[],
     this.plannedSession,
+    this.justFinished = false,
   });
 
   final RunSummary summary;
@@ -31,8 +47,21 @@ class RunSummaryScreen extends StatelessWidget {
   /// Corrects this run's numbers. Null hides the action. The route is never
   /// touched — see `AppDatabase.updateRunDetails`.
   final VoidCallback? onEdit;
+
+  /// Takes the run to the coach. Null in a build with no coach behind it, and
+  /// then the affordance is simply absent rather than inert.
+  ///
+  /// **The point of a note is that there is more to ask.** `RunNote` says one
+  /// true thing and stops — that is its whole design, a coach who says five
+  /// things about one run is not coaching — and this is the way past that
+  /// ceiling, at the moment the runner cares most about the answer.
+  final VoidCallback? onAskCoach;
+
   final UnitSystem unit;
   final VoidCallback? onDone;
+
+  /// Whether this run was finished seconds ago rather than looked up.
+  final bool justFinished;
 
   /// The runner's other runs, which is what lets the coach say anything
   /// comparative about this one. Passing the whole history is fine — this run
@@ -59,7 +88,10 @@ class RunSummaryScreen extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             backgroundColor: AppColors.bg,
-            title: const Text('Run summary'),
+            // "Run complete", not "Run summary", when the run finished seconds
+            // ago. A summary is something you go and look at; this is the thing
+            // arriving, and the title is the cheapest place to say so.
+            title: Text(justFinished ? 'Run complete' : 'Run summary'),
             actions: <Widget>[
               if (onEdit != null)
                 AppIconButton(
@@ -76,7 +108,19 @@ class RunSummaryScreen extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    RouteMap(points: summary.points),
+                    _DrawnRoute(
+                      points: summary.points,
+                      // Derived here rather than stored: the trace already
+                      // carries every crossing, and the splits below come from
+                      // the same walk, so the pin on the map and the row in the
+                      // list can never disagree about kilometre four.
+                      markers: splitMarkersFor(summary.points),
+                      // Only on arrival. Opening a run from the log is looking
+                      // something up, and a route that insists on redrawing
+                      // itself every time you check last Tuesday is a flourish
+                      // that has outstayed the moment it was for.
+                      animate: justFinished,
+                    ),
                     // The headline reads over the route it describes rather than
                     // below it — the map is the texture the glass needs.
                     Positioned(
@@ -93,6 +137,7 @@ class RunSummaryScreen extends StatelessWidget {
                           summary: summary,
                           unit: unit,
                           theme: theme,
+                          justFinished: justFinished,
                         ),
                       ),
                     ),
@@ -122,17 +167,38 @@ class RunSummaryScreen extends StatelessWidget {
                       summary: summary,
                       unit: unit,
                       theme: theme,
+                      justFinished: justFinished,
                     ),
                   ),
                   const SizedBox(height: 24),
                 ],
-                Entrance(index: 1, child: _StatGrid(tiles: _tiles())),
+                // A record set, said once, above the numbers that contain it.
+                //
+                // The screen already had everything needed to know: the run
+                // carries its own best efforts, and `history` is the log to
+                // measure them against. Not saying it meant a runner could set
+                // their fastest 10K and find out by opening a different tab.
+                if (_records().isNotEmpty) ...<Widget>[
+                  Entrance(index: 1, child: _RecordBanner(records: _records())),
+                  const SizedBox(height: 16),
+                ],
+                Entrance(index: 2, child: _StatGrid(tiles: _tiles())),
                 // The numbers first — that is what the screen is for — then the
                 // coach's read of them, above the splits a pacing note refers
                 // to.
-                if (note != null) ...<Widget>[
+                //
+                // Present when there is a note, and also when there is only a
+                // way in. Silence is a normal output of [RunNote] — most runs
+                // are ordinary and the coach says nothing about them — but a
+                // runner who wants to know what their coach makes of an
+                // ordinary run should not have to go and find the conversation
+                // to ask.
+                if (note != null || onAskCoach != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.xxl),
-                  Entrance(index: 2, child: _RunNoteCard(note: note)),
+                  Entrance(
+                    index: 2,
+                    child: _CoachBlock(note: note, onAsk: onAskCoach),
+                  ),
                 ],
                 if (summary.splits.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 32),
@@ -185,14 +251,101 @@ class RunSummaryScreen extends StatelessWidget {
     );
   }
 
+  /// The grid, built from what this run actually has.
+  ///
+  /// **Every tile here is conditional, and that is the extension point.** The
+  /// measures Strava carried for the same 10 km and Runio did not — elevation
+  /// gain, max elevation, steps — arrive as a value on [RunSummary] and a line
+  /// in this list; nothing about the layout has to change, because the grid
+  /// wraps whatever it is given.
+  ///
+  /// **Absence is the common case, not the broken one.** Steps come from
+  /// Health, where a denied read is indistinguishable from no data, and the
+  /// elevation pair comes from barometric altitude that this app does not yet
+  /// have a source for at all (ADR-0024). Every one of those renders as an
+  /// absent tile — never a zero, which would be a claim, and never an error,
+  /// which would scold a runner for a permission they were entitled to withhold
+  /// (CLAUDE.md rule 6).
+  /// The distances this run set a personal best over.
+  ///
+  /// **Strictly faster than everything before it, and never on a tie.** A
+  /// repeat of a time already held is not a new record, and saying it is
+  /// devalues the banner the one time it matters.
+  ///
+  /// Compared against [history] rather than a stored best, because the log is
+  /// what Profile reads a moment later and two sources would eventually
+  /// disagree. A run sharing this one's id is skipped: the log usually already
+  /// contains the run being shown, and a run cannot beat itself.
+  List<BestEffort> _records() {
+    if (summary.bestEfforts.isEmpty) return const <BestEffort>[];
+    final others = <RunSummary>[
+      for (final run in history)
+        if (run.id == null || run.id != summary.id) run,
+    ];
+    return <BestEffort>[
+      for (final effort in summary.bestEfforts)
+        if (others.every(
+          (run) => run.bestEfforts.every(
+            (prior) =>
+                prior.distanceMeters != effort.distanceMeters ||
+                prior.duration > effort.duration,
+          ),
+        ))
+          effort,
+    ];
+  }
+
   List<_Tile> _tiles() {
     final tiles = <_Tile>[_Tile('TIME', summary.duration.hoursMinutesSeconds)];
     final pace = _avgPace();
     if (pace != null) tiles.add(_Tile('AVG PACE', pace.format(unit)));
+    // **Two elevation figures, named apart.** A bare "ELEVATION" was
+    // unambiguous while it was the only one; beside a high point it is not, and
+    // 167 m of gain over a 111 m maximum is a pair of numbers that has to say
+    // which is which. The in-run readout still says CLIMB, correctly: there is
+    // only ever one elevation figure mid-run and nothing for it to be confused
+    // with.
     if (summary.elevationGainMeters != null) {
       tiles.add(
-        _Tile('ELEVATION', '${summary.elevationGainMeters!.round()} m'),
+        _Tile(
+          'ELEVATION GAIN',
+          Elevation.metres(summary.elevationGainMeters!).label(unit),
+        ),
       );
+    }
+    if (summary.elevationMaxMeters != null) {
+      tiles.add(
+        _Tile(
+          'MAX ELEVATION',
+          Elevation.metres(summary.elevationMaxMeters!).label(unit),
+        ),
+      );
+    }
+    if (summary.steps != null) {
+      tiles.add(_Tile('STEPS', _grouped(summary.steps!)));
+      // **The sixth tile, and the one that closes the row.** Five tiles wrap to
+      // 3 + 2 and leave a hole in the bottom right that reads as a measure that
+      // failed to load rather than as the end of the list.
+      //
+      // Derived rather than sourced: cadence is steps over time, both of which
+      // are already here, so it costs no permission the runner has not already
+      // given and no field the recorder does not already write. It is the one
+      // measure on this screen that says something about *how* the run was run
+      // rather than how far or how high — two runners with the same 10 km and
+      // the same pace can be forty steps a minute apart.
+      //
+      // Elapsed rather than moving time, because moving time is not recorded.
+      // A long pause therefore drags it down; that is a real property of the
+      // figure and the reason it is labelled AVG.
+      final seconds = summary.duration.inSeconds;
+      if (seconds > 0) {
+        tiles.add(
+          _Tile(
+            'AVG CADENCE',
+            '${(summary.steps! / (seconds / 60)).round()} spm',
+          ),
+        );
+      }
     }
     if (summary.avgHr != null) {
       tiles.add(_Tile('AVG HR', '${summary.avgHr} bpm'));
@@ -225,6 +378,21 @@ class _Tile {
   final String value;
 }
 
+/// Thousands separated, because a step count is the one figure on this screen
+/// that runs to five digits and `12468` is not a number anybody reads at a
+/// glance. Written out rather than pulled from `intl`: the app carries no
+/// locale machinery, and inventing one for a single comma would be a
+/// dependency for a punctuation mark.
+String _grouped(int value) {
+  final digits = value.abs().toString();
+  final out = StringBuffer(value < 0 ? '-' : '');
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
+    out.write(digits[i]);
+  }
+  return out.toString();
+}
+
 class _StatGrid extends StatelessWidget {
   const _StatGrid({required this.tiles});
 
@@ -254,56 +422,87 @@ class _StatGrid extends StatelessWidget {
   }
 }
 
-/// What the coach makes of this run.
+/// What the coach makes of this run, and the way to keep asking.
 ///
 /// The same treatment Home gives a [RunNote]'s sibling, `CoachNote` — card,
-/// spark icon, headline over evidence — so one voice reads the same wherever it
-/// speaks. Without the chevron and the tap: this note is about the run already
-/// on screen, so there is nowhere for it to lead.
-class _RunNoteCard extends StatelessWidget {
-  const _RunNoteCard({required this.note});
+/// coach mark, headline over evidence — so one voice reads the same wherever it
+/// speaks. The card itself still does not lead anywhere on tap: the note is
+/// about the run already on screen, and a card that opened the coach would make
+/// the observation a link rather than a remark.
+///
+/// The button underneath is a different claim, and it says so in its own words.
+/// A [RunNote] is one sentence and then silence by design; "Ask your coach"
+/// is the acknowledgement that a runner may well have a second question about
+/// the run they are looking at, and this is the moment it is worth the most.
+class _CoachBlock extends StatelessWidget {
+  const _CoachBlock({required this.note, required this.onAsk});
 
-  final RunNote note;
+  /// Null when there is nothing true to say about this run — which is most
+  /// runs. The card goes; the way in stays.
+  final RunNote? note;
+  final VoidCallback? onAsk;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: CoachLetter(size: 16, color: AppColors.textSecondary),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
+    final said = note;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (said != null)
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  note.headline,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Center(
+                    child: CoachLetter(
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  note.detail,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.4,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        said.headline,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        said.detail,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        if (onAsk != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppTextButton(
+              // "About this run", not a bare "Ask your coach": the mark
+              // floating over every tab already offers a conversation, and this
+              // one opens with the run on screen as its subject.
+              label: 'Ask your coach about this run',
+              onPressed: onAsk,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -342,11 +541,23 @@ class _Headline extends StatelessWidget {
     required this.summary,
     required this.unit,
     required this.theme,
+    this.justFinished = false,
   });
 
   final RunSummary summary;
   final UnitSystem unit;
   final ThemeData theme;
+  final bool justFinished;
+
+  /// "Just now" on a run that has this second stopped, and the date otherwise.
+  ///
+  /// Stamping `24 Aug 2026, 15:00` on a run somebody finished thirty seconds
+  /// ago is filing it before they have looked at it — the sentence a log entry
+  /// needs, on the one occasion the reader already knows the answer. It reverts
+  /// to the date the moment this run is opened again from the log, which is
+  /// where a date is worth having.
+  String get _when =>
+      justFinished ? 'Just now' : _formatDate(summary.startedAt);
 
   @override
   Widget build(BuildContext context) {
@@ -355,20 +566,196 @@ class _Headline extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          '${_formatDate(summary.startedAt)}  ·  ${_typeLabel(summary.type)}',
+          '$_when  ·  ${_typeLabel(summary.type)}',
           style: theme.textTheme.labelMedium?.copyWith(
             color: AppColors.textSecondary,
             letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          Distance.meters(summary.distanceMeters).format(unit),
-          style: theme.textTheme.displayMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+        // Counts up on arrival. ADR-0009 asks for hero numerals that count,
+        // and it matters most here: with no accent colour the number *is* the
+        // interface, and a distance that lands rather than appears is the
+        // difference between a screen that congratulates you and a receipt.
+        //
+        // Only when just finished. Opening last Tuesday from the log is looking
+        // something up, and a number that insists on counting itself out every
+        // time is a flourish that has outstayed the moment it was for — the
+        // same rule the route below follows.
+        if (justFinished)
+          CountUp(
+            value: summary.distanceMeters,
+            format: (m) => Distance.meters(m).format(unit),
+            style: theme.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          )
+        else
+          Text(
+            Distance.meters(summary.distanceMeters).format(unit),
+            style: theme.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+/// The route, drawing itself on.
+///
+/// **The one moment this screen has to be an arrival rather than a record.**
+/// An hour of running appearing over a second is the shape of the effort played
+/// back, and it is the difference between a screen that says well done and a
+/// screen that files something.
+///
+/// Owns its own controller so [RunSummaryScreen] stays stateless and
+/// [RouteMap] stays still. The map takes a plain fraction and has no clock of
+/// its own, which is also what lets a test pin the route half-drawn rather than
+/// wait for it.
+///
+/// **Off unless the run just finished.** Opening last Tuesday from the log is
+/// looking something up, and a route that redraws itself every time is a
+/// flourish that has outstayed the moment it was for.
+///
+/// It also jumps straight to the finished state when the platform asks for
+/// reduced motion — vestibular disorders make motion a genuine barrier, and
+/// this is a large moving object — which is the same rule, and the same call,
+/// `Entrance` makes. That is what keeps `pumpAndSettle` from waiting on it too.
+class _DrawnRoute extends StatefulWidget {
+  const _DrawnRoute({
+    required this.points,
+    required this.markers,
+    required this.animate,
+  });
+
+  final List<RunPoint> points;
+  final List<SplitMarker> markers;
+  final bool animate;
+
+  @override
+  State<_DrawnRoute> createState() => _DrawnRouteState();
+}
+
+class _DrawnRouteState extends State<_DrawnRoute>
+    with SingleTickerProviderStateMixin {
+  /// Long enough to read as a route being traced, short enough that nobody
+  /// waiting to see their splits resents it. A run is an hour; this is not a
+  /// replay of it.
+  static const Duration _draw = Duration(milliseconds: 1100);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _draw,
+    // A run opened from the log starts finished, so there is nothing to skip.
+    value: widget.animate ? 0 : 1,
+  );
+
+  late final Animation<double> _reveal = CurvedAnimation(
+    parent: _controller,
+    // Out rather than in-out: the line should set off at once and ease into the
+    // finish, which is the shape of arriving somewhere rather than of a machine
+    // moving a slider.
+    curve: Curves.easeOutCubic,
+  );
+
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started || !widget.animate) return;
+    _started = true;
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _controller.value = 1;
+      return;
+    }
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _reveal,
+      builder: (context, _) => RouteMap(
+        points: widget.points,
+        splitMarkers: widget.markers,
+        reveal: _reveal.value,
+      ),
+    );
+  }
+}
+
+/// "Fastest 10K yet", on the screen where it happened.
+///
+/// One banner rather than a card per distance: a long run can set three at once
+/// — 5K, 10K and half all fall inside a marathon — and three of these would bury
+/// the run under its own confetti. Listed shortest first, which is the order
+/// they were run through.
+class _RecordBanner extends StatelessWidget {
+  const _RecordBanner({required this.records});
+
+  final List<BestEffort> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final named = <BestEffort>[
+      for (final r in records)
+        if (raceName(r.distanceMeters) != null) r,
+    ];
+    if (named.isEmpty) return const SizedBox.shrink();
+
+    final names = <String>[for (final r in named) raceName(r.distanceMeters)!];
+    final what = names.length == 1
+        ? names.single
+        : '${names.take(names.length - 1).join(', ')} and ${names.last}';
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Fastest $what yet',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  // States the rule rather than only the result. A record set
+                  // inside a longer run is otherwise surprising — somebody who
+                  // ran 12 km is not expecting to be told about a 10K.
+                  'Your fastest unbroken stretch of it, in any run so far.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // The shortest one's time. With several set at once the others are
+          // named above and read on Profile; a column of times here would be a
+          // table on a screen meant to say one thing.
+          Text(
+            named.first.duration.hoursMinutesSeconds,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

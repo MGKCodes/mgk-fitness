@@ -25,8 +25,17 @@ class StoredPlan {
   final DateTime startDate;
 
   /// The 1-based week [date] falls in, clamped into the plan. Before the plan
-  /// starts this is week 1; after it ends, the final week — a plan the runner
-  /// has run past still shows its last week rather than nothing at all.
+  /// starts this is week 1 for a plan that progresses; after it ends, the final
+  /// week — a plan the runner has run past still shows its last week rather
+  /// than nothing at all.
+  ///
+  /// **A rhythm answers differently before its start, and must.** Its weeks
+  /// cycle, so a negative index wraps to the end rather than clamping to the
+  /// beginning — which keeps [dateFor] its exact inverse, the invariant
+  /// `stored_plan_test.dart` pins as a round trip. Clamping it to 1 was tried
+  /// when plans moved to a future start date (ADR-0034) and broke exactly that.
+  /// Nothing is wrong with the wrapped answer: for a plan whose weeks are all
+  /// the same week, which index names it is a labelling question.
   int weekIndexOn(DateTime date) {
     final week = _weeksFromStart(date) + 1;
     final total = skeleton.weeks.length;
@@ -98,6 +107,19 @@ class StoredPlan {
 /// calendar Mondays so a session's weekday number means what it says.
 DateTime mondayOf(DateTime date) =>
     addDays(date, DateTime.monday - date.weekday);
+
+/// The next Monday at or after [date] — the Monday itself when [date] is one.
+///
+/// **Where a plan starts** (ADR-0034). Plans used to anchor to
+/// `mondayOf(now)`, so one built on a Friday opened with Monday to Thursday
+/// already behind it: four days of a seven-day week gone, on the screen a
+/// runner had just asked for a plan on. Found on the build 12 field test.
+DateTime comingMondayFrom(DateTime date) {
+  final DateTime thisMonday = mondayOf(date);
+  return thisMonday.isBefore(addDays(date, 0))
+      ? addDays(thisMonday, 7)
+      : thisMonday;
+}
 
 /// [date] shifted by [days], as a **date-only** local midnight.
 ///

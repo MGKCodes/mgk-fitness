@@ -12,6 +12,11 @@
 // Usage accounting is exactly where a request body gets logged by accident, so
 // the type below has nowhere to put one.
 
+// Type-only, and therefore erased: this file still has no runtime dependency on
+// anything. `surfaces.ts` already imports `Surface` from here, so the pair
+// referencing each other's types is existing shape rather than new coupling.
+import type { Tier } from "./surfaces.ts";
+
 /**
  * The prompt surfaces the proxy exposes. Each is priced differently, so each
  * is limited differently.
@@ -90,6 +95,98 @@ export interface SpendRule {
   scope: string;
 }
 
+
+const DAY_SECONDS = 86_400;
+const WEEK_SECONDS = DAY_SECONDS * 7;
+/** 30 days. A rolling month, not a calendar one — there is no reset day. */
+const MONTH_SECONDS = DAY_SECONDS * 30;
+
+/**
+ * The money ceilings, per tier. **This is where the price list meets the code**
+ * — see [ADR-0029](../../../apps/mgk_run/docs/decisions/0029-what-a-tier-costs-and-buys.md).
+ *
+ * ## Where the numbers come from
+ *
+ * A tier's monthly ceiling has to sit under what that tier actually earns, or
+ * one runner reaching it consumes the margin of several others (ADR-0015's
+ * whole argument). Net of UK VAT at 20% and Apple's 15% Small Business rate:
+ *
+ * | Tier      | Price   | Ex-VAT  | Net of Apple | ~USD  |
+ * |-----------|---------|---------|--------------|-------|
+ * | `free`    | —       | —       | —            | —     |
+ * | `standard`| £1/mo   | £0.833  | £0.71        | $0.85 |
+ * | `sharp`   | £3/mo   | £2.500  | £2.13        | $2.56 |
+ *
+ * The USD column converts at a deliberately pessimistic 1.20, because these are
+ * ceilings: understating revenue makes the cap safer, and OpenRouter bills in
+ * USD credits while the subscription is priced in sterling. **Re-check it if
+ * the rate moves far** — a cap sized on a strong pound is a cap that stops
+ * sitting under revenue when it weakens.
+ *
+ * Each paid ceiling is set at roughly **three quarters** of its tier's net
+ * revenue. ADR-0015's rule is that the monthly ceiling sits *under* revenue;
+ * this picks how far under, and the answer is a policy choice rather than a
+ * derivation. Three quarters leaves a quarter for Supabase, MapTiler and margin
+ * on the worst user the tier permits, and it is a CEILING rather than a
+ * forecast — the average is far below it, so what this buys is that the runners
+ * who do reach it are still profitable rather than merely survivable.
+ *
+ * Half was tried first and was too mean to be honest: at $0.002 a call it
+ * refused a day of onboarding, a plan and forty chat turns, which is a heavy
+ * day but not an abusive one. `limits_test.ts` pins that day's cost against
+ * each tier, so the trade-off is an assertion somebody can read rather than a
+ * number somebody chose. As it stands £1 buys about one such day and £3 buys
+ * three, which is a defensible thing for the two tiers to mean.
+ *
+ * **`free` earns nothing, so every credit is acquisition cost.** It gets a
+ * tenth of a dollar a month — enough to meet the coach, not enough to live on
+ * it. Before this existed the free tier shared the standard ceiling, so an
+ * unpaying Run user could cost $0.85 a month against no revenue at all.
+ *
+ * The 24% / 60% / 100% shape across the three windows is carried over from the
+ * flat config, and is ADR-0015's: the daily ceiling bounds a runaway loop, the
+ * monthly one bounds the bill, the weekly sits between so a bad few days cannot
+ * quietly become a bad month.
+ *
+ * **Still provisional.** These are arithmetic against a price, not measurement
+ * of what a runner costs — that comes from `coach_usage` after live traffic,
+ * and the model behind COACH_MODEL is a server-side choice this file knows
+ * nothing about. What is no longer provisional is that they differ by tier and
+ * that each sits under its own revenue.
+ */
+const TIER_SPEND: Record<Tier, SpendRule[]> = {
+  free: [
+    { windowSeconds: DAY_SECONDS, credits: 0.025, scope: "daily_spend" },
+    { windowSeconds: WEEK_SECONDS, credits: 0.06, scope: "weekly_spend" },
+    { windowSeconds: MONTH_SECONDS, credits: 0.1, scope: "monthly_spend" },
+  ],
+  standard: [
+    { windowSeconds: DAY_SECONDS, credits: 0.15, scope: "daily_spend" },
+    { windowSeconds: WEEK_SECONDS, credits: 0.38, scope: "weekly_spend" },
+    { windowSeconds: MONTH_SECONDS, credits: 0.64, scope: "monthly_spend" },
+  ],
+  sharp: [
+    { windowSeconds: DAY_SECONDS, credits: 0.46, scope: "daily_spend" },
+    { windowSeconds: WEEK_SECONDS, credits: 1.15, scope: "weekly_spend" },
+    { windowSeconds: MONTH_SECONDS, credits: 1.92, scope: "monthly_spend" },
+  ],
+};
+
+/**
+ * The all-surface request backstop, per tier.
+ *
+ * Unlike `perSurface`, this one scales with the tier: it is the "client looping
+ * slowly" guard, and a premium subscriber legitimately makes more calls. The
+ * per-surface rules stay flat on purpose — they are blast-radius limits, and
+ * how many times an hour somebody may rewrite their week is not something a
+ * subscription should buy more of.
+ */
+const TIER_DAILY_REQUESTS: Record<Tier, number> = {
+  free: 40,
+  standard: 120,
+  sharp: 240,
+};
+
 export interface LimitConfig {
   /** One rule per surface, sized to that surface's real call profile. */
   perSurface: Record<Surface, RateRule>;
@@ -109,11 +206,6 @@ export interface LimitConfig {
    */
   fallbackCreditsPerMillionTokens: number;
 }
-
-const DAY_SECONDS = 86_400;
-const WEEK_SECONDS = DAY_SECONDS * 7;
-/** 30 days. A rolling month, not a calendar one — there is no reset day. */
-const MONTH_SECONDS = DAY_SECONDS * 30;
 
 /**
  * Sized from the real call profile (docs/architecture/plan-generation.md):
@@ -199,25 +291,12 @@ export const DEFAULT_LIMITS: LimitConfig = {
     // rearranged their week six times in an hour has not rearranged it,
     // something is looping.
   },
-  dailyRequests: { windowSeconds: DAY_SECONDS, max: 120 },
-  // PROVISIONAL — these three are placeholders, not measured figures. The real
-  // numbers come from `runio.coach_usage` after the coach has run against live
-  // traffic for a week, because what a runner actually costs depends on the
-  // model behind COACH_MODEL / COACH_CHAT_MODEL, and those are a server-side
-  // choice this file deliberately knows nothing about.
-  //
-  // What is NOT provisional is the shape: the monthly ceiling is the one that
-  // has to sit under a month's subscription revenue, and the shorter two exist
-  // so a single day cannot spend the month.
-  spend: [
-    { windowSeconds: DAY_SECONDS, credits: 0.2, scope: "daily_spend" },
-    { windowSeconds: WEEK_SECONDS, credits: 0.5, scope: "weekly_spend" },
-    { windowSeconds: MONTH_SECONDS, credits: 0.85, scope: "monthly_spend" },
-  ],
+  dailyRequests: { windowSeconds: DAY_SECONDS, max: TIER_DAILY_REQUESTS.standard },
+  spend: TIER_SPEND.standard,
   fallbackCreditsPerMillionTokens: 1.0,
 };
 
-/** Which secret tunes which spend window. */
+/** Which secret tunes which spend window, and the per-tier form of each. */
 const SPEND_ENV_KEYS: Record<string, string> = {
   daily_spend: "COACH_DAILY_SPEND_LIMIT",
   weekly_spend: "COACH_WEEKLY_SPEND_LIMIT",
@@ -232,20 +311,36 @@ const SPEND_ENV_KEYS: Record<string, string> = {
  */
 export function configFromEnv(
   get: (key: string) => string | undefined,
+  tier: Tier = "free",
 ): LimitConfig {
+  const shipped = TIER_SPEND[tier] ?? TIER_SPEND.free;
   return {
     ...DEFAULT_LIMITS,
     dailyRequests: {
       ...DEFAULT_LIMITS.dailyRequests,
       max: positiveNumber(
-        get("COACH_DAILY_REQUEST_LIMIT"),
-        DEFAULT_LIMITS.dailyRequests.max,
+        get(`COACH_DAILY_REQUEST_LIMIT_${tier.toUpperCase()}`) ??
+          get("COACH_DAILY_REQUEST_LIMIT"),
+        TIER_DAILY_REQUESTS[tier] ?? TIER_DAILY_REQUESTS.free,
       ),
     },
-    spend: DEFAULT_LIMITS.spend.map((rule) => ({
-      ...rule,
-      credits: positiveNumber(get(SPEND_ENV_KEYS[rule.scope]), rule.credits),
-    })),
+    spend: shipped.map((rule) => {
+      const key = SPEND_ENV_KEYS[rule.scope];
+      // Tier-specific secret wins; the shipped tier default is the fallback.
+      const resolved = positiveNumber(
+        get(`${key}_${tier.toUpperCase()}`),
+        rule.credits,
+      );
+      // The legacy un-suffixed secret predates tiers and may still be set. It
+      // is honoured as a CEILING rather than a value, so an old global can only
+      // ever tighten. Letting it win outright would hand the free tier whatever
+      // number was chosen when there was only one, which is the direction that
+      // costs money.
+      const legacy = get(key);
+      if (legacy === undefined) return { ...rule, credits: resolved };
+      const capped = positiveNumber(legacy, resolved);
+      return { ...rule, credits: Math.min(resolved, capped) };
+    }),
     fallbackCreditsPerMillionTokens: positiveNumber(
       get("COACH_FALLBACK_CREDITS_PER_MTOK"),
       DEFAULT_LIMITS.fallbackCreditsPerMillionTokens,

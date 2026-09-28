@@ -76,7 +76,9 @@ void main() {
 
     expect(find.textContaining('Provisional'), findsOneWidget);
     expect(find.text('Long run'), findsOneWidget);
-    expect(find.text('Threshold'), findsOneWidget);
+    // An activity, not a zone: the week screen names the thing the runner is
+    // doing, and "Threshold" on its own names only how hard it is.
+    expect(find.text('Threshold run'), findsOneWidget);
     expect(find.textContaining('target'), findsWidgets);
     // Wednesday and Friday aren't in the available set -> rest.
     expect(find.text('Rest'), findsWidgets);

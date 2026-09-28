@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import 'floating_nav_bar.dart';
 
 /// The mark at rest. Shared with `CoachReveal`, which retracts to exactly this.
 const double kCoachMarkSize = 44;
@@ -40,6 +41,20 @@ const double kCoachMarkExtent = kCoachMarkSize + 8;
 /// underneath it.
 const double kCoachMarkClearance =
     kCoachMarkSize + AppSpacing.lg * 2 + AppSpacing.md;
+
+/// Room a scrolling tab must leave for **everything** floating at its foot: the
+/// nav pill, the gap above it, and the mark stacked above that.
+///
+/// Replaces [kCoachMarkClearance] at every surface, because since the nav bar
+/// started floating (ADR-0033) the mark is no longer the lowest thing down
+/// there. Both are kept: the mark's own clearance is still the honest figure
+/// for a surface with no nav bar under it, and deleting it would leave the next
+/// such surface reaching for this one and over-padding.
+///
+/// **Does not include the safe-area inset**, which is not a constant — read it
+/// with `MediaQuery.paddingOf(context).bottom` at the surface and add it here.
+const double kFloatingChromeClearance =
+    kNavPillHeight + AppSpacing.md + kCoachMarkExtent + AppSpacing.lg * 2;
 
 /// The way into the conversation, floating over whatever the runner is reading.
 ///

@@ -1,19 +1,34 @@
 # Codemagic CI/CD for the suite — Run and Lift
 # (see apps/mgk_run/docs/decisions/0020-codemagic-is-the-build-path.md).
 #
-# Three manual-trigger workflows: Run → TestFlight, Lift → TestFlight, and
-# Lift → Play. The iOS pair runs on macOS cloud machines, so shipping never
-# depends on having a Mac to hand — which matters here, because both apps are
-# developed on Windows against an Android emulator and neither has ever been
-# built locally for its actual target. The Android one runs on Linux, because
-# nothing about it needs Xcode and the macOS instance costs several times more
-# per minute.
+# Four manual-trigger workflows plus `checks`: Run → TestFlight, Lift →
+# TestFlight, Run → Play, Lift → Play. The iOS pair runs on macOS cloud
+# machines, so shipping never depends on having a Mac to hand — which matters
+# here, because both apps are developed on Windows against an Android emulator
+# and neither has ever been built locally for its actual target. The Android
+# pair runs on Linux, because nothing about them needs Xcode and the macOS
+# instance costs several times more per minute.
 #
-# **Run has no Android workflow, deliberately** (ADR-0001). Its Android build is
-# a verification harness for design work on Windows, not a product, and a
-# release pipeline would imply otherwise. That decision is Run's alone: Lift
-# ships to both stores as part of 2.0.0, which is why the asymmetry below is
-# intended rather than unfinished.
+# **RUN SHIPS TO PLAY, as of 2026-09-10.** `run-android-release` builds a signed
+# AAB alongside the APK and carries a `publishing:` block — commented until the
+# first bundle has been uploaded to the listing by hand, which the Play
+# Developer API requires before it will accept an API publish. See
+# `apps/mgk_run/docs/play-setup.md`.
+#
+# THIS PARAGRAPH HAS NOW BEEN WRONG TWICE, IN THE SAME PLACE, ABOUT THE SAME
+# WORKFLOW. It read "Run has no Android workflow" until 2026-09-01 while
+# `run-android-release` sat a few hundred lines below it. It was corrected to
+# "Run has no Android RELEASE, deliberately (ADR-0001)" — a verification
+# harness for design work on Windows, and a store pipeline would imply
+# otherwise — and that survived nine days before Run acquired a Play listing,
+# a keystore and a publishing block.
+#
+# Worth keeping rather than tidying away, because the failure has a shape: this
+# header states a POLICY about the workflows, the workflows below state the
+# FACTS, and nothing checks the two against each other. A reader trusts the
+# header because it is first. If the third correction is ever needed, the
+# honest fix is probably to stop asserting policy up here at all and let each
+# workflow speak for itself.
 #
 # ───────────────────────────────────────────────────────────────────────────
 # ONE-TIME SETUP IN THE CODEMAGIC UI (referenced by name below):
@@ -171,7 +186,21 @@ workflows:
   # ───────────────────────────────────────────────────────────────────────────
   checks:
     name: Checks — Deno, pgTAP, Flutter
-    instance_type: linux_x2
+    # macOS, not Linux — see the long note in `run-android-release`.
+    #
+    # **THIS WORKFLOW HAD NEVER RUN.** It declared `linux_x2`, which is not
+    # available on this account's plan, so every push since it was written died
+    # before a machine started. The comment below says a check you have to
+    # trigger is a check you skip; this one could not be triggered at all, and
+    # nothing said so loudly enough to notice.
+    #
+    # Worth stating plainly because it explains a pattern: every defect this
+    # release has found — four arguments nobody passed, a build number the docs
+    # invented, a keystore reference pointing at nothing — was caught by
+    # reading, by a device, or by somebody saying so. None was caught by CI. The
+    # obvious reading was that the suite does not cover those cases, and the
+    # actual reason is that the suite was never running.
+    instance_type: mac_mini_m2
     max_build_duration: 20
 
     # Unlike the release workflows, this one is meant to run without being
@@ -199,6 +228,15 @@ workflows:
         # network, which is why they are a second rather than a minute, and why
         # a red here is always the code rather than the weather.
         working_directory: supabase/functions/coach
+        script: deno test
+
+      - name: Deno — RevenueCat webhook
+        # The only writer of core.entitlements, and therefore the only thing
+        # standing between a purchase and a coach (ADR-0030). Its mapping is
+        # pure for exactly this reason: a wrong status here either hands
+        # somebody a subscription they did not buy or takes one they did, and
+        # neither should need a store to catch.
+        working_directory: supabase/functions/revenuecat
         script: deno test
 
       - name: Deno — eval rules
@@ -352,6 +390,35 @@ workflows:
           tiles = (os.environ.get("MAP_TILE_URL_TEMPLATE") or "").strip()
           attribution = (os.environ.get("MAP_ATTRIBUTION") or "").strip()
 
+          # RevenueCat's PUBLIC SDK key. Optional in the same sense the basemap
+          # is: without it the app runs, the coach gate explains what a
+          # subscription buys, and there is no button to press. The secret that
+          # matters is REVENUECAT_WEBHOOK_SECRET, which lives in Supabase and is
+          # never built into an IPA.
+          revenuecat = (os.environ.get("REVENUECAT_PUBLIC_KEY") or "").strip()
+
+          # Same banner treatment as the basemap, and for the same reason: a
+          # TestFlight build that silently cannot sell anything looks identical
+          # to one that can until somebody taps the gate.
+          if not revenuecat:
+              print("=" * 72)
+              print("WARNING: REVENUECAT_PUBLIC_KEY is unset.")
+              print("This build CANNOT TAKE A PAYMENT. The coach gate will say")
+              print("so rather than offering a button, which is the honest")
+              print("state but not a testable one.")
+              print("Set it in the mgk_fitness_run_env group.")
+              print("=" * 72)
+
+          # The iOS key begins appl_. A Google or a web key here would configure
+          # the SDK against the wrong store and fail at the moment of purchase,
+          # which is the one moment worth failing early instead.
+          if revenuecat and not revenuecat.startswith("appl_"):
+              sys.exit(
+                  "REVENUECAT_PUBLIC_KEY must be the Apple key, which begins "
+                  f"appl_ - got {revenuecat[:8]!r}... Check Project settings "
+                  "> API keys in RevenueCat."
+              )
+
           # Loud, not a print. The first TestFlight build shipped with no
           # basemap and nobody noticed until a run was recorded against a
           # charcoal void, because the only signal was one line in the middle
@@ -381,6 +448,7 @@ workflows:
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
               "MAP_TILE_URL_TEMPLATE": tiles,
               "MAP_ATTRIBUTION": attribution,
+              "REVENUECAT_PUBLIC_KEY": revenuecat,
               # Empty on purpose — see the note above.
               "DEV_ACCOUNT_1_LABEL": "",
               "DEV_ACCOUNT_1_EMAIL": "",
@@ -414,9 +482,30 @@ workflows:
         # --dart-define-from-file is load-bearing: AppConfig reads every value
         # from it, so an IPA built without this flag launches and then cannot
         # sign anybody in.
+        #
+        # NO --build-number, deliberately. The build number is `version:` in
+        # apps/mgk_run/pubspec.yaml and nowhere else, which is where Flutter
+        # reads it from when the flag is absent.
+        #
+        # It used to be $PROJECT_BUILD_NUMBER. That is Codemagic's PROJECT-wide
+        # counter — "Number of the build for this project", incrementing on
+        # every workflow run, not per workflow ($BUILD_NUMBER is the per-workflow
+        # one). Two things followed, and both were invisible because the stores
+        # only require the number to increase:
+        #
+        #   1. iOS and Android built from the SAME commit got numbers one apart,
+        #      because they are two workflow runs. The note on the Android side
+        #      claimed the shared variable stopped the two stores disagreeing
+        #      about which build is newer. Same variable is not the same value.
+        #   2. A Lift build moved Run's next number. "Build 14" meant the
+        #      project's 14th build, not Run's.
+        #
+        # The cost of this fix is a manual bump before each submission, and a
+        # repeated number is refused at upload. The gain is that the number is
+        # in git, on the commit that gets tagged, and one string feeds both
+        # stores — which is what actually keeps them in agreement.
         script: |
           flutter build ipa --release \
-            --build-number=$(($PROJECT_BUILD_NUMBER)) \
             --dart-define-from-file=config/app_config.json \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
@@ -439,7 +528,7 @@ workflows:
         # submit_to_app_store: false   # flip on when ready for a store release
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Lift — see docs/release-2.0.0.md for the release this feeds.
+  # Lift — see apps/mgk_lift/docs/release-2.0.0.md for the release this feeds.
   #
   # ONE-TIME SETUP, beyond what Run already established:
   #
@@ -621,13 +710,14 @@ workflows:
   # ONE-TIME SETUP:
   #
   #  1. **An upload keystore**, created once and backed up somewhere that is not
-  #     this repository:
+  #     this repository. **It is already made** — one key signs every MGKCodes
+  #     Android app, and Run created it on 2026-09-10:
   #
-  #       keytool -genkey -v -keystore liftio-upload.jks \
+  #       keytool -genkey -v -keystore mgkfitness-upload.jks \
   #         -keyalg RSA -keysize 2048 -validity 10000 -alias upload
   #
   #     Upload it to Codemagic ▸ Team settings ▸ Code signing identities ▸
-  #     Android keystores, referenced below as `liftio_upload`. Codemagic then
+  #     Android keystores, referenced below as `mgkfitness_upload`. Codemagic then
   #     exports CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS /
   #     CM_KEY_PASSWORD, which `app/build.gradle.kts` reads in preference to a
   #     local `key.properties`. The build REFUSES to fall back to the debug key
@@ -652,7 +742,10 @@ workflows:
   # ─────────────────────────────────────────────────────────────────────────
   lift-android-release:
     name: Lift — Android internal
-    instance_type: linux_x2
+    # macOS, not Linux — see the long note in `run-android-release`. Linux is a
+    # paid-plan instance this account does not have, and a workflow declaring it
+    # fails before a machine starts.
+    instance_type: mac_mini_m2
     max_build_duration: 45
 
     cache:
@@ -665,7 +758,12 @@ workflows:
     working_directory: apps/mgk_lift
     environment:
       android_signing:
-        - liftio_upload
+        # The suite-wide key, same as run-android-release. This said
+        # `liftio_upload` until 2026-09-10 and **no such keystore had ever been
+        # uploaded to Codemagic** — the only one there was frunt's. So this
+        # workflow would have failed on its first run, and nothing said so,
+        # because it has never had a Play listing to publish to.
+        - mgkfitness_upload
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
@@ -753,7 +851,21 @@ workflows:
     # Linux, not macOS: an Android build has no reason to run on a Mac instance
     # and a metered plan charges the difference. This is the cheapest machine
     # Codemagic offers that can build Flutter for Android.
-    instance_type: linux_x2
+    #
+    # ALL OF WHICH IS TRUE AND NONE OF WHICH SURVIVED THE BILLING PLAN. This
+    # said `linux_x2` until 2026-09-10, when the first build that ever tried it
+    # died before starting: "The selected instance type is not available with
+    # the current billing plan." Linux is a paid-plan instance here; macOS is
+    # the one this account has. So the cheapest machine Codemagic offers is not
+    # the cheapest machine available to us, and the argument above was reasoning
+    # about a catalogue rather than about an account.
+    #
+    # macOS builds Android perfectly well — the image carries the JDK and the
+    # Android SDK, and it is what the iOS workflows already run on. It costs
+    # more per minute than Linux would; Linux costs a plan upgrade, so this is
+    # cheaper today. Revisit if Android builds become frequent enough that the
+    # per-minute difference outweighs the subscription.
+    instance_type: mac_mini_m2
     max_build_duration: 30
     cache:
       cache_paths:
@@ -761,6 +873,28 @@ workflows:
         - $HOME/.gradle/caches
     working_directory: apps/mgk_run
     environment:
+      android_signing:
+        # The upload keystore, uploaded to Codemagic once under this reference
+        # name. Declaring it is what exports CM_KEYSTORE_PATH and its three
+        # companions, which apps/mgk_run/android/app/build.gradle.kts reads.
+        #
+        # ONE UPLOAD KEY FOR EVERY MGKFITNESS APP. A Play listing records
+        # the upload certificate it expects; nothing requires that certificate
+        # to be unique to one listing, and the same key signs Run, Lift and
+        # whatever comes after.
+        #
+        # This said `run_upload` for a few hours on 2026-09-10, on the reasoning
+        # that a compromise or a reset on one listing would reach the other "for
+        # no benefit at all". The last clause was simply false — the benefit is
+        # one secret to hold, back up and not lose, which for a studio this size
+        # outweighs a blast radius neither of us could name a scenario for. Both
+        # failure modes are recoverable the same way regardless: Google resets a
+        # lost or compromised upload key by support request.
+        #
+        # frunt is the permanent exception. It is live on Play under
+        # `frunt_upload`, and a shipped listing's upload key cannot be swapped
+        # without going through that same support request for no gain.
+        - mgkfitness_upload
       groups:
         # The same two groups as iOS, and the split is deliberate: the Supabase
         # values belong to the suite (ADR-0008 — one project for both apps), the
@@ -775,6 +909,30 @@ workflows:
         # step on an empty SUPABASE_URL.
         - mgk_fitness_run_env
         - mgk_fitness_supabase
+        # Holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — the whole Play Developer
+        # API service-account JSON, pasted as a secure string.
+        #
+        # `mgk-fitness-play-publisher@mgk-fitness.iam.gserviceaccount.com`,
+        # created 2026-09-10 in its own GCP project. **Deliberately not frunt's
+        # `frunt-play-publisher`**, which was sitting there and would have
+        # worked: this credential does two jobs for the suite, publishing
+        # builds AND validating every Play purchase for RevenueCat, and those
+        # have very different rotation costs. Rotating a publish-only key is an
+        # inconvenience; rotating one RevenueCat depends on costs up to 36
+        # hours of degraded purchase validation. Sharing one credential across
+        # both products would let a rotation forced by frunt drag Run and
+        # Lift's billing through that window for reasons of its own.
+        #
+        # Suite-scoped rather than Run-scoped for the same reason the RevenueCat
+        # project is: Lift joins it, and wants this exact credential.
+        #
+        # LIVE SINCE 2026-09-10, in step with the `publishing:` block at the end
+        # of this workflow. They are one switch: this group exists only to feed
+        # that block, and Codemagic fails a build outright on a group name it
+        # cannot resolve, so referencing it while publishing was off broke a
+        # build over a credential it never read. If publishing is ever turned
+        # back off, comment this out with it.
+        - mgk_fitness_play
       flutter: stable
       java: 17
     scripts:
@@ -784,12 +942,35 @@ workflows:
       - name: Generate config/app_config.json from secure vars
         script: |
           mkdir -p config
+          # REVENUECAT_GOOGLE_KEY, not REVENUECAT_PUBLIC_KEY. The two keys are
+          # different strings and the wrong one does not degrade — the SDK
+          # fails to configure, `offers()` returns nothing, and the paywall
+          # renders as an empty shop with no error anywhere. `AppConfig.storeKey`
+          # reads the Google one on Android; handing this step the Apple key
+          # would produce a build that looks able to sell and cannot.
+          if [ -z "${REVENUECAT_GOOGLE_KEY:-}" ]; then
+            echo "WARNING: REVENUECAT_GOOGLE_KEY is unset. This build cannot"
+            echo "take a payment on Android — the coach gate will explain the"
+            echo "subscription with no button. That is the correct state for"
+            echo "the FIRST upload (Play will not create in-app products until"
+            echo "an AAB exists), and a defect for every upload after it."
+          else
+            case "$REVENUECAT_GOOGLE_KEY" in
+              goog_*) ;;
+              *)
+                echo "REVENUECAT_GOOGLE_KEY must be the Google key, which"
+                echo "begins goog_. An appl_ key here configures nothing."
+                exit 1
+                ;;
+            esac
+          fi
           cat > config/app_config.json <<JSON
           {
             "SUPABASE_URL": "$SUPABASE_URL",
             "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
             "MAP_TILE_URL_TEMPLATE": "$MAP_TILE_URL_TEMPLATE",
-            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION"
+            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION",
+            "REVENUECAT_GOOGLE_KEY": "${REVENUECAT_GOOGLE_KEY:-}"
           }
           JSON
       - name: Flutter packages
@@ -802,19 +983,97 @@ workflows:
         # Cheap here in a way it is not on a Mac instance, and this suite is the
         # only thing that checks the in-run screen against real phone widths.
         script: flutter test
-      - name: Build APK
+      - name: Build AAB
+        # An app bundle, not an APK: Play has required .aab for new apps since
+        # 2021, and this listing does not exist yet, so there is no legacy APK
+        # path available even as a fallback.
+        #
         # --dart-define-from-file is load-bearing for the same reason it is on
         # iOS: AppConfig reads every value from it, and a build without it
         # launches and then cannot sign anybody in.
+        #
+        # No --build-number: it comes from apps/mgk_run/pubspec.yaml, the same
+        # string run-ios-release reads, which is what actually makes the two
+        # stores agree about which build is newer. See the long note in
+        # run-ios-release for what the $PROJECT_BUILD_NUMBER version got wrong.
+        # Play requires versionCode to increase and never repeat, which the
+        # pubspec string already guarantees across both stores.
         script: |
-          flutter build apk --release             --build-number=$(($PROJECT_BUILD_NUMBER))             --dart-define-from-file=config/app_config.json
+          flutter build appbundle --release \
+            --dart-define-from-file=config/app_config.json
+      - name: Build APK
+        # Kept alongside the bundle, and not as a fallback: an .aab cannot be
+        # sideloaded onto a phone, so without this there is no artifact anyone
+        # can install to test a Play build before it is a Play build.
+        script: |
+          flutter build apk --release \
+            --dart-define-from-file=config/app_config.json
     artifacts:
-      # Both paths, for the same reason the iOS workflow lists both: these globs
-      # resolve relative to `working_directory`, and a build that publishes
-      # nothing reports success with an empty artifact list.
+      # Both paths for each, for the same reason the iOS workflow lists both:
+      # these globs resolve relative to `working_directory`, and a build that
+      # publishes nothing reports success with an empty artifact list.
+      - build/app/outputs/bundle/**/*.aab
+      - apps/mgk_run/build/app/outputs/bundle/**/*.aab
       - build/app/outputs/flutter-apk/*.apk
       - apps/mgk_run/build/app/outputs/flutter-apk/*.apk
-      - build/app/outputs/**/mapping.txt
-    # No `publishing:` block. Google Play wants an AAB, a signed one, and a
-    # track to publish to — none of which exists yet. Until it does, the APK is
-    # an artifact you download, which is exactly what testing on a device needs.
+      # The mapping file. Without it Play shows obfuscated stack traces and
+      # there is no way to symbolicate a crash after the fact.
+      - build/app/outputs/mapping/**/mapping.txt
+      - apps/mgk_run/build/app/outputs/mapping/**/mapping.txt
+    # LIVE SINCE 2026-09-10, and it could not have been before.
+    #
+    # Codemagic can publish to a track; it cannot create the listing, and the
+    # Play Developer API refuses an app whose first bundle has never been
+    # uploaded through the console. That upload happened on 2026-09-10 —
+    # 1.0.0 (22), by hand, to internal testing — so this is now the one thing
+    # that was actually blocking it.
+    #
+    # `submit_as_draft` was `true` here and is now `false`. The argument for
+    # the draft was that a mistake becomes something to delete rather than
+    # something somebody has installed — which describes a public track, not
+    # this one. The internal track already only reaches a tester list, so the
+    # draft guarded nothing and charged a manual rollout per build. See the
+    # note on the flag itself for what that cost on build 24.
+    #
+    # THE `mgk_fitness_play` GROUP ABOVE IS PART OF THIS. It holds the
+    # credentials this block reads; turn one off and turn the other off with it,
+    # or the build fails on a group it cannot resolve.
+    #
+    # Lift's equivalent, a few hundred lines up, stays commented — it has no
+    # Play listing to publish to, and uncommenting it would fail on the listing
+    # rather than on anything in this repository.
+    publishing:
+      google_play:
+        # **This name is deprecated and has to change, but not on its own.**
+        # Build 24's publish step warned, inside an otherwise green log:
+        #
+        #   Warning: Using environment variable GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        #   to define argument value is deprecated and will be removed in a
+        #   future release. Use GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS instead.
+        #
+        # Changing this line alone breaks publishing: the variable group holds
+        # the old name, so the new one resolves to empty and the upload fails
+        # with a credential error rather than a missing-variable one. The order
+        # is: add GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS to `mgk_fitness_play`
+        # with the same JSON, THEN change this line, THEN delete the old
+        # variable once a build has gone green.
+        #
+        # Left on the deprecated name deliberately. It still works, and a
+        # warning is cheaper than a failed release.
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        # **false, deliberately, and it was `true` until 2026-09-11.**
+        #
+        # The draft was written as a safety: "a mistake is a draft to delete
+        # rather than a build someone has installed". That reasoning does not
+        # survive contact with the internal track, which *is* the safety — it
+        # reaches a tester list and nobody else. So the draft protected nothing
+        # and cost a manual rollout on every build.
+        #
+        # It cost one on build 24, invisibly: the bundle uploaded, the build
+        # went green, and the app never appeared for testers because the track
+        # held `draft: [24]` behind `completed: [23]`. An hour went into
+        # looking at the emulator for a fault that was in the release state.
+        #
+        # Keep it `true` for any track that reaches the public.
+        submit_as_draft: false

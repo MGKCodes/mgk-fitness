@@ -109,8 +109,9 @@ class PlanService {
   /// invariants; deterministic (provisional) fallback if the model fails.
   Future<PlanResult<TrainingWeek>> generateWeek(
     SkeletonWeek slot,
-    RunnerProfile profile,
-  ) async {
+    RunnerProfile profile, {
+    int? raceWeekday,
+  }) async {
     var violations = const <String>[];
     var attempts = 0;
     for (var attempt = 1; attempt <= maxModelAttempts; attempt++) {
@@ -122,6 +123,7 @@ class PlanService {
             slot: slot,
             profile: profile,
             violations: violations,
+            raceWeekday: raceWeekday,
           ),
         );
       } on CoachLimitException catch (e) {
@@ -165,6 +167,12 @@ class PlanService {
     try {
       return await propose();
     } on CoachLimitException {
+      rethrow;
+    } on CoachNotEntitledException {
+      // Same reason as the limit above, and a stronger one. `null` here means
+      // "the model failed, build the deterministic plan instead", and handing
+      // an unentitled runner a free fallback plan would give away the thing the
+      // subscription is for while telling them nothing.
       rethrow;
     } catch (_) {
       return null;

@@ -22,6 +22,8 @@
 /// entry here and a branch in `requestIntroPermission`.
 library;
 
+import 'package:flutter/foundation.dart';
+
 /// Which permission. Each needs its own platform call, so this is a closed set
 /// rather than a string.
 enum IntroPermissionKind {
@@ -110,3 +112,35 @@ const List<IntroPermission> introPermissions = <IntroPermission>[
         'You can change it later in Settings if you want me to look.',
   ),
 ];
+
+/// The ones [platform] can actually ask for.
+///
+/// **Android cannot ask for Health, and offering it there is a bug we shipped
+/// to internal testing.** `AndroidManifest.xml` declares no Health Connect
+/// permissions — deliberately; the HealthKit path is iOS-only — so the plugin
+/// has nothing to launch. Tapping "Allow Health" logs
+/// `FLUTTER_HEALTH: Permission launcher not found`, the request resolves to
+/// *not granted*, and the conversation renders the runner's answer as **"Not
+/// now"**.
+///
+/// Which is the safe direction and the wrong experience: somebody tapped
+/// *Allow* and was told they declined. On the screen whose whole job is to make
+/// a stranger trust the app with their location ninety seconds after meeting
+/// it.
+///
+/// Found on 2026-09-11 by running build 22 on an Android emulator — the first
+/// time this app had ever been installed on Android as a release build. The
+/// list's own doc above says these "are checked on a device"; that had only
+/// ever meant an iPhone, because until today Android was a preview harness
+/// rather than a target (ADR-0001).
+///
+/// **Remove this filter when Health Connect is wired**, not before. The right
+/// signal is `AndroidManifest.xml` gaining health permissions; until it does,
+/// the step can only mislead.
+List<IntroPermission> introPermissionsFor(TargetPlatform platform) =>
+    platform == TargetPlatform.android
+    ? <IntroPermission>[
+        for (final p in introPermissions)
+          if (p.kind != IntroPermissionKind.healthKit) p,
+      ]
+    : introPermissions;

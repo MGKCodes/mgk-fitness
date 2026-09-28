@@ -37,7 +37,7 @@ See [ADR-0007](../decisions/0007-secrets-via-backend-proxy.md).
   Edge Function instances are ephemeral, and the limiter **fails closed**: if it
   can't be consulted, the call is refused rather than spent. The numbers, the SQL
   and the error contract are in
-  [`supabase/functions/coach/README.md`](../../supabase/functions/coach/README.md).
+  [`supabase/functions/coach/README.md`](../../../../supabase/functions/coach/README.md).
 - **Model portability.** Swapping model or provider is a server change; the app
   ships unchanged.
 - **Data minimisation.** The server decides exactly what context leaves the
@@ -57,7 +57,7 @@ The coach persona and tone are defined **once** and shared across all prompts:
 | `rationale` | Why this session, given the block and recent history. |
 | `checkin` | Post-run and weekly reflection. |
 | `chat` | The open conversation — anything the runner asks. |
-| `summarise` | Rewrites the coach's rolling memory when a conversation ends. |
+| `summarise` | Rewrites the coach's rolling memory when the conversation sheet closes, over the turns said since the last rewrite. |
 
 ## Structured output & validation
 

@@ -18,6 +18,10 @@ void main() {
     distanceMeters: 8000,
   );
 
+  /// A fixed clock, so the card's name for the session is not a function of
+  /// when the suite happens to run. Half two in the afternoon.
+  final afternoon = DateTime(2026, 7, 20, 14, 30);
+
   Future<void> pump(WidgetTester tester, Widget card) =>
       tester.pumpWidget(MaterialApp(home: Scaffold(body: card)));
 
@@ -33,13 +37,21 @@ void main() {
         phase: Phase.build,
         status: SessionStatus.planned,
         paces: paces(),
+        now: afternoon,
         onComplete: () => done = true,
         onSkip: () => skipped = true,
       ),
     );
 
-    expect(find.text('Threshold'), findsOneWidget);
-    expect(find.text('8.0 km'), findsOneWidget);
+    // "Afternoon threshold run", not "Threshold". This card is the one surface
+    // that knows *when* — everything on it is happening today — so it can name
+    // the occasion as well as the activity. A week list, seven days of no
+    // particular hour, gets "Threshold run" and stops there.
+    expect(find.text('Afternoon threshold run'), findsOneWidget);
+    // "8 km", not "8.0 km": a prescription is a whole number wherever it is
+    // shown, and this card used to be one of the surfaces bypassing the
+    // formatter that says so.
+    expect(find.text('8 km'), findsOneWidget);
     expect(find.textContaining('target'), findsOneWidget);
 
     await tester.tap(find.text('Mark done'));

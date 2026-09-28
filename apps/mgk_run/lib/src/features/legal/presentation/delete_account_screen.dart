@@ -144,7 +144,19 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         const SizedBox(height: 14),
         const _DeletedItem('Every run, with its route points and splits'),
         const _DeletedItem('Your runner profile and generated plans'),
-        const _DeletedItem('The date of birth and weight you gave the app'),
+        // Was "The date of birth and weight you gave the app". This app has
+        // never asked for either — `core.profiles.dob` and `weight_kg` exist
+        // and belong to Liftio — so the screen promised to delete two things
+        // that were never collected, on the one page where a runner is being
+        // asked to trust a claim about deletion.
+        //
+        // Replaced with what is actually erased and actually sensitive: the
+        // conversation carries injury notes and how somebody said they were
+        // feeling, which is the most personal thing this app holds.
+        const _DeletedItem(
+          'Your conversations with the coach, and what it '
+          'remembered about you',
+        ),
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(16),

@@ -226,3 +226,80 @@ Set<String> relevanceTerms(String query) => <String>{
   for (final term in query.toLowerCase().split(RegExp(r'[^a-z0-9]+')))
     if (term.length >= 3) term,
 };
+
+/// A past conversation, as the "previous chats" list needs it.
+///
+/// Built from `CoachConversations` wherever it can be: that table carries a
+/// denormalised [lastTurnAt] precisely so listing recent conversations is an
+/// indexed lookup rather than an aggregate over the largest table in the
+/// schema.
+///
+/// [opening] is the first thing said in it, which is what turns a list of dates
+/// into a list a person recognises. Special-category data like any other turn
+/// (CLAUDE.md rule 6) — it is drawn on the runner's own screen and never
+/// logged, and [toString] deliberately omits it.
+class CoachConversationSummary {
+  const CoachConversationSummary({
+    required this.id,
+    required this.kind,
+    required this.startedAt,
+    required this.lastTurnAt,
+    this.turns = 0,
+    this.opening,
+  });
+
+  final String id;
+
+  /// `intake` | `check_in` | `adaptation` | `coach`.
+  final String kind;
+
+  final DateTime startedAt;
+
+  /// When it was last spoken in — what the list is ordered by.
+  final DateTime lastTurnAt;
+
+  /// How many turns it holds.
+  final int turns;
+
+  /// The first line of the conversation, or null when it has none.
+  final String? opening;
+
+  @override
+  String toString() =>
+      'CoachConversationSummary($id, $kind, $turns turns, last $lastTurnAt)';
+}
+
+/// How long a conversation stays open with nothing said in it.
+///
+/// **This is the session boundary**, and it is a gap rather than a lifecycle
+/// event on purpose — see ADR-0025. Measured from the last turn, one rule
+/// settles both the cold start and the trip to the home screen: a runner who
+/// checks a notification and comes back in ten seconds is still in the same
+/// conversation; one who comes back tomorrow is not.
+const Duration coachSessionWindow = Duration(minutes: 30);
+
+/// The past turns worth putting in front of the coach, out of what
+/// `CoachMemoryRepository.recall` returned.
+///
+/// Three filters, and each one is a failure this app has already seen or is one
+/// step away from:
+///
+/// * **The current conversation is dropped.** Its turns are already the chat
+///   history the coach is sent; recalling them would double-weight what was
+///   just said.
+/// * **Only the runner's own words survive.** The coach's past replies were
+///   themselves derived from a brief that is rebuilt from current data every
+///   turn, so re-injecting one launders a stale derivation back into the
+///   context as if it were a fact. What the runner said is primary evidence;
+///   what the coach said is a conclusion with an expiry date.
+/// * **It is small.** Recall is context, not a transcript. The whole reason it
+///   exists is that replaying a transcript is what placed a week-old run
+///   "yesterday".
+List<CoachTurn> recollectionsFrom(
+  List<CoachTurn> turns, {
+  String? exceptConversation,
+  int limit = 4,
+}) => <CoachTurn>[
+  for (final turn in turns)
+    if (turn.isUser && turn.conversationId != exceptConversation) turn,
+].take(limit < 0 ? 0 : limit).toList();

@@ -2,7 +2,29 @@ name: mgk_run
 description: "Running: tracking, plans, and the AI coach. Part of the MGKCodes fitness suite."
 publish_to: none
 
-version: 1.0.0+1
+# The build number after the + is the real one, read straight from here by both
+# release workflows. It was +1 while codemagic.yaml passed --build-number from
+# $PROJECT_BUILD_NUMBER, so nothing ever read this line.
+#
+# 21, NOT 14, AND THE GAP IS THE POINT. Every document in this repo names builds
+# by the index shown in Codemagic's UI, which is per-workflow. The number baked
+# into the binary came from $PROJECT_BUILD_NUMBER, which counts every build in
+# the project across all workflows, Lift's included. The two agreed until
+# 2026-08-20 and then came apart:
+#
+#     what the docs call it   what TestFlight received
+#     build 11                18
+#     build 12                19
+#     build 13                20   (commit 75a89df, the newest)
+#
+# Read off the artefact metadata of each Codemagic build, not inferred. A Lift
+# build took 16, which is where most of the gap opened. So the next Run build is
+# 21; 14 would be refused as lower than one already uploaded.
+#
+# Bump this before every submission — the stores refuse a number already used
+# for this version — and from here the number in the docs and the number in the
+# binary are the same number, because this line is the only source of it.
+version: 1.0.0+26
 
 environment:
   sdk: ^3.11.5
@@ -30,11 +52,24 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path_provider: ^2.1.6
   path: ^1.9.1
+  # Picks the profile photo, and nothing else. **It is why
+  # NSPhotoLibraryUsageDescription exists in Info.plist** -- iOS terminates an
+  # app that reaches a protected resource with no usage string, so the missing
+  # string is a crash rather than a refusal.
+  #
+  # The photo it returns is copied into the app documents directory and never
+  # leaves the phone. That is load-bearing for the store declarations: both
+  # Apple and Google define collection as transmission off the device, so a
+  # local-only avatar is not collected data and neither Data safety nor App
+  # Privacy changes. Back it up and both of those become false.
+  image_picker: ^1.1.2
   supabase_flutter: ^2.16.0
   geolocator: ^14.0.3
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
   health: 13.2.0
+  purchases_flutter: ^10.10.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

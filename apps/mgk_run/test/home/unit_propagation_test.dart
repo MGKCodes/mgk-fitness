@@ -80,9 +80,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsWidgets);
-    expect(find.text('Miles'), findsOneWidget);
-    // The account facts moved here off Profile.
+    // The account facts moved here off Profile. Still above the fold: Account
+    // is the first band on the page.
     expect(find.text('dev@runio.app'), findsOneWidget);
+    // The unit is on the index as a value now — `Distance · Kilometres` —
+    // with the choice itself in a sheet. So this asserts the row is present
+    // and set, which is what "the unit is in Settings" actually means after
+    // the 2026-09-11 rewrite.
+    expect(find.text('Distance'), findsOneWidget);
+    expect(find.text('Kilometres'), findsOneWidget);
     // The compliance surfaces moved under Settings rather than a second icon.
     // Scrolled to, because Settings grew a Permissions section above it and
     // the list builds lazily — asserting from a fixed viewport was asserting
@@ -120,6 +126,8 @@ void main() {
 
     // Into Settings, flip to miles, and back out.
     await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Distance'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Miles'));
     await tester.pumpAndSettle();

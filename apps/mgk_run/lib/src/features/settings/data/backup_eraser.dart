@@ -18,7 +18,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// DELETE is deliberately kept for exactly this (see the coach_memory
 /// migration). So the runner deletes their own rows with their own token,
 /// which needs no privileged function and cannot reach anyone else's data.
-class BackupEraser {
+/// The seam, so the switch can be tested without a Supabase project.
+///
+/// Withdrawal deleting nothing is not a bug a widget test can catch through
+/// the concrete class: its constructor reaches `Supabase.instance`, so any test
+/// touching it needs a live project and is therefore never written. That is how
+/// this shipped unwired -- `legal_copy_test.dart` pinned the *words* of the
+/// promise in four places while nothing asserted the behaviour at all.
+abstract class BackupErasure {
+  /// Deletes what the runner has stored. True when it all went.
+  Future<bool> eraseAll();
+}
+
+class BackupEraser implements BackupErasure {
   BackupEraser({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
@@ -37,6 +49,19 @@ class BackupEraser {
   /// switch is the runner asking for their cloud backup to go — and their
   /// conversations are part of that. What it must never do is take a sibling
   /// app's training data, which is why nothing here reaches into `lift`.
+  ///
+  /// **That rule was right and the code did not keep it.** Staying out of the
+  /// `lift` schema is not enough, because `coach` is shared *within* itself:
+  /// `coach.conversations` and `coach.summaries` are keyed per (person, app),
+  /// so deleting on `user_id` alone erased the runner's LIFT conversations and
+  /// their lifting memory as well — a sibling app's data, reached without ever
+  /// touching a sibling app's schema.
+  ///
+  /// The columns have been there since `20260807130000_coach_memory_per_app`,
+  /// whose own header says the to-do is for every client to "name the app
+  /// explicitly — that is the whole to-do, and it is one line here". This is
+  /// one of the places that never did.
+  @override
   Future<bool> eraseAll() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return false;
@@ -45,7 +70,11 @@ class BackupEraser {
         await _run.from(table).delete().eq('user_id', userId);
       }
       for (final table in const <String>['conversations', 'summaries']) {
-        await _coach.from(table).delete().eq('user_id', userId);
+        await _coach
+            .from(table)
+            .delete()
+            .eq('user_id', userId)
+            .eq('app', 'run');
       }
       return true;
     } on Object {

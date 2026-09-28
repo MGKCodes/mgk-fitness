@@ -1,3 +1,4 @@
+import 'best_effort.dart';
 import 'run_point.dart';
 import 'run_split.dart';
 
@@ -15,12 +16,15 @@ class RunSummary {
     required this.distanceMeters,
     this.avgPaceSecondsPerKm,
     this.elevationGainMeters,
+    this.elevationMaxMeters,
     this.avgHr,
     this.maxHr,
     this.caloriesEst,
+    this.steps,
     this.type = 'outdoor',
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
+    this.bestEfforts = const <BestEffort>[],
   });
 
   /// The stored run's id, when this summary came from a row.
@@ -35,18 +39,56 @@ class RunSummary {
   final double distanceMeters;
 
   final double? avgPaceSecondsPerKm;
+
+  /// Total ascent — the sum of every rise on the route.
   final double? elevationGainMeters;
+
+  /// The route's high point, in metres above sea level.
+  ///
+  /// Separate from [elevationGainMeters] because they answer different
+  /// questions and routinely disagree: hill repeats are enormous gain over an
+  /// unremarkable maximum, one long climb is the reverse.
+  ///
+  /// The two absences differ too. Null gain beside a real maximum is a flat
+  /// run; both null is a trace with no barometric altitude, which is every
+  /// trace this app currently records (ADR-0024).
+  final double? elevationMaxMeters;
+
   final int? avgHr;
   final int? maxHr;
 
   /// A derived estimate — always labelled as such in the UI, never a measurement.
   final double? caloriesEst;
 
+  /// Steps taken, when Health has them.
+  ///
+  /// Read from HealthKit over the run's window when the run finishes, and
+  /// stored in `runs.steps`. Null far more often than not, and every one of the
+  /// reasons is ordinary: the runner declined the Health read, the phone was
+  /// not on them, the store answered too slowly, the run predates the column.
+  /// A denied read is indistinguishable from no data (CLAUDE.md rule 6), so all
+  /// of it renders as an absent tile — never a zero, never an error.
+  final int? steps;
+
   /// `outdoor` | `treadmill` | `manual`.
   final String type;
 
   final List<RunPoint> points;
   final List<RunSplit> splits;
+
+  /// The standard distances this run holds a time for, shortest first —
+  /// the fastest continuous 5 km, 10 km, half or full **inside** it, not its
+  /// own time over its own distance (ADR-0026).
+  ///
+  /// Empty for nearly every run, and empty means the same two things it means
+  /// in storage: the run was shorter than 5 km, or it has no trace to search
+  /// because it was typed in by hand or arrived from Health. It is never a
+  /// stand-in for the whole-run time, which is a different measurement.
+  ///
+  /// Unlike [points] and [splits] this is carried by the log's read as well as
+  /// by a single run's, because the records a runner sees on Profile are a fold
+  /// over every run. Four numbers per run is affordable where a trace is not.
+  final List<BestEffort> bestEfforts;
 
   bool get hasRoute => points.length >= 2;
 }

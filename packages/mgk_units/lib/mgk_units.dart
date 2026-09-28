@@ -1,9 +1,10 @@
 /// Measurement types for the MGKCodes fitness suite.
 ///
-/// One rule, expressed three ways: **storage is canonical metric, conversion
-/// happens at display.** [Distance] holds metres, [Pace] holds seconds per
-/// kilometre, [Mass] holds kilograms, and [UnitSystem] exists only so the
-/// presentation layer knows what to render them as.
+/// One rule, expressed four ways: **storage is canonical metric, conversion
+/// happens at display.** [Distance] holds metres, [Elevation] holds metres of
+/// climb, [Pace] holds seconds per kilometre, [Mass] holds kilograms, and
+/// [UnitSystem] exists only so the presentation layer knows what to render them
+/// as.
 ///
 /// Extracted from the running app once a second caller existed, rather than
 /// designed for one that did not. It is pure Dart on purpose — measurement is a
@@ -16,6 +17,7 @@
 library;
 
 export 'src/distance.dart';
+export 'src/elevation.dart';
 export 'src/duration_format.dart';
 export 'src/mass.dart';
 export 'src/pace.dart';

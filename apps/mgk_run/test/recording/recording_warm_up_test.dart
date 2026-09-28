@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_run_recorder.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
+import 'package:mgk_run/src/features/coaching/domain/session_effort.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
+import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -58,6 +60,15 @@ void main() {
     if (finder.evaluate().isEmpty) return false;
     return (Offset.zero & surface).contains(tester.getRect(finder).center);
   }
+
+  /// The brief, found by its prose rather than by an `RPE n` label.
+  ///
+  /// The label is gone — a number on a ten-point scale is a thing to convert
+  /// before it is a thing to act on, and nobody mid-effort is converting — so
+  /// the sentence is all the brief is. Read from [effortFor] rather than typed
+  /// out, because the copy is the coaching domain's to change and this test is
+  /// about where the block sits, not what it says.
+  final Finder brief = find.text(effortFor(SessionKind.easy).feel);
 
   group('the verdict waits until the run has earned one', () {
     testWidgets('before the warm-up it says it is still looking', (
@@ -125,15 +136,16 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(
-          onScreen(tester, find.textContaining('RPE'), size),
+          onScreen(tester, brief, size),
           expected,
           reason: expected
               ? 'the brief should be readable without opening the sheet'
               : 'a screen this short cannot afford to sell the map',
         );
         // Reachable either way — this is the whole reason the detent is summed
-        // from its parts rather than guessed as a fraction.
-        for (final String label in <String>['Lap', 'Pause', 'Finish']) {
+        // from its parts rather than guessed as a fraction. Finish is not on
+        // this list: it is not on the screen at all until the runner pauses.
+        for (final String label in <String>['Lap', 'Pause']) {
           expect(
             onScreen(tester, find.text(label), size),
             isTrue,
@@ -156,7 +168,7 @@ void main() {
       await advance(tester, kAfterWarmUp);
 
       expect(
-        onScreen(tester, find.textContaining('RPE'), kPhone),
+        onScreen(tester, brief, kPhone),
         isFalse,
         reason: 'the map should have the height back',
       );
@@ -166,14 +178,24 @@ void main() {
   });
 
   group('the third column', () {
-    /// Matched case-insensitively on purpose: the label is handed over as
-    /// `TO GO km`, carrying the unit exactly as the units layer spells it, and
-    /// it is [SectionLabel] that uppercases for display. Asserting against the
-    /// rendered form here would be asserting against the wrong string.
-    String toGo(WidgetTester tester) => tester
-        .widgetList<StatBlock>(find.byType(StatBlock))
-        .firstWhere((StatBlock s) => s.label.toUpperCase() == 'TO GO KM')
-        .value;
+    /// The column's label and value, whichever of the two labels it is wearing.
+    ///
+    /// Read off the widget rather than the rendered text on purpose: the label
+    /// is handed over as `TO GO km`, carrying the unit exactly as the units
+    /// layer spells it, and it is [SectionLabel] that uppercases for display.
+    /// Asserting against the rendered form would be asserting against the wrong
+    /// string.
+    (String, String) column(WidgetTester tester) {
+      final block = tester
+          .widgetList<StatBlock>(find.byType(StatBlock))
+          .firstWhere(
+            (StatBlock s) =>
+                s.label.startsWith('TO GO') || s.label.startsWith('PAST'),
+          );
+      return (block.label.toUpperCase(), block.value);
+    }
+
+    String toGo(WidgetTester tester) => column(tester).$2;
 
     testWidgets('counts down to the session target on a planned run', (
       WidgetTester tester,
@@ -216,6 +238,98 @@ void main() {
 
       expect(find.text('AVG /KM'), findsOneWidget);
       expect(find.text('TO GO KM'), findsNothing);
+
+      await recorder.stop();
+    });
+
+    testWidgets('counts down against what the runner was told', (
+      WidgetTester tester,
+    ) async {
+      // A 7 km session reads as "4 mi" on Plan — `prescribedValue` rounds in
+      // the runner's own unit, because a number that is round in a unit they do
+      // not think in is not round to them (ADR-0011). The countdown converted
+      // the *stored* 7,000 m instead, so the same session opened at 4.35 under
+      // a plan that said 4: two numbers for one session, and the wrong one on
+      // the screen they are holding while running.
+      await tester.binding.setSurfaceSize(kPhone);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final FakeRunRecorder recorder = recorderAt();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RecordingScreen(
+            recorder: recorder,
+            unit: UnitSystem.imperial,
+            plannedSession: const PlannedSession(
+              weekday: DateTime.monday,
+              kind: SessionKind.easy,
+              distanceMeters: 7000,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(column(tester), ('TO GO MI', '4.00'));
+
+      await recorder.stop();
+    });
+
+    testWidgets('goes past the prescription rather than stopping at it', (
+      WidgetTester tester,
+    ) async {
+      // A prescription is a suggestion, never a floor and never a ceiling. The
+      // column used to clamp at zero under a label still reading TO GO, so
+      // running further froze it at `0.00` — a suggestion rendered as a meter
+      // that fills and then reads as done-or-failed either way.
+      await tester.binding.setSurfaceSize(kPhone);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      // A short, quick trace, so a kilometre — the smallest prescription there
+      // is — is comfortably passed inside the test.
+      final DateTime traceStart = DateTime(2026, 1, 1, 8);
+      final FakeRunRecorder recorder = FakeRunRecorder(
+        interval: const Duration(milliseconds: 20),
+        now: () => clock,
+        trace: <RunPoint>[
+          for (int i = 0; i <= 14; i++)
+            RunPoint(
+              // 0.001 degrees of latitude is ~111.19 m, so fourteen hops is
+              // about 1,557 m against a 1,000 m session.
+              latitude: i * 0.001,
+              longitude: 0,
+              accuracyMeters: 5,
+              timestamp: traceStart.add(Duration(seconds: i * 3)),
+            ),
+        ],
+      );
+      clock = traceStart;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RecordingScreen(
+            recorder: recorder,
+            plannedSession: const PlannedSession(
+              weekday: DateTime.monday,
+              kind: SessionKind.easy,
+              distanceMeters: 1000,
+            ),
+          ),
+        ),
+      );
+
+      await advance(tester, 5);
+      expect(column(tester).$1, 'TO GO KM');
+
+      await advance(tester, 12);
+      final (String label, String value) = column(tester);
+      expect(label, 'PAST KM', reason: 'the label carries the change');
+      expect(
+        double.parse(value),
+        greaterThan(0),
+        reason: 'and the figure counts up again rather than freezing at 0.00',
+      );
 
       await recorder.stop();
     });

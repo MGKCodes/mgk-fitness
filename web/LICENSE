@@ -1,0 +1,21 @@
+Copyright (c) 2026 Matthew Kay and MGKCodes Ltd. All rights reserved.
+
+The MGKFitness website and the source code in this directory are proprietary
+and confidential to Matthew Kay and MGKCodes Ltd. No part of this software, in
+source or compiled form, may be reproduced, distributed, modified, transmitted,
+or used to create derivative works without the prior written permission of the
+copyright holders.
+
+Unauthorised copying, modification, distribution, or use of this software, via
+any medium, is strictly prohibited.
+
+THIS DIRECTORY IS NOT COVERED BY THE REPOSITORY'S AGPL-3.0 LICENCE. See
+../NOTICE.md for why the apps and the website are licensed differently.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

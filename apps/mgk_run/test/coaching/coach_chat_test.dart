@@ -114,7 +114,7 @@ void main() {
       ]);
       final controller = ChatController(
         client: backend,
-        brief: () async => 'They are in week 3 of 16 of a 21 km block.',
+        brief: (_) async => 'They are in week 3 of 16 of a 21 km block.',
       );
       addTearDown(controller.dispose);
 
@@ -144,7 +144,7 @@ void main() {
         var writes = 0;
         final controller = ChatController(
           client: backend,
-          brief: () async => 'brief #${++writes}',
+          brief: (_) async => 'brief #${++writes}',
         );
         addTearDown(controller.dispose);
 
@@ -168,7 +168,7 @@ void main() {
       final backend = _ScriptedChat(<ChatTurn>[const ChatTurn(reply: 'ok')]);
       final controller = ChatController(
         client: backend,
-        brief: () async => throw StateError('the plan store is unreadable'),
+        brief: (_) async => throw StateError('the plan store is unreadable'),
       );
       addTearDown(controller.dispose);
 
@@ -186,7 +186,7 @@ void main() {
       () async {
         final controller = ChatController(
           client: _LimitedChat(),
-          brief: () async => '',
+          brief: (_) async => '',
         );
         addTearDown(controller.dispose);
 
@@ -212,7 +212,7 @@ void main() {
     test('an unexpected failure still says something human', () async {
       final controller = ChatController(
         client: _BrokenChat(),
-        brief: () async => '',
+        brief: (_) async => '',
       );
       addTearDown(controller.dispose);
 
@@ -239,7 +239,7 @@ void main() {
       late final ChatController controller;
       controller = ChatController(
         client: backend,
-        brief: () async => '',
+        brief: (_) async => '',
         onAdaptRequest: (request) async {
           handed.add(request);
           transcriptWhenHanded = controller.messages.length;
@@ -265,7 +265,7 @@ void main() {
       var handed = 0;
       final controller = ChatController(
         client: backend,
-        brief: () async => '',
+        brief: (_) async => '',
         onAdaptRequest: (_) async {
           handed++;
           return null;
@@ -293,7 +293,7 @@ void main() {
         client:
             client ??
             _ScriptedChat(turns ?? <ChatTurn>[const ChatTurn(reply: 'hi')]),
-        brief: () async => '',
+        brief: (_) async => '',
       );
       addTearDown(controller.dispose);
 

@@ -133,11 +133,58 @@ If a regulator or a privacy review finds that consent obtained this way is not
 specific enough for Art. 9 — for example because one switch covers both routes
 and transcripts — the switch splits rather than the gate loosening.
 
+**Amended, 2026-08-28 — asked once there is something to keep, not once there
+is an account.**
+
+The amendment above put the question at the end of the first flow, "after the
+coach has built a plan, or after the runner has declined to build one". That
+flow no longer exists in the shape it describes. An account is not the price of
+using the app any more: it is asked for at the two moments it buys something —
+a plan, and this. So the great majority of runners now reach their second week
+with no account at all, and for them the previous rule asked the question at a
+moment that never arrives.
+
+The reasoning of the first amendment is what decides the new answer, because it
+generalises further than it was written. Its objection was that the question was
+being put *before the runner had seen the app do anything* — permission to store
+data that did not exist yet. For somebody with no account that objection is
+strictly stronger: not only is there nothing stored, there is nowhere to store
+it, and a yes could only have been honoured by raising a sign-up at launch,
+which is the intrusion removing the sign-in wall existed to end.
+
+So the question follows the data rather than the flow:
+
+| Runner | Asked | Why there |
+|---|---|---|
+| Signed in, opening the app | At launch, before the restore | The answer decides whether there **is** a restore |
+| No account | After their **second** recorded run | The first is a trial; by the second there is a log they would mind losing |
+
+One run is deliberately not enough. Somebody who has been to the end of the road
+once to see whether the app works is still evaluating it, and a consent dialog
+followed by a sign-up is how a tracker turns into a thing that wants something.
+
+**Saying yes raises sign-up, and the dialog says so before it is tapped.** The
+mirror writes rows attributed to a user, so the account is the mechanism the
+answer needs rather than a second question — which is why this is one dialog and
+not two. Abandoning that sign-up writes **nothing**: they did not decline, they
+were interrupted, and the question is put again next time. Declining writes
+`declined` and is never raised again, which is what the deliberate absence of a
+"Not now" button is for.
+
+The guarantee the cost function protects is unchanged. The question is still
+unavoidable, still asked once, still not something the runner has to go looking
+for. What moved again is only *when* — and it has moved to the first moment at
+which the runner can answer it on the evidence.
+
 ## Consequences
 
 - The `runio` schema **must stay exposed** in the project's API settings. It is
   a dashboard setting, not code, and nothing in the repo can assert it. Every
   `runio` read and write fails with `PGRST106` if it is removed.
+- **Granting requires a session**, and the UI must enforce it rather than
+  assume it. A backup switch with nobody signed in reads "On" over a mirror
+  whose every push fails on a row-level policy — the switch and Home's prompt
+  both raise sign-up before writing a grant.
 - Every unbounded PostgREST read must page. See
   [0013](0013-page-every-postgrest-read.md).
 - The privacy policy must name the restore path, not only the mirror: data moves
