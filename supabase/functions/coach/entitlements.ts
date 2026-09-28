@@ -25,10 +25,10 @@ export interface Entitlement {
 /**
  * What the coach may do for this caller: a tier, or a refusal.
  *
- * `null` is "no coach at all", which is not the same as the free tier. Lift
- * sells coaching as the paid half of the app, so a Lift user with nothing
- * bought gets `null` and a 402. Run gives everyone a coach on the cheapest
- * model, so an unbought Run user gets `"free"`.
+ * `null` is "no coach at all", which is not the same as the free tier. The
+ * coach is the paid half of both apps, so a user with nothing bought gets
+ * `null` and a 402 on either. Run got `"free"` here until ADR-0030 — see the
+ * note inside `tierFor`.
  */
 export type Access = Tier | null;
 
@@ -57,12 +57,11 @@ const PRODUCT_TIERS: Record<string, Tier> = {
  *    new SKU, or a row written by a future version of the receipt validator
  *    must not be able to bill at the Sharp model's rate. Same fallback
  *    direction as `tierFrom`.
- * 3. **A missing row is `null` for Lift and `free` for Run.** That is the
- *    existing behaviour of both apps, preserved exactly: Lift refused an
- *    unentitled caller before this function was unified, and Run has never had
- *    an entitlement row to read. It also means a failed entitlement READ (which
- *    arrives here as `null`) fails closed on the app that charges for the
- *    coach and changes nothing on the app that does not.
+ * 3. **A missing row is `null` on both apps.** A failed entitlement READ
+ *    arrives here as `null` too, so the failure mode is "no coach" rather than
+ *    "a free one" — the safe direction now that the coach costs money on both
+ *    sides. Run got `free` here until ADR-0030; the note in the body says why
+ *    that was never a decision.
  */
 export function tierFor(app: App, entitlement: Entitlement | null): Access {
   const active = entitlement?.status === "active";

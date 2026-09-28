@@ -73,13 +73,13 @@ a socket.
 `core.entitlements` holds one row per `(user, app)`. `tierFor` turns it into a
 tier or a refusal, and every way it can be wrong is a way that costs nothing:
 
-| Row                      | Lift                 | Run        |
-| ------------------------ | -------------------- | ---------- |
-| `premium` / `active`     | `sharp`              | `sharp`    |
-| `paid` / `active`        | `standard`           | `standard` |
-| `free` / `active`        | **402 not_entitled** | `free`     |
-| any other `status`       | **402 not_entitled** | `free`     |
-| no row, or a failed read | **402 not_entitled** | `free`     |
+| Row                      | Lift                 | Run                  |
+| ------------------------ | -------------------- | -------------------- |
+| `premium` / `active`     | `sharp`              | `sharp`              |
+| `paid` / `active`        | `standard`           | `standard`           |
+| `free` / `active`        | **402 not_entitled** | **402 not_entitled** |
+| any other `status`       | **402 not_entitled** | **402 not_entitled** |
+| no row, or a failed read | **402 not_entitled** | **402 not_entitled** |
 
 Three properties are deliberate:
 
@@ -89,10 +89,11 @@ Three properties are deliberate:
   store has not been paid".
 - **An unknown product is the cheapest tier, never the dearest.** A typo or a
   future SKU must not be able to bill at the Sharp model's rate.
-- **The two apps differ because their products do.** Lift sells coaching as its
-  paid half; Run gives everyone a coach on the cheapest model. It also means a
-  failed entitlement read fails closed on the app that charges for it and
-  changes nothing on the app that does not.
+- **Both apps refuse an unentitled caller.** The coach is the paid half of each
+  ([ADR-0030](../../../apps/mgk_run/docs/decisions/0030-the-coach-is-the-paid-half.md)),
+  so a failed entitlement read fails closed on both. Run gave everyone a coach
+  on the cheapest model until then, which was a placeholder that outlived its
+  excuse rather than a product choice.
 
 ## Surfaces
 

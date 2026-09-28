@@ -380,8 +380,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    its tier could bill the Sharp model on a free account, and one that
   //    could name its app could spend a Run subscription on a Lift turn.
   //
-  //    `null` is "no coach at all", which Lift returns for an unentitled
-  //    lifter: coaching is the paid half of that app. Run never returns it.
+  //    `null` is "no coach at all", which both apps return for an unentitled
+  //    caller: coaching is the paid half of each (ADR-0030).
   const entitlements = new EntitlementStore(supabaseUrl, serviceKey);
   const tier = tierFor(
     surface.app,
