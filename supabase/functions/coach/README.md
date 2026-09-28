@@ -78,10 +78,11 @@ tier or a refusal, and every way it can be wrong is a way that costs nothing:
 | `premium` / `active`     | `sharp`              | `sharp`              |
 | `paid` / `active`        | `standard`           | `standard`           |
 | `free` / `active`        | **402 not_entitled** | **402 not_entitled** |
+| `active`, expired > 24h  | **402 not_entitled** | **402 not_entitled** |
 | any other `status`       | **402 not_entitled** | **402 not_entitled** |
 | no row, or a failed read | **402 not_entitled** | **402 not_entitled** |
 
-Three properties are deliberate:
+Four properties are deliberate:
 
 - **Only `active` grants anything.** `core.entitlements.status` has five values
   and the column comment says to treat every other one as no entitlement.
@@ -94,6 +95,13 @@ Three properties are deliberate:
   so a failed entitlement read fails closed on both. Run gave everyone a coach
   on the cheapest model until then, which was a placeholder that outlived its
   excuse rather than a product choice.
+- **An `active` row stops granting a day after `expires_at`.** The webhook
+  leaves a cancelled subscription `active` and relies on a later `EXPIRATION` to
+  end it; if that event is lost, or loses the `event_ms` watermark to a later
+  `CANCELLATION`, nothing else would. A Google test subscription stayed `active`
+  seventeen days past its expiry that way. The day's margin covers RevenueCat's
+  retries and a renewal landing just after the period ends; a `null` expiry,
+  which every hand-granted row has, still grants.
 
 ## Surfaces
 

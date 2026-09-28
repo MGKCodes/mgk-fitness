@@ -94,6 +94,11 @@ an incoming event must be strictly newer to win.
 - A late `EXPIRATION` cannot revert a live `RENEWAL` that arrived first.
 - A row with `event_ms IS NULL` — inserted by hand, as the TestFlight sheet
   does — loses to the first real event rather than blocking it forever.
+- An `EXPIRATION` that never arrives, or that a later `CANCELLATION` outranks
+  on `event_ms`, leaves the row `active` after the period has ended. This
+  function does not correct for that — it writes only what the store said —
+  but the coach's gate does: `tierFor` stops granting an `active` row a day
+  after its `expires_at`.
 
 ## Testing
 
