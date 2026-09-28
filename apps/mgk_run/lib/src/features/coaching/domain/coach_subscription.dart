@@ -9,7 +9,7 @@
 /// paying subscriber concludes the app has eaten their money.
 ///
 /// So this exists beside [CoachAccess] rather than replacing it. Same row, same
-/// two columns, read once; one answer for what to draw, one for what to say.
+/// three columns, read once; one answer for what to draw, one for what to say.
 ///
 /// **It is still not the gate.** `tierFor` in `supabase/functions/coach`
 /// decides what may actually be spent, under `service_role`, and a client
@@ -63,6 +63,10 @@ enum SubscriptionStanding {
   billingRetry,
 
   /// `expired`, `refunded` or `revoked`. Over, and not being charged.
+  ///
+  /// Also `active` more than a day past its expiry, which is what an `expired`
+  /// row looks like when the event that would have said so never arrived. See
+  /// [CoachSubscription.fromRow].
   ended,
 }
 
@@ -92,7 +96,18 @@ class CoachSubscription {
   bool get isSubscribed =>
       standing == SubscriptionStanding.active && tier != CoachTier.none;
 
-  /// Reads the two columns of `core.entitlements` that decide anything.
+  /// How long past `expires_at` an `active` row still reads as active: a day,
+  /// the same margin as `LAPSE_GRACE_MS` beside `tierFor`.
+  ///
+  /// Mirrored rather than chosen here, because the two disagreeing is the
+  /// failure in either direction. Shorter, and a runner whose renewal is still
+  /// in flight is shown a locked coach the server would have served. Longer,
+  /// and a lapsed one is shown an open coach that 402s the moment it is used.
+  /// Why a day — RevenueCat's retries, and a renewal landing just after the
+  /// period ends — is the server's reasoning, and is written there.
+  static const Duration lapseGrace = Duration(hours: 24);
+
+  /// Reads the three columns of `core.entitlements` that decide anything.
   ///
   /// Unknown values resolve downwards — an unrecognised product is
   /// [CoachTier.none] rather than the dearest tier, and an unrecognised status
@@ -100,7 +115,25 @@ class CoachSubscription {
   /// `tierFor` and `accessFrom`, for the same reason: a typo or a SKU from a
   /// future version of the receipt validator must not be able to unlock
   /// anything it did not buy.
-  static CoachSubscription fromRow(Map<String, dynamic>? row) {
+  ///
+  /// **An `active` row more than [lapseGrace] past `expires_at` is
+  /// [SubscriptionStanding.ended]** — the same branch as `expired`, because it
+  /// is an expired row whose `EXPIRATION` event never arrived. Nothing else
+  /// ends one: the webhook leaves a cancelled subscription `active` until that
+  /// event comes, and a Google test subscription sat `active` seventeen days
+  /// past its expiry waiting for it. This mirrors property 4 of `tierFor`,
+  /// which refuses the same row, so the app stops drawing a coach the server
+  /// will not serve. A null expiry means no end date, which is what every
+  /// hand-granted row carries, and stays active. An expiry that cannot be read
+  /// is ended rather than trusted, as an unrecognised status is; the server
+  /// refuses that row outright.
+  ///
+  /// [now] is the instant the expiry is judged against. The caller's clock,
+  /// not this function's, so a test can stand either side of the margin.
+  static CoachSubscription fromRow(
+    Map<String, dynamic>? row, {
+    required DateTime now,
+  }) {
     if (row == null) return none;
     final tier = switch (row['product']) {
       'paid' => CoachTier.coach,
@@ -109,11 +142,23 @@ class CoachSubscription {
     };
     if (tier == CoachTier.none) return none;
     final standing = switch (row['status']) {
-      'active' => SubscriptionStanding.active,
+      'active' when _stillCurrent(row['expires_at'], now) =>
+        SubscriptionStanding.active,
       'grace' => SubscriptionStanding.billingRetry,
       _ => SubscriptionStanding.ended,
     };
     return CoachSubscription(tier: tier, standing: standing);
+  }
+
+  /// No end date, or one less than [lapseGrace] gone.
+  ///
+  /// Written as the condition that keeps a row active, so anything it cannot
+  /// read — a number, a typo, a string [DateTime.tryParse] refuses — falls
+  /// through to ended instead of being waved on.
+  static bool _stillCurrent(Object? expiresAt, DateTime now) {
+    if (expiresAt == null) return true;
+    final end = expiresAt is String ? DateTime.tryParse(expiresAt) : null;
+    return end != null && end.add(lapseGrace).isAfter(now);
   }
 
   @override

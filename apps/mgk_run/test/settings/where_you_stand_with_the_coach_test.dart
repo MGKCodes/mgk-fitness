@@ -1,6 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_subscription.dart';
 
+/// Fixed, so nothing here reads the wall clock. None of these rows carries an
+/// expiry, so the instant only has to exist.
+final DateTime _now = DateTime.utc(2026, 9, 28, 12);
+
 /// **There was nowhere in the app to see what you were paying for.**
 ///
 /// Found 2026-09-11, within a minute of the first Google Play purchase
@@ -21,14 +25,14 @@ void main() {
         CoachSubscription.fromRow(<String, dynamic>{
           'product': 'paid',
           'status': 'active',
-        }).tier.label,
+        }, now: _now).tier.label,
         'Coach',
       );
       expect(
         CoachSubscription.fromRow(<String, dynamic>{
           'product': 'premium',
           'status': 'active',
-        }).tier.label,
+        }, now: _now).tier.label,
         'Premium Coach',
       );
     });
@@ -40,7 +44,7 @@ void main() {
       final s = CoachSubscription.fromRow(<String, dynamic>{
         'product': 'premium_coach_v2',
         'status': 'active',
-      });
+      }, now: _now);
       expect(s.tier, CoachTier.none);
       expect(s.isSubscribed, isFalse);
     });
@@ -54,7 +58,7 @@ void main() {
       final s = CoachSubscription.fromRow(<String, dynamic>{
         'product': 'premium',
         'status': 'grace',
-      });
+      }, now: _now);
       expect(s.standing, SubscriptionStanding.billingRetry);
       expect(
         s.tier,
@@ -76,7 +80,7 @@ void main() {
         final s = CoachSubscription.fromRow(<String, dynamic>{
           'product': 'paid',
           'status': status,
-        });
+        }, now: _now);
         expect(s.standing, SubscriptionStanding.ended, reason: status);
         expect(s.isSubscribed, isFalse, reason: status);
       }
@@ -87,14 +91,17 @@ void main() {
         CoachSubscription.fromRow(<String, dynamic>{
           'product': 'paid',
           'status': 'ACTIVE',
-        }).standing,
+        }, now: _now).standing,
         SubscriptionStanding.ended,
         reason: 'the column is lower case; a case mismatch must not grant',
       );
     });
 
     test('no row is none, which is not the same as ended', () {
-      expect(CoachSubscription.fromRow(null), CoachSubscription.none);
+      expect(
+        CoachSubscription.fromRow(null, now: _now),
+        CoachSubscription.none,
+      );
       expect(CoachSubscription.none.standing, SubscriptionStanding.none);
     });
   });
@@ -104,14 +111,14 @@ void main() {
       CoachSubscription.fromRow(<String, dynamic>{
         'product': 'paid',
         'status': 'active',
-      }).isSubscribed,
+      }, now: _now).isSubscribed,
       isTrue,
     );
     expect(
       CoachSubscription.fromRow(<String, dynamic>{
         'product': 'premium',
         'status': 'active',
-      }).isSubscribed,
+      }, now: _now).isSubscribed,
       isTrue,
     );
   });

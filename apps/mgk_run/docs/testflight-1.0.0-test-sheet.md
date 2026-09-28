@@ -165,10 +165,14 @@ insert into core.entitlements (user_id, app, product, status, platform)
 select id, 'run', 'paid', 'active', 'apple'
 from auth.users where email = 'you@example.com'
 on conflict (user_id, app) do update
-  set product = 'paid', status = 'active';
+  set product = 'paid', status = 'active', expires_at = null;
 ```
 
-Only `status = 'active'` grants anything. **Delete it again** before section G:
+Only `status = 'active'` grants anything, and not beyond a day past
+`expires_at`. The insert leaves that null, which never lapses; the update
+clears it, because a row left from an earlier round of G keeps that purchase's
+expiry and would be refused however `active` it reads. **Delete it again**
+before section G:
 
 ```sql
 delete from core.entitlements

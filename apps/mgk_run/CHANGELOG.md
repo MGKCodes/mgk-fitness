@@ -369,6 +369,13 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A subscription that has run out closes the coach, even if the store's
+  final word never arrives.** A cancelled subscription stays live until an
+  expiry notice ends it, and if that notice was lost nothing else checked the
+  date — a lapsed test subscription kept the paid coach for seventeen days.
+  The app and the server now both read the expiry date, a day late on purpose,
+  so a renewal that is still on its way does not lock out somebody who has
+  paid.
 - **The name the coach is given is not forgotten on the way to the first screen
   that uses it.** Removing the account left the runner's name with two homes and
   a wire between them that was built at both ends and joined at neither:
