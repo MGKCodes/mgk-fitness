@@ -14,8 +14,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// need a network to check, for the same reason `SyncQueue` was split out.
 void main() {
   late AppDatabase db;
+  var slot = 0;
 
-  setUp(() => db = AppDatabase.memory());
+  setUp(() {
+    db = AppDatabase.memory();
+    slot = 0;
+  });
   tearDown(() async => db.close());
 
   Future<void> insert({
@@ -23,6 +27,7 @@ void main() {
     DateTime? syncedAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    DateTime? week,
   }) {
     final at = updatedAt ?? DateTime(2026, 8, 10);
     return db
@@ -30,7 +35,14 @@ void main() {
         .insert(
           ProgressPhotosCompanion.insert(
             id: id,
-            weekStart: ProgressPhoto.weekOf(at),
+            // A week of its own per photo. Every one used to share a slot,
+            // which the database forbids — two live photos of one pose in one
+            // week — and this passed only because a fresh install never got
+            // the index that says so. The dirty rule reads `updatedAt`, which
+            // is left exactly as each test sets it.
+            weekStart:
+                week ??
+                ProgressPhoto.weekOf(at).add(Duration(days: 7 * slot++)),
             poseType: Pose.front.stored,
             path: '/photos/$id.jpg',
             takenAt: at,
@@ -137,8 +149,11 @@ void main() {
         syncedAt: DateTime(2026, 8, 10),
         updatedAt: DateTime(2026, 8, 12),
         deletedAt: DateTime(2026, 8, 12),
+        week: week,
       );
-      await insert(id: 'new', updatedAt: DateTime(2026, 8, 12));
+      // The one fixture here that shares a slot on purpose, and a legal one:
+      // the slot index covers live rows only, and the original is a tombstone.
+      await insert(id: 'new', updatedAt: DateTime(2026, 8, 12), week: week);
 
       expect(await pending(), 2);
 

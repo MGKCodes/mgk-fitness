@@ -108,6 +108,67 @@ class SessionExercise {
     if (done.isEmpty) return null;
     return done.reduce((a, b) => b.weightKg > a.weightKg ? b : a);
   }
+
+  /// What the first column of [set]'s row reads: `W`, `D` or `F` for a marked
+  /// set, and otherwise its number **among the ordinary working sets** —
+  /// `W, 1, 2, D, 3`.
+  ///
+  /// **The one definition, for every screen that numbers a set.** Both used to
+  /// print `setNumber`, which is a storage position, so a warm-up took the
+  /// number 1 and the first real set read "2" — a lifter's "three sets of
+  /// five" came out as `W, 2, 3, 4`. Found by photographing the screen.
+  String labelFor(SessionSet set) {
+    final marker = set.setType.marker;
+    if (marker != null) return marker;
+    var n = 0;
+    for (final s in sets) {
+      if (s.setType == SetType.working) n++;
+      if (s.id == set.id) return '$n';
+    }
+    // Not one of this movement's sets. The storage position is the only honest
+    // answer left, and it cannot happen from any caller that passes its own.
+    return '${set.setNumber}';
+  }
+}
+
+/// How much one session can hold, and how big a number can be.
+///
+/// **Limits catch typing, not training.** Every one sits well past anything a
+/// real session reaches, so it only ever meets a slipped thumb — 1,000 reps for
+/// 10, a weight with an extra zero. A value past a limit is refused where it is
+/// typed and never silently clamped: a clamped number is a quietly wrong one,
+/// which is worse than a refusal the lifter can see.
+///
+/// Numbers from `docs/lift-2.0.0-logging-rework.md`, decision D2.
+abstract final class SessionLimits {
+  /// Covers the longest drop-set chains; stops a runaway "Add set".
+  static const int setsPerMovement = 20;
+
+  /// A long session is about twelve.
+  static const int movements = 30;
+
+  /// A three-digit field. Nothing heavier than a calf raise gets near it.
+  static const int maxReps = 200;
+
+  /// Above any sled a gym owns. Zero is legal: it is bodyweight.
+  static const double maxWeightKg = 1000;
+
+  /// One line on every screen that shows a name.
+  static const int nameLength = 60;
+}
+
+/// Thrown when a change would take a session past one of [SessionLimits].
+///
+/// The screen disables the control before this can happen; the recorder
+/// refuses anyway, because a limit enforced only by a button is not a limit.
+class SessionLimitReached implements Exception {
+  const SessionLimitReached(this.what);
+
+  /// Which limit, in words — `20 sets`.
+  final String what;
+
+  @override
+  String toString() => 'Limit reached: $what.';
 }
 
 /// One working set.

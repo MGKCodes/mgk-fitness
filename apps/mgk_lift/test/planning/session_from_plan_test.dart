@@ -48,8 +48,39 @@ class FakeRecorder implements SessionRecorder {
     required List<String> movements,
   }) async => throw UnimplementedError();
 
+  // Not exercised here either: filling a session from a plan adds movements
+  // and sets and edits them, and nothing else.
   @override
-  Future<Session> addSet(String exerciseId) async {
+  Future<Session> addExercises(List<String> names) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Session> restoreSet(String exerciseId, SessionSet set) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Session> restoreExercise(SessionExercise exercise) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Session> replaceExercise(
+    String exerciseId,
+    String name, {
+    int sets = 0,
+    int? reps,
+    double? weightKg,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<Session> moveExercise(String exerciseId, int toIndex) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Session> addSet(
+    String exerciseId, {
+    int? reps,
+    double? weightKg,
+  }) async {
     final s = _session!;
     return _session = _copy(s, <SessionExercise>[
       for (final e in s.exercises)

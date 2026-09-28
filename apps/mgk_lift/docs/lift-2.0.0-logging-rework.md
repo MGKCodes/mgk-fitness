@@ -111,9 +111,9 @@ floating nav pill, real icons, the shared upload key, `web/`, Play wiring, the
 privacy fixes to the coach function. Most items below touch files main also
 changed; doing them first means doing them twice.
 
-- [ ] **Push the 9 unpushed commits** on `lift/release-2.0.0` *(your go —
-      outward-facing)*.
-- [ ] **Merge main into the branch.** A dry run (`git merge-tree`) finds seven
+- [x] **Push the 9 unpushed commits** on `lift/release-2.0.0` *(your go —
+      outward-facing)*. Done 2026-09-29, with the plan docs.
+- [x] **Merge main into the branch.** A dry run (`git merge-tree`) finds seven
       conflicted files:
       - `apps/mgk_lift/docs/release-2.0.0.md`,
         `apps/mgk_lift/docs/testflight-2.0.0-test-sheet.md` — the branch moved
@@ -126,22 +126,43 @@ changed; doing them first means doing them twice.
         own work. Run's side wins except where the mark is drawn.
       - `packages/mgk_ui/lib/mgk_ui.dart` — both sides added an export; keep
         both.
-- [ ] **Read the coach function after the merge, even though it merged
+- [x] **Read the coach function after the merge, even though it merged
       cleanly.** Both sides changed `supabase/functions/coach/` (main: Run's
       sessions and the privacy fixes; branch: Lift's client-sent conversation
       id). Git joined them without a textual conflict, which says nothing
       about whether they agree. Deno tests must pass, and the conversation rule
       must be one rule for both apps.
-- [ ] **One RevenueCat webhook** (D5). Main's `revenuecat` stays; the branch's
+- [x] **One RevenueCat webhook** (D5). Main's `revenuecat` stays; the branch's
       four decisions are checked against it: cancellation does not end access,
       an unknown product grants `paid` (Liftio's legacy subscribers), sandbox
       events are honoured, status codes are a retry policy.
-- [ ] Full verification: Run and Lift test suites, Deno, `mgk_ui`, `flutter
+- [x] Full verification: Run and Lift test suites, Deno, `mgk_ui`, `flutter
       analyze` across the workspace. Run's screens photographed against the
       board, because this merge touches three of them.
 
 **Done when:** the branch contains main, every suite passes, and nothing in
 `supabase/functions/` exists twice.
+
+**Done 2026-09-29** (`cb1a711`, then `13fb60e`). Three things the dry run could
+not show, found by analyzing and testing: main's nav-pill clearance carried
+into the moved coach mark without its import, three Run tests still importing
+the moved file, and Lift's widget test naming main's deleted `CoachMark`.
+
+Two outcomes worth knowing:
+
+- **The webhook fold found a live bug in main's function.** RevenueCat has no
+  `REFUND` event — a refund is a `CANCELLATION` with
+  `cancel_reason: CUSTOMER_SUPPORT` — so a refunded subscriber kept the coach,
+  on both apps. Fixed and tested in `13fb60e`; **not deployed**.
+- **Two open questions moved to the webhook's README** rather than being
+  decided in a merge: Liftio's legacy product ids must be mapped to
+  `lift` / `paid` before 2.0.0 ships, and `REVENUECAT_ACCEPT_SANDBOX` has to let
+  App Review's purchases through, which main's plan to switch it off at rollout
+  would not.
+
+Also: two ADRs had both been numbered 0002 on the two lanes; the later-filed
+one (illustrations) is now 0003. Lift's work documents moved into
+`apps/mgk_lift/docs/` under main's rule.
 
 ---
 
@@ -150,19 +171,19 @@ changed; doing them first means doing them twice.
 Small changes in `DriftSessionRecorder` and the session screen, each pinned by
 a test that fails today.
 
-1. [ ] **Sets renumber on removal** (F2). `removeSet` renumbers the movement's
+1. [x] **Sets renumber on removal** (F2). `removeSet` renumbers the movement's
        remaining sets in the same transaction; `addSet` numbers from the
        count, which is then correct.
 2. [ ] **Warm-ups do not take a number** (F3). The label is the set's position
        among working sets: `W, 1, 2, 3`. Stored `setNumber` stays positional;
        only the label changes.
-3. [ ] **Order stays contiguous** (F4). `removeExercise` closes the gap;
+3. [x] **Order stays contiguous** (F4). `removeExercise` closes the gap;
        `addExercise` appends after the highest index.
-4. [ ] **Swap replaces in place and keeps the work** (F5). A movement with
+4. [x] **Swap replaces in place and keeps the work** (F5). A movement with
        nothing ticked is replaced at its own position. One with ticked sets
        stays, collapsed, and the replacement goes directly under it — sets
        that happened are never deleted by a swap.
-5. [ ] **Every change is one transaction.** `fillFromLibrary`, swap, removal
+5. [x] **Every change is one transaction.** `fillFromLibrary`, swap, removal
        with renumbering — a half-applied change cannot reach the disk.
 6. [ ] **Input that cannot be wrong** (F9). Reps: digits only, number keyboard,
        three digits. Weight: one decimal separator, `,` read as `.`, two
@@ -204,6 +225,22 @@ a test that fails today.
 **Done when:** each item has a failing-then-passing test in
 `session_recorder_test.dart` or `active_session_screen_test.dart`.
 
+**The data half landed 2026-09-29**, pinned in
+`test/tracking/session_recorder_positions_test.dart` (17 tests, each written
+against a behaviour the old recorder got wrong). Items 1, 3, 4 and 5 are done
+outright. Item 2's rule is `SessionExercise.labelFor` and item 7's limits are
+`SessionLimits`, both enforced by the recorder — the screens still have to use
+them. The Finish half of item 11 — dropping unticked sets and emptied
+movements — is in `finish()`; the sheet that lists them first is not.
+
+**Found on the way, and fixed:** the photo slot index (one live photo per pose
+per week) was only ever created on *upgrade*, so every install that started at
+schema 3 or later ran without it. Schema 7 creates every index from both
+`onCreate` and `onUpgrade`, retiring the older of any duplicate first so the
+unique index cannot fail and take the database down with it. A test fixture had
+been relying on the gap — two live photos in one slot — and now uses a week
+each.
+
 ---
 
 ## Phase 2 — logging is fast
@@ -217,7 +254,7 @@ a test that fails today.
        when its set is ticked, when the screen closes, and when the app goes to
        the background — not per keystroke. Pinned by a test: five keystrokes
        and a blur are one write.
-3. [ ] **Indexes on the lookups** (F17). `exercises(workout_id, order_index)`
+3. [x] **Indexes on the lookups** (F17). `exercises(workout_id, order_index)`
        and `exercise_sets(exercise_id, set_number)`, schema 6 → 7.
 4. [ ] **The clock redraws the clock.** The elapsed time and the rest timer
        each own their ticker; the exercise cards stop rebuilding every second.
@@ -237,8 +274,16 @@ a test that fails today.
        phone is pocketed** — a local notification. Carried from
        `release-2.0.0.md` Phase 5.
 
-**Done when:** a set edit costs at most four queries (pinned by an
+**Done when:** a set edit costs at most five statements (pinned by an
 interceptor test), and the keyboard has been opened and closed on an iPhone.
+
+*Five, not the four first written here — settled differently 2026-09-29.* The
+edit keeps its read of the open row, so that an edit can only ever reach the
+session in progress and never a finished workout: that read is the fifth
+statement, and it is worth more than the saving. Three reads and two writes,
+whatever the session holds — against sixteen reads and two writes measured
+before. History loads the whole log in three reads instead of one per movement
+per session.
 
 ---
 
