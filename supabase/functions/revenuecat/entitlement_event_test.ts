@@ -86,28 +86,75 @@ Deno.test("a billing issue is grace, which grants nothing", () => {
 Deno.test("every status the table allows can be reached, and no other", () => {
   const allowed = ["active", "expired", "grace", "refunded", "revoked"];
   const reached = new Set<string>();
+  // Events as RevenueCat actually sends them. This list once reached
+  // `refunded` through a `REFUND` type that does not exist, which is how a
+  // refunded subscriber kept the coach without any test noticing.
   for (
-    const type of [
-      "INITIAL_PURCHASE",
-      "RENEWAL",
-      "PRODUCT_CHANGE",
-      "UNCANCELLATION",
-      "NON_RENEWING_PURCHASE",
-      "SUBSCRIPTION_EXTENDED",
-      "CANCELLATION",
-      "EXPIRATION",
-      "SUBSCRIPTION_PAUSED",
-      "BILLING_ISSUE",
-      "REFUND",
-      "TRANSFER",
+    const over of [
+      { type: "INITIAL_PURCHASE" },
+      { type: "RENEWAL" },
+      { type: "PRODUCT_CHANGE" },
+      { type: "UNCANCELLATION" },
+      { type: "NON_RENEWING_PURCHASE" },
+      { type: "SUBSCRIPTION_EXTENDED" },
+      { type: "CANCELLATION", cancel_reason: "UNSUBSCRIBE" },
+      { type: "CANCELLATION", cancel_reason: "CUSTOMER_SUPPORT" },
+      { type: "EXPIRATION", expiration_reason: "UNSUBSCRIBE" },
+      { type: "SUBSCRIPTION_PAUSED" },
+      { type: "BILLING_ISSUE" },
+      { type: "REFUND_REVERSED" },
+      { type: "TRANSFER" },
     ]
   ) {
-    const status = written({ type }).status;
-    assert(allowed.includes(status), `${type} produced ${status}`);
+    const status = written(over).status;
+    assert(
+      allowed.includes(status),
+      `${JSON.stringify(over)} produced ${status}`,
+    );
     reached.add(status);
   }
   // A check constraint violation would be a 502 at 3am rather than a test.
   assertEquals([...reached].sort(), [...allowed].sort());
+});
+
+Deno.test("a refund is a cancellation with a reason, and it ends access", () => {
+  // RevenueCat has no REFUND type: "Customer received a refund from Apple
+  // support…" arrives as CANCELLATION with cancel_reason CUSTOMER_SUPPORT.
+  // Every other cancellation keeps access until it lapses; this one does not,
+  // because the money went back.
+  assertEquals(
+    written({ type: "CANCELLATION", cancel_reason: "CUSTOMER_SUPPORT" }).status,
+    "refunded",
+  );
+  for (
+    const reason of [
+      "UNSUBSCRIBE",
+      "BILLING_ERROR",
+      "PRICE_INCREASE",
+      "UNKNOWN",
+    ]
+  ) {
+    assertEquals(
+      written({ type: "CANCELLATION", cancel_reason: reason }).status,
+      "active",
+      `a ${reason} cancellation should keep access until it lapses`,
+    );
+  }
+  assertEquals(
+    written({ type: "EXPIRATION", expiration_reason: "CUSTOMER_SUPPORT" })
+      .status,
+    "refunded",
+  );
+});
+
+Deno.test("a reversed refund gives access back", () => {
+  assertEquals(written({ type: "REFUND_REVERSED" }).status, "active");
+});
+
+Deno.test("there is no REFUND event type to trust", () => {
+  // If RevenueCat ever sent one it would be new, and new types are ignored
+  // rather than guessed — the same rule as every other unknown.
+  assertEquals(ignored({ type: "REFUND" }), "unhandled_type");
 });
 
 // ---- what is refused, and in which direction --------------------------------
@@ -123,7 +170,10 @@ Deno.test("an unknown event type is ignored, never guessed", () => {
 Deno.test("an unmapped product grants nothing", () => {
   // The failure that matters: a product id nobody configured must not fall back
   // to a tier. It falls back to no write at all.
-  assertEquals(ignored({ product_id: "run.coach.lifetime" }), "unmapped_product");
+  assertEquals(
+    ignored({ product_id: "run.coach.lifetime" }),
+    "unmapped_product",
+  );
   assertEquals(ignored({ product_id: null }), "unmapped_product");
 });
 
@@ -155,8 +205,14 @@ Deno.test("a sandbox purchase is refused unless configured otherwise", () => {
 Deno.test("an event with no timestamp is ignored", () => {
   // Without one there is no watermark, so a replay could not be told from a new
   // event and ordering would be whatever arrived last.
-  assertEquals(ignored({ event_timestamp_ms: undefined }), "no_event_timestamp");
-  assertEquals(ignored({ event_timestamp_ms: "1700000000000" }), "no_event_timestamp");
+  assertEquals(
+    ignored({ event_timestamp_ms: undefined }),
+    "no_event_timestamp",
+  );
+  assertEquals(
+    ignored({ event_timestamp_ms: "1700000000000" }),
+    "no_event_timestamp",
+  );
 });
 
 Deno.test("a body that is not an event is ignored, not thrown", () => {
@@ -209,14 +265,20 @@ Deno.test("a malformed product map grants nothing rather than crashing", () => {
     empty: {},
   }));
   assertEquals(partial.size, 1);
-  assertEquals(partial.get("good"), { app: "run", product: "paid" } as ProductSale);
+  assertEquals(
+    partial.get("good"),
+    { app: "run", product: "paid" } as ProductSale,
+  );
 });
 
 // ---- ordering ---------------------------------------------------------------
 
 Deno.test("a newer event wins, an equal or older one does not", () => {
   assert(supersedes(2000, 1000), "newer must win");
-  assert(!supersedes(1000, 2000), "a late delivery must not revert a newer state");
+  assert(
+    !supersedes(1000, 2000),
+    "a late delivery must not revert a newer state",
+  );
   // Equal is the replay case, and RevenueCat retries deliveries.
   assert(!supersedes(1000, 1000), "a replay must be a no-op");
 });

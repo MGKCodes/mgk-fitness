@@ -80,9 +80,34 @@ const STATUS_BY_TYPE: Record<string, Status> = {
   // entitlement check treats anything but `active` as no entitlement, so a
   // billing retry deliberately reads as "not paid" while it resolves.
   BILLING_ISSUE: "grace",
-  REFUND: "refunded",
+  // **There is no `REFUND` event type.** This table used to map one, and a test
+  // reached `refunded` through it, so the gap was invisible: RevenueCat reports
+  // a refund as a `CANCELLATION` (or `EXPIRATION`) whose reason is
+  // `CUSTOMER_SUPPORT` — see `refundReason` below — and with the mapping above
+  // a refunded subscriber kept the coach. A reversed refund is its own type,
+  // and it gives access back.
+  REFUND_REVERSED: "active",
   TRANSFER: "revoked",
 };
+
+/**
+ * Whether the event is a refund, which RevenueCat reports as a reason rather
+ * than a type: "Customer received a refund from Apple support, a Google Play
+ * subscription was refunded through RevenueCat…" is `CUSTOMER_SUPPORT` on a
+ * `CANCELLATION`, and the same reason on the `EXPIRATION` that follows it.
+ *
+ * Money returned is access ended. Checked before the type's own status, because
+ * a cancellation is otherwise the one event that deliberately keeps access.
+ */
+function refundReason(e: Record<string, unknown>, type: string): boolean {
+  if (type === "CANCELLATION") {
+    return str(e.cancel_reason) === "CUSTOMER_SUPPORT";
+  }
+  if (type === "EXPIRATION") {
+    return str(e.expiration_reason) === "CUSTOMER_SUPPORT";
+  }
+  return false;
+}
 
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
@@ -218,8 +243,11 @@ export function decide(
   }
 
   const type = str(e.type);
-  const status = type === null ? undefined : STATUS_BY_TYPE[type];
-  if (status === undefined) return { ignore: "unhandled_type" };
+  const mapped = type === null ? undefined : STATUS_BY_TYPE[type];
+  if (mapped === undefined || type === null) {
+    return { ignore: "unhandled_type" };
+  }
+  const status: Status = refundReason(e, type) ? "refunded" : mapped;
 
   const expiresMs = typeof e.expiration_at_ms === "number" &&
       Number.isFinite(e.expiration_at_ms)
