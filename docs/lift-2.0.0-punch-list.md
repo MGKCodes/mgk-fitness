@@ -400,6 +400,15 @@ The largest phase, and the one with an existing design to work from.
       modes. The rolling summary is what survives a boundary here. Named as a
       limit rather than an omission, and the next thing to copy.
 
+## Phase E — the logging rework
+
+Added 2026-09-28, from an audit of the branch rather than of the build: sets,
+templates that learn from the session, saving and backup with real error
+messages, and the glass-and-motion pass. It reaches past UI into the recorder,
+the sync layer and a new server function, so it is its own file —
+[lift-2.0.0-logging-rework.md](lift-2.0.0-logging-rework.md) — and starts by
+bringing main into this branch.
+
 ---
 
 ## Found by comparison, not by the report
