@@ -10,6 +10,7 @@ import 'package:mgk_lift/src/features/tracking/presentation/active_session_scree
 import 'package:mgk_lift/src/features/tracking/presentation/exercise_card.dart'
     as card;
 import 'package:mgk_units/mgk_units.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
 
 void main() {
   navigationTests();
@@ -53,7 +54,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).first, '225');
-    await tester.pumpAndSettle();
+    // Saved on the way out of the field, not per keystroke.
+    await leaveField(tester);
 
     final stored = await db.select(db.exerciseSets).getSingle();
     expect(stored.weightKg, closeTo(102.058, 0.001));
@@ -351,7 +353,7 @@ void main() {
 
       expect(find.text('RESTING'), findsOneWidget);
       await tester.enterText(find.byType(TextField).first, '90');
-      await tester.pump();
+      await leaveField(tester);
 
       final stored = await (db.select(
         db.exerciseSets,
@@ -752,5 +754,25 @@ Future<void> _swipeRowAway(WidgetTester tester, int index) async {
     tester.getTopLeft(row) + const Offset(14, 18),
     const Offset(-500, 0),
   );
+  await tester.pumpAndSettle();
+}
+
+/// Finishes the session on screen: Finish in the header, then Finish on the
+/// sheet that now asks first.
+Future<void> finishSession(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(FilledButton, 'Finish').first);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(
+      of: find.byType(FinishSheet),
+      matching: find.widgetWithText(FilledButton, 'Finish'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Leaves the focused field, which is when its value is saved.
+Future<void> leaveField(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
   await tester.pumpAndSettle();
 }

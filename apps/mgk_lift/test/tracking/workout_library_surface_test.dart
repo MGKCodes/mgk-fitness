@@ -7,6 +7,7 @@ import 'package:mgk_lift/src/features/tracking/domain/exercise.dart';
 import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/active_session_screen.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/premade_library_sheet.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
 
 /// A three-entry catalogue. The real one is 266 movements and loading it into
 /// every widget test is work no assertion here depends on.
@@ -255,8 +256,7 @@ void main() {
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
-      await tester.pumpAndSettle();
+      await finishSession(tester);
 
       // Still the only moment the app knows a session worked — but the offer
       // is now a button on the summary rather than a dialog fired in front of
@@ -291,14 +291,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // A saved workout brings movements and no sets, so the first tap adds
-      // the set the lifter is about to do.
+      // the set the lifter is about to do. A tick needs reps, so they go in
+      // first.
       await tester.tap(find.text('Add first set'));
       await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(1), '5');
+      await leaveField(tester);
       await tester.tap(find.byTooltip('Mark done'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
-      await tester.pumpAndSettle();
+      await finishSession(tester);
 
       // They already have this workout. Offering them a copy of something they
       // picked off a list ninety minutes ago is the app not paying attention —
@@ -425,4 +427,24 @@ void main() {
       expect(find.text('Nothing saved yet'), findsOneWidget);
     });
   });
+}
+
+/// Finishes the session on screen: Finish in the header, then Finish on the
+/// sheet that now asks first.
+Future<void> finishSession(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(FilledButton, 'Finish').first);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(
+      of: find.byType(FinishSheet),
+      matching: find.widgetWithText(FilledButton, 'Finish'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Leaves the focused field, which is when its value is saved.
+Future<void> leaveField(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
 }

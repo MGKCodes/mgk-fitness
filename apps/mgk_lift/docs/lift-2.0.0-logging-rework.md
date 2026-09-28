@@ -174,7 +174,7 @@ a test that fails today.
 1. [x] **Sets renumber on removal** (F2). `removeSet` renumbers the movement's
        remaining sets in the same transaction; `addSet` numbers from the
        count, which is then correct.
-2. [ ] **Warm-ups do not take a number** (F3). The label is the set's position
+2. [x] **Warm-ups do not take a number** (F3). The label is the set's position
        among working sets: `W, 1, 2, 3`. Stored `setNumber` stays positional;
        only the label changes.
 3. [x] **Order stays contiguous** (F4). `removeExercise` closes the gap;
@@ -185,10 +185,10 @@ a test that fails today.
        that happened are never deleted by a swap.
 5. [x] **Every change is one transaction.** `fillFromLibrary`, swap, removal
        with renumbering — a half-applied change cannot reach the disk.
-6. [ ] **Input that cannot be wrong** (F9). Reps: digits only, number keyboard,
+6. [x] **Input that cannot be wrong** (F9). Reps: digits only, number keyboard,
        three digits. Weight: one decimal separator, `,` read as `.`, two
        decimal places. Rejected characters never reach the field.
-7. [ ] **Limits** (D2). A control at its limit disables with a one-line
+7. [x] **Limits** (D2). A control at its limit disables with a one-line
        reason; a typed value over it is refused at input with an inline hint.
        Nothing is silently clamped. Rows already stored over a limit display
        as they are.
@@ -205,21 +205,21 @@ a test that fails today.
        No server check constraints yet: nothing on `lift.sets` or
        `lift.workouts` limits these today, and adding one first needs the
        1,249 existing sets checked against it.
-8. [ ] **A tick needs reps.** Ticking a set with no reps focuses the reps field
+8. [x] **A tick needs reps.** Ticking a set with no reps focuses the reps field
        instead of logging an empty set. Weight may stay 0.
-9. [ ] **Removing a set: two ways in, and undo** (F6). The swipe works from
+9. [x] **Removing a set: two ways in, and undo** (F6). The swipe works from
        anywhere on the row — the number fields stop claiming horizontal drags.
        Long-press on the set label opens the set's menu: Working, Warm-up, Drop
        set, Failure, Remove. Every removal shows *"Set removed · Undo"* for
        five seconds; undo restores the same row, values and position.
-10. [ ] **Removing a movement asks when it matters** (F7). With ticked sets:
+10. [x] **Removing a movement asks when it matters** (F7). With ticked sets:
         a confirm sheet naming what goes (*"Remove Bench Press and its 3
         logged sets?"*). With none: removed at once, with Undo.
-11. [ ] **Finish asks once** (F14, D3). A glass sheet: the session in one line,
+11. [x] **Finish asks once** (F14, D3). A glass sheet: the session in one line,
         any unticked sets listed (*"2 sets not done — they won't be saved"*),
         and for a template session, what will change in the template. Finish /
         Keep going.
-12. [ ] **A fast double-tap is one tick.** Writes from the session screen go
+12. [x] **A fast double-tap is one tick.** Writes from the session screen go
         through one queue, so two taps cannot both read the stale state.
 
 **Done when:** each item has a failing-then-passing test in
@@ -233,6 +233,40 @@ outright. Item 2's rule is `SessionExercise.labelFor` and item 7's limits are
 them. The Finish half of item 11 — dropping unticked sets and emptied
 movements — is in `finish()`; the sheet that lists them first is not.
 
+**The screen half landed the same day** — every item in this phase is done.
+Two corrections to what the items above say, both settled differently:
+
+- *Item 11's sheet is a solid sheet for now,* not glass. Glass comes with the
+  rest of the sheets in Phase 5, so the change is made once. It also says more
+  than the item asked: movements with nothing logged are dropped at Finish as
+  well as sets, and the first build of the sheet did not say so — seen on the
+  emulator with two movements added and never started.
+- *Item 12, a double-tap is tick-then-untick, not one tick.* The bug was two
+  taps both reading the stale state and writing `true` twice. Reading the
+  state the first tap left makes the second tap an untick, which is what a
+  checkbox tapped twice means. What the queue guarantees is order, not count.
+
+**Found by the tests rather than the plan**, each fixed:
+
+- **The keyboard bar could not be pressed.** Touching it counted as a tap
+  outside the field; the field let go on the pointer-down, the bar — shown
+  only while a field has focus — was gone before the tap landed. It is now
+  part of the field's tap region.
+- **"Log set" logged nothing when reps were typed into an empty field.**
+  Flutter applies focus changes in a microtask, so the set was read before the
+  typed number arrived; the refusal then refocused the field, which cancelled
+  the pending change, and the number was never saved at all. Leaving a field
+  now waits for that change to settle, and Finish does the same.
+- **The set menu overflowed by 20px** on a short screen: a bottom sheet is
+  capped at 9/16 of the screen unless told otherwise.
+- **Holding the set label showed a tooltip instead of the menu** — the
+  tooltip's own long-press won the gesture arena.
+
+Verified on the emulator as well as by 19 new widget tests
+(`logging_rework_test.dart`): labels `W, 1, 2, 3`, the set to do next lit and
+the done ones receding, the keyboard bar, type-next-type-Log-set end to end,
+multi-select, the Finish sheet.
+
 **Found on the way, and fixed:** the photo slot index (one live photo per pose
 per week) was only ever created on *upgrade*, so every install that started at
 schema 3 or later ran without it. Schema 7 creates every index from both
@@ -245,28 +279,28 @@ each.
 
 ## Phase 2 — logging is fast
 
-1. [ ] **The screen answers before the disk does** (F1). A change updates the
+1. [x] **The screen answers before the disk does** (F1). A change updates the
        on-screen session at once and is written behind it. A failed write puts
        the old value back and says so. The recorder re-reads once per change,
        not twice, and hydrates in three queries (workout, movements, sets) rather
        than one per movement.
-2. [ ] **Typing is not saving.** A number field writes when it loses focus,
+2. [x] **Typing is not saving.** A number field writes when it loses focus,
        when its set is ticked, when the screen closes, and when the app goes to
        the background — not per keystroke. Pinned by a test: five keystrokes
        and a blur are one write.
 3. [x] **Indexes on the lookups** (F17). `exercises(workout_id, order_index)`
        and `exercise_sets(exercise_id, set_number)`, schema 6 → 7.
-4. [ ] **The clock redraws the clock.** The elapsed time and the rest timer
+4. [x] **The clock redraws the clock.** The elapsed time and the rest timer
        each own their ticker; the exercise cards stop rebuilding every second.
        "Last time" is worked out once per session, not per card per second.
-5. [ ] **The keyboard can be put away** (F10). Tap outside unfocuses; dragging
+5. [x] **The keyboard can be put away** (F10). Tap outside unfocuses; dragging
        the list dismisses; and a glass bar above the keyboard carries
        `‹  ›  Log set  Done` — previous/next field, tick this set, close.
        The focused field scrolls clear of both.
-6. [ ] **The first set is filled in** (F8). A new set takes last time's weight
+6. [x] **The first set is filled in** (F8). A new set takes last time's weight
        and reps for that set position, shown in the quieter ink until touched
        or ticked. Ticking accepts it. With no history, the fields stay blank.
-7. [ ] **The picker takes several at once, recent first.** Multi-select with
+7. [x] **The picker takes several at once, recent first.** Multi-select with
        an *Add 3* button; a *Recent* section built from the log above the
        catalogue; the keyboard opens only when search is tapped — which also
        removes F22's status-bar collision.

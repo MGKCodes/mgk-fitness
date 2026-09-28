@@ -27,6 +27,7 @@ class AppTextButton extends StatelessWidget {
     required this.onPressed,
     this.busy = false,
     this.style,
+    this.icon,
   });
 
   final String label;
@@ -42,19 +43,121 @@ class AppTextButton extends StatelessWidget {
   /// still.
   final bool busy;
 
+  /// A leading icon — `+ Add set`. Optional, because most quiet controls are
+  /// words alone; added when Lift's most-tapped control turned out to be a raw
+  /// `TextButton.icon` that the first sweep missed, dead under the finger on
+  /// iOS.
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) {
     final enabled = !busy && onPressed != null;
+    final pressed = busy ? null : onPressed;
     return PressScale(
       enabled: enabled,
       // Less travel than the primary's. These sit inline beside other text, and
       // a quiet control that lurches is no longer quiet.
       scale: 0.98,
-      child: TextButton(
-        onPressed: busy ? null : onPressed,
-        style: style,
-        child: Text(label),
-      ),
+      child: icon == null
+          ? TextButton(onPressed: pressed, style: style, child: Text(label))
+          : TextButton.icon(
+              onPressed: pressed,
+              style: style,
+              icon: Icon(icon, size: 16),
+              label: Text(label),
+            ),
+    );
+  }
+}
+
+/// A filled button that is not the page's primary — compact, inline, sized to
+/// its label. Finish in a session header; the confirm in a dialog.
+///
+/// [PrimaryButton] is the full-width call to action and already settles under
+/// the finger. This is the same fill at the size of its words, and it exists
+/// for the reason every wrapper here does: a raw `FilledButton` is silent under
+/// the finger on iOS, and in Lift that included Finish — the heaviest decision
+/// on the session screen, acknowledged by nothing.
+class AppFilledButton extends StatelessWidget {
+  const AppFilledButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.busy = false,
+    this.style,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool busy;
+
+  /// Passed straight through, as [AppTextButton.style] is.
+  final ButtonStyle? style;
+
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final pressed = busy ? null : onPressed;
+    final Widget child = busy
+        ? const SizedBox(
+            height: 18,
+            width: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Text(label);
+    return PressScale(
+      enabled: !busy && onPressed != null,
+      child: icon == null
+          ? FilledButton(onPressed: pressed, style: style, child: child)
+          : FilledButton.icon(
+              onPressed: pressed,
+              style: style,
+              icon: Icon(icon, size: 18),
+              label: child,
+            ),
+    );
+  }
+}
+
+/// The outlined button — a real action that is not the screen's main one.
+/// *Add exercise*, *Your workouts*, *Build one*.
+///
+/// [expand] makes it full width, the way [PrimaryButton] always is, so the two
+/// can sit stacked in one column without their edges disagreeing.
+class AppOutlinedButton extends StatelessWidget {
+  const AppOutlinedButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.style,
+    this.expand = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+
+  /// Passed straight through, as [AppTextButton.style] is.
+  final ButtonStyle? style;
+
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget button = icon == null
+        ? OutlinedButton(onPressed: onPressed, style: style, child: Text(label))
+        : OutlinedButton.icon(
+            onPressed: onPressed,
+            style: style,
+            icon: Icon(icon, size: 18),
+            label: Text(label),
+          );
+    return PressScale(
+      enabled: onPressed != null,
+      child: expand ? SizedBox(width: double.infinity, child: button) : button,
     );
   }
 }

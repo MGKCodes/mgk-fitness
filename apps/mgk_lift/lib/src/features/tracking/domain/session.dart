@@ -56,6 +56,84 @@ class Session {
   int get completedSets => workingSets.length;
 
   int get totalSets => exercises.fold(0, (sum, e) => sum + e.sets.length);
+
+  /// Sets on the page that have not been ticked — what Finish will drop.
+  int get untickedSets => exercises.fold(
+    0,
+    (sum, e) => sum + e.sets.where((s) => !s.isCompleted).length,
+  );
+
+  // ---- the same change the recorder makes, made to this copy ---------------
+  //
+  // The session screen shows a change the moment it is made and writes it
+  // behind, so it needs to make the recorder's change to its own copy first.
+  // These mirror the recorder's rules — contiguous numbers and positions — so
+  // the copy on screen and the rows on disk agree before storage answers, not
+  // only after.
+
+  Session withExercises(List<SessionExercise> exercises) => Session(
+    id: id,
+    name: name,
+    startedAt: startedAt,
+    endedAt: endedAt,
+    notes: notes,
+    exercises: exercises,
+  );
+
+  /// This session with one set changed by [change].
+  Session mapSet(String setId, SessionSet Function(SessionSet set) change) =>
+      withExercises(<SessionExercise>[
+        for (final e in exercises)
+          e.sets.any((s) => s.id == setId)
+              ? e.withSets(<SessionSet>[
+                  for (final s in e.sets) s.id == setId ? change(s) : s,
+                ])
+              : e,
+      ]);
+
+  /// This session without one set; the movement's sets renumber.
+  Session withoutSet(String setId) => withExercises(<SessionExercise>[
+    for (final e in exercises)
+      e.sets.any((s) => s.id == setId)
+          ? e.withSets(<SessionSet>[
+              for (final s in e.sets)
+                if (s.id != setId) s,
+            ])
+          : e,
+  ]);
+
+  /// This session with [set] back in movement [exerciseId], at its number.
+  Session withSetRestored(String exerciseId, SessionSet set) =>
+      withExercises(<SessionExercise>[
+        for (final e in exercises)
+          e.id == exerciseId
+              ? e.withSets(
+                  <SessionSet>[...e.sets]
+                    ..insert((set.setNumber - 1).clamp(0, e.sets.length), set),
+                )
+              : e,
+      ]);
+
+  /// This session without one movement; positions close up.
+  Session withoutExercise(String exerciseId) => withExercises(
+    _positioned(<SessionExercise>[
+      for (final e in exercises)
+        if (e.id != exerciseId) e,
+    ]),
+  );
+
+  /// This session with [exercise] back at its position.
+  Session withExerciseRestored(SessionExercise exercise) => withExercises(
+    _positioned(
+      <SessionExercise>[...exercises]
+        ..insert(exercise.orderIndex.clamp(0, exercises.length), exercise),
+    ),
+  );
+
+  static List<SessionExercise> _positioned(List<SessionExercise> list) =>
+      <SessionExercise>[
+        for (var i = 0; i < list.length; i++) list[i].atPosition(i),
+      ];
 }
 
 /// One movement within a session.
@@ -96,6 +174,33 @@ class SessionExercise {
   bool get isComplete => sets.isNotEmpty && sets.every((s) => s.isCompleted);
 
   bool get isCardio => cardioMode != null;
+
+  /// Whether another set can be added — see [SessionLimits.setsPerMovement].
+  bool get canAddSet => sets.length < SessionLimits.setsPerMovement;
+
+  /// This movement holding [next], renumbered from one — the recorder's rule.
+  SessionExercise withSets(List<SessionSet> next) => SessionExercise(
+    id: id,
+    name: name,
+    orderIndex: orderIndex,
+    notes: notes,
+    cardioMode: cardioMode,
+    sets: <SessionSet>[
+      for (var i = 0; i < next.length; i++) next[i].numbered(i + 1),
+    ],
+  );
+
+  /// This movement at [position] in its session.
+  SessionExercise atPosition(int position) => position == orderIndex
+      ? this
+      : SessionExercise(
+          id: id,
+          name: name,
+          orderIndex: position,
+          notes: notes,
+          cardioMode: cardioMode,
+          sets: sets,
+        );
 
   /// The heaviest working set, for the one-line summary a collapsed exercise
   /// shows. Null when nothing has been performed yet — which reads as "not
@@ -207,6 +312,20 @@ class SessionSet {
 
   final int? durationS;
   final double? distanceM;
+
+  /// This set at [number] in its movement.
+  SessionSet numbered(int number) => number == setNumber
+      ? this
+      : SessionSet(
+          id: id,
+          setNumber: number,
+          reps: reps,
+          weightKg: weightKg,
+          isCompleted: isCompleted,
+          setType: setType,
+          durationS: durationS,
+          distanceM: distanceM,
+        );
 
   SessionSet copyWith({
     int? reps,

@@ -7,6 +7,7 @@ import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/active_session_screen.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/session_summary_screen.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
 
 final DateTime _day = DateTime(2026, 8, 6, 18);
 
@@ -423,8 +424,7 @@ void main() {
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
-      await tester.pumpAndSettle();
+      await finishSession(tester);
 
       expect(find.byType(SessionSummaryScreen), findsOneWidget);
       expect(find.text('SESSION COMPLETE'), findsOneWidget);
@@ -440,8 +440,7 @@ void main() {
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
-      await tester.pumpAndSettle();
+      await finishSession(tester);
 
       // Left underneath, it would be a session that no longer exists: its
       // clock would tick and its Finish button would call `finish()` on a
@@ -457,8 +456,7 @@ void main() {
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
-      await tester.pumpAndSettle();
+      await finishSession(tester);
 
       // No dialog in front of the answer. The offer is on the screen the
       // lifter was going to read anyway, where declining it costs nothing.
@@ -466,4 +464,24 @@ void main() {
       expect(find.text('Save to your workouts'), findsOneWidget);
     });
   });
+}
+
+/// Finishes the session on screen: Finish in the header, then Finish on the
+/// sheet that now asks first.
+Future<void> finishSession(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(FilledButton, 'Finish').first);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(
+      of: find.byType(FinishSheet),
+      matching: find.widgetWithText(FilledButton, 'Finish'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Leaves the focused field, which is when its value is saved.
+Future<void> leaveField(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
 }

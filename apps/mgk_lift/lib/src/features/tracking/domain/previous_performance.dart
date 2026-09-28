@@ -64,4 +64,26 @@ class PreviousPerformance {
     }
     return null;
   }
+
+  /// The movements this lifter has actually worked, most recent first.
+  ///
+  /// What the picker leads with. A catalogue of 266 opens at "Ab Rollout On
+  /// Knees With Barbell" — seen on the emulator — while the thing a lifter
+  /// almost always wants is something they did last week.
+  static List<String> recentNames(List<Session> log, {int limit = 8}) {
+    final finished = <Session>[
+      for (final s in log)
+        if (!s.isInProgress) s,
+    ]..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    final seen = <String>{};
+    final names = <String>[];
+    for (final session in finished) {
+      for (final exercise in session.exercises) {
+        if (exercise.workingSets.isEmpty) continue;
+        if (seen.add(exercise.name.toLowerCase())) names.add(exercise.name);
+        if (names.length >= limit) return names;
+      }
+    }
+    return names;
+  }
 }

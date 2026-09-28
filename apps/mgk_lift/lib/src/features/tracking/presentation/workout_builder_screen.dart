@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../data/exercise_lookup.dart';
+import '../domain/session.dart';
 import '../domain/workout_library.dart';
 import 'exercise_picker_sheet.dart';
 
@@ -62,9 +63,18 @@ class _WorkoutBuilderScreenState extends State<WorkoutBuilderScreen> {
       !_saving && _name.text.trim().isNotEmpty && _movements.isNotEmpty;
 
   Future<void> _addMovement() async {
-    final name = await ExercisePickerSheet.show(context, lookup: widget.lookup);
-    if (name == null || name.trim().isEmpty) return;
-    setState(() => _movements.add(name.trim()));
+    final names = await ExercisePickerSheet.show(
+      context,
+      lookup: widget.lookup,
+      room: SessionLimits.movements - _movements.length,
+    );
+    if (names == null) return;
+    setState(
+      () => _movements.addAll(<String>[
+        for (final n in names)
+          if (n.trim().isNotEmpty) n.trim(),
+      ]),
+    );
   }
 
   Future<void> _save() async {
@@ -200,10 +210,13 @@ class _WorkoutBuilderScreenState extends State<WorkoutBuilderScreen> {
                         ),
                       ),
               ),
-              OutlinedButton.icon(
-                onPressed: _addMovement,
-                icon: const Icon(Icons.add),
-                label: const Text('Add movement'),
+              AppOutlinedButton(
+                onPressed: _movements.length >= SessionLimits.movements
+                    ? null
+                    : _addMovement,
+                icon: Icons.add,
+                label: 'Add movements',
+                expand: true,
               ),
               const SizedBox(height: AppSpacing.sm),
               PrimaryButton(

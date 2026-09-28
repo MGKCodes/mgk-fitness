@@ -536,7 +536,7 @@ class _MovementCard extends StatelessWidget {
                       SizedBox(
                         width: 28,
                         child: Text(
-                          set.setType.marker ?? '${set.setNumber}',
+                          exercise.labelFor(set),
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: AppColors.textTertiary,
