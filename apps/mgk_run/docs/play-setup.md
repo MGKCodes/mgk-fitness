@@ -277,7 +277,7 @@ keeps this much simpler than it would otherwise be. Paste these exactly:
 | Field | Answer |
 |---|---|
 | Type | Location |
-| Describe the feature | When the user taps Start to record a run, the app starts a foreground service of type location with an ongoing "Recording your run" notification so it keeps receiving GPS fixes while the screen is locked or the phone is in a pocket. It computes the route, distance, pace and splits of that run. The service stops when the user taps Finish. The app does not request ACCESS_BACKGROUND_LOCATION and never accesses location when no run is being recorded. |
+| Describe the feature | When the user taps Start to record a run, the app starts a foreground service of type location with an ongoing "Recording your run" notification so it keeps receiving GPS fixes while the screen is locked or the phone is in a pocket. It computes the route, distance, pace and splits of that run. The service stops when the user taps Finish. The app does not request ACCESS_BACKGROUND_LOCATION. When no run is being recorded it reads location only while the app is open on screen, to centre the map before a run starts. |
 | Impact if the task is deferred | The start of the run would have no location, so route, distance and pace would be missing. |
 | Impact if the task is interrupted | Distance freezes while the timer runs; pace, splits and route become wrong and the run is lost. |
 | Video | A link to the video below (an unlisted YouTube video works) |
@@ -296,6 +296,13 @@ keeps this much simpler than it would otherwise be. Paste these exactly:
 6. Tap **Finish**, then show the notification has **gone**.
 
 Test sheet row V1 captures the same thing.
+
+**One sentence differs from the draft the compliance review supplied**, which
+said the app "never accesses location when no run is being recorded". The run
+start screen reads the phone's last known position, in the foreground, to draw
+its map (`run_start_screen.dart`), so the declaration says that instead. A
+declaration a reviewer can falsify by opening the app is worse than a longer
+one.
 
 ### The Data safety answers
 
