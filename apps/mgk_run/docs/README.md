@@ -25,24 +25,32 @@ hunting in the wrong layer.
 
 ## Shipping 1.0.0 — the live set
 
-Four documents. They are four because they are read in four different places,
-not because the subject is large.
+Six documents, for two stores. They are six because they are read in different
+places, not because the subject is large.
 
-- **[app-store-1.0.0.md](app-store-1.0.0.md)** — **the plan.** Six gates,
-  what is left, and the order to do it in. Read at a desk. **This is the
-  checklist and it carries the state.**
-- **[store-setup.md](store-setup.md)** — **the runbook.** Every field in App
-  Store Connect and RevenueCat, the five strings that must match exactly, and a
-  table mapping each of the webhook's ignore-reasons to its cause. Read with a
+- **[app-store-1.0.0.md](app-store-1.0.0.md)** — **the plan, for both
+  stores.** What is left, in order, and the gates behind it. Read at a desk.
+  **This is the checklist and it carries the state.**
+- **[store-setup.md](store-setup.md)** — **the Apple runbook.** Every field in
+  App Store Connect and RevenueCat, including the submission forms and the
+  review accounts, the five strings that must match exactly, and a table
+  mapping each of the webhook's ignore-reasons to its cause. Read with a
   dashboard open, not at a desk.
-- **[app-store-listing.md](app-store-listing.md)** — **the copy itself.** Name,
-  subtitle, promotional text, description, keywords. Not writing *about* the
-  listing — the listing, parsed by `tool/check_listing.py`, which fails on a
-  character count, on a repeated keyword, or on a claim the code does not
-  support. It is source, and it does not merge into anything.
+- **[play-setup.md](play-setup.md)** — **the Google runbook.** Keystore,
+  listing, Play Billing, RevenueCat's Google app, and every declaration Play
+  Console asks for, with the answers. Read with Play Console open.
+- **[app-store-listing.md](app-store-listing.md)** and
+  **[play-listing.md](play-listing.md)** — **the copy itself.** Name, subtitle
+  or short description, description, keywords, subscription text, review
+  notes, and the one list of screenshots to shoot. Not writing *about* the
+  listings — the listings, parsed by `tool/check_listing.py`, which fails on a
+  character count, on a repeated keyword, on a claim the code does not
+  support, or on anything Apple-only reaching the Android copy. They are
+  source, and they do not merge into anything.
 - **[testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md)** — **the
   form.** Carried to a phone, ticked, handed back. It is consumed rather than
-  maintained, and it is rewritten per build rather than edited.
+  maintained, and it is rewritten per build rather than edited. Despite the
+  name it covers both stores' test builds.
 
 Supporting the same push:
 
@@ -57,10 +65,11 @@ Supporting the same push:
   checks it.
 - **[after-1.0.0.md](after-1.0.0.md)** — the edge of the same push. Two items
   from the build 12 field test that are **not** 1.0.0 scope because neither is
-  specified — plan depth, and interactivity on the finish screen — plus one that
-  is specified and was deferred on cost: heart rate and calories read from
-  Health. It exists so none of them is mistaken for done or forgotten.
-  Everything else from that field test is on `app-store-1.0.0.md`.
+  specified — plan depth, and interactivity on the finish screen — one that is
+  specified and was deferred on cost (heart rate and calories read from
+  Health), and the list of things the 2026-09-29 pre-release review found and
+  deliberately left for after launch, each with a date to revisit. It exists
+  so none of them is mistaken for done or forgotten.
 
 ## Legal — written once, rendered three times
 
@@ -71,13 +80,16 @@ and hand-maintaining the third is how they drift.
 
 - **[privacy-policy.md](privacy-policy.md)**
 - **[medical-disclaimer.md](medical-disclaimer.md)**
+- **[terms-of-use.md](terms-of-use.md)** — our terms, served at `/run/terms`
+  and linked from the paywall and Settings rather than rendered in the app
+  ([ADR-0040](decisions/0040-our-terms-and-apples-eula.md)).
 
 Generated, not edited: `legal-site/` here, and `web/public/run/` at the repo
 root, which is what `mgkfitness.mgkcodes.com/run` serves.
 
 ## Decisions — the why
 
-**[decisions/](decisions/)** — thirty ADRs, 0001 to 0030, one file each.
+**[decisions/](decisions/)** — forty ADRs, 0001 to 0040, one file each.
 
 Superseded rather than edited, so a superseded ADR is still worth reading: it
 records what was believed at the time and what the alternative was. Start with
