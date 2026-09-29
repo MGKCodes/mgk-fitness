@@ -101,6 +101,39 @@ void main() {
       );
       expect(result.has('long_run_ceiling'), isTrue);
     });
+
+    // EDGE-18: opt-in through startDate, for the reason validateWeek's date
+    // rules are (see that group below) — a skeleton alone carries no
+    // calendar. _profile's race is 1 Dec 2026.
+    test('passes when race day falls in the final week', () {
+      // 15 Sep 2026 -> 1 Dec 2026 is 77 days: floor(77/7)+1 = week 12, the
+      // last of _validSkeleton's twelve.
+      final result = validateSkeleton(
+        _validSkeleton(),
+        _profile,
+        startDate: DateTime(2026, 9, 15),
+      );
+      expect(result.has('race_day_outside_final_week'), isFalse);
+    });
+
+    test('catches race day falling inside an earlier week', () {
+      // 1 Aug 2026 -> 1 Dec 2026 is 122 days: floor(122/7)+1 = week 18 — well
+      // past this skeleton's twelve, exactly the shape a race entered too
+      // close (clamped up to kMinPlanWeeks regardless) used to produce.
+      final result = validateSkeleton(
+        _validSkeleton(),
+        _profile,
+        startDate: DateTime(2026, 8, 1),
+      );
+      expect(result.has('race_day_outside_final_week'), isTrue);
+    });
+
+    test('says nothing about race day with no startDate — opt-in only', () {
+      // The skeleton in isolation cannot know where race day falls, so
+      // omitting startDate must not manufacture a violation out of nothing.
+      final result = validateSkeleton(_validSkeleton(), _profile);
+      expect(result.has('race_day_outside_final_week'), isFalse);
+    });
   });
 
   group('validateWeek', () {

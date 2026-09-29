@@ -97,6 +97,13 @@ class PlanRepository {
         ? buildSkeleton(profile, now: now)
         : (await generator.generateSkeleton(profile)).plan;
 
+    // The coming Monday, not this one (ADR-0034). A plan built on a Friday
+    // used to open with Monday to Thursday already behind it. Computed once,
+    // ahead of validation, so the skeleton is checked against the exact date
+    // it will actually be stored against rather than a second calculation of
+    // the same thing.
+    final start = comingMondayFrom(now);
+
     // Judged by its own shape's rules. A repository holding one rule set
     // rejects every plan that is not a block — which is how a parkrun runner's
     // plan failed to be created at all.
@@ -104,6 +111,7 @@ class PlanRepository {
       skeleton,
       profile,
       rules: rules ?? PlanRules.forShape(shapeOf(profile)),
+      startDate: start,
     );
     if (!result.isValid) {
       throw PlanStoreException(
@@ -116,9 +124,7 @@ class PlanRepository {
       id: _newId(),
       profile: profile,
       skeleton: skeleton,
-      // The coming Monday, not this one (ADR-0034). A plan built on a Friday
-      // used to open with Monday to Thursday already behind it.
-      startDate: comingMondayFrom(now),
+      startDate: start,
     );
     await _store.savePlan(plan);
     await _pushPlan(plan);

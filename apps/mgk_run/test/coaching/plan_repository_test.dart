@@ -505,7 +505,13 @@ void main() {
     // coach's name. These tests are what stops that being true again.
     test('create asks the model for the arc and the first two weeks', () async {
       final client = _CountingClient();
-      await repo(generator: PlanService(client: client)).create(aProfile());
+      // PlanService's own now has to agree with the repository's simulated
+      // `today` — create's skeleton validation now checks race day against
+      // the plan's actual start (EDGE-18), and the two clocks disagreeing
+      // is exactly what that check would (correctly) catch.
+      await repo(
+        generator: PlanService(client: client, now: () => today),
+      ).create(aProfile());
 
       expect(client.skeletons, greaterThan(0), reason: 'the arc is generated');
       // This week and the next, both under the one spinner — one week ahead is
@@ -518,7 +524,7 @@ void main() {
       // The runner does not get told "no plan" because a provider was down.
       final client = _CountingClient(dead: true);
       final plan = await repo(
-        generator: PlanService(client: client),
+        generator: PlanService(client: client, now: () => today),
       ).create(aProfile());
 
       expect(plan.skeleton.weeks, isNotEmpty);
@@ -543,7 +549,9 @@ void main() {
     // for an answer Dart could have given at once.
     test('weekFor does not reach the model by default', () async {
       final client = _CountingClient();
-      final generator = PlanService(client: client);
+      // Matches the repository's own `today` — see the model-generates-the
+      // -plan group above for why this now has to agree (EDGE-18).
+      final generator = PlanService(client: client, now: () => today);
       final plan = await repo(generator: generator).create(aProfile());
 
       final before = client.calls;
@@ -561,7 +569,9 @@ void main() {
 
     test('today() builds its week locally too', () async {
       final client = _CountingClient();
-      final generator = PlanService(client: client);
+      // Matches the repository's own `today` — see the model-generates-the
+      // -plan group above for why this now has to agree (EDGE-18).
+      final generator = PlanService(client: client, now: () => today);
       final plan = await repo(generator: generator).create(aProfile());
 
       final before = client.calls;
@@ -579,7 +589,9 @@ void main() {
 
     test('weekFor(allowModel: true) is the one that may wait', () async {
       final client = _CountingClient();
-      final generator = PlanService(client: client);
+      // Matches the repository's own `today` — see the model-generates-the
+      // -plan group above for why this now has to agree (EDGE-18).
+      final generator = PlanService(client: client, now: () => today);
       final plan = await repo(generator: generator).create(aProfile());
 
       final before = client.calls;

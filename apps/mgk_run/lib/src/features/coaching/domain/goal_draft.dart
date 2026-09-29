@@ -18,6 +18,7 @@
 /// Metric throughout — km only exist at the display layer (CLAUDE.md rule 4).
 library;
 
+import 'plan_builder.dart' show kMinPlanWeeks;
 import 'plan_shape.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
@@ -52,14 +53,6 @@ const double kMinGoalMeters = 1000;
 /// Beyond this Runio is not the right tool. The plan builder derives volume from
 /// the goal, and a 500 km target produces an arc no validator should bless.
 const double kMaxGoalMeters = 100000;
-
-/// The least notice worth building a block on.
-///
-/// Not a judgement about whether they can finish — people run races off no
-/// training and that is their business. It is that a plan cannot *do* anything
-/// in under a week: there is no ramp, no deload and no taper to place, so what
-/// comes back would be a plan-shaped object rather than a plan.
-const int kMinDaysToRace = 7;
 
 /// The furthest ahead a block is worth generating. Past this the plan is
 /// fiction — fitness, life and intent all move — and the weeks would be
@@ -161,12 +154,22 @@ class GoalDraft {
       final days = _daysBetween(now, date);
       if (days < 0) {
         out.add(const GoalIssue('event', 'That date has already passed.'));
-      } else if (days < kMinDaysToRace) {
+      } else if (daysBetweenDates(comingMondayFrom(now), date) <
+          kMinPlanWeeks * 7) {
+        // EDGE-18. The old floor here was a flat 7 days, checked against
+        // `now` — but a block starts the coming Monday (ADR-0034), not
+        // today, and `buildSkeleton` clamps up to `kMinPlanWeeks` weeks
+        // regardless of how little runway that leaves. A race 7-41 days out
+        // used to pass this check and come back a 6-week skeleton with race
+        // day buried inside base or build and the taper scheduled for after
+        // it. Counting from the actual start closes the gap outright,
+        // using the same number `buildSkeleton` clamps to rather than a
+        // second guess at it.
         out.add(
           GoalIssue(
             'event',
-            'That is under $kMinDaysToRace days away, which is too soon to '
-                'build a block around.',
+            'A plan needs at least $kMinPlanWeeks weeks before race day. '
+                'Pick a later race, or build a plan without one.',
           ),
         );
       } else if (days > kMaxDaysToRace) {
