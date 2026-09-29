@@ -83,9 +83,15 @@ void main() {
       baseline.indexOf('.runs ('),
       baseline.indexOf(');', baseline.indexOf('.runs (')),
     );
-    final added = File(
-      '../../supabase/migrations/20260901130000_run_elevation_max_and_steps.sql',
-    ).readAsStringSync();
+    // Found by name, not by version: the ledger stamps a version when a
+    // migration is applied, and this one was re-stamped on 2026-09-29 (from
+    // 20260901130000) after `db push` had skipped it. A hard-coded version
+    // broke the Android build that day.
+    final added = Directory('../../supabase/migrations')
+        .listSync()
+        .whereType<File>()
+        .singleWhere((f) => f.path.endsWith('_run_elevation_max_and_steps.sql'))
+        .readAsStringSync();
 
     final schema = <String>{
       ...RegExp(

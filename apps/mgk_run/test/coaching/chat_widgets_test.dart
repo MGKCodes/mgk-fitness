@@ -11,16 +11,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_widgets.dart';
 
-void main() {
-  setUpAll(() {
-    expect(
-      DateTime(2026, 7, 1).timeZoneName,
-      contains('Summer'),
-      reason: 'these dates only prove anything if the host is Europe/London',
-    );
-  });
+/// These dates only prove anything on a host whose clocks change on the UK's
+/// dates: UTC+0 in January, UTC+1 in July. Anywhere else -- Codemagic runs in
+/// UTC -- the DST groups are skipped rather than failed, because with no clock
+/// change the old code passes too and the test would prove nothing.
+///
+/// Read from offsets, not `timeZoneName`: Windows calls it "GMT Summer Time"
+/// and macOS "BST", and a guard on the name failed the Android build on
+/// 2026-09-29 for a reason that had nothing to do with the app.
+final bool _ukClocks =
+    DateTime(2026, 1, 1).timeZoneOffset == Duration.zero &&
+    DateTime(2026, 7, 1).timeZoneOffset == const Duration(hours: 1);
 
-  group('dayLabel across the spring change (29 Mar 2026)', () {
+final Object _dstSkip = _ukClocks
+    ? false
+    : 'needs a host on UK clocks (Europe/London); this one is not';
+
+void main() {
+  group('dayLabel across the spring change (29 Mar 2026)', skip: _dstSkip, () {
     test('an evening the day before spring-forward reads as yesterday', () {
       // Sun 29 Mar 18:00 is still GMT (the change is at 01:00 that same
       // day); Mon 30 Mar 10:00 is already BST. The two local midnights are
@@ -41,15 +49,22 @@ void main() {
     });
   });
 
-  group('dayLabel across the autumn change (25 Oct 2026), for symmetry', () {
-    test('the day the clocks go back still reads as yesterday, not today', () {
-      final label = dayLabel(
-        DateTime(2026, 10, 25, 20),
-        DateTime(2026, 10, 26, 8),
+  group(
+    'dayLabel across the autumn change (25 Oct 2026), for symmetry',
+    skip: _dstSkip,
+    () {
+      test(
+        'the day the clocks go back still reads as yesterday, not today',
+        () {
+          final label = dayLabel(
+            DateTime(2026, 10, 25, 20),
+            DateTime(2026, 10, 26, 8),
+          );
+          expect(label, 'Yesterday');
+        },
       );
-      expect(label, 'Yesterday');
-    });
-  });
+    },
+  );
 
   test('an ordinary week, nowhere near either change, is unaffected', () {
     expect(
