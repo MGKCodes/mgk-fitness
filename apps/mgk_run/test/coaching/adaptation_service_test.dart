@@ -186,6 +186,82 @@ void main() {
     expect(await propose(base, thr: true), isNull);
   });
 
+  // ---- EDGE-17: the date rules, opt-in through weekStart --------------------
+  //
+  // Before this, propose() never passed weekStart/now into validateWeek at
+  // all, so a revision landing a session on race day — the one thing
+  // session_on_race_day exists to catch — passed as though nothing was
+  // wrong, because the validator had no calendar to check it against.
+
+  test('a revision that lands a session on race day is refused once the '
+      'adaptation is given a calendar', () async {
+    // 2026-08-02 is the Sunday of `monday`'s (2026-07-27) week.
+    final raceProfile = profile.copyWith(eventDate: DateTime(2026, 8, 2));
+    final sessions = base.sessions.toList();
+    final sundaySlot = sessions.indexWhere((s) => s.weekday == DateTime.sunday);
+    sessions[sundaySlot] = PlannedSession(
+      weekday: DateTime.sunday,
+      kind: SessionKind.long,
+      // +1000 m: a genuine change, so this is not a no-op diffWeek would
+      // drop before validation ever runs, while still keeping a session
+      // on race day either way.
+      distanceMeters: sessions[sundaySlot].distanceMeters + 1000,
+    );
+    final onRaceDay = TrainingWeek(
+      skeletonIndex: slot.index,
+      sessions: sessions,
+    );
+
+    await expectLater(
+      AdaptationService(client: _AdaptClient(onRaceDay)).propose(
+        week: base,
+        slot: slot,
+        profile: raceProfile,
+        request: 'move Sunday earlier',
+        weekStart: DateTime(2026, 7, 27),
+        now: DateTime(2026, 7, 27),
+      ),
+      throwsA(
+        isA<AdaptationRefused>().having(
+          (e) => e.violations.map((v) => v.code),
+          'violations',
+          contains('session_on_race_day'),
+        ),
+      ),
+    );
+  });
+
+  test('without a calendar the same race-day revision is still accepted — the '
+      'gap this closes', () async {
+    // The exact pre-fix shape: weekStart/now simply not passed. Pinned so
+    // a future change cannot quietly make this opt-in mandatory without
+    // the test suite noticing the behaviour it would change.
+    final raceProfile = profile.copyWith(eventDate: DateTime(2026, 8, 2));
+    final sessions = base.sessions.toList();
+    final sundaySlot = sessions.indexWhere((s) => s.weekday == DateTime.sunday);
+    sessions[sundaySlot] = PlannedSession(
+      weekday: DateTime.sunday,
+      kind: SessionKind.long,
+      // +1000 m: a genuine change, so this is not a no-op diffWeek would
+      // drop before validation ever runs, while still keeping a session
+      // on race day either way.
+      distanceMeters: sessions[sundaySlot].distanceMeters + 1000,
+    );
+    final onRaceDay = TrainingWeek(
+      skeletonIndex: slot.index,
+      sessions: sessions,
+    );
+
+    final proposal = await AdaptationService(client: _AdaptClient(onRaceDay))
+        .propose(
+          week: base,
+          slot: slot,
+          profile: raceProfile,
+          request: 'move Sunday earlier',
+        );
+    expect(proposal, isNotNull);
+  });
+
   // ---- the week the runner is actually living in ---------------------------
   //
   // "Adjust my week" used to be answered from the plan alone, so a runner who

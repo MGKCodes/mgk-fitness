@@ -111,7 +111,14 @@ class PlanService {
     SkeletonWeek slot,
     RunnerProfile profile, {
     int? raceWeekday,
+    DateTime? weekStart,
   }) async {
+    // The one day `buildFallbackWeek`'s own spread has to be told to avoid;
+    // every other exclusion it enforces by construction. Applied to *every*
+    // fallback below, not just the final one — a rate limit or a spend cap
+    // hits before a single validation, so skipping it there would still
+    // hand back a fallback able to land a session on the race.
+    final unusable = raceWeekday == null ? const <int>{} : {raceWeekday};
     var violations = const <String>[];
     var attempts = 0;
     for (var attempt = 1; attempt <= maxModelAttempts; attempt++) {
@@ -128,7 +135,7 @@ class PlanService {
         );
       } on CoachLimitException catch (e) {
         return PlanResult(
-          buildFallbackWeek(slot, profile),
+          buildFallbackWeek(slot, profile, unusableWeekdays: unusable),
           PlanSource.fallback,
           modelAttempts: attempt - 1,
           limit: e,
@@ -140,6 +147,14 @@ class PlanService {
           slot,
           profile,
           rules: rules ?? PlanRules.forShape(shapeOf(profile)),
+          // Opt-in on `validateWeek`'s side (see its doc): a caller with no
+          // calendar leaves this null and nothing changes. A caller that has
+          // one is what turns on `session_on_race_day` and
+          // `session_in_the_past` — the model proposing a run on race day or
+          // on a day already gone, previously invisible to every caller
+          // outside the test suite (EDGE-17).
+          weekStart: weekStart,
+          now: _now(),
         );
         if (result.isValid) {
           return PlanResult(proposal, PlanSource.model, modelAttempts: attempt);
@@ -150,7 +165,7 @@ class PlanService {
       }
     }
     return PlanResult(
-      buildFallbackWeek(slot, profile),
+      buildFallbackWeek(slot, profile, unusableWeekdays: unusable),
       PlanSource.fallback,
       modelAttempts: attempts,
     );

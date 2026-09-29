@@ -726,7 +726,12 @@ void main() {
       expect(await store.loadWeek(plan, slot.index), isNull);
 
       final ahead = repo(
-        generator: PlanService(client: client),
+        // Both clocks have to agree, now that lookAhead hands the validator
+        // a real weekStart (EDGE-17): PlanService's own `now` feeds
+        // session_in_the_past, and defaults to the real wall clock if left
+        // unset here, which would judge a week dated against `laterOn` by
+        // a today it never claimed to be.
+        generator: PlanService(client: client, now: laterOn),
         now: laterOn,
       );
       expect(await ahead.lookAhead(plan), isTrue);
@@ -739,7 +744,7 @@ void main() {
       final client = _CountingClient(week: buildsAWeek);
       final plan = await repo().create(aProfile());
       final ahead = repo(
-        generator: PlanService(client: client),
+        generator: PlanService(client: client, now: laterOn),
         now: laterOn,
       );
 

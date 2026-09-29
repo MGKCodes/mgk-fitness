@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'plan_shape.dart';
 import 'prescribed_distance.dart';
 import 'runner_profile.dart';
+import 'stored_plan.dart';
 import 'training_plan.dart';
 import 'week_progress.dart';
 
@@ -368,7 +369,13 @@ ValidationResult validateWeek(
 
     for (final s in week.sessions) {
       if (s.kind == SessionKind.rest) continue;
-      final DateTime on = start.add(Duration(days: s.weekday - 1));
+      // Not `start.add(Duration(days:))`: a duration is absolute time, so a
+      // week spanning a daylight-saving change would land on 23:00 or 01:00
+      // on the day after the one it meant, and the exact-midnight equality
+      // check below (and the `session_in_the_past` day count) would miss.
+      // `addDays` is `stored_plan.dart`'s DST-safe day arithmetic, the same
+      // used to turn every other week index into a calendar date.
+      final DateTime on = addDays(start, s.weekday - 1);
 
       // A day that has gone cannot be trained, and a plan that opens by
       // prescribing three of them starts life owing the runner an apology.
@@ -377,7 +384,7 @@ ValidationResult validateWeek(
           Violation(
             'session_in_the_past',
             'a session falls on weekday ${s.weekday}, which was '
-                '${today.difference(on).inDays} day(s) ago',
+                '${daysBetweenDates(on, today)} day(s) ago',
           ),
         );
       }
