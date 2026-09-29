@@ -112,6 +112,11 @@ been on a store, so everything the app does is still listed here.
   only the plan flow did before, and a signed-out runner tapping the coach
   mark is asked for an account first instead of meeting a paywall that could
   not sign them in.
+- **A coach reply can be reported from where it was read.** A long press on
+  any of the coach's replies, in the conversation or the plan intake, opens a
+  short report: a reason — harmful or unsafe, wrong or misleading, offensive,
+  something else — and an optional note. It is kept with the account for
+  review. A report that does not send says so and keeps what was written.
 
 **Race day, and the end of a plan** (ADR-0027)
 - **Race day is its own moment.** The Today card reads "Race day" over the

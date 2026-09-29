@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import '../data/supabase_coach_reports.dart';
+import '../domain/coach_report.dart';
 import 'chat_controller.dart';
+import 'chat_entry.dart';
 import 'chat_widgets.dart';
 import 'coach_history_sheet.dart';
+import 'coach_report_sheet.dart';
 
 /// The conversation with the coach, as a sheet.
 ///
@@ -25,6 +29,7 @@ class CoachConversationSheet extends StatefulWidget {
     this.suggestions = const <String>[],
     this.unit = UnitSystem.metric,
     this.beforeSend,
+    this.reporter = const SupabaseCoachReports(),
   });
 
   final ChatController? controller;
@@ -41,6 +46,10 @@ class CoachConversationSheet extends StatefulWidget {
   /// tap should not be able to outrun a withdrawn permission. Null asks
   /// nothing, which is what a test of the sheet on its own wants.
   final Future<bool> Function()? beforeSend;
+
+  /// Where a reply the runner reports goes. A long press on any of the
+  /// coach's replies opens the report sheet.
+  final CoachReporter reporter;
 
   /// Opens the conversation.
   ///
@@ -91,6 +100,9 @@ class CoachConversationSheet extends StatefulWidget {
 class _CoachConversationSheetState extends State<CoachConversationSheet> {
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
+
+  /// Replies reported from this sheet, so each says so under it.
+  final Set<ChatEntry> _reported = <ChatEntry>{};
 
   ChatController? get _c => widget.controller;
 
@@ -145,6 +157,15 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
   Future<bool> _mayAsk() async {
     final gate = widget.beforeSend;
     return gate == null || await gate();
+  }
+
+  Future<void> _report(ChatEntry entry) async {
+    final sent = await reportCoachReply(
+      context,
+      reply: entry.text,
+      reporter: widget.reporter,
+    );
+    if (sent && mounted) setState(() => _reported.add(entry));
   }
 
   @override
@@ -334,6 +355,10 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
                     unit: widget.unit,
                     onApply: () => unawaited(controller.applyProposal(entry)),
                     onDecline: () => controller.declineProposal(entry),
+                    onReport: entry.isUser
+                        ? null
+                        : () => unawaited(_report(entry)),
+                    reported: _reported.contains(entry),
                   ),
                 ],
               );
