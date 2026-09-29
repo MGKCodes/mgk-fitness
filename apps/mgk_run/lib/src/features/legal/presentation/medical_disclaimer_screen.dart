@@ -59,7 +59,9 @@ class MedicalDisclaimerScreen extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Read this before your coach builds a plan.',
+                        // Not "builds a plan": the conversation shows this
+                        // gate too now, and it builds nothing.
+                        'Read this before you start with the coach.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textTertiary,
                         ),

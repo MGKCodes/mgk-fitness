@@ -47,3 +47,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0033](0033-the-bottom-chrome-floats.md) | The bottom chrome floats, and every surface pads for it | Accepted |
 | [0034](0034-a-plan-starts-on-the-coming-monday.md) | A plan starts on the coming Monday | Accepted |
 | [0035](0035-the-phones-training-belongs-to-one-account.md) | The phone's training belongs to one account | Accepted |
+| [0036](0036-the-coach-asks-before-it-sends.md) | The coach asks before it sends | Accepted |

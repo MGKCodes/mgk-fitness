@@ -18,6 +18,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_client.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_service.dart';
+import 'package:mgk_run/src/features/coaching/data/ai_consent_factory.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
+import 'package:mgk_run/src/features/coaching/presentation/ai_consent_sheet.dart';
+import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/coaching/data/adaptation_service.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_memory.dart';
@@ -155,6 +159,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
     onBack: () => Navigator.of(context).maybePop(),
   ),
   'home': (_) => HomeShell(
+    aiConsent: InMemoryAiConsentStore(),
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
     recorderFactory: () => FakeRunRecorder(),
     historySource: () async => _demoRuns(),
@@ -163,6 +168,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   ),
   // The Coach and Profile tabs of the real shell, addressable by URL.
   'coach': (_) => HomeShell(
+    aiConsent: InMemoryAiConsentStore(),
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
     recorderFactory: () => FakeRunRecorder(),
     historySource: () async => _demoRuns(),
@@ -171,6 +177,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
     initialTab: 1,
   ),
   'history-tab': (_) => HomeShell(
+    aiConsent: InMemoryAiConsentStore(),
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
     recorderFactory: () => FakeRunRecorder(),
     historySource: () async => _demoRuns(),
@@ -237,6 +244,7 @@ final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Home with a run history that earns a coach note — the demo set deliberately
   // does not, so both states are visible.
   'home-noted': (_) => HomeShell(
+    aiConsent: InMemoryAiConsentStore(),
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
     recorderFactory: () => FakeRunRecorder(),
     historySource: () async => _notableRuns(),
@@ -494,6 +502,7 @@ Widget _settingsPreview(CoachSubscription subscription) => SettingsScreen(
 /// it does in the app, so what is on screen is what ships.
 Widget _shellTab(int tab, {List<RunSummary> runs = const <RunSummary>[]}) =>
     HomeShell(
+      aiConsent: InMemoryAiConsentStore(),
       auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
       recorderFactory: () => FakeRunRecorder(),
       historySource: () async => runs,
@@ -1055,6 +1064,7 @@ class _SeededCoachState extends State<_SeededCoach> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return HomeShell(
+      aiConsent: InMemoryAiConsentStore(),
       auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),
       recorderFactory: () => FakeRunRecorder(),
       // Notable runs, so the dock shows what the coach has actually noticed
@@ -1682,9 +1692,24 @@ class _LiveChatState extends State<_LiveChat> {
           password: accounts.first.password,
         );
       }
+      // The deployed coach refuses to send without the account's permission,
+      // so this route asks for it the way the app does: the real sheet, over
+      // the real store, for the dev account that just signed in.
+      final consent = createAiConsentStore();
+      if (!mounted ||
+          !await ensureCoachConsent(
+            context,
+            consent: consent,
+            disclaimer: InMemoryDisclaimerStore(acknowledged: true),
+          )) {
+        if (mounted) {
+          setState(() => _error = 'The coach was not given permission.');
+        }
+        return;
+      }
       if (mounted) {
         setState(() {
-          _coach = CoachService();
+          _coach = CoachService(consent: consent);
           _ready = true;
         });
       }

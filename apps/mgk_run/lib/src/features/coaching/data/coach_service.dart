@@ -5,11 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 export 'coach_errors.dart';
 
+import '../domain/ai_consent.dart';
 import '../domain/intake_conversation.dart';
 import '../domain/intake_slots.dart';
 import '../domain/runner_profile.dart';
 import '../domain/training_plan.dart';
 import '../domain/week_progress.dart';
+import 'ai_consent_factory.dart';
 import 'coach_errors.dart';
 import 'coach_client.dart';
 import '../../history/domain/run_draft.dart';
@@ -35,10 +37,33 @@ class CoachService
         CoachEditRunClient,
         CoachSetGoalClient,
         WeekAwarePlanClient {
-  CoachService({SupabaseClient? client})
-    : _client = client ?? Supabase.instance.client;
+  CoachService({
+    SupabaseClient? client,
+    AiConsentStore? consent,
+    DateTime Function()? now,
+  }) : this._(client ?? Supabase.instance.client, consent, now ?? DateTime.now);
+
+  CoachService._(
+    SupabaseClient client,
+    AiConsentStore? consent,
+    DateTime Function() now,
+  ) : _client = client,
+      _consent = consent ?? createAiConsentStore(client: client),
+      _now = now;
 
   final SupabaseClient _client;
+
+  /// The phone's clock, in the phone's zone. Injectable like every other clock
+  /// in the app; see [_dayFields] for what it is sent for.
+  final DateTime Function() _now;
+
+  /// Whether the signed-in runner has agreed to their training going to the
+  /// AI provider. Asked before **every** request, on every surface, and
+  /// nothing is built or sent without a yes -- see [_requireConsent].
+  ///
+  /// Defaults to the account's own answer, read for the same client the
+  /// request would go out on.
+  final AiConsentStore _consent;
 
   /// Debug-only: the model this build asks the coach to use, or null to let the
   /// server decide. Set from the Settings model picker (`lib/src/dev/`).
@@ -55,6 +80,26 @@ class CoachService
   /// — a release build never sends the field at all, so a shipped app can never
   /// be the thing choosing what an account pays per token.
   static String? debugModelOverride;
+
+  /// What day it is **where the runner is**, sent with every request.
+  ///
+  /// The function worked out "today" in UTC, so a runner in New York asking
+  /// at 9pm, or one in Sydney at 7am, was answered about the wrong day -- a
+  /// session "tomorrow" that was today, a run "yesterday" that was this
+  /// morning. The phone is the only party that knows the runner's zone, so it
+  /// says: the local date, and the offset that produced it, in minutes east of
+  /// UTC. A server that ignores unknown fields is unaffected until it reads
+  /// them.
+  Map<String, dynamic> get _dayFields {
+    final now = _now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return <String, dynamic>{
+      'local_date':
+          '${now.year.toString().padLeft(4, '0')}-${two(now.month)}-'
+          '${two(now.day)}',
+      'utc_offset_minutes': now.timeZoneOffset.inMinutes,
+    };
+  }
 
   /// The model field to merge into a request body, if any.
   static Map<String, dynamic> get _modelField {
@@ -192,10 +237,14 @@ class CoachService
   Future<Map<String, dynamic>> _invokeConversation(
     Map<String, dynamic> body,
   ) async {
+    await _requireConsent();
     final Object? data;
     try {
       final res = await _client.functions
-          .invoke('coach', body: <String, dynamic>{...body, ..._modelField})
+          .invoke(
+            'coach',
+            body: <String, dynamic>{...body, ..._dayFields, ..._modelField},
+          )
           .timeout(requestTimeout);
       data = res.data;
     } on TimeoutException {
@@ -317,6 +366,11 @@ class CoachService
     String surface,
     Map<String, dynamic> payload,
   ) async {
+    // Thrown rather than collapsed into null, like the two refusals below:
+    // null means "use the deterministic path", and a missing permission is
+    // not a model that failed. The generation callers still fall back, and
+    // the fallback is built on the phone, so nothing leaves either way.
+    await _requireConsent();
     try {
       final res = await _client.functions
           .invoke(
@@ -324,6 +378,7 @@ class CoachService
             body: <String, dynamic>{
               'surface': surface,
               ...payload,
+              ..._dayFields,
               ..._modelField,
             },
           )
@@ -344,6 +399,26 @@ class CoachService
       if (limit != null) throw limit;
       return null;
     }
+  }
+
+  /// Refuses to send anything the runner has not agreed to send.
+  ///
+  /// **Here, at the one place every request passes, rather than at the screens
+  /// that open the coach.** The screens ask first, and there are more of them
+  /// than there were doors into the paid half when six of those went ungated
+  /// for a month (see `_askCoach`). A check at each caller holds until the
+  /// next caller; this one holds for all of them, including the background
+  /// ones -- a summary written as the sheet closes, a week filled in ahead.
+  ///
+  /// A store that cannot answer is a no.
+  Future<void> _requireConsent() async {
+    bool granted;
+    try {
+      granted = await _consent.isGranted();
+    } catch (_) {
+      granted = false;
+    }
+    if (!granted) throw const CoachConsentRequiredException();
   }
 
   /// Turns the function's 402 into something the UI can render as a door.

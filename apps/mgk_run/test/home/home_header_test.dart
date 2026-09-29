@@ -12,6 +12,8 @@ import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
+import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 
 /// The top of Home used to be the time of day — the one line on the screen a
 /// runner already knew before they opened it — while what they were training
@@ -58,6 +60,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Already agreed, and the disclaimer already read: what the coach
+          // asks before it sends anything is pinned in
+          // the_coach_asks_before_anything_leaves_test.dart.
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => const [],
           planStore: store,
@@ -128,6 +135,8 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
           historySource: () async => <RunSummary>[
             RunSummary(
@@ -261,6 +270,8 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark,
           home: HomeShell(
+            aiConsent: InMemoryAiConsentStore.granted(),
+            disclaimer: InMemoryDisclaimerStore(acknowledged: true),
             // Pinned, because this drives a coach hand-off and the coach is
             // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
             // until 2026-09-04, when the gate moved into `_askCoach`: five

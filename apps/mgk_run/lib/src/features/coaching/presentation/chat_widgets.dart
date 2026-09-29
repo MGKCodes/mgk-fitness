@@ -45,10 +45,21 @@ class ChatBubble extends StatelessWidget {
     this.unit = UnitSystem.metric,
     this.onApply,
     this.onDecline,
+    this.onReport,
+    this.reported = false,
   });
 
   final String text;
   final bool isUser;
+
+  /// Opens the report sheet for this reply, on a long press. Only the coach's
+  /// replies take one: they are what a model wrote, and Play's policy on
+  /// AI-generated content wants them reportable where they are read. Null
+  /// offers nothing.
+  final VoidCallback? onReport;
+
+  /// This reply has been reported from here, which is said under it.
+  final bool reported;
 
   /// Whether to draw the coach's mark. False for a reply that follows another,
   /// so a run of coach messages reads as one voice continuing rather than as
@@ -96,7 +107,7 @@ class ChatBubble extends StatelessWidget {
       );
     }
 
-    return Padding(
+    final reply = Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,6 +125,17 @@ class ChatBubble extends StatelessWidget {
                     fontSize: 15,
                   ),
                 ),
+                if (reported)
+                  const Padding(
+                    padding: EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text(
+                      "Reported. Thanks, we'll take a look.",
+                      style: TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 if (proposal != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.md),
                   ProposalCard(
@@ -127,6 +149,16 @@ class ChatBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+    final report = onReport;
+    if (report == null) return reply;
+    return Semantics(
+      onLongPressHint: 'Report this reply',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: report,
+        child: reply,
       ),
     );
   }

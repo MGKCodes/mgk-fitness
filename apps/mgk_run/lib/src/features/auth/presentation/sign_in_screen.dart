@@ -411,7 +411,12 @@ class _WhatYouGet extends StatelessWidget {
 
   static const List<(IconData, String)> _lines = <(IconData, String)>[
     (Icons.play_circle_outline, 'Every run tracked, and every run kept'),
-    (Icons.forum_outlined, 'A coach that answers questions about your running'),
+    // The coach is the paid half (ADR-0030): what an account gives is the
+    // way to subscribe to it, not the coach.
+    (
+      Icons.forum_outlined,
+      'With a subscription, a coach that answers questions about your running',
+    ),
     (Icons.phone_iphone, 'Your runs on your phone, backed up only if you say'),
   ];
 

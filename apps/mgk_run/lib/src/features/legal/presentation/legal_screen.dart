@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import '../../../core/brand.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../coaching/data/ai_consent_factory.dart';
+import '../../coaching/domain/ai_consent.dart';
 import '../../settings/presentation/settings_tile.dart';
 import '../data/account_deletion_service.dart';
 import '../domain/account_deleter.dart';
@@ -25,10 +29,15 @@ class LegalScreen extends StatelessWidget {
     super.key,
     this.auth = const AuthRepository(),
     this.deleter = const AccountDeletionService(),
+    this.aiConsent,
   });
 
   final AuthRepository auth;
   final AccountDeleter deleter;
+
+  /// The coach's permission to send training to the AI provider, which the
+  /// runner can take back here. Null is the account's own store.
+  final AiConsentStore? aiConsent;
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -98,6 +107,10 @@ class LegalScreen extends StatelessWidget {
                 color: AppColors.textTertiary,
               ),
             ),
+            // Signed in only: the answer is kept on an account, and with nobody
+            // signed in there is nothing to take back.
+            if (auth.isSignedIn)
+              _CoachPermissionTile(store: aiConsent ?? createAiConsentStore()),
             SettingsTile(
               icon: Icons.delete_outline,
               title: 'Delete account',
@@ -111,6 +124,107 @@ class LegalScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Where the coach's permission is taken back.
+///
+/// **As easy to withdraw as it was to give**, which is what makes it consent
+/// rather than a formality (UK GDPR Art. 7(3)). One row, one confirmation,
+/// and the coach asks again before it next sends anything. Nothing already on
+/// the phone changes: the plan, the runs and the conversations stay.
+///
+/// The row says what the answer is now, read from the store, rather than
+/// offering a withdrawal to somebody who never agreed.
+class _CoachPermissionTile extends StatefulWidget {
+  const _CoachPermissionTile({required this.store});
+
+  final AiConsentStore store;
+
+  @override
+  State<_CoachPermissionTile> createState() => _CoachPermissionTileState();
+}
+
+class _CoachPermissionTileState extends State<_CoachPermissionTile> {
+  /// Null while it is being read.
+  bool? _granted;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_read());
+  }
+
+  Future<void> _read() async {
+    final granted = await widget.store.isGranted();
+    if (mounted) setState(() => _granted = granted);
+  }
+
+  Future<void> _withdraw() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Stop the coach sending your training?'),
+        content: const Text(
+          'Nothing more goes to the AI provider, and your coach asks again '
+          'before it next does. Your plan, runs and conversations stay on this '
+          'phone.',
+        ),
+        actions: <Widget>[
+          AppTextButton(
+            label: 'Keep it',
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Withdraw'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await widget.store.withdraw();
+    } catch (_) {
+      // Read back below, which is what decides what is said.
+    }
+    final stillGranted = await widget.store.isGranted();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _granted = stillGranted;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          stillGranted
+              ? "That didn't save, so nothing changed. Try again."
+              : 'Withdrawn. Your coach will ask before it sends anything.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final granted = _granted;
+    return SettingsTile(
+      icon: Icons.forum_outlined,
+      title: 'Coach and AI',
+      subtitle: switch (granted) {
+        null => 'Checking…',
+        true =>
+          'You agreed to your training going to the AI provider. Tap to '
+              'withdraw.',
+        false => 'Not agreed. Your coach asks before it sends anything.',
+      },
+      showChevron: false,
+      onTap: granted == true && !_busy ? _withdraw : null,
     );
   }
 }

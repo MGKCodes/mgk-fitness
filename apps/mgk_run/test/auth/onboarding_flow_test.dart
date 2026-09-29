@@ -143,7 +143,9 @@ void main() {
       await tester.enterText(find.byType(TextField), 'Sam');
       await tester.tap(find.byTooltip('Continue'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Allow location'));
+      await tester.tap(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+      );
       await tester.pumpAndSettle();
     }
 

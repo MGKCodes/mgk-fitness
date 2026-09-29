@@ -144,10 +144,11 @@ class AccountScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               // Said once, here, where the photo is chosen. It is the only
-              // claim on this screen somebody might not assume.
-              'Your photo stays on this phone. It is never uploaded, never sent '
-              'to your coach, and not included in backup — so a new phone '
-              'starts again with your initials.',
+              // claim on this screen somebody might not assume. Not "not
+              // included in backup": nothing excludes it from the phone's own.
+              'Your photo stays with you. It is never uploaded to us and never '
+              "sent to your coach, though your phone's own backup may include "
+              'it.',
               style: dim,
               textAlign: TextAlign.center,
             ),

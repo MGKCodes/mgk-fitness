@@ -103,6 +103,20 @@ been on a store, so everything the app does is still listed here.
   to keep it short; afterwards it is told to ask how it went, once, and to wait
   for the answer. Races the runner has finished are carried in the brief with
   the times they ran.
+- **The coach asks before anything leaves the phone** (ADR-0036). The first
+  time a runner opens the coach, asks it anything or builds a plan, a sheet
+  says where their training goes — OpenRouter, and the AI model provider
+  behind it — what is sent and what never is, and asks. "Not now" sends
+  nothing. The answer is kept per account and can be taken back in Settings ›
+  Privacy & legal. The conversation now shows the medical disclaimer too, which
+  only the plan flow did before, and a signed-out runner tapping the coach
+  mark is asked for an account first instead of meeting a paywall that could
+  not sign them in.
+- **A coach reply can be reported from where it was read.** A long press on
+  any of the coach's replies, in the conversation or the plan intake, opens a
+  short report: a reason — harmful or unsafe, wrong or misleading, offensive,
+  something else — and an optional note. It is kept with the account for
+  review. A report that does not send says so and keeps what was written.
 
 **Race day, and the end of a plan** (ADR-0027)
 - **Race day is its own moment.** The Today card reads "Race day" over the
@@ -500,5 +514,32 @@ been on a store, so everything the app does is still listed here.
   mid-row and the strip beneath it showed the backdrop's near-opaque foot as a
   full-width band. The reserve is gone; the per-tab clearance that was always
   doing the work stays.
+- **The backup switch no longer claims nothing leaves the phone.** The empty
+  Plan tab, the backup screen and the in-app privacy policy all said, in one
+  form or another, that nothing left the phone unless backup was on. The coach
+  sends a summary of the runner's training to the AI provider whatever the
+  switch says. All three now say what the switch decides — our servers — and
+  the backup screen admits the phone's own backup can hold a copy.
+- **What Health is asked for is what Health is used for: steps.** The Health
+  prompt, the intro and Settings promised to bring in runs recorded on a watch
+  and show them to the coach; nothing ever imported a workout, and steps never
+  reach the coach. Workouts are no longer requested, and every sentence about
+  Health now says it reads the step count over a run recorded here. Buttons in
+  front of a system permission prompt say "Continue" rather than "Allow",
+  the Health write string says the app never writes, and sign-up no longer
+  lists the coach as something a free account gets.
+- **The profile photo is described as it is: never sent to us or to the
+  coach.** Account, the photo permission string and the privacy policy also
+  said it was kept out of backup, so a new phone would start again with
+  initials. Nothing kept it out: the phone's own iCloud or Google backup can
+  carry it, as it can the rest of the app's data. The policy's "your phone is
+  the only copy" gets the same correction.
+- **The privacy policy catches up with the app.** It says the coach asks before
+  anything reaches the AI provider and where that is taken back, that a
+  reported reply is kept for review and deleted with the account, that a
+  conversation also sends up to four older messages the coach recalls, and
+  that a note written on a run is backed up with it. Dated 29 September 2026,
+  and the published pages no longer carry a "DO NOT PUBLISH" banner that had
+  outlived its reason.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main
