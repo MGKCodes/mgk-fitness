@@ -73,7 +73,7 @@ export interface SurfaceSpec {
 
 // Defined once and shared across every surface of its app.
 export const RUN_PERSONA =
-  `You are Runio's running coach. You are warm, direct, and brief.
+  `You are the running coach in MGKFitness: Run. You are warm, direct, and brief.
 You speak plainly, never in marketing language, and you never use em dashes.
 You sound like a real coach who respects the runner's time.`;
 
@@ -98,8 +98,38 @@ function violationNote(violations: unknown): string {
     `these problems and change nothing else:\n- ${list.join("\n- ")}`;
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * The runner's calendar day, as their phone reports it.
+ *
+ * This function runs in UTC, and the UTC date is the wrong day for anybody west
+ * of Greenwich in the evening or east of it in the morning -- exactly when a
+ * runner in New York says "I ran this morning" or one in Sydney asks to move
+ * today's session. The model was told the wrong "today" and "Tuesday", so a
+ * skipped session landed on the wrong day and a morning run was refused as "in
+ * the future".
+ *
+ * Since build 26 the app sends `local_date` (YYYY-MM-DD, in the phone's zone).
+ * It is believed when it is a real calendar date within a day of the server's
+ * own, which every zone on Earth is. Anything else -- an older build that sends
+ * nothing, a malformed value, a phone clock set a week out -- gets the UTC day,
+ * which is what every build before 26 was told.
+ */
+export function localDay(body?: Body, now: Date = new Date()): Date {
+  const utc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const raw = body?.local_date;
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return utc;
+  const parsed = new Date(`${raw}T00:00:00Z`);
+  // Date rolls 2026-02-31 over into March; a round trip catches it.
+  if (Number.isNaN(parsed.getTime())) return utc;
+  if (parsed.toISOString().slice(0, 10) !== raw) return utc;
+  const days = Math.round((parsed.getTime() - utc.getTime()) / 86_400_000);
+  return Math.abs(days) <= 1 ? parsed : utc;
+}
+
+function today(body?: Body, now: Date = new Date()): string {
+  return localDay(body, now).toISOString().slice(0, 10);
 }
 
 /**
@@ -110,11 +140,13 @@ function today(): string {
  * quote one back. The weekday is what a runner argues with ("can we move
  * Thursday"), and it is all the coach needs.
  */
-function weekdayName(at: Date = new Date()): string {
+function weekdayName(body?: Body, now: Date = new Date()): string {
+  // `localDay` is a UTC midnight standing for the runner's date, so it is
+  // formatted in UTC to read back the same day.
   return new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
     timeZone: "UTC",
-  }).format(at);
+  }).format(localDay(body, now));
 }
 
 /**
@@ -395,7 +427,7 @@ export function chatMessages(body: Body): Message[] {
   // The brief goes in verbatim. It is rendered prose, written to be read as
   // knowledge; parsing or reformatting it here would undo the point of it.
   const system = `${RUN_PERSONA}\n\n${CHAT_INSTRUCTIONS}\n\n` +
-    `Today is ${weekdayName()}.\n\n` +
+    `Today is ${weekdayName(body)}.\n\n` +
     (brief
       ? `The brief:\n${brief}`
       : "You have no brief for this runner yet, so you know nothing about " +
@@ -671,7 +703,7 @@ function intakeMessages(body: Body): Message[] {
   // coach said "you can review the details on the next screen" and no next
   // screen ever appeared. A dead end, not a warning.
   const system =
-    `${RUN_PERSONA}\n\nToday is ${today()}.\n\n${INTAKE_INSTRUCTIONS}\n\n` +
+    `${RUN_PERSONA}\n\nToday is ${today(body)}.\n\n${INTAKE_INSTRUCTIONS}\n\n` +
     `Already known, do not re-ask: ${JSON.stringify(slots)}\n` +
     `Still missing: ${missing.length ? missing.join(", ") : "nothing"}`;
 
@@ -735,7 +767,7 @@ const SKELETON_SCHEMA = {
 
 function skeletonMessages(body: Body): Message[] {
   const profile = (body.profile as Record<string, unknown>) ?? {};
-  const system = `${RUN_PERSONA}\n\nToday is ${today()}.\n\n` +
+  const system = `${RUN_PERSONA}\n\nToday is ${today(body)}.\n\n` +
     SKELETON_INSTRUCTIONS + violationNote(body.violations);
   return [
     { role: "system", content: system },
@@ -765,7 +797,7 @@ Rules the week MUST follow (a validator rejects violations):
   profile says otherwise), on available days the runner is not running where
   possible, never the day before the long run. A strength session MUST have
   distance_meters 0 — it adds no running volume — and it does not count toward
-  days_per_week. Do not prescribe what is in it; Runio plans running, and the
+  days_per_week. Do not prescribe what is in it; Run plans running, and the
   runner's lifting lives elsewhere.
 - If a race_weekday is given, NOTHING may be scheduled on it — no run, no
   strength, no recovery. That day is the race: the thing the whole block has
@@ -969,7 +1001,7 @@ export function logRunMessages(body: Body): Message[] {
 ${LOG_RUN_INSTRUCTIONS}
 
 ` +
-        `Today is ${today()} (${weekdayName()}).`,
+        `Today is ${today(body)} (${weekdayName(body)}).`,
     },
     { role: "user", content: request },
   ];
@@ -1051,7 +1083,7 @@ export function editRunMessages(body: Body): Message[] {
 ${EDIT_RUN_INSTRUCTIONS}
 
 ` +
-        `Today is ${today()} (${weekdayName()}).`,
+        `Today is ${today(body)} (${weekdayName(body)}).`,
     },
     { role: "user", content: request },
   ];
@@ -1123,7 +1155,7 @@ export function setGoalMessages(body: Body): Message[] {
 ${SET_GOAL_INSTRUCTIONS}
 
 ` +
-        `Today is ${today()} (${weekdayName()}).`,
+        `Today is ${today(body)} (${weekdayName(body)}).`,
     },
     { role: "user", content: request },
   ];
@@ -1217,7 +1249,7 @@ export function liftChatMessages(body: Body): Message[] {
   const message = text(body.message, MAX_MESSAGE_CHARS);
 
   const system = `${LIFT_PERSONA}\n\n${LIFT_CHAT_INSTRUCTIONS}\n\n` +
-    `Today is ${weekdayName()}.\n\n` +
+    `Today is ${weekdayName(body)}.\n\n` +
     (memory ? `${LIFT_MEMORY_INSTRUCTIONS}\n\n${memory}\n\n` : "") +
     `Recent training (most recent first):\n${
       brief || "(no sessions logged yet)"
@@ -1436,7 +1468,7 @@ export function liftIntakeMessages(body: Body): Message[] {
   const slots = (body.slots as Record<string, unknown>) ?? {};
   const missing = (body.missing as string[]) ?? [];
 
-  const system = `${LIFT_PERSONA}\n\nToday is ${today()}.\n\n` +
+  const system = `${LIFT_PERSONA}\n\nToday is ${today(body)}.\n\n` +
     `${LIFT_INTAKE_INSTRUCTIONS}\n\n` +
     `Already known, do not re-ask: ${JSON.stringify(slots)}\n` +
     `Still missing: ${missing.length ? missing.join(", ") : "nothing"}`;
@@ -1476,8 +1508,6 @@ next, so a vague one produces a vague week.
 
 Do not name movements, sets, reps or weights. That is the next call's job, and
 guessing at it here just gives it something wrong to work around.`;
-
-
 
 // ---- lift_week --------------------------------------------------------------
 
@@ -1521,8 +1551,6 @@ the tank" — and let the app supply the number.
 
 "rationale" is one or two sentences to the LIFTER about why this session looks
 like this. Plain, specific to them, no filler. It is shown to them.`;
-
-
 
 // ---- lift_swap (mid-session substitution) -----------------------------------
 
@@ -1742,8 +1770,6 @@ shoulder another two days" is the register.
 it as something you are suggesting, not something you have done — they approve
 it before anything moves.`;
 
-
-
 // ---- provider routing -------------------------------------------------------
 
 /**
@@ -1867,8 +1893,7 @@ const LIFT_PLAN_SCHEMA = {
     },
     name: {
       type: "string",
-      description:
-        "What the plan is called, in the coach's words. Free text.",
+      description: "What the plan is called, in the coach's words. Free text.",
     },
     days: {
       type: "array",
@@ -1898,7 +1923,8 @@ const LIFT_PLAN_SCHEMA = {
               properties: {
                 role: {
                   type: "string",
-                  description: "What the slot is for, independent of what fills it.",
+                  description:
+                    "What the slot is for, independent of what fills it.",
                 },
                 movement: {
                   type: "string",
@@ -1935,25 +1961,27 @@ export function liftPlanMessages(body: Body): Message[] {
 ${LIFT_PLAN_INSTRUCTIONS}
 
 ` +
-    `Today is ${today()}.
+    `Today is ${today(body)}.
 
 ` +
-    (guidance ? `House guidance:
+    (guidance
+      ? `House guidance:
 ${guidance}
 
-` : "") +
-    (memory ? `What you know about them:
+`
+      : "") +
+    (memory
+      ? `What you know about them:
 ${memory}
 
-` : "") +
+`
+      : "") +
     `What they told you:
 ${JSON.stringify(profile)}
 
 ` +
     `Recent training (most recent first):
-${
-      brief || "(no sessions logged yet)"
-    }
+${brief || "(no sessions logged yet)"}
 
 ` +
     `Movements you may use, one per line. Copy names exactly:

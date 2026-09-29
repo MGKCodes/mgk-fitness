@@ -9,9 +9,11 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
+/// One session id, standing in for whatever the client generated.
+const CONV = "lift:1786397895824351-a1b2c3d";
+
 import {
   CoachMemory,
-  conversationId,
   EMPTY_MEMORY,
   MEMORY_TURNS,
   parseTurns,
@@ -21,14 +23,13 @@ import {
 } from "./coach_memory.ts";
 
 // ---- addressing -------------------------------------------------------------
-
-Deno.test("a conversation is addressed by app and person, without a lookup", () => {
-  assertEquals(conversationId("lift", "abc"), "lift:abc");
-  assertEquals(conversationId("run", "abc"), "run:abc");
-  // The two apps must never resolve to the same conversation, or their
-  // transcripts interleave and each coach reads the other's turns as its own.
-  assert(conversationId("lift", "abc") !== conversationId("run", "abc"));
-});
+//
+// There is nothing to test here any more, and that is the point. A conversation
+// used to be addressed as `${app}:${userId}` — one per person, for ever — and
+// this file asserted that the two apps never collided. The id now comes from
+// the client as a session (ADR-0002), so the function derives nothing and there
+// is no derivation left to pin. What replaced this test is on the Dart side,
+// where the boundary is decided.
 
 // ---- when the memory is rewritten -------------------------------------------
 
@@ -151,7 +152,7 @@ Deno.test("the memory is read as the caller, scoped to one app", async () => {
   });
 
   const memory = await new CoachMemory("https://db", "anon", "Bearer jwt", f)
-    .read("lift", "user-1");
+    .read("lift", CONV);
 
   assertEquals(memory.summary, "Trains four days.");
   assertEquals(memory.turnsCovered, 8);
@@ -165,7 +166,15 @@ Deno.test("the memory is read as the caller, scoped to one app", async () => {
   assertEquals(headersOf(turns.init).get("Authorization"), "Bearer jwt");
   assertEquals(headersOf(summaries.init).get("Accept-Profile"), "coach");
   assert(summaries.url.includes("app=eq.lift"), summaries.url);
-  assert(turns.url.includes("conversation_id=eq.lift%3Auser-1"), turns.url);
+  // The conversation asked for, not one derived from the caller: the session
+  // is the client's to choose, and reading a different one would replay turns
+  // the lifter cannot see.
+  assert(
+    turns.url.includes(
+      "conversation_id=eq.lift%3A1786397895824351-a1b2c3d",
+    ),
+    turns.url,
+  );
   // The count comes back with the rows rather than in a second request.
   assertEquals(headersOf(turns.init).get("Prefer"), "count=exact");
 });
@@ -179,7 +188,7 @@ Deno.test("a memory that will not load is no memory, not a failed turn", async (
     "Bearer jwt",
     stub(() => new Response("nope", { status: 500 })).fetch,
   );
-  assertEquals(await failing.read("lift", "user-1"), EMPTY_MEMORY);
+  assertEquals(await failing.read("lift", CONV), EMPTY_MEMORY);
 });
 
 Deno.test("a missing Content-Range falls back to what actually arrived", async () => {
@@ -197,7 +206,7 @@ Deno.test("a missing Content-Range falls back to what actually arrived", async (
       )
   );
   const memory = await new CoachMemory("https://db", "anon", "Bearer jwt", f)
-    .read("lift", "user-1");
+    .read("lift", CONV);
   assertEquals(memory.total, 2);
 });
 
@@ -209,6 +218,7 @@ Deno.test("an exchange is appended after the turns already stored", async () => 
   await new CoachMemory("https://db", "anon", "Bearer jwt", f).appendTurns(
     "lift",
     "user-1",
+    CONV,
     41,
     [
       { role: "user", text: "why has my bench stalled" },
@@ -220,7 +230,11 @@ Deno.test("an exchange is appended after the turns already stored", async () => 
   // no parent is a rejected insert.
   assert(calls[0].url.includes("/conversations"), calls[0].url);
   const parent = JSON.parse(String(calls[0].init?.body));
-  assertEquals(parent.id, "lift:user-1");
+  assertEquals(parent.id, CONV);
+  // Written from the verified JWT, never from the id: a client naming
+  // somebody else's conversation still writes its own user_id, and RLS
+  // rejects the merge.
+  assertEquals(parent.user_id, "user-1");
   assertEquals(parent.app, "lift");
   // `started_at` is absent on purpose: PostgREST updates only the columns it is
   // given, so an existing conversation keeps the moment it actually began.
@@ -230,8 +244,8 @@ Deno.test("an exchange is appended after the turns already stored", async () => 
   const rows = JSON.parse(String(calls[1].init?.body));
   assertEquals(rows.map((r: { seq: number }) => r.seq), [42, 43]);
   assertEquals(rows.map((r: { id: string }) => r.id), [
-    "lift:user-1:42",
-    "lift:user-1:43",
+    `${CONV}:42`,
+    `${CONV}:43`,
   ]);
   assertEquals(rows[0].role, "user");
   assertEquals(rows[1].role, "assistant");
@@ -248,7 +262,7 @@ Deno.test("an exchange is appended after the turns already stored", async () => 
 Deno.test("nothing is written for an empty exchange", async () => {
   const { calls, fetch: f } = stub(() => new Response("", { status: 201 }));
   await new CoachMemory("https://db", "anon", "Bearer jwt", f)
-    .appendTurns("lift", "user-1", 0, []);
+    .appendTurns("lift", "user-1", CONV, 0, []);
   assertEquals(calls.length, 0);
 });
 
@@ -261,7 +275,7 @@ Deno.test("a turn that will not write does not fail the caller", async () => {
     "Bearer jwt",
     stub(() => new Response("nope", { status: 409 })).fetch,
   );
-  await failing.appendTurns("lift", "user-1", 0, [
+  await failing.appendTurns("lift", "user-1", CONV, 0, [
     { role: "user", text: "hello" },
   ]);
 
@@ -271,7 +285,7 @@ Deno.test("a turn that will not write does not fail the caller", async () => {
     "Bearer jwt",
     (() => Promise.reject(new Error("socket"))) as typeof fetch,
   );
-  await throwing.appendTurns("lift", "user-1", 0, [
+  await throwing.appendTurns("lift", "user-1", CONV, 0, [
     { role: "user", text: "hello" },
   ]);
 });
