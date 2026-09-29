@@ -15,7 +15,7 @@ the copy here, run the checker, then paste. Where a field is set is in
 ## What this listing may not say
 
 Everything in [app-store-listing.md](app-store-listing.md)'s list, plus four
-things that are true on an iPhone and false on Android:
+things that are Android's own:
 
 - **No Apple anything.** No Apple ID, no App Store, no iPhone, no Apple Health.
   Payment is charged to the Google Play account.
@@ -23,10 +23,13 @@ things that are true on an iPhone and false on Android:
   and reads nothing from Health Connect or anywhere else. Steps and cadence are
   an iPhone feature, so this listing does not mention them.
 - **Not "iPhone only".** Obviously, and it was in the first draft.
-- **Recording with the screen off is a notification, not a hidden process.**
-  Android keeps a run going through a foreground service that shows "Recording
-  your run" until Finish. The listing says so rather than implying the app
-  tracks in the background on its own.
+- **No promise of a notification.** Android keeps a run going with the screen
+  off through a foreground service whose notification reads "Recording your
+  run". On Android 13 and later that notification only shows if the runner has
+  allowed notifications for Run, and the app never asks (a known gap, in
+  [after-1.0.0.md](after-1.0.0.md)). So the listing says the run keeps
+  recording, and says nothing about a notification until the app asks for the
+  permission.
 
 **Google requires one paragraph verbatim**, because the app is in the Health &
 Fitness category and gives training advice (Health Content and Services
@@ -63,8 +66,7 @@ That half is free, and always will be.
 WHAT IS FREE
 
 - GPS tracking with a live map, splits and pace
-- Keeps recording with the screen locked and the phone in a pocket. While a run
-  records, a notification says so, and it goes when you finish
+- Keeps recording with the screen locked and the phone in a pocket
 - Records without a signal. The run is written to your phone as it happens,
   not to a server
 - Treadmill and manual entry, for the runs your phone did not see

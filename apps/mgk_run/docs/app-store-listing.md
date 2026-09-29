@@ -290,7 +290,7 @@ B - no subscription. Please use this one to test the purchase with your sandbox 
 If you test account deletion, please use B, so that A stays available.
 
 THE PAID HALF
-Tap the round coach mark (bottom right, on every tab) or Plan tab > "Build a plan". The first time, the app asks permission to send training data to the AI provider (see below), then shows the medical disclaimer. On account B the paywall follows. After a sandbox purchase the coach unlocks within about ten seconds.
+Tap the round coach mark (bottom right, on every tab) or Plan tab > "Build a plan". The first time, the app asks permission to send training data to the AI provider (see below), then shows the medical disclaimer. On account B a sheet about the subscription follows, and "See the plans" opens the paywall. After a sandbox purchase the coach unlocks within about ten seconds.
 The subscription is tied to the signed-in account because the coach runs on our server, is charged per request, stores the runner's plan and history, and has to follow them to a new phone. Recording runs never needs an account.
 
 AI COACH AND DATA SHARING
