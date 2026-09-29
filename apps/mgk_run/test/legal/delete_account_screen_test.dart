@@ -160,35 +160,64 @@ void main() {
   });
 
   group('after deletion', () {
-    testWidgets('signs out only once the runner has read the outcome', (
+    testWidgets('signs out as soon as the server confirms, and Done leaves', (
       tester,
     ) async {
+      // It used to wait for Done. This screen is a route over the app, so the
+      // outcome is still read first either way -- what the wait cost was an
+      // app closed here keeping a session to an account that no longer
+      // existed, and an erased phone claiming itself for that session.
       final auth = FakeAuthRepository(signedIn: true, email: 'a@runio.app');
-      await pumpScreen(tester, deleter: _FakeDeleter(), auth: auth);
+      await tester.binding.setSurfaceSize(const Size(420, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DeleteAccountScreen(
+                      auth: auth,
+                      deleter: _FakeDeleter(),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
 
       await typeConfirmation(tester, 'DELETE');
       await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
       await tester.pumpAndSettle();
 
-      // Still signed in while the confirmation is on screen.
-      expect(auth.isSignedIn, isTrue);
+      expect(auth.isSignedIn, isFalse);
+      expect(find.text('Your data is deleted'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Done'));
       await tester.pumpAndSettle();
 
-      expect(auth.isSignedIn, isFalse);
+      expect(find.text('open'), findsOneWidget);
     });
 
     testWidgets('explains when the shared profile was kept for Lift', (
       tester,
     ) async {
+      // `other_app_data` is what the deployed function sends. The screen only
+      // ever recognised `sibling_app_data`, so every runner whose login was
+      // kept for Lift was told it had gone "along with your login".
       await pumpScreen(
         tester,
         deleter: _FakeDeleter(
           result: const AccountDeletionResult(
             accountDeleted: false,
-            retainedReason: 'sibling_app_data',
-            deletedRows: <String, int>{'runio.runs': 10},
+            retainedReason: 'other_app_data',
+            deletedRows: <String, int>{'run.runs': 10},
           ),
         ),
       );
@@ -199,6 +228,55 @@ void main() {
 
       expect(find.text('Your data is deleted'), findsOneWidget);
       expect(find.textContaining('Your login is still active'), findsOneWidget);
+      expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
+      expect(find.textContaining('along with your login'), findsNothing);
+    });
+
+    testWidgets('the older name for the same answer still counts', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        deleter: _FakeDeleter(
+          result: const AccountDeletionResult(
+            accountDeleted: false,
+            retainedReason: 'sibling_app_data',
+          ),
+        ),
+      );
+
+      await typeConfirmation(tester, 'DELETE');
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Your login is still active'), findsOneWidget);
+    });
+
+    testWidgets('a login that could not be removed is not called removed', (
+      tester,
+    ) async {
+      // `auth_delete_failed`: the data went and the login did not. It fell
+      // through to the sentence for a login that had been removed.
+      await pumpScreen(
+        tester,
+        deleter: _FakeDeleter(
+          result: const AccountDeletionResult(
+            accountDeleted: false,
+            retainedReason: 'auth_delete_failed',
+          ),
+        ),
+      );
+
+      await typeConfirmation(tester, 'DELETE');
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('along with your login'), findsNothing);
+      expect(find.textContaining('Lift is using it'), findsNothing);
+      expect(
+        find.textContaining('Your login could not be removed'),
+        findsOneWidget,
+      );
       expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
     });
 

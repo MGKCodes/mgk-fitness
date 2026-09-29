@@ -369,6 +369,14 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Deleting your account no longer leaves the phone ready to upload it all
+  again.** The phone's yes to backing up survived the deletion, so signing back
+  in -- or making a new account on the same phone -- sent every deleted run
+  straight back. A deletion now resets that answer, removes this app's settings
+  from a login kept for Lift, and erases this phone's copy too unless you
+  switch that off; the screen says which. It also stopped telling runners who
+  use Lift that their login had been removed when it had been kept, and says so
+  honestly when a login could not be removed.
 - **A second account signing in no longer gets the first one's training.** The
   phone's runs, plan, coach conversations, photo and name said nothing about
   whose they were, so the next account to sign in saw all of it, the coach

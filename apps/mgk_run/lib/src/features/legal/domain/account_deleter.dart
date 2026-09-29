@@ -25,8 +25,13 @@ class AccountDeletionResult {
   /// Whether the shared login itself was removed.
   final bool accountDeleted;
 
-  /// Why the login survived, when it did. `sibling_app_data` means the account
-  /// is in use by Liftio.
+  /// Why the login survived, when it did.
+  ///
+  /// `other_app_data` means another app still holds data under it, and is what
+  /// the deployed `delete-account` function sends. `sibling_app_data` is the
+  /// older name for the same thing, from the SQL routine the function wraps,
+  /// and is still accepted. `auth_delete_failed` means the data went and the
+  /// login could not be removed.
   final String? retainedReason;
 
   /// Rows removed per table — counts only, never values. Useful in a support
@@ -34,8 +39,21 @@ class AccountDeletionResult {
   final Map<String, int> deletedRows;
 
   /// True when Runio's data is gone but the login was deliberately kept.
+  ///
+  /// **It only ever matched `sibling_app_data`, which the server does not
+  /// send.** The deployed function answers `other_app_data`, so every runner
+  /// whose login was kept for Lift was told it had been removed "along with
+  /// your login" -- the one sentence on the screen they had no way to check.
   bool get loginRetainedForSiblingApp =>
-      !accountDeleted && retainedReason == 'sibling_app_data';
+      !accountDeleted &&
+      (retainedReason == 'other_app_data' ||
+          retainedReason == 'sibling_app_data');
+
+  /// True when the data went and the login is still there for no reason the
+  /// runner chose: the removal failed, or the server gave no reason at all.
+  ///
+  /// It used to fall through to the sentence for a login that was removed.
+  bool get loginNotRemoved => !accountDeleted && !loginRetainedForSiblingApp;
 }
 
 /// A deletion failure with a message that is safe to show to the user.

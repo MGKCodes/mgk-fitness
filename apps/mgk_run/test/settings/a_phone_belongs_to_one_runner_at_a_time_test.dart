@@ -112,6 +112,24 @@ void main() {
     // And whoever signs in next claims an empty phone, without being asked.
     expect(await guard.mayUse('sam'), isTrue);
   });
+
+  test(
+    'an account deleted with its copy kept leaves the phone unclaimed',
+    () async {
+      // The runs stay, and the next account to sign in -- the runner's own new
+      // one, most likely -- claims them rather than being told to erase them.
+      data.hasTraining = true;
+      await owner.write('alex');
+      expect(await guard.mayUse('alex'), isTrue);
+
+      await guard.release();
+
+      expect(await owner.read(), isNull);
+      expect(data.erased, 0);
+      expect(await guard.mayUse('sam'), isTrue);
+      expect(await owner.read(), 'sam');
+    },
+  );
 }
 
 class _Training implements LocalRunnerData {

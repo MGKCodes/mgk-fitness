@@ -160,4 +160,15 @@ class FakeAuthRepository extends AuthRepository {
     final error = profileFailure;
     if (error != null) throw error;
   }
+
+  /// Whether the session was still there each time this app's keys were
+  /// cleared off the profile. The real call needs one, so a test asserts the
+  /// order rather than just the call.
+  final List<bool> runMetadataClears = <bool>[];
+
+  @override
+  Future<void> clearRunMetadata() async {
+    runMetadataClears.add(_signedIn);
+    metCoach = false;
+  }
 }

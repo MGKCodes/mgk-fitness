@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import '../../onboarding/domain/intro_store.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
@@ -26,4 +28,30 @@ class PhoneServices {
 
   /// Whose training is on the phone, and the only way to erase it.
   final LocalDataGuard localData;
+}
+
+/// Makes [PhoneServices] reachable from any route.
+///
+/// **Above the navigator, which is the whole reason it exists.** Deleting an
+/// account is reached from two screens -- Account, and Privacy & legal -- and
+/// has to reset the backup answer and offer to erase the phone from both. A
+/// pushed route is not a descendant of the app root, so nothing threaded
+/// through the shell can reach the second one; `main.dart` installs this in
+/// `MaterialApp.builder`, where every route can find it.
+///
+/// Screens still take the same things as parameters, and a parameter wins.
+/// This is where they look when nobody passed one.
+class PhoneScope extends InheritedWidget {
+  const PhoneScope({super.key, required this.phone, required super.child});
+
+  final PhoneServices phone;
+
+  /// The phone's services, or null in a build with no database -- the preview
+  /// harness, and tests that did not install one.
+  static PhoneServices? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<PhoneScope>()?.phone;
+
+  @override
+  bool updateShouldNotify(PhoneScope oldWidget) =>
+      !identical(phone, oldWidget.phone);
 }

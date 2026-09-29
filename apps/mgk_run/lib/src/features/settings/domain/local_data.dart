@@ -149,4 +149,17 @@ class LocalDataGuard {
     _answer = null;
     erasures.value++;
   }
+
+  /// Leaves the training where it is and the phone unclaimed.
+  ///
+  /// For an account that has been deleted while its runner kept this phone's
+  /// copy. The account it belonged to is gone, so the phone is back where a
+  /// runner with no account starts: the next account to sign in claims it --
+  /// including this runner's own, should they make one again, which is exactly
+  /// who should not be asked to erase their own runs to do it.
+  Future<void> release() async {
+    await _owner.clear();
+    _askedFor = null;
+    _answer = null;
+  }
 }

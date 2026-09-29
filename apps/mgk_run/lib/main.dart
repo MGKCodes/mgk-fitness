@@ -110,6 +110,14 @@ class RunioApp extends StatelessWidget {
       title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      // Above the navigator, so a route pushed from anywhere -- deleting the
+      // account from Privacy & legal, say -- reaches the same stores.
+      builder: phone == null
+          ? null
+          : (context, child) => PhoneScope(
+              phone: phone,
+              child: child ?? const SizedBox.shrink(),
+            ),
       home: isConfigured && db != null && phone != null
           ? _AppRoot(db: db, phone: phone)
           : const ConfigMissingScreen(),
