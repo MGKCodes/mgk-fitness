@@ -369,6 +369,13 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The paywall stops telling you nothing was charged when it cannot know.**
+  Every refusal from the store read "That did not go through. Nothing has been
+  charged." -- including a payment still pending, which may well be charged, a
+  dropped connection, and a subscription you already had. Each now says what
+  happened: the payment is pending, there is no connection, or your store
+  account already has the subscription and Restore purchases is the way to it.
+  A restore finishes on "Restored." rather than "Payment went through".
 - **Deleting your account while subscribed says the subscription goes on.**
   Deleting the account does not cancel a subscription, and the screen never
   said so, so a runner could delete everything and keep paying. It now says

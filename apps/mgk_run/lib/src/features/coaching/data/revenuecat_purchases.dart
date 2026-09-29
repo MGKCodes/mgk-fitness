@@ -53,6 +53,36 @@ import 'purchase_client.dart';
 String productTitle(String raw) =>
     raw.replaceFirst(RegExp(r'\s*\(.*\)\s*$'), '').trim();
 
+/// What a store error means for the runner, by RevenueCat's code for it.
+///
+/// **Five different things used to be one.** A payment still pending, a dead
+/// connection, a subscription already owned and a receipt attached to another
+/// account were all `failed`, and the screen told every one of them that
+/// nothing had been charged. Two of those are statements about money the app
+/// cannot make: a pending payment may well be charged, and a connection that
+/// dropped mid-purchase does not say where the purchase got to.
+PurchaseOutcome outcomeForError(PurchasesErrorCode code) => switch (code) {
+  PurchasesErrorCode.purchaseCancelledError => PurchaseOutcome.cancelled,
+  PurchasesErrorCode.paymentPendingError => PurchaseOutcome.pending,
+  PurchasesErrorCode.networkError ||
+  PurchasesErrorCode.offlineConnectionError => PurchaseOutcome.offline,
+  PurchasesErrorCode.productAlreadyPurchasedError ||
+  PurchasesErrorCode.receiptAlreadyInUseError ||
+  PurchasesErrorCode.receiptInUseByOtherSubscriberError =>
+    PurchaseOutcome.alreadyOwned,
+  _ => PurchaseOutcome.failed,
+};
+
+/// [outcomeForError] for an exception off the platform channel, whose code
+/// may not be one of RevenueCat's at all.
+PurchaseOutcome _outcomeOf(PlatformException e) {
+  try {
+    return outcomeForError(PurchasesErrorHelper.getErrorCode(e));
+  } on FormatException {
+    return PurchaseOutcome.failed;
+  }
+}
+
 class RevenueCatPurchases implements PurchaseClient {
   /// [AppConfig.storeKey], not `revenueCatKey`: the key differs per store and
   /// the wrong one does not degrade, it fails to configure at all.
@@ -237,10 +267,7 @@ class RevenueCatPurchases implements PurchaseClient {
       await Purchases.purchase(PurchaseParams.package(package));
       return PurchaseOutcome.purchased;
     } on PlatformException catch (e) {
-      return PurchasesErrorHelper.getErrorCode(e) ==
-              PurchasesErrorCode.purchaseCancelledError
-          ? PurchaseOutcome.cancelled
-          : PurchaseOutcome.failed;
+      return _outcomeOf(e);
     }
   }
 
@@ -261,8 +288,8 @@ class RevenueCatPurchases implements PurchaseClient {
       return info.activeSubscriptions.isEmpty
           ? PurchaseOutcome.nothingToRestore
           : PurchaseOutcome.purchased;
-    } on PlatformException {
-      return PurchaseOutcome.failed;
+    } on PlatformException catch (e) {
+      return _outcomeOf(e);
     }
   }
 }

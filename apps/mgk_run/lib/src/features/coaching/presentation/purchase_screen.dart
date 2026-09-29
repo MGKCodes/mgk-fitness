@@ -145,14 +145,41 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               'attached to an account or it cannot reach your coach. '
               'Nothing has been charged.';
         });
+      // **Each of these used to read "That did not go through. Nothing has
+      // been charged."** Two of them were claims about money the app cannot
+      // make: a pending payment may well be charged, and a connection that
+      // dropped mid-purchase does not say where the purchase got to. And a
+      // runner who already owns the subscription was sent to buy it again.
+      case PurchaseOutcome.pending:
+        setState(() {
+          _busyId = null;
+          _note =
+              'Your payment is pending with $_store. The coach unlocks when '
+              'it completes.';
+        });
+      case PurchaseOutcome.offline:
+        setState(() {
+          _busyId = null;
+          _note = _offline;
+        });
+      case PurchaseOutcome.alreadyOwned:
+        setState(() {
+          _busyId = null;
+          _note =
+              'This $_account already has a subscription. Tap Restore '
+              'purchases.';
+        });
       case PurchaseOutcome.nothingToRestore:
       case PurchaseOutcome.failed:
         setState(() {
           _busyId = null;
-          _note = 'That did not go through. Nothing has been charged.';
+          _note = 'That did not go through. Try again in a moment.';
         });
     }
   }
+
+  static const String _offline =
+      "No connection — try again when you're online.";
 
   Future<void> _restore() async {
     setState(() {
@@ -164,7 +191,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     if (!mounted) return;
     switch (outcome) {
       case PurchaseOutcome.purchased:
-        await _settle();
+        await _settle(restored: true);
       case PurchaseOutcome.nothingToRestore:
         setState(() {
           _restoring = false;
@@ -180,11 +207,26 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               'Sign in first, then restore. A subscription belongs to an '
               'account, so it has to be restored to one.';
         });
+      case PurchaseOutcome.offline:
+        setState(() {
+          _restoring = false;
+          _note = _offline;
+        });
+      case PurchaseOutcome.pending:
+        setState(() {
+          _restoring = false;
+          _note =
+              'Your payment is pending with $_store. The coach unlocks when '
+              'it completes.';
+        });
+      // "Could not reach the store" was said of every one of these, most of
+      // which reached it.
       case PurchaseOutcome.cancelled:
+      case PurchaseOutcome.alreadyOwned:
       case PurchaseOutcome.failed:
         setState(() {
           _restoring = false;
-          _note = 'Could not reach $_store. Try again in a moment.';
+          _note = 'Restoring did not work. Try again in a moment.';
         });
     }
   }
@@ -217,7 +259,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   /// Waits for the server to agree, then leaves.
-  Future<void> _settle() async {
+  ///
+  /// [restored] is whether this follows a restore rather than a payment, which
+  /// changes the one sentence it may end on: a restore moved no money, and
+  /// "Payment went through" after one reads as a second charge.
+  Future<void> _settle({bool restored = false}) async {
     for (final Duration wait in _waits) {
       if (wait > Duration.zero) await Future<void>.delayed(wait);
       if (!mounted) return;
@@ -235,9 +281,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       // True, and deliberately not an apology. The money moved; the row has
       // not arrived yet. Saying "something went wrong" here would invite a
       // second purchase.
-      _note =
-          'Payment went through. The coach can take a minute to unlock, and '
-          'will be there next time you open the app.';
+      _note = restored
+          ? 'Restored. The coach can take a minute to unlock.'
+          : 'Payment went through. The coach can take a minute to unlock, and '
+                'will be there next time you open the app.';
     });
   }
 
