@@ -4,15 +4,17 @@
 goal, and have a coach that adapts when life gets in the way. Part of the
 [mgk-fitness](../../README.md) suite.
 
-[![Status: TestFlight](https://img.shields.io/badge/Status-TestFlight-blue.svg)](docs/app-store-1.0.0.md)
-[![Platform: iOS](https://img.shields.io/badge/Platform-iOS-lightgrey.svg)](#)
+[![Status: in testing](https://img.shields.io/badge/Status-TestFlight%20%26%20Play%20internal-blue.svg)](docs/app-store-1.0.0.md)
+[![Platforms: iOS and Android](https://img.shields.io/badge/Platforms-iOS%20%7C%20Android-lightgrey.svg)](#)
 [![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B.svg)](https://flutter.dev)
 
 ## Status
 
-**In TestFlight, not yet submitted.** Build 12 (2026-09-02) is the first build
-carrying the payment arc — the RevenueCat SDK, the paywall, and the coach
-gate's real destination. Tracking, plan generation and the coach all run.
+**On TestFlight and Google Play internal testing, not yet submitted.** Build 25
+is on both test tracks; build 26 is the release candidate for the App Store and
+Google Play together. Tracking, plan generation and the coach all run, and the
+coach is sold as a subscription through both stores. What is left is in
+[`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md).
 
 The test count lives in
 [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) and only there. It read
@@ -26,7 +28,10 @@ components came home.
 
 ## What it does
 
-- **Records runs** with GPS trace, splits, elevation and heart rate.
+- **Records runs** with a GPS trace, splits and pace, and on iPhone the step
+  count and cadence from Apple Health. No elevation or heart rate: there is no
+  barometric source, and the app reads no heart rate
+  ([ADR-0024](docs/decisions/0024-elevation-is-barometric-or-absent.md)).
 - **Builds a training plan** from your goal, your current volume, and the days
   you can actually run.
 - **Adapts.** Miss a week and the plan responds, rather than quietly becoming a
@@ -108,18 +113,22 @@ un-namespaced call fails at runtime rather than at compile time.
 **Start at [`docs/README.md`](docs/README.md)** — it carries the filing rule
 (documents tier by **lifecycle**, not topic) and names the live release set.
 
-- [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) — shipping 1.0.0, and
-  the only checklist carrying state. [`store-setup.md`](docs/store-setup.md) is
-  its runbook; [`app-store-listing.md`](docs/app-store-listing.md) is listing
-  copy parsed by `tool/check_listing.py`.
-- [`docs/decisions/`](docs/decisions/) — 30 ADRs, the *why*. Superseded, never
+- [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) — shipping 1.0.0 on
+  both stores, and the only checklist carrying state.
+  [`store-setup.md`](docs/store-setup.md) and
+  [`play-setup.md`](docs/play-setup.md) are its runbooks;
+  [`app-store-listing.md`](docs/app-store-listing.md) and
+  [`play-listing.md`](docs/play-listing.md) are listing copy parsed by
+  `tool/check_listing.py`.
+- [`docs/decisions/`](docs/decisions/) — 40 ADRs, the *why*. Superseded, never
   edited.
 - [`docs/architecture/`](docs/architecture/) — the *how*. Four of the six have
   not been touched since 2026-08-06; trust `decisions/` where they disagree.
 - [`docs/compliance.md`](docs/compliance.md),
   [`privacy-policy.md`](docs/privacy-policy.md),
-  [`medical-disclaimer.md`](docs/medical-disclaimer.md) — the legal source,
-  generated into `web/public/run/`. Never edit a generated copy.
+  [`medical-disclaimer.md`](docs/medical-disclaimer.md),
+  [`terms-of-use.md`](docs/terms-of-use.md) — the legal source, generated into
+  `web/public/run/`. Never edit a generated copy.
 - [`../../docs/`](../../docs/) — the suite: the Supabase schema, the design
   language, naming, navigation.
 - [`docs/history/product-spec.md`](docs/history/product-spec.md) — **stale, and still titled

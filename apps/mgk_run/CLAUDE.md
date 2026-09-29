@@ -6,10 +6,12 @@ specific to the running app.
 
 ## Current state
 
-**In TestFlight, not yet submitted.** Build 12 (2026-09-02) is the first build
-carrying the payment arc — the RevenueCat SDK, `PurchaseScreen`, and the coach
-gate's real destination. Tracking, plan generation and the coach all run.
-`lib/` holds ~190 Dart files.
+**On both stores' test tracks, not yet submitted.** Build 25 is on TestFlight
+and Play internal testing; build 26 (`1.0.0+26`, not cut yet) is the release
+candidate for the App Store and Google Play together, adding the coach's
+consent sheet, reported replies, account and purchase safety, and the
+recording fixes. What is left, in order, is at the top of
+`docs/app-store-1.0.0.md`.
 
 Three tests are skipped by design (`@Tags(['live'])` — they hit the real
 backend). **The test count is deliberately not written here.** It sat at 1186 in
@@ -90,17 +92,19 @@ schema, it is stale — say so rather than working around it.
 **Start at [`docs/README.md`](docs/README.md)**, which carries the filing rule:
 documents are tiered by lifecycle, not by topic.
 
-- `docs/decisions/` — 30 ADRs, the *why*. Superseded, never edited.
+- `docs/decisions/` — the ADRs, the *why*, indexed in `decisions/README.md`.
+  Superseded, never edited.
 - `docs/architecture/` — the *how*. Four of the six are untouched since
   2026-08-06 and predate the purchase arc; trust `decisions/` where they
   disagree, and fix what you find.
-- `docs/app-store-1.0.0.md` — the live release plan, and **the only checklist
-  carrying state**. `store-setup.md` is its runbook (dashboard fields and
-  troubleshooting); `app-store-listing.md` is listing copy parsed by
-  `tool/check_listing.py`, so it is source rather than prose.
-- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md` —
-  the legal source, generated into `legal-site/` and `web/public/run/`. Never
-  edit a generated copy.
+- `docs/app-store-1.0.0.md` — the live release plan for both stores, and
+  **the only checklist carrying state**. `store-setup.md` (Apple) and
+  `play-setup.md` (Google) are its runbooks; `app-store-listing.md` and
+  `play-listing.md` are listing copy parsed by `tool/check_listing.py`, so
+  they are source rather than prose.
+- `docs/compliance.md`, `docs/privacy-policy.md`, `docs/medical-disclaimer.md`,
+  `docs/terms-of-use.md` — the legal source, generated into `legal-site/` and
+  `web/public/run/`. Never edit a generated copy.
 - `docs/history/product-spec.md` — **stale, and still titled Runio.** It was named here
   as the source of truth and is not one. Read it as history.
 

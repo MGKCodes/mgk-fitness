@@ -55,14 +55,15 @@ places, not because the subject is large.
 Supporting the same push:
 
 - **[compliance.md](compliance.md)** — GDPR, health data, the sub-processor
-  table, and the App Review notes. The sub-processor table is the one that must
-  agree with four other places; `legal_copy_test.dart` pins them together.
+  table, and what App Review asks about (the notes themselves are final in
+  `app-store-listing.md`). The sub-processor table is the one that must agree
+  with four other places; `legal_copy_test.dart` pins them together.
 - **[openrouter-processor-agreement.md](openrouter-processor-agreement.md)** —
   an Article 28 obligation running in parallel, tracked because it has
   somebody else's clock on it.
 - **[../../../store-assets/README.md](../../../store-assets/README.md)** — what
   App Store Connect will and will not accept as an image, and the script that
-  checks it.
+  checks it. Play's image rules are in `play-listing.md`.
 - **[after-1.0.0.md](after-1.0.0.md)** — the edge of the same push. Two items
   from the build 12 field test that are **not** 1.0.0 scope because neither is
   specified — plan depth, and interactivity on the finish screen — one that is
