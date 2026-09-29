@@ -383,6 +383,35 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A run the phone stopped halfway is recovered, not lost.** If the app was
+  killed during a run -- iOS reclaiming memory, a swipe from the app switcher,
+  a reboot, a crash -- the run stayed on the phone, invisible, forever. The next
+  launch now finishes it from the route it saved and marks it "Recovered
+  automatically"; a run with no route saved is removed. Pauses are saved as they
+  happen, so a recovered run's time leaves them out.
+- **Back during a run no longer hides it.** On Android, Back closed the run
+  screen while GPS and the recording notification carried on, with no way back
+  to the run. Back now asks whether to finish or discard.
+- **Tapping Finish twice no longer leaves a blank screen.** The second tap
+  closed the app's home screen as well as the run. Finish now answers once, and
+  the run is saved before the backup upload starts rather than after it ends.
+- **Allowing location mid-run carries on with the same run.** After location
+  was refused and allowed again mid-run, the app started a second run over the
+  first, lost the first half and counted every point twice.
+- **A plan never puts a session on race day, in any week.** The check only ran
+  for the first two weeks a plan wrote; the weeks written later, and the weeks
+  rewritten from a chat, were never checked.
+- **A race less than six weeks away is refused, not built wrong.** A plan
+  needs six weeks; a nearer race used to get six weeks anyway, with race day
+  somewhere in the middle and the taper after it.
+- **Day counts are right across a clock change.** "Yesterday", "in 3 days" and
+  the dates the coach is told were a day short across the spring change.
+- **Precise Location off says so.** With approximate location, the run screen
+  showed "Acquiring GPS" for the whole run and saved nothing. It now asks for
+  Precise Location in Settings (iPhone; Android does not report which it has).
+- **A killed update can no longer break the database.** An app update that was
+  interrupted while upgrading the phone's database left it unreadable on every
+  launch after. The upgrade now completes or leaves the old version intact.
 - **This app's coach no longer touches Lift's.** Tidying old coach
   conversations deleted Lift's old ones too, which stopped Lift's coach
   remembering anything new; and restoring onto a new phone brought Lift's
