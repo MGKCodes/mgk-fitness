@@ -272,7 +272,12 @@ void main() {
       expect(find.byType(PurchaseScreen), findsOneWidget);
     });
 
-    testWidgets('and a real failure says nothing was charged', (tester) async {
+    testWidgets('and a real failure does not claim what it cannot know', (
+      tester,
+    ) async {
+      // It said "Nothing has been charged" to every refusal the store gave,
+      // and a refusal does not say that. The cases it can say more about have
+      // their own sentences; see what_a_failed_purchase_says_about_money_test.
       await pump(
         tester,
         purchases: FakePurchases(buyOutcome: PurchaseOutcome.failed),
@@ -282,7 +287,8 @@ void main() {
       await tester.tap(find.text('Subscribe').first);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Nothing has been charged'), findsOneWidget);
+      expect(find.textContaining('did not go through'), findsOneWidget);
+      expect(find.textContaining('Nothing has been charged'), findsNothing);
     });
 
     // Build 12's first real sandbox purchase went through on an

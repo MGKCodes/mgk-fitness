@@ -80,7 +80,10 @@ class SupabaseEntitlements implements EntitlementRepository {
   /// fail the query — the key is simply absent, which reads as null — and a
   /// null `expires_at` means "no end date", so losing it here would quietly
   /// undo the lapse rule rather than break anything.
-  static const String columns = 'product, status, expires_at';
+  ///
+  /// `platform` is which store bills them, so Settings names that store and
+  /// links to it rather than to whichever one this phone happens to run.
+  static const String columns = 'product, status, expires_at, platform';
 
   /// Resolved per call so constructing this does not require Supabase to be
   /// initialised, the same reason `AuthRepository` and `SupabaseUnitSettings`

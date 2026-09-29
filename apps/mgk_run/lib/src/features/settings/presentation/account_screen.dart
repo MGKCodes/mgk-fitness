@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../auth/data/auth_repository.dart';
+import '../../coaching/data/purchase_client.dart';
 import '../../coaching/domain/coach_subscription.dart';
-import '../../coaching/presentation/purchase_screen.dart' show storeName;
+import '../../coaching/domain/manage_subscription.dart';
+import '../../coaching/presentation/manage_subscription_link.dart';
 import '../../legal/domain/account_deleter.dart';
 import '../../legal/presentation/delete_account_screen.dart';
 import 'avatar.dart';
@@ -44,10 +46,20 @@ class AccountScreen extends StatelessWidget {
     required this.onPickPhoto,
     required this.onRemovePhoto,
     required this.onCreateAccount,
+    this.purchases,
+    this.openUrl,
   });
 
   final AuthRepository auth;
   final AccountDeleter deleter;
+
+  /// Opens the store's management page on an iPhone. Null looks in
+  /// `PhoneScope`, which is where the app keeps it.
+  final PurchaseClient? purchases;
+
+  /// Opens a store page in the browser. Null is the real browser; tests pass
+  /// their own, having none.
+  final UrlOpener? openUrl;
 
   /// Null while the entitlement read is still in flight.
   final CoachSubscription? subscription;
@@ -160,7 +172,11 @@ class AccountScreen extends StatelessWidget {
 
             if (subscription != null) ...<Widget>[
               const SizedBox(height: AppSpacing.xl),
-              _SubscriptionBlock(subscription!),
+              _SubscriptionBlock(
+                subscription!,
+                purchases: purchases,
+                openUrl: openUrl,
+              ),
             ],
 
             const SizedBox(height: AppSpacing.xxl),
@@ -199,8 +215,12 @@ class AccountScreen extends StatelessWidget {
                 label: 'Delete account',
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        DeleteAccountScreen(auth: auth, deleter: deleter),
+                    builder: (_) => DeleteAccountScreen(
+                      auth: auth,
+                      deleter: deleter,
+                      purchases: purchases,
+                      openUrl: openUrl,
+                    ),
                   ),
                 ),
               ),
@@ -220,14 +240,20 @@ class AccountScreen extends StatelessWidget {
 
 /// What the subscription is, in the detail an index cannot carry.
 class _SubscriptionBlock extends StatelessWidget {
-  const _SubscriptionBlock(this.subscription);
+  const _SubscriptionBlock(this.subscription, {this.purchases, this.openUrl});
 
   final CoachSubscription subscription;
+  final PurchaseClient? purchases;
+  final UrlOpener? openUrl;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final store = storeName(defaultTargetPlatform);
+    // The store that bills them. This was `storeName(defaultTargetPlatform)`,
+    // which is where the app is running: an App Store subscriber signed in on
+    // Android was told to cancel in Google Play, where there is nothing to
+    // cancel.
+    final store = billingStoreFor(subscription, defaultTargetPlatform).label;
     final dim = theme.textTheme.bodySmall?.copyWith(
       color: AppColors.textTertiary,
       height: 1.4,
@@ -252,6 +278,21 @@ class _SubscriptionBlock extends StatelessWidget {
               value: status,
               tint: bad ? AppColors.danger : null,
             ),
+            // The way out, where the sentence below says there is one. Every
+            // state but "never subscribed": a lapsed runner resubscribes or
+            // checks the charges stopped on the same page.
+            if (hasSubscriptionToManage(subscription))
+              SettingsRow(
+                title: 'Manage subscription',
+                onTap: () => unawaited(
+                  openManageSubscription(
+                    context,
+                    subscription,
+                    purchases: purchases,
+                    open: openUrl,
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),

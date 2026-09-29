@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../auth/data/auth_repository.dart';
+import '../../auth/presentation/sign_in_screen.dart';
 import '../../legal/domain/legal_urls.dart';
 import '../../legal/presentation/privacy_policy_screen.dart';
 import '../data/entitlement_repository.dart';
@@ -36,10 +38,17 @@ class PurchaseScreen extends StatefulWidget {
     super.key,
     required this.purchases,
     required this.entitlements,
+    this.auth = const AuthRepository(),
   });
 
   /// Presents and performs. It is never asked what the runner owns.
   final PurchaseClient purchases;
+
+  /// Where signing in happens when a purchase is refused for want of an
+  /// account. The screen is reachable signed out -- the coach mark opens the
+  /// gate for anybody -- and "sign in first" with no way to do it was a dead
+  /// end at the moment somebody had decided to pay.
+  final AuthRepository auth;
 
   /// The server's answer, which is the only one that counts
   /// ([ADR-0030](../../../../docs/decisions/0030-the-coach-is-the-paid-half.md)).
@@ -51,11 +60,15 @@ class PurchaseScreen extends StatefulWidget {
     BuildContext context, {
     required PurchaseClient purchases,
     required EntitlementRepository entitlements,
+    AuthRepository auth = const AuthRepository(),
   }) async {
     final bool? unlocked = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) =>
-            PurchaseScreen(purchases: purchases, entitlements: entitlements),
+        builder: (_) => PurchaseScreen(
+          purchases: purchases,
+          entitlements: entitlements,
+          auth: auth,
+        ),
       ),
     );
     return unlocked ?? false;
@@ -102,10 +115,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   bool _restoring = false;
   String? _note;
 
+  /// Whether the last refusal was for want of an account, which is what puts
+  /// a way to sign in under the note.
+  bool _needsAccount = false;
+
   Future<void> _buy(CoachOffer offer) async {
     setState(() {
       _busyId = offer.id;
       _note = null;
+      _needsAccount = false;
     });
     final PurchaseOutcome outcome = await widget.purchases.buy(offer);
     if (!mounted) return;
@@ -121,47 +139,131 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         // saying so beats a retry that would refuse again.
         setState(() {
           _busyId = null;
+          _needsAccount = true;
           _note =
               'Sign in first, then try again. A subscription has to be '
               'attached to an account or it cannot reach your coach. '
               'Nothing has been charged.';
         });
+      // **Each of these used to read "That did not go through. Nothing has
+      // been charged."** Two of them were claims about money the app cannot
+      // make: a pending payment may well be charged, and a connection that
+      // dropped mid-purchase does not say where the purchase got to. And a
+      // runner who already owns the subscription was sent to buy it again.
+      case PurchaseOutcome.pending:
+        setState(() {
+          _busyId = null;
+          _note =
+              'Your payment is pending with $_store. The coach unlocks when '
+              'it completes.';
+        });
+      case PurchaseOutcome.offline:
+        setState(() {
+          _busyId = null;
+          _note = _offline;
+        });
+      case PurchaseOutcome.alreadyOwned:
+        setState(() {
+          _busyId = null;
+          _note =
+              'This $_account already has a subscription. Tap Restore '
+              'purchases.';
+        });
       case PurchaseOutcome.nothingToRestore:
       case PurchaseOutcome.failed:
         setState(() {
           _busyId = null;
-          _note = 'That did not go through. Nothing has been charged.';
+          _note = 'That did not go through. Try again in a moment.';
         });
     }
   }
+
+  static const String _offline =
+      "No connection — try again when you're online.";
 
   Future<void> _restore() async {
     setState(() {
       _restoring = true;
       _note = null;
+      _needsAccount = false;
     });
     final PurchaseOutcome outcome = await widget.purchases.restore();
     if (!mounted) return;
     switch (outcome) {
       case PurchaseOutcome.purchased:
-        await _settle();
+        await _settle(restored: true);
       case PurchaseOutcome.nothingToRestore:
         setState(() {
           _restoring = false;
           _note = 'No previous subscription found on this $_account.';
         });
-      case PurchaseOutcome.cancelled:
       case PurchaseOutcome.notIdentified:
+        // Refused before the store, like a purchase: a subscription restored
+        // to nobody -- or to whoever signed in last -- reaches no coach.
+        setState(() {
+          _restoring = false;
+          _needsAccount = true;
+          _note =
+              'Sign in first, then restore. A subscription belongs to an '
+              'account, so it has to be restored to one.';
+        });
+      case PurchaseOutcome.offline:
+        setState(() {
+          _restoring = false;
+          _note = _offline;
+        });
+      case PurchaseOutcome.pending:
+        setState(() {
+          _restoring = false;
+          _note =
+              'Your payment is pending with $_store. The coach unlocks when '
+              'it completes.';
+        });
+      // "Could not reach the store" was said of every one of these, most of
+      // which reached it.
+      case PurchaseOutcome.cancelled:
+      case PurchaseOutcome.alreadyOwned:
       case PurchaseOutcome.failed:
         setState(() {
           _restoring = false;
-          _note = 'Could not reach $_store. Try again in a moment.';
+          _note = 'Restoring did not work. Try again in a moment.';
         });
     }
   }
 
+  /// Signs in from here, so a refusal for want of an account has a way
+  /// forward on the same screen.
+  ///
+  /// Identifies the store straight away rather than waiting for the shell to
+  /// hear the sign-in: the runner's next tap is Subscribe again, and it should
+  /// find the account already attached.
+  Future<void> _signIn() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => SignInScreen(
+          auth: widget.auth,
+          onBack: () => Navigator.of(routeContext).maybePop(),
+          onAuthenticated: () => Navigator.of(routeContext).maybePop(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    final String? id = widget.auth.currentUserId;
+    if (id == null) return;
+    await widget.purchases.identify(id);
+    if (!mounted) return;
+    setState(() {
+      _needsAccount = false;
+      _note = null;
+    });
+  }
+
   /// Waits for the server to agree, then leaves.
-  Future<void> _settle() async {
+  ///
+  /// [restored] is whether this follows a restore rather than a payment, which
+  /// changes the one sentence it may end on: a restore moved no money, and
+  /// "Payment went through" after one reads as a second charge.
+  Future<void> _settle({bool restored = false}) async {
     for (final Duration wait in _waits) {
       if (wait > Duration.zero) await Future<void>.delayed(wait);
       if (!mounted) return;
@@ -179,9 +281,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       // True, and deliberately not an apology. The money moved; the row has
       // not arrived yet. Saying "something went wrong" here would invite a
       // second purchase.
-      _note =
-          'Payment went through. The coach can take a minute to unlock, and '
-          'will be there next time you open the app.';
+      _note = restored
+          ? 'Restored. The coach can take a minute to unlock.'
+          : 'Payment went through. The coach can take a minute to unlock, and '
+                'will be there next time you open the app.';
     });
   }
 
@@ -255,6 +358,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 ),
               ),
             ],
+            if (_needsAccount)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: AppTextButton(
+                  label: 'Sign in',
+                  onPressed: busy ? null : _signIn,
+                ),
+              ),
             const SizedBox(height: AppSpacing.md),
             // Apple requires this, and requires it reachable without buying
             // anything first. It is a text button rather than a primary one

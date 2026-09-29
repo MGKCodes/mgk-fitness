@@ -26,6 +26,8 @@ import '../../recording/domain/run_summary.dart';
 import '../data/auth_repository.dart';
 import '../../onboarding/presentation/intro_screen.dart';
 import '../../settings/data/backup_eraser.dart';
+import '../../settings/domain/local_data.dart';
+import 'another_account_screen.dart';
 import 'sign_in_screen.dart';
 
 /// Routes between the sign-in flow and the app shell based on auth state.
@@ -52,6 +54,7 @@ class AuthGate extends StatefulWidget {
     this.purchases,
     this.requestPermission,
     this.introStore,
+    this.localData,
   });
 
   final AuthRepository auth;
@@ -110,6 +113,11 @@ class AuthGate extends StatefulWidget {
   /// platform default; injected by tests and the preview harness.
   final IntroStore? introStore;
 
+  /// Whose training is on this phone, and the only way to hand it to another
+  /// account. Null skips the question, which is what the preview harness, a
+  /// dev persona and tests that are not about it want.
+  final LocalDataGuard? localData;
+
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
@@ -154,14 +162,83 @@ class _AuthGateState extends State<AuthGate> {
   /// That is one of the three reasons the restore ran more than once per launch.
   late final Stream<AuthChange> _authChanges = widget.auth.authChanges();
 
+  /// Detaches the store whenever the session ends, however it ended.
+  ///
+  /// **Here, because this is the one thing that sees every sign-out.** Settings,
+  /// the other-account question, a deleted account and an expired session all
+  /// end the session somewhere else, and the shell is not always mounted to
+  /// hear it -- the other-account question is drawn in its place. Nothing
+  /// logged the store out at all before this, so a purchase made after signing
+  /// out went to the account that had left.
+  StreamSubscription<AuthChange>? _signOuts;
+
   /// What the runner told the coach to call them, when there is no account
   /// holding it. Null for anybody signed in, who has it on their profile.
   String? _localName;
+
+  /// The account the phone's training was last checked against, and the
+  /// answer: true to carry on, false to ask, null while it is being worked out.
+  String? _checkedFor;
+  bool? _mayUse;
+
+  /// Whether the last frame was the shell.
+  ///
+  /// **A sign-in over a running shell keeps it while the check runs.** The
+  /// plan gate and the Settings rows raise sign-in as a route over a shell
+  /// that stays mounted, and wait on it to carry on with what the runner asked
+  /// for -- swapping the shell for a blank frame would unmount it under them
+  /// and drop the request. The shell holds its restore until the same answer
+  /// arrives (`HomeShell._doRestoreThenLoad`), so keeping it on screen moves
+  /// nothing. At launch there is no shell yet, and a blank frame beats one
+  /// that paints somebody else's log first.
+  bool _drewShell = false;
+
+  /// Bumped when the phone is erased, and used as the shell's key: a shell
+  /// built before the erase holds the erased runs, plan and conversation in
+  /// memory, and the only honest thing to do with it is build another.
+  int _generation = 0;
 
   @override
   void initState() {
     super.initState();
     unawaited(_readIntro());
+    widget.localData?.erasures.addListener(_onErased);
+    _signOuts = widget.auth.authChanges().listen((change) {
+      if (change != AuthChange.signedOut) return;
+      unawaited(_purchases?.logOut() ?? Future<void>.value());
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.localData?.erasures.removeListener(_onErased);
+    unawaited(_signOuts?.cancel());
+    super.dispose();
+  }
+
+  void _onErased() {
+    if (!mounted) return;
+    setState(() {
+      _generation++;
+      // The name went with everything else. Re-read rather than assumed, so
+      // this and the file cannot disagree.
+      _localName = null;
+    });
+    unawaited(_readIntro());
+  }
+
+  /// Works out whether [userId] may use what is on this phone.
+  Future<void> _check(LocalDataGuard guard, String userId) async {
+    final ok = await guard.mayUse(userId);
+    if (!mounted || _checkedFor != userId) return;
+    setState(() => _mayUse = ok);
+    if (ok) return;
+    // Whatever was pushed over the shell -- Settings, a sign-in form, a
+    // dialog -- is still on top of it, holding the other account's name and
+    // photo, and would sit over the question. Clear the way to it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    });
   }
 
   Future<void> _readIntro() async {
@@ -229,6 +306,11 @@ class _AuthGateState extends State<AuthGate> {
       stream: _authChanges,
       builder: (context, _) {
         if (!auth.isSignedIn) {
+          // Signed out, so the next sign-in -- whoever it is -- is checked
+          // afresh. The guard remembers its answer, so this costs nothing when
+          // it is the same account again.
+          _checkedFor = null;
+          _mayUse = null;
           // **An account is not the price of using this.**
           //
           // This returned the signed-out flow unconditionally, which made every
@@ -260,7 +342,37 @@ class _AuthGateState extends State<AuthGate> {
             );
           }
           // Introduced, and not signed in. The tracker, on this phone only.
+          _drewShell = true;
           return _shell(auth);
+        }
+        // **Whose training is this?** Before anything else an account does
+        // here, and before the intro -- which would write this account's
+        // name over the one on the phone.
+        final guard = widget.localData;
+        final userId = auth.currentUserId;
+        if (guard != null && userId != null) {
+          if (_checkedFor != userId) {
+            _checkedFor = userId;
+            _mayUse = null;
+            unawaited(_check(guard, userId));
+          }
+          if (_mayUse == false) {
+            _drewShell = false;
+            return AnotherAccountScreen(
+              email: auth.currentEmail,
+              onErase: () async {
+                await guard.eraseFor(userId);
+                if (!mounted || _checkedFor != userId) return;
+                setState(() => _mayUse = true);
+              },
+              onSignOut: auth.signOut,
+            );
+          }
+          if (_mayUse == null && !_drewShell) {
+            // A frame or two at launch, for the reason the intro marker's
+            // blank frame gives: better than painting another account's log.
+            return const Scaffold(body: SizedBox.shrink());
+          }
         }
         // **Signed in is not the same as onboarded.**
         //
@@ -277,6 +389,7 @@ class _AuthGateState extends State<AuthGate> {
         // No account steps: they have a profile. Just the coach, and the
         // permissions this install has never been asked for.
         if (!_justSignedUp && !_metCoachThisSession && !auth.hasMetCoach) {
+          _drewShell = false;
           return IntroScreen(
             // What the profile already knows. The name is shared across the
             // suite, so somebody arriving from Lift is not asked for it twice.
@@ -286,12 +399,17 @@ class _AuthGateState extends State<AuthGate> {
             onFinished: (name) => unawaited(_introFinished(auth, name)),
           );
         }
+        _drewShell = true;
         return _shell(auth);
       },
     );
   }
 
   Widget _shell(AuthRepository auth) => HomeShell(
+    // Constant until the phone is erased, so every other rebuild reuses the
+    // shell exactly as before; see [_generation].
+    key: ValueKey<int>(_generation),
+    localData: widget.localData,
     justSignedUp: _justSignedUp,
     auth: auth,
     // **The wire the last change built both ends of and never joined.**

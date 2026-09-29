@@ -369,6 +369,52 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **This app's coach no longer touches Lift's.** Tidying old coach
+  conversations deleted Lift's old ones too, which stopped Lift's coach
+  remembering anything new; and restoring onto a new phone brought Lift's
+  coach conversations into this app, where they were sent to the coach as
+  running history. Both now reach only this app's conversations.
+- **The paywall stops telling you nothing was charged when it cannot know.**
+  Every refusal from the store read "That did not go through. Nothing has been
+  charged." -- including a payment still pending, which may well be charged, a
+  dropped connection, and a subscription you already had. Each now says what
+  happened: the payment is pending, there is no connection, or your store
+  account already has the subscription and Restore purchases is the way to it.
+  A restore finishes on "Restored." rather than "Payment went through".
+- **Deleting your account while subscribed says the subscription goes on.**
+  Deleting the account does not cancel a subscription, and the screen never
+  said so, so a runner could delete everything and keep paying. It now says
+  "Deleting your account does not cancel your subscription. Cancel it in
+  Google Play, or it will keep renewing." (or the App Store), before you
+  confirm and again afterwards, with a link to manage it.
+- **Account has a "Manage subscription" link, to the store that bills you.**
+  It said to cancel in the store and linked nowhere, and it named the store the
+  app was running on rather than the one charging: an App Store subscriber
+  signed in on Android was told to cancel in Google Play. The link opens this
+  app's subscription in Google Play, or Apple's subscriptions page.
+- **A subscription bought after signing out goes to an account, not to the
+  last one.** Signing out never detached the store, so a purchase made signed
+  out -- or before a new sign-in had reached the store -- was credited to the
+  account that had left, and whoever paid got nothing. Signing out now detaches
+  it, buying or restoring needs an account signed in, and the paywall offers a
+  way to sign in when it refuses.
+- **Deleting your account no longer leaves the phone ready to upload it all
+  again.** The phone's yes to backing up survived the deletion, so signing back
+  in -- or making a new account on the same phone -- sent every deleted run
+  straight back. A deletion now resets that answer, removes this app's settings
+  from a login kept for Lift, and erases this phone's copy too unless you
+  switch that off; the screen says which. It also stopped telling runners who
+  use Lift that their login had been removed when it had been kept, and says so
+  honestly when a login could not be removed.
+- **A second account signing in no longer gets the first one's training.** The
+  phone's runs, plan, coach conversations, photo and name said nothing about
+  whose they were, so the next account to sign in saw all of it, the coach
+  briefed itself from it, and the launch backfill pushed the first runner's runs
+  and routes into the new account. The phone now knows whose training it holds,
+  and a different account is asked first: erase this phone's training and
+  continue, or sign out. Nothing is restored or uploaded until it answers. A yes
+  to backing up now belongs to the account that gave it, and signing out can
+  also remove your data from the phone (off unless you turn it on).
 - **A subscription that has run out closes the coach, even if the store's
   final word never arrives.** A cancelled subscription stays live until an
   expiry notice ends it, and if that notice was lost nothing else checked the

@@ -20,6 +20,13 @@ import 'src/features/history/data/consented_run_backup.dart';
 import 'src/features/settings/data/backup_consent_factory.dart';
 import 'src/features/settings/data/backup_eraser.dart';
 import 'src/features/settings/data/backup_health_factory.dart';
+import 'src/features/settings/data/file_local_data_owner.dart';
+import 'src/features/settings/data/file_profile_photo.dart';
+import 'src/features/settings/data/phone_runner_data.dart';
+import 'src/features/settings/domain/local_data.dart';
+import 'src/features/settings/presentation/phone_scope.dart';
+import 'src/features/onboarding/data/intro_store_factory.dart';
+import 'src/features/coaching/data/revenuecat_purchases.dart';
 import 'src/features/history/data/drift_run_repository.dart';
 import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
@@ -39,17 +46,54 @@ Future<void> main() async {
     );
   }
 
+  final db = configured ? AppDatabase.open() : null;
   runApp(
     RunioApp(
       isConfigured: configured,
-      database: configured ? AppDatabase.open() : null,
+      database: db,
+      phone: db == null ? null : _phoneServices(db),
+    ),
+  );
+}
+
+/// The phone's own stores, made once for the life of the app.
+///
+/// The owner record is threaded into the consent store so a yes stops applying
+/// while the training belongs to another account, and the same consent, push
+/// record and intro marker the app reads are the ones an erase clears.
+PhoneServices _phoneServices(AppDatabase db) {
+  final LocalDataOwnerStore owner = FileLocalDataOwner();
+  final consent = createBackupConsentStore(owner: owner);
+  final backupHealth = createBackupHealthStore();
+  final intro = createIntroStore();
+  return PhoneServices(
+    consent: consent,
+    backupHealth: backupHealth,
+    intro: intro,
+    // Made here rather than in the gate, so the account screens can reach the
+    // same instance the gate identifies and detaches.
+    purchases: AppConfig.current.canSell ? RevenueCatPurchases() : null,
+    localData: LocalDataGuard(
+      owner: owner,
+      data: PhoneRunnerData(
+        db: db,
+        photo: const FileProfilePhoto(),
+        intro: intro,
+        consent: consent,
+        backupHealth: backupHealth,
+      ),
     ),
   );
 }
 
 /// Root of the Runio app.
 class RunioApp extends StatelessWidget {
-  const RunioApp({super.key, required this.isConfigured, this.database});
+  const RunioApp({
+    super.key,
+    required this.isConfigured,
+    this.database,
+    this.phone,
+  });
 
   /// Whether Supabase config was supplied at build time. When false the app
   /// shows [ConfigMissingScreen] instead of trying to reach a backend.
@@ -59,15 +103,27 @@ class RunioApp extends StatelessWidget {
   /// Null when the app is unconfigured.
   final AppDatabase? database;
 
+  /// The phone's own stores. Null exactly when [database] is.
+  final PhoneServices? phone;
+
   @override
   Widget build(BuildContext context) {
     final db = database;
+    final phone = this.phone;
     return MaterialApp(
       title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: isConfigured && db != null
-          ? _AppRoot(db: db)
+      // Above the navigator, so a route pushed from anywhere -- deleting the
+      // account from Privacy & legal, say -- reaches the same stores.
+      builder: phone == null
+          ? null
+          : (context, child) => PhoneScope(
+              phone: phone,
+              child: child ?? const SizedBox.shrink(),
+            ),
+      home: isConfigured && db != null && phone != null
+          ? _AppRoot(db: db, phone: phone)
           : const ConfigMissingScreen(),
     );
   }
@@ -80,9 +136,10 @@ class RunioApp extends StatelessWidget {
 /// seeding and every branch below fold away and the seed code is tree-shaken
 /// out of the bundle entirely.
 class _AppRoot extends StatefulWidget {
-  const _AppRoot({required this.db});
+  const _AppRoot({required this.db, required this.phone});
 
   final AppDatabase db;
+  final PhoneServices phone;
 
   @override
   State<_AppRoot> createState() => _AppRootState();
@@ -146,10 +203,10 @@ class _AppRootState extends State<_AppRoot> {
   /// The app wired to real sources, or to [seed]'s when a persona is on.
   Widget _gate(DevSeed? seed) {
     final db = widget.db;
-    // One consent store, shared by every backup. Built here rather than inside
-    // each wrapper so all three read the same answer — three stores could
-    // disagree, and the disagreement would be silent.
-    final consent = createBackupConsentStore();
+    // One consent store, shared by every backup. Made once in `main` rather
+    // than inside each wrapper so all three read the same answer — three
+    // stores could disagree, and the disagreement would be silent.
+    final consent = widget.phone.consent;
     // Where a failed push is written down. Read in two places now: Settings,
     // which builds its own store from the same factory over the same file, and
     // Profile's backup line, which is threaded the store from here.
@@ -158,7 +215,7 @@ class _AppRootState extends State<_AppRoot> {
     // threading it through the shell would mean four widgets holding a
     // dependency only the last of them uses. That was true until Profile had a
     // reason to ask where the runner's training actually is.
-    final backupHealth = createBackupHealthStore();
+    final backupHealth = widget.phone.backupHealth;
     // Gated at construction: nothing below ever holds an ungated backup, so
     // there is no call path that can skip the check.
     //
@@ -241,6 +298,13 @@ class _AppRootState extends State<_AppRoot> {
       // The display unit lives in the shared user_settings row, so it
       // follows the runner across to Liftio.
       unitSettings: SupabaseUnitSettings(),
+      // The same marker an erase clears the name from. Two stores over one
+      // file is a race.
+      introStore: widget.phone.intro,
+      // Whose training is on this phone. Not asked for a persona, whose runs
+      // are invented and live in memory: there is nobody's training to guard.
+      localData: seed == null ? widget.phone.localData : null,
+      purchases: widget.phone.purchases,
     );
   }
 }
