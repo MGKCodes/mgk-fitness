@@ -40,11 +40,23 @@ export default function Home() {
       </ul>
 
       <h2>Lift</h2>
-      <p>
-        Lift is being rebuilt. Its pages will sit here alongside Run&rsquo;s.
-        The version currently on the App Store is documented at{" "}
-        <a href="https://getliftio.com">getliftio.com</a>.
-      </p>
+      <ul>
+        <li>
+          <a href="/lift/privacy">Privacy policy</a>
+        </li>
+        <li>
+          <a href="/lift/terms">Terms of use</a>
+        </li>
+        <li>
+          <a href="/lift/ai-disclosure">How the AI coach uses your data</a>
+        </li>
+        <li>
+          <a href="/lift/support">Support</a>
+        </li>
+        <li>
+          <a href="/lift/delete-account">Delete your account</a>
+        </li>
+      </ul>
     </main>
   );
 }

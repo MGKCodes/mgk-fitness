@@ -260,6 +260,94 @@ void main() {
     });
   });
 
+  group('the published pages say what the app says', () {
+    // web/public/lift/*.html is what App Review and Play read at the URLs in
+    // the listings, and it is generated from docs/ by
+    // tool/build_legal_pages.py. A page that is missing, stale, or carrying a
+    // repo note fails here rather than in a review.
+    String page(String name) {
+      final file = File('../../web/public/lift/$name');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason:
+            'web/public/lift/$name is missing. Run '
+            '`python tool/build_legal_pages.py` from apps/mgk_lift.',
+      );
+      final text = file
+          .readAsStringSync()
+          .replaceAll(
+            RegExp(r'<(style|script)[^>]*>.*?</\1>', dotAll: true),
+            ' ',
+          )
+          .replaceAll(RegExp(r'<[^>]+>'), ' ')
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>')
+          .replaceAll('&middot;', '·');
+      return _normalise(text);
+    }
+
+    String dated(String doc) =>
+        RegExp(r'Last updated: (\d+ \w+ \d{4})').firstMatch(doc)!.group(1)!;
+
+    for (final (source, served, phrases) in <(String, String, List<String>)>[
+      (
+        'privacy-policy.md',
+        'privacy-policy.html',
+        <String>[
+          'We do not sell your data. You can delete everything at any time.',
+          'special-category data under UK GDPR',
+          'RevenueCat',
+          'They are never sent to the coach or to any AI provider.',
+        ],
+      ),
+      (
+        'terms-of-use.md',
+        'terms-of-use.html',
+        <String>[
+          'Your subscription automatically renews each month unless '
+              'auto-renew is turned off at least 24 hours before the end of '
+              'the current period.',
+          'MGKCodes Ltd is not liable for injury',
+        ],
+      ),
+      (
+        'ai-disclosure.md',
+        'ai-disclosure.html',
+        <String>['We send your request to OpenRouter'],
+      ),
+    ]) {
+      test('$served is current with docs/$source', () {
+        final doc = readDoc(source);
+        final html = page(served);
+        for (final phrase in phrases) {
+          expect(html, contains(phrase), reason: '$served lost: $phrase');
+        }
+        // Stale is the likelier failure than wrong: an edit to the doc with
+        // no regeneration. The date moves with every substantive edit.
+        if (doc.contains('Last updated:')) {
+          expect(
+            html,
+            contains('Last updated: ${dated(doc)}'),
+            reason: '$served predates docs/$source. Regenerate it.',
+          );
+        }
+      });
+
+      test('$served carries no repo notes', () {
+        final html = page(served);
+        for (final note in <String>[
+          'NOT FOR PUBLICATION',
+          'legal_copy.dart',
+          'legal_copy_test',
+        ]) {
+          expect(html, isNot(contains(note)), reason: '$served shows: $note');
+        }
+      });
+    }
+  });
+
   group('every document is renderable', () {
     // Cheap structural guard. A document with an empty section renders as a
     // heading over nothing, which reads as a bug rather than as a short
