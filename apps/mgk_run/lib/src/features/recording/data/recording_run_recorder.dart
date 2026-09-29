@@ -281,6 +281,18 @@ class RecordingRunRecorder implements RunRecorder {
   @override
   Future<void> start() async {
     if (_status == RecorderStatus.recording) return;
+    // Mid-run, not a fresh start. This is what the "Allow location" button
+    // on a mid-run problem calls (`RecordingScreen._askAgain`): the runner
+    // paused after a permission error and is retrying, not beginning a new
+    // run. The guard used to check only for `recording`, so calling this
+    // from `paused` — exactly the state that retry happens in — fell
+    // through to the fresh-start path below: a new id, a new row, the clock
+    // reset to zero, and a second subscription to the same broadcast fixes
+    // stream, so every fix that arrived after landed twice.
+    if (_status == RecorderStatus.paused && _runId != null) {
+      await _restartSourceMidRun();
+      return;
+    }
     final id = _newId();
     final started = _now();
     _runId = id;
@@ -324,6 +336,29 @@ class RecordingRunRecorder implements RunRecorder {
       await _abandonUnstartedRun();
       _setProblem(_problemFor(e));
       _setStatus(RecorderStatus.idle);
+    }
+  }
+
+  /// Re-requests permission and restarts the location source on the run
+  /// already in progress, instead of beginning a new one. See [start].
+  ///
+  /// No new id, no new row, no second subscription: [_sub] from the run's
+  /// original [start] is still listening throughout a pause (nothing
+  /// cancels it), so resuming needs only the source itself restarted and
+  /// the status flipped back — the same two things [resume] does, with a
+  /// platform call in between that can fail.
+  Future<void> _restartSourceMidRun() async {
+    _setProblem(null);
+    _setStatus(RecorderStatus.recording);
+    _syncCounting();
+    try {
+      await _source.start();
+    } on LocationUnavailable catch (e) {
+      // Refused again — back to paused, not idle: the run is still there,
+      // only the retry failed.
+      _setProblem(_problemFor(e));
+      _setStatus(RecorderStatus.paused);
+      _syncCounting();
     }
   }
 
