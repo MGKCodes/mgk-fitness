@@ -42,6 +42,10 @@ class FakePurchases implements PurchaseClient {
   /// How many times [restore] was called.
   int restores = 0;
 
+  /// How many times [logOut] was called. A sign-out that never reaches the
+  /// store leaves its purchases attached to whoever just left.
+  int logOuts = 0;
+
   /// The two tiers, priced as ADR-0029 settled them. **A fixture, not a
   /// source of truth** — the shipping app reads both figures off the
   /// storefront, and these exist so a plate has something to draw.
@@ -80,6 +84,12 @@ class FakePurchases implements PurchaseClient {
   Future<PurchaseOutcome> restore() async {
     restores++;
     return restoreOutcome;
+  }
+
+  @override
+  Future<void> logOut() async {
+    logOuts++;
+    identifiedAs = null;
   }
 }
 

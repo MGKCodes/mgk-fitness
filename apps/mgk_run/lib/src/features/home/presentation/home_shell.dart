@@ -1042,7 +1042,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// account at all (ADR-0019), and the id only exists once one does.
   Future<void> _identifyForPurchases() async {
     final client = widget.purchases;
-    final id = widget.auth.currentUser?.id;
+    // `currentUserId` rather than `currentUser?.id`: the same answer from the
+    // real repository, and the seam a test can set.
+    final id = widget.auth.currentUserId;
     if (client == null || id == null) return;
     await client.identify(id);
   }

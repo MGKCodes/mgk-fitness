@@ -40,5 +40,19 @@ abstract class PurchaseClient {
   /// **Apple requires this to exist** for any app selling a non-consumable or
   /// a subscription, and requires it to be reachable without buying anything
   /// first. RevenueCat performs it; the app still has to give it a surface.
+  ///
+  /// Refused with [PurchaseOutcome.notIdentified] while nobody is signed in,
+  /// for the reason [buy] is: a receipt restored onto nobody -- or onto
+  /// whoever was signed in last -- reaches no coach, or the wrong one.
   Future<PurchaseOutcome> restore();
+
+  /// Detaches purchases from the account that has just left.
+  ///
+  /// **Nothing called this.** Signing out ended the Supabase session and left
+  /// the store attached to the account that had gone, so a purchase made
+  /// afterwards -- signed out, or as somebody else before their identify had
+  /// landed -- was attributed to the previous account, and the person who
+  /// paid got nothing. Must not throw; there is nothing a runner could do
+  /// about it on the way out.
+  Future<void> logOut();
 }

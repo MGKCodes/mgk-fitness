@@ -369,6 +369,12 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A subscription bought after signing out goes to an account, not to the
+  last one.** Signing out never detached the store, so a purchase made signed
+  out -- or before a new sign-in had reached the store -- was credited to the
+  account that had left, and whoever paid got nothing. Signing out now detaches
+  it, buying or restoring needs an account signed in, and the paywall offers a
+  way to sign in when it refuses.
 - **Deleting your account no longer leaves the phone ready to upload it all
   again.** The phone's yes to backing up survived the deletion, so signing back
   in -- or making a new account on the same phone -- sent every deleted run

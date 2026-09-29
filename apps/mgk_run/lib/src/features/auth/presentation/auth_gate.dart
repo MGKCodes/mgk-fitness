@@ -162,6 +162,16 @@ class _AuthGateState extends State<AuthGate> {
   /// That is one of the three reasons the restore ran more than once per launch.
   late final Stream<AuthChange> _authChanges = widget.auth.authChanges();
 
+  /// Detaches the store whenever the session ends, however it ended.
+  ///
+  /// **Here, because this is the one thing that sees every sign-out.** Settings,
+  /// the other-account question, a deleted account and an expired session all
+  /// end the session somewhere else, and the shell is not always mounted to
+  /// hear it -- the other-account question is drawn in its place. Nothing
+  /// logged the store out at all before this, so a purchase made after signing
+  /// out went to the account that had left.
+  StreamSubscription<AuthChange>? _signOuts;
+
   /// What the runner told the coach to call them, when there is no account
   /// holding it. Null for anybody signed in, who has it on their profile.
   String? _localName;
@@ -193,11 +203,16 @@ class _AuthGateState extends State<AuthGate> {
     super.initState();
     unawaited(_readIntro());
     widget.localData?.erasures.addListener(_onErased);
+    _signOuts = widget.auth.authChanges().listen((change) {
+      if (change != AuthChange.signedOut) return;
+      unawaited(_purchases?.logOut() ?? Future<void>.value());
+    });
   }
 
   @override
   void dispose() {
     widget.localData?.erasures.removeListener(_onErased);
+    unawaited(_signOuts?.cancel());
     super.dispose();
   }
 

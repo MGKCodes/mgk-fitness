@@ -90,6 +90,9 @@ class RevenueCatPurchases implements PurchaseClient {
   /// `HomeShell` calls `identify` unawaited from `initState`, so a failure
   /// there is silent and permanent for the session. Holding the id lets the
   /// one moment that actually matters retry it.
+  ///
+  /// **Cleared by [logOut].** It never was, so it answered for whoever had
+  /// last signed in for the rest of the session.
   String? _userId;
 
   @override
@@ -104,7 +107,8 @@ class RevenueCatPurchases implements PurchaseClient {
     }
   }
 
-  /// Whether the SDK is attached to a real Supabase user, retrying once.
+  /// Whether the SDK is attached to **the account signed in now**, retrying
+  /// once.
   ///
   /// **This is the guard build 12 did not have.** RevenueCat starts every
   /// install on an `$RCAnonymousID:`, and the webhook refuses to write a row
@@ -113,18 +117,44 @@ class RevenueCatPurchases implements PurchaseClient {
   /// "an entitlement that never arrives" -- which on a real device on
   /// 2026-09-04 surfaced as a paying subscriber staring at a paywall that no
   /// relaunch would clear.
+  ///
+  /// **And then it asked the wrong question.** It checked only that the SDK
+  /// was not anonymous, so once anybody had been identified it answered yes
+  /// for good: signed out, or signed in as somebody whose identify had not
+  /// landed, a purchase went to the previous account. It now asks whether the
+  /// SDK's user *is* the signed-in account, and with nobody signed in the
+  /// answer is no.
   Future<bool> _identified() async {
+    final String? id = _userId;
+    if (id == null) return false;
     try {
-      if (!await Purchases.isAnonymous) return true;
-      final String? id = _userId;
-      if (id == null) return false;
+      if (await Purchases.appUserID == id) return true;
       // One retry, here rather than at launch: a transient logIn failure is
       // exactly the case worth recovering from, and this is the moment it
       // matters.
       await Purchases.logIn(id);
-      return !await Purchases.isAnonymous;
+      return await Purchases.appUserID == id;
     } on PlatformException {
       return false;
+    }
+  }
+
+  @override
+  Future<void> logOut() async {
+    _userId = null;
+    // Never configures the SDK to do it. An SDK this process never set up has
+    // nobody attached in this session, and a stale id from an earlier one is
+    // refused at the point of sale by [_identified] rather than cleared here
+    // at the cost of a network call on the way out.
+    if (!_configured) return;
+    try {
+      // RevenueCat refuses to log out an anonymous user, and there is nothing
+      // to detach from one.
+      if (await Purchases.isAnonymous) return;
+      await Purchases.logOut();
+    } on PlatformException {
+      // Deliberate. With [_userId] gone, [_identified] refuses the next sale
+      // until an account is identified again, whatever the SDK still holds.
     }
   }
 
@@ -193,6 +223,9 @@ class RevenueCatPurchases implements PurchaseClient {
   @override
   Future<PurchaseOutcome> restore() async {
     if (!await _ready()) return PurchaseOutcome.failed;
+    // Same rule as [buy], for the same reason: a receipt restored while the SDK
+    // is attached to nobody, or to the account that left, reaches no coach.
+    if (!await _identified()) return PurchaseOutcome.notIdentified;
     try {
       final CustomerInfo info = await Purchases.restorePurchases();
       // **The one place the SDK's own view is read, and it grants nothing.**
