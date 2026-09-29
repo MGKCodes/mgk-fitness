@@ -31,7 +31,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0017](0017-the-coach-is-the-entry-point.md) | The coach is the entry point; completion is observed | Amended by [0030](0030-the-coach-is-the-paid-half.md) |
 | [0018](0018-onboarding-opens-as-a-conversation.md) | Onboarding opens as a conversation; the form comes last | Accepted |
 | [0019](0019-onboarding-is-two-moments.md) | Onboarding is two moments; only the second is about a plan | Accepted |
-| [0020](0020-codemagic-is-the-build-path.md) | Codemagic is the build and submit path | Accepted |
+| [0020](0020-codemagic-is-the-build-path.md) | Codemagic is the build and submit path | Amended in part by [0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md) |
 | [0021](0021-android-is-a-target.md) | Android is a target, and recording must survive Doze | Accepted |
 | [0022](0022-the-in-run-map-is-north-up.md) | The in-run map is north-up | Amended in part by [0031](0031-the-in-run-map-pans-and-follow-is-a-mode.md) |
 | [0023](0023-the-log-is-read-from-the-phone.md) | The log is read from the phone | Accepted |
@@ -40,9 +40,13 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0026](0026-a-record-is-a-window-in-a-trace.md) | A record is a window in a trace, not a run's own time | Accepted |
 | [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted |
 | [0028](0028-revenuecat-is-the-purchase-path.md) | RevenueCat is the purchase path, and the webhook is the truth | Accepted |
-| [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Amended in part by [0030](0030-the-coach-is-the-paid-half.md) |
+| [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Amended in part by [0030](0030-the-coach-is-the-paid-half.md) and [0038](0038-premium-buys-more-coaching-not-a-different-model.md) |
 | [0030](0030-the-coach-is-the-paid-half.md) | The coach is the paid half, on both apps | Amended in part by [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) |
 | [0031](0031-the-in-run-map-pans-and-follow-is-a-mode.md) | The in-run map pans, and following is a mode | Accepted |
 | [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) | Identity is an event, and the tier is re-read on resume | Accepted |
 | [0033](0033-the-bottom-chrome-floats.md) | The bottom chrome floats, and every surface pads for it | Accepted |
 | [0034](0034-a-plan-starts-on-the-coming-monday.md) | A plan starts on the coming Monday | Accepted |
+| [0037](0037-the-sandbox-stays-open-in-production.md) | The sandbox stays open in production | Accepted |
+| [0038](0038-premium-buys-more-coaching-not-a-different-model.md) | Premium buys more coaching, not a different model | Accepted |
+| [0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md) | One commit, two stores, and the pubspec owns the build number | Accepted |
+| [0040](0040-our-terms-and-apples-eula.md) | Our terms are the terms of use; App Store Connect keeps Apple's EULA | Accepted |
