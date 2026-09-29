@@ -70,31 +70,35 @@ class HistoryScreen extends StatelessWidget {
                   ),
                 ),
               )
-            : ListView(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  // Below the bar: the scaffold counts it into the top inset.
-                  MediaQuery.paddingOf(context).top + AppSpacing.sm,
-                  AppSpacing.lg,
-                  MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
-                ),
-                children: <Widget>[
-                  for (final (w, entry) in weeks.entries.indexed) ...<Widget>[
-                    if (w > 0) const SizedBox(height: AppSpacing.lg),
-                    SectionLabel(_weekLabel(entry.key, today)),
-                    const SizedBox(height: AppSpacing.sm),
-                    for (final (i, session) in entry.value.indexed)
-                      Entrance(
-                        index: w == 0 ? i : 0,
-                        child: _SessionRow(
-                          session: session,
-                          massUnit: massUnit,
-                          onTap: () => onOpen(session),
-                          backup: backup,
+            // Read inside the body: the scaffold adds the bar's height to the
+            // top inset for its body only, and the screen's own context, above
+            // the scaffold, never sees it — the first week sat under the bar.
+            : Builder(
+                builder: (context) => ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    MediaQuery.paddingOf(context).top + AppSpacing.sm,
+                    AppSpacing.lg,
+                    MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
+                  ),
+                  children: <Widget>[
+                    for (final (w, entry) in weeks.entries.indexed) ...<Widget>[
+                      if (w > 0) const SizedBox(height: AppSpacing.lg),
+                      SectionLabel(_weekLabel(entry.key, today)),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final (i, session) in entry.value.indexed)
+                        Entrance(
+                          index: w == 0 ? i : 0,
+                          child: _SessionRow(
+                            session: session,
+                            massUnit: massUnit,
+                            onTap: () => onOpen(session),
+                            backup: backup,
+                          ),
                         ),
-                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
       ),
     );

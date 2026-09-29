@@ -200,6 +200,25 @@ void main() {
       await tester.tap(find.text('Session b'));
       expect(opened, <String>['b']);
     });
+
+    testWidgets('the first week starts below the glass bar, not under it', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HistoryScreen(
+            now: DateTime(2026, 9, 29, 12),
+            log: <Session>[s('a', DateTime(2026, 9, 28, 18))],
+            onOpen: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.text('THIS WEEK')).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(find.byType(AppBar)).dy),
+      );
+    });
   });
 
   group('a past session\'s page', () {
