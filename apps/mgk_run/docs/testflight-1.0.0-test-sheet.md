@@ -3,9 +3,10 @@
 **Build 26, both stores: TestFlight on the iPhone, Play internal testing on
 Android.** The file name is older than Android; the sheet covers both.
 
-**Tests `1.0.0+26` built from `<BUILD-26-COMMIT>`.** Fill that in from the
-Codemagic build records once 26 is cut (both workflows must name the same
-commit), and tag it `run/build-26` there, not on the branch tip
+**Tests `1.0.0+26`, tagged `run/build-26`.** iOS was built from `431db9c`
+and Android from `54e7487`, read off the Codemagic build records: the first
+Android build failed CI on two test files, and `54e7487` changes those and
+nothing else, so both stores carry the same app
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 A tester holding a different build is testing something else.
 

@@ -30,12 +30,12 @@ order to work in.
 
 | | |
 |---|---|
-| **TestFlight** | 1.0.0 (25), from `12d74d8` (Codemagic build `6aa44870…`) |
-| **Play internal** | 1.0.0 (25), from `12d74d8` (Codemagic build `6aa4486b…`) |
-| **Release candidate** | **1.0.0 (26)** — `version: 1.0.0+26` is already in the pubspec. **Not cut**: it waits on item 2 |
-| **What 26 will be built from** | `run/release-26`: all three app lanes and this documentation merged, 1,752 tests passing, analyzer and `check_listing.py` clean (2026-09-29). 47 commits ahead of `main`, nothing pushed |
+| **TestFlight** | **1.0.0 (26)**, from `431db9c` (Codemagic `6abc0515…4bc49`), 2026-09-29. 25 before it, from `12d74d8` |
+| **Play internal** | **1.0.0 (26)**, from `54e7487` (Codemagic `6abc0a58…4ad63`), 2026-09-29. 25 before it, from `12d74d8` |
+| **Release candidate** | **1.0.0 (26), cut**, tagged `run/build-26`. Two commits, one app: `54e7487` changes only two test files from `431db9c` (the first Android build failed CI on them); `lib/`, `ios/`, `android/`, `pubspec.yaml` and `packages/` are identical |
+| **Backend under it** | coach v28, revenuecat v7, migrations through `20260929183008` (item 2) |
 | **Testing** | One sitting, on build 26, on both phones: [the test sheet](testflight-1.0.0-test-sheet.md). Testing build 25 was dropped |
-| **Tag `run/build-25`** | Wrong: it sits on `a6eb6e1`, whose build was cancelled. It belongs on `12d74d8` (item 5 below) |
+| **Tag `run/build-25`** | On `12d74d8`, the commit that shipped (moved from `a6eb6e1` on 2026-09-29) |
 
 Run 1.0.0 ships on **both** stores, from one commit with one build number
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
@@ -53,42 +53,37 @@ and run.
 1. - [x] **Android developer verification — done.** `com.mgkcodes.fitness.run`
       was registered on 2026-09-10 (3 keys), confirmed in Play Console on
       2026-09-29. The 2026-09-30 deadline is met; nothing to do.
-2. **Approve and run the backend changes.** Build 26 must not reach either
-   store's review before the coach redeploy and the migration have landed:
-   without the first, Premium sells nothing Coach does not (ADR-0038); without
-   the second, every "Report this reply" fails in front of the reviewer. The
-   `revenuecat` redeploy belongs in the same sitting.
-   - [ ] **Redeploy `coach`** from `main` plus Lift's `b6fb99b` (sessions),
-         the expiry fix, the `lift_chat`-only conversation check, the request
-         size cap, and the attribution and log fixes. Until then Run's coach
-         is free server-side (ADR-0030 is not live), Premium is identical to
-         Coach (so ADR-0038's description cannot be sold honestly), three Run
-         fixes from 4 September are missing, and Lift's planning surfaces
-         answer 400 *"conversation required"*.
-   - [ ] **Redeploy `revenuecat`** with the refund fix (`13fb60e`: a
-         `CANCELLATION` or `EXPIRATION` with reason `CUSTOMER_SUPPORT` is a
-         refund; `REFUND_REVERSED` restores access) and `SUBSCRIPTION_PAUSED`
-         ignored.
-   - [ ] **The migration**: revoke `EXECUTE` on `coach.record_usage` and
-         `coach.usage_window` from `public`, `anon` and `authenticated` (today
-         any signed-in user can lock another's coach); give
-         `core.user_settings.created_at` and `updated_at` defaults (Run's unit
-         sync fails on every write without them); and create `coach.reports`,
-         insert-only for the signed-in user, which "Report this reply" writes
-         to. Give it `user_id` and `app` columns so `core.delete_account`
-         sweeps it by construction: the policy says reports are deleted with
-         the account. **No migration creating `coach.reports` exists on any
-         branch yet** (checked 2026-09-29).
+2. **The backend changes — done 2026-09-29**, approved by the owner and each
+   verified after it ran.
+   - [x] **`coach` redeployed** (version 28, `cc876f7`): main plus Lift's
+         `b6fb99b` (sessions), the expiry fix, the `lift_chat`-only
+         conversation check, a 256 KiB request cap, errors logged by code only,
+         the runner's local date, and Run's attribution and persona. Every
+         deployed file compared byte-for-byte with the branch; an unsigned
+         call answers 401. Run's coach is paid server-side from here (ADR-0030
+         is live), Premium's allowance is real (ADR-0038), and Lift's planning
+         surfaces stop answering 400.
+   - [x] **`revenuecat` redeployed** (version 7): the refund fix (`20c46e5`,
+         cherry-picked from `13fb60e`) and a scheduled pause that no longer
+         ends paid-for time (`431db9c`). Compared with the branch; an unsigned
+         call answers 401.
+   - [x] **The migration**, `20260929183008_release_hardening`: the usage
+         functions revoked from `public`, `anon` and `authenticated`;
+         `core.user_settings` timestamps defaulted; `coach.reports` created,
+         insert-only under RLS; `core.touch_updated_at`'s search path pinned.
+         Checked in the catalog afterwards, privilege by privilege.
+   - [x] **The missing backup columns**, `20260929114055_run_elevation_max_and_steps`,
+         applied the same day and the file renamed to the ledger's version.
 
-   Deploy functions **by name**, with `--no-verify-jwt`. **Never deploy
-   `delete-account` or `daily-ai-summary` from `main`**: production's
-   `delete-account` is Lift's copy, with the progress-photo sweep.
+   Deploy rule, unchanged: functions **by name**, and **never `delete-account`
+   or `daily-ai-summary` from `main`** — production's `delete-account` is
+   Lift's copy, with the progress-photo sweep. `supabase/config.toml` now
+   declares `verify_jwt = false` for the three functions that need it.
 
-   And one repo chore that follows from the migration applied on 2026-09-29
-   (below): rename
-   `supabase/migrations/20260901130000_run_elevation_max_and_steps.sql` to
-   the version the production ledger stamped when it was applied, once
-   somebody has read it.
+   **Watch for:** both functions were two versions ahead of what this session
+   deployed, so something else deployed them today too. A later deploy of
+   `coach` from `lift/release-2.0.0` would drop the expiry fix and the request
+   guards (that branch merged main before them).
 3. - [ ] **OpenRouter: turn on account-wide Zero Data Retention, and set a hard
       credit limit on the API key.** Five minutes. The first makes the
       policy's "providers that do not keep or train on what we send" a setting
@@ -96,22 +91,20 @@ and run.
       Gate 2. The second caps what a leaked key or a runaway surface can
       spend.
 4. **Ship `main` and cut build 26.**
-   - [ ] Merge `run/release-26` into `main` (it already carries the three
-         app lanes and this documentation), and push. Vercel deploys `web/`
-         from it, which is what puts the terms link and the real deletion
-         path live on `mgkfitness.mgkcodes.com`.
-   - [ ] `scripts/codemagic-build.sh run-ios-release main` and
-         `scripts/codemagic-build.sh run-android-release main`.
-   - [ ] Read the commit off **both** Codemagic build records, tag
-         `run/build-26` on it, and put it in the test sheet's
-         `<BUILD-26-COMMIT>`.
-5. - [ ] **Move the `run/build-25` tag** to the commit that shipped. It needs a
-      force-push, so it is yours:
-
-      ```
-      git tag -f -a run/build-25 12d74d8 -m "1.0.0 (25): TestFlight and Play internal, 2026-09-11"
-      git push -f origin refs/tags/run/build-25
-      ```
+   - [x] `run/release-26` pushed to `main` as `431db9c` (fast-forward, 53
+         commits), 2026-09-29. Vercel deploys `web/` from it.
+   - [x] Fired from `main`: `run-ios-release` (`6abc05155fdcbdf7b604bc49`,
+         from `431db9c`) **succeeded** and published to TestFlight.
+         `run-android-release` from `431db9c` **failed its Test step** on two
+         tests that only passed on a UK-timezone Windows machine (a migration
+         read by its old version; a DST guard on the zone *name*); fixed in
+         `54e7487`, re-fired (`6abc0a58690944ca0c34ad63`), **succeeded** and
+         published to the Play internal track.
+   - [x] Tagged `run/build-26` on `54e7487`, both build records in its
+         message, and the test sheet stamped.
+5. - [x] **`run/build-25` moved to `12d74d8`**, the commit both stores' build
+      25 came from, 2026-09-29 (annotated, with the build records in the
+      message).
 
 6. **Console settings and one decision.**
    - [ ] **MapTiler: confirm a paid plan.** The Free plan is non-commercial
