@@ -45,7 +45,8 @@ class FakeRecorder implements SessionRecorder {
   Future<Session> fillFromLibrary({
     required String workoutId,
     required String name,
-    required List<String> movements,
+    required List<SeededMovement> movements,
+    String? snapshot,
   }) async => throw UnimplementedError();
 
   // Not exercised here either: filling a session from a plan adds movements

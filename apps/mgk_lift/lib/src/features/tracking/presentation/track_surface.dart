@@ -6,6 +6,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
 import '../domain/session.dart';
+import '../domain/workout_library.dart';
+import 'workout_preview_sheet.dart';
 
 /// **Track** — the front page, and the part that has to work in a basement.
 ///
@@ -29,7 +31,23 @@ class TrackSurface extends StatelessWidget {
     this.unit = MassUnit.kilograms,
     this.today,
     this.onStartPlanned,
+    this.workouts = const <SavedWorkout>[],
+    this.onStartWorkout,
+    this.onOpenLibrary,
   });
+
+  /// The lifter's saved workouts, newest first — the row under *Next up*.
+  final List<SavedWorkout> workouts;
+
+  /// Starts a session from one, sets laid out. Null hides the row's cards.
+  final ValueChanged<SavedWorkout>? onStartWorkout;
+
+  /// Opens the whole library. **Null hides the section** — a build with no
+  /// on-device database.
+  ///
+  /// Your workouts used to be reachable only from inside an empty session,
+  /// which meant starting the clock to browse them.
+  final VoidCallback? onOpenLibrary;
 
   /// Begins or resumes a session. Null while the recorder is not wired up,
   /// which reads as an unavailable action rather than an error.
@@ -110,64 +128,239 @@ class TrackSurface extends StatelessWidget {
       image: 'assets/images/backgrounds/hero_home.webp',
       scrim: ScrimStrength.balanced,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.xxl,
-            AppSpacing.xl,
-            AppSpacing.xl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const SectionLabel('Today'),
-              const SizedBox(height: AppSpacing.md),
-              Text(_headline, style: theme.textTheme.headlineSmall),
-              // The supporting line is dropped whenever the card below says
-              // the same thing better. It used to run unconditionally, so an
-              // interrupted session was announced twice — vaguely and large at
-              // the top, then precisely and small underneath — and a planned
-              // session sat under free-tier copy about logging set by set.
-              if (_support != null) ...<Widget>[
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  _support!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+        // Fills the screen and scrolls past it — the Spacer still pushes the
+        // cards to the foot of a tall phone, and a short one can scroll to
+        // reach them rather than overflow.
+        child: CustomScrollView(
+          slivers: <Widget>[
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
                 ),
-              ],
-              const Spacer(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const SectionLabel('Today'),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(_headline, style: theme.textTheme.headlineSmall),
+                    // The supporting line is dropped whenever the card below says
+                    // the same thing better. It used to run unconditionally, so an
+                    // interrupted session was announced twice — vaguely and large at
+                    // the top, then precisely and small underneath — and a planned
+                    // session sat under free-tier copy about logging set by set.
+                    if (_support != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        _support!,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
 
-              // The interrupted session takes the card when there is one: it is
-              // the most urgent thing on the screen, and what the plan wanted
-              // today is beside the point once you are already mid-workout.
-              if (openSession != null)
-                _Interrupted(
-                  session: openSession!,
-                  now: today ?? DateTime.now(),
-                )
-              else
-                _NextUp(plan: plan, unit: unit, now: today ?? DateTime.now()),
+                    // The interrupted session takes the card when there is one: it is
+                    // the most urgent thing on the screen, and what the plan wanted
+                    // today is beside the point once you are already mid-workout.
+                    if (openSession != null)
+                      _Interrupted(
+                        session: openSession!,
+                        now: today ?? DateTime.now(),
+                      )
+                    else
+                      _NextUp(
+                        plan: plan,
+                        unit: unit,
+                        now: today ?? DateTime.now(),
+                      ),
 
-              if (log.isNotEmpty) ...<Widget>[
-                const SizedBox(height: AppSpacing.md),
-                _RecentStrip(log: log, now: today ?? DateTime.now()),
-              ],
+                    if (onOpenLibrary != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.lg),
+                      _YourWorkouts(
+                        workouts: workouts,
+                        log: log,
+                        onStart: onStartWorkout,
+                        onOpenLibrary: onOpenLibrary!,
+                        blocked: openSession != null,
+                      ),
+                    ],
 
-              const SizedBox(height: AppSpacing.lg),
-              _StartButton(
-                plan: plan,
-                now: today ?? DateTime.now(),
-                openSession: openSession,
-                onStartSession: onStartSession,
-                onStartPlanned: onStartPlanned,
+                    if (log.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: AppSpacing.md),
+                      _RecentStrip(log: log, now: today ?? DateTime.now()),
+                    ],
+
+                    const SizedBox(height: AppSpacing.lg),
+                    _StartButton(
+                      plan: plan,
+                      now: today ?? DateTime.now(),
+                      openSession: openSession,
+                      onStartSession: onStartSession,
+                      onStartPlanned: onStartPlanned,
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+/// **Your workouts**, one tap from Track: the saved ones as glass cards over
+/// the photograph — glass has something behind it here — and a way into the
+/// whole library.
+///
+/// A card opens the workout's preview; its Start begins a session with every
+/// set laid out. With a session already open, the preview says to finish that
+/// one first rather than starting a second over it.
+class _YourWorkouts extends StatelessWidget {
+  const _YourWorkouts({
+    required this.workouts,
+    required this.log,
+    required this.onStart,
+    required this.onOpenLibrary,
+    required this.blocked,
+  });
+
+  final List<SavedWorkout> workouts;
+  final List<Session> log;
+  final ValueChanged<SavedWorkout>? onStart;
+  final VoidCallback onOpenLibrary;
+
+  /// A session is open, so nothing new can start.
+  final bool blocked;
+
+  Future<void> _preview(BuildContext context, SavedWorkout workout) async {
+    final action = await WorkoutPreviewSheet.show(
+      context,
+      workout: workout,
+      lastDone: lastDone(workout.id, log),
+      blockedReason: blocked
+          ? 'Finish or discard the session you have open first.'
+          : null,
+    );
+    if (action == WorkoutAction.start) {
+      onStart?.call(workout);
+    } else if (action != null) {
+      // Edit, duplicate and delete belong to the library, which has the list
+      // they change; the preview here hands over to it.
+      onOpenLibrary();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            const Expanded(
+              child: SectionLabel(
+                'Your workouts',
+                emphasis: LabelEmphasis.stat,
+              ),
+            ),
+            AppTextButton(
+              label: workouts.isEmpty ? 'Add one' : 'See all',
+              onPressed: onOpenLibrary,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        if (workouts.isEmpty)
+          Text(
+            'Save a session you liked, build one, or add a ready-made one — '
+            'then start it from here in one tap.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          )
+        else
+          // As tall as the cards, not a fixed height: a fixed 104 overflowed
+          // once the text was larger than the default. One line each, so every
+          // card is the same three lines at whatever size the phone asks for.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                for (final (i, workout) in workouts.indexed) ...<Widget>[
+                  if (i > 0) const SizedBox(width: AppSpacing.sm),
+                  Entrance(
+                    index: i,
+                    child: SizedBox(
+                      width: 180,
+                      child: PressScale(
+                        onTap: () => _preview(context, workout),
+                        child: GlassSurface(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                workout.name,
+                                style: theme.textTheme.titleSmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _counts(workout),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                _lastDoneShort(lastDone(workout.id, log)),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AppColors.textTertiary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// `2 movements · 7 sets` — and `1 movement`, not `1 movements`.
+  static String _counts(SavedWorkout w) =>
+      '${w.movementCount} ${w.movementCount == 1 ? 'movement' : 'movements'}'
+      ' · ${w.setCount} ${w.setCount == 1 ? 'set' : 'sets'}';
+
+  static String _lastDoneShort(DateTime? at) {
+    if (at == null) return 'Not done yet';
+    const months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return 'Last done ${at.day} ${months[at.month - 1]}';
   }
 }
 

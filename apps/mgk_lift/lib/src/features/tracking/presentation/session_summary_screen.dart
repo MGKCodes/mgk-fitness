@@ -33,6 +33,9 @@ class SessionSummaryScreen extends StatefulWidget {
     this.massUnit = MassUnit.kilograms,
     this.log = const <Session>[],
     this.library,
+    this.offerSave = true,
+    this.templateId,
+    this.lesson,
     this.onOpenCoach,
   });
 
@@ -48,13 +51,24 @@ class SessionSummaryScreen extends StatefulWidget {
   /// rather than as an error.
   final List<Session> log;
 
-  /// Where a workout would be saved. **Null hides the offer entirely**, which
-  /// covers all four reasons not to make it: a build with no on-device
-  /// database, a session with nothing in it, one already saved from the button
-  /// in the running list, and one that was started *from* the library and
-  /// therefore already has its workout. The session screen decides which of
-  /// those applies and passes null; this screen only draws.
+  /// The lifter's saved workouts — where this session could be saved, and
+  /// where the workout it came from learns from it. Null is a build with no
+  /// on-device database, and hides both.
   final WorkoutLibrary? library;
+
+  /// Whether to offer "Save to your workouts". The session screen decides:
+  /// not for a session with nothing in it, one already saved from the button in
+  /// the running list, or one started from the library — which already has its
+  /// workout, and teaches it instead ([lesson]).
+  final bool offerSave;
+
+  /// The saved workout this session was started from, if any.
+  final String? templateId;
+
+  /// What the session did to that workout — see [TemplateUpdate]. Applied here
+  /// on arrival, with Undo; asked about instead when the workout changed while
+  /// the session ran; offered as a new workout when it was deleted meanwhile.
+  final TemplateUpdate? lesson;
 
   /// Opens the coach. **Null hides the action** rather than showing one that
   /// leads nowhere — there is no coach in a free or offline build, the same
@@ -80,10 +94,103 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
   /// Leaving the button there would invite a second copy of the same workout.
   String? _savedAs;
 
+  /// Where the workout's lesson stands. See [_learn].
+  _Lesson _lesson = _Lesson.none;
+
+  /// The workout as it was before the lesson was applied — what Undo puts
+  /// back — or, when the lesson is waiting to be asked about, as it is now.
+  SavedWorkout? _workout;
+
+  @override
+  void initState() {
+    super.initState();
+    _learn();
+  }
+
   @override
   void dispose() {
     _nameField.dispose();
     super.dispose();
+  }
+
+  /// **The workout learns from the session** — decision D1: applied, not
+  /// asked, with Undo on this screen, so a movement removed today does not
+  /// have to be removed again next week.
+  ///
+  /// Applied only when the workout is exactly as it was when the session
+  /// started. If it changed meanwhile — edited here or on another device — the
+  /// session's changes were made against a workout that no longer exists, so
+  /// the lifter is asked instead of having one edit silently beat the other.
+  /// If it was deleted, the lesson is offered as a new workout.
+  Future<void> _learn() async {
+    final library = widget.library;
+    final id = widget.templateId;
+    final lesson = widget.lesson;
+    if (library == null || id == null || lesson == null || lesson.isEmpty) {
+      return;
+    }
+    final current = await library.byId(id);
+    if (!mounted) return;
+    if (current == null) {
+      setState(() => _lesson = _Lesson.missing);
+      return;
+    }
+    if (!_same(current.movements, lesson.before)) {
+      setState(() {
+        _workout = current;
+        _lesson = _Lesson.changedMeanwhile;
+      });
+      return;
+    }
+    await library.update(current.copyWith(movements: lesson.after));
+    if (!mounted) return;
+    setState(() {
+      _workout = current;
+      _lesson = _Lesson.applied;
+    });
+  }
+
+  Future<void> _undoLesson() async {
+    final library = widget.library;
+    final before = _workout;
+    if (library == null || before == null) return;
+    await library.update(before);
+    if (mounted) setState(() => _lesson = _Lesson.undone);
+  }
+
+  Future<void> _applyAnyway() async {
+    final library = widget.library;
+    final current = _workout;
+    final lesson = widget.lesson;
+    if (library == null || current == null || lesson == null) return;
+    await library.update(current.copyWith(movements: lesson.after));
+    if (mounted) setState(() => _lesson = _Lesson.appliedOnRequest);
+  }
+
+  Future<void> _saveLessonAsNew() async {
+    final library = widget.library;
+    final lesson = widget.lesson;
+    if (library == null || lesson == null) return;
+    final name = await promptToSaveWorkout(
+      context,
+      library: library,
+      field: _nameField,
+      suggestedName: widget.session.name,
+      movements: lesson.after,
+    );
+    if (name == null || !mounted) return;
+    setState(() {
+      _savedAs = name;
+      _lesson = _Lesson.none;
+    });
+  }
+
+  static bool _same(List<TemplateMovement> a, List<TemplateMovement> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// **The save offer lives here rather than as a dialog before this screen.**
@@ -155,6 +262,19 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                   ),
                   children: <Widget>[
                     _Bests(summary: _summary, massUnit: widget.massUnit),
+                    if (_lesson != _Lesson.none) ...<Widget>[
+                      const SizedBox(height: AppSpacing.md),
+                      _LessonCard(
+                        lesson: _lesson,
+                        workoutName: _workout?.name ?? widget.session.name,
+                        change: widget.lesson?.describe() ?? '',
+                        onUndo: _undoLesson,
+                        onApply: _applyAnyway,
+                        onKeep: () =>
+                            setState(() => _lesson = _Lesson.keptAsItWas),
+                        onSaveAsNew: _saveLessonAsNew,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
                     const SectionLabel('What you did'),
                     const SizedBox(height: AppSpacing.sm),
@@ -202,7 +322,7 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                           textAlign: TextAlign.center,
                         ),
                       )
-                    else if (widget.library != null)
+                    else if (widget.library != null && widget.offerSave)
                       Center(
                         child: AppTextButton(
                           label: 'Save to your workouts',
@@ -583,3 +703,115 @@ const List<String> _months = <String>[
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+
+/// Where the workout's lesson stands.
+enum _Lesson {
+  /// Nothing to say: not from a workout, or nothing changed.
+  none,
+
+  /// Applied on arrival; Undo is offered.
+  applied,
+
+  /// Undone; the workout is as it was.
+  undone,
+
+  /// The workout changed while the session ran; the lifter is asked.
+  changedMeanwhile,
+
+  /// Asked, and they said update it.
+  appliedOnRequest,
+
+  /// Asked, and they said keep it.
+  keptAsItWas,
+
+  /// The workout was deleted while the session ran.
+  missing,
+}
+
+/// The one line about the workout this session came from — what changed in it,
+/// and the way back.
+class _LessonCard extends StatelessWidget {
+  const _LessonCard({
+    required this.lesson,
+    required this.workoutName,
+    required this.change,
+    required this.onUndo,
+    required this.onApply,
+    required this.onKeep,
+    required this.onSaveAsNew,
+  });
+
+  final _Lesson lesson;
+  final String workoutName;
+
+  /// `removed Cable Fly, added Dips`.
+  final String change;
+
+  final VoidCallback onUndo;
+  final VoidCallback onApply;
+  final VoidCallback onKeep;
+  final VoidCallback onSaveAsNew;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (String text, List<Widget> actions) = switch (lesson) {
+      _Lesson.applied => (
+        '$workoutName updated — $change.',
+        <Widget>[AppTextButton(label: 'Undo', onPressed: onUndo)],
+      ),
+      _Lesson.undone => ('$workoutName kept as it was.', const <Widget>[]),
+      _Lesson.changedMeanwhile => (
+        '$workoutName changed while you trained. Update it with today\'s '
+            'changes — $change?',
+        <Widget>[
+          AppTextButton(label: 'Keep it', onPressed: onKeep),
+          AppTextButton(
+            label: 'Update',
+            onPressed: onApply,
+            style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
+          ),
+        ],
+      ),
+      _Lesson.appliedOnRequest => ('$workoutName updated.', const <Widget>[]),
+      _Lesson.keptAsItWas => ('$workoutName kept as it was.', const <Widget>[]),
+      _Lesson.missing => (
+        '$workoutName was deleted while you trained. Keep today\'s version as '
+            'a new workout?',
+        <Widget>[AppTextButton(label: 'Save as new', onPressed: onSaveAsNew)],
+      ),
+      _Lesson.none => ('', const <Widget>[]),
+    };
+    return AppCard(
+      color: AppColors.elevated,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.bookmark_outline,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
+            ],
+          ),
+          if (actions.isNotEmpty)
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+        ],
+      ),
+    );
+  }
+}

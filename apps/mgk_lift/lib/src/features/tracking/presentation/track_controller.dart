@@ -56,6 +56,51 @@ class TrackController {
     );
   }
 
+  /// Starts a session from a saved workout, its sets already laid out — the
+  /// one-tap start from Track.
+  ///
+  /// **Resuming still wins**, for the same reason it does everywhere: an open
+  /// session is offered back rather than overwritten. The workout's sets are
+  /// seeded from what this lifter lifted last time (see `seedWorkout`), and
+  /// the workout as it stands is kept on the session so it can learn from it
+  /// at Finish.
+  Future<void> openWorkout(
+    BuildContext context,
+    SavedWorkout workout, {
+    MassUnit massUnit = MassUnit.kilograms,
+    VoidCallback? onDone,
+    CoachPlanner? planner,
+    List<Session> log = const <Session>[],
+    VoidCallback? onOpenCoach,
+  }) async {
+    var session = await recorder.current();
+    if (session == null) {
+      await recorder.start(name: workout.name);
+      session = await recorder.fillFromLibrary(
+        workoutId: workout.id,
+        name: workout.name,
+        movements: seedWorkout(workout.movements, log),
+        snapshot: TemplateMovement.encode(workout.movements),
+      );
+    }
+
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          recorder: recorder,
+          session: session!,
+          massUnit: massUnit,
+          library: library,
+          onFinished: onDone,
+          planner: planner,
+          log: log,
+          onOpenCoach: onOpenCoach,
+        ),
+      ),
+    );
+  }
+
   /// Starts today's planned session, movements and targets already in.
   ///
   /// **Resuming still wins.** An open session is offered back exactly as it is

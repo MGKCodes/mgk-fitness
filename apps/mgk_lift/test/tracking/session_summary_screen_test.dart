@@ -371,7 +371,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
-      expect((await library.all()).single.movements, <String>[
+      expect((await library.all()).single.movementNames, <String>[
         'Barbell Bench Press',
         'Cable Fly',
       ]);

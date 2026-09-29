@@ -55,7 +55,8 @@ class FakeSessionRecorder implements SessionRecorder {
   Future<Session> fillFromLibrary({
     required String workoutId,
     required String name,
-    required List<String> movements,
+    required List<SeededMovement> movements,
+    String? snapshot,
   }) async {
     final s = _require();
     return _session = Session(
@@ -64,13 +65,24 @@ class FakeSessionRecorder implements SessionRecorder {
       startedAt: s.startedAt,
       endedAt: s.endedAt,
       notes: s.notes,
+      templateId: workoutId,
+      templateSnapshot: snapshot,
       exercises: <SessionExercise>[
         ...s.exercises,
         for (var i = 0; i < movements.length; i++)
           SessionExercise(
             id: _nextId,
-            name: movements[i],
+            name: movements[i].name,
             orderIndex: s.exercises.length + i,
+            sets: <SessionSet>[
+              for (var n = 0; n < movements[i].sets.length; n++)
+                SessionSet(
+                  id: _nextId,
+                  setNumber: n + 1,
+                  reps: movements[i].sets[n].reps,
+                  weightKg: movements[i].sets[n].weightKg,
+                ),
+            ],
           ),
       ],
     );
@@ -258,6 +270,8 @@ class FakeSessionRecorder implements SessionRecorder {
       startedAt: s.startedAt,
       endedAt: at ?? DateTime.now(),
       exercises: _positioned(kept),
+      templateId: s.templateId,
+      templateSnapshot: s.templateSnapshot,
     );
     _session = null;
     return done;
@@ -272,14 +286,11 @@ class FakeSessionRecorder implements SessionRecorder {
     return s;
   }
 
-  Session _copy(Session s, List<SessionExercise> exercises) => Session(
-    id: s.id,
-    name: s.name,
-    startedAt: s.startedAt,
-    endedAt: s.endedAt,
-    notes: s.notes,
-    exercises: exercises,
-  );
+  // Through `withExercises`, which carries the saved workout the session came
+  // from. Built by hand, this dropped it on the first tick — and the harness
+  // then showed a summary that never learned, and offered a copy instead.
+  Session _copy(Session s, List<SessionExercise> exercises) =>
+      s.withExercises(exercises);
 
   /// The movement with [sets], renumbered from one.
   static SessionExercise _withSets(SessionExercise e, List<SessionSet> sets) =>

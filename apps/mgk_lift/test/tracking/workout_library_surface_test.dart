@@ -8,6 +8,8 @@ import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/active_session_screen.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/premade_library_sheet.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/track_controller.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/workout_library_screen.dart';
 
 /// A three-entry catalogue. The real one is 266 movements and loading it into
 /// every widget test is work no assertion here depends on.
@@ -35,6 +37,11 @@ final ExerciseLookup _lookup = ExerciseLookup(<Exercise>[
   ),
 ]);
 
+/// Names as movements with the default count.
+List<TemplateMovement> moves(List<String> names) => <TemplateMovement>[
+  for (final n in names) TemplateMovement(n),
+];
+
 void main() {
   late AppDatabase db;
   late DriftSessionRecorder recorder;
@@ -60,6 +67,26 @@ void main() {
         library: withLibrary,
       ),
     );
+  }
+
+  /// From an empty session: the library, the workout's preview, then the
+  /// button that fills the session with it.
+  Future<void> useWorkout(WidgetTester tester, String name) async {
+    await tester.tap(find.text('Your workouts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(name));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use this workout'));
+    await tester.pumpAndSettle();
+  }
+
+  /// Types reps into the first set and ticks it.
+  Future<void> logFirstSet(WidgetTester tester) async {
+    // Weight, then reps, per set — so the reps of the first set are field 1.
+    await tester.enterText(find.byType(TextField).at(1), '5');
+    await leaveField(tester);
+    await tester.tap(find.byTooltip('Mark done').first);
+    await tester.pumpAndSettle();
   }
 
   group('the empty state', () {
@@ -100,60 +127,268 @@ void main() {
       expect(find.text('Nothing saved yet'), findsOneWidget);
       // A blank builder is the same blank page the library exists to solve, so
       // it is the quieter of the two.
-      expect(find.text('Add a ready-made one'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, 'Browse ready-made'),
+        findsOneWidget,
+      );
       expect(find.text('Build one'), findsOneWidget);
     });
   });
 
   group('starting a session from a saved workout', () {
-    testWidgets('picking one fills the session with its movements', (
+    testWidgets('a tap previews it; nothing starts until asked', (
       tester,
     ) async {
       await library.save(
         name: 'Push',
-        movements: <String>['Barbell Bench Press', 'Cable Fly'],
+        movements: const <TemplateMovement>[
+          TemplateMovement('Barbell Bench Press', sets: 4, repTarget: 6),
+          TemplateMovement('Cable Fly'),
+        ],
       );
 
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
-
       await tester.tap(find.text('Your workouts'));
       await tester.pumpAndSettle();
-
       await tester.tap(find.text('Push'));
       await tester.pumpAndSettle();
 
-      // The session is now the workout: movements in, in order, and named
-      // after it.
+      // The whole workout, set by set, before the clock starts.
+      expect(find.text('4 × 6'), findsOneWidget);
+      expect(find.text('3 sets'), findsOneWidget);
+      expect((await recorder.current())!.exercises, isEmpty);
+    });
+
+    testWidgets('Use this workout fills the session, every set laid out', (
+      tester,
+    ) async {
+      await library.save(
+        name: 'Push',
+        movements: const <TemplateMovement>[
+          TemplateMovement('Barbell Bench Press', sets: 4, repTarget: 6),
+          TemplateMovement('Cable Fly'),
+        ],
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+
+      // The session is now the workout: movements in, in order, named after
+      // it, and the sets already there — it used to open as empty cards.
       final session = (await recorder.current())!;
       expect(session.name, 'Push');
       expect(session.exercises.map((e) => e.name), <String>[
         'Barbell Bench Press',
         'Cable Fly',
       ]);
-
-      // And the empty state is gone, which is what the lifter sees.
+      expect(session.exercises.map((e) => e.sets.length), <int>[4, 3]);
+      expect(find.text('Add first set'), findsNothing);
       expect(find.text('The clock is running'), findsNothing);
     });
 
-    testWidgets('the back-reference is written to the session row', (
+    testWidgets('the session remembers the workout, and how it was', (
       tester,
     ) async {
       final saved = await library.save(
         name: 'Push',
-        movements: <String>['Barbell Bench Press'],
+        movements: moves(<String>['Barbell Bench Press']),
       );
 
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Your workouts'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Push'));
-      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
 
       final row = await db.select(db.workouts).getSingle();
       expect(row.templateId, saved.id);
       expect(row.premadeId, isNull);
+      // What Finish compares the session with, to teach the workout.
+      expect(TemplateMovement.decode(row.templateSnapshot), saved.movements);
+    });
+  });
+
+  group('the workout learns from the session', () {
+    testWidgets('a movement removed today is removed from the workout', (
+      tester,
+    ) async {
+      await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+
+      // The request this exists for: take the fly out once, and it is out next
+      // week too, without redoing the workout.
+      await tester.tap(find.byTooltip('Remove Cable Fly'));
+      await tester.pumpAndSettle();
+      await logFirstSet(tester);
+      await finishSession(tester);
+
+      expect(find.text('Push updated — removed Cable Fly.'), findsOneWidget);
+      expect((await library.all()).single.movementNames, <String>[
+        'Barbell Bench Press',
+      ]);
+      // The session's own "Cable Fly removed. Undo" did not follow it here.
+      expect(find.text('Cable Fly removed.'), findsNothing);
+    });
+
+    testWidgets('started from Track, the same: it learns, and offers no copy', (
+      tester,
+    ) async {
+      // The one-tap start goes through TrackController, not the session
+      // screen's own library button — and the harness showed that path losing
+      // the link on its way to the summary. Pinned here with the real recorder.
+      final saved = await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => TrackController(
+                    recorder,
+                    library: library,
+                  ).openWorkout(context, saved),
+                  child: const Text('Start from Track'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Start from Track'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add first set'), findsNothing, reason: 'laid out');
+      await tester.tap(find.byTooltip('Remove Cable Fly'));
+      await tester.pumpAndSettle();
+      await logFirstSet(tester);
+      await finishSession(tester);
+
+      expect(find.text('Push updated — removed Cable Fly.'), findsOneWidget);
+      expect(find.text('Save to your workouts'), findsNothing);
+      expect((await library.all()).single.movementNames, <String>[
+        'Barbell Bench Press',
+      ]);
+    });
+
+    testWidgets('Undo on the summary puts the workout back', (tester) async {
+      await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+      await tester.tap(find.byTooltip('Remove Cable Fly'));
+      await tester.pumpAndSettle();
+      await logFirstSet(tester);
+      await finishSession(tester);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Undo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Push kept as it was.'), findsOneWidget);
+      expect((await library.all()).single.movementNames, <String>[
+        'Barbell Bench Press',
+        'Cable Fly',
+      ]);
+    });
+
+    testWidgets('skipping sets or movements changes nothing', (tester) async {
+      await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+      // One set of bench and nothing else: a short day, not a new workout.
+      await logFirstSet(tester);
+      await finishSession(tester);
+
+      expect(find.textContaining('updated'), findsNothing);
+      expect(
+        (await library.all()).single.movements,
+        moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+    });
+
+    testWidgets('a workout edited meanwhile is asked about, not overwritten', (
+      tester,
+    ) async {
+      final saved = await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+      await tester.tap(find.byTooltip('Remove Cable Fly'));
+      await tester.pumpAndSettle();
+      await logFirstSet(tester);
+
+      // Edited elsewhere — another device — while this session ran.
+      await library.update(
+        saved.copyWith(
+          movements: const <TemplateMovement>[
+            TemplateMovement('Barbell Bench Press', sets: 5),
+            TemplateMovement('Cable Fly'),
+          ],
+        ),
+      );
+      await finishSession(tester);
+
+      expect(find.textContaining('changed while you trained'), findsOneWidget);
+      // Nothing applied until they say so.
+      expect((await library.all()).single.movementCount, 2);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Update'));
+      await tester.pumpAndSettle();
+      expect((await library.all()).single.movementNames, <String>[
+        'Barbell Bench Press',
+      ]);
+    });
+
+    testWidgets('a workout deleted meanwhile can be kept as a new one', (
+      tester,
+    ) async {
+      final saved = await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press', 'Cable Fly']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+      await tester.tap(find.byTooltip('Remove Cable Fly'));
+      await tester.pumpAndSettle();
+      await logFirstSet(tester);
+      await library.remove(saved.id);
+      await finishSession(tester);
+
+      expect(
+        find.textContaining('was deleted while you trained'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(TextButton, 'Save as new'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect((await library.all()).single.movementNames, <String>[
+        'Barbell Bench Press',
+      ]);
     });
   });
 
@@ -193,12 +428,50 @@ void main() {
       final saved = await library.all();
       expect(saved, hasLength(1));
       expect(saved.single.name, 'Chest day');
-      expect(saved.single.movements, <String>[
+      expect(saved.single.movementNames, <String>[
         'Barbell Bench Press',
         'Cable Fly',
       ]);
       // Saved by hand, not added from one of the fifteen.
       expect(saved.single.premadeId, isNull);
+    });
+
+    testWidgets('once saved, the offer becomes a statement', (tester) async {
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save to your workouts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // A second tap used to make a second copy.
+      expect(find.text('Save to your workouts'), findsNothing);
+      expect(find.text('Saved to your workouts'), findsOneWidget);
+    });
+
+    testWidgets('a session from a saved workout is not offered as a copy', (
+      tester,
+    ) async {
+      await library.save(
+        name: 'Push',
+        movements: moves(<String>['Barbell Bench Press']),
+      );
+
+      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.pumpAndSettle();
+      await useWorkout(tester, 'Push');
+      await tester.scrollUntilVisible(
+        find.text('Discard session'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      // The workout learns from this session at Finish; a save here made a
+      // second one.
+      expect(find.text('Save to your workouts'), findsNothing);
     });
 
     testWidgets('cancelling saves nothing', (tester) async {
@@ -238,7 +511,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
-      expect((await library.all()).single.movements, <String>[
+      expect((await library.all()).single.movementNames, <String>[
         'Barbell Bench Press',
         'Cable Fly',
       ]);
@@ -270,8 +543,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
-      expect((await library.all()).single.movements, <String>[
-        'Barbell Bench Press',
+      // As many sets as were worked.
+      expect((await library.all()).single.movements, const <TemplateMovement>[
+        TemplateMovement('Barbell Bench Press', sets: 1),
       ]);
     });
 
@@ -280,32 +554,18 @@ void main() {
     ) async {
       await library.save(
         name: 'Push',
-        movements: <String>['Barbell Bench Press'],
+        movements: moves(<String>['Barbell Bench Press']),
       );
 
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Your workouts'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Push'));
-      await tester.pumpAndSettle();
-
-      // A saved workout brings movements and no sets, so the first tap adds
-      // the set the lifter is about to do. A tick needs reps, so they go in
-      // first.
-      await tester.tap(find.text('Add first set'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).at(1), '5');
-      await leaveField(tester);
-      await tester.tap(find.byTooltip('Mark done'));
-      await tester.pumpAndSettle();
-
+      await useWorkout(tester, 'Push');
+      await logFirstSet(tester);
       await finishSession(tester);
 
       // They already have this workout. Offering them a copy of something they
       // picked off a list ninety minutes ago is the app not paying attention —
-      // which is why the summary is handed no library at all rather than
-      // deciding for itself.
+      // the workout learns from the session instead.
       expect(find.text('Name this workout'), findsNothing);
       expect(find.text('Save to your workouts'), findsNothing);
       expect(await library.all(), hasLength(1));
@@ -327,13 +587,7 @@ void main() {
       ),
     );
 
-    testWidgets('adding one writes a copy with a back-reference', (
-      tester,
-    ) async {
-      await tester.pumpWidget(premadeSheet(library));
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
-
+    Future<void> scrollToPush(WidgetTester tester) async {
       // The Sessions list sits below all eight splits.
       await tester.scrollUntilVisible(
         find.byTooltip('Add Push to your library'),
@@ -344,6 +598,16 @@ void main() {
       // can leave it on the bottom edge; this brings it fully into view.
       await tester.ensureVisible(find.byTooltip('Add Push to your library'));
       await tester.pumpAndSettle();
+    }
+
+    testWidgets('adding one writes a copy with a back-reference', (
+      tester,
+    ) async {
+      await tester.pumpWidget(premadeSheet(library));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await scrollToPush(tester);
       // Offered six first, so Push leads the section.
       await tester.tap(find.byTooltip('Add Push to your library').first);
       await tester.pumpAndSettle();
@@ -357,6 +621,29 @@ void main() {
       expect(saved.single.movements, isNotEmpty);
     });
 
+    testWidgets('an add can be undone, from inside the sheet', (tester) async {
+      await tester.pumpWidget(premadeSheet(library));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await scrollToPush(tester);
+      await tester.tap(find.byTooltip('Add Push to your library').first);
+      await tester.pumpAndSettle();
+
+      // The Undo is in the sheet's own messenger. On the screen's it sat
+      // behind the sheet, where nobody could reach it.
+      final undo = find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.text('Undo'),
+      );
+      expect(undo.hitTestable(), findsOneWidget);
+      await tester.tap(undo);
+      await tester.pumpAndSettle();
+
+      expect(await library.all(), isEmpty);
+      // And the row offers the plain add again.
+      expect(find.byTooltip('Add Push to your library'), findsOneWidget);
+    });
+
     testWidgets('adding a split adds every session in it', (tester) async {
       await tester.pumpWidget(premadeSheet(library));
       await tester.tap(find.text('open'));
@@ -368,39 +655,66 @@ void main() {
       final saved = await library.all();
       expect(saved, hasLength(3));
       expect(saved.map((w) => w.premadeId).toSet(), hasLength(3));
+      expect(find.text('3 workouts added.'), findsOneWidget);
     });
 
-    testWidgets('a premade already in the library is marked', (tester) async {
-      await library.save(
-        name: 'Push',
-        movements: <String>['Barbell Bench Press'],
-        fromPremade: 'push',
-      );
+    testWidgets(
+      'a premade already in the library needs an explicit second add',
+      (tester) async {
+        await library.save(
+          name: 'Push',
+          movements: moves(<String>['Barbell Bench Press']),
+          fromPremade: 'push',
+        );
 
-      await tester.pumpWidget(premadeSheet(library));
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(premadeSheet(library));
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
 
-      // Not a lock — a second Push is allowed. This only answers the question
-      // somebody scrolling fifteen of them is actually asking.
-      await tester.scrollUntilVisible(
-        find.byTooltip('Add Push to your library'),
-        400,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('In your library'), findsWidgets);
-    });
+        final again = find.widgetWithText(TextButton, 'Add again');
+        await tester.scrollUntilVisible(
+          again,
+          400,
+          scrollable: find.byType(Scrollable).first,
+        );
+        // Aligned by the button, not the subtitle: `ensureVisible` puts the top
+        // of what it is given at the top of the list, and the subtitle's top
+        // left the button's centre just outside it.
+        await tester.ensureVisible(again.first);
+        await tester.pumpAndSettle();
+
+        // Tapping the row no longer quietly makes `Push (2)`.
+        await tester.tap(find.text('In your library').first);
+        await tester.pumpAndSettle();
+        expect(await library.all(), hasLength(1));
+
+        // Not a lock — a second Push is allowed, when asked for by name.
+        await tester.tap(again.first);
+        await tester.pumpAndSettle();
+        expect((await library.all()).map((w) => w.name), contains('Push (2)'));
+      },
+    );
   });
 
-  group('the library sheet', () {
-    testWidgets('lists what is saved, newest first', (tester) async {
-      await library.save(name: 'Push', movements: <String>['A']);
-      await library.save(name: 'Pull', movements: <String>['B']);
+  group('the library screen', () {
+    Future<void> openLibrary(WidgetTester tester, {String? blocked}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WorkoutLibraryScreen(
+            library: library,
+            lookup: _lookup,
+            blockedReason: blocked,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
 
-      await tester.pumpWidget(await screen(withLibrary: library));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Your workouts'));
-      await tester.pumpAndSettle();
+    testWidgets('lists what is saved, newest first', (tester) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await library.save(name: 'Pull', movements: moves(<String>['B']));
+
+      await openLibrary(tester);
 
       expect(find.text('Push'), findsOneWidget);
       expect(find.text('Pull'), findsOneWidget);
@@ -410,21 +724,76 @@ void main() {
       expect(pull, lessThan(push));
     });
 
-    testWidgets('deleting one takes it out of the list', (tester) async {
-      await library.save(name: 'Push', movements: <String>['A']);
+    testWidgets('deleting asks, then offers Undo', (tester) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await openLibrary(tester);
 
-      await tester.pumpWidget(await screen(withLibrary: library));
+      await tester.tap(find.text('Push'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Your workouts'));
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Delete Push'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      expect(find.text('Delete Push?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
       await tester.pumpAndSettle();
 
       expect(await library.all(), isEmpty);
       expect(find.text('Nothing saved yet'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Undo'));
+      await tester.pumpAndSettle();
+      expect((await library.all()).single.name, 'Push');
+      expect(find.text('Push'), findsOneWidget);
+    });
+
+    testWidgets('keeping it deletes nothing', (tester) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await openLibrary(tester);
+
+      await tester.tap(find.text('Push'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Keep it'));
+      await tester.pumpAndSettle();
+
+      expect(await library.all(), hasLength(1));
+    });
+
+    testWidgets('duplicating adds a copy under a free name', (tester) async {
+      await library.save(
+        name: 'Push',
+        movements: const <TemplateMovement>[
+          TemplateMovement('A', sets: 4, repTarget: 6),
+        ],
+      );
+      await openLibrary(tester);
+
+      await tester.tap(find.text('Push'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Duplicate'));
+      await tester.pumpAndSettle();
+
+      final all = await library.all();
+      expect(all.map((w) => w.name), <String>['Push (2)', 'Push']);
+      expect(all.first.movements, all.last.movements);
+      expect(find.text('Push (2)'), findsOneWidget);
+    });
+
+    testWidgets('with a session open, Start says why it cannot', (
+      tester,
+    ) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await openLibrary(tester, blocked: 'Finish the session you have open.');
+
+      await tester.tap(find.text('Push'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Finish the session you have open.'), findsOneWidget);
+      final start = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Start'),
+      );
+      expect(start.onPressed, isNull);
     });
   });
 }

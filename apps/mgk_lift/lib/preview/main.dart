@@ -32,11 +32,12 @@ import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
-import '../src/features/tracking/presentation/workout_library_sheet.dart';
+import '../src/features/tracking/presentation/workout_library_screen.dart';
+import '../src/features/tracking/presentation/workout_preview_sheet.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
 import '../src/features/tracking/presentation/premade_library_sheet.dart';
 import '../src/features/tracking/presentation/save_workout_prompt.dart';
-import '../src/features/tracking/presentation/workout_builder_screen.dart';
+import '../src/features/tracking/presentation/workout_editor_screen.dart';
 import '../src/features/tracking/data/exercise_lookup.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
 import '../src/features/photos/domain/progress_photo.dart';
@@ -112,12 +113,14 @@ class PreviewApp extends StatelessWidget {
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
       ),
       'track-open': (_) => LiftShell(
         recorder: FakeSessionRecorder(_openSession()),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
       ),
       // The mark with something waiting on it. The only difference from `track`
@@ -126,6 +129,7 @@ class PreviewApp extends StatelessWidget {
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
         hasCoachNote: true,
       ),
@@ -150,6 +154,7 @@ class PreviewApp extends StatelessWidget {
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
         isEntitled: true,
         plans: InMemoryStandingPlanStore(_standingPlan()),
@@ -176,6 +181,7 @@ class PreviewApp extends StatelessWidget {
         ),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
       ),
       // `plan-active` used to sit here — entitled, with a plan, on a Thursday.
@@ -192,20 +198,31 @@ class PreviewApp extends StatelessWidget {
       // existed. Same structural blindness the coach mark hit: a surface with
       // no entry here is a surface nobody looks at, and the whole point of the
       // harness is that a screen either renders or the page fails.
-      'workout-library': (_) => _SheetHost(
-        behind: _emptySessionScreen(),
-        open: (context) => WorkoutLibrarySheet.show(
+      // A screen now, reached from Track — no longer a sheet that could only
+      // be opened from inside a session whose clock was already running.
+      'workout-library': (_) => WorkoutLibraryScreen(
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        lookup: ExerciseLookup(),
+        log: sampleLog(previewNow),
+      ),
+      'workout-library-empty': (_) => WorkoutLibraryScreen(
+        library: InMemoryWorkoutLibrary(),
+        lookup: ExerciseLookup(),
+      ),
+      // What a workout holds, set by set, before the clock starts.
+      'workout-preview': (_) => _SheetHost(
+        open: (context) => WorkoutPreviewSheet.show(
           context,
-          library: InMemoryWorkoutLibrary(_savedWorkouts()),
-          lookup: ExerciseLookup(),
+          workout: _savedWorkouts().first,
+          lastDone: previewNow.subtract(const Duration(days: 6)),
         ),
       ),
-      'workout-library-empty': (_) => _SheetHost(
-        behind: _emptySessionScreen(),
-        open: (context) => WorkoutLibrarySheet.show(
+      // A session is already open, so Start says why it cannot.
+      'workout-preview-blocked': (_) => _SheetHost(
+        open: (context) => WorkoutPreviewSheet.show(
           context,
-          library: InMemoryWorkoutLibrary(),
-          lookup: ExerciseLookup(),
+          workout: _savedWorkouts().first,
+          blockedReason: 'Finish or discard the session you have open first.',
         ),
       ),
       'premade-library': (_) => _SheetHost(
@@ -223,15 +240,21 @@ class PreviewApp extends StatelessWidget {
         open: (context) =>
             ExercisePickerSheet.show(context, lookup: ExerciseLookup()),
       ),
-      'workout-builder': (_) => WorkoutBuilderScreen(
+      'workout-builder': (_) => WorkoutEditorScreen(
         library: InMemoryWorkoutLibrary(),
         lookup: ExerciseLookup(),
         initialName: 'Wednesday push',
-        initialMovements: const <String>[
-          'Barbell Bench Press',
-          'Dumbbell Shoulder Press',
-          'Cable Tricep Pushdown',
+        initialMovements: const <TemplateMovement>[
+          TemplateMovement('Barbell Bench Press', repTarget: 5),
+          TemplateMovement('Dumbbell Shoulder Press', repTarget: 10),
+          TemplateMovement('Cable Tricep Pushdown', sets: 4),
         ],
+      ),
+      // Editing one that exists: the same screen, titled for it.
+      'workout-editor': (_) => WorkoutEditorScreen(
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        lookup: ExerciseLookup(),
+        workout: _savedWorkouts().first,
       ),
       'swap-sheet': (_) => _SheetHost(
         behind: _runningSessionScreen(),
@@ -322,6 +345,17 @@ class PreviewApp extends StatelessWidget {
         session: _finishedSession(benchTopKg: 95),
         log: sampleLog(previewNow),
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        onOpenCoach: () {},
+      ),
+      // A session started from a saved workout, with Cable Fly taken out: the
+      // workout learns it here, with Undo — so it is out next week as well.
+      'session-summary-lesson': (_) => SessionSummaryScreen(
+        session: _finishedSession(),
+        log: sampleLog(previewNow),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        offerSave: false,
+        templateId: _savedWorkouts().first.id,
+        lesson: _lesson(),
         onOpenCoach: () {},
       ),
       // A short first session, and the two states that are easiest to get
@@ -1610,25 +1644,58 @@ Widget _runningSessionScreen() {
 ///
 /// Enough to show the list, the movement summary line and the premade
 /// back-reference without being a wall of identical rows.
+/// What a session did to *Wednesday push*: every set laid out and worked,
+/// and Cable Fly removed.
+TemplateUpdate _lesson() {
+  final workout = _savedWorkouts().first;
+  SessionExercise worked(String name, int sets) => SessionExercise(
+    id: name,
+    name: name,
+    orderIndex: 0,
+    sets: <SessionSet>[
+      for (var i = 0; i < sets; i++)
+        SessionSet(
+          id: '$name-$i',
+          setNumber: i + 1,
+          reps: 5,
+          isCompleted: true,
+        ),
+    ],
+  );
+  return TemplateUpdate.between(
+    workout.movements,
+    Session(
+      id: 'lesson',
+      name: workout.name,
+      startedAt: previewNow.subtract(const Duration(hours: 1)),
+      exercises: <SessionExercise>[
+        worked('Barbell Bench Press', 4),
+        worked('Dumbbell Shoulder Press', 3),
+        worked('Cable Tricep Pushdown', 3),
+      ],
+    ),
+  );
+}
+
 List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
   SavedWorkout(
     id: 'w1',
     name: 'Wednesday push',
-    movements: const <String>[
-      'Barbell Bench Press',
-      'Dumbbell Shoulder Press',
-      'Cable Fly',
-      'Cable Tricep Pushdown',
+    movements: const <TemplateMovement>[
+      TemplateMovement('Barbell Bench Press', sets: 4, repTarget: 5),
+      TemplateMovement('Dumbbell Shoulder Press', repTarget: 10),
+      TemplateMovement('Cable Fly', repTarget: 12),
+      TemplateMovement('Cable Tricep Pushdown'),
     ],
     savedAt: previewNow.subtract(const Duration(days: 2)),
   ),
   SavedWorkout(
     id: 'w2',
     name: 'Pull',
-    movements: const <String>[
-      'Barbell Bent Over Row',
-      'Lat Pulldown',
-      'Dumbbell Bicep Curl',
+    movements: const <TemplateMovement>[
+      TemplateMovement('Barbell Bent Over Row', repTarget: 8),
+      TemplateMovement('Lat Pulldown', repTarget: 10),
+      TemplateMovement('Dumbbell Bicep Curl'),
     ],
     savedAt: previewNow.subtract(const Duration(days: 9)),
     premadeId: 'pull',
@@ -1636,10 +1703,10 @@ List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
   SavedWorkout(
     id: 'w3',
     name: 'Legs, short',
-    movements: const <String>[
-      'Barbell Squat',
-      'Leg Press',
-      'Standing Calf Raise',
+    movements: const <TemplateMovement>[
+      TemplateMovement('Barbell Squat', sets: 5, repTarget: 5),
+      TemplateMovement('Leg Press', repTarget: 10),
+      TemplateMovement('Standing Calf Raise', sets: 4, repTarget: 15),
     ],
     savedAt: previewNow.subtract(const Duration(days: 16)),
   ),

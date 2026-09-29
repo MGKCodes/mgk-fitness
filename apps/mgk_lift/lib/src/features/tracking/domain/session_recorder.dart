@@ -42,29 +42,25 @@ abstract interface class SessionRecorder {
   Future<Session> addExercises(List<String> names);
 
   /// Fills the open session from a saved workout: its name, its movements in
-  /// order, and a back-reference to where they came from.
+  /// order **with their sets already laid out**, a back-reference to where
+  /// they came from, and [snapshot] — the workout as it stood, which Finish
+  /// compares the session against so the workout can learn from it.
   ///
-  /// **Replaces the template shortcut it is named after.** `_useTemplate` used
-  /// to tip one of the fifteen premades straight into a blank session, which
-  /// made the app-provided list a start path — the thing the Knowledge decision
-  /// *"Lift templates are the coach's grounding layer, not a user-facing
-  /// library"* says it must not be. This does the same filling from the
-  /// lifter's own library instead, so the premades are reached by adding one to
-  /// that library first.
-  ///
-  /// Movements only. A saved workout says what to do, not what to lift — see
-  /// [SavedWorkout.movements]. A *planned* session is different and
-  /// deliberately so: `SessionFromPlan` fills in weights because the coach
-  /// derived them from this lifter's own logged sets.
+  /// The sets arrive seeded: each movement's count from the workout, reps from
+  /// its target or from last time, weight from last time — see `seedSets`.
+  /// Nothing is ticked. It used to add bare movement names, so a six-movement
+  /// workout opened as six empty cards.
   ///
   /// Takes primitives rather than a `SavedWorkout` so the recorder does not
-  /// have to know the library exists. It has one caller — the empty state of a
-  /// session that has just been started — and it renames the session on the
+  /// have to know the library exists. It renames the session on the
   /// assumption that nothing has been logged into it yet.
+  ///
+  /// Throws [SessionLimitReached] if the movements would not fit.
   Future<Session> fillFromLibrary({
     required String workoutId,
     required String name,
-    required List<String> movements,
+    required List<SeededMovement> movements,
+    String? snapshot,
   });
 
   /// Adds a set to a movement, carrying the previous set's numbers forward.
@@ -150,6 +146,13 @@ abstract interface class SessionRecorder {
   /// That is different from deleting a *finished* session, which is soft.
   Future<void> discard();
 }
+
+/// A movement with its sets already laid out — a saved workout as a session
+/// opens with it.
+typedef SeededMovement = ({
+  String name,
+  List<({int reps, double weightKg})> sets,
+});
 
 /// Thrown when starting a session while one is already open.
 class SessionInProgress implements Exception {

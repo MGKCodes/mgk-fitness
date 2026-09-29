@@ -13,11 +13,24 @@ class Session {
     this.endedAt,
     this.notes,
     this.exercises = const <SessionExercise>[],
+    this.templateId,
+    this.templateSnapshot,
   });
 
   final String id;
   final String name;
   final DateTime startedAt;
+
+  /// The saved workout this session was started from, if any.
+  final String? templateId;
+
+  /// That workout as it stood when the session started — what the session is
+  /// compared against at Finish, so the workout can learn from it. See
+  /// `TemplateUpdate`. Kept on this device only; nothing uploads it.
+  ///
+  /// Raw rather than decoded so the domain type here stays free of the
+  /// template's; `TemplateMovement.decode` reads it.
+  final String? templateSnapshot;
 
   /// Null while the session is in progress. This is the whole crash-recovery
   /// mechanism: on launch, a workout row with no `endedAt` is a session that was
@@ -78,6 +91,8 @@ class Session {
     endedAt: endedAt,
     notes: notes,
     exercises: exercises,
+    templateId: templateId,
+    templateSnapshot: templateSnapshot,
   );
 
   /// This session with one set changed by [change].

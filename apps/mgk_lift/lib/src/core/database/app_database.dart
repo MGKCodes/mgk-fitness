@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +73,12 @@ class AppDatabase extends _$AppDatabase {
         // exactly right: nothing has ever been uploaded, so every photo a
         // lifter already has counts as pending and goes up on the first run.
         await m.addColumn(progressPhotos, progressPhotos.syncedAt);
+      }
+      if (from < 8) {
+        // A session remembers the workout it started from, as it was then, so
+        // the workout can learn from it at Finish. Null on every existing row,
+        // which is right: no session before this one was started that way.
+        await m.addColumn(workouts, workouts.templateSnapshot);
       }
       // 7 changes no shape; it adds the indexes below. A photo slot that went
       // unguarded on a fresh install is deduplicated first — see

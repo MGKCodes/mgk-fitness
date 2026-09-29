@@ -35,6 +35,8 @@ import '../../tracking/domain/session_recorder.dart';
 import '../../tracking/domain/workout_library.dart';
 import '../../tracking/presentation/track_controller.dart';
 import '../../tracking/presentation/track_surface.dart';
+import '../../tracking/data/exercise_lookup.dart';
+import '../../tracking/presentation/workout_library_screen.dart';
 
 /// The authenticated app: Track / Plan / Profile, with the coach floating over
 /// all three.
@@ -269,6 +271,10 @@ class _LiftShellState extends State<LiftShell> {
   /// finishing a session on Track changes it.
   List<Session> _log = const <Session>[];
 
+  /// The lifter's saved workouts, for Track's row. Read at the shell so the
+  /// row and the library screen it opens cannot disagree about what exists.
+  List<SavedWorkout> _workouts = const <SavedWorkout>[];
+
   /// What is waiting to upload, and how the last attempt went. Held here so
   /// Settings opens with the count already known rather than flickering.
   SyncPending? _pending;
@@ -279,6 +285,10 @@ class _LiftShellState extends State<LiftShell> {
   /// so a session restored at launch or expiring mid-use both reach the UI.
   Account? _account;
   StreamSubscription<Account?>? _authSub;
+
+  /// Track's row follows the library, whichever screen changed it — the
+  /// summary teaching a workout included. See [WorkoutLibrary.changes].
+  StreamSubscription<void>? _librarySub;
 
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
@@ -314,6 +324,10 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_loadCoachPreference());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
+    unawaited(_refreshWorkouts());
+    _librarySub = widget.library?.changes.listen(
+      (_) => unawaited(_refreshWorkouts()),
+    );
     unawaited(_refreshPending());
     unawaited(_refreshPlan());
     unawaited(_refreshEntitlement());
@@ -344,6 +358,7 @@ class _LiftShellState extends State<LiftShell> {
   @override
   void dispose() {
     unawaited(_authSub?.cancel());
+    unawaited(_librarySub?.cancel());
     super.dispose();
   }
 
@@ -505,6 +520,14 @@ class _LiftShellState extends State<LiftShell> {
     setState(() => _units = loaded);
   }
 
+  Future<void> _refreshWorkouts() async {
+    final library = widget.library;
+    if (library == null) return;
+    final all = await library.all();
+    if (!mounted) return;
+    setState(() => _workouts = all);
+  }
+
   Future<void> _refreshLog() async {
     final source = widget.history;
     if (source == null) return;
@@ -574,6 +597,9 @@ class _LiftShellState extends State<LiftShell> {
                   onStartPlanned: widget.recorder == null
                       ? null
                       : _openPlannedSession,
+                  workouts: _workouts,
+                  onStartWorkout: widget.recorder == null ? null : _openWorkout,
+                  onOpenLibrary: widget.library == null ? null : _openLibrary,
                 ),
                 PlanSurface(
                   isEntitled: _entitled,
@@ -913,8 +939,48 @@ class _LiftShellState extends State<LiftShell> {
       },
     );
     // Also on return, not only via onDone: backing out of the screen with the
-    // session still open must leave Track offering to resume it.
+    // session still open must leave Track offering to resume it. **The session
+    // only** — backing out changes no finished session, and the whole log was
+    // reloaded twice per visit, once here and once in onDone.
     await _refreshSession();
-    await _refreshLog();
+  }
+
+  /// Starts a session from a saved workout, every set laid out.
+  Future<void> _openWorkout(SavedWorkout workout) async {
+    final recorder = widget.recorder;
+    if (recorder == null) return;
+    await TrackController(recorder, library: widget.library).openWorkout(
+      context,
+      workout,
+      massUnit: _units.mass,
+      planner: widget.planner,
+      log: _log,
+      onOpenCoach: widget.coach == null ? null : _openCoach,
+      onDone: () {
+        unawaited(_refreshSession());
+        unawaited(_refreshLog());
+      },
+    );
+    // Not the workouts: this returns when Finish swaps the session for the
+    // summary, before the summary teaches the workout. The row follows the
+    // library's own `changes` instead.
+    await _refreshSession();
+  }
+
+  /// The whole library, from Track's "See all".
+  Future<void> _openLibrary() async {
+    final library = widget.library;
+    if (library == null) return;
+    final chosen = await WorkoutLibraryScreen.open(
+      context,
+      library: library,
+      lookup: ExerciseLookup(),
+      log: _log,
+      blockedReason: _openSessionDetail == null
+          ? null
+          : 'Finish or discard the session you have open first.',
+    );
+    if (!mounted) return;
+    if (chosen != null) await _openWorkout(chosen);
   }
 }

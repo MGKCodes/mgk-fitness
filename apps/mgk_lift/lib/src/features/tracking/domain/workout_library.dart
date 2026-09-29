@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:meta/meta.dart';
+
+import 'template_movement.dart';
+
+export 'template_movement.dart';
 
 /// A workout the lifter has saved: a name, and the movements it contains.
 ///
@@ -27,38 +33,41 @@ class SavedWorkout {
     this.premadeId,
   });
 
-  /// Shared with the workout row it is stored as, and with the Supabase row if
-  /// it ever goes up.
+  /// Shared with the workout row it is stored as, and with the Supabase row
+  /// once it goes up.
   final String id;
 
   final String name;
 
-  /// Movement names, in the order they should be done.
-  ///
-  /// **Names and nothing else — no sets, no weights.** A saved workout says
-  /// what to do, not what to lift, which is the rule the template shortcut it
-  /// replaces already followed. Carrying numbers would be the app asserting
-  /// something only the lifter knows, and it would go stale the moment they got
-  /// stronger. The number a lifter actually wants mid-set is what they did on
-  /// this movement *last time*, and `PreviousPerformance` already puts that on
-  /// the exercise card at the point of use — so nothing is lost by leaving it
-  /// out of here.
-  final List<String> movements;
+  /// What to do, in order — each movement with its set count and rep target.
+  /// See [TemplateMovement] for why there is never a weight here.
+  final List<TemplateMovement> movements;
 
   /// When it was saved. The library is ordered newest first on this, so a
   /// workout somebody has just added is where they look for it.
   final DateTime savedAt;
 
   /// The premade this was added from, or null if it was built by hand or saved
-  /// from a session.
-  ///
-  /// Only ever a back-reference. The copy is independent from the moment it is
-  /// made: editing one of the fifteen does not reach into a library, and
-  /// deleting a saved workout does not remove anything from the fifteen. What
-  /// this buys is the browser being able to say which ones you already have.
+  /// from a session. Only ever a back-reference: the copy is independent from
+  /// the moment it is made. What this buys is the browser being able to say
+  /// which ones you already have.
   final String? premadeId;
 
   int get movementCount => movements.length;
+
+  /// Working sets across the whole workout — `6 movements · 18 sets`.
+  int get setCount => movements.fold(0, (sum, m) => sum + m.sets);
+
+  List<String> get movementNames => <String>[for (final m in movements) m.name];
+
+  SavedWorkout copyWith({String? name, List<TemplateMovement>? movements}) =>
+      SavedWorkout(
+        id: id,
+        name: name ?? this.name,
+        movements: movements ?? this.movements,
+        savedAt: savedAt,
+        premadeId: premadeId,
+      );
 }
 
 /// The lifter's saved workouts.
@@ -74,22 +83,41 @@ abstract interface class WorkoutLibrary {
   /// Every saved workout, newest first.
   Future<List<SavedWorkout>> all();
 
-  /// Writes a workout to the library.
+  /// One saved workout, or null if it no longer exists — deleted here, or on
+  /// another device and pulled down since.
+  Future<SavedWorkout?> byId(String id);
+
+  /// Writes a new workout to the library.
   ///
-  /// **One write path for all three ways in**, because all three reduce to the
-  /// same two things: a name and an ordered list of movement names. Saving a
-  /// finished session takes them off the session, adding a premade takes them
-  /// off the premade, and building one by hand collects them a movement at a
-  /// time. Three methods here would have been three chances to write a
-  /// half-formed row.
+  /// **One write path for every way in**: saving a finished session, adding a
+  /// premade, building one by hand. Each reduces to a name and an ordered list
+  /// of movements.
   Future<SavedWorkout> save({
     required String name,
-    required List<String> movements,
+    required List<TemplateMovement> movements,
     String? fromPremade,
   });
 
-  /// Deletes a saved workout.
+  /// Replaces a workout's name and movements, keeping its id and its place.
+  ///
+  /// The editor's save, and the session's lesson — a template learning from
+  /// the session that ran it (see [TemplateUpdate]) is this call.
+  Future<SavedWorkout> update(SavedWorkout workout);
+
+  /// Deletes a saved workout. Sessions done from it stay in the log.
   Future<void> remove(String id);
+
+  /// Puts back a workout [remove] took away — the Undo.
+  Future<void> restore(String id);
+
+  /// Fires after this library changes — a save, an edit, a delete or its
+  /// undo — so a surface showing the list can read it again.
+  ///
+  /// **Track's row went stale without it.** Track re-read the library when
+  /// the session screen returned, but Finish *replaces* that screen with the
+  /// summary, so the return came before the summary taught the workout — and
+  /// Track said "4 movements" about a workout that now had three.
+  Stream<void> get changes;
 }
 
 /// A name that is not already taken, suffixed `(2)`, `(3)` … if it is.
@@ -124,34 +152,63 @@ class InMemoryWorkoutLibrary implements WorkoutLibrary {
   ]) : _saved = <SavedWorkout>[...initial];
 
   final List<SavedWorkout> _saved;
+  final Map<String, SavedWorkout> _removed = <String, SavedWorkout>{};
+  final StreamController<void> _changes = StreamController<void>.broadcast();
   int _ids = 0;
+
+  @override
+  Stream<void> get changes => _changes.stream;
 
   @override
   Future<List<SavedWorkout>> all() async =>
       <SavedWorkout>[..._saved]..sort((a, b) => b.savedAt.compareTo(a.savedAt));
 
   @override
+  Future<SavedWorkout?> byId(String id) async {
+    for (final w in _saved) {
+      if (w.id == id) return w;
+    }
+    return null;
+  }
+
+  @override
   Future<SavedWorkout> save({
     required String name,
-    required List<String> movements,
+    required List<TemplateMovement> movements,
     String? fromPremade,
   }) async {
     final workout = SavedWorkout(
       id: 'saved-${++_ids}',
       name: name,
-      movements: <String>[...movements],
+      movements: <TemplateMovement>[...movements],
       // Nudged apart, so two saves in the same tick still order newest-first.
-      // The Drift store has the same problem for a different reason — it keeps
-      // a `DateTime` to the second — and solves it with `rowid`. Both end up
-      // ordering by insertion, which is what a lifter reads "newest" as.
       savedAt: DateTime.now().add(Duration(microseconds: _ids)),
       premadeId: fromPremade,
     );
     _saved.add(workout);
+    _changes.add(null);
     return workout;
   }
 
   @override
-  Future<void> remove(String id) async =>
-      _saved.removeWhere((SavedWorkout w) => w.id == id);
+  Future<SavedWorkout> update(SavedWorkout workout) async {
+    final at = _saved.indexWhere((w) => w.id == workout.id);
+    if (at >= 0) _saved[at] = workout;
+    _changes.add(null);
+    return workout;
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    final at = _saved.indexWhere((w) => w.id == id);
+    if (at >= 0) _removed[id] = _saved.removeAt(at);
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> restore(String id) async {
+    final back = _removed.remove(id);
+    if (back != null) _saved.add(back);
+    _changes.add(null);
+  }
 }

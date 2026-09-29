@@ -325,7 +325,7 @@ per session.
 
 ### The model
 
-- [ ] **A template movement has a set count and a rep target** (D4).
+- [x] **A template movement has a set count and a rep target** (D4).
       `SavedWorkout.movements` becomes a list of `TemplateMovement(name, sets,
       repTarget?)`. Stored the way the schema already allows — the template's
       exercise rows get that many set rows, reps holding the target and weight
@@ -335,12 +335,18 @@ per session.
       the server before relying on it**; it is inferred from a comment, not
       read from the rows.
 
+      *Checked in code, not yet on the server — 2026-09-29.* The read is safe
+      whichever way the rows turn out: set rows become the count, a movement
+      with none reads as the default three, and a weight on a legacy row is
+      ignored. The server check moves to Phase 4, where templates are first
+      pulled down.
+
 ### Starting a workout from one
 
-- [ ] **One tap from Track** (F12). Track shows your workouts as a row of
+- [x] **One tap from Track** (F12). Track shows your workouts as a row of
       glass cards under *Next up*, and a *See all* link. A card opens a preview
       sheet — movements, sets × reps, when you last did it — with **Start**.
-- [ ] **The session arrives ready.** One transaction: name, the template's id,
+- [x] **The session arrives ready.** One transaction: name, the template's id,
       every movement in order, the set rows seeded — reps from the target (or
       last time), weight from last time, nothing ticked. The empty session
       screen keeps a *Your workouts* action for starting blank and filling
@@ -348,21 +354,26 @@ per session.
 
 ### The library and the editor
 
-- [ ] **Your workouts is a screen, not a sheet.** Rows show the name,
+- [x] **Your workouts is a screen, not a sheet.** Rows show the name,
       *6 movements · 18 sets*, *last done Tuesday*, and a cloud-off mark only
       when a row is not backed up. Empty state leads with the ready-made ones.
-- [ ] **The editor** (F13) replaces the builder: name (60), movements with drag
+      *The cloud-off mark waits for Phase 4, which is where a row learns
+      whether it is backed up.*
+- [x] **The editor** (F13) replaces the builder: name (60), movements with drag
       handles, a sets stepper (1–20) and a rep target per movement, swipe or ✕
       to remove with Undo, *Add movements* through the multi-select picker.
       Save is disabled until the workout is valid. Leaving with unsaved changes
-      asks first.
-- [ ] **Row actions:** Start, Edit, Duplicate, Delete. Delete confirms
+      asks first. *✕ only, no swipe: the ✕ is on every row already, and a row
+      that drags and swipes is one gesture too many to hold on a phone.*
+- [x] **Row actions:** Start, Edit, Duplicate, Delete. Delete confirms
       (*"Sessions you did from it stay in your log"*) and is a soft delete, so
-      it reaches your other devices.
-- [ ] **Ready-made ones are browsed inside the library.** Splits and sessions
+      it reaches your other devices. *On the preview rather than the row: a
+      tap opens the preview, and the four actions sit under its movements.*
+- [x] **Ready-made ones are browsed inside the library.** Splits and sessions
       with a preview; *Add* shows *"Push added · Undo"*; a premade you already
       have says so, and adding a second copy is its own explicit action rather
-      than the same tap twice.
+      than the same tap twice. *No separate preview of a ready-made one: an
+      add can be undone, and the copy previews in the library like any other.*
 
 ### The template learns (settled item 1, D1)
 
@@ -373,7 +384,8 @@ Finish the session is compared with the snapshot:
 | In the session | What happens to the template |
 |---|---|
 | Movement removed with ✕ | removed |
-| Movement added | added, at the same position |
+| Movement added, and done | added, at the same position |
+| Movement added, nothing ticked | not added — Finish drops it and says so |
 | Movements reordered | new order saved |
 | Set rows added or removed | the set count follows |
 | Movement kept, nothing ticked (skipped today) | unchanged — skipping is not removing |
@@ -382,16 +394,48 @@ Finish the session is compared with the snapshot:
 | Reps and weights | never changed by a session |
 | Warm-ups | not part of a template |
 
-- [ ] **Applied automatically, shown on the summary with Undo:** *"Push
+- [x] **Applied automatically, shown on the summary with Undo:** *"Push
       updated — removed Cable Fly, added Dips · Undo"*. Undo puts the template
       back exactly as it was.
-- [ ] **When it should not apply on its own:** the template changed since the
+- [x] **When it should not apply on its own:** the template changed since the
       session started (edited on another device, or in the editor mid-session)
       → the summary asks *Update Push / Keep it as it was*. The template was
       deleted meanwhile → *Save as a new workout*.
-- [ ] Sessions not from a template keep the existing *Save as a workout*
+- [x] Sessions not from a template keep the existing *Save as a workout*
       offer. Planned sessions from the coach never touch a template. A
       discarded session changes nothing.
+
+**Found on the way, and fixed — 2026-09-29.** Each was caught by a test
+written for this phase, not by reading.
+
+- The session screen's *Undo* followed the lifter onto the summary — the
+  messenger is the app's — where it would have written into a finished
+  session. Leaving the screen (Finish, Discard, back) now takes it along, and
+  a stale Undo does nothing.
+- *Undo* after adding a ready-made workout sat behind the sheet, which is as
+  tall as the screen. The sheet has its own messenger now.
+- That message also waited on the haptic before appearing. Haptics are never
+  awaited now.
+- A snackbar covered *Save* in the editor (and *Build one* in the library) for
+  four seconds after a removal, so a quick Save hit Undo. Those buttons moved
+  to the Scaffold's bar slot, which a snackbar sits above.
+- Track's workout cards had a fixed height and overflowed once the text was
+  larger than the default; the preview's actions and the editor's sets/reps
+  line overflowed a 375pt phone the same way. All four now reflow, pinned by
+  tests at 1.3× and 2× text on a 375pt screen.
+- The schema 7 → 8 upgrade every TestFlight install will run had no test. It
+  has one: an old-shape database opens, gains the column, keeps its rows.
+- The session screen offered *Save to your workouts* on a session started
+  from a saved workout — a copy of what the lifter already had — and kept
+  offering it after a save, so a second tap made a third. Hidden for the
+  first; a statement after the second. Found on the emulator.
+- The emulator also showed a Track-started session reaching the summary with
+  no lesson. The cause was the harness's fake recorder dropping the link on
+  the first tick, not the app — but the Track path had no test with the real
+  recorder, and has one now.
+
+**Carried to Phase 5:** nothing in either app reads the text size. The new
+workout screens are tested at large sizes; the rest of both apps are not.
 
 ---
 
@@ -486,6 +530,14 @@ So every glass surface in Lift gets one of two things behind it: the photograph
 - [ ] **Springs in `AppMotion`** — one snappy, one gentle — for presses, ticks,
       sheets and the dock. Curves stay for fades and entrances.
 - [ ] Run is checked against its board after each shared change.
+- [ ] **Track's workout row bleeds to the screen edge.** Two cards fill the
+      width exactly, so a third is there and nothing says so — seen on the
+      emulator with three saved. Let the row run past the page margin so the
+      next card shows its edge.
+- [ ] **Larger text, both apps.** Nothing reads the phone's text size, and a
+      fixed-height card on Track overflowed the first time anything was tried
+      at 1.3×. Every screen checked at 1.3× and 2× on a 375pt phone, the way
+      the Phase 3 screens now are; decide then whether a ceiling is needed.
 
 ### The session screen
 

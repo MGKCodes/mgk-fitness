@@ -69,6 +69,18 @@ class Workouts extends Table {
   /// to guess which of the two meanings each existing value carried.
   TextColumn get premadeId => text().nullable()();
 
+  /// The saved workout a session started from, **as it stood at the start** —
+  /// encoded `TemplateMovement`s. Set on a session row, never on a template.
+  ///
+  /// It is what Finish compares the session against so the workout can learn
+  /// from it (`TemplateUpdate`), and it has to be the workout *as it was*:
+  /// compared against the current one instead, an edit made on another device
+  /// mid-session would read as something this session did.
+  ///
+  /// **Local only.** The sync layer names the columns it uploads and this is
+  /// not one of them; it means nothing once the session has ended.
+  TextColumn get templateSnapshot => text().nullable()();
+
   /// Soft delete. Kept rather than hard-deleted so a delete syncs to other
   /// devices instead of the row simply reappearing from the backup.
   DateTimeColumn get deletedAt => dateTime().nullable()();

@@ -201,21 +201,27 @@ void main() {
     expect(find.text('Add exercise'), findsOneWidget);
   });
 
-  testWidgets('a saved workout adds its movements and no numbers', (
+  testWidgets('a saved workout lays out its sets, and no weight of its own', (
     WidgetTester tester,
   ) async {
-    // A saved workout says what to do, not what to lift. Pre-filling weights
-    // would be the app asserting something only the lifter knows.
+    // A saved workout says what to do — three sets of eight — and never what
+    // to lift (decision D4). With no history there is no weight to carry, so
+    // the rows open blank, and nothing is ticked on the lifter's behalf.
     await recorder.start();
     await recorder.fillFromLibrary(
       workoutId: 'saved-1',
       name: 'Push',
-      movements: <String>['Barbell Bench Press', 'Dumbbell Shoulder Press'],
+      movements: seedWorkout(const <TemplateMovement>[
+        TemplateMovement('Barbell Bench Press', repTarget: 8),
+        TemplateMovement('Dumbbell Shoulder Press', sets: 2),
+      ], const <Session>[]),
     );
 
     final session = await recorder.current();
     expect(session!.exercises, hasLength(2));
-    expect(session.totalSets, 0);
+    expect(session.exercises.map((e) => e.sets.length), <int>[3, 2]);
+    expect(session.exercises.first.sets.map((s) => s.reps), <int>[8, 8, 8]);
+    expect(session.completedSets, 0);
     expect(session.volumeKg, 0);
   });
 

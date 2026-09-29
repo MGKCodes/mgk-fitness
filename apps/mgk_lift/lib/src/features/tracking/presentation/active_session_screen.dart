@@ -20,7 +20,7 @@ import 'finish_sheet.dart';
 import 'rest_bar.dart';
 import 'save_workout_prompt.dart';
 import 'session_summary_screen.dart';
-import 'workout_library_sheet.dart';
+import 'workout_library_screen.dart';
 
 /// The screen you are looking at while standing at a rack.
 ///
@@ -147,6 +147,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// **from** it. Either suppresses the offer to save on the way out.
   bool _savedToLibrary = false;
   bool _filledFromLibrary = false;
+
+  /// Started from a saved workout — here, or from Track with its sets laid out.
+  bool get _fromLibrary => _filledFromLibrary || _session.templateId != null;
 
   /// The name field of the save dialog. See [promptToSaveWorkout] for why it is
   /// owned here rather than built with the dialog.
@@ -277,10 +280,23 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
           duration: const Duration(seconds: 5),
           action: action == null
               ? null
-              : SnackBarAction(label: action, onPressed: onAction ?? () {}),
+              : SnackBarAction(
+                  label: action,
+                  // An Undo outliving the screen does nothing, rather than
+                  // writing into a session that has since been finished.
+                  onPressed: () {
+                    if (mounted) onAction?.call();
+                  },
+                ),
         ),
       );
   }
+
+  /// Takes this screen's message with it when the lifter leaves. The messenger
+  /// is the app's, so an Undo shown here otherwise followed them onto the
+  /// summary — "Cable Fly removed. Undo", under a session already finished.
+  void _dropMessages() =>
+      ScaffoldMessenger.maybeOf(context)?.removeCurrentSnackBar();
 
   void _refused(String why) {
     final now = DateTime.now();
@@ -667,14 +683,18 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
   // ---- library ---------------------------------------------------------------------------
 
-  /// Fills an empty session from one of the lifter's saved workouts.
+  /// Fills an empty session from one of the lifter's saved workouts — the
+  /// whole library, opened to choose from, with each movement's sets laid out
+  /// from last time.
   Future<void> _openLibrary() async {
     final library = widget.library;
     if (library == null) return;
-    final workout = await WorkoutLibrarySheet.show(
+    final workout = await WorkoutLibraryScreen.open(
       context,
       library: library,
       lookup: _lookup,
+      log: widget.log,
+      startLabel: 'Use this workout',
     );
     if (workout == null || !mounted) return;
     setState(() => _filledFromLibrary = true);
@@ -682,7 +702,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       () => widget.recorder.fillFromLibrary(
         workoutId: workout.id,
         name: workout.name,
-        movements: workout.movements,
+        movements: seedWorkout(workout.movements, widget.log),
+        snapshot: TemplateMovement.encode(workout.movements),
       ),
     );
   }
@@ -725,25 +746,38 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
     // Finish is a write like any other, so it waits its turn.
     await _writes;
+
+    // What this session did to the workout it came from — read **before**
+    // Finish drops the unticked sets, because a row left unticked is a set
+    // skipped today, not one removed from the workout.
+    final started = _session;
+    final snapshot = TemplateMovement.decode(started.templateSnapshot);
+    final lesson = snapshot == null || started.templateId == null
+        ? null
+        : TemplateUpdate.between(snapshot, started);
+    final fromLibrary = _fromLibrary;
+
     final finished = await widget.recorder.finish();
     if (!mounted) return;
     unawaited(AppHaptics.commit());
     widget.onFinished?.call();
 
+    // A replacement is not a pop, so the PopScope below does not see it.
+    _dropMessages();
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => SessionSummaryScreen(
           session: finished,
           massUnit: widget.massUnit,
           log: widget.log,
-          // No offer to save when there is no library, nothing to save, the
-          // session came from the library, or it was saved already.
-          library:
-              _savedToLibrary ||
-                  _filledFromLibrary ||
-                  finished.exercises.isEmpty
-              ? null
-              : widget.library,
+          library: widget.library,
+          // No offer to save a session that came from the library — its
+          // workout learns from it instead — or one saved already, or one
+          // with nothing in it.
+          offerSave:
+              !_savedToLibrary && !fromLibrary && finished.exercises.isNotEmpty,
+          templateId: started.templateId,
+          lesson: lesson,
           onOpenCoach: widget.onOpenCoach,
         ),
       ),
@@ -790,145 +824,173 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     final editing = _focusedKey != null;
     final full = _session.exercises.length >= SessionLimits.movements;
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: PhotoBackdrop(
-        image: 'assets/images/backgrounds/hero_home.webp',
-        scrim: ScrimStrength.quiet,
-        child: SafeArea(
-          child: Column(
-            children: <Widget>[
-              _Header(
-                onBack: () => Navigator.of(context).maybePop(),
-                name: _session.name,
-                startedAt: _session.startedAt,
-                clock: _clock,
-                volumeKg: _session.volumeKg,
-                massUnit: widget.massUnit,
-                completedSets: _session.completedSets,
-                movements: _session.exercises.length,
-                canFinish: canFinish,
-                onFinish: _finish,
-              ),
-              Expanded(
-                child: _session.exercises.isEmpty
-                    ? _EmptyState(
-                        onAdd: _addExercises,
-                        onOpenLibrary: widget.library == null
-                            ? null
-                            : _openLibrary,
-                        onDiscard: _confirmDiscard,
-                      )
-                    : ListView(
-                        // Dragging the list puts the keyboard away — the second
-                        // of three ways out, with a tap elsewhere and Done.
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.lg,
-                          AppSpacing.sm,
-                          AppSpacing.lg,
-                          AppSpacing.xxl,
-                        ),
-                        children: <Widget>[
-                          for (final exercise in _session.exercises)
-                            // Animated, because ticking the last set collapses
-                            // the card under the lifter's finger. A jump cut
-                            // there reads as the card having been deleted.
-                            AnimatedSize(
-                              key: ValueKey<String>(exercise.id),
-                              duration: AppMotion.fast,
-                              curve: AppMotion.standard,
-                              alignment: Alignment.topCenter,
-                              child: ExerciseCard(
-                                exercise: exercise,
-                                catalogue: _lookup.find(exercise.name),
-                                massUnit: widget.massUnit,
-                                previous: _previousFor(exercise.name),
-                                isCollapsed: _isCollapsed(exercise),
-                                onToggleCollapsed: () =>
-                                    _toggleCollapsed(exercise),
-                                onSwap: widget.planner == null
-                                    ? null
-                                    : () => _swap(exercise),
-                                onAddSet: () => _addSet(exercise),
-                                onRemove: () => _removeExercise(exercise),
-                                onToggle: _toggle,
-                                onCommit: _commit,
-                                focusFor: _node,
-                                onCycleSetType: _cycleType,
-                                onSetMenu: (set) => _setMenu(exercise, set),
-                                onRemoveSet: (set) => _removeSet(exercise, set),
-                                onRejected: _refused,
-                              ),
-                            ),
-                          const SizedBox(height: AppSpacing.sm),
-                          AppOutlinedButton(
-                            onPressed: full ? null : _addExercises,
-                            icon: Icons.add,
-                            label: 'Add exercise',
-                            expand: true,
+    // Back, by arrow or gesture, and Discard all pop — each takes this
+    // screen's Undo with it (see [_dropMessages]).
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _dropMessages();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: PhotoBackdrop(
+          image: 'assets/images/backgrounds/hero_home.webp',
+          scrim: ScrimStrength.quiet,
+          child: SafeArea(
+            child: Column(
+              children: <Widget>[
+                _Header(
+                  onBack: () => Navigator.of(context).maybePop(),
+                  name: _session.name,
+                  startedAt: _session.startedAt,
+                  clock: _clock,
+                  volumeKg: _session.volumeKg,
+                  massUnit: widget.massUnit,
+                  completedSets: _session.completedSets,
+                  movements: _session.exercises.length,
+                  canFinish: canFinish,
+                  onFinish: _finish,
+                ),
+                Expanded(
+                  child: _session.exercises.isEmpty
+                      ? _EmptyState(
+                          onAdd: _addExercises,
+                          onOpenLibrary: widget.library == null
+                              ? null
+                              : _openLibrary,
+                          onDiscard: _confirmDiscard,
+                        )
+                      : ListView(
+                          // Dragging the list puts the keyboard away — the second
+                          // of three ways out, with a tap elsewhere and Done.
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg,
+                            AppSpacing.sm,
+                            AppSpacing.lg,
+                            AppSpacing.xxl,
                           ),
-                          if (full)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: AppSpacing.xs,
+                          children: <Widget>[
+                            for (final exercise in _session.exercises)
+                              // Animated, because ticking the last set collapses
+                              // the card under the lifter's finger. A jump cut
+                              // there reads as the card having been deleted.
+                              AnimatedSize(
+                                key: ValueKey<String>(exercise.id),
+                                duration: AppMotion.fast,
+                                curve: AppMotion.standard,
+                                alignment: Alignment.topCenter,
+                                child: ExerciseCard(
+                                  exercise: exercise,
+                                  catalogue: _lookup.find(exercise.name),
+                                  massUnit: widget.massUnit,
+                                  previous: _previousFor(exercise.name),
+                                  isCollapsed: _isCollapsed(exercise),
+                                  onToggleCollapsed: () =>
+                                      _toggleCollapsed(exercise),
+                                  onSwap: widget.planner == null
+                                      ? null
+                                      : () => _swap(exercise),
+                                  onAddSet: () => _addSet(exercise),
+                                  onRemove: () => _removeExercise(exercise),
+                                  onToggle: _toggle,
+                                  onCommit: _commit,
+                                  focusFor: _node,
+                                  onCycleSetType: _cycleType,
+                                  onSetMenu: (set) => _setMenu(exercise, set),
+                                  onRemoveSet: (set) =>
+                                      _removeSet(exercise, set),
+                                  onRejected: _refused,
+                                ),
                               ),
-                              child: Text(
-                                '${SessionLimits.movements} movements is the '
-                                'most one session holds.',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: AppColors.textTertiary),
-                              ),
+                            const SizedBox(height: AppSpacing.sm),
+                            AppOutlinedButton(
+                              onPressed: full ? null : _addExercises,
+                              icon: Icons.add,
+                              label: 'Add exercise',
+                              expand: true,
                             ),
-                          const SizedBox(height: AppSpacing.xl),
-                          // Here rather than in the header: saving is decided
-                          // about the shape of a session after seeing it, and
-                          // the list is where the shape is.
-                          if (widget.library != null)
+                            if (full)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: AppSpacing.xs,
+                                ),
+                                child: Text(
+                                  '${SessionLimits.movements} movements is the '
+                                  'most one session holds.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppColors.textTertiary),
+                                ),
+                              ),
+                            const SizedBox(height: AppSpacing.xl),
+                            // Here rather than in the header: saving is decided
+                            // about the shape of a session after seeing it, and
+                            // the list is where the shape is.
+                            //
+                            // Not for a session from a saved workout — that
+                            // workout learns from it at Finish, and a save here
+                            // made a second copy — and a statement once saved,
+                            // so a second tap cannot make a third.
+                            if (widget.library != null && !_fromLibrary)
+                              Center(
+                                child: _savedToLibrary
+                                    ? Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: AppSpacing.sm,
+                                        ),
+                                        child: Text(
+                                          'Saved to your workouts',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                        ),
+                                      )
+                                    : AppTextButton(
+                                        label: 'Save to your workouts',
+                                        onPressed: _saveToLibrary,
+                                      ),
+                              ),
+                            const SizedBox(height: AppSpacing.sm),
+                            // Destructive, so it sits at the bottom of the list
+                            // rather than in the chrome.
                             Center(
                               child: AppTextButton(
-                                label: 'Save to your workouts',
-                                onPressed: _saveToLibrary,
+                                label: 'Discard session',
+                                onPressed: _confirmDiscard,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                ),
                               ),
                             ),
-                          const SizedBox(height: AppSpacing.sm),
-                          // Destructive, so it sits at the bottom of the list
-                          // rather than in the chrome.
-                          Center(
-                            child: AppTextButton(
-                              label: 'Discard session',
-                              onPressed: _confirmDiscard,
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.danger,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-
-              // The keyboard bar takes the rest bar's place while a number is
-              // being typed — the keyboard covers that edge anyway.
-              if (editing && keyboardUp)
-                _KeyboardBar(
-                  onPrevious: () => _moveFocus(-1),
-                  onNext: () => _moveFocus(1),
-                  onLogSet: _logFocusedSet,
-                  onDone: () => FocusManager.instance.primaryFocus?.unfocus(),
-                )
-              else if (_rest != null)
-                ValueListenableBuilder<DateTime>(
-                  valueListenable: _clock,
-                  builder: (context, now, _) => RestBar(
-                    timer: _rest!,
-                    now: now,
-                    onAdjust: _adjustRest,
-                    onDismiss: () => setState(() => _rest = null),
-                  ),
+                          ],
+                        ),
                 ),
-            ],
+
+                // The keyboard bar takes the rest bar's place while a number is
+                // being typed — the keyboard covers that edge anyway.
+                if (editing && keyboardUp)
+                  _KeyboardBar(
+                    onPrevious: () => _moveFocus(-1),
+                    onNext: () => _moveFocus(1),
+                    onLogSet: _logFocusedSet,
+                    onDone: () => FocusManager.instance.primaryFocus?.unfocus(),
+                  )
+                else if (_rest != null)
+                  ValueListenableBuilder<DateTime>(
+                    valueListenable: _clock,
+                    builder: (context, now, _) => RestBar(
+                      timer: _rest!,
+                      now: now,
+                      onAdjust: _adjustRest,
+                      onDismiss: () => setState(() => _rest = null),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

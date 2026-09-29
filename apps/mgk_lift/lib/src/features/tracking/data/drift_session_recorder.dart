@@ -80,6 +80,8 @@ class DriftSessionRecorder implements SessionRecorder {
   Future<Session> _change(
     Future<void> Function(WorkoutRow open) body, {
     String? renamed,
+    String? templateId,
+    String? snapshot,
   }) async {
     late WorkoutRow open;
     await _db.transaction(() async {
@@ -90,7 +92,13 @@ class DriftSessionRecorder implements SessionRecorder {
     });
     return hydrateWorkout(
       _db,
-      renamed == null ? open : open.copyWith(name: renamed),
+      renamed == null
+          ? open
+          : open.copyWith(
+              name: renamed,
+              templateId: Value(templateId),
+              templateSnapshot: Value(snapshot),
+            ),
     );
   }
 
@@ -158,21 +166,69 @@ class DriftSessionRecorder implements SessionRecorder {
   Future<Session> fillFromLibrary({
     required String workoutId,
     required String name,
-    required List<String> movements,
+    required List<SeededMovement> movements,
+    String? snapshot,
   }) {
     final clipped = _clip(name);
-    return _change((open) async {
-      // The name and the back-reference together, in one write. `templateId`
-      // is what a "how often do I actually run this" figure would later be
-      // counted on, so a session filled from the library without it would
-      // simply be missing from its own workout's history.
-      await (_db.update(
-        _db.workouts,
-      )..where((w) => w.id.equals(open.id))).write(
-        WorkoutsCompanion(name: Value(clipped), templateId: Value(workoutId)),
-      );
-      await _insertExercises(open.id, movements, null);
-    }, renamed: clipped);
+    return _change(
+      (open) async {
+        // The name, the back-reference and the snapshot together, in one
+        // write. `templateId` is what "last done" and the template's lesson
+        // are both keyed on; a session filled without it would be missing from
+        // its own workout's history.
+        await (_db.update(
+          _db.workouts,
+        )..where((w) => w.id.equals(open.id))).write(
+          WorkoutsCompanion(
+            name: Value(clipped),
+            templateId: Value(workoutId),
+            templateSnapshot: Value(snapshot),
+          ),
+        );
+        final existing = await _exerciseRows(open.id);
+        if (existing.length + movements.length > SessionLimits.movements) {
+          throw const SessionLimitReached(
+            '${SessionLimits.movements} movements',
+          );
+        }
+        var next = existing.isEmpty
+            ? 0
+            : existing
+                      .map((e) => e.orderIndex)
+                      .reduce((a, b) => a > b ? a : b) +
+                  1;
+        for (final m in movements) {
+          final exerciseId = _newId();
+          await _db
+              .into(_db.exercises)
+              .insert(
+                ExercisesCompanion.insert(
+                  id: exerciseId,
+                  workoutId: open.id,
+                  name: m.name,
+                  orderIndex: Value(next++),
+                ),
+              );
+          final sets = m.sets.take(SessionLimits.setsPerMovement).toList();
+          for (var i = 0; i < sets.length; i++) {
+            await _db
+                .into(_db.exerciseSets)
+                .insert(
+                  ExerciseSetsCompanion.insert(
+                    id: _newId(),
+                    exerciseId: exerciseId,
+                    setNumber: Value(i + 1),
+                    reps: Value(_repsInRange(sets[i].reps)),
+                    weightKg: Value(_weightInRange(sets[i].weightKg)),
+                  ),
+                );
+          }
+        }
+      },
+      renamed: clipped,
+      templateId: workoutId,
+      snapshot: snapshot,
+    );
   }
 
   @override

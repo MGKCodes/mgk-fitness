@@ -96,6 +96,8 @@ Future<List<Session>> hydrateWorkouts(
         endedAt: row.endedAt,
         notes: row.notes,
         exercises: exercisesByWorkout[row.id] ?? const <SessionExercise>[],
+        templateId: row.templateId,
+        templateSnapshot: row.templateSnapshot,
       ),
   ];
 }

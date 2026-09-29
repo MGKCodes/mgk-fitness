@@ -24,7 +24,7 @@ Future<String?> promptToSaveWorkout(
   required WorkoutLibrary library,
   required TextEditingController field,
   required String suggestedName,
-  required List<String> movements,
+  required List<TemplateMovement> movements,
 }) async {
   // Nothing to keep. A session with no movements has no shape, and an empty
   // workout in the library is a row that can never be started from.
@@ -49,17 +49,13 @@ Future<String?> promptToSaveWorkout(
   return name;
 }
 
-/// The movements to save, in order and without repeats.
+/// The movements to save, in order and without repeats, each with the number
+/// of sets that were worked.
 ///
 /// A session where the lifter came back to the bench at the end is one workout
-/// with bench in it, not one with bench in it twice.
-List<String> workoutMovementsOf(Session session) {
-  final movements = <String>[];
-  for (final e in session.exercises) {
-    if (!movements.contains(e.name)) movements.add(e.name);
-  }
-  return movements;
-}
+/// with bench in it, not one with bench in it twice. See [movementsOf].
+List<TemplateMovement> workoutMovementsOf(Session session) =>
+    movementsOf(session);
 
 /// The one field a save needs, in a dialog rather than a screen.
 ///
