@@ -50,9 +50,9 @@ Most urgent first. Items 2, 4 and 5 touch production or rewrite a published
 tag, which Claude Code's auto mode refuses to do, so they are yours to approve
 and run.
 
-1. - [ ] **Register `com.mgkcodes.fitness.run` for Android developer
-      verification — due 2026-09-30.** Play Console says an unregistered app
-      faces removal from Google Play. [play-setup.md](play-setup.md) §8b.
+1. - [x] **Android developer verification — done.** `com.mgkcodes.fitness.run`
+      was registered on 2026-09-10 (3 keys), confirmed in Play Console on
+      2026-09-29. The 2026-09-30 deadline is met; nothing to do.
 2. **Approve and run the backend changes.** Build 26 must not reach either
    store's review before the coach redeploy and the migration have landed:
    without the first, Premium sells nothing Coach does not (ADR-0038); without

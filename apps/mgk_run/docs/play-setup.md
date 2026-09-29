@@ -38,7 +38,7 @@ standing in the way, exactly as this document warned it would be.
 
 **What is left is in [app-store-1.0.0.md](app-store-1.0.0.md)**, which carries
 the live status for both stores rather than having it in two places. The short
-version, for Play: developer verification (§8b, **due 2026-09-30**), every
+version, for Play: developer verification is **done** (§8b), and what is left is every
 declaration in §4, the listing and its graphics
 ([play-listing.md](play-listing.md)), Premium's new description (§5), and a
 premium purchase on build 26 (§9).
@@ -602,7 +602,9 @@ The upload certificate's SHA-256 is recorded in §1; if the form asks for the
 app signing key instead, Play Console shows it under Test and release ▸ App
 integrity.
 
-- [ ] `com.mgkcodes.fitness.run` registered — **by 2026-09-30**
+- [x] `com.mgkcodes.fitness.run` registered — **done 2026-09-10**. Checked in
+      Play Console on 2026-09-29: Package names shows it *Registered*, 3 keys,
+      beside frunt (*Registered*, 1 key, 2026-06-03). Nothing left to do here.
 
 ## 9. A real purchase, on a real device
 
