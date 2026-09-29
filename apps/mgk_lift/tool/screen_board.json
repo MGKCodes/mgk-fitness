@@ -22,6 +22,9 @@
     "in/out/next follow docs/navigation.md, which is the audit these answer to."
   ],
 
+  "previous": "2 September 2026",
+  "since": "the logging rework, with saved workouts that start filled and learn at Finish, backup that says where it stands, and every past session editable; the purchase sheet; and a rest timer that reaches a locked phone. Every other screen was restyled in the same pass, with glass bars and sheets and spring motion, so look at the older plates too",
+
   "acts": [
     {
       "letter": "S",
@@ -37,7 +40,8 @@
       "lede": "\"Track\", not \"Home\": in Run the front page is a summary of the day; here it is the thing you are actually doing in the gym, and the label should say so. One primary button, whose verb is decided by what the plan and the recorder have to say. The coach mark sits bottom-right on this and every other tab — the shell reserves that room, which is why a screenshot without it is a screenshot of a build nobody ships.",
       "racks": [
         { "title": "The tab, at rest", "screens": ["track", "track-coach"] },
-        { "title": "With something in flight", "screens": ["track-open", "track-planned", "track-interrupted"] }
+        { "title": "With something in flight", "screens": ["track-open", "track-planned", "track-interrupted"] },
+        { "title": "When backup needs you", "screens": ["track-backup-failed", "track-backup-refused"] }
       ]
     },
     {
@@ -47,8 +51,11 @@
       "lede": "One screen replaces another here, and the summary is where it ends rather than a detour off it. Every set is written the moment it is ticked, which is what makes backing out safe, an interrupted session resumable, and Finish a replacement rather than a push — back must never return to a session that has ended.",
       "racks": [
         { "title": "Starting one", "screens": ["session-empty", "workout-library-empty", "workout-library", "premade-library", "workout-builder"] },
+        { "title": "Your workouts", "screens": ["workout-preview", "workout-preview-blocked", "workout-editor"] },
         { "title": "In the session", "screens": ["session", "exercise-picker", "swap-sheet", "session-long", "session-resting"] },
-        { "title": "Finishing it", "screens": ["session-summary", "session-summary-pb", "session-summary-short", "save-workout"] }
+        { "title": "Rest, and changing course", "screens": ["session-rest-over", "exercise-picker-replace", "reorder-sheet"] },
+        { "title": "Finishing it", "screens": ["session-summary", "session-summary-pb", "session-summary-lesson", "session-summary-short", "save-workout"] },
+        { "title": "Whether it is backed up", "screens": ["session-summary-offline", "session-summary-backed-up"] }
       ]
     },
     {
@@ -57,7 +64,7 @@
       "sub": "Behind the entitlement, and the paywall is the empty state",
       "lede": "The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. Past it: no week number, no end date, no completion. Those are marathon ideas, and \"get stronger\" has no week 12 — the week is derived from weekdays rather than scheduled into, which is why a rest day here is an answer and not a gap.",
       "racks": [
-        { "title": "The offer", "screens": ["plan", "plan-entitled"] },
+        { "title": "The offer", "screens": ["plan", "purchase-sheet", "plan-entitled"] },
         { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest"] }
       ]
     },
@@ -90,6 +97,7 @@
       "lede": "The third tab, and the one a new account has nothing to put in — so its empty state shows the shape of what is coming rather than collapsing to a line of apology. Photos are one stream per pose at one photograph a week, and the cadence is the feature: a body does not change between Tuesday and Wednesday, and an app that accepts a photo a day teaches the wrong habit. Four plates here had never been photographed before this board.",
       "racks": [
         { "title": "Profile", "screens": ["profile", "profile-empty"] },
+        { "title": "Every session", "screens": ["history", "session-past", "session-editing"] },
         { "title": "Progress photos", "screens": ["photos-empty", "photos", "photo-source"] },
         { "title": "One pose, every week", "screens": ["photo-series", "photo-actions", "photo-delete-confirm", "series-playback"] }
       ]
@@ -100,7 +108,7 @@
       "sub": "Pushed from Profile's gear — nothing here is on a tab",
       "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. The account reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
       "racks": [
-        { "title": "Units and account", "screens": ["settings", "settings-signed-in", "account-signed-out", "account-synced"] },
+        { "title": "Units and account", "screens": ["settings", "settings-signed-in", "account-signed-out", "account-synced", "account-problems"] },
         { "title": "The coach switch", "screens": ["settings-coach", "settings-coach-off"] },
         { "title": "What the coach remembers", "screens": ["coach-memory", "coach-memory-empty", "coach-memory-error"] },
         { "title": "About", "screens": ["credits"] }
@@ -129,7 +137,7 @@
       "next": "Turn the coach off, or open the disclosure beside it",
       "note": "The section the other four Settings plates were missing.",
       "doc": "useCoach and deleter are both null-hides-the-control, and not one of the four Settings plates passed either — so the Coach heading, the switch, the disclosure row beside it and the route to deletion rendered on no plate at all. The whole of the 2026-09-01 compliance work was invisible to the board that exists to prove it is there.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "settings-coach-off": {
       "code": "A10",
@@ -140,7 +148,7 @@
       "next": "Turn it back on",
       "note": "Off means absent, not inert.",
       "doc": "The subtitle stops naming OpenRouter in the present tense, and the mark leaves every other surface — which is what makes this a consent control rather than a display preference. It is device-local for the same reason: an account row is something a restore could quietly flip back on. Building a plan is an AI request too, so the switch had to reach _canPlan, or Plan would have gone on sending the intake answers — injury notes included — with the coach switched off.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "legal": {
       "code": "L1",
@@ -151,7 +159,7 @@
       "next": "Any of the three documents, or leave",
       "note": "The one place the compliance surfaces are reachable from.",
       "doc": "Three data-rights documents kept together rather than scattered through Settings, and deliberately the same shape as run's, so the two apps do not present compliance differently. The email at the top says which account the rights below apply to — which is also how somebody signed in as the wrong address finds out.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "legal-signed-out": {
       "code": "L2",
@@ -162,7 +170,7 @@
       "next": "Read any of the three",
       "note": "The deletion row is absent, not disabled.",
       "doc": "Both halves of deletion are null and the row is gone entirely. An app that cannot delete an account should not offer to, and Guideline 5.1.1(v) only applies where one can be created in the first place. This is the state a reviewer reaches first, because tracking has never needed a sign-in.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "terms": {
       "code": "L3",
@@ -173,7 +181,7 @@
       "next": "—",
       "note": "Bundled, not fetched.",
       "doc": "Rendered from structure rather than markdown, so it takes the app's own typography, needs no parser, and cannot silently change under the person who agreed to it. The source of truth is docs/terms-of-use.md and a staleness test pins the load-bearing sentences to it. This is also where the auto-renew disclosure has to be written when payments land — a test currently fails if anybody writes half of it.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "privacy": {
       "code": "L4",
@@ -184,7 +192,7 @@
       "next": "—",
       "note": "Same renderer, different document.",
       "doc": "One parameterised screen rather than run's three near-identical classes: nothing about rendering the policy differs from rendering the terms, and three classes is three places for a padding change to be applied twice and forgotten once.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "ai-disclosure": {
       "code": "L5",
@@ -195,7 +203,7 @@
       "next": "—",
       "note": "Reachable from three places, on purpose.",
       "doc": "Guideline 5.1.2(i), and more acute here than it was for Liftio, which sent numerical aggregates only — Lift sends the lifter's own words about their body and injuries to OpenRouter. Names the provider, what is sent, and what is not. The affordance sits in the coach sheet's top bar and shows mid-intake as well as in conversation, because the questionnaire is where the injury notes are typed.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "delete-account": {
       "code": "L6",
@@ -207,7 +215,7 @@
       "note": "Opens on the narrower scope, disarmed.",
       "doc": "Guideline 5.1.1(v). One login serves the whole suite, so \"delete my account\" names two different requests and the app has to ask which — run offers neither and sends no scope at all, which the function reads as everything. The narrow choice still cannot promise the login survives, and this screen says so before the tap rather than after it: if Run holds nothing, a profile with nothing behind it is not kept on somebody's behalf.",
       "flag": "The done state is not on this board. It exists only after a typed phrase and a tap, so the harness cannot address it without faking a state the code cannot reach. Both scopes were proved against the deployed function on 2026-09-01 instead.",
-      "tags": ["free", "new", "first", "flag"]
+      "tags": ["free", "flag"]
     },
     "sign-in": {
       "code": "S1",
@@ -451,7 +459,7 @@
       "next": "Pick one, or type your own",
       "note": "266 movements with form images, and nobody had ever seen it.",
       "doc": "Search the catalogue or type your own; both end as a name on the session, and the catalogue simply gets you there faster and brings a picture. It replaced a bare text field — not wrong, but it made every session start with spelling. Reachable from two screens and, until this board, addressable from neither.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "swap-sheet": {
       "code": "W8",
@@ -495,7 +503,7 @@
       "next": "Save to your workouts",
       "note": "Worked hard, beat nothing — which is the common case.",
       "doc": "Added 2026-08-25: Run had a summary and Lift finished a session by dropping you back onto Track with nothing. This fixture lands at or under every best already in the log, because matching a best is not setting one. Finish replaces rather than pushes, so back does not return to a session that has ended.",
-      "tags": ["free", "new"],
+      "tags": ["free"],
       "arch": {
         "class": "SessionSummaryScreen",
         "file": "lib/src/features/tracking/presentation/session_summary_screen.dart",
@@ -556,7 +564,7 @@
       "next": "Save to your workouts",
       "note": "Ten kilos is the only difference from {{session-summary}}.",
       "doc": "95 × 5 estimates at 110.8 kg against the 105 kg already in the log. Bests are strictly greater, and a movement with no history is not a best — there is nothing to have beaten, and counting it would make a first session nothing but bests.",
-      "tags": ["free", "new"]
+      "tags": ["free"]
     },
     "session-summary-short": {
       "code": "W13",
@@ -567,7 +575,7 @@
       "next": "Save to your workouts",
       "note": "Fifteens are above Epley's cap, so it says it cannot tell.",
       "doc": "The two states easiest to get wrong, at once: nothing in the log to compare against, and nothing that can be estimated from. \"No estimate\" is a separate fact from \"nothing beat your best\". The second movement was added and never worked, which is the only case where the movement count is larger than the sets explain.",
-      "tags": ["free", "new"]
+      "tags": ["free"]
     },
     "save-workout": {
       "code": "W14",
@@ -578,7 +586,7 @@
       "next": "Save",
       "note": "Pre-filled and selected, so the common answer is one tap.",
       "doc": "One field, pre-filled with the session's name and selected. Offered from two moments — \"I can tell this is worth keeping\" and \"that worked\" — and it moved to the summary because saving is a decision about the shape of a session made after seeing it, and until the summary existed there was nowhere to see it.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
 
     "plan": {
@@ -587,7 +595,7 @@
       "host": "shell",
       "in": "Nav bar › Plan, on a free account",
       "out": "Nav bar",
-      "next": "Start coaching — £1/mo",
+      "next": "Start coaching, which opens {{purchase-sheet}}",
       "note": "The paywall is the tab's empty state, not a wall in front of it.",
       "doc": "The tab a free account sees. The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. This was hardcoded to the pitch until the entitlement was read properly.",
       "tags": ["free"]
@@ -762,7 +770,7 @@
       "next": "Open one, read-only",
       "note": "Where last month's conversation went.",
       "doc": "A conversation ends after thirty minutes of silence (ADR-0002), so the coach no longer opens on whatever was last said however long ago \u2014 which is what let it read a month-old exchange as current. The cost is that a lifter stops finding last week's conversation waiting for them, so it is kept, and it is here: the same words, in a place that says plainly they are over. Rows lead with the opening line rather than the date, because a column of dates is a filing cabinet.",
-      "tags": ["paid", "new"]
+      "tags": ["paid"]
     },
     "coach-history-empty": {
       "code": "C10",
@@ -773,7 +781,7 @@
       "next": "Talk to the coach",
       "note": "Empty and loading are different states.",
       "doc": "Says what will fill it rather than that it is empty. The distinction that matters here is against the loading state: a list that draws this message while the read is outstanding tells a lifter with ten conversations that they have none, which is why the two are separate rather than one falsy check.",
-      "tags": ["paid", "new"]
+      "tags": ["paid"]
     },
     "coach-past": {
       "code": "C11",
@@ -784,7 +792,7 @@
       "next": "Nothing \u2014 it has ended",
       "note": "Read-only by construction: there is no composer.",
       "doc": "The whole conversation, not the window {{coach-resumed}} shows \u2014 that one answers \"what does the coach still have in mind\", this one answers \"what was said\", and a read-back truncated at twenty turns would silently cut the thing somebody opened it to re-read. Nothing here loads it back into the live conversation: reopening an old transcript to write into it is exactly the endless chat sessions exist to end, and the footer says so rather than leaving somebody hunting for a box that is not there.",
-      "tags": ["paid", "new"]
+      "tags": ["paid"]
     },
     "coach-limit": {
       "code": "C4",
@@ -895,7 +903,7 @@
       "next": "Build my plan",
       "note": "The options stop, because there is nothing left to ask.",
       "doc": "Nothing left to ask, so the options stop and the button appears — which is the whole of the summary. It appears the moment a block could be built rather than when the coach decides the conversation is over, and there is one definition of \"enough\": every field answered or declined, in intake_flow.dart. PlanIntake carried a second one that disagreed in both directions, and it is gone. Q11 rather than Q5 because codes are pinned in the data — the three body questions that held 5, 6 and 7 were cut, and nothing that survived them moves.",
-      "tags": ["paid", "new"]
+      "tags": ["paid"]
     },
     "intake-9-split": {
       "code": "Q9",
@@ -942,7 +950,7 @@
       "next": "Log a session",
       "note": "Shows what it will track, rather than apologising.",
       "doc": "Run's Profile still collapses to \"No runs yet.\" — the same complaint you made about Lift, still open there.",
-      "tags": ["free", "new"]
+      "tags": ["free"]
     },
     "photos-empty": {
       "code": "G3",
@@ -975,7 +983,7 @@
       "next": "Take a photo, or choose one",
       "note": "One of the three sheets that shipped with no way out.",
       "doc": "Asked every time rather than remembered: the gallery is how you backfill a photo you already took and the camera is how you do this week, and neither is the default. The 2026-08-08 exit sweep found this sheet shipping with no dismiss affordance at all.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "photo-series": {
       "code": "G6",
@@ -997,7 +1005,7 @@
       "next": "Skip it, or delete it",
       "note": "The grab bar is load-bearing here more than anywhere.",
       "doc": "Skipping keeps the photo and takes it out of the sequence; the subtitle says so, because \"skip\" beside \"delete\" has to be unambiguous. The loudest control on this sheet deletes something that cannot be retaken, and it opens on a tap.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "photo-delete-confirm": {
       "code": "G8",
@@ -1008,7 +1016,7 @@
       "next": "Delete",
       "note": "Blunt on purpose.",
       "doc": "There is no copy anywhere else, and a photo of your own body from eight months ago cannot be retaken. \"Keep it\" against \"Delete\", which is the pairing every confirmation in both apps uses.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free"]
     },
     "series-playback": {
       "code": "G9",
@@ -1019,7 +1027,7 @@
       "next": "Play, or change the speed",
       "note": "The only thing progress photos are actually for.",
       "doc": "In-app playback, not a video export — the old app encoded an MP4 through a native module per OS so it could be shared, and this is the part that does the actual work of showing a lifter their own change, without any of that. Speed is adjustable because a two-photo series and a fifty-photo one want very different ones.",
-      "tags": ["free", "new", "first"],
+      "tags": ["free"],
       "arch": {
         "class": "SeriesPlaybackScreen",
         "file": "lib/src/features/photos/presentation/series_playback_screen.dart",
@@ -1198,10 +1206,195 @@
       "note": "The one plate here with nothing to do on it.",
       "doc": "Licences and attribution for the exercise catalogue and its images. A dead end by design.",
       "tags": ["free"]
+    },
+    "track-backup-failed": {
+      "code": "T6",
+      "title": "Track — backup failed",
+      "host": "shell",
+      "in": "Nav bar › Track, after a backup run that could not finish",
+      "out": "Nav bar",
+      "next": "Try again, or carry on training",
+      "note": "A pill only when something needs the lifter, never a status bar.",
+      "doc": "Backup runs at checkpoints (launch, return to the app, Finish, a changed workout), never while logging, and retries on its own. The pill appears only when a run has actually failed and says what to do; a healthy backup is silent on Track, because training is the point of this tab and syncing is not.",
+      "tags": ["free", "new", "first"]
+    },
+    "track-backup-refused": {
+      "code": "T7",
+      "title": "Track — a workout refused",
+      "host": "shell",
+      "in": "Nav bar › Track, after the server refused one workout",
+      "out": "Nav bar",
+      "next": "See why, in {{account-problems}}",
+      "note": "One refused workout never holds up the rest.",
+      "doc": "Each workout goes up on its own. One the server refuses is set aside with its reason and waits for an edit, while everything else carries on backing up, so a single bad row cannot block a lifter's whole history.",
+      "tags": ["free", "new", "first"]
+    },
+    "workout-preview": {
+      "code": "W15",
+      "title": "A saved workout, before starting",
+      "host": "sheet",
+      "in": "{{workout-library}} › a workout, or the Track row",
+      "out": "Drag or scrim",
+      "next": "Start, which opens {{session}} already filled",
+      "note": "What it holds, set by set, before the clock starts.",
+      "doc": "Starting from here lays every set out with the reps aimed for and the weight lifted last time, so a set that matches is one tap on the tick. Weight is never stored in a workout: it comes from the log, which is what makes the fill honest.",
+      "tags": ["free", "new", "first"]
+    },
+    "workout-preview-blocked": {
+      "code": "W16",
+      "title": "A saved workout, with a session open",
+      "host": "sheet",
+      "in": "{{workout-preview}} while a session is running",
+      "out": "Drag or scrim",
+      "next": "Finish or discard the open session first",
+      "note": "Start says why it cannot, rather than overwriting anything.",
+      "doc": "An open session is always offered back, never replaced: filling a workout over one somebody is halfway through would destroy sets they had logged, which is the worst thing this app could do.",
+      "tags": ["free", "new", "first"]
+    },
+    "workout-editor": {
+      "code": "W17",
+      "title": "Editing a saved workout",
+      "host": "pushed",
+      "in": "{{workout-library}} › a workout › Edit",
+      "out": "App bar back, or Save",
+      "next": "Change sets and rep targets, reorder, remove",
+      "note": "The builder's screen, titled for the workout it edits.",
+      "doc": "Sets from 1 to 20 and reps up to 200. A workout holds the set count and the rep target, never a weight. It also learns on its own at Finish (see {{session-summary-lesson}}), so this screen is for the changes a session cannot teach.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-rest-over": {
+      "code": "W18",
+      "title": "Session — rest over",
+      "host": "pushed",
+      "in": "{{session-resting}}, when the time runs out",
+      "out": "Done, or tick the next set",
+      "next": "The next set",
+      "note": "Counts up past zero, in green: how long the rest actually was.",
+      "doc": "Added 2026-09-29 from the competitor research, which found a timer people cannot trust to be the commonest complaint about every app in the category. Past zero it keeps counting (+0:42) rather than freezing at 0:00. With the phone locked or the app in the background, the buzz comes as a system notification at the rest's fixed end, naming the next set; the app withdraws it on return, so there is never a second buzz. Each movement remembers its own rest length.",
+      "tags": ["free", "new", "first"]
+    },
+    "exercise-picker-replace": {
+      "code": "W19",
+      "title": "Swap a movement, by hand",
+      "host": "sheet",
+      "in": "{{session}} › the swap icon, without the coach",
+      "out": "Drag or scrim",
+      "next": "Tap one: it replaces the movement and closes",
+      "note": "The swap icon used to exist only for coached lifters.",
+      "doc": "The same picker as {{exercise-picker}}, in replace mode: titled for the movement being swapped, and one tap chooses and closes. The replacement takes the sets still to do, their target reps and the new movement's weight from last time. Logged sets stay where they are, under the old name, because they were lifted. A coached lifter gets {{swap-sheet}} instead.",
+      "tags": ["free", "new", "first"]
+    },
+    "reorder-sheet": {
+      "code": "W20",
+      "title": "Reorder movements",
+      "host": "sheet",
+      "in": "{{session}} › Reorder movements, at the foot of the list",
+      "out": "Done, drag or scrim",
+      "next": "Drag by the handle, then Done",
+      "note": "The bench is taken, so incline goes first.",
+      "doc": "The recorder could always reorder; nothing on screen reached it until 2026-09-29. A sheet of one-line rows rather than drag handles on the cards, because the cards are tall and full of fields, the wrong surface to start a long-press drag on. Shown only once a session has two movements.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-summary-lesson": {
+      "code": "W21",
+      "title": "Summary — the workout learns",
+      "host": "pushed",
+      "in": "{{session}} › Finish, started from a saved workout",
+      "out": "Back arrow, Back to Track",
+      "next": "Keep the change, or Undo",
+      "note": "Remove Cable Fly once and it stays removed.",
+      "doc": "A session started from a saved workout teaches it at Finish: movements removed, movements added and done, and set counts. Never weights. The change applies straight away with Undo beside it, so a lifter never has to rebuild a template by hand.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-summary-offline": {
+      "code": "W22",
+      "title": "Summary — saved on this phone",
+      "host": "pushed",
+      "in": "{{session}} › Finish, with no signal",
+      "out": "Back arrow, Back to Track",
+      "next": "Nothing; it backs up later on its own",
+      "note": "True and calm: the session is safe, the upload is pending.",
+      "doc": "Every set is on the phone the moment it is ticked. The line under the totals says so rather than showing a spinner, and backup retries at 30 seconds, 2 minutes, 10 minutes, then hourly.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-summary-backed-up": {
+      "code": "W23",
+      "title": "Summary — backed up",
+      "host": "pushed",
+      "in": "{{session-summary-offline}}, a moment later",
+      "out": "Back arrow, Back to Track",
+      "next": "Back to Track",
+      "note": "Said only once the server has it.",
+      "doc": "The line changes to Backed up only when a backup run has completed after this session finished, so it can never claim something that has not happened.",
+      "tags": ["free", "new", "first"]
+    },
+    "purchase-sheet": {
+      "code": "P7",
+      "title": "Choose a tier",
+      "host": "sheet",
+      "in": "{{plan}} › Start coaching, or Unlock photos",
+      "out": "Drag or scrim; closes itself after a purchase",
+      "next": "Subscribe to Coach or Premium Coach",
+      "note": "Both tiers buyable. Before, the table showed Premium and the button bought Coach.",
+      "doc": "Where money moves, and where Guideline 3.1.2 is met in one place: each tier's name, period and store price, the renewal terms in the store's own words (Apple's here, Play's on Android), working links to the terms and privacy policy, and Restore. Prices are the store's strings; the app never writes one. Signed out, it asks for an account instead of money, because a purchase with no account behind it unlocks nothing.",
+      "tags": ["free", "new", "first"]
+    },
+    "history": {
+      "code": "G10",
+      "title": "Every session",
+      "host": "pushed",
+      "in": "{{profile}} › See all",
+      "out": "App bar back",
+      "next": "Open one, {{session-past}}",
+      "note": "Grouped by week, newest first.",
+      "doc": "Profile shows the last five and nothing led past them, so a session from last month counted in every total and could never be looked at, let alone fixed. This is the way in to all of them, with the not-backed-up mark on any row still waiting.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-past": {
+      "code": "G11",
+      "title": "A past session",
+      "host": "pushed",
+      "in": "{{history}} or {{profile}} › a session",
+      "out": "App bar back",
+      "next": "Edit session, or Delete session with Undo",
+      "note": "The summary's own layout, dated, with Edit and Delete.",
+      "doc": "Its bests are the ones it set at the time. Delete is soft with Undo, and the session leaves every total at once; the deletion also reaches other devices.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-editing": {
+      "code": "G12",
+      "title": "Fixing a past session",
+      "host": "pushed",
+      "in": "{{session-past}} › Edit session",
+      "out": "Done, or back (both save)",
+      "next": "Change sets, then Done",
+      "note": "The session screen itself, aimed at a session that already happened.",
+      "doc": "Same rows, same limits, same input rules, because it is the same screen with a recorder aimed at the old session. No clock and no rest; the date and length stay what they were, and unticked sets go at Done as they do at Finish.",
+      "tags": ["free", "new", "first"]
+    },
+    "account-problems": {
+      "code": "A11",
+      "title": "Account — what backup could not do",
+      "host": "pushed",
+      "in": "{{settings}}, when a run failed or a workout was refused",
+      "out": "App bar back",
+      "next": "Sync now, or edit the refused workout",
+      "note": "Every refusal listed with its reason.",
+      "doc": "Where {{track-backup-refused}} sends the lifter. A refused workout is named with the server's reason and waits for an edit; a failed run says when it will try again. Settings also gained a Workout section on 2026-09-29 with the rest-alert switch, shown on {{settings}} and {{settings-signed-in}}.",
+      "tags": ["free", "new", "first"]
     }
   },
 
   "edges": [
+    { "from": "plan", "to": "purchase-sheet", "label": "Start coaching" },
+    { "from": "session", "to": "exercise-picker-replace", "label": "swap, without the coach" },
+    { "from": "session", "to": "reorder-sheet", "label": "Reorder movements" },
+    { "from": "session-resting", "to": "session-rest-over", "label": "rest runs out" },
+    { "from": "profile", "to": "history", "label": "See all" },
+    { "from": "history", "to": "session-past", "label": "a session" },
+    { "from": "session-past", "to": "session-editing", "label": "Edit session" },
+    { "from": "workout-library", "to": "workout-preview", "label": "a workout" },
+    { "from": "track-backup-refused", "to": "account-problems", "label": "See why" },
     { "from": "sign-in", "to": "sign-in-error", "label": "wrong password" },
     { "from": "settings", "to": "sign-in", "label": "Back up your training" },
 

@@ -56,6 +56,7 @@ class ActiveSessionScreen extends StatefulWidget {
     this.onSwapped,
     this.onOpenCoach,
     this.startRestOnOpen = false,
+    this.restElapsedOnOpen = Duration.zero,
     this.now,
     this.editing = false,
     this.restAlerts,
@@ -134,6 +135,12 @@ class ActiveSessionScreen extends StatefulWidget {
   /// without driving a tap.
   @visibleForTesting
   final bool startRestOnOpen;
+
+  /// How far into that rest to open. **Preview only**, for the same reason as
+  /// [startRestOnOpen]: a rest past zero (the counting-up dock) is otherwise
+  /// reachable only by waiting it out.
+  @visibleForTesting
+  final Duration restElapsedOnOpen;
 
   /// What "now" is, for the elapsed clock. Injected so a test or the preview
   /// harness can pin it — same convention as [PhotosSurface.now]. Null means
@@ -242,7 +249,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.addListener(_onFocusMoved);
-    if (widget.startRestOnOpen) _startRest();
+    if (widget.startRestOnOpen) {
+      _rest = RestTimer(
+        startedAt: _clock.value.subtract(widget.restElapsedOnOpen),
+        duration: _restLength,
+      );
+    }
     unawaited(_loadRestLengths());
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       // A pinned clock stays pinned. Ticking it would walk the elapsed time

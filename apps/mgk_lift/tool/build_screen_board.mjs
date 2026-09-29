@@ -357,7 +357,7 @@ function plate(key) {
   <figcaption>
     <p class="cap-name">${esc(s.title)}<span class="how h-${s.host}">${esc(hostLabel)}</span>${
       has(key, 'first')
-        ? '<span class="how first" title="The harness could not reach this screen before 2026-08-27.">first</span>'
+        ? `<span class="how first" title="Not on the previous board (${esc(board.previous ?? 'none')}).">new</span>`
         : ''
     }</p>
     <p class="cap-file"><code>${esc(key)}</code></p>
@@ -723,16 +723,15 @@ dialog::backdrop{background:rgba(12,14,16,.72)}
 <header class="top">
   <p class="eyebrow">apps/mgk_lift &middot; lift/release-2.0.0</p>
   <h1>Every screen in Lift, in the order you reach it</h1>
-  <p class="lede">All ${counts.all} of them, rendered from the preview harness rather than a device — and rendered
-    <strong>with the chrome they really have</strong>, which until this pass they were not. Ten plates were being
-    photographed as bare surfaces, so the nav bar and the coach mark were missing from every one of them, and
-    <strong>${counts.first} screens the app has always had</strong> were never photographed until now. Each plate
-    carries a code you can say out loud and the taps that reach it, because a picture says nothing about whether
-    anybody can get there.</p>
+  <p class="lede">All ${counts.all} of them, rendered from the preview harness rather than a device, with the
+    chrome they really have. <strong>${counts.first} are new since the last board</strong>
+    (${esc(board.previous ?? 'none')})${board.since ? `: ${esc(board.since)}` : ''}. Each plate carries a code you
+    can say out loud and the taps that reach it, so a note about a design can name exactly the screen it is
+    about.</p>
   <div class="meta">
     <div><span class="k">Rendered</span><span class="v">${date}</span></div>
     <div><span class="k">Plates</span><span class="v">${counts.all}</span></div>
-    <div><span class="k">First photographed</span><span class="v">${counts.first}</span></div>
+    <div><span class="k">New since last board</span><span class="v">${counts.first}</span></div>
     <div><span class="k">Behind the gate</span><span class="v">${counts.paid}</span></div>
     <div><span class="k">Surface</span><span class="v">390×844 @ DPR 3</span></div>
   </div>

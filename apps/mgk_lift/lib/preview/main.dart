@@ -50,7 +50,12 @@ import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/sync/presentation/backup_scheduler.dart';
+import '../src/features/entitlement/domain/entitlement.dart';
+import '../src/features/purchases/domain/purchases.dart';
+import '../src/features/purchases/presentation/purchase_sheet.dart';
+import '../src/features/tracking/domain/rest_alerts.dart';
 import '../src/features/tracking/domain/session.dart';
+import '../src/features/tracking/presentation/reorder_sheet.dart';
 import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
@@ -181,12 +186,33 @@ class PreviewApp extends StatelessWidget {
         today: previewNow,
         hasCoachNote: true,
       ),
+      // With a store behind it, as a build with RevenueCat keys has: priced
+      // from the store, with Restore, and Start coaching opening the sheet.
       'plan': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
         coach: FakeCoach(),
         today: previewNow,
         initialTab: 1,
+        purchases: FakePurchases(offers: _storeOffers),
+        entitlements: EntitlementGate(
+          source: FakeEntitlements(Entitlement.none),
+        ),
+      ),
+      // Where money moves: both tiers, the store's prices, the renewal terms
+      // in Apple's words, the two links and Restore.
+      'purchase-sheet': (_) => _SheetHost(
+        open: (context) => showGlassSheet<PurchaseResult>(
+          context: context,
+          builder: (_) => PurchaseSheet(
+            flow: PurchaseFlow(
+              purchases: FakePurchases(offers: _storeOffers),
+              gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
+            ),
+            offers: _storeOffers,
+            platform: TargetPlatform.iOS,
+          ),
+        ),
       ),
       'plan-entitled': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
@@ -287,6 +313,20 @@ class PreviewApp extends StatelessWidget {
         behind: _runningSessionScreen(),
         open: (context) =>
             ExercisePickerSheet.show(context, lookup: ExerciseLookup()),
+      ),
+      // The same picker choosing a replacement: one tap chooses and closes.
+      'exercise-picker-replace': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
+        open: (context) => ExercisePickerSheet.show(
+          context,
+          lookup: ExerciseLookup(),
+          replacing: 'Cable Fly',
+        ),
+      ),
+      'reorder-sheet': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
+        open: (context) =>
+            ReorderSheet.show(context, exercises: _longSession().exercises),
       ),
       'workout-builder': (_) => WorkoutEditorScreen(
         library: InMemoryWorkoutLibrary(),
@@ -389,6 +429,18 @@ class PreviewApp extends StatelessWidget {
           now: previewNow,
         );
       },
+      // Rest ran out forty-two seconds ago: the dock counts up rather than
+      // sitting at 0:00, green, with Done.
+      'session-rest-over': (_) {
+        final s = _openSession();
+        return ActiveSessionScreen(
+          recorder: FakeSessionRecorder(s),
+          session: s,
+          startRestOnOpen: true,
+          restElapsedOnOpen: const Duration(seconds: 132),
+          now: previewNow,
+        );
+      },
       // ---- The summary, which is what finishing now opens -------------------
       //
       // Three, because the interesting variation is not the layout — it is
@@ -485,6 +537,7 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        restAlerts: FakeRestAlerts(isAllowed: false),
       ),
       // The two states that matter: signed out with training that exists in
       // one place, and signed in with everything up to date.
@@ -498,6 +551,7 @@ class PreviewApp extends StatelessWidget {
         onSignOut: () {},
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
+        restAlerts: FakeRestAlerts(),
       ),
       'account-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
@@ -1370,6 +1424,23 @@ Session _shortSession() => Session(
 
 /// A push day most of the way through: three movements done, one in progress,
 /// two not started.
+/// What a UK App Store would answer: the recommended £0.99 / £2.99, which are
+/// fixtures here and in App Store Connect only, never in the app's code.
+const List<PurchaseOffer> _storeOffers = <PurchaseOffer>[
+  PurchaseOffer(
+    id: 'lift.coach.monthly',
+    tier: EntitlementTier.paid,
+    price: '£0.99',
+    period: 'month',
+  ),
+  PurchaseOffer(
+    id: 'lift.coach.premium.monthly',
+    tier: EntitlementTier.premium,
+    price: '£2.99',
+    period: 'month',
+  ),
+];
+
 Session _longSession() {
   SessionSet done(String id, int n, double kg, int reps) => SessionSet(
     id: id,
