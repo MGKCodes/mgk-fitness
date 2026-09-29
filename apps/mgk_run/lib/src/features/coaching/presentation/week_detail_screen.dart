@@ -24,6 +24,7 @@ class WeekDetailScreen extends StatefulWidget {
     this.profile,
     this.onRevised,
     this.unit = UnitSystem.metric,
+    this.beforeAdjust,
   });
 
   final TrainingWeek week;
@@ -50,6 +51,14 @@ class WeekDetailScreen extends StatefulWidget {
   final Future<void> Function(TrainingWeek revised)? onRevised;
 
   final UnitSystem unit;
+
+  /// Asked before the adjust sheet opens, which it does only on a yes.
+  ///
+  /// What is typed into that sheet goes to the coach with the week and the
+  /// profile, so this is one of the ways into the coach and asks what the
+  /// others ask. Null asks nothing, which is what a test of this screen alone
+  /// wants.
+  final Future<bool> Function()? beforeAdjust;
 
   @override
   State<WeekDetailScreen> createState() => _WeekDetailScreenState();
@@ -98,6 +107,9 @@ class _WeekDetailScreenState extends State<WeekDetailScreen> {
   }
 
   Future<void> _openAdjust() async {
+    final gate = widget.beforeAdjust;
+    if (gate != null && !await gate()) return;
+    if (!mounted) return;
     final revised = await showModalBottomSheet<TrainingWeek>(
       context: context,
       isScrollControlled: true,

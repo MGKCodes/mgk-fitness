@@ -103,6 +103,15 @@ been on a store, so everything the app does is still listed here.
   to keep it short; afterwards it is told to ask how it went, once, and to wait
   for the answer. Races the runner has finished are carried in the brief with
   the times they ran.
+- **The coach asks before anything leaves the phone** (ADR-0035). The first
+  time a runner opens the coach, asks it anything or builds a plan, a sheet
+  says where their training goes — OpenRouter, and the AI model provider
+  behind it — what is sent and what never is, and asks. "Not now" sends
+  nothing. The answer is kept per account and can be taken back in Settings ›
+  Privacy & legal. The conversation now shows the medical disclaimer too, which
+  only the plan flow did before, and a signed-out runner tapping the coach
+  mark is asked for an account first instead of meeting a paywall that could
+  not sign them in.
 
 **Race day, and the end of a plan** (ADR-0027)
 - **Race day is its own moment.** The Today card reads "Race day" over the

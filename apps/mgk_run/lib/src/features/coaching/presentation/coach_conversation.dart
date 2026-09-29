@@ -24,11 +24,23 @@ class CoachConversationSheet extends StatefulWidget {
     required this.controller,
     this.suggestions = const <String>[],
     this.unit = UnitSystem.metric,
+    this.beforeSend,
   });
 
   final ChatController? controller;
   final List<String> suggestions;
   final UnitSystem unit;
+
+  /// Asked before anything typed or tapped here is sent, and nothing is sent
+  /// unless it answers true.
+  ///
+  /// The sheet only opens once the runner has agreed to the coach sending
+  /// their training, so this is normally a quick yes. It is here so the rule
+  /// belongs to the place things are sent from, rather than to however the
+  /// sheet happened to be opened: a suggestion chip sends on one tap, and a
+  /// tap should not be able to outrun a withdrawn permission. Null asks
+  /// nothing, which is what a test of the sheet on its own wants.
+  final Future<bool> Function()? beforeSend;
 
   /// Opens the conversation.
   ///
@@ -41,6 +53,7 @@ class CoachConversationSheet extends StatefulWidget {
     List<String> suggestions = const <String>[],
     UnitSystem unit = UnitSystem.metric,
     String? opener,
+    Future<bool> Function()? beforeSend,
   }) {
     if (opener != null && controller != null) {
       unawaited(controller.openWithNote(opener));
@@ -55,6 +68,7 @@ class CoachConversationSheet extends StatefulWidget {
         controller: controller,
         suggestions: suggestions,
         unit: unit,
+        beforeSend: beforeSend,
       ),
       // Dismissing the sheet folds what was said into the rolling summary. The
       // dock did this from its collapse handler; a sheet has several ways out —
@@ -107,21 +121,30 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     });
   }
 
-  void _send([String? text]) {
+  Future<void> _send([String? text]) async {
     final controller = _c;
     if (controller == null) return;
     final message = (text ?? _input.text).trim();
     if (message.isEmpty || !controller.canSend) return;
+    // Cleared only once it is going, so a runner who says "Not now" keeps what
+    // they typed.
+    if (!await _mayAsk() || !mounted) return;
     _input.clear();
     unawaited(controller.send(message));
   }
 
   /// A question the runner picked rather than typed. See the chip below for why
   /// this is not [_send].
-  void _ask(String text) {
+  Future<void> _ask(String text) async {
     final controller = _c;
     if (controller == null || !controller.canSend) return;
+    if (!await _mayAsk() || !mounted) return;
     unawaited(controller.ask(text));
+  }
+
+  Future<bool> _mayAsk() async {
+    final gate = widget.beforeSend;
+    return gate == null || await gate();
   }
 
   @override

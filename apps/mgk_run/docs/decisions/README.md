@@ -46,3 +46,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) | Identity is an event, and the tier is re-read on resume | Accepted |
 | [0033](0033-the-bottom-chrome-floats.md) | The bottom chrome floats, and every surface pads for it | Accepted |
 | [0034](0034-a-plan-starts-on-the-coming-monday.md) | A plan starts on the coming Monday | Accepted |
+| [0035](0035-the-coach-asks-before-it-sends.md) | The coach asks before it sends | Accepted |

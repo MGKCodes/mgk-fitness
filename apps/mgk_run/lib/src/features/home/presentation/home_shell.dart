@@ -17,6 +17,11 @@ import '../../coaching/data/plan_service.dart';
 import '../../coaching/data/plan_store.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../coaching/data/purchase_client.dart';
+import '../../coaching/data/ai_consent_factory.dart';
+import '../../coaching/domain/ai_consent.dart';
+import '../../coaching/presentation/ai_consent_sheet.dart';
+import '../../legal/data/disclaimer_store_factory.dart';
+import '../../legal/domain/disclaimer_store.dart';
 
 import '../../coaching/domain/coach_access.dart';
 import '../../coaching/domain/coach_brief.dart';
@@ -102,6 +107,8 @@ class HomeShell extends StatefulWidget {
     this.purchases,
     this.runnerName,
     this.introStore,
+    this.aiConsent,
+    this.disclaimer,
   });
 
   final AuthRepository auth;
@@ -224,6 +231,21 @@ class HomeShell extends StatefulWidget {
   /// harness and widget tests want.
   final IntroStore? introStore;
 
+  /// Whether the signed-in runner has agreed to their training going to the AI
+  /// provider. Asked at every way into the coach, after the account and before
+  /// the price.
+  ///
+  /// **Null is the real store, not a pass.** A null backup store skips its
+  /// prompt, because a skipped prompt uploads nothing; skipping this one would
+  /// send health data nobody agreed to send. A test that wants the coach open
+  /// says so by passing `InMemoryAiConsentStore.granted()`.
+  final AiConsentStore? aiConsent;
+
+  /// Where the medical-disclaimer acknowledgement is kept, shared with the plan
+  /// flow so a disclaimer accepted at the coach's door is not asked again one
+  /// screen later. Null is the platform store.
+  final DisclaimerStore? disclaimer;
+
   final int initialTab;
 
   /// True when this shell was reached by **creating an account** rather than by
@@ -255,6 +277,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// which keeps an edit for the session rather than losing it outright.
   late final IntroStore _introStore =
       widget.introStore ?? InMemoryIntroStore(done: true);
+
+  late final AiConsentStore _aiConsent =
+      widget.aiConsent ?? createAiConsentStore();
+  late final DisclaimerStore _disclaimer =
+      widget.disclaimer ?? createDisclaimerStore();
 
   /// The Plan tab, by name rather than by literal — a re-order that moved it
   /// would otherwise silently send a runner to the wrong page. Profile has no
@@ -969,19 +996,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   ///
   /// Found by the build 12 field test, where it looked like the coach briefly
   /// unlocking after a purchase that had in fact granted nothing.
-  void _askCoach(String opener) {
-    if (!_access.isSubscribed) {
-      _showCoachGate();
-      return;
-    }
+  ///
+  /// **And it asked nobody before sending.** `chat.ask` goes straight out with
+  /// the brief -- dated runs and paces, the plan, the rolling summary, a few
+  /// older messages -- so one tap on any of those six doors sent a runner's
+  /// training to the AI provider without a word about where it was going. It
+  /// now goes through the same gate as every other way in: account,
+  /// permission, price ([_ensureCoachAccess]).
+  void _askCoach(String opener) => unawaited(_askCoachWhenAllowed(opener));
+
+  Future<void> _askCoachWhenAllowed(String opener) async {
+    if (!await _ensureCoachAccess()) return;
     final chat = _chat;
-    if (chat == null) return;
+    if (chat == null || !mounted) return;
     unawaited(
       CoachConversationSheet.show(
         context,
         controller: chat,
         unit: _unit,
         suggestions: _coachSuggestions,
+        beforeSend: _ensureAiConsent,
       ),
     );
     unawaited(chat.ask(opener));
@@ -1057,12 +1091,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   ///
   /// The tier is re-read in between, because a runner who has just signed **in**
   /// may already own a subscription and the shell's copy predates the session.
+  ///
+  /// **Permission goes between the account and the price.** After the account,
+  /// because the answer is kept on one; before the price, because asking after
+  /// it means somebody can pay for a coach and then decline to let it see their
+  /// training. Every way into the coach comes through here now -- the mark and
+  /// every "ask the coach" as well as "Build a plan" -- so the order is stated
+  /// once.
+  ///
+  /// **The tier is re-read only when it says no.** That is the case the re-read
+  /// exists for. Re-reading a subscriber on every open would cost the mark a
+  /// round trip each time, and a read that fails resolves to free, so a paying
+  /// runner on a bad connection would be shown the paywall for the coach they
+  /// own. A withdrawn subscription is still caught: the tier is re-read on
+  /// every resume, and the Edge Function refuses it regardless.
   Future<bool> _ensureCoachAccess() async {
     if (!await _ensureAccount()) return false;
-    await _refreshAccess();
+    if (!await _ensureAiConsent()) return false;
+    if (!_access.isSubscribed) await _refreshAccess();
     if (_access.isSubscribed) return true;
     if (mounted) _showCoachGate();
     return false;
+  }
+
+  /// The coach's permission, and the medical disclaimer behind it; see
+  /// [ensureCoachConsent]. Also what the conversation asks before each send.
+  Future<bool> _ensureAiConsent() async {
+    if (!mounted) return false;
+    return ensureCoachConsent(
+      context,
+      consent: _aiConsent,
+      disclaimer: _disclaimer,
+    );
   }
 
   /// The door a free runner meets, from either end.
@@ -1094,16 +1154,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (mounted && resolved != _access) setState(() => _access = resolved);
   }
 
-  void _openCoach() {
+  void _openCoach() => unawaited(_openCoachWhenAllowed());
+
+  Future<void> _openCoachWhenAllowed() async {
     // The door, before the sheet. The Edge Function refuses an unentitled
     // request anyway (ADR-0030), so this is not the gate — it is the difference
     // between being told what something costs and watching the app fail.
-    if (!_access.isSubscribed) {
-      _showCoachGate();
-      return;
-    }
+    //
+    // Through [_ensureCoachAccess] now, not a tier check of its own. The check
+    // it had skipped the account, so a signed-out runner tapping the mark met
+    // the paywall first, and the paywall refuses a signed-out buyer with
+    // "Sign in first" and nothing to sign in with. It also asked nobody's
+    // permission before the conversation opened.
+    if (!await _ensureCoachAccess()) return;
     final chat = _chat;
-    if (chat == null) return;
+    if (chat == null || !mounted) return;
     final note = _note;
     unawaited(
       CoachConversationSheet.show(
@@ -1114,6 +1179,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         // The coach's latest observation becomes its first turn, so the
         // conversation starts on something rather than on nothing.
         opener: note == null ? null : '${note.headline} ${note.detail}',
+        beforeSend: _ensureAiConsent,
       ),
     );
     setState(() => _coachSeen = true);
@@ -2062,6 +2128,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onAskCoach: _askCoach,
                 runnerName: _runnerName,
                 ensureAccount: _ensureCoachAccess,
+                disclaimer: _disclaimer,
                 subscribed: _access.isSubscribed,
               ),
               // The runner and their record, on one page: totals, bests, the goal,
@@ -2221,11 +2288,17 @@ class _PlanTab extends StatefulWidget {
     this.onAskCoach,
     this.runnerName,
     this.ensureAccount,
+    this.disclaimer,
   });
 
-  /// Raises sign-up and then the price when a plan is asked for, and reports
-  /// whether the runner may actually have one. Null means do not gate, which is
-  /// what a widget test wiring this tab directly wants.
+  /// Where the shell's gate records the medical disclaimer, handed to the plan
+  /// flow so it does not ask again what the gate has just asked.
+  final DisclaimerStore? disclaimer;
+
+  /// Raises sign-up, the coach's permission and then the price when a plan is
+  /// asked for, and reports whether the runner may actually have one. Null
+  /// means do not gate, which is what a widget test wiring this tab directly
+  /// wants.
   ///
   /// One callback rather than an account check and a tier flag, because the
   /// *order* of those two is a decision — see `_ensureCoachAccess` — and a tab
@@ -2418,6 +2491,7 @@ class _PlanTabState extends State<_PlanTab> {
           name: widget.runnerName,
           unit: widget.unit,
           buildPlan: widget.plans.create,
+          disclaimer: widget.disclaimer,
         ),
       ),
     );
@@ -2504,6 +2578,9 @@ class _PlanTabState extends State<_PlanTab> {
           adaptation: planClient == null || !widget.subscribed
               ? null
               : AdaptationService(client: planClient),
+          // The same door as every other way into the coach: what is typed
+          // into the adjust sheet is sent to it.
+          beforeAdjust: widget.ensureAccount,
           onRevised: (revised) => widget.plans.saveRevisedWeek(plan, revised),
         ),
       ),
