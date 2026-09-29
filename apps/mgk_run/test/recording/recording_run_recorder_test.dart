@@ -527,14 +527,39 @@ void main() {
       expect(await db.splitsForRun('run-1'), isEmpty);
     });
 
-    test('a discarded run takes its splits with it', () async {
-      await recordTwoAndABitKilometres();
-      await recorder.stop();
-      expect(await db.splitsForRun('run-1'), isNotEmpty);
+    test('discard is what takes a run and its splits with it, while it is '
+        'still the current one', () async {
+      await recorder.start();
+      for (var i = 0; i <= 5; i++) {
+        source.emit(_fix(0, i * 0.001, at: clock.add(Duration(seconds: i))));
+      }
+      await pumpEventQueue();
 
       await recorder.discard();
       expect(await db.splitsForRun('run-1'), isEmpty);
+      expect(await db.runById('run-1'), isNull);
     });
+
+    test(
+      'a discard once the run is already finished cannot undo it (EDGE-6)',
+      () async {
+        // discard() reads the run it is discarding off `_runId`, and stop()
+        // now clears that once the run is finalised — the same clearing that
+        // stops a second stop() from re-running the whole finalize sequence
+        // (see stop_is_re_entrant_and_does_not_wait_on_backup_test.dart).
+        // Before that fix `_runId` stayed set forever, so calling discard()
+        // any time after a stop() — a mistake, but one nothing stopped —
+        // silently deleted a run the runner had already been shown as
+        // finished, splits included.
+        await recordTwoAndABitKilometres();
+        await recorder.stop();
+        expect(await db.splitsForRun('run-1'), isNotEmpty);
+
+        await recorder.discard();
+        expect(await db.splitsForRun('run-1'), isNotEmpty);
+        expect(await db.runById('run-1'), isNotNull);
+      },
+    );
   });
 
   test('an interrupted run (no stop) stays recoverable from storage', () async {

@@ -27,6 +27,7 @@ import 'src/features/history/data/supabase_restore.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
 import 'src/features/recording/data/recording_run_recorder.dart';
+import 'src/features/recording/data/run_recovery.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,12 +40,19 @@ Future<void> main() async {
     );
   }
 
-  runApp(
-    RunioApp(
-      isConfigured: configured,
-      database: configured ? AppDatabase.open() : null,
-    ),
-  );
+  // Before anything reads the log: a run the last launch never got to
+  // finish — an iOS memory kill, an Android task swipe, a reboot, a crash —
+  // is still on disk (rule 1) and otherwise sits there unseen forever. See
+  // `run_recovery.dart`. Database init and this hook live here rather than
+  // in `home_shell.dart` on purpose: this runs once, ahead of every screen
+  // and every persona, rather than depending on which shell happens to build.
+  AppDatabase? database;
+  if (configured) {
+    database = AppDatabase.open();
+    await recoverInterruptedRun(database);
+  }
+
+  runApp(RunioApp(isConfigured: configured, database: database));
 }
 
 /// Root of the Runio app.

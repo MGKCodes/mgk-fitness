@@ -122,6 +122,12 @@ void main() {
     await pumpEventQueue();
     clock = clock.add(const Duration(minutes: 1));
     await recorder.stop();
+    // `stop()` settles the run locally and returns without waiting for the
+    // backup push (EDGE-6) — it is detached so the Finish button is not the
+    // thing sitting there for as long as a slow or failing push takes. Give
+    // that detached push a turn to run and fail before a test below asserts
+    // on what it did.
+    await pumpEventQueue();
   }
 
   test('a recorded run is in the log with backup off and no signal', () async {

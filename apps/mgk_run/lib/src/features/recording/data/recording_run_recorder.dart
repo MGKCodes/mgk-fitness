@@ -405,6 +405,7 @@ class RecordingRunRecorder implements RunRecorder {
     // the way back to wherever the runner stood when they paused, so a coffee
     // stop two streets away was silently added to the run.
     _syncCounting();
+    await _persistPauseState();
   }
 
   @override
@@ -412,12 +413,56 @@ class RecordingRunRecorder implements RunRecorder {
     if (_status != RecorderStatus.paused) return;
     _setStatus(RecorderStatus.recording);
     _syncCounting();
+    await _persistPauseState();
   }
 
-  @override
-  Future<void> stop() async {
+  /// Mirrors [_pausedTotal] and [_notCountingSince] onto the run row.
+  ///
+  /// Called from [pause] and [resume] rather than only at [stop]: a run
+  /// recovered after the process died mid-run has no [stop] call to compute
+  /// a duration from, so whatever the recovered duration excludes has to
+  /// already be on disk (see `run_recovery.dart`). Both write the same two
+  /// columns, so the run row always answers "how much of this run's wall
+  /// time doesn't count" exactly as of the last pause boundary — which, for a
+  /// run killed while paused, is precisely the moment it was killed at.
+  Future<void> _persistPauseState() async {
     final runId = _runId;
     if (runId == null) return;
+    await _db.updateRunPauseState(
+      runId: runId,
+      pausedTotalS: _pausedTotal.inSeconds,
+      notCountingSince: _notCountingSince,
+    );
+  }
+
+  /// The in-flight [stop] call, so a second one arriving before the first
+  /// finishes waits on the same work instead of repeating it.
+  ///
+  /// Without this, a double tap on Finish read `_runId` as a run still in
+  /// progress on its second call — nothing here ever cleared it — and ran
+  /// the whole finalize sequence again: a second walk over the trace, a
+  /// second write of the summary, the splits and the records, and a second
+  /// backup push. The local writes are each individually idempotent, but
+  /// the run's own life cycle is not something a second `stop()` should be
+  /// allowed to repeat.
+  Future<void>? _stopping;
+
+  @override
+  Future<void> stop() {
+    final runId = _runId;
+    if (runId == null) return _stopping ?? Future<void>.value();
+    return _stopping ??= _finishRun(runId).whenComplete(() => _stopping = null);
+  }
+
+  /// How long the backup push gets, detached, before it is abandoned.
+  ///
+  /// Generous against a marathon's several-thousand-point trace sent in
+  /// [SupabaseRunBackup]'s 500-point batches over an ordinary connection —
+  /// this is a bound, not a target — but finite: this must not be the thing
+  /// still running when the runner has moved on to another app.
+  static const Duration _backupPushTimeout = Duration(seconds: 30);
+
+  Future<void> _finishRun(String runId) async {
     await _sub?.cancel();
     _sub = null;
     await _source.stop();
@@ -531,15 +576,41 @@ class RecordingRunRecorder implements RunRecorder {
     // what "safe" requires (rule 1): the log is read from Drift, so the run is
     // in it the moment the line above returns. Mirroring is a mirror.
     //
-    // It used to be more than that — the log was read from Supabase, so this
-    // push was what made a run appear at all, and a runner who had declined
-    // backup finished a 10 km run and was shown "No runs yet". ADR-0023 has
-    // the argument; the code that changed is one line in `main.dart`.
-    await _backup((backup) async {
-      await backup.pushRun(runId);
-      await backup.pushTrace(runId);
-    });
+    // Cleared here rather than left set: a `stop()` arriving after this one
+    // resolves must see no run in progress, the same as it would after
+    // `discard()`. `_startedAt` stays — [elapsed] still reads it, and the
+    // summary screen keeps asking this object's `elapsed` until it is
+    // itself torn down.
+    _runId = null;
     _setStatus(RecorderStatus.stopped);
+    // Detached rather than awaited, and this is the change that matters.
+    // It used to be more than a mirror — the log was read from Supabase, so
+    // this push was what made a run appear at all, and awaiting it here is
+    // a leftover from that (ADR-0023 covers the read side; this is the
+    // write side of the same history). Today the run is already complete
+    // and in the log two lines up, so the only thing waiting on this push
+    // bought was the Finish button staying busy for as long as a
+    // several-thousand-point trace took to upload — long enough, on a
+    // marathon over a slow signal, that a runner who tapped twice believing
+    // nothing had happened yet was not wrong to think so.
+    unawaited(_pushBackup(runId));
+  }
+
+  /// Mirrors the finished run, bounded by [_backupPushTimeout] and never
+  /// awaited by [stop] — see [_finishRun].
+  Future<void> _pushBackup(String runId) async {
+    try {
+      await _backup((backup) async {
+        await backup.pushRun(runId);
+        await backup.pushTrace(runId);
+      }).timeout(_backupPushTimeout);
+    } catch (_) {
+      // Silently, on purpose, for the same reason [_backup]'s own catch is:
+      // a lost or slow push is a run on the phone and not yet in the
+      // backup, which the next push repairs. This layer adds only the
+      // timeout; it must not become a second way to fail loudly, and it
+      // must never log what it failed to send (CLAUDE.md rule 6).
+    }
   }
 
   @override
