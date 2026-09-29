@@ -456,11 +456,25 @@ that is what the disclosure says.
 - [ ] **Create the upload keystore** *(you)*, back it up permanently, add to
       Codemagic as `liftio_upload`. An upload key Play has seen cannot be swapped
       without Google's intervention.
-- [ ] Cut a fresh TestFlight build *(me)*. The current one predates coach v21 and
+- [x] Cut a fresh TestFlight build *(me)*. The current one predates coach v21 and
       gets `400 conversation required` on every coach request.
+
+      **Done 2026-09-29, twice.** Build 31 (`42c350c`, the logging rework) and
+      a second from `4d12c46` (payments, rest alerts, web pages). Build 31's
+      Codemagic run reads *failed*, and the IPA reached App Store Connect anyway:
+      Apple answered three of altool's state changes with a 500, altool retried
+      and printed `UPLOAD SUCCEEDED`, and Codemagic judged the step on the error
+      lines. Read the publishing log before re-running a "failed" upload.
 - [ ] **Install a release Android build on a real device and sign in** *(both)*.
       This is the step that would have caught blocker 1, and no substitute for it
       exists.
+
+      **Half done 2026-09-29, on the emulator.** The first release Android build
+      ever run (R8, release manifest, debug-signed locally): it launched, logged
+      and ticked sets, fired the background rest alert, and a sign-in with wrong
+      credentials came back "That email and password do not match", which is
+      the server answering. So the release build reaches the network. A real
+      device and a real sign-in are still yours.
 
 ### F. Store assets and metadata
 
@@ -473,13 +487,17 @@ that is what the disclosure says.
       rather than capturing.
 - [ ] Store icon, 512×512 *(you)* — Play.
 - [ ] Listing copy for both *(you)*: title, subtitle/short description, full
-      description, keywords, what's new for 2.0.0.
+      description, keywords, what's new for 2.0.0. **Drafted 2026-09-29** in
+      [store-listing.md](store-listing.md), with character counts; yours to
+      edit and paste.
 - [ ] **Privacy nutrition labels (iOS)** and the **Data safety form (Play)**
       *(you, drafted by me)*. This app is the awkward case — progress
       photographs, health-adjacent training data, and free-text injury notes sent
       to a third-party AI provider. RevenueCat's own collection has to be
       declared too. I will draft both from the code so the step is transcription
-      rather than judgement.
+      rather than judgement. **Drafted 2026-09-29** in
+      [store-listing.md](store-listing.md). One check left before filing:
+      RevenueCat's own privacy manifest.
 - [ ] Content rating questionnaire, target audience and ads declaration *(you)* —
       Play.
 - [ ] Age rating *(you)* — iOS.
@@ -541,23 +559,36 @@ already known. The **support URL** is required of every app by App Store Connect
 and was missing from this plan entirely until the site moved into the repo and
 made the omission obvious.
 
-- [ ] **The web build reads `apps/mgk_lift/docs/*.md` directly.** Same repo, so
+- [x] **The web build reads `apps/mgk_lift/docs/*.md` directly.** Same repo, so
       this is a relative path rather than a sync step, and it is the whole
       argument for putting `web/` here. **Do not copy the markdown into `web/`.**
-- [ ] **Strip HTML comments at build time.** The repo notes carried out of the
+
+      **Settled differently, 2026-09-29, following Run.** `web/` already existed
+      by the time Lift's pages were built, and Run had settled the question:
+      the pages are generated into `web/public/` by a script and committed,
+      because Vercel does not run Python and App Review compares served bytes.
+      `apps/mgk_lift/tool/build_legal_pages.py` does that with Run's renderer,
+      and `legal_copy_test.dart` fails if a served page is missing, older than
+      its document, or showing a repo note, which is the tripwire this item
+      wanted.
+- [x] **Strip HTML comments at build time.** Done in the generator. The repo notes carried out of the
       draft banners live in `<!-- -->` blocks. They do not render, but they would
       sit in the page source of a legal document saying `NOT FOR PUBLICATION`,
       which is not where that sentence should be readable. One transform in the
       build removes the question.
-- [ ] **A support page**, and the **support URL** that App Store Connect
-      requires.
-- [ ] A **support email address** for Play, which asks for an address rather than
-      a page.
-- [ ] The three legal documents, at stable paths under `/lift`. Stable because a
-      store field points at them and changing a submitted URL is a metadata
-      review.
-- [ ] Enough of a marketing page that a store link does not open an empty room.
-- [ ] Decide how it deploys and where the subdomain points *(you)*. The MGKCodes
+- [x] **A support page**, and the **support URL** that App Store Connect
+      requires: `/lift/support`, both stores named throughout.
+- [x] A **support email address** for Play, which asks for an address rather than
+      a page: `hello@mgkcodes.com`.
+- [x] The three legal documents, at stable paths under `/lift`: `/lift/privacy`,
+      `/lift/terms`, `/lift/ai-disclosure`, plus `/lift/delete-account` for
+      Play. Stable because a store field points at them and changing a
+      submitted URL is a metadata review.
+- [x] Enough of a marketing page that a store link does not open an empty room:
+      the site index now lists Lift's pages beside Run's.
+- [x] Decide how it deploys and where the subdomain points *(you)*. Already
+      decided by Run's lane: Vercel, from this repository. **Lift's pages go
+      live when this branch reaches the branch Vercel builds.** The MGKCodes
       site is Next.js 16 on Vercel; this is a second project from a different
       repo, not a route inside that one.
 - [x] **Confirmed `web/` does not join the Dart workspace.** Checked 2026-09-02:
