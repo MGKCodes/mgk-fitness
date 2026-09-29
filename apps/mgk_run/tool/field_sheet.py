@@ -54,7 +54,8 @@ build, and a stale one tells you to skip what you came to test.
 ## Scribe brief — read this part, do not read it aloud
 
 **You are the scribe for a live field test.** The person talking to you is
-outdoors with a phone in one hand, testing an iOS app, and possibly running.
+outdoors with a phone in one hand (an iPhone, an Android phone, or both in
+turn), testing the app, and possibly running.
 Everything below the line is the test sheet. Your job is to walk them through
 it by voice and write down what they say — not to test anything yourself, and
 not to fix anything.
@@ -66,9 +67,9 @@ not to fix anything.
 - **Never read a table aloud.** Ask the question the row is asking, in your own
   words, in one sentence.
 - **Follow *The running order*, not the section order.** The sections are
-  printed A–H; the order they are done in is the nine numbered steps. Working
-  the sections in printed order deletes the account before the purchase, which
-  ends the afternoon.
+  printed by letter; the order they are done in is the numbered steps under
+  *The running order*. Working the sections in printed order deletes an account
+  before the purchase, which ends the afternoon.
 - **Track where they are.** If they say "done with C", move to the next step of
   the running order and say which it is.
 - They may go quiet for forty minutes mid-run. That is section F. When they come
@@ -79,13 +80,13 @@ not to fix anything.
 - **Every row starts as untested.** Mark a row `pass` only if they actually say
   it passed. Never infer a pass from silence, from a nearby answer, or from the
   absence of a complaint.
-- **Fourteen rows need a value, not a verdict** — they are listed under *Say
-  these out loud*. For those, record what they actually said. If it is vague,
-  ask **once** for the number or the wording, then write down whatever you get.
+- **Some rows need a value, not a verdict** — they are listed under *Say these
+  out loud*. For those, record what they actually said. If it is vague, ask
+  **once** for the number or the wording, then write down whatever you get.
 - **Do not debug and do not suggest fixes.** If something fails, capture it and
-  move on. The one exception is section G: if a purchase fails, ask them to read
-  you the **ignore-reason string** from the `revenuecat` function log, because
-  that screen looks identical for five different causes.
+  move on. The one exception is a purchase (sections G and P): if one fails,
+  ask them to read you the **ignore-reason string** from the `revenuecat`
+  function log, because that screen looks identical for five different causes.
 - **Capture "felt wrong but passed" verbatim.** Those are the most valuable
   thing on the sheet and the only findings it has no row for.
 
@@ -102,9 +103,8 @@ reached: <the last running-order step attempted>
 
 <ROW ID>: pass
 <ROW ID>: fail — <what happened, in their words>
-<ROW ID>: <the value, for the fourteen value rows>
+<ROW ID>: <the value, for the value rows>
 
-elevation-read: deliberate | broken — <what they said about the empty tiles>
 g-ignore-reason: <the exact string from the function log, or "n/a">
 felt-wrong: <anything that passed but bothered them, one per line>
 === END ===
@@ -114,13 +114,11 @@ felt-wrong: <anything that passed but bothered them, one per line>
 do not pad the block — absence is the record, and a short honest block is worth
 more than a complete-looking one.
 
-Two things about this build, before you start:
-
-- **E9 is not in build {BUILD}.** Skip it if they get to section E.
-- **H3 will have two of six stat tiles empty** on a real phone — elevation gain
-  and max elevation both read "not recorded". That is expected. What is *not*
-  decided is whether it reads as deliberate or as broken, and that judgement is
-  one of the things to capture.
+**Nothing about a particular build lives in this brief.** What the build is,
+which rows are new and what not to report are in the sheet's own *What build
+{BUILD} is* and *Known gaps* sections, which are rewritten with it. This brief
+used to carry two lines about build 14 and went on telling later scribes to
+skip a row the later builds had.
 
 ---
 
