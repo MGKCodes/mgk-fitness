@@ -33,7 +33,7 @@ order to work in.
 | **TestFlight** | 1.0.0 (25), from `12d74d8` (Codemagic build `6aa44870…`) |
 | **Play internal** | 1.0.0 (25), from `12d74d8` (Codemagic build `6aa4486b…`) |
 | **Release candidate** | **1.0.0 (26)** — `version: 1.0.0+26` is already in the pubspec. **Not cut**: it waits on item 2 |
-| **What 26 will be built from** | `run/release-26` at `f8edac2`: all three app lanes merged, 1,752 tests passing, analyzer clean (2026-09-29), plus this documentation branch |
+| **What 26 will be built from** | `run/release-26`: all three app lanes and this documentation merged, 1,752 tests passing, analyzer and `check_listing.py` clean (2026-09-29). 47 commits ahead of `main`, nothing pushed |
 | **Testing** | One sitting, on build 26, on both phones: [the test sheet](testflight-1.0.0-test-sheet.md). Testing build 25 was dropped |
 | **Tag `run/build-25`** | Wrong: it sits on `a6eb6e1`, whose build was cancelled. It belongs on `12d74d8` (item 5 below) |
 
@@ -96,8 +96,8 @@ and run.
       Gate 2. The second caps what a leaked key or a runaway surface can
       spend.
 4. **Ship `main` and cut build 26.**
-   - [ ] Merge `run/release-26` (`f8edac2`) and this documentation branch
-         (`run/release-docs`) into `main`, and push. Vercel deploys `web/`
+   - [ ] Merge `run/release-26` into `main` (it already carries the three
+         app lanes and this documentation), and push. Vercel deploys `web/`
          from it, which is what puts the terms link and the real deletion
          path live on `mgkfitness.mgkcodes.com`.
    - [ ] `scripts/codemagic-build.sh run-ios-release main` and
