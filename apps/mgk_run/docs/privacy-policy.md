@@ -67,10 +67,11 @@ provider. We do not sell your data. You can delete everything at any time.
   with your training, so it is what the app calls you and nothing more. It is
   **never sent to the AI provider**; see the sub-processors below.
 - **A profile photo, if you choose one** — and it is the one thing here that
-  **never leaves your phone**. It is copied into the app's own storage, it is
-  not uploaded, not sent to your coach, and not included in backup, so a new
-  phone starts again with your initials. Remove it in Account, or by deleting
-  the app.
+  **we never receive**. It is copied into the app's own storage, and it is never
+  uploaded to us or sent to your coach. Your phone's own backup (iCloud or
+  Google) may include it, as it may include the rest of the app's data; that
+  backup is between you and Apple or Google. Remove it in Account, or by
+  deleting the app.
 - **Profile data** — your unit preference, and your running profile: current
   volume, longest run, available days, a recent race or time trial, and any
   injury notes you choose to give. We do **not** ask for your date of birth or
@@ -162,9 +163,10 @@ all. Data in transit is encrypted (HTTPS/TLS).
 ## Backing up is optional, and off until you ask
 
 **Nothing about your training** leaves your phone for our servers unless you
-turn on **Back up my data** in Settings. It starts off. With it off, your phone
-is the only copy, and an uninstall loses everything — which is the trade we let
-you make rather than make for you, because this is health information.
+turn on **Back up my data** in Settings. It starts off. With it off, we keep no
+copy: your training is on your phone, and in your phone's own backup if it
+makes one, and deleting the app deletes it from the phone — which is the trade
+we let you make rather than make for you, because this is health information.
 
 Two things are not covered by that switch, because they are what an account
 *is* rather than something it stores: your **email address**, which we need to

@@ -477,5 +477,11 @@ been on a store, so everything the app does is still listed here.
   front of a system permission prompt say "Continue" rather than "Allow",
   the Health write string says the app never writes, and sign-up no longer
   lists the coach as something a free account gets.
+- **The profile photo is described as it is: never sent to us or to the
+  coach.** Account, the photo permission string and the privacy policy also
+  said it was kept out of backup, so a new phone would start again with
+  initials. Nothing kept it out: the phone's own iCloud or Google backup can
+  carry it, as it can the rest of the app's data. The policy's "your phone is
+  the only copy" gets the same correction.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main

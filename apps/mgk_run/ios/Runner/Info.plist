@@ -96,12 +96,14 @@
 	     no usage string, so removing this does not disable the feature, it
 	     kills the app the moment somebody taps the avatar.
 
-	     The photo is copied into the app documents directory and never leaves
-	     the phone, which is what keeps App Privacy on "Data Not Collected":
-	     Apple defines collection as transmission off the device. It is also
-	     excluded from backup for the same reason. -->
+	     The photo is copied into the app documents directory and never sent to
+	     us or to the coach, which is what keeps App Privacy on "Data Not
+	     Collected": Apple defines collection as transmission to the developer
+	     or a third party. It is NOT excluded from the phone's own iCloud
+	     backup - nothing sets NSURLIsExcludedFromBackupKey - and this used to
+	     say it was. The phone's backup is the owner's, not a collection. -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose a photo for your profile. It stays on this phone — it is never uploaded, never sent to your coach, and is not included in backup.</string>
+	<string>Choose a photo for your profile. It is never uploaded to us and never sent to your coach.</string>
 	<!-- What Health is read for, and only that. This said workouts recorded on
 	     a watch would "appear in your training log and your coach sees the
 	     whole picture"; nothing ever imported a workout, and steps never reach
