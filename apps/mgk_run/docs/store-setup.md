@@ -484,10 +484,13 @@ row names no store.
 
 - [ ] **Create both accounts.** Supabase ▸ Authentication ▸ Users ▸ Add user ▸
       Create new user, with **Auto Confirm User** ticked. Use addresses on a
-      domain MGKCodes owns, and passwords you can paste. (Creating them in the
-      app works too, but on your own phone it meets *"This phone has another
-      account's training on it"*, because the phone's training is yours; its
-      Sign out leaves your training alone.)
+      domain MGKCodes owns, and passwords you can paste.
+
+      **Do not sign in as either on your own phone.** Its training is yours, so
+      the app would show *"This phone has another account's training on it"*
+      and offer only to erase it or sign out. Use a phone whose training you
+      do not need: a spare, an emulator, or the Android test phone once the
+      test sheet is done.
 - [ ] **Grant A**, in the SQL editor, with A's email in place of the
       placeholder:
 
@@ -528,14 +531,15 @@ row names no store.
         and user_id = (select id from auth.users where email = '<DEMO_B_EMAIL>');
       ```
 
-- [ ] **Check both on a phone, then withdraw the AI permission on both.** A:
-      coach mark ▸ consent ▸ disclaimer ▸ the conversation, no paywall. B:
+- [ ] **Check both on that phone, then withdraw the AI permission on both.**
+      A: coach mark ▸ consent ▸ disclaimer ▸ the conversation, no paywall. B:
       coach mark ▸ consent ▸ disclaimer ▸ gate ▸ **See the plans** with two
       prices. **Do not buy on B.** Then, on each, Profile ▸ Settings ▸ Privacy &
       legal ▸ **Coach and AI** ▸ Withdraw. The answer is kept on the account
       ([ADR-0036](decisions/0036-the-coach-asks-before-it-sends.md)), so an
       account you agreed on never shows the reviewer the sheet the review notes
-      describe.
+      describe. Between the two, sign out with **Also remove my data from
+      this phone** on, so B does not meet A's training.
 - [ ] **Paste them.** A goes in App Review Information ▸ Sign-in required
       (user name and password); A and B both go in the notes, in place of the
       four bracketed values ([app-store-listing.md](app-store-listing.md) §
