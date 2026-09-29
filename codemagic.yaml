@@ -614,10 +614,20 @@ workflows:
         certificates:
           - "Lift MGKFitness Distribution"
       groups:
-        # The only group Lift needs. `AppConfig` reads exactly these two values,
-        # so there is no lift-specific group to create — an empty one would be a
-        # place for the next secret to go without saying so.
         - mgk_fitness_supabase
+        # Lift's own group, for RevenueCat's two public SDK keys
+        # (REVENUECAT_PUBLIC_KEY = appl_…, REVENUECAT_GOOGLE_KEY = goog_…).
+        # The note that used to sit here said Lift needed no group of its own
+        # because it had no secret of its own; payments gave it one. Same
+        # variable names as Run's group, because each build reads only its own.
+        #
+        # COMMENTED UNTIL THE GROUP EXISTS in Codemagic. Whether a workflow
+        # naming a missing group fails is undocumented, and a failure there
+        # lands before any script runs — the shape this file already records
+        # costing five builds. Create the group, then uncomment this line here
+        # and in lift-android-release. Until then the build ships unable to
+        # sell, and says so in a banner.
+        # - mgk_fitness_lift_env
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -657,9 +667,31 @@ workflows:
                   )
               return v
 
+          # RevenueCat's PUBLIC key for Lift's App Store app. Optional in the
+          # sense Run's is: without it the paywall says subscriptions are not
+          # open and offers no button. Lift's own key, from
+          # mgk_fitness_lift_env — never Run's, which configures the SDK against
+          # the wrong app and sells Run's products.
+          revenuecat = (os.environ.get("REVENUECAT_PUBLIC_KEY") or "").strip()
+          if not revenuecat:
+              print("=" * 72)
+              print("WARNING: REVENUECAT_PUBLIC_KEY is unset.")
+              print("This build CANNOT TAKE A PAYMENT. The paywall says")
+              print("subscriptions are not open rather than offering a button.")
+              print("Set it in the mgk_fitness_lift_env group, and uncomment")
+              print("that group in this workflow.")
+              print("=" * 72)
+          elif not revenuecat.startswith("appl_"):
+              sys.exit(
+                  "REVENUECAT_PUBLIC_KEY must be Lift's Apple key, which begins "
+                  f"appl_ - got {revenuecat[:8]!r}... RevenueCat > Project "
+                  "settings > API keys, the key for the Lift App Store app."
+              )
+
           cfg = {
               "SUPABASE_URL": need_https("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+              "REVENUECAT_PUBLIC_KEY": revenuecat,
           }
 
           out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_lift/config/app_config.json"
@@ -765,16 +797,15 @@ workflows:
         # because it has never had a Play listing to publish to.
         - mgkfitness_upload
       groups:
-        # The only group Lift needs. `AppConfig` reads exactly these two values,
-        # so there is no lift-specific group to create — an empty one would be a
-        # place for the next secret to go without saying so.
         - mgk_fitness_supabase
+        # Commented until the group exists — see lift-ios-release.
+        # - mgk_fitness_lift_env
       flutter: stable
     scripts:
       - name: Generate config/app_config.json from secure vars
-        # Identical to the iOS workflow's, deliberately: the app reads the same
-        # two values whichever store it came from, and a second copy that drifts
-        # would mean one platform quietly shipping a different backend.
+        # The same backend values as the iOS workflow's, deliberately: a second
+        # copy that drifts would mean one platform quietly shipping a different
+        # backend. The store key is the one difference, and it is meant to be.
         script: |
           python3 - <<'PY'
           import json, os, pathlib, sys
@@ -805,9 +836,28 @@ workflows:
                   )
               return v
 
+          # REVENUECAT_GOOGLE_KEY, not REVENUECAT_PUBLIC_KEY: RevenueCat issues
+          # one key per store app and an appl_ key here configures nothing.
+          revenuecat = (os.environ.get("REVENUECAT_GOOGLE_KEY") or "").strip()
+          if not revenuecat:
+              print("=" * 72)
+              print("WARNING: REVENUECAT_GOOGLE_KEY is unset.")
+              print("This build CANNOT TAKE A PAYMENT. The paywall says")
+              print("subscriptions are not open rather than offering a button.")
+              print("Set it in the mgk_fitness_lift_env group, and uncomment")
+              print("that group in this workflow.")
+              print("=" * 72)
+          elif not revenuecat.startswith("goog_"):
+              sys.exit(
+                  "REVENUECAT_GOOGLE_KEY must be Lift's Google key, which begins "
+                  f"goog_ - got {revenuecat[:8]!r}... RevenueCat > Project "
+                  "settings > API keys, the key for the Lift Play Store app."
+              )
+
           cfg = {
               "SUPABASE_URL": need_https("SUPABASE_URL"),
               "SUPABASE_PUBLISHABLE_KEY": need("SUPABASE_PUBLISHABLE_KEY"),
+              "REVENUECAT_GOOGLE_KEY": revenuecat,
           }
 
           out = pathlib.Path(os.environ["CM_BUILD_DIR"]) / "apps/mgk_lift/config/app_config.json"

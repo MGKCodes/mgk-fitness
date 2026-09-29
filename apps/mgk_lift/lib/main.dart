@@ -15,6 +15,8 @@ import 'src/features/home/presentation/lift_shell.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
 import 'src/features/photos/data/supabase_photo_sync.dart';
+import 'src/features/purchases/data/revenuecat_purchases.dart';
+import 'src/features/purchases/domain/purchases.dart';
 import 'src/features/settings/data/local_coach_preference.dart';
 import 'src/features/settings/data/local_unit_preferences.dart';
 import 'src/features/entitlement/data/local_entitlement_cache.dart';
@@ -59,11 +61,28 @@ Future<void> main() async {
     }
   }
 
-  runApp(MgkLiftApp(database: AppDatabase.open(), client: client));
+  runApp(
+    MgkLiftApp(
+      database: AppDatabase.open(),
+      client: client,
+      // Needs both halves, like every paid path: a purchase with no server to
+      // write the entitlement is a charge with nothing to show for it. And a
+      // build with no store key sells nothing rather than failing — the
+      // paywall says subscriptions are not open.
+      purchases: (client == null || !config.canSell)
+          ? null
+          : RevenueCatPurchases(apiKey: config.storeKey),
+    ),
+  );
 }
 
 class MgkLiftApp extends StatelessWidget {
-  const MgkLiftApp({super.key, this.database, this.client});
+  const MgkLiftApp({super.key, this.database, this.client, this.purchases});
+
+  /// The store. Built once in `main` rather than here, because it holds what
+  /// it has been told — who is signed in, what it last offered — and a
+  /// rebuild must not forget either.
+  final Purchases? purchases;
 
   /// The on-device database. Injected rather than reached for, so a test can
   /// pass an in-memory one — or none, in which case tracking is simply
@@ -129,6 +148,7 @@ class MgkLiftApp extends StatelessWidget {
                 source: SupabaseEntitlements(client: supabase),
                 cache: LocalEntitlementCache(),
               ),
+        purchases: purchases,
         sync: (db == null || supabase == null)
             ? null
             : WorkoutBackup(db, SupabaseBackupRemote(supabase)),

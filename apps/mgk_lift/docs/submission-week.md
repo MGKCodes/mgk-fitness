@@ -277,20 +277,38 @@ Nothing in F or G can be finished until a build can take money.
       legacy £19.99/yr product still has to survive for whoever holds one, which
       is blocker 5's problem rather than a pricing one.
 - [ ] RevenueCat project, both store integrations, public SDK keys *(you)*.
-- [ ] Wire `purchases_flutter` *(me)*: configure with the public key, identify the
+- [x] Wire `purchases_flutter` *(me)*: configure with the public key, identify the
       customer as the Supabase user id so the two systems agree on who somebody is
       without a mapping table, and drive **both** paywalls from offerings rather
       than the hardcoded `_Tiers` — blocker 3.
+
+      **Done 2026-09-29**, as `RevenueCatPurchases` behind the existing
+      `Purchases` seam, ported from Run's rather than written fresh. It carries
+      Run's anonymous-customer guard (build 12's lesson: a purchase before
+      `logIn` takes money and grants nothing) and adds one Lift needs: **the
+      RevenueCat customer spans both apps**, so restore and tier changes filter
+      to Lift's own products (`lift.*` and Liftio's `liftio_*`). The shell tells
+      the store who is signed in at launch, on sign-in and on sign-out. The key
+      comes from `REVENUECAT_PUBLIC_KEY` / `REVENUECAT_GOOGLE_KEY`; a build
+      without one passes no store at all and the paywall says subscriptions are
+      not open.
 - [x] **Restore Purchases** — blocker 2. Done 2026-09-02, on both paywalls and
       in Settings.
 - [x] **The purchase seam** — `Purchases`, `PurchaseOffer`, `PurchaseFlow` and a
       scripted fake, with both paywalls wired through the shell. 14 tests. The
       RevenueCat SDK now drops in behind an interface rather than into a screen.
-- [ ] **Premium Coach is displayed and cannot be bought** *(me)*. The tier block
+- [x] **Premium Coach is displayed and cannot be bought** *(me)*. The tier block
       renders a Premium Coach row and nothing can reach it: the primary button
       names Coach and buys Coach. A tier the app advertises and cannot sell is an
       incomplete purchase flow — the 2.1 bucket rather than a cosmetic gap — so
       the paywall needs a way to choose before it is honest.
+
+      **Done 2026-09-29: the purchase sheet.** Both paywalls' buttons open one
+      glass sheet: the two tiers as a choice, priced by the store, one
+      Subscribe button for the chosen tier, Restore, the renewal disclosure in
+      the store's own words, and the Terms and Privacy links. Signed out, it
+      asks for an account instead of money. `purchase_ui_test.dart` buys each
+      tier.
 - [x] **Prices come from the store, and tiers are named rather than priced.**
       Done 2026-09-02, per decision 6. `EntitlementTier.label` is the single
       source of *Coach* and *Premium Coach*; `PurchaseOffer.price` carries the
@@ -349,7 +367,9 @@ Nothing in F or G can be finished until a build can take money.
       `EntitlementGate` resolves live → cached → free, wired through `main.dart`
       and refreshed on launch, sign-in and sign-out. 13 tests, one of which is
       the widget-level regression that would have caught the original gap.
-- [ ] **The client never trusts the SDK for access** *(me)*. RevenueCat's cached
+- [x] **The client never trusts the SDK for access** *(me)*. Held: the only
+      SDK read is `restore()` choosing a sentence, and `PurchaseFlow` waits for
+      `core.entitlements` either way. RevenueCat's cached
       customer info decides what the *paywall* shows; `core.entitlements` decides
       what the *server* serves, which is already how the coach function gates.
 - [x] **A manual grant path.** `core.grant_entitlement()` and
@@ -360,8 +380,11 @@ Nothing in F or G can be finished until a build can take money.
       cannot execute either and `service_role` can; and a grant for an unknown
       address raises with its hint rather than silently doing nothing. The one
       real entitlement row was not touched.
-- [ ] **The auto-renew disclosure, in full** *(me)*, at both points of purchase
-      and in the terms. Liftio's already-accepted wording: *"Subscription
+- [x] **The auto-renew disclosure, in full** *(me)*, at both points of purchase
+      and in the terms. Done 2026-09-29: the terms' Subscriptions section and
+      the purchase sheet, which both paywalls now open, so there is one point of
+      purchase rather than two. The test that forbade billing wording now
+      demands the whole of it. Liftio's already-accepted wording: *"Subscription
       auto-renews unless cancelled at least 24 hours before the end of the current
       period. Manage in Settings."* Clear `legal_copy_test.dart` by writing the
       whole disclosure, not by deleting the test.
@@ -398,8 +421,10 @@ Nothing in F or G can be finished until a build can take money.
       inference inputs** *(you)*. A per-model property, so changing the model can
       change the answer. All three documents deliberately claim neither way until
       it is settled, which is defensible but not permanent.
-- [ ] **Name RevenueCat as a processor** in `docs/privacy-policy.md` *and*
-      `legal_copy.dart`, in the same commit that wires it *(me)*.
+- [x] **Name RevenueCat as a processor** in `docs/privacy-policy.md` *and*
+      `legal_copy.dart`, in the same commit that wires it *(me)*. Done
+      2026-09-29, with what a subscription tells us (tier, status, the store's
+      record of the purchase) under *What we collect*.
       `legal_copy_test.dart` has a case — *"names every processor it sends data
       to"* — that fails when a processor reaches the pipeline without reaching the
       reader. It is the right tripwire and must be cleared by writing the policy,

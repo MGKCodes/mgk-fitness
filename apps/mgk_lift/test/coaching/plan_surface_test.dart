@@ -134,7 +134,11 @@ void main() {
 
       expect(find.text(r'$1.99'), findsOneWidget);
       expect(find.text(r'$4.99'), findsOneWidget);
-      expect(find.text(r'Start coaching — $1.99/month'), findsOneWidget);
+      // The button opens the purchase sheet, where both tiers are bought, so
+      // it names no single price — it used to name Coach's while the table
+      // above it offered Premium Coach too.
+      expect(find.text('Start coaching'), findsOneWidget);
+      expect(find.textContaining(r'Start coaching — $'), findsNothing);
     });
 
     testWidgets('promises tracking stays free', (WidgetTester tester) async {

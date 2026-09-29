@@ -8,6 +8,7 @@ import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../entitlement/domain/entitlement.dart';
 import '../../purchases/domain/purchases.dart';
+import '../../purchases/presentation/purchase_sheet.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
@@ -360,9 +361,13 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     final auth = widget.auth;
     if (auth != null) {
       _account = auth.current;
+      // A session restored at launch is an account the store has to know
+      // about before the first paywall, not after the first sign-in.
+      if (_account != null) unawaited(_identifyCustomer(_account));
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
         setState(() => _account = account);
+        unawaited(_identifyCustomer(account));
         // Signing in is the moment there is somewhere to put the backlog, and
         // signing out the moment backup has to say it has stopped.
         unawaited(_backup?.runNow());
@@ -427,35 +432,41 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     setState(() => _offers = offers);
   }
 
-  /// The primary button buys **Coach**, which is what it names.
+  /// Opens the purchase sheet: both tiers, each one buyable.
   ///
-  /// **Premium Coach is displayed and not purchasable**, which is a gap rather
-  /// than a decision: the tier block renders a row nothing here can reach, and
-  /// the paywall needs a way to choose before that is honest. Recorded in
-  /// `docs/submission-week.md` rather than left in a comment nobody reads.
+  /// It used to buy **Coach** directly, whatever the paywall above it showed,
+  /// so Premium Coach was a tier the app displayed and could not sell. The
+  /// sheet is where somebody chooses, and where the disclosure and the links
+  /// Guideline 3.1.2 wants sit beside the button that charges.
   Future<void> _startPurchase() async {
     final flow = _flow;
     if (flow == null) return;
+    final result = await PurchaseSheet.show(
+      context,
+      flow: flow,
+      offers: _offers,
+      signedIn: widget.auth == null || _account != null,
+      onSignIn: widget.auth == null
+          ? null
+          : () {
+              Navigator.of(context).pop();
+              unawaited(_openSignIn());
+            },
+    );
+    if (result != null) await _report(result);
+  }
 
-    final offers = await flow.purchases.offers();
-    PurchaseOffer? offer;
-    for (final candidate in offers) {
-      if (candidate.tier == EntitlementTier.paid) {
-        offer = candidate;
-        break;
-      }
+  /// Tells the store who is buying, so the webhook can say whose purchase it
+  /// was. Both directions: a sign-out detaches the customer, or the next
+  /// person to sign in on this phone buys on the previous account.
+  Future<void> _identifyCustomer(Account? account) async {
+    final store = widget.purchases;
+    if (store == null) return;
+    if (account == null) {
+      await store.forget();
+    } else {
+      await store.identify(account.id);
     }
-    offer ??= offers.isEmpty ? null : offers.first;
-
-    if (offer == null) {
-      // Reached the store and it offered nothing. Almost always a
-      // misconfiguration rather than a network failure, and saying "try again"
-      // would send somebody round a loop that cannot end.
-      _say('The store has nothing to sell right now. Nothing was charged.');
-      return;
-    }
-
-    await _report(await flow.buy(offer));
   }
 
   Future<void> _restorePurchases() async {
@@ -483,6 +494,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         );
       case PurchaseStatus.nothingToRestore:
         _say('There is no subscription on this account to restore.');
+      case PurchaseStatus.notSignedIn:
+        // Reached from Settings' Restore, which has no sheet to say it on.
+        _say(
+          'Sign in first. A subscription belongs to your account, so that is '
+          'where it is restored to.',
+        );
       case PurchaseStatus.failed:
         _say(result.message ?? 'That did not go through.');
       case PurchaseStatus.cancelled:

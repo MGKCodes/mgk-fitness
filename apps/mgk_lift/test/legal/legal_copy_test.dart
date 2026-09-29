@@ -74,7 +74,19 @@ void main() {
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
         'Supabase',
         'OpenRouter',
+        'RevenueCat',
         'eu-west-1 (Ireland)',
+      ]);
+    });
+
+    test('says what a purchase tells RevenueCat, and what it tells us', () {
+      // RevenueCat reached the pipeline on 2026-09-29 and this is the sentence
+      // that makes that lawful: what goes to it is an identifier and nothing
+      // from the training log.
+      bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
+        'We send it your account identifier and nothing else: no training, no '
+            'photos, and nothing you said to your coach.',
+        'We never see your card or payment details.',
       ]);
     });
 
@@ -179,29 +191,38 @@ void main() {
       ]);
     });
 
-    test('promises nothing about billing while nothing can be billed', () {
-      // Phase 3 has not landed. Until it does, the terms must not carry
-      // subscription wording — a promise about renewal in front of somebody who
-      // cannot be charged is worse than a gap, and Guideline 3.1.2(a) wants the
-      // full auto-renew disclosure rather than a fragment of one.
+    test('carries the auto-renew disclosure in full', () {
+      // This case used to insist the terms said NOTHING about billing, because
+      // nothing could be billed and Guideline 3.1.2(a) wants the disclosure
+      // whole or not at all. Payments landed on 2026-09-29, so it now insists
+      // on the whole of it: what is sold, who charges, when it renews, how
+      // much notice cancelling needs, and where to do it.
+      bothCarry(app, doc, 'docs/terms-of-use.md', <String>[
+        'sold as an auto-renewing subscription, in two tiers, Coach and '
+            'Premium Coach',
+        'Tracking, saved workouts, history and stats are free and stay free.',
+        'Payment is charged to your Apple ID or Google Play account at '
+            'confirmation of purchase.',
+        'Your subscription automatically renews each month unless auto-renew '
+            'is turned off at least 24 hours before the end of the current '
+            'period.',
+        'Your account is charged for renewal within 24 hours before the end of '
+            'the current period.',
+        'Manage or cancel it through your store',
+        'Cancelling stops the next renewal.',
+        "Refunds are the store's decision, not ours.",
+      ]);
+      // The sentence the disclosure replaced, which is now false.
       expect(
         app,
-        contains('Everything the app does today is available without paying.'),
+        isNot(
+          contains('Everything the app does today is available without paying'),
+        ),
       );
-      for (final premature in <String>[
-        'auto-renew',
-        'automatically renews',
-        'per month',
-        'free trial',
-      ]) {
-        expect(
-          app,
-          isNot(contains(premature)),
-          reason:
-              'the terms mention "$premature" but payments do not exist — '
-              'finish Phase 3 and write the disclosure in full, together',
-        );
-      }
+      // No trial is sold. A disclosure that mentioned one would owe the reader
+      // its length and what it converts to, and none of that exists.
+      expect(app, isNot(contains('free trial')));
+      expect(doc, isNot(contains('free trial')));
     });
   });
 

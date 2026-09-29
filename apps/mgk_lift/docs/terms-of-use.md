@@ -5,16 +5,17 @@
      Ships without legal review, by decision (docs/submission-week.md, decision 3).
      Written to be accurate about the app as built rather than comprehensive.
 
-     Still open: the Subscriptions section below, which cannot be finished until
-     payments exist. Guideline 3.1.2(a) wants the auto-renew terms in full, and
-     they are marked in place rather than guessed at.
+     No longer open: the Subscriptions section. Written 2026-09-29 with the
+     purchase screen, in full, because Guideline 3.1.2(a) wants the auto-renew
+     terms complete in both places or not at all. The purchase screen carries
+     the same facts in the store's own words (purchase_sheet.dart).
 
      No longer open: reconciling with the Terms on getliftio.com. That domain is
      retired rather than corrected — the web presence folds into
      mgkfitness.mgkcodes.com/lift, which is where this file is published.
 -->
 
-**Last updated:** 2 September 2026 · **Provider:** MGKCodes Ltd · **Contact:**
+**Last updated:** 29 September 2026 · **Provider:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 <!-- The in-app copy of these terms lives in
@@ -72,14 +73,42 @@ suspend an account that does these things.
 
 ## Subscriptions
 
-> **Pending — Phase 3.** This section is deliberately unwritten. Payments are not
-> built, no subscription is sold, and Apple's required auto-renew wording
-> (Guideline 3.1.2(a): price, period, that it renews unless cancelled at least 24
-> hours before the period ends, and where to manage it) must appear here in full
-> and at the point of purchase before either exists. Writing it now would put a
-> promise about billing in front of people who cannot be billed.
+The coach, training plans and progress photos are sold as an **auto-renewing
+subscription**, in two tiers, Coach and Premium Coach, described in the app at
+the point of purchase. Tracking, saved workouts, history and stats are free and
+stay free.
 
-Everything the app does today is available without paying.
+- **The price you pay is the one your store shows you**, in your own currency,
+  at the time of purchase. Prices may change; a change never applies to a period
+  you have already paid for, and your store will tell you before a renewal at a
+  new price.
+- **Payment is charged to your Apple ID or Google Play account at confirmation
+  of purchase.** The store takes the payment, not us, and we never see your card
+  details.
+- **Your subscription automatically renews each month unless auto-renew is
+  turned off at least 24 hours before the end of the current period.** Your
+  account is charged for renewal within 24 hours before the end of the current
+  period.
+- **Manage or cancel it through your store**, not through us: App Store
+  subscriptions in your Apple ID settings, Play subscriptions in the Google Play
+  app under Payments and subscriptions. We cannot cancel a subscription for you,
+  because we are not the party taking the money.
+- **Cancelling stops the next renewal.** It does not end the period you have
+  paid for, and you keep the paid features until that period runs out.
+
+The coach costs us money for every answer, so each tier carries fair-use limits
+on how much it will talk, set well above what somebody training seriously would
+use. Premium Coach holds the same features as Coach, with far more room to talk.
+
+**Refunds are the store's decision, not ours.** Apple and Google each run their
+own refund process and their own rules, and we cannot issue, refuse or speed up
+a refund. If something we did caused the problem, email hello@mgkcodes.com and
+we will help you make the case.
+
+If a subscription lapses, your training stays on your device and in your
+account, and so do the progress photos you already took. Nothing is deleted
+because you stopped paying: you lose access to the coach, your plan and taking
+new photos, not your training.
 
 ## Your content, and ours
 

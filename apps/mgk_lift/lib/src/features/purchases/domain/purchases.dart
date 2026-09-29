@@ -74,6 +74,16 @@ enum PurchaseStatus {
   /// than "something went wrong" — and because Apple exercises this path.
   nothingToRestore,
 
+  /// Refused **before** the store was reached, because the purchase could not
+  /// be attached to an account.
+  ///
+  /// The webhook keys `core.entitlements` on the Supabase user id and refuses
+  /// an anonymous RevenueCat customer, so a purchase made signed out takes the
+  /// money and unlocks nothing — which is exactly what Run's build 12 did to a
+  /// paying subscriber on 2026-09-04. Nothing has been charged, and the fix is
+  /// signing in, so it must not read as a failed payment.
+  notSignedIn,
+
   /// The store or the network refused. Carries a message safe to show.
   failed,
 }
@@ -93,6 +103,18 @@ class PurchaseResult {
 
 /// The store, as this app needs it.
 abstract interface class Purchases {
+  /// Attaches the store's customer to this Supabase user, so the webhook can
+  /// say whose purchase it was. Called whenever there is a session.
+  ///
+  /// **The user id is the join between the two systems**, and there is no
+  /// mapping table: the webhook writes `core.entitlements` for whatever id
+  /// RevenueCat reports, and refuses one that is not a Supabase UUID.
+  Future<void> identify(String userId);
+
+  /// Detaches the store's customer on sign-out, so the next person to sign in
+  /// on this phone does not buy on the previous account.
+  Future<void> forget();
+
   /// What can be bought, in the order the paywall should show it. Empty when
   /// the store cannot be reached, which the paywall renders as "not open yet"
   /// rather than as an empty list of tiers.
@@ -199,6 +221,16 @@ class FakePurchases implements Purchases {
   /// Every offer that was actually bought, so a test can assert the tier the
   /// person chose reached the store rather than the one the button defaulted to.
   final List<PurchaseOffer> bought = <PurchaseOffer>[];
+
+  /// Who the store was last told the customer is. Null before [identify] and
+  /// after [forget].
+  String? identified;
+
+  @override
+  Future<void> identify(String userId) async => identified = userId;
+
+  @override
+  Future<void> forget() async => identified = null;
 
   @override
   Future<List<PurchaseOffer>> offers() async => _offers;

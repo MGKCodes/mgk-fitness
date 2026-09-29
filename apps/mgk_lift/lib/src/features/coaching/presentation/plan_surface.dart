@@ -109,19 +109,13 @@ class PlanSurface extends StatelessWidget {
   /// Whether there is a live plan to show rather than an offer or an invitation.
   bool get isBlock => isEntitled && plan != null;
 
-  /// Names the tier, and adds the price only when the store has supplied one.
+  /// No price on the button, because it no longer buys one tier: it opens the
+  /// purchase sheet, where both are priced and either can be chosen.
   ///
-  /// It used to read `Start coaching — £1/mo` as a constant, which was wrong for
-  /// every territory that does not use sterling and wrong again the first time
-  /// the price moves.
-  String get _buyLabel {
-    for (final offer in offers) {
-      if (offer.tier == EntitlementTier.paid) {
-        return 'Start coaching — ${offer.price}/${offer.period}';
-      }
-    }
-    return 'Start coaching';
-  }
+  /// It read `Start coaching — £1/mo` as a constant until 2026-09-02 (wrong
+  /// outside the UK), then named Coach's store price until 2026-09-29, when it
+  /// still bought only Coach while the table above it offered Premium Coach.
+  static const String _buyLabel = 'Start coaching';
 
   @override
   Widget build(BuildContext context) {
@@ -404,9 +398,9 @@ class _Tier extends StatelessWidget {
   final String name;
   final String detail;
 
-  /// The tier the button below buys. Marked by weight rather than by colour —
-  /// there is no accent to reach for, which is the constraint the whole palette
-  /// is built on.
+  /// The tier the purchase sheet opens on. Marked by weight rather than by
+  /// colour — there is no accent to reach for, which is the constraint the
+  /// whole palette is built on.
   final bool isHighlighted;
 
   @override

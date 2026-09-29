@@ -16,13 +16,20 @@
           answer, and this document deliberately claims neither way until it is
           confirmed.
 
-     When RevenueCat is wired it becomes a processor and MUST be named below and
-     in legal_copy.dart. test/legal/legal_copy_test.dart has a case that fails if
-     a processor reaches the pipeline without reaching the reader; do not silence
-     it by editing the list without editing the policy.
+       3. What the RevenueCat SDK collects on its own account. We pass it an
+          account identifier and nothing else, which is the claim made below,
+          but a purchase SDK typically also collects an install identifier, a
+          store country and an OS version for itself. Check its privacy
+          manifest before filing the App Store's privacy labels. Same open item
+          as Run's policy, because it is the same SDK.
+
+     RevenueCat was named here on 2026-09-29, in the commit that wired it.
+     test/legal/legal_copy_test.dart fails if a processor reaches the pipeline
+     without reaching the reader; do not silence it by editing the list without
+     editing the policy.
 -->
 
-**Last updated:** 2 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 29 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 ## Summary
@@ -57,6 +64,10 @@ everything at any time.
 - **Usage records** — for each AI request, which part of the coach it came from,
   how many tokens it used and what it cost. Needed to enforce fair-use limits and
   keep the service affordable; it holds no training or message content.
+- **Subscription status** — if you subscribe: which tier you hold, whether it is
+  active, and the store's record of the purchase (the product, its dates and the
+  store's transaction identifier). It reaches us from RevenueCat, below. We never
+  see your card or payment details.
 
 We collect only what the training product needs (data minimisation).
 
@@ -82,6 +93,12 @@ which you can withdraw by deleting your data).
   taken together it is health information about one person, and if you would
   rather it did not leave the app, turn the coach off in Settings or do not use
   it.
+- **RevenueCat** — handles subscription purchases on the App Store and Google
+  Play, and tells our server whether yours is active. We send it your account
+  identifier and nothing else: no training, no photos, and nothing you said to
+  your coach. Like any purchase SDK it also collects technical information of
+  its own about the install, such as a device-scoped identifier, your store
+  country and your app version.
 
 We do not sell personal data, and we do not use it for third-party advertising.
 

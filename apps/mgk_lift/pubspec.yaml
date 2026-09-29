@@ -65,6 +65,12 @@ dependencies:
   # when it changes, and must be readable before the database has opened.
   shared_preferences: ^2.5.5
 
+  # The store, behind `Purchases` (features/purchases/domain). The same version
+  # Run pins, so the workspace resolves one copy of the SDK for both apps. It
+  # presents and pays; it never decides what anybody owns — that is
+  # `core.entitlements`, written by the `revenuecat` Edge Function.
+  purchases_flutter: ^10.10.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -39,6 +39,11 @@ const LegalDocument privacyPolicy = LegalDocument(
             'from, how many tokens it used and what it cost. Needed to enforce '
             'fair-use limits and keep the service affordable; it holds no '
             'training or message content.',
+        'Subscription status — if you subscribe: which tier you hold, whether '
+            "it is active, and the store's record of the purchase (the "
+            "product, its dates and the store's transaction identifier). It "
+            'reaches us from RevenueCat, below. We never see your card or '
+            'payment details.',
       ],
       paragraphs: <String>[
         'We collect only what the training product needs (data minimisation).',
@@ -72,6 +77,13 @@ const LegalDocument privacyPolicy = LegalDocument(
             'taken together it is health information about one person, and if '
             'you would rather it did not leave the app, turn the coach off in '
             'Settings or do not use it.',
+        'RevenueCat — handles subscription purchases on the App Store and '
+            'Google Play, and tells our server whether yours is active. We '
+            'send it your account identifier and nothing else: no training, no '
+            'photos, and nothing you said to your coach. Like any purchase SDK '
+            'it also collects technical information of its own about the '
+            'install, such as a device-scoped identifier, your store country '
+            'and your app version.',
       ],
       paragraphs: <String>[
         'We do not sell personal data, and we do not use it for third-party '
@@ -244,7 +256,48 @@ const LegalDocument termsOfUse = LegalDocument(
     LegalSection(
       heading: 'Subscriptions',
       paragraphs: <String>[
-        'Everything the app does today is available without paying.',
+        'The coach, training plans and progress photos are sold as an '
+            'auto-renewing subscription, in two tiers, Coach and Premium '
+            'Coach, described in the app at the point of purchase. Tracking, '
+            'saved workouts, history and stats are free and stay free.',
+      ],
+      bullets: <String>[
+        'The price you pay is the one your store shows you, in your own '
+            'currency, at the time of purchase. Prices may change; a change '
+            'never applies to a period you have already paid for, and your '
+            'store will tell you before a renewal at a new price.',
+        'Payment is charged to your Apple ID or Google Play account at '
+            'confirmation of purchase. The store takes the payment, not us, '
+            'and we never see your card details.',
+        'Your subscription automatically renews each month unless auto-renew '
+            'is turned off at least 24 hours before the end of the current '
+            'period. Your account is charged for renewal within 24 hours '
+            'before the end of the current period.',
+        'Manage or cancel it through your store, not through us: App Store '
+            'subscriptions in your Apple ID settings, Play subscriptions in the '
+            'Google Play app under Payments and subscriptions. We cannot cancel '
+            'a subscription for you, because we are not the party taking the '
+            'money.',
+        'Cancelling stops the next renewal. It does not end the period you '
+            'have paid for, and you keep the paid features until that period '
+            'runs out.',
+      ],
+    ),
+    LegalSection(
+      paragraphs: <String>[
+        'The coach costs us money for every answer, so each tier carries '
+            'fair-use limits on how much it will talk, set well above what '
+            'somebody training seriously would use. Premium Coach holds the '
+            'same features as Coach, with far more room to talk.',
+        "Refunds are the store's decision, not ours. Apple and Google each run "
+            'their own refund process and their own rules, and we cannot '
+            'issue, refuse or speed up a refund. If something we did caused '
+            'the problem, email hello@mgkcodes.com and we will help you make '
+            'the case.',
+        'If a subscription lapses, your training stays on your device and in '
+            'your account, and so do the progress photos you already took. '
+            'Nothing is deleted because you stopped paying: you lose access to '
+            'the coach, your plan and taking new photos, not your training.',
       ],
     ),
     LegalSection(
