@@ -369,6 +369,15 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A second account signing in no longer gets the first one's training.** The
+  phone's runs, plan, coach conversations, photo and name said nothing about
+  whose they were, so the next account to sign in saw all of it, the coach
+  briefed itself from it, and the launch backfill pushed the first runner's runs
+  and routes into the new account. The phone now knows whose training it holds,
+  and a different account is asked first: erase this phone's training and
+  continue, or sign out. Nothing is restored or uploaded until it answers. A yes
+  to backing up now belongs to the account that gave it, and signing out can
+  also remove your data from the phone (off unless you turn it on).
 - **A subscription that has run out closes the coach, even if the store's
   final word never arrives.** A cancelled subscription stays live until an
   expiry notice ends it, and if that notice was lost nothing else checked the

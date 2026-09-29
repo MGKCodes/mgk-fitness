@@ -60,6 +60,7 @@ import '../../history/domain/run_writer.dart';
 import '../../history/domain/run_draft.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../settings/domain/backup_health.dart';
+import '../../settings/domain/local_data.dart';
 import '../../profile/domain/backup_state.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../onboarding/domain/intro_store.dart';
@@ -102,6 +103,7 @@ class HomeShell extends StatefulWidget {
     this.purchases,
     this.runnerName,
     this.introStore,
+    this.localData,
   });
 
   final AuthRepository auth;
@@ -225,6 +227,13 @@ class HomeShell extends StatefulWidget {
   final IntroStore? introStore;
 
   final int initialTab;
+
+  /// Whose training is on this phone. The restore and the backfill wait on its
+  /// answer for whoever is signed in, and do nothing if the training belongs
+  /// to another account -- `AuthGate` is asking them what to do about it.
+  /// Null skips the check, which is what the preview harness and tests that
+  /// are not about it want.
+  final LocalDataGuard? localData;
 
   /// True when this shell was reached by **creating an account** rather than by
   /// signing back into one.
@@ -1269,6 +1278,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // still, and wants a hook that does not exist yet.
     if (widget.justSignedUp) return;
 
+    // **Not before we know whose training this is.** A second account signing
+    // in used to reach the restore and the backfill straight away, and the
+    // backfill pushed every local run the server lacked into *their* account,
+    // traces and all. Until the phone's training is theirs -- claimed, or
+    // erased and handed over -- nothing moves in either direction, and they
+    // are not asked about backing up training that is not theirs to back up.
+    if (!await _mayUseLocalData()) return;
+
     // Ask before anything moves. The answer decides whether there is a restore
     // at all, and asking afterwards would mean either uploading first and
     // apologising, or restoring nothing and never saying why.
@@ -1305,6 +1322,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Only when something arrived. `_refreshHome` already ran at the top, so
     // this is the repaint for new data rather than the first paint.
     if (mounted && (restored?.restoredAnything ?? false)) await _refreshHome();
+  }
+
+  /// Whether whoever is signed in may use what is on this phone. Always true
+  /// signed out, where nothing can be restored or pushed anyway.
+  Future<bool> _mayUseLocalData() async {
+    final guard = widget.localData;
+    final userId = widget.auth.currentUserId;
+    if (guard == null || userId == null) return true;
+    return guard.mayUse(userId);
   }
 
   /// What came back, in the runner's terms rather than a row count per table.
@@ -1938,6 +1964,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ensureAccount: _ensureAccount,
           consentStore: widget.consentStore,
           eraser: widget.eraser,
+          // What "Also remove my data from this phone" does when signing out.
+          eraseThisPhone: widget.localData?.erase,
           // The same backfill launch runs, from the other moment it matters.
           // Never throws (`RunEditor.backfill` guarantees it), and every push
           // inside reports its own failure where Settings already shows it.
