@@ -369,6 +369,11 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **This app's coach no longer touches Lift's.** Tidying old coach
+  conversations deleted Lift's old ones too, which stopped Lift's coach
+  remembering anything new; and restoring onto a new phone brought Lift's
+  coach conversations into this app, where they were sent to the coach as
+  running history. Both now reach only this app's conversations.
 - **The paywall stops telling you nothing was charged when it cannot know.**
   Every refusal from the store read "That did not go through. Nothing has been
   charged." -- including a payment still pending, which may well be charged, a
