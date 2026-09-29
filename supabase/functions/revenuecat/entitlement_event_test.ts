@@ -64,7 +64,10 @@ Deno.test("a purchase becomes an active row for the product's own app", () => {
   assertEquals(row.event_ms, 1_700_000_000_000);
   assertEquals(row.expires_at, new Date(1_702_592_000_000).toISOString());
 
-  assertEquals(written({ product_id: "run.coach.premium.monthly" }).product, "premium");
+  assertEquals(
+    written({ product_id: "run.coach.premium.monthly" }).product,
+    "premium",
+  );
   assertEquals(written({ product_id: "lift.coach.monthly" }).app, "lift");
 });
 
@@ -100,7 +103,6 @@ Deno.test("every status the table allows can be reached, and no other", () => {
       { type: "CANCELLATION", cancel_reason: "UNSUBSCRIBE" },
       { type: "CANCELLATION", cancel_reason: "CUSTOMER_SUPPORT" },
       { type: "EXPIRATION", expiration_reason: "UNSUBSCRIBE" },
-      { type: "SUBSCRIPTION_PAUSED" },
       { type: "BILLING_ISSUE" },
       { type: "REFUND_REVERSED" },
       { type: "TRANSFER" },
@@ -190,8 +192,9 @@ Deno.test("the app user id must be a Supabase user id", () => {
 });
 
 Deno.test("a sandbox purchase is refused unless configured otherwise", () => {
-  // A sandbox event is a real event from a fake payment. Honouring them in
-  // production lets anybody with a tester account grant themselves a coach.
+  // A sandbox event is a real event from a fake payment, refused by default.
+  // Production turns this on deliberately (ADR-0037): App Review buys in the
+  // sandbox, and only invited testers and Apple can make such a purchase.
   assertEquals(ignored({ environment: "SANDBOX" }), "sandbox");
 
   const d = decide(
@@ -301,4 +304,16 @@ Deno.test("an unmapped product says which one, because a typo looks like a test"
     "ignore" in decision ? decision.detail : undefined,
     "run.coach.montly",
   );
+});
+
+Deno.test("a scheduled pause keeps what was paid for; the expiry ends it", () => {
+  // RevenueCat sends SUBSCRIPTION_PAUSED when the pause is scheduled, which is
+  // before the paid period ends. It must not end access.
+  assertEquals(ignored({ type: "SUBSCRIPTION_PAUSED" }), "unhandled_type");
+  const d = decide(
+    event({ type: "EXPIRATION", expiration_reason: "SUBSCRIPTION_PAUSED" }),
+    PRODUCTS,
+  );
+  assert("write" in d);
+  assertEquals(d.write.status, "expired");
 });
