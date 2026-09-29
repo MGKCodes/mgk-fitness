@@ -18,7 +18,6 @@ import '../domain/workout_library.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'finish_sheet.dart';
-import 'rest_bar.dart';
 import 'save_workout_prompt.dart';
 import 'session_summary_screen.dart';
 import 'workout_library_screen.dart';
@@ -173,6 +172,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   final Map<String, PreviousPerformance?> _previous =
       <String, PreviousPerformance?>{};
 
+  /// The list's scroll, which folds the top bar in and drifts the photograph.
+  final ScrollController _scroll = ScrollController();
+
   /// The write queue — see the class comment.
   Future<void> _writes = Future<void>.value();
   int _queued = 0;
@@ -222,6 +224,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     FocusManager.instance.removeListener(_onFocusMoved);
     _ticker?.cancel();
     _clock.dispose();
+    _scroll.dispose();
     _nameField.dispose();
     for (final node in _focus.values) {
       node.dispose();
@@ -275,26 +278,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   // ---- messages ---------------------------------------------------------------
 
   void _say(String message, {String? action, VoidCallback? onAction}) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 5),
-          action: action == null
-              ? null
-              : SnackBarAction(
-                  label: action,
-                  // An Undo outliving the screen does nothing, rather than
-                  // writing into a session that has since been finished.
-                  onPressed: () {
-                    if (mounted) onAction?.call();
-                  },
-                ),
-        ),
-      );
+    if (ScaffoldMessenger.maybeOf(context) == null) return;
+    // On glass, over the session — the same material as its bars.
+    AppToast.show(
+      context,
+      message,
+      duration: const Duration(seconds: 5),
+      actionLabel: action,
+      // An Undo outliving the screen does nothing, rather than writing into a
+      // session that has since been finished.
+      onAction: action == null
+          ? null
+          : () {
+              if (mounted) onAction?.call();
+            },
+    );
   }
 
   /// Takes this screen's message with it when the lifter leaves. The messenger
@@ -513,18 +511,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// The set's own menu — its type, and Remove. Reached by holding the label,
   /// for anybody who never finds the swipe.
   Future<void> _setMenu(SessionExercise exercise, SessionSet set) async {
-    final choice = await showModalBottomSheet<Object>(
+    // As tall as its five rows, not capped at 9/16 of the screen — the cap
+    // overflowed it by 20px on a short screen — and scrollable below that.
+    final choice = await showGlassSheet<Object>(
       context: context,
-      useSafeArea: true,
-      // As tall as its five rows, not capped at 9/16 of the screen — the cap
-      // overflowed it by 20px on a short screen — and scrollable below that.
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
-      ),
       builder: (sheet) => SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -829,6 +819,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
     final editing = _focusedKey != null;
     final full = _session.exercises.length >= SessionLimits.movements;
+    final top = MediaQuery.paddingOf(context).top;
+    final empty = _session.exercises.isEmpty;
 
     // Back, by arrow or gesture, and Discard all pop — each takes this
     // screen's Undo with it (see [_dropMessages]).
@@ -838,174 +830,206 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        body: PhotoBackdrop(
-          image: 'assets/images/backgrounds/hero_home.webp',
-          scrim: ScrimStrength.quiet,
-          child: SafeArea(
-            child: Column(
-              children: <Widget>[
-                _Header(
-                  onBack: () => Navigator.of(context).maybePop(),
-                  name: _session.name,
-                  startedAt: _session.startedAt,
-                  clock: _clock,
-                  volumeKg: _session.volumeKg,
-                  massUnit: widget.massUnit,
-                  completedSets: _session.completedSets,
-                  movements: _session.exercises.length,
-                  canFinish: canFinish,
-                  onFinish: _finish,
-                ),
-                Expanded(
-                  child: _session.exercises.isEmpty
-                      ? _EmptyState(
-                          onAdd: _addExercises,
-                          onOpenLibrary: widget.library == null
-                              ? null
-                              : _openLibrary,
-                          onDiscard: _confirmDiscard,
-                        )
-                      : ListView(
-                          // Dragging the list puts the keyboard away — the second
-                          // of three ways out, with a tap elsewhere and Done.
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.lg,
-                            AppSpacing.sm,
-                            AppSpacing.lg,
-                            AppSpacing.xxl,
-                          ),
-                          children: <Widget>[
-                            for (final exercise in _session.exercises)
-                              // Animated, because ticking the last set collapses
-                              // the card under the lifter's finger. A jump cut
-                              // there reads as the card having been deleted.
-                              AnimatedSize(
-                                key: ValueKey<String>(exercise.id),
-                                duration: AppMotion.fast,
-                                curve: AppMotion.standard,
-                                alignment: Alignment.topCenter,
-                                child: ExerciseCard(
-                                  exercise: exercise,
-                                  catalogue: _lookup.find(exercise.name),
-                                  massUnit: widget.massUnit,
-                                  previous: _previousFor(exercise.name),
-                                  isCollapsed: _isCollapsed(exercise),
-                                  onToggleCollapsed: () =>
-                                      _toggleCollapsed(exercise),
-                                  onSwap: widget.planner == null
-                                      ? null
-                                      : () => _swap(exercise),
-                                  onAddSet: () => _addSet(exercise),
-                                  onRemove: () => _removeExercise(exercise),
-                                  onToggle: _toggle,
-                                  onCommit: _commit,
-                                  focusFor: _node,
-                                  onCycleSetType: _cycleType,
-                                  onSetMenu: (set) => _setMenu(exercise, set),
-                                  onRemoveSet: (set) =>
-                                      _removeSet(exercise, set),
-                                  onRejected: _refused,
-                                ),
+        // **Content between two panes of glass.** The photograph behind, the
+        // list scrolling between a bar that folds in at the top and a dock at
+        // the bottom — the one material in the app, used where it has
+        // something to refract (D6). The cards themselves stay solid.
+        body: AnimatedBuilder(
+          animation: _scroll,
+          builder: (context, child) => PhotoBackdrop(
+            image: 'assets/images/backgrounds/hero_home.webp',
+            scrim: ScrimStrength.grounded,
+            // The photograph drifts at a fraction of the scroll — the depth
+            // cue that says the list is in front of it, not painted on it.
+            offset: -(_scrollOffset.clamp(0, 600)) * 0.12,
+            child: child,
+          ),
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: empty
+                          ? Padding(
+                              padding: EdgeInsets.only(top: top + _barHeight),
+                              child: _EmptyState(
+                                onAdd: _addExercises,
+                                onOpenLibrary: widget.library == null
+                                    ? null
+                                    : _openLibrary,
+                                onDiscard: _confirmDiscard,
                               ),
-                            const SizedBox(height: AppSpacing.sm),
-                            AppOutlinedButton(
-                              onPressed: full ? null : _addExercises,
-                              icon: Icons.add,
-                              label: 'Add exercise',
-                              expand: true,
-                            ),
-                            if (full)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: AppSpacing.xs,
-                                ),
-                                child: Text(
-                                  '${SessionLimits.movements} movements is the '
-                                  'most one session holds.',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: AppColors.textTertiary),
-                                ),
-                              ),
-                            const SizedBox(height: AppSpacing.xl),
-                            // Here rather than in the header: saving is decided
-                            // about the shape of a session after seeing it, and
-                            // the list is where the shape is.
-                            //
-                            // Not for a session from a saved workout — that
-                            // workout learns from it at Finish, and a save here
-                            // made a second copy — and a statement once saved,
-                            // so a second tap cannot make a third.
-                            if (widget.library != null && !_fromLibrary)
-                              Center(
-                                child: _savedToLibrary
-                                    ? Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: AppSpacing.sm,
-                                        ),
-                                        child: Text(
-                                          'Saved to your workouts',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                        ),
-                                      )
-                                    : AppTextButton(
-                                        label: 'Save to your workouts',
-                                        onPressed: _saveToLibrary,
-                                      ),
-                              ),
-                            const SizedBox(height: AppSpacing.sm),
-                            // Destructive, so it sits at the bottom of the list
-                            // rather than in the chrome.
-                            Center(
-                              child: AppTextButton(
-                                label: 'Discard session',
-                                onPressed: _confirmDiscard,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.danger,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-
-                // The keyboard bar takes the rest bar's place while a number is
-                // being typed — the keyboard covers that edge anyway.
-                if (editing && keyboardUp)
-                  _KeyboardBar(
-                    onPrevious: () => _moveFocus(-1),
-                    onNext: () => _moveFocus(1),
-                    onLogSet: _logFocusedSet,
-                    onDone: () => FocusManager.instance.primaryFocus?.unfocus(),
-                  )
-                else if (_rest != null)
-                  ValueListenableBuilder<DateTime>(
-                    valueListenable: _clock,
-                    builder: (context, now, _) => RestBar(
-                      timer: _rest!,
-                      now: now,
-                      onAdjust: _adjustRest,
-                      onDismiss: () => setState(() => _rest = null),
+                            )
+                          : _list(context, full: full, top: top),
                     ),
-                  ),
-              ],
-            ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _TopBar(
+                        scroll: _scroll,
+                        // Folded from the start when there is no list to
+                        // scroll — the empty state has no large title.
+                        alwaysFolded: empty,
+                        onBack: () => Navigator.of(context).maybePop(),
+                        name: _session.name,
+                        startedAt: _session.startedAt,
+                        clock: _clock,
+                        canFinish: canFinish,
+                        onFinish: _finish,
+                      ),
+                    ),
+                    if (!empty && !(editing && keyboardUp))
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _Dock(
+                          rest: _rest,
+                          clock: _clock,
+                          onAdd: full ? null : _addExercises,
+                          onAdjust: _adjustRest,
+                          onDismiss: () => setState(() => _rest = null),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Below the list rather than over it, so a field brought into
+              // view is never brought in under the bar.
+              if (editing && keyboardUp)
+                _KeyboardBar(
+                  onPrevious: () => _moveFocus(-1),
+                  onNext: () => _moveFocus(1),
+                  onLogSet: _logFocusedSet,
+                  onDone: () => FocusManager.instance.primaryFocus?.unfocus(),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  /// The top bar's height below the status bar. The list starts under it.
+  static const double _barHeight = 56;
+
+  /// Room at the foot of the list for the dock to float over the last card.
+  static const double _dockRoom = 120;
+
+  double get _scrollOffset => _scroll.hasClients ? _scroll.offset : 0;
+
+  Widget _list(
+    BuildContext context, {
+    required bool full,
+    required double top,
+  }) {
+    return ListView(
+      controller: _scroll,
+      // Dragging the list puts the keyboard away — the second of three ways
+      // out, with a tap elsewhere and Done.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        top + _barHeight,
+        AppSpacing.lg,
+        _dockRoom + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: <Widget>[
+        _LargeTitle(
+          name: _session.name,
+          startedAt: _session.startedAt,
+          clock: _clock,
+          volumeKg: _session.volumeKg,
+          massUnit: widget.massUnit,
+          completedSets: _session.completedSets,
+          movements: _session.exercises.length,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        for (final exercise in _session.exercises)
+          // Animated, because ticking the last set collapses the card under
+          // the lifter's finger. A jump cut there reads as the card having
+          // been deleted.
+          AnimatedSize(
+            key: ValueKey<String>(exercise.id),
+            duration: AppMotion.base,
+            curve: AppMotion.snappy,
+            alignment: Alignment.topCenter,
+            child: ExerciseCard(
+              exercise: exercise,
+              catalogue: _lookup.find(exercise.name),
+              massUnit: widget.massUnit,
+              previous: _previousFor(exercise.name),
+              isCollapsed: _isCollapsed(exercise),
+              onToggleCollapsed: () => _toggleCollapsed(exercise),
+              onSwap: widget.planner == null ? null : () => _swap(exercise),
+              onAddSet: () => _addSet(exercise),
+              onRemove: () => _removeExercise(exercise),
+              onToggle: _toggle,
+              onCommit: _commit,
+              focusFor: _node,
+              onCycleSetType: _cycleType,
+              onSetMenu: (set) => _setMenu(exercise, set),
+              onRemoveSet: (set) => _removeSet(exercise, set),
+              onRejected: _refused,
+            ),
+          ),
+        if (full)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              '${SessionLimits.movements} movements is the most one session '
+              'holds.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+            ),
+          ),
+        const SizedBox(height: AppSpacing.xl),
+        // Here rather than in the header: saving is decided about the shape
+        // of a session after seeing it, and the list is where the shape is.
+        //
+        // Not for a session from a saved workout — that workout learns from
+        // it at Finish, and a save here made a second copy — and a statement
+        // once saved, so a second tap cannot make a third.
+        if (widget.library != null && !_fromLibrary)
+          Center(
+            child: _savedToLibrary
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      'Saved to your workouts',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                : AppTextButton(
+                    label: 'Save to your workouts',
+                    onPressed: _saveToLibrary,
+                  ),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        // Destructive, so it sits at the bottom of the list rather than in
+        // the chrome.
+        Center(
+          child: AppTextButton(
+            label: 'Discard session',
+            onPressed: _confirmDiscard,
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Previous, next, *Log set*, Done — above the keyboard, while a number is
-/// being typed.
+/// being typed. Glass, like the dock whose place it takes.
 ///
 /// **The iOS number pad has no return key**, and Flutter does not put a field
 /// away when you tap elsewhere on a phone. With neither, the only way to close
@@ -1031,59 +1055,59 @@ class _KeyboardBar extends StatelessWidget {
     // bar — shown only while a field has focus — was gone before the tap
     // landed, and nothing on it could ever be pressed.
     return TextFieldTapRegion(
-      child: Material(
-        color: AppColors.surface,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          child: Row(
-            children: <Widget>[
-              AppIconButton(
-                icon: Icons.keyboard_arrow_up,
-                onPressed: onPrevious,
-                tooltip: 'Previous field',
-                color: AppColors.textSecondary,
+      child: GlassSurface.bar(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: Row(
+          children: <Widget>[
+            AppIconButton(
+              icon: Icons.keyboard_arrow_up,
+              onPressed: onPrevious,
+              tooltip: 'Previous field',
+              color: AppColors.textSecondary,
+            ),
+            AppIconButton(
+              icon: Icons.keyboard_arrow_down,
+              onPressed: onNext,
+              tooltip: 'Next field',
+              color: AppColors.textSecondary,
+            ),
+            const Spacer(),
+            AppTextButton(label: 'Log set', onPressed: onLogSet),
+            AppTextButton(
+              label: 'Done',
+              onPressed: onDone,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
               ),
-              AppIconButton(
-                icon: Icons.keyboard_arrow_down,
-                onPressed: onNext,
-                tooltip: 'Next field',
-                color: AppColors.textSecondary,
-              ),
-              const Spacer(),
-              AppTextButton(label: 'Log set', onPressed: onLogSet),
-              AppTextButton(
-                label: 'Done',
-                onPressed: onDone,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Session name, the three numbers, and **Finish**.
+/// The bar across the top: back, and **Finish** — and, once the large title
+/// has scrolled under it, the session's name and clock on glass.
 ///
-/// Finish lives here rather than as a full-width slab pinned to the bottom. That
-/// slab read as the screen's purpose — the thing you came to press — when
-/// actually it is what you do once, at the end, after logging everything.
-class _Header extends StatelessWidget {
-  const _Header({
+/// At the top of the list it is only its two controls over the photograph:
+/// the large title below says everything, and a pane with nothing under it
+/// yet would be glass over glass. It folds in as the title passes beneath,
+/// the way a navigation bar does.
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.scroll,
+    required this.alwaysFolded,
     required this.onBack,
     required this.name,
     required this.startedAt,
     required this.clock,
-    required this.volumeKg,
-    required this.massUnit,
-    required this.completedSets,
-    required this.movements,
     required this.canFinish,
     required this.onFinish,
   });
+
+  final ScrollController scroll;
+  final bool alwaysFolded;
 
   /// Leaves the session running and goes back. Safe and non-destructive: every
   /// change is already persisted, the session stays open, and Track offers to
@@ -1093,142 +1117,412 @@ class _Header extends StatelessWidget {
   final String name;
   final DateTime startedAt;
 
-  /// Read by the elapsed figure alone — see `_ActiveSessionScreenState._clock`.
+  /// Read by the clock alone — see `_ActiveSessionScreenState._clock`.
   final ValueListenable<DateTime> clock;
-
-  /// Canonical kilograms. Summed before rounding, then rendered once.
-  final double volumeKg;
-
-  final MassUnit massUnit;
-  final int completedSets;
-  final int movements;
   final bool canFinish;
   final VoidCallback onFinish;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              AppIconButton(
-                onPressed: onBack,
-                icon: Icons.arrow_back,
-                color: AppColors.textSecondary,
-                tooltip: 'Back — the session stays open',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const SectionLabel('In progress'),
-                    const SizedBox(height: 2),
-                    Text(
-                      name,
-                      style: theme.textTheme.titleLarge,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+    final top = MediaQuery.paddingOf(context).top;
+    return AnimatedBuilder(
+      animation: scroll,
+      builder: (context, _) {
+        final offset = scroll.hasClients ? scroll.offset : 0.0;
+        // Folded once the name in the large title has passed under the bar.
+        final t = alwaysFolded ? 1.0 : ((offset - 28) / 44).clamp(0.0, 1.0);
+        return Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: t,
+                  child: const GlassSurface.bar(child: SizedBox.expand()),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              AppFilledButton(
-                // Nothing ticked is not a session. Finishing would put an empty
-                // row in the log and an empty card in the cross-app feed.
-                onPressed: canFinish ? onFinish : null,
-                label: 'Finish',
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.sm,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // **A card, not a strip**, and **two by two, not four across** —
-          // four in a row collided at 390pt ("1410 kg3").
-          AppCard(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.md,
             ),
-            child: Column(
-              children: <Widget>[
-                Row(
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08 * t),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                top,
+                AppSpacing.lg,
+                0,
+              ),
+              child: SizedBox(
+                height: _ActiveSessionScreenState._barHeight,
+                child: Row(
                   children: <Widget>[
+                    AppIconButton(
+                      onPressed: onBack,
+                      icon: Icons.arrow_back,
+                      color: AppColors.textSecondary,
+                      tooltip: 'Back — the session stays open',
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
                     Expanded(
-                      child: ValueListenableBuilder<DateTime>(
-                        valueListenable: clock,
-                        builder: (context, now, _) => StatBlock(
-                          label: 'Elapsed',
-                          value: _clockText(now.difference(startedAt).abs()),
-                          // Crosses an hour and gains two characters.
-                          shrinkToFit: true,
+                      child: Opacity(
+                        opacity: t,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              name,
+                              style: theme.textTheme.titleSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            ValueListenableBuilder<DateTime>(
+                              valueListenable: clock,
+                              builder: (context, now, _) => Text(
+                                _clockText(now.difference(startedAt).abs()),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontFeatures: const <FontFeature>[
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: StatBlock(
-                        label: 'Volume',
-                        value: volumeKg == 0
-                            ? '—'
-                            : Mass.kilograms(volumeKg).label(massUnit),
-                        shrinkToFit: true,
+                    const SizedBox(width: AppSpacing.md),
+                    AppFilledButton(
+                      // Nothing ticked is not a session. Finishing would put an
+                      // empty row in the log and an empty card in the
+                      // cross-app feed.
+                      onPressed: canFinish ? onFinish : null,
+                      label: 'Finish',
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: StatBlock(
-                        label: 'Sets',
-                        value: '$completedSets',
-                        shrinkToFit: true,
-                      ),
-                    ),
-                    Expanded(
-                      child: StatBlock(
-                        label: 'Movements',
-                        value: '$movements',
-                        shrinkToFit: true,
-                      ),
-                    ),
-                  ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The name, large, and the session in one line: elapsed · volume · sets ·
+/// movements. It scrolls with the list and hands the name to the bar.
+///
+/// **One line, not a card of four.** The two-by-two card was the fix for four
+/// columns colliding at 390pt ("1410 kg3"); a sentence that wraps cannot
+/// collide, and it gives the list the height the card took.
+class _LargeTitle extends StatelessWidget {
+  const _LargeTitle({
+    required this.name,
+    required this.startedAt,
+    required this.clock,
+    required this.volumeKg,
+    required this.massUnit,
+    required this.completedSets,
+    required this.movements,
+  });
+
+  final String name;
+  final DateTime startedAt;
+  final ValueListenable<DateTime> clock;
+
+  /// Canonical kilograms. Summed before rounding, then rendered once.
+  final double volumeKg;
+  final MassUnit massUnit;
+  final int completedSets;
+  final int movements;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SectionLabel('In progress'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(name, style: theme.textTheme.headlineSmall, maxLines: 2),
+        const SizedBox(height: AppSpacing.sm),
+        ValueListenableBuilder<DateTime>(
+          valueListenable: clock,
+          builder: (context, now, _) => Text.rich(
+            TextSpan(
+              children: <InlineSpan>[
+                TextSpan(
+                  text: _clockText(now.difference(startedAt).abs()),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                  ),
+                ),
+                TextSpan(
+                  text: <String>[
+                    '',
+                    if (volumeKg > 0) Mass.kilograms(volumeKg).label(massUnit),
+                    '$completedSets ${completedSets == 1 ? 'set' : 'sets'}',
+                    '$movements ${movements == 1 ? 'movement' : 'movements'}',
+                  ].join('  ·  '),
                 ),
               ],
+            ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The dock: *Add exercise* at rest, the rest timer while resting.
+///
+/// **The timer grows out of the dock** rather than arriving as a second bar:
+/// ticking a set changes what the one control at the bottom of the screen is
+/// for, on a spring, and it goes back when rest is over. It replaced a flat
+/// strip pinned under the list.
+///
+/// Rest is still not a mode. Nothing behind the dock is blocked; tick the next
+/// set and the timer starts again, ignore it and it sits there.
+class _Dock extends StatelessWidget {
+  const _Dock({
+    required this.rest,
+    required this.clock,
+    required this.onAdd,
+    required this.onAdjust,
+    required this.onDismiss,
+  });
+
+  final RestTimer? rest;
+
+  /// The screen's one-second ticker, which the countdown repaints from.
+  final ValueListenable<DateTime> clock;
+
+  /// Null when the session is full.
+  final VoidCallback? onAdd;
+  final void Function(Duration by) onAdjust;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final timer = rest;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: GlassSurface.dock(
+        padding: EdgeInsets.zero,
+        child: AnimatedSize(
+          duration: AppMotion.base,
+          curve: AppMotion.snappy,
+          alignment: Alignment.bottomCenter,
+          child: AnimatedSwitcher(
+            duration: AppMotion.base,
+            switchInCurve: AppMotion.entrance,
+            switchOutCurve: AppMotion.exit,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+                child: child,
+              ),
+            ),
+            child: timer == null
+                ? _AddRow(key: const ValueKey<String>('add'), onAdd: onAdd)
+                : ValueListenableBuilder<DateTime>(
+                    key: const ValueKey<String>('rest'),
+                    valueListenable: clock,
+                    builder: (context, now, _) => _RestRow(
+                      timer: timer,
+                      now: now,
+                      onAdjust: onAdjust,
+                      onDismiss: onDismiss,
+                      onAdd: onAdd,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddRow extends StatelessWidget {
+  const _AddRow({super.key, required this.onAdd});
+
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: AppTextButton(
+      label: 'Add exercise',
+      icon: Icons.add,
+      onPressed: onAdd,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.textPrimary,
+        minimumSize: const Size.fromHeight(52),
+      ),
+    ),
+  );
+}
+
+/// The countdown, in the dock: a ring draining with the time left, the time,
+/// −30 s / +30 s, and Skip — Done once rest is over.
+class _RestRow extends StatelessWidget {
+  const _RestRow({
+    required this.timer,
+    required this.now,
+    required this.onAdjust,
+    required this.onDismiss,
+    required this.onAdd,
+  });
+
+  final RestTimer timer;
+
+  /// Driven from the screen's existing one-second ticker rather than a second
+  /// one here. See [RestTimer] for why the ticker only controls repainting.
+  final DateTime now;
+  final void Function(Duration by) onAdjust;
+  final VoidCallback onDismiss;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final remaining = timer.remainingAt(now);
+    final done = timer.isDoneAt(now);
+    final quiet = TextButton.styleFrom(
+      foregroundColor: AppColors.textSecondary,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 36,
+            height: 36,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: 1 - timer.progressAt(now)),
+              duration: AppMotion.base,
+              builder: (context, left, _) => CircularProgressIndicator(
+                value: left,
+                strokeWidth: 3,
+                backgroundColor: Colors.white.withValues(alpha: 0.10),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  done ? AppColors.success : AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SectionLabel(
+                  done ? 'Rest over' : 'Resting',
+                  emphasis: LabelEmphasis.stat,
+                  color: done ? AppColors.success : AppColors.textSecondary,
+                ),
+                Text(
+                  RestTimer.format(remaining),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    // Tabular, or the whole row twitches sideways every second
+                    // as the digit widths change.
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          // Scaled down rather than overflowing, at a large text size on a
+          // small phone.
+          Flexible(
+            flex: 3,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  // Hidden once rest is over: adding thirty seconds to a
+                  // finished timer is not what anyone means by "+30".
+                  if (!done) ...<Widget>[
+                    AppTextButton(
+                      label: '−30s',
+                      onPressed: () => onAdjust(const Duration(seconds: -30)),
+                      style: quiet,
+                    ),
+                    AppTextButton(
+                      label: '+30s',
+                      onPressed: () => onAdjust(const Duration(seconds: 30)),
+                      style: quiet,
+                    ),
+                  ],
+                  AppTextButton(
+                    label: done ? 'Done' : 'Skip',
+                    onPressed: onDismiss,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  AppIconButton(
+                    icon: Icons.add,
+                    tooltip: 'Add exercise',
+                    onPressed: onAdd,
+                    color: AppColors.textSecondary,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  static String _clockText(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
-  }
+String _clockText(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final sec = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return h > 0 ? '$h:$m:$sec' : '$m:$sec';
 }
 
 class _EmptyState extends StatelessWidget {

@@ -34,22 +34,15 @@ class PremadeLibrarySheet extends StatefulWidget {
     BuildContext context, {
     required WorkoutLibrary library,
   }) async {
-    final added = await showModalBottomSheet<int>(
+    final added = await showGlassSheet<int>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
-      ),
       // Its own messenger, so Undo shows **in** the sheet. On the screen's, the
       // snackbar sat behind a sheet as tall as the screen: an add with an Undo
       // nobody could see.
       builder: (_) => ScaffoldMessenger(
         child: Scaffold(
           backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
           body: PremadeLibrarySheet(library: library),
         ),
       ),
@@ -120,27 +113,20 @@ class _PremadeLibrarySheetState extends State<PremadeLibrarySheet> {
     });
     // Not awaited: the message never waits on the motor.
     unawaited(AppHaptics.selection());
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            added.length == 1
-                ? '${added.single.name} added.'
-                : '${added.length} workouts added.',
-          ),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () async {
-              for (final w in added) {
-                await widget.library.remove(w.id);
-              }
-              _added -= added.length;
-              await _load();
-            },
-          ),
-        ),
-      );
+    AppToast.show(
+      context,
+      added.length == 1
+          ? '${added.single.name} added.'
+          : '${added.length} workouts added.',
+      actionLabel: 'Undo',
+      onAction: () async {
+        for (final w in added) {
+          await widget.library.remove(w.id);
+        }
+        _added -= added.length;
+        await _load();
+      },
+    );
   }
 
   @override

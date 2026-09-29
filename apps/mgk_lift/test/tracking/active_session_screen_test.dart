@@ -402,7 +402,7 @@ void main() {
       // Row one reads W rather than a set number.
       expect(find.text('W'), findsOneWidget);
       // Only the working set counts, and the header now says so out loud.
-      expect(find.text('510 kg'), findsOneWidget);
+      expect(find.textContaining('510 kg'), findsOneWidget);
     });
 
     testWidgets('tapping the set number marks a set as a warm-up', (
@@ -421,7 +421,7 @@ void main() {
 
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
-      expect(find.text('600 kg'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
 
       // Scoped to the row: the header's set count is also "1".
       await tester.tap(
@@ -474,17 +474,17 @@ void main() {
       await tapMarker('W');
       expect(find.text('D'), findsOneWidget);
       // A drop set is training that happened at a real load, so it counts.
-      expect(find.text('600 kg'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
 
       await tapMarker('D');
       expect(find.text('F'), findsOneWidget);
-      expect(find.text('600 kg'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
 
       await tapMarker('F');
       expect(find.text('W'), findsNothing);
       expect(find.text('D'), findsNothing);
       expect(find.text('F'), findsNothing);
-      expect(find.text('600 kg'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
     });
 
     testWidgets('a drop set and a failure set survive a round trip', (
@@ -715,12 +715,12 @@ void main() {
 
     await tester.pumpWidget(await screen());
     await tester.pumpAndSettle();
-    expect(find.text('500 kg'), findsOneWidget);
+    expect(find.textContaining('500 kg'), findsOneWidget);
 
     await tester.pumpWidget(await screen(unit: MassUnit.pounds));
     await tester.pumpAndSettle();
     // 500 kg is 1102.31 lb, snapped to the pound.
-    expect(find.text('1102 lb'), findsOneWidget);
+    expect(find.textContaining('1102 lb'), findsOneWidget);
   });
 }
 

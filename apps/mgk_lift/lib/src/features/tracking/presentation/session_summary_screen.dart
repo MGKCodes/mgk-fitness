@@ -313,9 +313,10 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                     ),
                     if (widget.onOpenCoach != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.sm),
-                      OutlinedButton(
+                      AppOutlinedButton(
+                        label: 'Talk it over with your coach',
                         onPressed: _openCoach,
-                        child: const Text('Talk it over with your coach'),
+                        expand: true,
                       ),
                     ],
                     const SizedBox(height: AppSpacing.sm),
@@ -443,13 +444,21 @@ class _Header extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: StatBlock(
-                        label: 'Volume',
-                        value: summary.volume == Mass.zero
-                            ? '—'
-                            : summary.volume.label(massUnit),
-                        shrinkToFit: true,
-                      ),
+                      // The totals count up to their value as the summary
+                      // arrives — the session adding itself up.
+                      child: summary.volume == Mass.zero
+                          ? const StatBlock(
+                              label: 'Volume',
+                              value: '—',
+                              shrinkToFit: true,
+                            )
+                          : StatBlock.counting(
+                              label: 'Volume',
+                              count: summary.volume.kilograms,
+                              format: (kg) =>
+                                  Mass.kilograms(kg).label(massUnit),
+                              shrinkToFit: true,
+                            ),
                     ),
                   ],
                 ),
@@ -457,16 +466,18 @@ class _Header extends StatelessWidget {
                 Row(
                   children: <Widget>[
                     Expanded(
-                      child: StatBlock(
+                      child: StatBlock.counting(
                         label: 'Sets',
-                        value: '${summary.workingSets}',
+                        count: summary.workingSets.toDouble(),
+                        format: (n) => '${n.round()}',
                         shrinkToFit: true,
                       ),
                     ),
                     Expanded(
-                      child: StatBlock(
+                      child: StatBlock.counting(
                         label: 'Movements',
-                        value: '${summary.movements}',
+                        count: summary.movements.toDouble(),
+                        format: (n) => '${n.round()}',
                         shrinkToFit: true,
                       ),
                     ),

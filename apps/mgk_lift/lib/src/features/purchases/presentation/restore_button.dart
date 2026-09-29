@@ -46,24 +46,30 @@ class _RestorePurchasesButtonState extends State<RestorePurchasesButton> {
   Widget build(BuildContext context) {
     if (widget.onRestore == null) return const SizedBox.shrink();
 
-    return TextButton(
-      onPressed: _busy ? null : _run,
-      child: _busy
-          // Sized to the text it replaces, so the row does not jump and the
-          // layout around it does not reflow mid-tap.
-          ? const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Text(
-              'Restore purchases',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                decoration: TextDecoration.underline,
-                decorationColor: AppColors.textTertiary,
+    // The press feel without AppTextButton, whose busy state keeps the label:
+    // this one swaps it for a spinner the size of the text.
+    return PressScale(
+      enabled: !_busy,
+      scale: 0.98,
+      child: TextButton(
+        onPressed: _busy ? null : _run,
+        child: _busy
+            // Sized to the text it replaces, so the row does not jump and the
+            // layout around it does not reflow mid-tap.
+            ? const SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                'Restore purchases',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.textTertiary,
+                ),
               ),
-            ),
+      ),
     );
   }
 }

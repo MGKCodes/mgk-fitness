@@ -116,10 +116,10 @@ Future<bool?> confirmPhotoDelete(BuildContext context) {
           label: 'Keep it',
           onPressed: () => Navigator.of(dialogContext).pop(false),
         ),
-        FilledButton(
+        AppFilledButton(
+          label: 'Delete',
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          child: const Text('Delete'),
         ),
       ],
     ),

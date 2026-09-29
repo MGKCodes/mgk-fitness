@@ -169,8 +169,16 @@ class PlanSurface extends StatelessWidget {
           builder: (context, constraints) => SingleChildScrollView(
             padding: _padding,
             child: ConstrainedBox(
+              // Never below zero. Before the first real layout — the tab is
+              // built offstage in the shell's stack — the height can be less
+              // than the padding, and a negative minimum threw on every launch.
               constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - _padding.vertical,
+                minHeight: constraints.hasBoundedHeight
+                    ? (constraints.maxHeight - _padding.vertical).clamp(
+                        0,
+                        double.infinity,
+                      )
+                    : 0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

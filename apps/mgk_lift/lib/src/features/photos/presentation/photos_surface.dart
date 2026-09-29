@@ -629,12 +629,10 @@ class _Lapsed extends StatelessWidget {
           ),
           if (onSubscribe != null) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onSubscribe,
-                child: const Text('Resubscribe'),
-              ),
+            AppOutlinedButton(
+              label: 'Resubscribe',
+              onPressed: onSubscribe,
+              expand: true,
             ),
             RestorePurchasesButton(onRestore: onRestore),
           ],

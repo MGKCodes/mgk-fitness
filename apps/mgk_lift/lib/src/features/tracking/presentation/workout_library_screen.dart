@@ -87,18 +87,8 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
     setState(() => _saved = saved);
   }
 
-  void _say(String message, {String? action, VoidCallback? onAction}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          action: action == null
-              ? null
-              : SnackBarAction(label: action, onPressed: onAction ?? () {}),
-        ),
-      );
-  }
+  void _say(String message, {String? action, VoidCallback? onAction}) =>
+      AppToast.show(context, message, actionLabel: action, onAction: onAction);
 
   Future<void> _preview(SavedWorkout workout) async {
     final action = await WorkoutPreviewSheet.show(

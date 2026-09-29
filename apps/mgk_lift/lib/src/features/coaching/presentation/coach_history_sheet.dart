@@ -212,54 +212,56 @@ class _ConversationRow extends StatelessWidget {
     final opening = conversation.opening?.trim();
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Material(
-        color: AppColors.elevated,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: InkWell(
-          onTap: onTap,
+      child: PressScale(
+        child: Material(
+          color: AppColors.elevated,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        dayLabel(conversation.lastTurnAt, now),
-                        style: const TextStyle(
-                          color: AppColors.textTertiary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          dayLabel(conversation.lastTurnAt, now),
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
                         ),
                       ),
-                    ),
+                      Text(
+                        conversation.turns == 1
+                            ? '1 message'
+                            : '${conversation.turns} messages',
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (opening != null && opening.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
-                      conversation.turns == 1
-                          ? '1 message'
-                          : '${conversation.turns} messages',
-                      style: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 11,
+                      opening,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        height: 1.35,
                       ),
                     ),
                   ],
-                ),
-                if (opening != null && opening.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    opening,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                      height: 1.35,
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),

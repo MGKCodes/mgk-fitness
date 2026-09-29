@@ -479,9 +479,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   void _say(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppToast.show(context, message);
   }
 
   Future<void> _openSignIn() async {
@@ -924,9 +922,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       });
     } on PlanException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.failure.message)));
+      AppToast.show(context, e.failure.message);
     } finally {
       if (mounted) setState(() => _buildingPlan = false);
     }

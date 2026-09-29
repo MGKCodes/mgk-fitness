@@ -314,7 +314,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),
-        FilledButton(onPressed: _finish, child: const Text('Done')),
+        PrimaryButton(label: 'Done', onPressed: _finish),
       ],
     );
   }
@@ -375,63 +375,66 @@ class _ScopeChoice extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: enabled ? () => onChanged(scope) : null,
-          borderRadius: AppRadius.cardAll,
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.cardAll,
-              color: AppColors.surface,
-              border: Border.all(
-                // The selected edge is the danger colour on the wider scope
-                // only. Greyscale is the rule (ADR-0009) and status is the
-                // sanctioned exception — "this one takes everything" is status.
-                color: isSelected
-                    ? (scope == DeletionScope.everything
-                          ? AppColors.danger
-                          : AppColors.textSecondary)
-                    : AppColors.elevated,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  isSelected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 20,
+      child: PressScale(
+        enabled: enabled,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? () => onChanged(scope) : null,
+            borderRadius: AppRadius.cardAll,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.cardAll,
+                color: AppColors.surface,
+                border: Border.all(
+                  // The selected edge is the danger colour on the wider scope
+                  // only. Greyscale is the rule (ADR-0009) and status is the
+                  // sanctioned exception — "this one takes everything" is status.
                   color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textTertiary,
+                      ? (scope == DeletionScope.everything
+                            ? AppColors.danger
+                            : AppColors.textSecondary)
+                      : AppColors.elevated,
+                  width: isSelected ? 2 : 1,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        title,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        body,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                    color: isSelected
+                        ? AppColors.textPrimary
+                        : AppColors.textTertiary,
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          title,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          body,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

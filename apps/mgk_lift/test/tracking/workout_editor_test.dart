@@ -172,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Cable Fly'), findsNothing);
 
-    await tester.tap(find.widgetWithText(SnackBarAction, 'Undo'));
+    await tester.tap(find.widgetWithText(TextButton, 'Undo'));
     await tester.pumpAndSettle();
     expect(find.text('Cable Fly'), findsOneWidget);
   });

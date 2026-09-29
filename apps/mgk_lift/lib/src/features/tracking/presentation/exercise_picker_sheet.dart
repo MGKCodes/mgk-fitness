@@ -50,18 +50,19 @@ class ExercisePickerSheet extends StatefulWidget {
     List<String> recent = const <String>[],
     int? room,
   }) {
-    return showModalBottomSheet<List<String>>(
+    return showGlassSheet<List<String>>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
+      maxHeightFactor: 0.94,
+      // Its own messenger, so "room for 2 more" shows in the sheet rather
+      // than behind it. The sheet already sits above the keyboard, so the
+      // scaffold must not make room for it a second time.
+      builder: (_) => ScaffoldMessenger(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
+          body: ExercisePickerSheet(lookup: lookup, recent: recent, room: room),
         ),
       ),
-      builder: (_) =>
-          ExercisePickerSheet(lookup: lookup, recent: recent, room: room),
     );
   }
 
@@ -98,15 +99,14 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
       if (_chosen.remove(name)) return;
       final room = widget.room;
       if (room != null && _chosen.length >= room) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text(
-              room == 0
-                  ? 'This session is full.'
-                  : 'This session has room for $room more.',
-            ),
-          ),
-        );
+        if (ScaffoldMessenger.maybeOf(context) != null) {
+          AppToast.show(
+            context,
+            room == 0
+                ? 'This session is full.'
+                : 'This session has room for $room more.',
+          );
+        }
         return;
       }
       _chosen.add(name);
@@ -116,7 +116,6 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final searching = _query.text.trim().isNotEmpty;
     // A recent movement may be one the lifter typed, with no catalogue entry
     // and so no image — the same first-class case the session card handles.
@@ -124,13 +123,13 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
       for (final name in widget.recent) (name, widget.lookup.find(name)),
     ];
 
+    // The glass sheet puts this above the keyboard and inside the safe area;
+    // it fills whatever that leaves, up to its ceiling.
     return LayoutBuilder(
       builder: (context, constraints) => Padding(
-        // Above the keyboard, never under the status bar: the sheet is laid
-        // out inside the safe area, and gives the keyboard's height back.
-        padding: EdgeInsets.only(bottom: keyboard),
+        padding: EdgeInsets.zero,
         child: SizedBox(
-          height: (constraints.maxHeight - keyboard) * 0.94,
+          height: constraints.maxHeight,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[

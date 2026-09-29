@@ -39,16 +39,8 @@ class WorkoutPreviewSheet extends StatelessWidget {
     DateTime? lastDone,
     String startLabel = 'Start',
     String? blockedReason,
-  }) => showModalBottomSheet<WorkoutAction>(
+  }) => showGlassSheet<WorkoutAction>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AppRadius.sheet),
-      ),
-    ),
     builder: (_) => WorkoutPreviewSheet(
       workout: workout,
       lastDone: lastDone,

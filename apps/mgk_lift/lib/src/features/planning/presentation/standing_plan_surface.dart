@@ -179,9 +179,9 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
 
             if (widget.onChangeSplit != null) ...<Widget>[
               const SizedBox(height: AppSpacing.lg),
-              OutlinedButton(
+              AppOutlinedButton(
+                label: 'Change the split',
                 onPressed: widget.onChangeSplit,
-                child: const Text('Change the split'),
               ),
             ],
           ],
@@ -284,44 +284,49 @@ class _WeekStrip extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: InkWell(
-                onTap: () => onTap(d.weekday),
-                borderRadius: BorderRadius.circular(AppRadius.control),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    color: d.weekday == open
-                        ? AppColors.elevated
-                        : Colors.transparent,
-                    // Today is outlined even when another day is open, so
-                    // pointing at Friday never loses where you actually are.
-                    border: Border.all(
-                      color: d.weekday == today
-                          ? AppColors.textSecondary
-                          : Colors.transparent,
+              child: PressScale(
+                scale: 0.94,
+                child: InkWell(
+                  onTap: () => onTap(d.weekday),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
                     ),
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Text(
-                        _initials[d.weekday - 1],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                      color: d.weekday == open
+                          ? AppColors.elevated
+                          : Colors.transparent,
+                      // Today is outlined even when another day is open, so
+                      // pointing at Friday never loses where you actually are.
+                      border: Border.all(
+                        color: d.weekday == today
+                            ? AppColors.textSecondary
+                            : Colors.transparent,
                       ),
-                      const SizedBox(height: 6),
-                      // A dot for rest, an initial for a training day. The
-                      // shape of the week is readable without reading a word.
-                      Text(
-                        d.day == null ? '·' : d.day![0],
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: d.day == null
-                              ? AppColors.textTertiary
-                              : AppColors.textPrimary,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          _initials[d.weekday - 1],
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        // A dot for rest, an initial for a training day. The
+                        // shape of the week is readable without reading a word.
+                        Text(
+                          d.day == null ? '·' : d.day![0],
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: d.day == null
+                                ? AppColors.textTertiary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

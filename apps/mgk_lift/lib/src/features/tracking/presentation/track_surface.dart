@@ -137,30 +137,38 @@ class TrackSurface extends StatelessWidget {
     final theme = Theme.of(context);
     final status = backup;
     final pill = status == null ? null : trackBackupMessage(status);
-    return PhotoBackdrop(
-      image: 'assets/images/backgrounds/hero_home.webp',
-      scrim: ScrimStrength.balanced,
-      child: SafeArea(
+    return _DriftingBackdrop(
+      builder: (scroll) => SafeArea(
         // Fills the screen and scrolls past it — the Spacer still pushes the
         // cards to the foot of a tall phone, and a short one can scroll to
         // reach them rather than overflow.
         child: CustomScrollView(
+          controller: scroll,
           slivers: <Widget>[
             SliverFillRemaining(
               hasScrollBody: false,
               child: Padding(
+                // Top and bottom only: the sides are each section's, so the
+                // workouts row can run past them to the screen's edge.
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
+                  0,
                   AppSpacing.xxl,
-                  AppSpacing.xl,
+                  0,
                   AppSpacing.xl,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const SectionLabel('Today'),
+                    const _Side(Entrance(child: SectionLabel('Today'))),
                     const SizedBox(height: AppSpacing.md),
-                    Text(_headline, style: theme.textTheme.headlineSmall),
+                    _Side(
+                      Entrance(
+                        child: Text(
+                          _headline,
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                      ),
+                    ),
                     // The supporting line is dropped whenever the card below says
                     // the same thing better. It used to run unconditionally, so an
                     // interrupted session was announced twice — vaguely and large at
@@ -168,57 +176,81 @@ class TrackSurface extends StatelessWidget {
                     // session sat under free-tier copy about logging set by set.
                     if (_support != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        _support!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
+                      _Side(
+                        Text(
+                          _support!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
                     if (pill != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      _BackupPill(message: pill, onAction: onBackupAction),
+                      _Side(
+                        _BackupPill(message: pill, onAction: onBackupAction),
+                      ),
                     ],
                     const Spacer(),
 
                     // The interrupted session takes the card when there is one: it is
                     // the most urgent thing on the screen, and what the plan wanted
                     // today is beside the point once you are already mid-workout.
-                    if (openSession != null)
-                      _Interrupted(
-                        session: openSession!,
-                        now: today ?? DateTime.now(),
-                      )
-                    else
-                      _NextUp(
-                        plan: plan,
-                        unit: unit,
-                        now: today ?? DateTime.now(),
+                    _Side(
+                      Entrance(
+                        index: 1,
+                        child: openSession != null
+                            ? _Interrupted(
+                                session: openSession!,
+                                now: today ?? DateTime.now(),
+                              )
+                            : _NextUp(
+                                plan: plan,
+                                unit: unit,
+                                now: today ?? DateTime.now(),
+                              ),
                       ),
+                    ),
 
                     if (onOpenLibrary != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.lg),
-                      _YourWorkouts(
-                        workouts: workouts,
-                        log: log,
-                        onStart: onStartWorkout,
-                        onOpenLibrary: onOpenLibrary!,
-                        blocked: openSession != null,
+                      Entrance(
+                        index: 2,
+                        child: _YourWorkouts(
+                          workouts: workouts,
+                          log: log,
+                          onStart: onStartWorkout,
+                          onOpenLibrary: onOpenLibrary!,
+                          blocked: openSession != null,
+                        ),
                       ),
                     ],
 
                     if (log.isNotEmpty) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      _RecentStrip(log: log, now: today ?? DateTime.now()),
+                      _Side(
+                        Entrance(
+                          index: 3,
+                          child: _RecentStrip(
+                            log: log,
+                            now: today ?? DateTime.now(),
+                          ),
+                        ),
+                      ),
                     ],
 
                     const SizedBox(height: AppSpacing.lg),
-                    _StartButton(
-                      plan: plan,
-                      now: today ?? DateTime.now(),
-                      openSession: openSession,
-                      onStartSession: onStartSession,
-                      onStartPlanned: onStartPlanned,
+                    _Side(
+                      Entrance(
+                        index: 4,
+                        child: _StartButton(
+                          plan: plan,
+                          now: today ?? DateTime.now(),
+                          openSession: openSession,
+                          onStartSession: onStartSession,
+                          onStartPlanned: onStartPlanned,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -345,39 +377,50 @@ class _YourWorkouts extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            const Expanded(
-              child: SectionLabel(
-                'Your workouts',
-                emphasis: LabelEmphasis.stat,
+        _Side(
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: SectionLabel(
+                  'Your workouts',
+                  emphasis: LabelEmphasis.stat,
+                ),
               ),
-            ),
-            AppTextButton(
-              label: workouts.isEmpty ? 'Add one' : 'See all',
-              onPressed: onOpenLibrary,
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              AppTextButton(
+                label: workouts.isEmpty ? 'Add one' : 'See all',
+                onPressed: onOpenLibrary,
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.xs),
         if (workouts.isEmpty)
-          Text(
-            'Save a session you liked, build one, or add a ready-made one — '
-            'then start it from here in one tap.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+          _Side(
+            Text(
+              'Save a session you liked, build one, or add a ready-made one — '
+              'then start it from here in one tap.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           )
         else
           // As tall as the cards, not a fixed height: a fixed 104 overflowed
           // once the text was larger than the default. One line each, so every
           // card is the same three lines at whatever size the phone asks for.
+          // The page's margin is on the scroll, not around it: the first card
+          // lines up with everything above, and the row runs off the edge of
+          // the screen — so a third workout shows its edge instead of sitting
+          // out of sight with nothing to say it is there.
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -634,12 +677,17 @@ class _RecentStrip extends StatelessWidget {
     return Row(
       children: <Widget>[
         Expanded(
-          child: StatBlock(label: 'this week', value: '$thisWeek'),
+          child: StatBlock.counting(
+            label: 'this week',
+            count: thisWeek.toDouble(),
+            format: (n) => '${n.round()}',
+          ),
         ),
         Expanded(
-          child: StatBlock(
+          child: StatBlock.counting(
             label: 'week streak',
-            value: '${stats.currentWeekStreak}',
+            count: stats.currentWeekStreak.toDouble(),
+            format: (n) => '${n.round()}',
           ),
         ),
         if (finished.isNotEmpty)
@@ -668,4 +716,56 @@ String _ago(DateTime at, DateTime now) {
   if (days < 7) return '$days days ago';
   if (days < 14) return 'last week';
   return '${days ~/ 7} weeks ago';
+}
+
+/// The photograph, drifting behind the content as it scrolls — the depth cue
+/// that says the cards are in front of it rather than printed on it. Owns the
+/// scroll controller so the surface above can stay stateless.
+class _DriftingBackdrop extends StatefulWidget {
+  const _DriftingBackdrop({required this.builder});
+
+  final Widget Function(ScrollController scroll) builder;
+
+  @override
+  State<_DriftingBackdrop> createState() => _DriftingBackdropState();
+}
+
+class _DriftingBackdropState extends State<_DriftingBackdrop> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = widget.builder(_scroll);
+    return AnimatedBuilder(
+      animation: _scroll,
+      builder: (context, child) => PhotoBackdrop(
+        image: 'assets/images/backgrounds/hero_home.webp',
+        scrim: ScrimStrength.balanced,
+        offset:
+            -((_scroll.hasClients ? _scroll.offset : 0).clamp(0, 400)) * 0.15,
+        child: child,
+      ),
+      child: content,
+    );
+  }
+}
+
+/// The page's side margin — on each section of Track rather than around the
+/// whole column, so the workouts row can run to the screen's edge.
+class _Side extends StatelessWidget {
+  const _Side(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+    child: child,
+  );
 }

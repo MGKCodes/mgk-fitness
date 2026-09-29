@@ -15,6 +15,12 @@ abstract final class AppTheme {
     onSurface: AppColors.textPrimary,
     error: AppColors.danger,
     onError: AppColors.textPrimary,
+    // **Without these every Material snackbar was a white bar** — the scheme
+    // left them to default, and the default for a dark scheme is near-white.
+    // Undo after removing a set lit up the bottom of a charcoal screen.
+    inverseSurface: AppColors.elevated,
+    onInverseSurface: AppColors.textPrimary,
+    inversePrimary: AppColors.primary,
   );
 
   /// The bundled typeface, declared in this package's pubspec.
@@ -120,6 +126,25 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+      ),
+      // Floating and rounded, so a message sits over the screen as a thing of
+      // its own rather than a strip welded to the bottom edge — and above any
+      // bottom bar, never over its buttons.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.elevated,
+        elevation: 0,
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        contentTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 15,
+          color: AppColors.textPrimary,
+        ),
+        actionTextColor: AppColors.primary,
       ),
     );
   }

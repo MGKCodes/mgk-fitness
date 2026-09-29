@@ -43,9 +43,7 @@ Future<String?> promptToSaveWorkout(
   // everything the caller does about it.
   unawaited(AppHaptics.commit());
 
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$name is in your workouts.')));
+  AppToast.show(context, '$name is in your workouts.');
   return name;
 }
 
@@ -100,12 +98,12 @@ Future<String?> _askForName(
           label: 'Cancel',
           onPressed: () => Navigator.of(dialogContext).pop(),
         ),
-        FilledButton(
+        AppFilledButton(
+          label: 'Save',
           onPressed: () {
             final typed = field.text.trim();
             Navigator.of(dialogContext).pop(typed.isEmpty ? null : typed);
           },
-          child: const Text('Save'),
         ),
       ],
     ),

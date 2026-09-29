@@ -106,20 +106,15 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
   void _remove(_Row row) {
     final at = _rows.indexOf(row);
     setState(() => _rows.removeAt(at));
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${row.movement.name} removed.'),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              if (!mounted) return;
-              setState(() => _rows.insert(at.clamp(0, _rows.length), row));
-            },
-          ),
-        ),
-      );
+    AppToast.show(
+      context,
+      '${row.movement.name} removed.',
+      actionLabel: 'Undo',
+      onAction: () {
+        if (!mounted) return;
+        setState(() => _rows.insert(at.clamp(0, _rows.length), row));
+      },
+    );
   }
 
   Future<void> _save() async {

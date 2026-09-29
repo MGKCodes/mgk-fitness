@@ -500,12 +500,19 @@ void main() {
       await tester.pumpWidget(await screen(withLibrary: library));
       await tester.pumpAndSettle();
 
-      // Three movement cards push the footer actions below the fold.
+      // Three movement cards push the footer actions below the fold — and the
+      // list runs on under the glass dock, so it is brought to the middle of
+      // the screen, where a thumb would bring it, before it is tapped.
       await tester.scrollUntilVisible(
         find.text('Save to your workouts'),
         300,
         scrollable: find.byType(Scrollable).first,
       );
+      await Scrollable.ensureVisible(
+        tester.element(find.text('Save to your workouts')),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save to your workouts'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -740,7 +747,7 @@ void main() {
       expect(await library.all(), isEmpty);
       expect(find.text('Nothing saved yet'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(SnackBarAction, 'Undo'));
+      await tester.tap(find.widgetWithText(TextButton, 'Undo'));
       await tester.pumpAndSettle();
       expect((await library.all()).single.name, 'Push');
       expect(find.text('Push'), findsOneWidget);

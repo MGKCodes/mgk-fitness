@@ -610,17 +610,27 @@ class SetRow extends StatelessWidget {
             ),
             SizedBox(
               width: 44,
-              child: AppIconButton(
-                onPressed: onToggle,
-                icon: done ? Icons.check_circle : Icons.circle_outlined,
-                size: 24,
-                color: done
-                    ? AppColors.success
-                    : (isNext
-                          ? AppColors.textSecondary
-                          : AppColors.textTertiary),
-                tooltip: done ? 'Mark not done' : 'Mark done',
-                visualDensity: VisualDensity.compact,
+              // The check springs in — the one moment in a set worth a
+              // flourish — and the circle it replaces shrinks away.
+              child: AnimatedSwitcher(
+                duration: AppMotion.base,
+                switchInCurve: AppMotion.snappy,
+                switchOutCurve: AppMotion.exit,
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: AppIconButton(
+                  key: ValueKey<bool>(done),
+                  onPressed: onToggle,
+                  icon: done ? Icons.check_circle : Icons.circle_outlined,
+                  size: 24,
+                  color: done
+                      ? AppColors.success
+                      : (isNext
+                            ? AppColors.textSecondary
+                            : AppColors.textTertiary),
+                  tooltip: done ? 'Mark not done' : 'Mark done',
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ),
           ],

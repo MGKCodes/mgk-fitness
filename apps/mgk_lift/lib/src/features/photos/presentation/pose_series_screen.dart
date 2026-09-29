@@ -212,95 +212,97 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.chip),
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.chip),
-            child: photo == null
-                ? DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.chip),
-                      border: Border.all(
-                        color: isThisWeek
-                            ? AppColors.textSecondary
-                            : AppColors.elevated,
+    return PressScale(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+              child: photo == null
+                  ? DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.chip),
+                        border: Border.all(
+                          color: isThisWeek
+                              ? AppColors.textSecondary
+                              : AppColors.elevated,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      // A gap is information - it is the week you did not take
-                      // one. A faint dash on a dark card read as a rendering
-                      // failure instead, so a missed week says so in words.
-                      child: isThisWeek
-                          ? const Icon(
-                              Icons.add,
-                              size: 20,
-                              color: AppColors.textSecondary,
-                            )
-                          : Text(
-                              'Missed',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
-                                color: AppColors.textTertiary,
+                      child: Center(
+                        // A gap is information - it is the week you did not take
+                        // one. A faint dash on a dark card read as a rendering
+                        // failure instead, so a missed week says so in words.
+                        child: isThisWeek
+                            ? const Icon(
+                                Icons.add,
+                                size: 20,
+                                color: AppColors.textSecondary,
+                              )
+                            : Text(
+                                'Missed',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: AppColors.textTertiary,
+                                ),
                               ),
-                            ),
-                    ),
-                  )
-                : PhotoThumb(path: photo!.path),
-          ),
+                      ),
+                    )
+                  : PhotoThumb(path: photo!.path),
+            ),
 
-          // Date over the image rather than under it, so the cells stay the
-          // same height whether or not there is a photo in them.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    AppColors.bg.withValues(alpha: 0),
-                    AppColors.bg.withValues(alpha: 0.85),
-                  ],
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(AppRadius.chip),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xs),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    if (photo?.isExcluded ?? false) ...<Widget>[
-                      const Icon(
-                        Icons.visibility_off_outlined,
-                        size: 11,
-                        color: AppColors.textTertiary,
-                      ),
-                      const SizedBox(width: 2),
+            // Date over the image rather than under it, so the cells stay the
+            // same height whether or not there is a photo in them.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      AppColors.bg.withValues(alpha: 0),
+                      AppColors.bg.withValues(alpha: 0.85),
                     ],
-                    Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: photo == null
-                            ? AppColors.textTertiary
-                            : AppColors.textSecondary,
+                  ),
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(AppRadius.chip),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      if (photo?.isExcluded ?? false) ...<Widget>[
+                        const Icon(
+                          Icons.visibility_off_outlined,
+                          size: 11,
+                          color: AppColors.textTertiary,
+                        ),
+                        const SizedBox(width: 2),
+                      ],
+                      Text(
+                        label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: photo == null
+                              ? AppColors.textTertiary
+                              : AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

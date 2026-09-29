@@ -4,6 +4,9 @@
          frame the system draws to the first one Flutter does. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <!-- Android 12 and later draw their own splash from these. -->
+        <item name="android:windowSplashScreenBackground">@color/charcoal</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/charcoal</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/charcoal</item>

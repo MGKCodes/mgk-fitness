@@ -24,16 +24,8 @@ class FinishSheet extends StatelessWidget {
     BuildContext context, {
     required Session session,
     required MassUnit massUnit,
-  }) => showModalBottomSheet<bool>(
+  }) => showGlassSheet<bool>(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AppRadius.sheet),
-      ),
-    ),
     builder: (_) => FinishSheet(session: session, massUnit: massUnit),
   );
 
