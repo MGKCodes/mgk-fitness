@@ -420,3 +420,18 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# These three authenticate every request themselves -- the coach and
+# delete-account by asking the auth server about the caller's token, the
+# RevenueCat webhook by a shared secret that is not a JWT at all -- so the
+# gateway's JWT check must be off. Declared here so a deploy without
+# `--no-verify-jwt` cannot switch it back on: for the webhook that would 401
+# every purchase event, and nothing grants.
+[functions.coach]
+verify_jwt = false
+
+[functions.revenuecat]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
