@@ -194,10 +194,16 @@ what was once blocked on that is only unbuilt.
 ## App Store review
 
 - The **Health & Fitness** category brings extra scrutiny on data handling.
-- **Always-on location** needs a written justification. "Recording a run with
-  the screen off" is accepted.
-- Be ready to explain, in App Review notes, exactly what health data is read,
-  written, and shared, and with whom.
+- **Background location** needs a written justification. The app only ever
+  asks for **While Using** location; a run the user started keeps recording
+  with the screen locked through iOS's location background mode, and through a
+  foreground service on Android. "Recording a run with the screen off" is the
+  justification, and it is in the review notes.
+- The review notes say exactly what health data is read (step count, from
+  HealthKit, over a recorded run), that nothing is written, and what goes to
+  the AI provider. They are final in
+  [app-store-listing.md](app-store-listing.md) § Review notes; the Play answers
+  are in [play-setup.md](play-setup.md) §4.
 
 ## Going public (open source)
 

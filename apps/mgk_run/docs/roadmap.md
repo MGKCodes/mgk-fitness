@@ -29,6 +29,13 @@ Save run → local → Supabase → write `HKWorkout` back to HealthKit.
 Read workouts/HR/energy. **Deduplication** on `HKSource` bundle id + time-window
 overlap — the highest-risk area in the app. Manual and treadmill entry.
 
+> **As built, steps 4 and 5 are narrower, on purpose.** Run writes nothing to
+> Health, and since 2026-09-29 it reads one thing: the step count over a run
+> recorded in the app (`health_read_types.dart`). Workouts, heart rate and
+> energy are not read; heart rate and calories are specified for 1.0.1 in
+> [after-1.0.0.md](after-1.0.0.md). Do not build from the two lines above
+> without reading that first.
+
 ### 6. History
 History list with **pre-rendered static route thumbnails** (not live map
 instances — matters for scroll performance). Splits and trends.
@@ -63,17 +70,18 @@ context, readiness inputs (resting HR / HRV / sleep).
 ## Definition of "v1 shippable"
 
 Phases A and B are complete. **What "shippable" now means is
-[app-store-1.0.0.md](app-store-1.0.0.md)**, which is the live checklist — six
-gates from a green build to a live listing. This section is kept as the original
-statement of intent rather than maintained alongside it, because two checklists
-are how one of them goes stale.
+[app-store-1.0.0.md](app-store-1.0.0.md)**, which is the live checklist for
+both stores, from a green build to a live listing. This section is kept as the
+original statement of intent rather than maintained alongside it, because two
+checklists are how one of them goes stale.
 
 The four items it named, and where they stand:
 
 - **Phases A and B complete.** Done.
-- **Privacy policy + deletion path live** ([compliance.md](compliance.md)). The
-  deletion path is built and correctly scoped. The policy is written and
-  rendered in-app, and the published page is generated but **not live** — Gate 2.
+- **Privacy policy + deletion path live** ([compliance.md](compliance.md)).
+  Done: the deletion path is built and correctly scoped, and the policy is
+  rendered in-app and published at `mgkfitness.mgkcodes.com/run/privacy`
+  (live since 2026-09-03).
 - **Medical disclaimer surfaced at onboarding.** Done: `CoachFlow` gates the
   onboarding conversation on it.
 - **Git history scrubbed of secrets before the repo goes public.** Still open,
