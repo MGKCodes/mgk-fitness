@@ -51,6 +51,7 @@ import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/sync/presentation/backup_scheduler.dart';
 import '../src/features/tracking/domain/session.dart';
+import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
 import 'fakes.dart';
@@ -332,6 +333,27 @@ class PreviewApp extends StatelessWidget {
       // Every session screen pins `now` to previewNow. The fixtures start at
       // previewNow too, so the header reads the elapsed time the fixture meant
       // — 34 minutes, not the days since previewNow went past.
+      // Phase 6: every session, one opened, and one being fixed.
+      'history': (_) => HistoryScreen(
+        log: sampleLog(previewNow),
+        now: previewNow,
+        onOpen: (_) {},
+      ),
+      'session-past': (_) => SessionSummaryScreen(
+        session: _finishedSession(),
+        log: sampleLog(previewNow),
+        onEdit: () {},
+        onDelete: () {},
+      ),
+      'session-editing': (_) {
+        final s = _finishedSession();
+        return ActiveSessionScreen(
+          recorder: FakeSessionRecorder(s),
+          session: s,
+          editing: true,
+          now: previewNow,
+        );
+      },
       'session-empty': (_) => ActiveSessionScreen(
         recorder: FakeSessionRecorder(_emptySession()),
         session: _emptySession(),
