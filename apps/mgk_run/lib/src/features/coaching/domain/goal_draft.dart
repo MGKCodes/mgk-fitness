@@ -20,6 +20,7 @@ library;
 
 import 'plan_shape.dart';
 import 'runner_profile.dart';
+import 'stored_plan.dart';
 
 /// One thing wrong with a goal, named by the field it belongs to. Mirrors
 /// [RunIssue] and `SlotIssue`.
@@ -201,11 +202,11 @@ class GoalDraft {
     clearEventDate: eventDate == null,
   );
 
-  static int _daysBetween(DateTime from, DateTime to) => DateTime(
-    to.year,
-    to.month,
-    to.day,
-  ).difference(DateTime(from.year, from.month, from.day)).inDays;
+  // DST-safe (see stored_plan.dart's daysBetweenDates): a race entered right
+  // at the spring or autumn change used to be counted a day short by a plain
+  // `Duration` difference between two local midnights.
+  static int _daysBetween(DateTime from, DateTime to) =>
+      daysBetweenDates(from, to);
 
   static bool _sameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return a == null && b == null;

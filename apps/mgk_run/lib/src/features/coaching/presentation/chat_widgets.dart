@@ -14,6 +14,7 @@ import 'package:mgk_units/mgk_units.dart';
 import '../domain/goal_draft.dart';
 import '../domain/plan_shape.dart';
 import '../domain/prescribed_distance.dart';
+import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
 import '../domain/week_adaptation.dart';
 import '../../history/domain/run_draft.dart';
@@ -441,11 +442,13 @@ class DayDivider extends StatelessWidget {
 
 /// "Today", "Yesterday", the weekday inside a week, or the date beyond it.
 String dayLabel(DateTime at, DateTime now) {
-  final days = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  ).difference(DateTime(at.year, at.month, at.day)).inDays;
+  // Not a plain `DateTime(...).difference(...).inDays`: that is absolute
+  // time between two local midnights, and a daylight-saving change shrinks
+  // or stretches one of them to 23 or 25 hours — which read a divider
+  // dated the day before spring-forward as "Today" instead of "Yesterday"
+  // the moment `now` crossed into the following day. `daysBetweenDates` is
+  // UTC-normalised, so the change cannot move it.
+  final days = daysBetweenDates(at, now);
   if (days <= 0) return 'Today';
   if (days == 1) return 'Yesterday';
   if (days < 7) return weekdayLongName(at.weekday);
@@ -703,11 +706,9 @@ class _RunLine extends StatelessWidget {
   /// they just did should read "this morning", not a date they have to decode.
   static String _when(DateTime at) {
     final now = DateTime.now();
-    final days = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).difference(DateTime(at.year, at.month, at.day)).inDays;
+    // DST-safe day count — see dayLabel above, which has the same fix for
+    // the same reason.
+    final days = daysBetweenDates(at, now);
     if (days == 0) return at.hour < 12 ? 'this morning' : 'today';
     if (days == 1) return 'yesterday';
     if (days < 7) return '$days days ago';

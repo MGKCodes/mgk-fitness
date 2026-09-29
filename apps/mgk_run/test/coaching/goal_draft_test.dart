@@ -90,6 +90,23 @@ void main() {
       expect(draft.issues(now).single.message, contains('already passed'));
     });
 
+    test('a date one calendar day past is caught even across a spring-forward '
+        'change', () {
+      // now: Monday 30 March 2026, just after the UK's spring change.
+      // event: Sunday 29 March, the change itself — one calendar day
+      // earlier. A plain `Duration` difference between the two local
+      // midnights sees only 23 real hours between them and truncates to
+      // 0 days, which reads as "today", not "already passed".
+      final draft = GoalDraft(
+        goalDistanceMeters: 42195,
+        eventDate: DateTime(2026, 3, 29),
+      );
+      expect(
+        draft.issues(DateTime(2026, 3, 30, 9)).single.message,
+        contains('already passed'),
+      );
+    });
+
     test('today is too soon, and says so rather than passing', () {
       final draft = GoalDraft(goalDistanceMeters: 42195, eventDate: now);
       expect(draft.issues(now).single.message, contains('too soon'));
