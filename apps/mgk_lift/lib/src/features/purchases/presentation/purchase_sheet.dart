@@ -171,9 +171,7 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
   }
 
   void _open(BuildContext context, Widget screen) => unawaited(
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => screen)),
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen)),
   );
 
   @override

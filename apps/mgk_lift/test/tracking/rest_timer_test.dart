@@ -78,6 +78,33 @@ void main() {
     });
   });
 
+  group('past the end', () {
+    final start = DateTime(2026, 9, 29, 18);
+    final rest = RestTimer(
+      startedAt: start,
+      duration: const Duration(seconds: 90),
+    );
+
+    test('ends at a fixed instant, which is what the alert is set for', () {
+      expect(rest.endsAt, start.add(const Duration(seconds: 90)));
+      // An adjustment moves it; the alert is rescheduled from the new one.
+      final longer = rest.extendedBy(const Duration(seconds: 30), start);
+      expect(longer.endsAt, start.add(const Duration(minutes: 2)));
+    });
+
+    test('counts up once over, and is zero until then', () {
+      expect(
+        rest.overtimeAt(start.add(const Duration(seconds: 60))),
+        Duration.zero,
+      );
+      expect(rest.overtimeAt(rest.endsAt), Duration.zero);
+      expect(
+        rest.overtimeAt(start.add(const Duration(seconds: 130))),
+        const Duration(seconds: 40),
+      );
+    });
+  });
+
   group('formatting', () {
     test('minutes and seconds, zero padded', () {
       expect(RestTimer.format(const Duration(seconds: 90)), '1:30');

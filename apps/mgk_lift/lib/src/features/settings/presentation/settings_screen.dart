@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -13,6 +15,7 @@ import '../../legal/presentation/legal_screen.dart';
 import '../../purchases/presentation/restore_button.dart';
 import '../../sync/presentation/account_section.dart';
 import '../../sync/presentation/backup_scheduler.dart';
+import '../../tracking/domain/rest_alerts.dart';
 import '../domain/unit_preferences.dart';
 import 'credits_screen.dart';
 
@@ -45,9 +48,19 @@ class SettingsScreen extends StatefulWidget {
     this.auth,
     this.deleter,
     this.onRestorePurchases,
+    this.restAlerts,
     this.version = kAppVersion,
     this.now,
   });
+
+  /// The rest-over alert's permission. Null hides the row: a build with no
+  /// notifications has nothing to switch on.
+  ///
+  /// The session screen offers it once, as a toast beside the first rest. A
+  /// lifter who let that go by had no other way back, which for the one
+  /// feature the 2026-09-29 research found people complain about most (a
+  /// timer they cannot trust) is not good enough. This is the way back.
+  final RestAlerts? restAlerts;
 
   /// What the shell already loaded. Passed in rather than re-read, so opening
   /// Settings cannot briefly show kilograms to somebody who works in pounds.
@@ -120,6 +133,39 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late UnitPreferences _prefs = widget.initial;
+
+  /// Whether rest alerts are allowed. Null until the first answer.
+  bool? _alertsAllowed;
+
+  /// Set when asking did not turn them on: the prompt is one-shot on iOS and
+  /// can be refused for good on Android, and the phone's own settings are
+  /// then the only place left.
+  bool _alertsRefused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_readAlerts());
+  }
+
+  Future<void> _readAlerts() async {
+    final alerts = widget.restAlerts;
+    if (alerts == null) return;
+    final allowed = await alerts.allowed();
+    if (!mounted) return;
+    setState(() => _alertsAllowed = allowed);
+  }
+
+  Future<void> _turnOnAlerts() async {
+    final alerts = widget.restAlerts;
+    if (alerts == null) return;
+    final granted = await alerts.ask();
+    if (!mounted) return;
+    setState(() {
+      _alertsAllowed = granted;
+      _alertsRefused = !granted;
+    });
+  }
 
   /// Blocks a second change while one is in flight, so two quick taps cannot
   /// race and leave the stored value disagreeing with the screen.
@@ -214,6 +260,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+
+            if (widget.restAlerts != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              const _Heading('Workout'),
+              SettingsTile(
+                icon: Icons.timer_outlined,
+                title: 'Rest timer alerts',
+                subtitle: switch (_alertsAllowed) {
+                  true =>
+                    'On. A buzz when rest is over, even with your phone '
+                        'locked.',
+                  false when _alertsRefused =>
+                    'Your phone said no. Turn on notifications for Lift in '
+                        "your phone's settings.",
+                  false => 'Off. Tap to get a buzz when rest is over.',
+                  null => ' ',
+                },
+                onTap: _alertsAllowed == false && !_alertsRefused
+                    ? _turnOnAlerts
+                    : null,
+                showChevron: false,
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.lg),
             // One section, not two. The old screen had a "Backup" card and an

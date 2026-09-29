@@ -34,6 +34,8 @@ import '../../sync/presentation/backup_messages.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../stats/domain/session_history.dart';
 import '../../stats/presentation/history_screen.dart';
+import '../../tracking/domain/rest_alerts.dart';
+import '../../tracking/domain/rest_lengths.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
 import '../../tracking/domain/workout_library.dart';
@@ -87,6 +89,8 @@ class LiftShell extends StatefulWidget {
     this.photoBackup,
     this.sync,
     this.auth,
+    this.restAlerts,
+    this.restLengths,
     this.initialTab = 0,
     this.today,
   });
@@ -188,6 +192,14 @@ class LiftShell extends StatefulWidget {
   /// be reconciled against `core.entitlements` is a charge with nothing to show
   /// for it, so one without the other buys nothing.
   final Purchases? purchases;
+
+  /// The buzz for a rest that ends with the phone locked, handed to every
+  /// session screen. Null keeps the timer on screen only.
+  final RestAlerts? restAlerts;
+
+  /// Each movement's remembered rest length. Null starts every rest at the
+  /// session's length.
+  final RestLengths? restLengths;
 
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
@@ -812,6 +824,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           auth: widget.auth,
           deleter: widget.deleter,
           onRestorePurchases: _flow == null ? null : _restorePurchases,
+          restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,
           onUseCoachChanged: widget.coachPreference == null
               ? null
@@ -986,6 +999,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       recorder,
       library: widget.library,
       backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
     ).openPlanned(
       context,
       day,
@@ -1017,6 +1032,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       recorder,
       library: widget.library,
       backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
     ).openSession(
       context,
       massUnit: _units.mass,
@@ -1044,6 +1061,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       recorder,
       library: widget.library,
       backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
     ).openWorkout(
       context,
       workout,

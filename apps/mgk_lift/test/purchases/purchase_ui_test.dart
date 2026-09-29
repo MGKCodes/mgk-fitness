@@ -322,7 +322,9 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.textContaining('unless auto-renew is turned off at least 24 hours'),
+        find.textContaining(
+          'unless auto-renew is turned off at least 24 hours',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('Google Play'), findsNothing);
@@ -353,18 +355,19 @@ void main() {
       }
     });
 
-    testWidgets('a store with nothing to sell says so rather than going quiet', (
-      tester,
-    ) async {
-      await pumpSheet(
-        tester,
-        platform: TargetPlatform.iOS,
-        offers: const <PurchaseOffer>[],
-      );
-      expect(find.text('Not available to buy yet'), findsOneWidget);
-      // Restore still works for somebody who already paid.
-      expect(find.text('Restore purchases'), findsOneWidget);
-    });
+    testWidgets(
+      'a store with nothing to sell says so rather than going quiet',
+      (tester) async {
+        await pumpSheet(
+          tester,
+          platform: TargetPlatform.iOS,
+          offers: const <PurchaseOffer>[],
+        );
+        expect(find.text('Not available to buy yet'), findsOneWidget);
+        // Restore still works for somebody who already paid.
+        expect(find.text('Restore purchases'), findsOneWidget);
+      },
+    );
 
     testWidgets('prices are the store\'s strings, printed as given', (
       tester,
@@ -398,8 +401,5 @@ class _EntitledOnce implements EntitlementSource {
   @override
   Future<Entitlement?> fetch() async => store.bought.isEmpty
       ? Entitlement.none
-      : Entitlement(
-          tier: store.bought.last.tier,
-          status: 'active',
-        );
+      : Entitlement(tier: store.bought.last.tier, status: 'active');
 }

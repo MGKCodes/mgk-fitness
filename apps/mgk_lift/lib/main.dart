@@ -29,6 +29,8 @@ import 'src/features/sync/data/supabase_backup_remote.dart';
 import 'src/features/sync/data/workout_backup.dart';
 import 'src/features/tracking/data/drift_session_recorder.dart';
 import 'src/features/tracking/data/drift_workout_library.dart';
+import 'src/features/tracking/data/local_rest_alerts.dart';
+import 'src/features/tracking/data/local_rest_lengths.dart';
 
 /// Lift — the Flutter rewrite of Liftio.
 ///
@@ -167,6 +169,10 @@ class MgkLiftApp extends StatelessWidget {
         // Supabase has no coach to switch off, which the shell reads from
         // `coach` being null rather than from this.
         coachPreference: LocalCoachPreference(),
+        // Device-local, like the coach switch above: a buzz and a habit, with
+        // no account or server involved in either.
+        restAlerts: LocalRestAlerts(),
+        restLengths: LocalRestLengths(),
         // Paired with `auth` rather than gated separately: deletion is
         // meaningless without an account and impossible without a server,
         // and both of those are the same `supabase` being non-null.

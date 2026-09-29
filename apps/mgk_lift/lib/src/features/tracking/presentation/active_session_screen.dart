@@ -7,6 +7,8 @@ import 'package:mgk_units/mgk_units.dart';
 
 import '../data/exercise_lookup.dart';
 import '../domain/previous_performance.dart';
+import '../domain/rest_alerts.dart';
+import '../domain/rest_lengths.dart';
 import '../domain/rest_timer.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/planned_movement.dart';
@@ -18,6 +20,7 @@ import '../domain/workout_library.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'finish_sheet.dart';
+import 'reorder_sheet.dart';
 import 'save_workout_prompt.dart';
 import 'session_summary_screen.dart';
 import 'workout_library_screen.dart';
@@ -55,7 +58,19 @@ class ActiveSessionScreen extends StatefulWidget {
     this.startRestOnOpen = false,
     this.now,
     this.editing = false,
+    this.restAlerts,
+    this.restLengths,
   });
+
+  /// The buzz for a rest that ends while the phone is locked or the app is in
+  /// the background. Null is a build (or a test) with no notifications, where
+  /// the timer works exactly as it always did: on screen, and buzzing only
+  /// while looked at.
+  final RestAlerts? restAlerts;
+
+  /// Each movement's rest length, as this lifter last left it. Null starts
+  /// every rest at the session's length, as before.
+  final RestLengths? restLengths;
 
   /// Fixing a session that already happened, rather than logging one.
   ///
@@ -154,9 +169,26 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// zero does not vibrate once a second until it is dismissed.
   bool _restAlerted = false;
 
-  /// How long the next rest runs for. Starts at the default and follows the
-  /// lifter's adjustments — see [_adjustRest].
+  /// How long the next rest runs for when the movement has no length of its
+  /// own. Starts at the default and follows the lifter's adjustments — see
+  /// [_adjustRest].
   Duration _restLength = RestTimer.defaultRest;
+
+  /// Each movement's rest, as this lifter last left it, keyed by lowercased
+  /// name. Loaded once when the screen opens; see [RestLengths].
+  Map<String, Duration> _restLengths = <String, Duration>{};
+
+  /// The movement whose set started the running rest, so an adjustment is
+  /// remembered against the right one.
+  String? _restMovement;
+
+  /// Whether a background alert is scheduled right now, so leaving the screen
+  /// can withdraw it.
+  bool _alertScheduled = false;
+
+  /// Whether this screen has already considered offering rest alerts — once a
+  /// session at most, and in practice once ever. See [_offerRestAlerts].
+  bool _consideredAlerts = false;
 
   /// Whether this session has already been saved to the library, or was filled
   /// **from** it. Either suppresses the offer to save on the way out.
@@ -211,6 +243,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.addListener(_onFocusMoved);
     if (widget.startRestOnOpen) _startRest();
+    unawaited(_loadRestLengths());
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       // A pinned clock stays pinned. Ticking it would walk the elapsed time
       // forward from the frozen start and undo the point of injecting it.
@@ -227,12 +260,24 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         state == AppLifecycleState.paused) {
       FocusManager.instance.primaryFocus?.unfocus();
     }
+    // The phone went in a pocket, or the screen locked, with a rest running:
+    // hand the buzz to the operating system. Back in the foreground the
+    // screen's own buzz is the one, so the system's is withdrawn — never both.
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      unawaited(_scheduleRestAlert());
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(_withdrawRestAlert());
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     FocusManager.instance.removeListener(_onFocusMoved);
+    // A rest belongs to this screen. Leaving it ends the rest, and an alert
+    // for a rest nobody is taking would buzz into whatever comes next.
+    if (_alertScheduled) unawaited(widget.restAlerts?.cancel());
     _ticker?.cancel();
     _clock.dispose();
     _scroll.dispose();
@@ -288,13 +333,18 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
   // ---- messages ---------------------------------------------------------------
 
-  void _say(String message, {String? action, VoidCallback? onAction}) {
+  void _say(
+    String message, {
+    String? action,
+    VoidCallback? onAction,
+    Duration duration = const Duration(seconds: 5),
+  }) {
     if (ScaffoldMessenger.maybeOf(context) == null) return;
     // On glass, over the session — the same material as its bars.
     AppToast.show(
       context,
       message,
-      duration: const Duration(seconds: 5),
+      duration: duration,
       actionLabel: action,
       // An Undo outliving the screen does nothing, rather than writing into a
       // session that has since been finished.
@@ -409,23 +459,106 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     unawaited(AppHaptics.milestone());
   }
 
-  void _startRest() {
+  Future<void> _loadRestLengths() async {
+    final store = widget.restLengths;
+    if (store == null) return;
+    final lengths = await store.all();
+    if (!mounted) return;
+    _restLengths = lengths;
+  }
+
+  /// The rest a set of [movement] starts: that movement's own, if the lifter
+  /// has ever settled on one, or the session's.
+  Duration _lengthFor(String? movement) =>
+      (movement == null ? null : _restLengths[movement.toLowerCase()]) ??
+      _restLength;
+
+  void _startRest({String? movement}) {
     setState(() {
-      _rest = RestTimer(startedAt: _clock.value, duration: _restLength);
+      _rest = RestTimer(
+        startedAt: _clock.value,
+        duration: _lengthFor(movement),
+      );
+      _restMovement = movement;
       _restAlerted = false;
     });
   }
 
-  /// Adjusts the running rest, and remembers the new length for the next one.
+  /// Adjusts the running rest, and remembers the new length for the next one —
+  /// this movement's next rest, and the session's default.
   void _adjustRest(Duration by) {
     final rest = _rest;
     if (rest == null) return;
+    final movement = _restMovement;
+    var next = _lengthFor(movement) + by;
+    if (next < _minRest) next = _minRest;
     setState(() {
       _rest = rest.extendedBy(by, _clock.value);
-      final next = _restLength + by;
-      _restLength = next < _minRest ? _minRest : next;
+      _restLength = next;
+      if (movement != null) _restLengths[movement.toLowerCase()] = next;
       if (!_rest!.isDoneAt(_clock.value)) _restAlerted = false;
     });
+    if (movement != null) {
+      unawaited(widget.restLengths?.remember(movement, next));
+    }
+  }
+
+  /// Hands the running rest's buzz to the operating system, if there is still
+  /// some rest to run.
+  Future<void> _scheduleRestAlert() async {
+    final alerts = widget.restAlerts;
+    final rest = _rest;
+    if (alerts == null || rest == null || widget.editing) return;
+    // The screen's clock, like everything else here: at most a second behind
+    // the wall, and pinnable in a test.
+    if (rest.isDoneAt(_clock.value)) return;
+    _alertScheduled = true;
+    await alerts.schedule(at: rest.endsAt, title: 'Rest over', body: _nextUp());
+  }
+
+  Future<void> _withdrawRestAlert() async {
+    if (!_alertScheduled) return;
+    _alertScheduled = false;
+    await widget.restAlerts?.cancel();
+  }
+
+  /// What the alert tells the lifter to go and do: the first set not yet
+  /// ticked, in the order the session holds them. The one fact worth reading
+  /// on a lock screen.
+  String _nextUp() {
+    for (final exercise in _session.exercises) {
+      for (final set in exercise.sets) {
+        if (!set.isCompleted) {
+          return 'Next: ${exercise.name}, set ${exercise.labelFor(set)}.';
+        }
+      }
+    }
+    return 'Back to it.';
+  }
+
+  /// Offers the background buzz, once, the first time a rest starts.
+  ///
+  /// A toast rather than the system prompt straight away: the prompt is a
+  /// one-shot on iOS, and asking cold — before the lifter has seen what it is
+  /// for — is how it gets refused. Here it arrives beside the timer it is
+  /// about. Letting the toast go by counts as an answer, so it is never
+  /// offered twice.
+  Future<void> _offerRestAlerts() async {
+    final alerts = widget.restAlerts;
+    if (alerts == null || _consideredAlerts || widget.editing) return;
+    _consideredAlerts = true;
+    if (await alerts.asked() || await alerts.allowed()) return;
+    if (!mounted) return;
+    await alerts.markAsked();
+    if (!mounted) return;
+    _say(
+      'Want a buzz when rest is over, even with your phone locked?',
+      action: 'Turn on',
+      onAction: () => unawaited(alerts.ask()),
+      // Long enough to read and decide with a bar in your hands. Five
+      // seconds went by on the emulator before a thumb reached it.
+      duration: const Duration(seconds: 10),
+    );
   }
 
   /// Below this, rest is not a rest. Stops repeated −30s taps from setting the
@@ -466,9 +599,20 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     if (completing) {
       // Only on completion. Un-ticking is a correction to the log, not the end
       // of a set — and nobody is resting while fixing last week.
-      if (!widget.editing) _startRest();
+      if (!widget.editing) {
+        _startRest(movement: _exerciseOf(set.id)?.name);
+        unawaited(_offerRestAlerts());
+      }
       unawaited(AppHaptics.commit());
     }
+  }
+
+  /// The movement [setId] belongs to, as the session holds it now.
+  SessionExercise? _exerciseOf(String setId) {
+    for (final e in _session.exercises) {
+      if (e.sets.any((s) => s.id == setId)) return e;
+    }
+    return null;
   }
 
   void _commit(SessionSet set, int? reps, double? weightKg) {
@@ -663,7 +807,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// [SessionRecorder.replaceExercise].
   Future<void> _swap(SessionExercise exercise) async {
     final planner = widget.planner;
-    if (planner == null) return;
+    if (planner == null) return _replaceByHand(exercise);
 
     final choice = await SwapSheet.show(
       context,
@@ -685,6 +829,62 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       ),
     );
     widget.onSwapped?.call(exercise.name, choice);
+  }
+
+  /// Opens the reorder sheet and applies the new order, one move at a time,
+  /// through the same queue as every other write.
+  Future<void> _reorder() async {
+    final order = await ReorderSheet.show(
+      context,
+      exercises: _session.exercises,
+    );
+    if (!mounted || order == null) return;
+    final current = <String>[for (final e in _session.exercises) e.id];
+    for (var i = 0; i < order.length && i < current.length; i++) {
+      if (current[i] == order[i]) continue;
+      final id = order[i];
+      current
+        ..remove(id)
+        ..insert(i, id);
+      final to = i;
+      await _enqueue(() => widget.recorder.moveExercise(id, to));
+    }
+  }
+
+  /// Swaps a movement for one the lifter picks, with no coach involved.
+  ///
+  /// The swap icon used to exist only for a coached lifter, so somebody whose
+  /// cable machine was taken could only remove the movement and add another —
+  /// losing its place and its set count. Every app the 2026-09-29 research
+  /// compared offers a replace mid-workout, free.
+  ///
+  /// The replacement takes the work that was left: as many sets as were still
+  /// unticked, at the reps they were aiming for, at the weight this lifter
+  /// last used on the new movement. Logged sets stay where they are, under the
+  /// old name, because they were lifted — see [SessionRecorder.replaceExercise].
+  Future<void> _replaceByHand(SessionExercise exercise) async {
+    final names = await ExercisePickerSheet.show(
+      context,
+      lookup: _lookup,
+      recent: PreviousPerformance.recentNames(widget.log),
+      replacing: exercise.name,
+    );
+    if (!mounted || names == null || names.isEmpty) return;
+    final name = names.first.trim();
+    if (name.isEmpty || name.toLowerCase() == exercise.name.toLowerCase()) {
+      return;
+    }
+    final left = exercise.sets.where((s) => !s.isCompleted).toList();
+    final aimed = (left.isNotEmpty ? left : exercise.sets).firstOrNull;
+    await _enqueue(
+      () => widget.recorder.replaceExercise(
+        exercise.id,
+        name,
+        sets: left.isNotEmpty ? left.length : exercise.sets.length,
+        reps: aimed?.reps,
+        weightKg: _previousFor(name)?.sets.firstOrNull?.weightKg,
+      ),
+    );
   }
 
   // ---- library ---------------------------------------------------------------------------
@@ -1021,7 +1221,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               previous: _previousFor(exercise.name),
               isCollapsed: _isCollapsed(exercise),
               onToggleCollapsed: () => _toggleCollapsed(exercise),
-              onSwap: widget.planner == null ? null : () => _swap(exercise),
+              onSwap: () => _swap(exercise),
               onAddSet: () => _addSet(exercise),
               onRemove: () => _removeExercise(exercise),
               onToggle: _toggle,
@@ -1046,6 +1246,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
             ),
           ),
         const SizedBox(height: AppSpacing.xl),
+        // With the other decisions about the session's shape, at the foot of
+        // the list, and only once there is an order to change.
+        if (_session.exercises.length > 1)
+          Center(
+            child: AppTextButton(
+              label: 'Reorder movements',
+              icon: Icons.swap_vert,
+              onPressed: _reorder,
+            ),
+          ),
         // Here rather than in the header: saving is decided about the shape
         // of a session after seeing it, and the list is where the shape is.
         //
@@ -1526,34 +1736,40 @@ class _RestRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SectionLabel(
-                  done ? 'Rest over' : 'Resting',
-                  emphasis: LabelEmphasis.stat,
-                  color: done ? AppColors.success : AppColors.textSecondary,
+          // Its natural width, not a share of the row. It was a Flexible
+          // beside a Spacer and a flex-3 button group, which left it a fifth
+          // of the row and broke "REST OVER" onto two lines (emulator,
+          // 2026-09-29). The buttons are what scale down instead.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SectionLabel(
+                done ? 'Rest over' : 'Resting',
+                emphasis: LabelEmphasis.stat,
+                color: done ? AppColors.success : AppColors.textSecondary,
+              ),
+              Text(
+                // Past zero it counts up: how long the lifter has actually
+                // rested, not a timer frozen at 0:00 — see
+                // [RestTimer.overtimeAt].
+                done
+                    ? '+${RestTimer.format(timer.overtimeAt(now))}'
+                    : RestTimer.format(remaining),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  // Tabular, or the whole row twitches sideways every second
+                  // as the digit widths change.
+                  fontFeatures: const <FontFeature>[
+                    FontFeature.tabularFigures(),
+                  ],
                 ),
-                Text(
-                  RestTimer.format(remaining),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    // Tabular, or the whole row twitches sideways every second
-                    // as the digit widths change.
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const Spacer(),
+          const SizedBox(width: AppSpacing.sm),
           // Scaled down rather than overflowing, at a large text size on a
           // small phone.
-          Flexible(
-            flex: 3,
+          Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,

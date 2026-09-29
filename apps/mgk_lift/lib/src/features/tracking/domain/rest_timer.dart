@@ -36,6 +36,21 @@ class RestTimer {
 
   bool isDoneAt(DateTime now) => remainingAt(now) == Duration.zero;
 
+  /// When this rest runs out. Fixed at the start and moved only by an
+  /// adjustment, which is what the background alert is scheduled against.
+  DateTime get endsAt => startedAt.add(duration);
+
+  /// How long past the end this rest has run — zero until it is over.
+  ///
+  /// Shown as `+0:40` once rest is done, because the honest number after a
+  /// timer runs out is how long the lifter actually rested. Two of the apps
+  /// the 2026-09-29 research liked best keep counting; a timer frozen at
+  /// 0:00 says nothing about a set started four minutes late.
+  Duration overtimeAt(DateTime now) {
+    final over = now.difference(endsAt);
+    return over.isNegative ? Duration.zero : over;
+  }
+
   /// 0 at the start, 1 when rest is over. For the progress line.
   double progressAt(DateTime now) {
     if (duration.inMilliseconds <= 0) return 1;

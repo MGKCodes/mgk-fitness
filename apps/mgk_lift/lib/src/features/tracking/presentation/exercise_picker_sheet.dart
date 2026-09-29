@@ -30,9 +30,16 @@ class ExercisePickerSheet extends StatefulWidget {
     required this.lookup,
     this.recent = const <String>[],
     this.room,
+    this.replacing,
   });
 
   final ExerciseLookup lookup;
+
+  /// The movement being swapped out, when this picks its replacement rather
+  /// than adding to the session. One tap chooses and closes: a replacement is
+  /// one movement, and a confirm button under a single choice is a second tap
+  /// that asks nothing.
+  final String? replacing;
 
   /// Names this lifter has worked, most recent first. See
   /// `PreviousPerformance.recentNames`.
@@ -49,6 +56,7 @@ class ExercisePickerSheet extends StatefulWidget {
     required ExerciseLookup lookup,
     List<String> recent = const <String>[],
     int? room,
+    String? replacing,
   }) {
     return showGlassSheet<List<String>>(
       context: context,
@@ -60,7 +68,12 @@ class ExercisePickerSheet extends StatefulWidget {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           resizeToAvoidBottomInset: false,
-          body: ExercisePickerSheet(lookup: lookup, recent: recent, room: room),
+          body: ExercisePickerSheet(
+            lookup: lookup,
+            recent: recent,
+            room: room,
+            replacing: replacing,
+          ),
         ),
       ),
     );
@@ -95,6 +108,11 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   }
 
   void _toggle(String name) {
+    if (widget.replacing != null) {
+      // Choosing the movement already there is not a swap; closing says so.
+      Navigator.of(context).pop(<String>[name]);
+      return;
+    }
     setState(() {
       if (_chosen.remove(name)) return;
       final room = widget.room;
@@ -144,7 +162,11 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     const SheetHandle(),
-                    const SectionLabel('Add exercises'),
+                    SectionLabel(
+                      widget.replacing == null
+                          ? 'Add exercises'
+                          : 'Replace ${widget.replacing}',
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: _query,
@@ -233,30 +255,32 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                 ),
               ),
               // The one action, at the thumb's end of the sheet. It names the
-              // count, so what is about to happen is on the button.
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    AppSpacing.md,
-                  ),
-                  child: PrimaryButton(
-                    label: switch (_chosen.length) {
-                      0 => 'Choose movements',
-                      1 => 'Add 1 movement',
-                      final n => 'Add $n movements',
-                    },
-                    onPressed: _chosen.isEmpty
-                        ? null
-                        : () => Navigator.of(
-                            context,
-                          ).pop(List<String>.of(_chosen)),
+              // count, so what is about to happen is on the button. Not when
+              // replacing, where the tap on a row is the choice.
+              if (widget.replacing == null)
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                    ),
+                    child: PrimaryButton(
+                      label: switch (_chosen.length) {
+                        0 => 'Choose movements',
+                        1 => 'Add 1 movement',
+                        final n => 'Add $n movements',
+                      },
+                      onPressed: _chosen.isEmpty
+                          ? null
+                          : () => Navigator.of(
+                              context,
+                            ).pop(List<String>.of(_chosen)),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

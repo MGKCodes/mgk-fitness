@@ -5,6 +5,8 @@ import '../../planning/domain/coach_planner.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../planning/domain/planned_movement.dart';
 import '../../planning/domain/session_from_plan.dart';
+import '../domain/rest_alerts.dart';
+import '../domain/rest_lengths.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import '../domain/workout_library.dart';
@@ -20,7 +22,13 @@ import 'active_session_screen.dart';
 /// who force-quit mid-workout would tap "Start" and get an exception. What they
 /// should get is the session they were already in.
 class TrackController {
-  const TrackController(this.recorder, {this.library, this.backup});
+  const TrackController(
+    this.recorder, {
+    this.library,
+    this.backup,
+    this.restAlerts,
+    this.restLengths,
+  });
 
   final SessionRecorder recorder;
 
@@ -32,6 +40,12 @@ class TrackController {
   /// Backup's status and actions, for the summary a session ends on. Null is
   /// a build with no server.
   final BackupHooks? backup;
+
+  /// The buzz for a rest that ends with the phone locked. See [RestAlerts].
+  final RestAlerts? restAlerts;
+
+  /// Each movement's remembered rest length. See [RestLengths].
+  final RestLengths? restLengths;
 
   /// Resumes the open session if there is one, otherwise starts a fresh one.
   Future<void> openSession(
@@ -53,6 +67,8 @@ class TrackController {
           massUnit: massUnit,
           library: library,
           backup: backup,
+          restAlerts: restAlerts,
+          restLengths: restLengths,
           onFinished: onDone,
           planner: planner,
           log: log,
@@ -99,6 +115,8 @@ class TrackController {
           massUnit: massUnit,
           library: library,
           backup: backup,
+          restAlerts: restAlerts,
+          restLengths: restLengths,
           onFinished: onDone,
           planner: planner,
           log: log,
@@ -140,6 +158,8 @@ class TrackController {
           massUnit: massUnit,
           library: library,
           backup: backup,
+          restAlerts: restAlerts,
+          restLengths: restLengths,
           onFinished: onDone,
           planner: planner,
           log: log,
