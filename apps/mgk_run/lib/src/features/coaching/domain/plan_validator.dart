@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'plan_shape.dart';
 import 'prescribed_distance.dart';
 import 'runner_profile.dart';
+import 'stored_plan.dart';
 import 'training_plan.dart';
 import 'week_progress.dart';
 
@@ -176,6 +177,12 @@ ValidationResult validateSkeleton(
   PlanSkeleton skeleton,
   RunnerProfile profile, {
   PlanRules rules = const PlanRules(),
+  // Opt-in for the same reason validateWeek's date rules are (see its own
+  // doc): the skeleton itself carries no calendar, only whoever holds the
+  // plan's start date does. [PlanRepository.create] is the caller that has
+  // one, and is the gate everything reaching disk passes through either way
+  // (EDGE-18).
+  DateTime? startDate,
 }) {
   final v = <Violation>[];
   final weeks = skeleton.weeks;
@@ -283,6 +290,54 @@ ValidationResult validateSkeleton(
 
   _checkLongRuns(weeks, rules, v);
 
+  // Race day must fall at or near the final week (EDGE-18). The taper's
+  // whole job is to sit before the event; a block whose race lands much
+  // earlier ends with build or peak weeks and a taper scheduled for after
+  // race day already happened — which `total`'s clamp to at least
+  // [kMinPlanWeeks] used to produce silently for any race 7-41 days out.
+  // `GoalDraft.issues` now refuses a date that close, so this checks the
+  // skeleton's own work rather than trusting the door stayed shut, the way
+  // every other invariant in this function does.
+  //
+  // **A one-week tolerance, not exact equality.** `buildSkeleton`'s own
+  // week count is derived from `now`, not from this [startDate] (the coming
+  // Monday) — a pre-existing, separate rounding gap of up to a week between
+  // the two reference points, unrelated to EDGE-18 and out of scope to
+  // close here. Requiring the two to agree exactly would flag a large share
+  // of entirely ordinary plans over a rounding difference of one week,
+  // which is not the defect this exists to catch; requiring them to agree
+  // within a week still catches a block built far too short to be safe.
+  if (startDate != null && profile.eventDate != null) {
+    final DateTime start = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+    final DateTime race = DateTime(
+      profile.eventDate!.year,
+      profile.eventDate!.month,
+      profile.eventDate!.day,
+    );
+    // A race already behind the plan's own start is a stale profile, not a
+    // short block — a different question, and not this function's to ask
+    // (GoalDraft.issues refuses it long before a skeleton is built from
+    // one). Asking it here as well would turn a profile carrying last
+    // year's race into a skeleton failure instead of the plan simply
+    // ignoring a date that is not its concern.
+    if (!race.isBefore(start)) {
+      final int raceWeek = (daysBetweenDates(start, race) / 7).floor() + 1;
+      if ((raceWeek - weeks.length).abs() > 1) {
+        v.add(
+          Violation(
+            'race_day_outside_final_week',
+            'race day falls in week $raceWeek of ${weeks.length}, not the '
+                'final week',
+          ),
+        );
+      }
+    }
+  }
+
   return ValidationResult(v);
 }
 
@@ -368,7 +423,13 @@ ValidationResult validateWeek(
 
     for (final s in week.sessions) {
       if (s.kind == SessionKind.rest) continue;
-      final DateTime on = start.add(Duration(days: s.weekday - 1));
+      // Not `start.add(Duration(days:))`: a duration is absolute time, so a
+      // week spanning a daylight-saving change would land on 23:00 or 01:00
+      // on the day after the one it meant, and the exact-midnight equality
+      // check below (and the `session_in_the_past` day count) would miss.
+      // `addDays` is `stored_plan.dart`'s DST-safe day arithmetic, the same
+      // used to turn every other week index into a calendar date.
+      final DateTime on = addDays(start, s.weekday - 1);
 
       // A day that has gone cannot be trained, and a plan that opens by
       // prescribing three of them starts life owing the runner an apology.
@@ -377,7 +438,7 @@ ValidationResult validateWeek(
           Violation(
             'session_in_the_past',
             'a session falls on weekday ${s.weekday}, which was '
-                '${today.difference(on).inDays} day(s) ago',
+                '${daysBetweenDates(on, today)} day(s) ago',
           ),
         );
       }

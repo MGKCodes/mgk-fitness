@@ -90,10 +90,33 @@ void main() {
       expect(draft.issues(now).single.message, contains('already passed'));
     });
 
-    test('today is too soon, and says so rather than passing', () {
-      final draft = GoalDraft(goalDistanceMeters: 42195, eventDate: now);
-      expect(draft.issues(now).single.message, contains('too soon'));
+    test('a date one calendar day past is caught even across a spring-forward '
+        'change', () {
+      // now: Monday 30 March 2026, just after the UK's spring change.
+      // event: Sunday 29 March, the change itself — one calendar day
+      // earlier. A plain `Duration` difference between the two local
+      // midnights sees only 23 real hours between them and truncates to
+      // 0 days, which reads as "today", not "already passed".
+      final draft = GoalDraft(
+        goalDistanceMeters: 42195,
+        eventDate: DateTime(2026, 3, 29),
+      );
+      expect(
+        draft.issues(DateTime(2026, 3, 30, 9)).single.message,
+        contains('already passed'),
+      );
     });
+
+    test(
+      // EDGE-18: the floor used to be a flat 7 days from `now`, saying "too
+      // soon". It is now the block minimum counted from the coming Monday —
+      // see the "a near race" group below for the boundary itself.
+      'today is too soon, and says so rather than passing',
+      () {
+        final draft = GoalDraft(goalDistanceMeters: 42195, eventDate: now);
+        expect(draft.issues(now).single.message, contains('at least 6 weeks'));
+      },
+    );
 
     test('a race next year is fine', () {
       final draft = GoalDraft(
@@ -112,12 +135,59 @@ void main() {
     });
 
     test('the time of day does not decide whether a race has passed', () {
-      // Race morning, asked at 11pm the night before: still tomorrow's race.
+      // Race morning, asked at 11pm the night before: still tomorrow's race,
+      // not one that has already happened. It is refused anyway — a day's
+      // notice is nowhere near a six-week block (EDGE-18), and correctly
+      // so — but that is a different, separate refusal from "this already
+      // happened", which is the one thing being checked here.
       final draft = GoalDraft(
         goalDistanceMeters: 42195,
         eventDate: DateTime(2026, 8, 30, 9),
       );
-      expect(draft.isValid(DateTime(2026, 7, 29, 23, 59)), isTrue);
+      final issues = draft.issues(DateTime(2026, 8, 29, 23, 59));
+      expect(issues.any((i) => i.message.contains('already passed')), isFalse);
+    });
+
+    group('a near race is refused unless it leaves a full block (EDGE-18)', () {
+      // A Tuesday; comingMondayFrom -> Monday 5 October 2026.
+      final tuesday = DateTime(2026, 9, 29, 9);
+
+      test('7 days away — the old flat floor — is refused', () {
+        final draft = GoalDraft(
+          goalDistanceMeters: 10000,
+          eventDate: DateTime(2026, 10, 6),
+        );
+        expect(draft.issues(tuesday), isNotEmpty);
+      });
+
+      test('12 days away is refused', () {
+        final draft = GoalDraft(
+          goalDistanceMeters: 10000,
+          eventDate: DateTime(2026, 10, 11),
+        );
+        expect(draft.issues(tuesday), isNotEmpty);
+      });
+
+      test('one day short of six weeks from the coming Monday is refused', () {
+        // 5 Oct + 41 days = 15 Nov.
+        final draft = GoalDraft(
+          goalDistanceMeters: 10000,
+          eventDate: DateTime(2026, 11, 15),
+        );
+        final issues = draft.issues(tuesday);
+        expect(issues, isNotEmpty);
+        expect(issues.single.message, contains('at least 6 weeks'));
+        expect(issues.single.message, contains('later race'));
+      });
+
+      test('exactly six weeks from the coming Monday is accepted', () {
+        // 5 Oct + 42 days = 16 Nov.
+        final draft = GoalDraft(
+          goalDistanceMeters: 10000,
+          eventDate: DateTime(2026, 11, 16),
+        );
+        expect(draft.issues(tuesday), isEmpty);
+      });
     });
   });
 

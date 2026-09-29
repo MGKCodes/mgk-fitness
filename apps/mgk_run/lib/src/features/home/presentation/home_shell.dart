@@ -719,6 +719,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       slot: slot,
       profile: plan.profile,
       request: request,
+      // EDGE-17: without a calendar, validateWeek's date rules (race day,
+      // a day already gone) never ran on a revision at all.
+      weekStart: plan.dateFor(weekIndex: slot.index, weekday: 1, on: now),
+      now: now,
       soFar: weekAsRun(
         week: week,
         weekStart: plan.dateFor(weekIndex: slot.index, weekday: 1, on: now),

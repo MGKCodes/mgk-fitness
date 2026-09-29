@@ -263,6 +263,19 @@ class _RecordingScreenState extends State<RecordingScreen> {
   RecorderProblem? _problem;
   LatLng? _focus;
 
+  /// True from the first tap on Finish until [widget.onFinish] is called.
+  ///
+  /// **The busy guard.** `_finish` used to have none, and `stop()` stayed
+  /// live through a Health read and an un-timed backup push — several
+  /// seconds on a good connection, the whole length of a slow one — during
+  /// which Finish went on sitting there, tappable, looking like nothing had
+  /// happened. A second tap re-entered `_finish`, called `stop()` again and
+  /// popped the route a second time, which pops whatever is under it too:
+  /// a blank screen the app has to be killed to leave. Now it disables
+  /// Finish and Resume the moment the first tap lands and shows progress in
+  /// their place, so the second tap — fast or slow — has nothing to hit.
+  bool _finishing = false;
+
   /// Whether the map is still chasing the runner.
   ///
   /// **False only because somebody moved it, and true again only because they
@@ -376,6 +389,20 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   @override
   void dispose() {
+    // Belt and braces. Every path that leaves this screen on purpose --
+    // _finish (stop) and _cancel's confirmed dialog (discard) -- has already
+    // settled the recorder by the time it gets here, and the PopScope above
+    // stops a system Back from leaving any other way. This covers the path
+    // nobody named: an ancestor unmounting the route some other way, which
+    // must not leave the recorder running unseen underneath a screen that no
+    // longer exists -- the "Recording your run" service and the GPS it
+    // holds open for a run nothing will ever finish. Discarded rather than
+    // stopped, because an unplanned teardown is not the runner pressing
+    // Finish and must not silently bank a run they never confirmed.
+    final status = widget.recorder.status;
+    if (status == RecorderStatus.recording || status == RecorderStatus.paused) {
+      unawaited(widget.recorder.discard());
+    }
     _sheetExtent.dispose();
     _pointSub?.cancel();
     _statusSub?.cancel();
@@ -659,8 +686,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
   }
 
   Future<void> _finish() async {
+    if (_finishing) return; // already settling this run — see [_finishing]
+    setState(() => _finishing = true);
     unawaited(AppHaptics.commit());
     await widget.recorder.stop();
+    if (!mounted) return;
     widget.onFinish?.call();
   }
 
@@ -707,185 +737,201 @@ class _RecordingScreenState extends State<RecordingScreen> {
           : PaceStanding.unknown;
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final height = constraints.maxHeight;
-          // The brief rides above the fold only while the verdict is held.
-          // It is the answer to "what am I doing", which is the question of
-          // the first few minutes — and once the band starts speaking, the
-          // panel gives the height back and the map takes it, by which time
-          // the route has a shape worth the space.
-          final showBrief =
-              !_warmedUp &&
-              widget.plannedSession != null &&
-              briefFitsOn(
-                height,
-                bottomInset: MediaQuery.paddingOf(context).bottom,
-                hasBand: band != null && _problem == null,
-                hasProblem: _problem != null,
-              );
-          final collapsed = collapsedFractionFor(
-            height,
-            bottomInset: MediaQuery.paddingOf(context).bottom,
-            // No band while recording has failed. The panel is already saying
-            // why there is nothing; a pace rail underneath is a second and
-            // contradictory answer to the same question — the reasoning the
-            // map already uses for its emptyLabel.
-            hasBand: band != null && _problem == null,
-            hasProblem: _problem != null,
-            hasBrief: showBrief,
-          );
-          // **The map is a full screen tall, hung above the fold.**
-          //
-          // The camera centres on the runner, so with the map filling the
-          // Scaffold the position dot lands at the middle of the *screen* —
-          // which is behind the panel. Shifting the whole map up by the panel's
-          // half-height puts the dot in the middle of the part you can actually
-          // see, without lying to the map about where its centre is.
-          //
-          // **Driven by the live extent, not by the collapsed fraction.** It
-          // was computed once from `collapsed` and never moved, so the dot was
-          // correctly placed at exactly one of the panel's resting places and
-          // wrong at the others — visibly so with the sheet open at 0.92, where
-          // the visible strip is a fifth of the screen and the dot sat off it.
-          // A third detent would have made that worse in the other direction.
-
-          return Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              ValueListenableBuilder<double>(
-                valueListenable: _sheetExtent,
-                // Built once and passed through: the map must not be rebuilt on
-                // every frame of a drag.
-                child: RouteMap(
-                  points: _points,
-                  focus: _focus,
-                  // Pannable, and the recentre control below is the other half
-                  // of that — see the class doc and ADR-0031.
-                  interactive: true,
-                  follow: _following,
-                  onUserPan: _stopFollowing,
-                  showPosition: true,
-                  followZoom: 16,
-                  // Silent when recording has failed. The panel has just said
-                  // why there is nothing to draw; a map claiming to be
-                  // looking for you underneath it is a second, contradictory
-                  // answer to the same question.
-                  emptyLabel: _problem == null ? 'Finding you' : null,
-                ),
-                builder: (context, extent, child) {
-                  final double at = extent == 0 ? collapsed : extent;
-                  return Positioned(
-                    top: ((1 - at) / 2 - 0.5) * height,
-                    left: 0,
-                    right: 0,
-                    height: height,
-                    child: child!,
-                  );
-                },
-              ),
-
-              // Positioned, not a bare Stack child: `StackFit.expand` stretches
-              // an unpositioned child to fill, and a Row inside one centres its
-              // contents vertically — which put the status pill in the middle
-              // of the map instead of at the top of it.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: _TopStrip(
-                    label: _statusLabel,
-                    // The pulse is the screen's claim that something is
-                    // arriving. It has to stop when nothing is, or it becomes
-                    // the loudest part of the lie.
-                    pulsing: _recording && !_signalLost,
-                    signal: gpsSignalFor(
-                      widget.recorder.lastFix,
-                      sinceFix: widget.recorder.sinceLastFix,
-                    ),
-                    onCancel: widget.onCancel == null ? null : _cancel,
-                  ),
-                ),
-              ),
-
-              // **Only while the map is parked.** A recentre button on a map
-              // that is already centred is furniture, and on this screen every
-              // pixel not showing the route or the numbers is in the way. Its
-              // absence is also the only indication the map *is* following,
-              // which is the honest way round: the state worth announcing is
-              // the unusual one.
-              if (!_following)
-                ValueListenableBuilder<double>(
-                  valueListenable: _sheetExtent,
-                  builder: (context, extent, child) => Positioned(
-                    right: AppSpacing.lg,
-                    bottom:
-                        (extent == 0 ? collapsed : extent) * height +
-                        AppSpacing.md,
-                    child: child!,
-                  ),
-                  child: _Scrim(
-                    circular: true,
-                    child: IconButton(
-                      onPressed: _recentre,
-                      tooltip: 'Recentre',
-                      icon: const Icon(Icons.my_location),
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-
-              _Panel(
-                collapsedFraction: collapsed,
-                peekFraction: peekFractionFor(
+    return PopScope(
+      // A live run has no Back. `RecordingScreen` had none of Flutter's pop
+      // guards at all, so the Android back gesture / button (and the iOS
+      // edge swipe, which the same route-pop machinery drives) popped this
+      // screen outright: `HomeShell` reads the null result as "not
+      // finished" and the recorder it never touched keeps recording,
+      // unseen -- GPS and the "Recording your run" foreground service both
+      // stay on, and fixes go on piling into a run nobody can see or ever
+      // finishes. Back now routes to the same discard/finish choice the
+      // close button offers, same as every other way out of this screen.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) unawaited(_cancel());
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final height = constraints.maxHeight;
+            // The brief rides above the fold only while the verdict is held.
+            // It is the answer to "what am I doing", which is the question of
+            // the first few minutes — and once the band starts speaking, the
+            // panel gives the height back and the map takes it, by which time
+            // the route has a shape worth the space.
+            final showBrief =
+                !_warmedUp &&
+                widget.plannedSession != null &&
+                briefFitsOn(
                   height,
                   bottomInset: MediaQuery.paddingOf(context).bottom,
+                  hasBand: band != null && _problem == null,
+                  hasProblem: _problem != null,
+                );
+            final collapsed = collapsedFractionFor(
+              height,
+              bottomInset: MediaQuery.paddingOf(context).bottom,
+              // No band while recording has failed. The panel is already saying
+              // why there is nothing; a pace rail underneath is a second and
+              // contradictory answer to the same question — the reasoning the
+              // map already uses for its emptyLabel.
+              hasBand: band != null && _problem == null,
+              hasProblem: _problem != null,
+              hasBrief: showBrief,
+            );
+            // **The map is a full screen tall, hung above the fold.**
+            //
+            // The camera centres on the runner, so with the map filling the
+            // Scaffold the position dot lands at the middle of the *screen* —
+            // which is behind the panel. Shifting the whole map up by the panel's
+            // half-height puts the dot in the middle of the part you can actually
+            // see, without lying to the map about where its centre is.
+            //
+            // **Driven by the live extent, not by the collapsed fraction.** It
+            // was computed once from `collapsed` and never moved, so the dot was
+            // correctly placed at exactly one of the panel's resting places and
+            // wrong at the others — visibly so with the sheet open at 0.92, where
+            // the visible strip is a fifth of the screen and the dot sat off it.
+            // A third detent would have made that worse in the other direction.
+
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                ValueListenableBuilder<double>(
+                  valueListenable: _sheetExtent,
+                  // Built once and passed through: the map must not be rebuilt on
+                  // every frame of a drag.
+                  child: RouteMap(
+                    points: _points,
+                    focus: _focus,
+                    // Pannable, and the recentre control below is the other half
+                    // of that — see the class doc and ADR-0031.
+                    interactive: true,
+                    follow: _following,
+                    onUserPan: _stopFollowing,
+                    showPosition: true,
+                    followZoom: 16,
+                    // Silent when recording has failed. The panel has just said
+                    // why there is nothing to draw; a map claiming to be
+                    // looking for you underneath it is a second, contradictory
+                    // answer to the same question.
+                    emptyLabel: _problem == null ? 'Finding you' : null,
+                  ),
+                  builder: (context, extent, child) {
+                    final double at = extent == 0 ? collapsed : extent;
+                    return Positioned(
+                      top: ((1 - at) / 2 - 0.5) * height,
+                      left: 0,
+                      right: 0,
+                      height: height,
+                      child: child!,
+                    );
+                  },
                 ),
-                onExtent: (double extent) => _sheetExtent.value = extent,
-                distanceM: _distanceM,
-                elapsed: _elapsed,
-                unit: widget.unit,
-                currentPace: _currentPace,
-                averagePace: _averagePace,
-                // While the signal is gone the average is elapsed time divided
-                // by a distance that has stopped growing, so it drifts slower
-                // every second and keeps looking like a measurement. Greyed to
-                // say it is no longer being computed from anything.
-                averageStale: _signalLost,
-                dashes: _dashes,
-                band: band,
-                standing: _standing,
-                railPosition: band == null || current == null
-                    ? 0.5
-                    : _railPosition(band, current),
-                // No slow label when the band is a ceiling: naming a lower
-                // edge implies falling below it means something, and on these
-                // sessions it does not. The fast edge is the whole instruction.
-                bandSlowLabel: band == null || _effortCapped
-                    ? null
-                    : _bare(band.slow),
-                bandFastLabel: band == null ? null : _bare(band.fast),
-                verdict: _verdict(_standing),
-                effortCapped: _effortCapped,
-                showBrief: showBrief,
-                splits: _splits,
-                session: widget.plannedSession,
-                climbMeters: climbMeters(_points),
-                laps: _laps,
-                problem: _problem,
-                onAskAgain: _askAgain,
-                recording: _recording,
-                onLap: _markLap,
-                onTogglePause: _togglePause,
-                onFinish: _finish,
-              ),
-            ],
-          );
-        },
+
+                // Positioned, not a bare Stack child: `StackFit.expand` stretches
+                // an unpositioned child to fill, and a Row inside one centres its
+                // contents vertically — which put the status pill in the middle
+                // of the map instead of at the top of it.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: _TopStrip(
+                      label: _statusLabel,
+                      // The pulse is the screen's claim that something is
+                      // arriving. It has to stop when nothing is, or it becomes
+                      // the loudest part of the lie.
+                      pulsing: _recording && !_signalLost,
+                      signal: gpsSignalFor(
+                        widget.recorder.lastFix,
+                        sinceFix: widget.recorder.sinceLastFix,
+                      ),
+                      onCancel: widget.onCancel == null ? null : _cancel,
+                    ),
+                  ),
+                ),
+
+                // **Only while the map is parked.** A recentre button on a map
+                // that is already centred is furniture, and on this screen every
+                // pixel not showing the route or the numbers is in the way. Its
+                // absence is also the only indication the map *is* following,
+                // which is the honest way round: the state worth announcing is
+                // the unusual one.
+                if (!_following)
+                  ValueListenableBuilder<double>(
+                    valueListenable: _sheetExtent,
+                    builder: (context, extent, child) => Positioned(
+                      right: AppSpacing.lg,
+                      bottom:
+                          (extent == 0 ? collapsed : extent) * height +
+                          AppSpacing.md,
+                      child: child!,
+                    ),
+                    child: _Scrim(
+                      circular: true,
+                      child: IconButton(
+                        onPressed: _recentre,
+                        tooltip: 'Recentre',
+                        icon: const Icon(Icons.my_location),
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+
+                _Panel(
+                  collapsedFraction: collapsed,
+                  peekFraction: peekFractionFor(
+                    height,
+                    bottomInset: MediaQuery.paddingOf(context).bottom,
+                  ),
+                  onExtent: (double extent) => _sheetExtent.value = extent,
+                  distanceM: _distanceM,
+                  elapsed: _elapsed,
+                  unit: widget.unit,
+                  currentPace: _currentPace,
+                  averagePace: _averagePace,
+                  // While the signal is gone the average is elapsed time divided
+                  // by a distance that has stopped growing, so it drifts slower
+                  // every second and keeps looking like a measurement. Greyed to
+                  // say it is no longer being computed from anything.
+                  averageStale: _signalLost,
+                  dashes: _dashes,
+                  band: band,
+                  standing: _standing,
+                  railPosition: band == null || current == null
+                      ? 0.5
+                      : _railPosition(band, current),
+                  // No slow label when the band is a ceiling: naming a lower
+                  // edge implies falling below it means something, and on these
+                  // sessions it does not. The fast edge is the whole instruction.
+                  bandSlowLabel: band == null || _effortCapped
+                      ? null
+                      : _bare(band.slow),
+                  bandFastLabel: band == null ? null : _bare(band.fast),
+                  verdict: _verdict(_standing),
+                  effortCapped: _effortCapped,
+                  showBrief: showBrief,
+                  splits: _splits,
+                  session: widget.plannedSession,
+                  climbMeters: climbMeters(_points),
+                  laps: _laps,
+                  problem: _problem,
+                  onAskAgain: _askAgain,
+                  recording: _recording,
+                  onLap: _markLap,
+                  onTogglePause: _togglePause,
+                  onFinish: _finish,
+                  finishing: _finishing,
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1020,6 +1066,7 @@ class _Panel extends StatefulWidget {
     required this.onLap,
     required this.onTogglePause,
     required this.onFinish,
+    this.finishing = false,
   });
 
   final double collapsedFraction;
@@ -1067,6 +1114,11 @@ class _Panel extends StatefulWidget {
   final VoidCallback onLap;
   final Future<void> Function() onTogglePause;
   final Future<void> Function() onFinish;
+
+  /// True from the first tap on Finish until the run is settled. Disables
+  /// Resume and Finish and shows progress on Finish instead of its icon —
+  /// see `_RecordingScreenState._finishing`.
+  final bool finishing;
 
   @override
   State<_Panel> createState() => _PanelState();
@@ -1413,6 +1465,7 @@ class _PanelState extends State<_Panel> {
                             label: 'Resume',
                             icon: Icons.play_arrow,
                             filled: true,
+                            busy: widget.finishing,
                             onPressed: widget.onTogglePause,
                           ),
                         ),
@@ -1421,6 +1474,7 @@ class _PanelState extends State<_Panel> {
                           child: _ControlButton(
                             label: 'Finish',
                             icon: Icons.sports_score,
+                            busy: widget.finishing,
                             onPressed: widget.onFinish,
                           ),
                         ),
@@ -1538,12 +1592,20 @@ class _ControlButton extends StatelessWidget {
     required this.onPressed,
     required this.icon,
     this.filled = false,
+    this.busy = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool filled;
+
+  /// The same treatment `PrimaryButton`/`DestructiveButton` give a busy
+  /// action: the icon becomes a small spinner and the button stops
+  /// responding to taps. Used on Finish (and Resume beside it) while the
+  /// run is settling, so a second tap — the one this exists to stop — has
+  /// nothing to hit.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -1552,22 +1614,33 @@ class _ControlButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 18),
+          if (busy)
+            SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: filled ? AppColors.onPrimary : AppColors.textPrimary,
+              ),
+            )
+          else
+            Icon(icon, size: 18),
           const SizedBox(width: AppSpacing.xs),
           Text(label, maxLines: 1, softWrap: false),
         ],
       ),
     );
     final padding = const EdgeInsets.symmetric(horizontal: AppSpacing.sm);
+    final pressed = busy ? null : onPressed;
 
     return filled
         ? FilledButton(
-            onPressed: onPressed,
+            onPressed: pressed,
             style: FilledButton.styleFrom(padding: padding),
             child: child,
           )
         : OutlinedButton(
-            onPressed: onPressed,
+            onPressed: pressed,
             style: OutlinedButton.styleFrom(padding: padding),
             child: child,
           );
@@ -1807,6 +1880,9 @@ class _ProblemLine extends StatelessWidget {
     RecorderProblem.permissionDeniedForever =>
       'Location is turned off for Run, so there is nothing to record. '
           'You can change it in Settings.',
+    RecorderProblem.reducedAccuracy =>
+      'Run only has approximate location, so nothing can be measured. '
+          'Turn on Precise Location for Run in Settings.',
     // Not "recording has paused": `_onSourceError` sets a problem and never
     // touches the status, so the run is still recording and the clock is still
     // running — and Pause means something specific two controls below this.
@@ -1835,9 +1911,12 @@ class _ProblemLine extends StatelessWidget {
   /// Only where Settings can actually change the outcome. A denied read is a
   /// designed-for outcome, not an error state — and Settings cannot reach the
   /// device-wide Location Services switch at all, which is why that state gets
-  /// a written path instead of a button.
+  /// a written path instead of a button. Precise Location joins the same two
+  /// for the same reason: there is no in-app prompt for it on either
+  /// platform, only the Settings toggle.
   bool get _offersSettings =>
-      problem == RecorderProblem.permissionDeniedForever;
+      problem == RecorderProblem.permissionDeniedForever ||
+      problem == RecorderProblem.reducedAccuracy;
 
   @override
   Widget build(BuildContext context) {

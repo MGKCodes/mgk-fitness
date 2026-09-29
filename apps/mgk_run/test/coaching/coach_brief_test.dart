@@ -72,6 +72,23 @@ void main() {
       expect(brief.text, contains('yesterday'));
       expect(brief.text, isNot(contains('2026')));
     });
+
+    test('the relative day survives a spring-forward change, not just an '
+        'ordinary week', () {
+      // 16 -> 30 March 2026 is 14 calendar days, straddling the UK's
+      // spring change on the 29th. A plain `Duration` difference between
+      // two local midnights reads that as 13 days — "a week ago" rather
+      // than "2 weeks ago" — because the changeover day is 23 hours long.
+      final brief = CoachBrief.write(
+        recentRuns: <RunSummary>[
+          run(at: DateTime(2026, 3, 16, 9), meters: 8200),
+        ],
+        now: DateTime(2026, 3, 30),
+      );
+
+      expect(brief.text, contains('2 weeks ago'));
+      expect(brief.text, isNot(contains('a week ago')));
+    });
   });
 
   group('every number is one the app can defend', () {

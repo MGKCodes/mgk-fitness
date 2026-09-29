@@ -113,7 +113,10 @@ void main() {
     });
 
     testWidgets('a month out it says nothing', (tester) async {
-      await open(tester, blockRacingIn(30));
+      // Comfortably past kRaceHorizonDays (10) either way, but also past the
+      // six-week block minimum (EDGE-18) a fresh block is now held to — 30
+      // days used to satisfy the first without knowing about the second.
+      await open(tester, blockRacingIn(60));
 
       expect(find.textContaining('Marathon in'), findsNothing);
       expect(find.text('Race day'), findsNothing);

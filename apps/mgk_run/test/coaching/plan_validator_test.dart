@@ -101,6 +101,39 @@ void main() {
       );
       expect(result.has('long_run_ceiling'), isTrue);
     });
+
+    // EDGE-18: opt-in through startDate, for the reason validateWeek's date
+    // rules are (see that group below) — a skeleton alone carries no
+    // calendar. _profile's race is 1 Dec 2026.
+    test('passes when race day falls in the final week', () {
+      // 15 Sep 2026 -> 1 Dec 2026 is 77 days: floor(77/7)+1 = week 12, the
+      // last of _validSkeleton's twelve.
+      final result = validateSkeleton(
+        _validSkeleton(),
+        _profile,
+        startDate: DateTime(2026, 9, 15),
+      );
+      expect(result.has('race_day_outside_final_week'), isFalse);
+    });
+
+    test('catches race day falling inside an earlier week', () {
+      // 1 Aug 2026 -> 1 Dec 2026 is 122 days: floor(122/7)+1 = week 18 — well
+      // past this skeleton's twelve, exactly the shape a race entered too
+      // close (clamped up to kMinPlanWeeks regardless) used to produce.
+      final result = validateSkeleton(
+        _validSkeleton(),
+        _profile,
+        startDate: DateTime(2026, 8, 1),
+      );
+      expect(result.has('race_day_outside_final_week'), isTrue);
+    });
+
+    test('says nothing about race day with no startDate — opt-in only', () {
+      // The skeleton in isolation cannot know where race day falls, so
+      // omitting startDate must not manufacture a violation out of nothing.
+      final result = validateSkeleton(_validSkeleton(), _profile);
+      expect(result.has('race_day_outside_final_week'), isFalse);
+    });
   });
 
   group('validateWeek', () {
@@ -299,5 +332,69 @@ void main() {
       expect(result.has('long_run_ceiling'), isFalse);
       expect(result.has('week_volume'), isFalse);
     });
+
+    // The two date rules below are opt-in through `weekStart` (see the
+    // function's own doc) and, until EDGE-17, nothing outside this file ever
+    // supplied it — plan_service.dart and adaptation_service.dart both call
+    // validateWeek without a calendar, so a session on race day or on a day
+    // already gone passed every check that could see it. These pin the rules
+    // themselves; plan_repository_test.dart and adaptation_service_test.dart
+    // cover the wiring.
+    test(
+      'catches a session on race day once weekStart and the race are given',
+      () {
+        // This slot's week: Monday 23 -> Sunday 29 March 2026 -- the spring
+        // UK clock change itself falls on the Sunday, this week's last day.
+        final raceProfile = _profile.copyWith(eventDate: DateTime(2026, 3, 29));
+        final result = validateWeek(
+          week(const <PlannedSession>[
+            PlannedSession(
+              weekday: DateTime.monday,
+              kind: SessionKind.easy,
+              distanceMeters: 8000,
+            ),
+            PlannedSession(
+              weekday: DateTime.sunday,
+              kind: SessionKind.long,
+              distanceMeters: 16000,
+            ),
+          ]),
+          slot,
+          raceProfile,
+          weekStart: DateTime(2026, 3, 23),
+        );
+        expect(result.has('session_on_race_day'), isTrue);
+      },
+    );
+
+    test(
+      "session_in_the_past's day count is DST-safe, not a plain Duration",
+      () {
+        // weekStart Monday 16 March; `now` a fortnight later, on the other
+        // side of the spring change (29 March). `today.difference(on).inDays`
+        // — a plain Duration subtraction between two local midnights — reads
+        // the 23-hour changeover day as one day short and would say "13
+        // day(s) ago" here; `daysBetweenDates` (UTC-normalised) says 14,
+        // which is what a calendar says.
+        final result = validateWeek(
+          week(const <PlannedSession>[
+            PlannedSession(
+              weekday: DateTime.monday,
+              kind: SessionKind.easy,
+              distanceMeters: 8000,
+            ),
+          ]),
+          slot,
+          _profile,
+          weekStart: DateTime(2026, 3, 16),
+          now: DateTime(2026, 3, 30),
+        );
+        expect(result.has('session_in_the_past'), isTrue);
+        final message = result.violations
+            .firstWhere((v) => v.code == 'session_in_the_past')
+            .message;
+        expect(message, contains('14 day'));
+      },
+    );
   });
 }

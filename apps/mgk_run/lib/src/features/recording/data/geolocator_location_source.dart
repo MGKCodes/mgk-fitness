@@ -26,10 +26,17 @@ import 'location_source.dart';
 /// (`CMAltimeter` on iOS, `Sensor.TYPE_PRESSURE` on Android), which is a
 /// platform channel this app does not have yet.
 class GeolocatorLocationSource implements LocationSource {
-  GeolocatorLocationSource({LocationSettings? settings})
-    : _settings = settings ?? runSettingsForPlatform();
+  GeolocatorLocationSource({
+    LocationSettings? settings,
+    Future<LocationAccuracyStatus> Function()? accuracyStatus,
+  }) : _settings = settings ?? runSettingsForPlatform(),
+       _accuracyStatus = accuracyStatus ?? Geolocator.getLocationAccuracy;
 
   final LocationSettings _settings;
+
+  /// Injectable so a test can stand in for `Geolocator.getLocationAccuracy`
+  /// without a device — see EDGE-16.
+  final Future<LocationAccuracyStatus> Function() _accuracyStatus;
 
   StreamController<RunPoint>? _controller;
   StreamSubscription<Position>? _subscription;
@@ -65,7 +72,7 @@ class GeolocatorLocationSource implements LocationSource {
     _controller = null;
   }
 
-  /// Both preconditions, in the order the runner would fix them.
+  /// All three preconditions, in the order the runner would fix them.
   ///
   /// The services check comes first and did not exist before: with the system
   /// location switch off, `requestPermission` can return a perfectly granted
@@ -90,6 +97,20 @@ class GeolocatorLocationSource implements LocationSource {
     if (permission == LocationPermission.denied) {
       throw const LocationUnavailable(
         LocationUnavailableReason.permissionDenied,
+      );
+    }
+
+    // **Granted, but not usably precise.** iOS "Precise Location" off for
+    // Run (or the Android equivalent, where geolocator's own docs say this
+    // reads as `unknown` rather than `reduced` — a platform gap, not one
+    // this class can close) reports every fix at kilometre-scale accuracy.
+    // Nothing above catches that: permission is granted and services are
+    // on, so without this the position stream starts, every fix arrives
+    // worse than the recorder's 50 m floor, and the run sits on "Acquiring
+    // GPS" for its whole length with no error anywhere to say why.
+    if (await _accuracyStatus() == LocationAccuracyStatus.reduced) {
+      throw const LocationUnavailable(
+        LocationUnavailableReason.reducedAccuracy,
       );
     }
   }

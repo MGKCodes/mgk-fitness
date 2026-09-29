@@ -97,6 +97,13 @@ class PlanRepository {
         ? buildSkeleton(profile, now: now)
         : (await generator.generateSkeleton(profile)).plan;
 
+    // The coming Monday, not this one (ADR-0034). A plan built on a Friday
+    // used to open with Monday to Thursday already behind it. Computed once,
+    // ahead of validation, so the skeleton is checked against the exact date
+    // it will actually be stored against rather than a second calculation of
+    // the same thing.
+    final start = comingMondayFrom(now);
+
     // Judged by its own shape's rules. A repository holding one rule set
     // rejects every plan that is not a block — which is how a parkrun runner's
     // plan failed to be created at all.
@@ -104,6 +111,7 @@ class PlanRepository {
       skeleton,
       profile,
       rules: rules ?? PlanRules.forShape(shapeOf(profile)),
+      startDate: start,
     );
     if (!result.isValid) {
       throw PlanStoreException(
@@ -116,9 +124,7 @@ class PlanRepository {
       id: _newId(),
       profile: profile,
       skeleton: skeleton,
-      // The coming Monday, not this one (ADR-0034). A plan built on a Friday
-      // used to open with Monday to Thursday already behind it.
-      startDate: comingMondayFrom(now),
+      startDate: start,
     );
     await _store.savePlan(plan);
     await _pushPlan(plan);
@@ -176,6 +182,15 @@ class PlanRepository {
             plan.profile,
             // At most one day, and only in the week that holds the race.
             raceWeekday: unusable.isEmpty ? null : unusable.first,
+            // So the validator's date rules — session_in_the_past,
+            // session_on_race_day — actually run. Without a calendar they
+            // are opt-in no-ops (see plan_validator.dart), and this was the
+            // one call in the model path that never gave them one.
+            weekStart: plan.dateFor(
+              weekIndex: slot.index,
+              weekday: 1,
+              on: _now(),
+            ),
           )).plan
         : buildFallbackWeek(slot, plan.profile, unusableWeekdays: unusable);
     await _store.saveWeek(plan, week);
@@ -242,7 +257,19 @@ class PlanRepository {
     final slot = next.first;
     try {
       if (await _store.loadWeek(plan, slot.index) != null) return false;
-      final result = await generator.generateWeek(slot, plan.profile);
+      // The same two things weekFor gives the model: which weekday (if any)
+      // is race day, and a calendar to check sessions against. Without
+      // these this was the path EDGE-17 named — a week written a week
+      // ahead of time, by the only caller with no session waiting on it,
+      // with the validator's date rules never engaged at all. A race that
+      // fell inside this week could be scheduled straight through it.
+      final unusable = _unusableWeekdays(plan, slot);
+      final result = await generator.generateWeek(
+        slot,
+        plan.profile,
+        raceWeekday: unusable.isEmpty ? null : unusable.first,
+        weekStart: plan.dateFor(weekIndex: slot.index, weekday: 1, on: now),
+      );
       if (result.isFallback) return false;
       await _store.saveWeek(plan, result.plan);
       await _pushWeek(plan, result.plan);

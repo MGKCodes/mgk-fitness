@@ -120,6 +120,13 @@ class AdaptationService {
     required RunnerProfile profile,
     required String request,
     WeekAsRun? soFar,
+    // Opt-in, for the reason `validateWeek`'s own doc gives: the plan model
+    // carries no dates, so only a caller holding the `StoredPlan` can supply
+    // these, and one that cannot is unchanged by leaving them null. Without
+    // them `session_on_race_day` never ran here at all (EDGE-17) — a
+    // revision could move a session onto race day and nothing would object.
+    DateTime? weekStart,
+    DateTime? now,
   }) async {
     TrainingWeek? revised;
     try {
@@ -156,7 +163,9 @@ class AdaptationService {
     } catch (_) {
       revised = null;
     }
-    if (revised == null) return _refit(week, slot, profile, soFar);
+    if (revised == null) {
+      return _refit(week, slot, profile, soFar, weekStart: weekStart, now: now);
+    }
 
     // The revision must still be a structurally sound week — but it is allowed
     // to depart from the slot, because departing from the slot is the entire
@@ -172,6 +181,8 @@ class AdaptationService {
       profile,
       rules: adaptationRules,
       soFar: soFar,
+      weekStart: weekStart,
+      now: now,
     );
     if (!verdict.isValid) throw AdaptationRefused(verdict.violations);
 
@@ -202,8 +213,10 @@ class AdaptationService {
     TrainingWeek week,
     SkeletonWeek slot,
     RunnerProfile profile,
-    WeekAsRun? soFar,
-  ) {
+    WeekAsRun? soFar, {
+    DateTime? weekStart,
+    DateTime? now,
+  }) {
     if (soFar == null || !soFar.hasDiverged) return null;
 
     final refitted = refitWeek(
@@ -218,6 +231,8 @@ class AdaptationService {
       profile,
       rules: adaptationRules,
       soFar: soFar,
+      weekStart: weekStart,
+      now: now,
     );
     if (!verdict.isValid) return null;
 

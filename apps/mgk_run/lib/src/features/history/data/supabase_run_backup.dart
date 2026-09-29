@@ -179,10 +179,23 @@ class SupabaseRunBackup implements RunBackup {
   /// A run the server already has is left alone, including its trace. Diffing
   /// points per run would cost a request each to find a case that only arises
   /// when a push failed halfway; those repair themselves on the next edit.
+  ///
+  /// **Finished runs only.** [AppDatabase.allRuns] answers every row,
+  /// including one `RecordingRunRecorder.start` began that nothing has
+  /// finished yet — a null `endedAt` is its recovery marker, not a run ready
+  /// to mirror. Without this filter, a run killed mid-recording (an iOS
+  /// memory kill, a task swipe, a crash — before launch recovery existed to
+  /// catch it) got backfilled as 0 m in 0:00, and a restore onto another
+  /// phone brought that back as a finished-looking run that never happened.
+  /// `endedAt` is also what recovery writes once it settles such a run, so
+  /// this is the same filter as everywhere else that reads the log — never a
+  /// gap, just a run this pass has not reached yet.
   @override
   Future<int> backfill() async {
     if (_userId == null) return 0;
-    final local = await _db.allRuns();
+    final local = (await _db.allRuns())
+        .where((run) => run.endedAt != null)
+        .toList();
     if (local.isEmpty) return 0;
 
     final remote = await fetchAllPages(

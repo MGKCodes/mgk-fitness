@@ -41,7 +41,7 @@ PlanSkeleton buildSkeleton(
     PlanShape.horizon => _horizonWeeks,
     PlanShape.rhythm || PlanShape.log => _rhythmWeeks,
   };
-  final total = (weeks ?? natural).clamp(_minWeeks, _maxWeeks);
+  final total = (weeks ?? natural).clamp(kMinPlanWeeks, _maxWeeks);
 
   // A rhythm holds a level rather than climbing to one: every week is the
   // volume the runner already runs, and the deloads and taper that shape a
@@ -761,7 +761,17 @@ List<int> _spread(List<int> sorted, int count) {
   ];
 }
 
-const int _minWeeks = 6;
+/// The shortest block `buildSkeleton` will construct.
+///
+/// **Public, not `_minWeeks`, because `GoalDraft.issues` (EDGE-18) has to
+/// refuse a race that would not leave this many weeks counted from the
+/// coming Monday — the same number, not a second copy of it.** A block
+/// shorter than this had nothing to build a block around, so `total` clamps
+/// up to it regardless of how close the race actually is — which, before
+/// that refusal existed, is exactly how a race 7–41 days out got a 6-week
+/// skeleton with race day buried inside base or build and the taper left
+/// scheduled for after it.
+const int kMinPlanWeeks = 6;
 const int _maxWeeks = 24;
 
 /// How far ahead a horizon plan is drawn. Long enough to be a real arc, short

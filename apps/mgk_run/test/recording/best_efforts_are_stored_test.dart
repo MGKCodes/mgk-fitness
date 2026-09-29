@@ -337,6 +337,13 @@ void main() {
       await upgrading.customStatement(
         'ALTER TABLE plans DROP COLUMN race_time_s',
       );
+      // Schema 11's additions, undone for the same reason 9's and 10's are.
+      await upgrading.customStatement(
+        'ALTER TABLE runs DROP COLUMN paused_total_s',
+      );
+      await upgrading.customStatement(
+        'ALTER TABLE runs DROP COLUMN not_counting_since',
+      );
       await upgrading.customStatement('PRAGMA user_version = 8');
       await upgrading.close();
 

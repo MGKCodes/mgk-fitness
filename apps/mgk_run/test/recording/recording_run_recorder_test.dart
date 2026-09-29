@@ -383,6 +383,37 @@ void main() {
       await off.dispose();
     });
 
+    test(
+      // EDGE-16: granted permission and services on, but only approximate
+      // location (iOS Precise Location off, or Android's equivalent) — the
+      // source itself is what notices, via a reason with nothing to do with
+      // permission or services at all.
+      'approximate location raises a problem instead of recording nothing '
+      'silently',
+      () async {
+        final imprecise = FakeLocationSource(
+          failOnStart: const LocationUnavailable(
+            LocationUnavailableReason.reducedAccuracy,
+          ),
+        );
+        final failing = RecordingRunRecorder(
+          source: imprecise,
+          db: db,
+          newId: () => 'run-imprecise',
+          now: () => clock,
+        );
+
+        await failing.start();
+
+        expect(failing.problem, RecorderProblem.reducedAccuracy);
+        expect(failing.status, RecorderStatus.idle);
+        // Same as any other start that never began: no phantom row left for
+        // launch recovery to find.
+        expect(await db.activeRun(), isNull);
+        await imprecise.dispose();
+      },
+    );
+
     test('reports a failure that arrives mid-run', () async {
       final seen = <RecorderProblem?>[];
       recorder.problems.listen(seen.add);
@@ -527,14 +558,39 @@ void main() {
       expect(await db.splitsForRun('run-1'), isEmpty);
     });
 
-    test('a discarded run takes its splits with it', () async {
-      await recordTwoAndABitKilometres();
-      await recorder.stop();
-      expect(await db.splitsForRun('run-1'), isNotEmpty);
+    test('discard is what takes a run and its splits with it, while it is '
+        'still the current one', () async {
+      await recorder.start();
+      for (var i = 0; i <= 5; i++) {
+        source.emit(_fix(0, i * 0.001, at: clock.add(Duration(seconds: i))));
+      }
+      await pumpEventQueue();
 
       await recorder.discard();
       expect(await db.splitsForRun('run-1'), isEmpty);
+      expect(await db.runById('run-1'), isNull);
     });
+
+    test(
+      'a discard once the run is already finished cannot undo it (EDGE-6)',
+      () async {
+        // discard() reads the run it is discarding off `_runId`, and stop()
+        // now clears that once the run is finalised — the same clearing that
+        // stops a second stop() from re-running the whole finalize sequence
+        // (see stop_is_re_entrant_and_does_not_wait_on_backup_test.dart).
+        // Before that fix `_runId` stayed set forever, so calling discard()
+        // any time after a stop() — a mistake, but one nothing stopped —
+        // silently deleted a run the runner had already been shown as
+        // finished, splits included.
+        await recordTwoAndABitKilometres();
+        await recorder.stop();
+        expect(await db.splitsForRun('run-1'), isNotEmpty);
+
+        await recorder.discard();
+        expect(await db.splitsForRun('run-1'), isNotEmpty);
+        expect(await db.runById('run-1'), isNotNull);
+      },
+    );
   });
 
   test('an interrupted run (no stop) stays recoverable from storage', () async {
