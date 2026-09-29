@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
 import '../domain/coach_offer.dart';
@@ -155,6 +156,29 @@ class RevenueCatPurchases implements PurchaseClient {
     } on PlatformException {
       // Deliberate. With [_userId] gone, [_identified] refuses the next sale
       // until an account is identified again, whatever the SDK still holds.
+    }
+  }
+
+  /// The management page RevenueCat holds for this runner's subscription.
+  ///
+  /// **Not StoreKit's in-app sheet, because the plugin does not expose it.**
+  /// `purchases_flutter` 10.10 has no `showManageSubscriptions`, so this opens
+  /// the `managementURL` the SDK reports for the active subscription -- the
+  /// App Store's subscriptions page for an Apple one. When the plugin gains
+  /// the call, it replaces the body of this method and nothing else.
+  @override
+  Future<bool> showManageSubscriptions() async {
+    if (!await _ready()) return false;
+    try {
+      final CustomerInfo info = await Purchases.getCustomerInfo();
+      final String? url = info.managementURL;
+      if (url == null) return false;
+      return await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Object {
+      return false;
     }
   }
 

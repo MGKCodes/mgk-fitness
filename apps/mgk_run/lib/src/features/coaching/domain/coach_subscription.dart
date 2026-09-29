@@ -70,11 +70,32 @@ enum SubscriptionStanding {
   ended,
 }
 
+/// Which store takes the money, as `core.entitlements.platform` records it.
+///
+/// **Not the phone's store.** A runner who subscribed on an iPhone and signs in
+/// on Android is billed by Apple, and was being told to cancel in Google Play:
+/// Settings named the store from `defaultTargetPlatform`, which answers where
+/// the app is running, not who is charging.
+enum BillingStore {
+  appStore,
+  googlePlay;
+
+  /// What to call it in a sentence.
+  String get label => switch (this) {
+    BillingStore.appStore => 'the App Store',
+    BillingStore.googlePlay => 'Google Play',
+  };
+}
+
 /// A tier and its standing, which are independent: a premium subscriber whose
 /// card just failed is `premiumCoach` + [SubscriptionStanding.billingRetry],
 /// and flattening that to "free" would lose the only fact worth telling them.
 class CoachSubscription {
-  const CoachSubscription({required this.tier, required this.standing});
+  const CoachSubscription({
+    required this.tier,
+    required this.standing,
+    this.store,
+  });
 
   /// Nobody signed in, no row, or a read that failed. Same direction as
   /// everything else on the client side: the absence of proof is not a tier.
@@ -85,6 +106,11 @@ class CoachSubscription {
 
   final CoachTier tier;
   final SubscriptionStanding standing;
+
+  /// The store that bills it, or null when the row does not say -- a
+  /// hand-granted row, or one written before the column was filled. Callers
+  /// fall back to this phone's store, which is right for nearly everybody.
+  final BillingStore? store;
 
   /// Whether the coach's reading is drawn — the same answer [CoachAccess]
   /// gives, derived here so the two cannot drift apart.
@@ -147,7 +173,15 @@ class CoachSubscription {
       'grace' => SubscriptionStanding.billingRetry,
       _ => SubscriptionStanding.ended,
     };
-    return CoachSubscription(tier: tier, standing: standing);
+    return CoachSubscription(
+      tier: tier,
+      standing: standing,
+      store: switch (row['platform']) {
+        'apple' => BillingStore.appStore,
+        'google' => BillingStore.googlePlay,
+        _ => null,
+      },
+    );
   }
 
   /// No end date, or one less than [lapseGrace] gone.
@@ -165,10 +199,11 @@ class CoachSubscription {
   bool operator ==(Object other) =>
       other is CoachSubscription &&
       other.tier == tier &&
-      other.standing == standing;
+      other.standing == standing &&
+      other.store == store;
 
   @override
-  int get hashCode => Object.hash(tier, standing);
+  int get hashCode => Object.hash(tier, standing, store);
 
   @override
   String toString() => 'CoachSubscription(${tier.name}, ${standing.name})';

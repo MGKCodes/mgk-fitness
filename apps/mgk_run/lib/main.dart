@@ -26,6 +26,7 @@ import 'src/features/settings/data/phone_runner_data.dart';
 import 'src/features/settings/domain/local_data.dart';
 import 'src/features/settings/presentation/phone_scope.dart';
 import 'src/features/onboarding/data/intro_store_factory.dart';
+import 'src/features/coaching/data/revenuecat_purchases.dart';
 import 'src/features/history/data/drift_run_repository.dart';
 import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
@@ -69,6 +70,9 @@ PhoneServices _phoneServices(AppDatabase db) {
     consent: consent,
     backupHealth: backupHealth,
     intro: intro,
+    // Made here rather than in the gate, so the account screens can reach the
+    // same instance the gate identifies and detaches.
+    purchases: AppConfig.current.canSell ? RevenueCatPurchases() : null,
     localData: LocalDataGuard(
       owner: owner,
       data: PhoneRunnerData(
@@ -300,6 +304,7 @@ class _AppRootState extends State<_AppRoot> {
       // Whose training is on this phone. Not asked for a persona, whose runs
       // are invented and live in memory: there is nobody's training to guard.
       localData: seed == null ? widget.phone.localData : null,
+      purchases: widget.phone.purchases,
     );
   }
 }

@@ -369,6 +369,11 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Account has a "Manage subscription" link, to the store that bills you.**
+  It said to cancel in the store and linked nowhere, and it named the store the
+  app was running on rather than the one charging: an App Store subscriber
+  signed in on Android was told to cancel in Google Play. The link opens this
+  app's subscription in Google Play, or Apple's subscriptions page.
 - **A subscription bought after signing out goes to an account, not to the
   last one.** Signing out never detached the store, so a purchase made signed
   out -- or before a new sign-in had reached the store -- was credited to the

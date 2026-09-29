@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../coaching/data/purchase_client.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
@@ -20,6 +21,7 @@ class PhoneServices {
     required this.backupHealth,
     required this.intro,
     required this.localData,
+    this.purchases,
   });
 
   final BackupConsentStore consent;
@@ -28,6 +30,11 @@ class PhoneServices {
 
   /// Whose training is on the phone, and the only way to erase it.
   final LocalDataGuard localData;
+
+  /// The store. Null in a build with no key, which cannot sell. One instance
+  /// for the app, because it holds who it is attached to: the gate identifies
+  /// and detaches it, and the account screens open its management page.
+  final PurchaseClient? purchases;
 }
 
 /// Makes [PhoneServices] reachable from any route.

@@ -55,4 +55,9 @@ abstract class PurchaseClient {
   /// paid got nothing. Must not throw; there is nothing a runner could do
   /// about it on the way out.
   Future<void> logOut();
+
+  /// Opens the store's own page for managing this runner's subscription.
+  /// True when something opened; false sends the caller to the store's page
+  /// directly. Must not throw.
+  Future<bool> showManageSubscriptions();
 }
