@@ -30,7 +30,7 @@ enum IntroPermissionKind {
   /// Foreground location. What run recording needs.
   location,
 
-  /// HealthKit reads: runs recorded on a watch or in another app.
+  /// HealthKit reads: the step count over runs recorded here.
   healthKit,
 }
 
@@ -51,6 +51,11 @@ class IntroPermission {
   final String explain;
 
   /// The button that raises the real dialog.
+  ///
+  /// **"Continue", never "Allow".** The system's own dialog is where a
+  /// permission is allowed or not; a button in the app that says "Allow" in
+  /// front of it reads as the answer, and App Review rejects a pre-permission
+  /// screen that pre-empts the system's choice (guideline 5.1.1(iv)).
   final String cta;
 
   /// What the coach says when it was allowed.
@@ -88,7 +93,7 @@ const List<IntroPermission> introPermissions = <IntroPermission>[
     explain:
         'First, location. It is how I follow a run while you are out there, '
         'so I can tell you how far you went and how quick.',
-    cta: 'Allow location',
+    cta: 'Continue',
     granted: 'Great. That is the one that matters most.',
     denied:
         'No problem at all. Tell me about your runs afterwards and I will '
@@ -97,19 +102,22 @@ const List<IntroPermission> introPermissions = <IntroPermission>[
   ),
   IntroPermission(
     kind: IntroPermissionKind.healthKit,
+    // What the app does with Health, and nothing it does not. This promised
+    // runs "you have already done and anything you record on a watch", and
+    // nothing has ever imported a workout: the one thing read is the step
+    // count over a run recorded here.
     explain:
-        'And Health. If you let me look, I can see runs you have already '
-        'done and anything you record on a watch, so we are not starting '
-        'from nothing.',
-    cta: 'Allow Health',
+        'And Health. If you let me, I will read your step count for the runs '
+        'you record here, so each one shows your steps and cadence.',
+    cta: 'Continue',
     // **Deliberately conditional.** iOS does not tell an app which health reads
     // were granted, so "granted" here only means the sheet was answered. A
-    // runner who ticked nothing would otherwise be promised their history was
-    // coming, and then watch nothing arrive.
-    granted: 'Perfect. If there is anything there, I will pick it up.',
+    // runner who ticked nothing would otherwise be promised steps that never
+    // arrive.
+    granted: 'Thanks. If Health has your steps, they will show on your runs.',
     denied:
-        'That is fine. We will start from the runs we do together instead. '
-        'You can change it later in Settings if you want me to look.',
+        'That is fine. Your runs record just the same, without steps. You '
+        'can change it later in Settings if you want them.',
   ),
 ];
 

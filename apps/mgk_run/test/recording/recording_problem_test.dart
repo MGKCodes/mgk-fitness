@@ -72,7 +72,7 @@ void main() {
       RecorderProblem.permissionDenied,
     );
 
-    expect(find.text('Allow location'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
     expect(
       find.text('Open Settings'),
       findsNothing,
@@ -80,7 +80,7 @@ void main() {
     );
 
     final int before = recorder.starts;
-    await tester.tap(find.text('Allow location'));
+    await tester.tap(find.text('Continue'));
     await tester.pump();
     expect(recorder.starts, before + 1);
 
@@ -95,7 +95,7 @@ void main() {
     );
 
     expect(find.text('Open Settings'), findsOneWidget);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
 
     await recorder.stop();
   });
@@ -110,7 +110,7 @@ void main() {
     // Neither button can reach it: openAppSettings lands on Run's own page,
     // which does not hold the device's Location Services switch.
     expect(find.text('Open Settings'), findsNothing);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
     expect(find.textContaining('Location Services are off'), findsOneWidget);
 
     await recorder.stop();
@@ -124,7 +124,7 @@ void main() {
     );
 
     expect(find.text('Open Settings'), findsNothing);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
     expect(find.textContaining('clears on its own'), findsOneWidget);
 
     await recorder.stop();

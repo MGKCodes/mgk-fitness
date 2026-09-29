@@ -469,5 +469,13 @@ been on a store, so everything the app does is still listed here.
   sends a summary of the runner's training to the AI provider whatever the
   switch says. All three now say what the switch decides — our servers — and
   the backup screen admits the phone's own backup can hold a copy.
+- **What Health is asked for is what Health is used for: steps.** The Health
+  prompt, the intro and Settings promised to bring in runs recorded on a watch
+  and show them to the coach; nothing ever imported a workout, and steps never
+  reach the coach. Workouts are no longer requested, and every sentence about
+  Health now says it reads the step count over a run recorded here. Buttons in
+  front of a system permission prompt say "Continue" rather than "Allow",
+  the Health write string says the app never writes, and sign-up no longer
+  lists the coach as something a free account gets.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main

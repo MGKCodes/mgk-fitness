@@ -96,12 +96,10 @@ const LegalDocument privacyPolicy = LegalDocument(
             'request (the lawful basis is your consent, which you can withdraw '
             'by deleting your data).',
         'Apple HealthKit data is read only with your explicit permission, and '
-            'we never write anything to Health. We ask for two things: your '
-            'workouts, which we read to show you how many Health has recorded '
-            'and then discard without storing, and your step count for a run, '
-            'which we do store alongside that run. HealthKit data is never '
-            'used for advertising and is not shared with third parties for '
-            'their own purposes.',
+            'we never write anything to Health. We ask for one thing: your step '
+            'count over each run you record, which we store alongside that run. '
+            'HealthKit data is never used for advertising and is not shared '
+            'with third parties for their own purposes.',
         'On Android the app requests no health permissions at all.',
       ],
     ),

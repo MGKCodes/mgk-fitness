@@ -88,27 +88,26 @@ class _PermissionsSectionState extends State<PermissionsSection> {
     LocationPermission.unableToDetermine || null => 'Not set yet',
   };
 
+  /// Asks for what the app reads, which is steps, and says what follows.
+  ///
+  /// It used to read 90 days of workouts to print how many there were, which
+  /// was the only thing workouts were ever read for. The permission went and
+  /// so did the count (see `kHealthReadTypes`). Nothing is read here now: iOS
+  /// will not say what was granted, and a step total fetched only to prove the
+  /// permission works would be health data read for a label.
   Future<void> _readHealth() async {
     setState(() {
       _healthBusy = true;
       _healthResult = null;
     });
-    await _health.requestAccess();
-    final found = await _health.since(
-      DateTime.now().subtract(const Duration(days: 90)),
-    );
+    final asked = await _health.requestAccess();
     if (!mounted) return;
     setState(() {
       _healthBusy = false;
-      // A count, never a verdict. Empty covers "you declined" and "you have no
-      // workouts" equally and iOS does not distinguish them, so neither does
-      // this. The count is also the only part safe to put on screen: the
-      // workouts themselves are special-category data.
-      _healthResult = found.isEmpty
-          ? 'Nothing came back. Health answers the same way whether you '
-                'declined or have nothing there.'
-          : '${found.length} workout${found.length == 1 ? '' : 's'} in the '
-                'last 90 days, duplicates removed.';
+      _healthResult = asked
+          ? 'Asked. If Health allows it, steps show on the runs you record. '
+                'Health does not tell apps what you chose.'
+          : 'Health could not be asked on this phone.';
     });
   }
 
@@ -184,7 +183,7 @@ class _PermissionsSectionState extends State<PermissionsSection> {
               subtitle: _healthBusy
                   ? 'Reading…'
                   : _healthResult ??
-                        'Bring in runs from your watch or another app',
+                        'Steps and cadence for the runs you record here',
               showChevron: false,
               onTap: _healthBusy ? null : _readHealth,
             ),
