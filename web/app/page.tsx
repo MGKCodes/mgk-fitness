@@ -30,12 +30,13 @@ export default function Home() {
           <a href="/run/medical-disclaimer">Medical disclaimer</a>
         </li>
         <li>
+          <a href="/run/terms">Terms of use</a>
+        </li>
+        <li>
           <a href="/run/support">Support</a>
         </li>
         <li>
-          <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">
-            Terms of use
-          </a>
+          <a href="/run/delete-account">Delete your account</a>
         </li>
       </ul>
 
