@@ -488,5 +488,12 @@ been on a store, so everything the app does is still listed here.
   initials. Nothing kept it out: the phone's own iCloud or Google backup can
   carry it, as it can the rest of the app's data. The policy's "your phone is
   the only copy" gets the same correction.
+- **The privacy policy catches up with the app.** It says the coach asks before
+  anything reaches the AI provider and where that is taken back, that a
+  reported reply is kept for review and deleted with the account, that a
+  conversation also sends up to four older messages the coach recalls, and
+  that a note written on a run is backed up with it. Dated 29 September 2026,
+  and the published pages no longer carry a "DO NOT PUBLISH" banner that had
+  outlived its reason.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main

@@ -375,7 +375,10 @@ App Store Connect will not accept a submission without these. None are code.
          is unconfirmed is what it guarantees contractually. **The only item that
          can still change what the policy has to say** — and less than it could
          have, since the wording no longer implies providers never retain.
-      4. **The publication date** — replace the `PUBLICATION_DATE` token.
+      4. ~~**The publication date**~~ — cleared. The policy has carried a real
+         date since 2026-09-10 (29 September 2026 since tonight's revision), so
+         there was no token left to replace; the generator's banner saying so
+         came off on 2026-09-29.
 - [ ] **App Privacy ("nutrition labels").** Must match the sub-processor table in
       [compliance.md](compliance.md): Supabase, OpenRouter, RevenueCat, MapTiler.
       Declare, with linkage to identity:
