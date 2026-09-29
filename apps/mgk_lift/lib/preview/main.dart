@@ -49,6 +49,7 @@ import '../src/features/settings/domain/unit_preferences.dart';
 import '../src/features/settings/presentation/credits_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
+import '../src/features/sync/presentation/backup_scheduler.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
@@ -115,6 +116,52 @@ class PreviewApp extends StatelessWidget {
         coach: FakeCoach(),
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
+      ),
+      // Backup, on Track: a pill only when something needs the lifter. The
+      // shell's launch checkpoint runs the fake two seconds in, so the pill
+      // arrives rather than being there from the first frame — as it would.
+      'track-backup-failed': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        // Signed in, as a failing backup implies: signed out, the run
+        // would say so and there would be no pill.
+        auth: _signedInAuth(),
+        today: previewNow,
+        sync: FakeBackup(
+          report: const SyncReport.unavailable('503'),
+          waiting: const SyncPending(
+            workouts: 2,
+            lastSyncedAt: null,
+            waitingIds: <String>{'a', 'b'},
+          ),
+        ),
+      ),
+      'track-backup-refused': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        // Signed in, as a failing backup implies: signed out, the run
+        // would say so and there would be no pill.
+        auth: _signedInAuth(),
+        today: previewNow,
+        sync: FakeBackup(
+          report: const SyncReport(outcome: SyncOutcome.synced, rejected: 1),
+          waiting: const SyncPending(
+            workouts: 0,
+            lastSyncedAt: null,
+            rejected: <RejectedWorkout>[
+              RejectedWorkout(
+                id: 'w9',
+                name: 'Legs, heavy',
+                isTemplate: false,
+                detail: '22003: numeric field overflow',
+              ),
+            ],
+          ),
+        ),
       ),
       'track-open': (_) => LiftShell(
         recorder: FakeSessionRecorder(_openSession()),
@@ -358,6 +405,38 @@ class PreviewApp extends StatelessWidget {
         lesson: _lesson(),
         onOpenCoach: () {},
       ),
+      // The line under the totals: offline in a basement, and a moment later
+      // backed up.
+      'session-summary-offline': (_) => SessionSummaryScreen(
+        session: _finishedSession(),
+        log: sampleLog(previewNow),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        backup: BackupHooks(
+          status: _backup(
+            state: BackupState.offline,
+            pending: const SyncPending(
+              workouts: 1,
+              lastSyncedAt: null,
+              waitingIds: <String>{'finished'},
+            ),
+          ),
+        ),
+        onOpenCoach: () {},
+      ),
+      'session-summary-backed-up': (_) => SessionSummaryScreen(
+        session: _finishedSession(),
+        log: sampleLog(previewNow),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        backup: BackupHooks(
+          status: _backup(
+            pending: SyncPending(
+              workouts: 0,
+              lastSyncedAt: previewNow.add(const Duration(seconds: 3)),
+            ),
+          ),
+        ),
+        onOpenCoach: () {},
+      ),
       // A short first session, and the two states that are easiest to get
       // wrong: nothing in the log to compare against, and nothing that can be
       // estimated from — fifteens are above Epley's cap, so the screen has to
@@ -393,7 +472,7 @@ class PreviewApp extends StatelessWidget {
         now: previewNow,
         isSignedIn: true,
         email: 'matt@example.com',
-        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        backup: _backup(),
         onSignOut: () {},
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
@@ -402,7 +481,14 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
-        pending: const SyncPending(workouts: 9, lastSyncedAt: null),
+        backup: _backup(
+          pending: const SyncPending(
+            workouts: 9,
+            savedWorkouts: 3,
+            lastSyncedAt: null,
+          ),
+          state: BackupState.signedOut,
+        ),
         onSignIn: () {},
       ),
       'account-synced': (_) => SettingsScreen(
@@ -410,9 +496,37 @@ class PreviewApp extends StatelessWidget {
         store: InMemoryUnitPreferences(),
         now: previewNow,
         isSignedIn: true,
-        pending: SyncPending(
-          workouts: 0,
-          lastSyncedAt: previewNow.subtract(const Duration(minutes: 3)),
+        backup: _backup(
+          pending: SyncPending(
+            workouts: 0,
+            lastSyncedAt: previewNow.subtract(const Duration(minutes: 3)),
+          ),
+        ),
+        onSyncNow: () {},
+      ),
+      // What a refusal looks like where it is listed in full, beside a run
+      // that failed and will try again.
+      'account-problems': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        now: previewNow,
+        isSignedIn: true,
+        email: 'matt@example.com',
+        backup: _backup(
+          state: BackupState.failed,
+          pending: const SyncPending(
+            workouts: 2,
+            lastSyncedAt: null,
+            waitingIds: <String>{'a', 'b'},
+            rejected: <RejectedWorkout>[
+              RejectedWorkout(
+                id: 'w9',
+                name: 'Legs, heavy',
+                isTemplate: false,
+                detail: '22003: numeric field overflow',
+              ),
+            ],
+          ),
         ),
         onSyncNow: () {},
       ),
@@ -431,7 +545,7 @@ class PreviewApp extends StatelessWidget {
         now: previewNow,
         isSignedIn: true,
         email: 'matt@example.com',
-        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        backup: _backup(),
         onSignOut: () {},
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
@@ -451,7 +565,7 @@ class PreviewApp extends StatelessWidget {
         now: previewNow,
         isSignedIn: true,
         email: 'matt@example.com',
-        pending: const SyncPending(workouts: 0, lastSyncedAt: null),
+        backup: _backup(),
         onSignOut: () {},
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
@@ -1711,3 +1825,10 @@ List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
     savedAt: previewNow.subtract(const Duration(days: 16)),
   ),
 ];
+
+/// A fixed backup status for a plate. Never changes — which is the point of a
+/// plate.
+ValueListenable<BackupStatus> _backup({
+  BackupState state = BackupState.idle,
+  SyncPending pending = const SyncPending(workouts: 0, lastSyncedAt: null),
+}) => ValueNotifier<BackupStatus>(BackupStatus(state: state, pending: pending));

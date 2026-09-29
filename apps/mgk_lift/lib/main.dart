@@ -23,7 +23,8 @@ import 'src/features/entitlement/domain/entitlement.dart';
 import 'src/features/settings/data/supabase_unit_preferences.dart';
 import 'src/features/settings/data/unit_preferences_repository.dart';
 import 'src/features/stats/data/drift_session_history.dart';
-import 'src/features/sync/data/supabase_sync.dart';
+import 'src/features/sync/data/supabase_backup_remote.dart';
+import 'src/features/sync/data/workout_backup.dart';
 import 'src/features/tracking/data/drift_session_recorder.dart';
 import 'src/features/tracking/data/drift_workout_library.dart';
 
@@ -125,7 +126,7 @@ class MgkLiftApp extends StatelessWidget {
               ),
         sync: (db == null || supabase == null)
             ? null
-            : SupabaseSync(db, supabase),
+            : WorkoutBackup(db, SupabaseBackupRemote(supabase)),
         // The mark stays absent rather than inert when there is no server.
         coach: supabase == null ? null : SupabaseCoach(supabase),
         // Reading back what was already said. Paired with `coach` rather than

@@ -1,4 +1,5 @@
 import '../src/features/stats/domain/session_history.dart';
+import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/planning/domain/plan_intake.dart';
 import '../src/features/planning/domain/plan_builder.dart';
 import '../src/features/planning/domain/plan_template.dart';
@@ -512,4 +513,22 @@ class FakePlanner implements CoachPlanner {
       },
     });
   }
+}
+
+/// Backup that answers the same way every time — for the plates that show
+/// what a failure, a refusal or a quiet success looks like.
+class FakeBackup implements BackupService {
+  FakeBackup({
+    this.report = const SyncReport(outcome: SyncOutcome.upToDate),
+    this.waiting = const SyncPending(workouts: 0, lastSyncedAt: null),
+  });
+
+  final SyncReport report;
+  final SyncPending waiting;
+
+  @override
+  Future<SyncPending> pending() async => waiting;
+
+  @override
+  Future<SyncReport> run() async => report;
 }

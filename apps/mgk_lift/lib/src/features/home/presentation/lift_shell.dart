@@ -29,6 +29,8 @@ import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../sync/domain/sync_status.dart';
+import '../../sync/presentation/backup_messages.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../../stats/domain/session_history.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
@@ -220,7 +222,7 @@ class LiftShell extends StatefulWidget {
   State<LiftShell> createState() => _LiftShellState();
 }
 
-class _LiftShellState extends State<LiftShell> {
+class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   late int _index = widget.initialTab;
 
   /// By name rather than by literal, so re-ordering the bar cannot silently send
@@ -275,11 +277,10 @@ class _LiftShellState extends State<LiftShell> {
   /// row and the library screen it opens cannot disagree about what exists.
   List<SavedWorkout> _workouts = const <SavedWorkout>[];
 
-  /// What is waiting to upload, and how the last attempt went. Held here so
-  /// Settings opens with the count already known rather than flickering.
-  SyncPending? _pending;
-  SyncReport? _lastReport;
-  bool _syncing = false;
+  /// When backup runs, and where it stands — read by Track's pill, the
+  /// summary, the library's rows and Settings, so no two can disagree. Null
+  /// is a build with no server.
+  BackupScheduler? _backup;
 
   /// Who is signed in. Kept in step with the service rather than read on demand,
   /// so a session restored at launch or expiring mid-use both reach the UI.
@@ -325,10 +326,19 @@ class _LiftShellState extends State<LiftShell> {
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     unawaited(_refreshWorkouts());
-    _librarySub = widget.library?.changes.listen(
-      (_) => unawaited(_refreshWorkouts()),
-    );
-    unawaited(_refreshPending());
+    _librarySub = widget.library?.changes.listen((_) {
+      unawaited(_refreshWorkouts());
+      // A saved workout changed — saved, edited, taught at Finish, deleted.
+      _backup?.checkpoint();
+    });
+    WidgetsBinding.instance.addObserver(this);
+    final sync = widget.sync;
+    if (sync != null) {
+      _backup = BackupScheduler(run: _runBackup, pending: sync.pending);
+      unawaited(_backup!.refresh());
+      // Launch is a checkpoint: whatever a killed app left unsent goes now.
+      _backup!.checkpoint();
+    }
     unawaited(_refreshPlan());
     unawaited(_refreshEntitlement());
     unawaited(_loadOffers());
@@ -339,8 +349,9 @@ class _LiftShellState extends State<LiftShell> {
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
         setState(() => _account = account);
-        // Signing in is the moment there is somewhere to put the backlog.
-        if (account != null) unawaited(_syncNow());
+        // Signing in is the moment there is somewhere to put the backlog, and
+        // signing out the moment backup has to say it has stopped.
+        unawaited(_backup?.runNow());
         // ...and the moment the account's units become readable. The load in
         // initState runs before Supabase has restored a session, so without
         // this the shared choice is only ever picked up on the launch *after*
@@ -357,9 +368,18 @@ class _LiftShellState extends State<LiftShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_authSub?.cancel());
     unawaited(_librarySub?.cancel());
+    _backup?.dispose();
     super.dispose();
+  }
+
+  /// Back in the foreground is a checkpoint — and, with no connectivity
+  /// listener in the app, one of the two ways a returned connection is found.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _backup?.checkpoint();
   }
 
   /// Resolves what the paid surfaces should show.
@@ -469,47 +489,72 @@ class _LiftShellState extends State<LiftShell> {
     if (auth == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<bool>(
-        builder: (_) =>
-            SignInScreen(auth: auth, pendingWorkouts: _pending?.workouts ?? 0),
+        builder: (_) => SignInScreen(
+          auth: auth,
+          pendingWorkouts: _backup?.status.value.pending.workouts ?? 0,
+        ),
       ),
     );
   }
 
-  Future<void> _refreshPending() async {
-    final sync = widget.sync;
-    if (sync == null) return;
-    final pending = await sync.pending();
-    if (!mounted) return;
-    setState(() => _pending = pending);
-  }
-
-  /// Runs a sync and reports the outcome.
+  /// One backup run, as the scheduler calls it.
   ///
-  /// Nothing about this blocks logging. It is started from Settings, it can
-  /// fail, and failing costs nothing — the local database still has everything
-  /// and the rows stay pending.
-  Future<void> _syncNow() async {
+  /// Nothing about this blocks logging: it runs at checkpoints, it can fail,
+  /// and failing costs nothing — the local database still has everything and
+  /// the rows stay pending.
+  Future<SyncReport> _runBackup() async {
     final sync = widget.sync;
-    if (sync == null || _syncing) return;
-    setState(() => _syncing = true);
+    if (sync == null) return const SyncReport.signedOut();
     final report = await sync.run();
 
     // Photos second, and only for an account that has them. The training log
     // is the half that cannot be re-derived from anywhere, so it goes first
-    // and its result is the one Settings reports — a photo upload that stalls
-    // must not make a successful log backup look like a failure.
+    // and its result is the one reported — a photo upload that stalls must not
+    // make a successful log backup look like a failure.
     final photos = widget.photoBackup;
     if (photos != null && _entitled && !report.isFailure) {
       await photos.run();
     }
 
-    if (!mounted) return;
-    setState(() {
-      _syncing = false;
-      _lastReport = report;
-    });
-    await _refreshPending();
-    await _refreshLog();
+    // What came down from another phone is written straight to the database,
+    // past the library's own signal, so both lists are read again.
+    if (report.pulled > 0 && mounted) {
+      await _refreshLog();
+      await _refreshWorkouts();
+    }
+    return report;
+  }
+
+  /// *Sync now*, pressed. The one failure that buzzes: somebody asked and is
+  /// looking. A background failure never does.
+  Future<void> _syncNow() async {
+    final report = await _backup?.runNow();
+    if (report != null && report.isFailure) unawaited(AppHaptics.problem());
+  }
+
+  /// What a backup message's action does, wherever the message is.
+  void _onBackupAction(BackupAction action) {
+    switch (action) {
+      case BackupAction.retry:
+        unawaited(_syncNow());
+      case BackupAction.signIn:
+        unawaited(_openSignIn());
+      case BackupAction.review:
+        unawaited(_openSettings());
+      case BackupAction.none:
+        break;
+    }
+  }
+
+  /// For the session and summary screens, which sit on routes above this one.
+  BackupHooks? get _backupHooks {
+    final backup = _backup;
+    if (backup == null) return null;
+    return BackupHooks(
+      status: backup.status,
+      onRetry: () => unawaited(_syncNow()),
+      onSignIn: widget.auth == null ? null : () => unawaited(_openSignIn()),
+    );
   }
 
   Future<void> _loadUnits() async {
@@ -586,20 +631,28 @@ class _LiftShellState extends State<LiftShell> {
             child: IndexedStack(
               index: _index,
               children: <Widget>[
-                TrackSurface(
-                  onOpenPlan: () => _go(_planTab),
-                  openSession: _openSessionDetail,
-                  log: _log,
-                  onStartSession: widget.recorder == null ? null : _openSession,
-                  plan: _plan,
-                  today: widget.today,
-                  unit: _units.mass,
-                  onStartPlanned: widget.recorder == null
-                      ? null
-                      : _openPlannedSession,
-                  workouts: _workouts,
-                  onStartWorkout: widget.recorder == null ? null : _openWorkout,
-                  onOpenLibrary: widget.library == null ? null : _openLibrary,
+                _withBackup(
+                  (backup) => TrackSurface(
+                    backup: backup,
+                    onBackupAction: _onBackupAction,
+                    onOpenPlan: () => _go(_planTab),
+                    openSession: _openSessionDetail,
+                    log: _log,
+                    onStartSession: widget.recorder == null
+                        ? null
+                        : _openSession,
+                    plan: _plan,
+                    today: widget.today,
+                    unit: _units.mass,
+                    onStartPlanned: widget.recorder == null
+                        ? null
+                        : _openPlannedSession,
+                    workouts: _workouts,
+                    onStartWorkout: widget.recorder == null
+                        ? null
+                        : _openWorkout,
+                    onOpenLibrary: widget.library == null ? null : _openLibrary,
+                  ),
                 ),
                 PlanSurface(
                   isEntitled: _entitled,
@@ -716,12 +769,10 @@ class _LiftShellState extends State<LiftShell> {
           initial: _units,
           store: widget.units,
           onChanged: (prefs) => setState(() => _units = prefs),
-          pending: _pending,
+          backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
-          isSyncing: _syncing,
-          lastReport: _lastReport,
-          onSyncNow: widget.sync == null ? null : _syncNow,
+          onSyncNow: _backup == null ? null : _syncNow,
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,
           coachMemory: widget.coachMemory,
@@ -764,7 +815,6 @@ class _LiftShellState extends State<LiftShell> {
     // Local data is deliberately left alone. Signing out is "stop syncing",
     // not "erase my training" - and the rows are already backed up.
     await widget.auth?.signOut();
-    await _refreshPending();
   }
 
   Future<void> _openPhotos() async {
@@ -901,7 +951,11 @@ class _LiftShellState extends State<LiftShell> {
     final slots = plan.slots[day] ?? const <MovementSlot>[];
     if (slots.isEmpty) return;
 
-    await TrackController(recorder, library: widget.library).openPlanned(
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+    ).openPlanned(
       context,
       day,
       SessionPrescription.forDay(slots),
@@ -918,6 +972,7 @@ class _LiftShellState extends State<LiftShell> {
         // which is a gap rather than a decision.
         unawaited(_refreshSession());
         unawaited(_refreshLog());
+        _afterSession();
       },
     );
     await _refreshSession();
@@ -927,7 +982,11 @@ class _LiftShellState extends State<LiftShell> {
   Future<void> _openSession() async {
     final recorder = widget.recorder;
     if (recorder == null) return;
-    await TrackController(recorder, library: widget.library).openSession(
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+    ).openSession(
       context,
       massUnit: _units.mass,
       planner: widget.planner,
@@ -936,6 +995,7 @@ class _LiftShellState extends State<LiftShell> {
       onDone: () {
         unawaited(_refreshSession());
         unawaited(_refreshLog());
+        _afterSession();
       },
     );
     // Also on return, not only via onDone: backing out of the screen with the
@@ -949,7 +1009,11 @@ class _LiftShellState extends State<LiftShell> {
   Future<void> _openWorkout(SavedWorkout workout) async {
     final recorder = widget.recorder;
     if (recorder == null) return;
-    await TrackController(recorder, library: widget.library).openWorkout(
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+    ).openWorkout(
       context,
       workout,
       massUnit: _units.mass,
@@ -959,6 +1023,7 @@ class _LiftShellState extends State<LiftShell> {
       onDone: () {
         unawaited(_refreshSession());
         unawaited(_refreshLog());
+        _afterSession();
       },
     );
     // Not the workouts: this returns when Finish swaps the session for the
@@ -976,11 +1041,33 @@ class _LiftShellState extends State<LiftShell> {
       library: library,
       lookup: ExerciseLookup(),
       log: _log,
+      backup: _backup?.status,
       blockedReason: _openSessionDetail == null
           ? null
           : 'Finish or discard the session you have open first.',
     );
     if (!mounted) return;
     if (chosen != null) await _openWorkout(chosen);
+  }
+
+  /// A session finished or was thrown away. Finish is a checkpoint — backup
+  /// runs once the summary is up, never while the session is being logged.
+  void _afterSession() {
+    final backup = _backup;
+    if (backup == null) return;
+    // Read at once, so the summary starts from "saved on this phone" with
+    // this session counted as waiting rather than from a stale empty queue.
+    unawaited(backup.refresh());
+    backup.checkpoint();
+  }
+
+  /// Builds [child] with the live backup status, or with none.
+  Widget _withBackup(Widget Function(BackupStatus? status) child) {
+    final backup = _backup;
+    if (backup == null) return child(null);
+    return ValueListenableBuilder<BackupStatus>(
+      valueListenable: backup.status,
+      builder: (context, status, _) => child(status),
+    );
   }
 }

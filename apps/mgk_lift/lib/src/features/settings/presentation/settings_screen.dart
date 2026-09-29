@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -10,8 +11,8 @@ import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
 import '../../purchases/presentation/restore_button.dart';
-import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/account_section.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/unit_preferences.dart';
 import 'credits_screen.dart';
 
@@ -32,12 +33,10 @@ class SettingsScreen extends StatefulWidget {
     required this.initial,
     this.store,
     this.onChanged,
-    this.pending,
+    this.backup,
     this.isSignedIn = false,
     this.email,
     this.onSignOut,
-    this.isSyncing = false,
-    this.lastReport,
     this.onSyncNow,
     this.onSignIn,
     this.coachMemory,
@@ -63,8 +62,10 @@ class SettingsScreen extends StatefulWidget {
   /// without waiting for this screen to close.
   final ValueChanged<UnitPreferences>? onChanged;
 
-  /// What is waiting to upload. Null while it is still being counted.
-  final SyncPending? pending;
+  /// Where backup stands, live — what is waiting, what was refused, whether a
+  /// run is under way. Null is a build with no server, which the card reports
+  /// as this phone only.
+  final ValueListenable<BackupStatus>? backup;
 
   final bool isSignedIn;
 
@@ -72,8 +73,6 @@ class SettingsScreen extends StatefulWidget {
   final String? email;
 
   final VoidCallback? onSignOut;
-  final bool isSyncing;
-  final SyncReport? lastReport;
   final VoidCallback? onSyncNow;
   final VoidCallback? onSignIn;
 
@@ -144,6 +143,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = false);
   }
 
+  Widget _account(BackupStatus status) => AccountSection(
+    status: status,
+    isSignedIn: widget.isSignedIn,
+    email: widget.email,
+    onSyncNow: widget.onSyncNow,
+    onSignIn: widget.onSignIn,
+    now: widget.now,
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -212,16 +220,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // "Account" row three headings apart, which said the account was a
             // backup and the identity was something else. It is one thing.
             const _Heading('Account'),
-            AccountSection(
-              pending: widget.pending,
-              isSignedIn: widget.isSignedIn,
-              email: widget.email,
-              isSyncing: widget.isSyncing,
-              lastReport: widget.lastReport,
-              onSyncNow: widget.onSyncNow,
-              onSignIn: widget.onSignIn,
-              now: widget.now,
-            ),
+            // Live, so a run started here — or by a checkpoint while the
+            // screen is open — is reported as it happens.
+            if (widget.backup case final backup?)
+              ValueListenableBuilder<BackupStatus>(
+                valueListenable: backup,
+                builder: (context, status, _) => _account(status),
+              )
+            else
+              _account(const BackupStatus()),
             if (widget.isSignedIn)
               SettingsTile(
                 icon: Icons.logout,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../sync/presentation/backup_messages.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import '../domain/session_summary.dart';
@@ -36,6 +38,7 @@ class SessionSummaryScreen extends StatefulWidget {
     this.offerSave = true,
     this.templateId,
     this.lesson,
+    this.backup,
     this.onOpenCoach,
   });
 
@@ -69,6 +72,10 @@ class SessionSummaryScreen extends StatefulWidget {
   /// on arrival, with Undo; asked about instead when the workout changed while
   /// the session ran; offered as a new workout when it was deleted meanwhile.
   final TemplateUpdate? lesson;
+
+  /// Whether this session is backed up, said under the totals. Null is a
+  /// build with no server, where there is nothing to say beyond the log.
+  final BackupHooks? backup;
 
   /// Opens the coach. **Null hides the action** rather than showing one that
   /// leads nowhere — there is no coach in a free or offline build, the same
@@ -261,6 +268,10 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                     AppSpacing.xxl,
                   ),
                   children: <Widget>[
+                    if (widget.backup case final backup?) ...<Widget>[
+                      _BackupLine(hooks: backup, session: widget.session),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
                     _Bests(summary: _summary, massUnit: widget.massUnit),
                     if (_lesson != _Lesson.none) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
@@ -730,6 +741,70 @@ enum _Lesson {
 
 /// The one line about the workout this session came from — what changed in it,
 /// and the way back.
+/// Where this session stands: on this phone at once, then backed up — or why
+/// not, with the one thing that would fix it.
+///
+/// **Live.** Finish is a checkpoint, and the run it starts lands a couple of
+/// seconds after this screen does; the line changes under the lifter's eyes
+/// rather than asking them to come back and check.
+class _BackupLine extends StatelessWidget {
+  const _BackupLine({required this.hooks, required this.session});
+
+  final BackupHooks hooks;
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<BackupStatus>(
+      valueListenable: hooks.status,
+      builder: (context, status, _) {
+        final message = sessionBackupMessage(
+          status,
+          sessionId: session.id,
+          finishedAt: session.endedAt ?? session.startedAt,
+        );
+        final backedUp = message.text == 'Backed up.';
+        final icon = backedUp
+            ? Icons.cloud_done_outlined
+            : status.retrying || status.state == BackupState.expired
+            ? Icons.cloud_off_outlined
+            : Icons.smartphone_outlined;
+        final action = switch (message.action) {
+          BackupAction.retry when hooks.onRetry != null => AppTextButton(
+            label: 'Retry',
+            onPressed: hooks.onRetry,
+          ),
+          BackupAction.signIn when hooks.onSignIn != null => AppTextButton(
+            label: 'Sign in',
+            onPressed: hooks.onSignIn,
+          ),
+          _ => null,
+        };
+        return AnimatedSwitcher(
+          duration: AppMotion.fast,
+          child: Row(
+            key: ValueKey<String>(message.text),
+            children: <Widget>[
+              Icon(icon, size: 18, color: AppColors.textSecondary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  message.text,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              ?action,
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _LessonCard extends StatelessWidget {
   const _LessonCard({
     required this.lesson,

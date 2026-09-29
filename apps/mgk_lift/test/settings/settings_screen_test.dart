@@ -6,6 +6,7 @@ import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/credits_screen.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
+import 'package:mgk_lift/src/features/sync/presentation/backup_scheduler.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 Widget wrap(Widget child) => MaterialApp(home: child);
@@ -228,11 +229,43 @@ void backupSmoke() {
       SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
-        pending: const SyncPending(workouts: 9, lastSyncedAt: null),
+        backup: ValueNotifier<BackupStatus>(
+          const BackupStatus(
+            pending: SyncPending(workouts: 9, lastSyncedAt: null),
+          ),
+        ),
         onSignIn: () {},
       ),
     );
     expect(tester.takeException(), isNull);
     expect(find.text('Not signed in'), findsOneWidget);
+    expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
+  });
+
+  testWidgets('the account card follows backup while the screen is open', (
+    WidgetTester tester,
+  ) async {
+    // A run started from here — or by a checkpoint behind it — is reported
+    // as it happens, not the next time the screen is opened.
+    final backup = ValueNotifier<BackupStatus>(
+      const BackupStatus(pending: SyncPending(workouts: 2, lastSyncedAt: null)),
+    );
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+        backup: backup,
+        onSyncNow: () {},
+      ),
+    );
+    expect(find.text('2 sessions waiting to upload.'), findsOneWidget);
+
+    backup.value = BackupStatus(
+      pending: SyncPending(workouts: 0, lastSyncedAt: DateTime.now()),
+    );
+    await tester.pump();
+    expect(find.textContaining('Everything is saved'), findsOneWidget);
   });
 }

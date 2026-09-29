@@ -11,6 +11,7 @@ import '../domain/rest_timer.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/planned_movement.dart';
 import '../../planning/presentation/swap_sheet.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import '../domain/workout_library.dart';
@@ -46,6 +47,7 @@ class ActiveSessionScreen extends StatefulWidget {
     this.massUnit = MassUnit.kilograms,
     this.lookup,
     this.library,
+    this.backup,
     this.onFinished,
     this.planner,
     this.log = const <Session>[],
@@ -73,6 +75,9 @@ class ActiveSessionScreen extends StatefulWidget {
   /// dependency in this app follows, and the honest state for a build with no
   /// on-device database.
   final WorkoutLibrary? library;
+
+  /// Handed to the summary, which says whether this session is backed up.
+  final BackupHooks? backup;
 
   /// Called after a session is finished or discarded, so the caller can reload.
   final VoidCallback? onFinished;
@@ -778,6 +783,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               !_savedToLibrary && !fromLibrary && finished.exercises.isNotEmpty,
           templateId: started.templateId,
           lesson: lesson,
+          backup: widget.backup,
           onOpenCoach: widget.onOpenCoach,
         ),
       ),

@@ -5,6 +5,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
+import '../../sync/presentation/backup_messages.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/session.dart';
 import '../domain/workout_library.dart';
 import 'workout_preview_sheet.dart';
@@ -34,7 +36,16 @@ class TrackSurface extends StatelessWidget {
     this.workouts = const <SavedWorkout>[],
     this.onStartWorkout,
     this.onOpenLibrary,
+    this.backup,
+    this.onBackupAction,
   });
+
+  /// Where backup stands. A pill appears **only when something needs the
+  /// lifter** — see [trackBackupMessage]; null or all well shows nothing.
+  final BackupStatus? backup;
+
+  /// What the pill's action does — retry, sign in, or review in Settings.
+  final ValueChanged<BackupAction>? onBackupAction;
 
   /// The lifter's saved workouts, newest first — the row under *Next up*.
   final List<SavedWorkout> workouts;
@@ -124,6 +135,8 @@ class TrackSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = backup;
+    final pill = status == null ? null : trackBackupMessage(status);
     return PhotoBackdrop(
       image: 'assets/images/backgrounds/hero_home.webp',
       scrim: ScrimStrength.balanced,
@@ -161,6 +174,10 @@ class TrackSurface extends StatelessWidget {
                           color: AppColors.textSecondary,
                         ),
                       ),
+                    ],
+                    if (pill != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.md),
+                      _BackupPill(message: pill, onAction: onBackupAction),
                     ],
                     const Spacer(),
 
@@ -207,6 +224,72 @@ class TrackSurface extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The one line backup gets on Track, when it needs the lifter: a workout the
+/// server refused, a sign-in that lapsed, a failure with work waiting, or work
+/// waiting with no connection. Glass over the photograph, and gone the moment
+/// the thing it is about is resolved.
+class _BackupPill extends StatelessWidget {
+  const _BackupPill({required this.message, required this.onAction});
+
+  final BackupMessage message;
+  final ValueChanged<BackupAction>? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = switch (message.action) {
+      BackupAction.retry => 'Retry',
+      BackupAction.signIn => 'Sign in',
+      BackupAction.review => 'Review',
+      BackupAction.none => null,
+    };
+    return Entrance(
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.xs,
+          label == null ? AppSpacing.md : AppSpacing.xs,
+          AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Text(
+                  message.text,
+                  style: theme.textTheme.bodySmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            if (label != null && onAction != null)
+              AppTextButton(
+                label: label,
+                onPressed: () => onAction!(message.action),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

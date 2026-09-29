@@ -217,16 +217,33 @@ void main() {
       expect(await DriftSessionHistory(db).all(), isEmpty);
     });
 
-    test('a saved workout is not queued with the sessions', () async {
-      await library.save(name: 'Push', movements: moves(<String>['Bench']));
-      expect(await SyncQueue(db).dirtyWorkouts(), isEmpty);
+    test('a saved workout is queued to back up, as a template', () async {
+      // It was kept off the queue until the upload could send one with no
+      // date; it can now, and a library that stays on one phone is lost with
+      // it.
+      final saved = await library.save(
+        name: 'Push',
+        movements: moves(<String>['Bench']),
+      );
+      final queued = await SyncQueue(db).dirtyWorkouts();
+      expect(queued.single.id, saved.id);
+      expect(queued.single.isTemplate, isTrue);
     });
 
-    test('a finished session is still queued for upload', () async {
+    test('a session in progress is not queued, whatever else is', () async {
+      await library.save(name: 'Push', movements: moves(<String>['Bench']));
+      final open = await recorder.start();
+      final queued = await SyncQueue(db).dirtyWorkouts();
+      expect(queued.map((w) => w.id), isNot(contains(open.id)));
+    });
+
+    test('a finished session is queued beside the saved workout', () async {
       await library.save(name: 'Push', movements: moves(<String>['Bench']));
       await recorder.start();
       await recorder.finish();
-      expect(await SyncQueue(db).dirtyWorkouts(), hasLength(1));
+      final pending = await SyncQueue(db).pending();
+      expect(pending.workouts, 1);
+      expect(pending.savedWorkouts, 1);
     });
   });
 

@@ -97,6 +97,23 @@ class Workouts extends Table {
   /// the same `updatedAt` bump does both.
   DateTimeColumn get syncedAt => dateTime().nullable()();
 
+  /// Why the server refused this row the last time it was sent — the raw
+  /// `code: message`, for the log; the screen maps the code to a sentence. Null
+  /// when the last attempt succeeded or none has been made.
+  ///
+  /// **A refused row waits for an edit, not for a retry.** Sending the same
+  /// row again gets the same answer, and in a loop it would sit at the front of
+  /// the queue forever; a row the lifter changes since
+  /// ([lastSyncAttemptAt] older than [updatedAt]) is tried again. Local only.
+  TextColumn get syncError => text().nullable()();
+
+  /// Uploads attempted since the last success. Local only.
+  IntColumn get syncAttempts => integer().withDefault(const Constant(0))();
+
+  /// When an upload of this row was last attempted, succeeded or not. Local
+  /// only.
+  DateTimeColumn get lastSyncAttemptAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

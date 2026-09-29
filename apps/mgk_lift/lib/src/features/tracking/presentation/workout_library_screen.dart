@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../sync/presentation/backup_scheduler.dart';
 import '../data/exercise_lookup.dart';
 import '../domain/session.dart';
 import '../domain/workout_library.dart';
@@ -26,6 +28,7 @@ class WorkoutLibraryScreen extends StatefulWidget {
     this.log = const <Session>[],
     this.startLabel = 'Start',
     this.blockedReason,
+    this.backup,
   });
 
   final WorkoutLibrary library;
@@ -40,6 +43,10 @@ class WorkoutLibraryScreen extends StatefulWidget {
   /// See [WorkoutPreviewSheet.blockedReason].
   final String? blockedReason;
 
+  /// Where backup stands, for the mark on a row not yet backed up. Null is a
+  /// build with no server.
+  final ValueListenable<BackupStatus>? backup;
+
   static Future<SavedWorkout?> open(
     BuildContext context, {
     required WorkoutLibrary library,
@@ -47,6 +54,7 @@ class WorkoutLibraryScreen extends StatefulWidget {
     List<Session> log = const <Session>[],
     String startLabel = 'Start',
     String? blockedReason,
+    ValueListenable<BackupStatus>? backup,
   }) => Navigator.of(context).push<SavedWorkout>(
     MaterialPageRoute<SavedWorkout>(
       builder: (_) => WorkoutLibraryScreen(
@@ -55,6 +63,7 @@ class WorkoutLibraryScreen extends StatefulWidget {
         log: log,
         startLabel: startLabel,
         blockedReason: blockedReason,
+        backup: backup,
       ),
     ),
   );
@@ -239,6 +248,7 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
                           workout: workout,
                           lastDone: lastDone(workout.id, widget.log),
                           onTap: () => _preview(workout),
+                          backup: widget.backup,
                         ),
                       ),
                   ],
@@ -293,11 +303,13 @@ class _WorkoutRow extends StatelessWidget {
     required this.workout,
     required this.lastDone,
     required this.onTap,
+    this.backup,
   });
 
   final SavedWorkout workout;
   final DateTime? lastDone;
   final VoidCallback onTap;
+  final ValueListenable<BackupStatus>? backup;
 
   @override
   Widget build(BuildContext context) {
@@ -343,6 +355,28 @@ class _WorkoutRow extends StatelessWidget {
                 ],
               ),
             ),
+            // A quiet mark on a workout this phone has and the server does
+            // not — only for somebody signed in, for whom that is news. Signed
+            // out, every row would carry it, which says nothing.
+            if (backup case final backup?)
+              ValueListenableBuilder<BackupStatus>(
+                valueListenable: backup,
+                builder: (context, status, _) =>
+                    status.state == BackupState.signedOut ||
+                        status.isBackedUp(workout.id)
+                    ? const SizedBox.shrink()
+                    : const Padding(
+                        padding: EdgeInsets.only(right: AppSpacing.xs),
+                        child: Tooltip(
+                          message: 'Not backed up yet',
+                          child: Icon(
+                            Icons.cloud_off_outlined,
+                            size: 16,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ),
+              ),
             const Icon(Icons.chevron_right, color: AppColors.textTertiary),
           ],
         ),

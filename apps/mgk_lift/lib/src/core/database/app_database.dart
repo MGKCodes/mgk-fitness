@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : this(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +79,15 @@ class AppDatabase extends _$AppDatabase {
         // the workout can learn from it at Finish. Null on every existing row,
         // which is right: no session before this one was started that way.
         await m.addColumn(workouts, workouts.templateSnapshot);
+      }
+      if (from < 9) {
+        // What the last upload of a row made of it — the server's refusal, how
+        // many tries, and when — so one bad row is set aside with its reason
+        // instead of stopping every row behind it. Empty on every existing row,
+        // which is right: nothing has been refused yet.
+        await m.addColumn(workouts, workouts.syncError);
+        await m.addColumn(workouts, workouts.syncAttempts);
+        await m.addColumn(workouts, workouts.lastSyncAttemptAt);
       }
       // 7 changes no shape; it adds the indexes below. A photo slot that went
       // unguarded on a fresh install is deduplicated first — see

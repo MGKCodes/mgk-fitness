@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../planning/domain/coach_planner.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../../planning/domain/planned_movement.dart';
 import '../../planning/domain/session_from_plan.dart';
 import '../domain/session.dart';
@@ -19,7 +20,7 @@ import 'active_session_screen.dart';
 /// who force-quit mid-workout would tap "Start" and get an exception. What they
 /// should get is the session they were already in.
 class TrackController {
-  const TrackController(this.recorder, {this.library});
+  const TrackController(this.recorder, {this.library, this.backup});
 
   final SessionRecorder recorder;
 
@@ -27,6 +28,10 @@ class TrackController {
   /// state can offer them. Null is a build with no on-device database, and the
   /// screen hides the action rather than showing one that cannot work.
   final WorkoutLibrary? library;
+
+  /// Backup's status and actions, for the summary a session ends on. Null is
+  /// a build with no server.
+  final BackupHooks? backup;
 
   /// Resumes the open session if there is one, otherwise starts a fresh one.
   Future<void> openSession(
@@ -47,6 +52,7 @@ class TrackController {
           session: session,
           massUnit: massUnit,
           library: library,
+          backup: backup,
           onFinished: onDone,
           planner: planner,
           log: log,
@@ -92,6 +98,7 @@ class TrackController {
           session: session!,
           massUnit: massUnit,
           library: library,
+          backup: backup,
           onFinished: onDone,
           planner: planner,
           log: log,
@@ -132,6 +139,7 @@ class TrackController {
           session: session,
           massUnit: massUnit,
           library: library,
+          backup: backup,
           onFinished: onDone,
           planner: planner,
           log: log,

@@ -44,7 +44,7 @@ import '../domain/progress_photo.dart';
 /// No conflict merge. Two devices shooting the same (week, pose) is the only
 /// collision available, the unique index added in
 /// `20260901120000_progress_photos_week_start.sql` makes it one row, and last
-/// write wins — which is the same call [SupabaseSync] makes and for the same
+/// write wins — which is the same call `WorkoutBackup` makes and for the same
 /// reason: the alternative invents intent from timestamps.
 class SupabasePhotoSync implements PhotoBackup {
   SupabasePhotoSync(

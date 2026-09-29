@@ -443,31 +443,61 @@ workout screens are tested at large sizes; the rest of both apps are not.
 
 ### When things are uploaded
 
-- [ ] **Nothing on the logging path touches the network** — unchanged, and
+- [x] **Nothing on the logging path touches the network** — unchanged, and
       restated because everything below must keep it true. The open session
-      is never uploaded.
-- [ ] **Checkpoints, not live** (F15): after Finish (once the summary is up),
+      is never uploaded. *Pinned by a test that resumes a session, ticks a set
+      and waits: no run.*
+- [x] **Checkpoints, not live** (F15): after Finish (once the summary is up),
       after a template is saved, updated or deleted, when the app comes to the
       foreground, when the connection returns, on sign-in, and from *Back up
       now*. A failed run retries at 30 s, 2 min, 10 min, then hourly while the
-      app is open.
+      app is open. *Also on launch. A checkpoint settles for two seconds, so
+      Finish, the lesson and an Undo are one run. **"When the connection
+      returns" has no listener of its own:** the app has no connectivity
+      plugin, and adding a native one days before TestFlight is the wrong
+      risk. The retries and the foreground checkpoint are what notice it.*
 
 ### Uploading so it cannot half-land
 
-- [ ] **One request per workout.** A Postgres function,
+- [x] **One request per workout.** A Postgres function,
       `lift.save_workout(payload jsonb)`, upserts the workout and replaces its
       movements and sets in one transaction, checking `auth.uid()`. Today it is
       four requests, and a drop between the delete and the inserts leaves the
       server copy empty until the next run. Covered by pgTAP; applied to
-      production *(your go)*.
-- [ ] **Templates go up** — `is_template` true, `started_at` null, which is
+      production *(your go)*. ***Written, not applied, not yet run:*** no
+      Docker or Supabase CLI here to run pgTAP locally. SECURITY INVOKER, so
+      RLS applies; `updated_at` always the server's clock. **The app works
+      before it lands:** a missing function (`PGRST202`) falls back to the old
+      four requests for the rest of that launch.
+- [x] **Templates go up** — `is_template` true, `started_at` null, which is
       what `workouts_template_has_no_date` requires — and deletions go up as
-      tombstones for sessions and templates alike.
-- [ ] **One bad row cannot block the rest.** A row the server rejects is marked
+      tombstones for sessions and templates alike. *A workout deleted before
+      it ever went up goes nowhere.*
+- [x] **One bad row cannot block the rest.** A row the server rejects is marked
       with the reason and skipped; the queue carries on. Rejections are not
       retried until the row is edited; network failures are.
-- [ ] Local columns `syncError`, `syncAttempts`, `lastSyncAttemptAt` on
-      `workouts`.
+- [x] Local columns `syncError`, `syncAttempts`, `lastSyncAttemptAt` on
+      `workouts`. *Schema 9; the upgrade from 6 and from 8 each have a test.*
+
+**Found on the way, and fixed — 2026-09-29:**
+
+- **Two clocks.** A pulled row took the server's `updated_at` as its local
+  one; on a phone running behind the server it then looked edited, and went
+  up again on every run, forever. And the pull watermark was this phone's time
+  compared with the server's timestamps; on a phone running ahead, anything
+  written in the gap was never pulled. Local dirty-tracking now stays on this
+  phone's clock, the watermark is the newest server time actually seen, and
+  "last backed up" has its own record.
+- **An edit in flight was marked sent.** A row was marked synced at the time
+  of the reply, so an edit made during the upload counted as uploaded. It is
+  marked as of the copy that went.
+- **A restore on another phone never came down.** The pull wrote a row object,
+  which drift inserts with its nulls left out: a cleared `deleted_at` (or
+  note) never reached the local row. It writes every value now.
+- The old uploader is gone: `WorkoutBackup` does the rules against a
+  `BackupRemote` interface, tested against a fake server with its own clock;
+  `SupabaseBackupRemote` is the only code that sees Supabase's exceptions, and
+  sorts them into *refused* (this row) and *everything else* (stop, retry).
 
 ### Saying what happened (F18)
 
@@ -481,6 +511,21 @@ One backup state, read by every surface: *up to date* · *backing up* ·
 | Track | A glass pill **only** when something needs you: *2 workouts waiting to back up* or *Backup failed · Retry*. Nothing when all is well. |
 | Settings → Backup | Last backup, what is waiting, each failure with its reason, *Back up now* |
 | History and library rows | A cloud-off mark on anything not backed up |
+
+*Done, with four things settled differently:*
+
+- *Signed out says the fact and stops.* The account card has a standing rule
+  — "it reports, it does not sell", pinned by a test that forbids the words
+  "back up" on the signed-out card — and the summary and Track follow it:
+  *Saved on this phone.*, no pill. A lapsed sign-in is different — that is
+  somebody who wanted backup and lost it — and gets *Sign in again* on all
+  three.
+- *The button stays **Sync now**.* A run pulls as well as pushes; the card's
+  own note already argued "Back up now" understates it.
+- *"Open it" on a refusal opens Settings, where each refusal is listed with
+  its reason.* A session cannot be opened until Phase 6 builds the history.
+- *History rows wait for Phase 6*, which builds the history list. Library
+  rows have the mark; it only shows for somebody signed in.
 
 | Case | Message | Action |
 |---|---|---|

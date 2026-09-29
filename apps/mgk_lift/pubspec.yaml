@@ -37,6 +37,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.16.0
 
+  # Already in the lockfile under supabase_flutter. Declared so backup can name
+  # `ClientException` — the dropped connection — and tell it apart from a
+  # server that refused a workout, which is handled the opposite way.
+  http: ^1.6.0
+
   # Explicit rather than leaning on Flutter's re-export, so `lib/src/features/
   # */domain/` stays pure Dart — no widget binding needed to test the rules.
   meta: ^1.17.0

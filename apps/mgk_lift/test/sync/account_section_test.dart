@@ -2,8 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
 import 'package:mgk_lift/src/features/sync/presentation/account_section.dart';
+import 'package:mgk_lift/src/features/sync/presentation/backup_scheduler.dart';
 
 Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+
+BackupStatus status({
+  int sessions = 0,
+  int saved = 0,
+  DateTime? last,
+  BackupState state = BackupState.idle,
+  SyncReport? report,
+  List<RejectedWorkout> rejected = const <RejectedWorkout>[],
+}) => BackupStatus(
+  state: state,
+  lastReport: report,
+  pending: SyncPending(
+    workouts: sessions,
+    savedWorkouts: saved,
+    lastSyncedAt: last,
+    rejected: rejected,
+  ),
+);
 
 void main() {
   group('signed out', () {
@@ -13,12 +32,7 @@ void main() {
       // The one fact worth stating unprompted, because discovering it after
       // losing a phone is the worst possible time.
       await tester.pumpWidget(
-        wrap(
-          const AccountSection(
-            pending: SyncPending(workouts: 0, lastSyncedAt: null),
-            isSignedIn: false,
-          ),
-        ),
+        wrap(AccountSection(status: status(), isSignedIn: false)),
       );
 
       expect(find.text('Not signed in'), findsOneWidget);
@@ -48,25 +62,33 @@ void main() {
     ) async {
       // The number makes the state concrete where there is one.
       await tester.pumpWidget(
-        wrap(
-          const AccountSection(
-            pending: SyncPending(workouts: 9, lastSyncedAt: null),
-            isSignedIn: false,
-          ),
-        ),
+        wrap(AccountSection(status: status(sessions: 9), isSignedIn: false)),
       );
 
       expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
     });
 
-    testWidgets('gets the singular right', (WidgetTester tester) async {
+    testWidgets('counts the library too, now that it can go up', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         wrap(
-          const AccountSection(
-            pending: SyncPending(workouts: 1, lastSyncedAt: null),
+          AccountSection(
+            status: status(sessions: 9, saved: 3),
             isSignedIn: false,
           ),
         ),
+      );
+
+      expect(
+        find.text('9 sessions and 3 saved workouts are on this phone only.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('gets the singular right', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(AccountSection(status: status(sessions: 1), isSignedIn: false)),
       );
       expect(
         find.textContaining('1 session is on this phone only'),
@@ -79,8 +101,8 @@ void main() {
     testWidgets('reports what is waiting', (WidgetTester tester) async {
       await tester.pumpWidget(
         wrap(
-          const AccountSection(
-            pending: SyncPending(workouts: 3, lastSyncedAt: null),
+          AccountSection(
+            status: status(sessions: 3),
             isSignedIn: true,
             email: 'lifter@example.com',
           ),
@@ -101,9 +123,8 @@ void main() {
       await tester.pumpWidget(
         wrap(
           AccountSection(
-            pending: SyncPending(
-              workouts: 0,
-              lastSyncedAt: DateTime.now().subtract(const Duration(minutes: 3)),
+            status: status(
+              last: DateTime.now().subtract(const Duration(minutes: 3)),
             ),
             isSignedIn: true,
           ),
@@ -125,14 +146,15 @@ void main() {
       await tester.pumpWidget(
         wrap(
           AccountSection(
-            pending: const SyncPending(workouts: 0, lastSyncedAt: null),
-            isSignedIn: true,
-            lastReport: SyncReport(
-              outcome: SyncOutcome.synced,
-              pushed: 3,
-              pulled: 1,
-              at: DateTime.now(),
+            status: status(
+              report: SyncReport(
+                outcome: SyncOutcome.synced,
+                pushed: 3,
+                pulled: 1,
+                at: DateTime.now(),
+              ),
             ),
+            isSignedIn: true,
           ),
         ),
       );
@@ -147,26 +169,86 @@ void main() {
       // is not theirs to fix.
       await tester.pumpWidget(
         wrap(
-          const AccountSection(
-            pending: SyncPending(workouts: 2, lastSyncedAt: null),
+          AccountSection(
+            status: status(
+              sessions: 2,
+              state: BackupState.failed,
+              report: const SyncReport.unavailable('PGRST002: schema cache'),
+            ),
             isSignedIn: true,
-            lastReport: SyncReport.unavailable('PGRST002: schema cache'),
           ),
         ),
       );
 
-      expect(find.textContaining('Could not reach the server'), findsOneWidget);
+      expect(find.textContaining('Backup failed'), findsOneWidget);
       expect(find.textContaining('safe on this phone'), findsOneWidget);
       expect(find.textContaining('PGRST002'), findsNothing);
+    });
+
+    testWidgets('no connection says so, and that it will go', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          AccountSection(
+            status: status(sessions: 1, state: BackupState.offline),
+            isSignedIn: true,
+          ),
+        ),
+      );
+      expect(find.textContaining('No connection'), findsOneWidget);
+      expect(find.textContaining("when you're back online"), findsOneWidget);
+    });
+
+    testWidgets('a lapsed sign-in asks for one', (WidgetTester tester) async {
+      var asked = 0;
+      await tester.pumpWidget(
+        wrap(
+          AccountSection(
+            status: status(sessions: 1, state: BackupState.expired),
+            isSignedIn: true,
+            onSignIn: () => asked++,
+          ),
+        ),
+      );
+      expect(find.text('Sign in again to keep backing up.'), findsOneWidget);
+      await tester.tap(find.text('Sign in again'));
+      expect(asked, 1);
+    });
+
+    testWidgets('each refusal is listed with its reason, never its code', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          AccountSection(
+            status: status(
+              rejected: const <RejectedWorkout>[
+                RejectedWorkout(
+                  id: 'w',
+                  name: 'Push',
+                  isTemplate: false,
+                  detail: '22003: numeric field overflow',
+                ),
+              ],
+            ),
+            isSignedIn: true,
+          ),
+        ),
+      );
+      expect(
+        find.text('"Push" couldn\'t be backed up: a value is out of range.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('22003'), findsNothing);
     });
 
     testWidgets('syncing blocks a second tap', (WidgetTester tester) async {
       await tester.pumpWidget(
         wrap(
           AccountSection(
-            pending: const SyncPending(workouts: 1, lastSyncedAt: null),
+            status: status(sessions: 1, state: BackupState.running),
             isSignedIn: true,
-            isSyncing: true,
             onSyncNow: () {},
           ),
         ),
