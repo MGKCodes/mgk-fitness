@@ -37,14 +37,25 @@ class CoachService
         CoachEditRunClient,
         CoachSetGoalClient,
         WeekAwarePlanClient {
-  CoachService({SupabaseClient? client, AiConsentStore? consent})
-    : this._(client ?? Supabase.instance.client, consent);
+  CoachService({
+    SupabaseClient? client,
+    AiConsentStore? consent,
+    DateTime Function()? now,
+  }) : this._(client ?? Supabase.instance.client, consent, now ?? DateTime.now);
 
-  CoachService._(SupabaseClient client, AiConsentStore? consent)
-    : _client = client,
-      _consent = consent ?? createAiConsentStore(client: client);
+  CoachService._(
+    SupabaseClient client,
+    AiConsentStore? consent,
+    DateTime Function() now,
+  ) : _client = client,
+      _consent = consent ?? createAiConsentStore(client: client),
+      _now = now;
 
   final SupabaseClient _client;
+
+  /// The phone's clock, in the phone's zone. Injectable like every other clock
+  /// in the app; see [_dayFields] for what it is sent for.
+  final DateTime Function() _now;
 
   /// Whether the signed-in runner has agreed to their training going to the
   /// AI provider. Asked before **every** request, on every surface, and
@@ -69,6 +80,26 @@ class CoachService
   /// — a release build never sends the field at all, so a shipped app can never
   /// be the thing choosing what an account pays per token.
   static String? debugModelOverride;
+
+  /// What day it is **where the runner is**, sent with every request.
+  ///
+  /// The function worked out "today" in UTC, so a runner in New York asking
+  /// at 9pm, or one in Sydney at 7am, was answered about the wrong day -- a
+  /// session "tomorrow" that was today, a run "yesterday" that was this
+  /// morning. The phone is the only party that knows the runner's zone, so it
+  /// says: the local date, and the offset that produced it, in minutes east of
+  /// UTC. A server that ignores unknown fields is unaffected until it reads
+  /// them.
+  Map<String, dynamic> get _dayFields {
+    final now = _now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return <String, dynamic>{
+      'local_date':
+          '${now.year.toString().padLeft(4, '0')}-${two(now.month)}-'
+          '${two(now.day)}',
+      'utc_offset_minutes': now.timeZoneOffset.inMinutes,
+    };
+  }
 
   /// The model field to merge into a request body, if any.
   static Map<String, dynamic> get _modelField {
@@ -210,7 +241,10 @@ class CoachService
     final Object? data;
     try {
       final res = await _client.functions
-          .invoke('coach', body: <String, dynamic>{...body, ..._modelField})
+          .invoke(
+            'coach',
+            body: <String, dynamic>{...body, ..._dayFields, ..._modelField},
+          )
           .timeout(requestTimeout);
       data = res.data;
     } on TimeoutException {
@@ -344,6 +378,7 @@ class CoachService
             body: <String, dynamic>{
               'surface': surface,
               ...payload,
+              ..._dayFields,
               ..._modelField,
             },
           )
