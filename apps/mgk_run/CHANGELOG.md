@@ -369,6 +369,12 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Deleting your account while subscribed says the subscription goes on.**
+  Deleting the account does not cancel a subscription, and the screen never
+  said so, so a runner could delete everything and keep paying. It now says
+  "Deleting your account does not cancel your subscription. Cancel it in
+  Google Play, or it will keep renewing." (or the App Store), before you
+  confirm and again afterwards, with a link to manage it.
 - **Account has a "Manage subscription" link, to the store that bills you.**
   It said to cancel in the store and linked nowhere, and it named the store the
   app was running on rather than the one charging: an App Store subscriber

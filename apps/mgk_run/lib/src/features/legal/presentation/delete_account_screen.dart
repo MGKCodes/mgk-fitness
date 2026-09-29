@@ -1,7 +1,15 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../coaching/data/entitlement_repository.dart';
+import '../../coaching/data/purchase_client.dart';
+import '../../coaching/domain/coach_subscription.dart';
+import '../../coaching/domain/manage_subscription.dart';
+import '../../coaching/presentation/manage_subscription_link.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../settings/domain/local_data.dart';
 import '../../settings/presentation/phone_scope.dart';
@@ -36,10 +44,24 @@ class DeleteAccountScreen extends StatefulWidget {
     this.onSignedOut,
     this.consentStore,
     this.localData,
+    this.entitlements = const SupabaseEntitlements(),
+    this.purchases,
+    this.openUrl,
   });
 
   final AuthRepository auth;
   final AccountDeleter deleter;
+
+  /// Read once, on open, to say whether deleting leaves a subscription
+  /// renewing. Never to decide anything: the store bills whatever this says.
+  final EntitlementRepository entitlements;
+
+  /// For the store's management page on an iPhone. Null looks in
+  /// [PhoneScope].
+  final PurchaseClient? purchases;
+
+  /// Opens a store page in the browser. Null is the real browser.
+  final UrlOpener? openUrl;
 
   /// Where to go once the runner has read the outcome. Defaults to unwinding
   /// to the app root, where the signed-out app is waiting.
@@ -75,6 +97,30 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   /// What became of this phone's copy, once the deletion is done.
   _PhoneCopy _phoneCopy = _PhoneCopy.notMentioned;
 
+  /// The subscription as it stood when the screen opened. Kept, rather than
+  /// read again for the done screen, because by then the account is gone and
+  /// the read would say there was never one -- while the store goes on billing.
+  CoachSubscription? _subscription;
+  late final Future<void> _subscriptionRead = _readSubscription();
+
+  Future<void> _readSubscription() async {
+    final CoachSubscription read;
+    try {
+      read = await widget.entitlements.subscription();
+    } on Object {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _subscription = read);
+  }
+
+  /// Whether deleting leaves a subscription that will keep charging: paid up,
+  /// or a payment the store is still chasing. An ended one charges nothing.
+  bool get _stillBilling => switch (_subscription?.standing) {
+    SubscriptionStanding.active || SubscriptionStanding.billingRetry => true,
+    _ => false,
+  };
+
   BackupConsentStore? get _consentStore =>
       widget.consentStore ?? PhoneScope.maybeOf(context)?.consent;
 
@@ -85,6 +131,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   void initState() {
     super.initState();
     _confirm.addListener(() => setState(() {}));
+    unawaited(_subscriptionRead);
   }
 
   @override
@@ -106,6 +153,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       _busy = true;
       _error = null;
     });
+    // The done screen repeats the billing warning, and it can only do that if
+    // the read has landed. It is bounded and was started when the screen
+    // opened, so this is almost always already done.
+    await _subscriptionRead;
     try {
       final result = await widget.deleter.deleteAccount();
       final phoneCopy = await _afterDeletion(
@@ -181,6 +232,15 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     }
   }
 
+  void _manageSubscription() => unawaited(
+    openManageSubscription(
+      context,
+      _subscription!,
+      purchases: widget.purchases,
+      open: widget.openUrl,
+    ),
+  );
+
   void _finish() {
     final onSignedOut = widget.onSignedOut;
     if (onSignedOut != null) {
@@ -233,6 +293,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ],
           ),
         ),
+        if (_stillBilling) ...<Widget>[
+          const SizedBox(height: 20),
+          _StillBilling(
+            subscription: _subscription!,
+            onManage: _manageSubscription,
+          ),
+        ],
         const SizedBox(height: 20),
         Text(
           'Deleting removes all of your data from our servers — not '
@@ -391,6 +458,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           const SizedBox(height: 12),
           Text(phone, style: body),
         ],
+        if (_stillBilling) ...<Widget>[
+          const SizedBox(height: 20),
+          _StillBilling(
+            subscription: _subscription!,
+            onManage: _manageSubscription,
+          ),
+        ],
         const SizedBox(height: 32),
         FilledButton(onPressed: _finish, child: const Text('Done')),
       ],
@@ -422,6 +496,53 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       "This phone's copy could not be erased, so your runs are still on it. "
           'Deleting the app removes them.',
   };
+}
+
+/// **Deleting the account does not stop the store charging for it**, and the
+/// screen said nothing about that.
+///
+/// The subscription is between the runner and Apple or Google; deleting the
+/// data the coach runs on does not end it, and nothing on this side can. Apple's
+/// account-deletion guidance asks for exactly this to be said, and for the way
+/// to cancel to be offered where it is said -- before the runner confirms, and
+/// again once it is done, because the second is when they will act on it.
+class _StillBilling extends StatelessWidget {
+  const _StillBilling({required this.subscription, required this.onManage});
+
+  final CoachSubscription subscription;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final store = billingStoreFor(subscription, defaultTargetPlatform).label;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SectionLabel(
+            'About your subscription',
+            color: AppColors.textTertiary,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Deleting your account does not cancel your subscription. Cancel '
+            'it in $store, or it will keep renewing.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          AppTextButton(label: 'Manage subscription', onPressed: onManage),
+        ],
+      ),
+    );
+  }
 }
 
 /// What became of this phone's copy of the training.

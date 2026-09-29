@@ -215,8 +215,12 @@ class AccountScreen extends StatelessWidget {
                 label: 'Delete account',
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        DeleteAccountScreen(auth: auth, deleter: deleter),
+                    builder: (_) => DeleteAccountScreen(
+                      auth: auth,
+                      deleter: deleter,
+                      purchases: purchases,
+                      openUrl: openUrl,
+                    ),
                   ),
                 ),
               ),
