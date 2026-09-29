@@ -275,6 +275,8 @@ class RecordingRunRecorder implements RunRecorder {
       RecorderProblem.permissionDenied,
     LocationUnavailableReason.permissionDeniedForever =>
       RecorderProblem.permissionDeniedForever,
+    LocationUnavailableReason.reducedAccuracy =>
+      RecorderProblem.reducedAccuracy,
     LocationUnavailableReason.failed => RecorderProblem.locationFailed,
   };
 

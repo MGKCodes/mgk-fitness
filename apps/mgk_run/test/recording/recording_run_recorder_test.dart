@@ -383,6 +383,37 @@ void main() {
       await off.dispose();
     });
 
+    test(
+      // EDGE-16: granted permission and services on, but only approximate
+      // location (iOS Precise Location off, or Android's equivalent) — the
+      // source itself is what notices, via a reason with nothing to do with
+      // permission or services at all.
+      'approximate location raises a problem instead of recording nothing '
+      'silently',
+      () async {
+        final imprecise = FakeLocationSource(
+          failOnStart: const LocationUnavailable(
+            LocationUnavailableReason.reducedAccuracy,
+          ),
+        );
+        final failing = RecordingRunRecorder(
+          source: imprecise,
+          db: db,
+          newId: () => 'run-imprecise',
+          now: () => clock,
+        );
+
+        await failing.start();
+
+        expect(failing.problem, RecorderProblem.reducedAccuracy);
+        expect(failing.status, RecorderStatus.idle);
+        // Same as any other start that never began: no phantom row left for
+        // launch recovery to find.
+        expect(await db.activeRun(), isNull);
+        await imprecise.dispose();
+      },
+    );
+
     test('reports a failure that arrives mid-run', () async {
       final seen = <RecorderProblem?>[];
       recorder.problems.listen(seen.add);

@@ -1880,6 +1880,9 @@ class _ProblemLine extends StatelessWidget {
     RecorderProblem.permissionDeniedForever =>
       'Location is turned off for Run, so there is nothing to record. '
           'You can change it in Settings.',
+    RecorderProblem.reducedAccuracy =>
+      'Run only has approximate location, so nothing can be measured. '
+          'Turn on Precise Location for Run in Settings.',
     // Not "recording has paused": `_onSourceError` sets a problem and never
     // touches the status, so the run is still recording and the clock is still
     // running — and Pause means something specific two controls below this.
@@ -1908,9 +1911,12 @@ class _ProblemLine extends StatelessWidget {
   /// Only where Settings can actually change the outcome. A denied read is a
   /// designed-for outcome, not an error state — and Settings cannot reach the
   /// device-wide Location Services switch at all, which is why that state gets
-  /// a written path instead of a button.
+  /// a written path instead of a button. Precise Location joins the same two
+  /// for the same reason: there is no in-app prompt for it on either
+  /// platform, only the Settings toggle.
   bool get _offersSettings =>
-      problem == RecorderProblem.permissionDeniedForever;
+      problem == RecorderProblem.permissionDeniedForever ||
+      problem == RecorderProblem.reducedAccuracy;
 
   @override
   Widget build(BuildContext context) {

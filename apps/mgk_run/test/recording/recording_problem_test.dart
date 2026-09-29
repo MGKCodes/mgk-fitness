@@ -24,7 +24,7 @@ class _CountingRecorder extends FakeRunRecorder {
   }
 }
 
-/// The four ways recording can fail, and what each one offers to do about it.
+/// The five ways recording can fail, and what each one offers to do about it.
 ///
 /// `RecorderProblem` distinguishes two refusals on purpose — one "can be asked
 /// for again", the other says "re-asking does nothing, Settings only" — and the
@@ -99,6 +99,26 @@ void main() {
 
     await recorder.stop();
   });
+
+  testWidgets(
+    // EDGE-16: approximate location (iOS Precise Location off, or the
+    // Android equivalent) is granted permission, so there is no in-app
+    // prompt that could fix it — Settings is the only remedy, the same as
+    // a permanent permission refusal.
+    'reduced accuracy offers Settings too, and names Precise Location',
+    (WidgetTester tester) async {
+      final _CountingRecorder recorder = await pumpProblem(
+        tester,
+        RecorderProblem.reducedAccuracy,
+      );
+
+      expect(find.text('Open Settings'), findsOneWidget);
+      expect(find.text('Allow location'), findsNothing);
+      expect(find.textContaining('Precise Location'), findsOneWidget);
+
+      await recorder.stop();
+    },
+  );
 
   testWidgets('a device-wide switch offers no button at all, and says where '
       'to go', (WidgetTester tester) async {
