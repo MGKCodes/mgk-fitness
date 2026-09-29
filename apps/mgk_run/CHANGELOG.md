@@ -103,6 +103,20 @@ been on a store, so everything the app does is still listed here.
   to keep it short; afterwards it is told to ask how it went, once, and to wait
   for the answer. Races the runner has finished are carried in the brief with
   the times they ran.
+- **The coach asks before anything leaves the phone** (ADR-0036). The first
+  time a runner opens the coach, asks it anything or builds a plan, a sheet
+  says where their training goes — OpenRouter, and the AI model provider
+  behind it — what is sent and what never is, and asks. "Not now" sends
+  nothing. The answer is kept per account and can be taken back in Settings ›
+  Privacy & legal. The conversation now shows the medical disclaimer too, which
+  only the plan flow did before, and a signed-out runner tapping the coach
+  mark is asked for an account first instead of meeting a paywall that could
+  not sign them in.
+- **A coach reply can be reported from where it was read.** A long press on
+  any of the coach's replies, in the conversation or the plan intake, opens a
+  short report: a reason — harmful or unsafe, wrong or misleading, offensive,
+  something else — and an optional note. It is kept with the account for
+  review. A report that does not send says so and keeps what was written.
 
 **Race day, and the end of a plan** (ADR-0027)
 - **Race day is its own moment.** The Today card reads "Race day" over the
@@ -369,6 +383,52 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **This app's coach no longer touches Lift's.** Tidying old coach
+  conversations deleted Lift's old ones too, which stopped Lift's coach
+  remembering anything new; and restoring onto a new phone brought Lift's
+  coach conversations into this app, where they were sent to the coach as
+  running history. Both now reach only this app's conversations.
+- **The paywall stops telling you nothing was charged when it cannot know.**
+  Every refusal from the store read "That did not go through. Nothing has been
+  charged." -- including a payment still pending, which may well be charged, a
+  dropped connection, and a subscription you already had. Each now says what
+  happened: the payment is pending, there is no connection, or your store
+  account already has the subscription and Restore purchases is the way to it.
+  A restore finishes on "Restored." rather than "Payment went through".
+- **Deleting your account while subscribed says the subscription goes on.**
+  Deleting the account does not cancel a subscription, and the screen never
+  said so, so a runner could delete everything and keep paying. It now says
+  "Deleting your account does not cancel your subscription. Cancel it in
+  Google Play, or it will keep renewing." (or the App Store), before you
+  confirm and again afterwards, with a link to manage it.
+- **Account has a "Manage subscription" link, to the store that bills you.**
+  It said to cancel in the store and linked nowhere, and it named the store the
+  app was running on rather than the one charging: an App Store subscriber
+  signed in on Android was told to cancel in Google Play. The link opens this
+  app's subscription in Google Play, or Apple's subscriptions page.
+- **A subscription bought after signing out goes to an account, not to the
+  last one.** Signing out never detached the store, so a purchase made signed
+  out -- or before a new sign-in had reached the store -- was credited to the
+  account that had left, and whoever paid got nothing. Signing out now detaches
+  it, buying or restoring needs an account signed in, and the paywall offers a
+  way to sign in when it refuses.
+- **Deleting your account no longer leaves the phone ready to upload it all
+  again.** The phone's yes to backing up survived the deletion, so signing back
+  in -- or making a new account on the same phone -- sent every deleted run
+  straight back. A deletion now resets that answer, removes this app's settings
+  from a login kept for Lift, and erases this phone's copy too unless you
+  switch that off; the screen says which. It also stopped telling runners who
+  use Lift that their login had been removed when it had been kept, and says so
+  honestly when a login could not be removed.
+- **A second account signing in no longer gets the first one's training.** The
+  phone's runs, plan, coach conversations, photo and name said nothing about
+  whose they were, so the next account to sign in saw all of it, the coach
+  briefed itself from it, and the launch backfill pushed the first runner's runs
+  and routes into the new account. The phone now knows whose training it holds,
+  and a different account is asked first: erase this phone's training and
+  continue, or sign out. Nothing is restored or uploaded until it answers. A yes
+  to backing up now belongs to the account that gave it, and signing out can
+  also remove your data from the phone (off unless you turn it on).
 - **A subscription that has run out closes the coach, even if the store's
   final word never arrives.** A cancelled subscription stays live until an
   expiry notice ends it, and if that notice was lost nothing else checked the
@@ -454,5 +514,32 @@ been on a store, so everything the app does is still listed here.
   mid-row and the strip beneath it showed the backdrop's near-opaque foot as a
   full-width band. The reserve is gone; the per-tab clearance that was always
   doing the work stays.
+- **The backup switch no longer claims nothing leaves the phone.** The empty
+  Plan tab, the backup screen and the in-app privacy policy all said, in one
+  form or another, that nothing left the phone unless backup was on. The coach
+  sends a summary of the runner's training to the AI provider whatever the
+  switch says. All three now say what the switch decides — our servers — and
+  the backup screen admits the phone's own backup can hold a copy.
+- **What Health is asked for is what Health is used for: steps.** The Health
+  prompt, the intro and Settings promised to bring in runs recorded on a watch
+  and show them to the coach; nothing ever imported a workout, and steps never
+  reach the coach. Workouts are no longer requested, and every sentence about
+  Health now says it reads the step count over a run recorded here. Buttons in
+  front of a system permission prompt say "Continue" rather than "Allow",
+  the Health write string says the app never writes, and sign-up no longer
+  lists the coach as something a free account gets.
+- **The profile photo is described as it is: never sent to us or to the
+  coach.** Account, the photo permission string and the privacy policy also
+  said it was kept out of backup, so a new phone would start again with
+  initials. Nothing kept it out: the phone's own iCloud or Google backup can
+  carry it, as it can the rest of the app's data. The policy's "your phone is
+  the only copy" gets the same correction.
+- **The privacy policy catches up with the app.** It says the coach asks before
+  anything reaches the AI provider and where that is taken back, that a
+  reported reply is kept for review and deleted with the account, that a
+  conversation also sends up to four older messages the coach recalls, and
+  that a note written on a run is backed up with it. Dated 29 September 2026,
+  and the published pages no longer carry a "DO NOT PUBLISH" banner that had
+  outlived its reason.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main

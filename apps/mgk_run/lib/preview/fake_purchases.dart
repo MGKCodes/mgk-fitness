@@ -20,6 +20,7 @@ class FakePurchases implements PurchaseClient {
     List<CoachOffer>? offers,
     this.buyOutcome = PurchaseOutcome.purchased,
     this.restoreOutcome = PurchaseOutcome.nothingToRestore,
+    this.managePageOpens = true,
   }) : _offers = offers ?? demoOffers;
 
   final List<CoachOffer> _offers;
@@ -41,6 +42,17 @@ class FakePurchases implements PurchaseClient {
 
   /// How many times [restore] was called.
   int restores = 0;
+
+  /// How many times [logOut] was called. A sign-out that never reaches the
+  /// store leaves its purchases attached to whoever just left.
+  int logOuts = 0;
+
+  /// What [showManageSubscriptions] answers. False stands in for a store
+  /// page that would not open, which sends the caller to the URL instead.
+  final bool managePageOpens;
+
+  /// How many times [showManageSubscriptions] was called.
+  int managePages = 0;
 
   /// The two tiers, priced as ADR-0029 settled them. **A fixture, not a
   /// source of truth** — the shipping app reads both figures off the
@@ -80,6 +92,18 @@ class FakePurchases implements PurchaseClient {
   Future<PurchaseOutcome> restore() async {
     restores++;
     return restoreOutcome;
+  }
+
+  @override
+  Future<void> logOut() async {
+    logOuts++;
+    identifiedAs = null;
+  }
+
+  @override
+  Future<bool> showManageSubscriptions() async {
+    managePages++;
+    return managePageOpens;
   }
 }
 

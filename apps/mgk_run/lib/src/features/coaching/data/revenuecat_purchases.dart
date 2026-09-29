@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
 import '../domain/coach_offer.dart';
@@ -52,6 +53,36 @@ import 'purchase_client.dart';
 String productTitle(String raw) =>
     raw.replaceFirst(RegExp(r'\s*\(.*\)\s*$'), '').trim();
 
+/// What a store error means for the runner, by RevenueCat's code for it.
+///
+/// **Five different things used to be one.** A payment still pending, a dead
+/// connection, a subscription already owned and a receipt attached to another
+/// account were all `failed`, and the screen told every one of them that
+/// nothing had been charged. Two of those are statements about money the app
+/// cannot make: a pending payment may well be charged, and a connection that
+/// dropped mid-purchase does not say where the purchase got to.
+PurchaseOutcome outcomeForError(PurchasesErrorCode code) => switch (code) {
+  PurchasesErrorCode.purchaseCancelledError => PurchaseOutcome.cancelled,
+  PurchasesErrorCode.paymentPendingError => PurchaseOutcome.pending,
+  PurchasesErrorCode.networkError ||
+  PurchasesErrorCode.offlineConnectionError => PurchaseOutcome.offline,
+  PurchasesErrorCode.productAlreadyPurchasedError ||
+  PurchasesErrorCode.receiptAlreadyInUseError ||
+  PurchasesErrorCode.receiptInUseByOtherSubscriberError =>
+    PurchaseOutcome.alreadyOwned,
+  _ => PurchaseOutcome.failed,
+};
+
+/// [outcomeForError] for an exception off the platform channel, whose code
+/// may not be one of RevenueCat's at all.
+PurchaseOutcome _outcomeOf(PlatformException e) {
+  try {
+    return outcomeForError(PurchasesErrorHelper.getErrorCode(e));
+  } on FormatException {
+    return PurchaseOutcome.failed;
+  }
+}
+
 class RevenueCatPurchases implements PurchaseClient {
   /// [AppConfig.storeKey], not `revenueCatKey`: the key differs per store and
   /// the wrong one does not degrade, it fails to configure at all.
@@ -90,6 +121,9 @@ class RevenueCatPurchases implements PurchaseClient {
   /// `HomeShell` calls `identify` unawaited from `initState`, so a failure
   /// there is silent and permanent for the session. Holding the id lets the
   /// one moment that actually matters retry it.
+  ///
+  /// **Cleared by [logOut].** It never was, so it answered for whoever had
+  /// last signed in for the rest of the session.
   String? _userId;
 
   @override
@@ -104,7 +138,8 @@ class RevenueCatPurchases implements PurchaseClient {
     }
   }
 
-  /// Whether the SDK is attached to a real Supabase user, retrying once.
+  /// Whether the SDK is attached to **the account signed in now**, retrying
+  /// once.
   ///
   /// **This is the guard build 12 did not have.** RevenueCat starts every
   /// install on an `$RCAnonymousID:`, and the webhook refuses to write a row
@@ -113,17 +148,66 @@ class RevenueCatPurchases implements PurchaseClient {
   /// "an entitlement that never arrives" -- which on a real device on
   /// 2026-09-04 surfaced as a paying subscriber staring at a paywall that no
   /// relaunch would clear.
+  ///
+  /// **And then it asked the wrong question.** It checked only that the SDK
+  /// was not anonymous, so once anybody had been identified it answered yes
+  /// for good: signed out, or signed in as somebody whose identify had not
+  /// landed, a purchase went to the previous account. It now asks whether the
+  /// SDK's user *is* the signed-in account, and with nobody signed in the
+  /// answer is no.
   Future<bool> _identified() async {
+    final String? id = _userId;
+    if (id == null) return false;
     try {
-      if (!await Purchases.isAnonymous) return true;
-      final String? id = _userId;
-      if (id == null) return false;
+      if (await Purchases.appUserID == id) return true;
       // One retry, here rather than at launch: a transient logIn failure is
       // exactly the case worth recovering from, and this is the moment it
       // matters.
       await Purchases.logIn(id);
-      return !await Purchases.isAnonymous;
+      return await Purchases.appUserID == id;
     } on PlatformException {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> logOut() async {
+    _userId = null;
+    // Never configures the SDK to do it. An SDK this process never set up has
+    // nobody attached in this session, and a stale id from an earlier one is
+    // refused at the point of sale by [_identified] rather than cleared here
+    // at the cost of a network call on the way out.
+    if (!_configured) return;
+    try {
+      // RevenueCat refuses to log out an anonymous user, and there is nothing
+      // to detach from one.
+      if (await Purchases.isAnonymous) return;
+      await Purchases.logOut();
+    } on PlatformException {
+      // Deliberate. With [_userId] gone, [_identified] refuses the next sale
+      // until an account is identified again, whatever the SDK still holds.
+    }
+  }
+
+  /// The management page RevenueCat holds for this runner's subscription.
+  ///
+  /// **Not StoreKit's in-app sheet, because the plugin does not expose it.**
+  /// `purchases_flutter` 10.10 has no `showManageSubscriptions`, so this opens
+  /// the `managementURL` the SDK reports for the active subscription -- the
+  /// App Store's subscriptions page for an Apple one. When the plugin gains
+  /// the call, it replaces the body of this method and nothing else.
+  @override
+  Future<bool> showManageSubscriptions() async {
+    if (!await _ready()) return false;
+    try {
+      final CustomerInfo info = await Purchases.getCustomerInfo();
+      final String? url = info.managementURL;
+      if (url == null) return false;
+      return await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Object {
       return false;
     }
   }
@@ -183,16 +267,16 @@ class RevenueCatPurchases implements PurchaseClient {
       await Purchases.purchase(PurchaseParams.package(package));
       return PurchaseOutcome.purchased;
     } on PlatformException catch (e) {
-      return PurchasesErrorHelper.getErrorCode(e) ==
-              PurchasesErrorCode.purchaseCancelledError
-          ? PurchaseOutcome.cancelled
-          : PurchaseOutcome.failed;
+      return _outcomeOf(e);
     }
   }
 
   @override
   Future<PurchaseOutcome> restore() async {
     if (!await _ready()) return PurchaseOutcome.failed;
+    // Same rule as [buy], for the same reason: a receipt restored while the SDK
+    // is attached to nobody, or to the account that left, reaches no coach.
+    if (!await _identified()) return PurchaseOutcome.notIdentified;
     try {
       final CustomerInfo info = await Purchases.restorePurchases();
       // **The one place the SDK's own view is read, and it grants nothing.**
@@ -204,8 +288,8 @@ class RevenueCatPurchases implements PurchaseClient {
       return info.activeSubscriptions.isEmpty
           ? PurchaseOutcome.nothingToRestore
           : PurchaseOutcome.purchased;
-    } on PlatformException {
-      return PurchaseOutcome.failed;
+    } on PlatformException catch (e) {
+      return _outcomeOf(e);
     }
   }
 }

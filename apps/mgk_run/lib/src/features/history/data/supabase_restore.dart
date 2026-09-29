@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/supabase/paged_select.dart';
+import '../../coaching/data/coach_memory_mirror.dart' show kCoachApp;
 import '../../settings/domain/backup_consent.dart';
 import '../domain/run_writer.dart';
 
@@ -68,6 +69,10 @@ class SupabaseRestore implements DataRestore {
   /// come back in full — they are small, and they are what the log, the
   /// standing and the coach's brief are built from.
   static const int _tracesForRecentRuns = 30;
+
+  /// How many conversations' turns are asked for in one read. The ids travel
+  /// in the URL, and a hundred of them is a few kilobytes.
+  static const int _conversationsPerRead = 100;
 
   /// Restores everything, in dependency order. Returns what was pulled.
   ///
@@ -204,10 +209,22 @@ class SupabaseRestore implements DataRestore {
   /// Only onto a device that remembers nothing. A phone mid-conversation is
   /// not missing its memory, and merging a server copy into a live transcript
   /// risks interleaving turns by `seq` into an order neither side ever said.
+  ///
+  /// **This app's memory, and nobody else's.** The reads named no app, and the
+  /// coach's tables hold the whole suite's: a restore brought Lift's
+  /// conversations, turns and -- whichever row came back first -- its rolling
+  /// summary into this app, which then sent them to the model as this
+  /// runner's. Summaries and conversations are filtered on their `app`
+  /// column; turns have none, so they are fetched for this app's
+  /// conversations and no others.
   Future<int> _restoreMemory() async {
     if (!await _db.hasNoCoachMemory()) return 0;
 
-    final summaryRows = await _coach.from('summaries').select().limit(1);
+    final summaryRows = await _coach
+        .from('summaries')
+        .select()
+        .eq('app', kCoachApp)
+        .limit(1);
     if (summaryRows.isNotEmpty) {
       final row = Map<String, dynamic>.from(summaryRows.first);
       await _db.restoreCoachSummary(
@@ -224,14 +241,28 @@ class SupabaseRestore implements DataRestore {
       (f, t) => _coach
           .from('conversations')
           .select()
+          .eq('app', kCoachApp)
           .order('last_turn_at', ascending: false)
           .range(f, t),
     );
     if (convoRows.isEmpty) return 0;
 
-    final turnRows = await fetchAllPages(
-      (f, t) => _coach.from('turns').select().order('created_at').range(f, t),
-    );
+    // In slices, so a long history does not become one URL too long to send.
+    final ids = <String>[for (final row in convoRows) row['id'] as String];
+    final turnRows = <Map<String, dynamic>>[];
+    for (var i = 0; i < ids.length; i += _conversationsPerRead) {
+      final slice = ids.skip(i).take(_conversationsPerRead).toList();
+      turnRows.addAll(
+        await fetchAllPages(
+          (f, t) => _coach
+              .from('turns')
+              .select()
+              .inFilter('conversation_id', slice)
+              .order('created_at')
+              .range(f, t),
+        ),
+      );
+    }
 
     await _db.restoreCoachMemory(
       conversations: <CoachConversationsCompanion>[

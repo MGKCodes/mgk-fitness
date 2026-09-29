@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/backup_consent.dart';
+import '../domain/local_data.dart';
 
-/// The real [BackupConsentStore]: a one-word file in the app support directory.
+/// The real [BackupConsentStore]: a small file in the app support directory.
 ///
 /// A file rather than a table, matching `FileUnitCache` — one short value, never
 /// queried in bulk, needs only to survive relaunch. It must also be readable
@@ -22,15 +25,47 @@ import '../domain/backup_consent.dart';
 /// "never asked" stay distinguishable on disk. Collapsing them would make the
 /// app re-ask someone who already said no.
 ///
+/// **And who said it.** The file used to hold the bare word, which made a yes
+/// the phone's rather than the runner's: the next account to sign in inherited
+/// it, and so did a phone restored from an OS backup. It now records the
+/// account that answered, and [read] returns the answer through [consentFor],
+/// so a yes only ever authorises uploads for the account that gave it, and only
+/// while that account owns the training on the phone. A file written by an
+/// older build holds the bare word and no account; its yes reads as unknown
+/// and is asked again, and its no stays a no.
+///
 /// Imports `dart:io`, so it stays out of any web import graph — reach it
 /// through `createBackupConsentStore()`.
 class FileBackupConsent implements BackupConsentStore {
-  FileBackupConsent({Future<Directory> Function()? directory})
-    : _directory = directory ?? getApplicationSupportDirectory;
+  FileBackupConsent({
+    Future<Directory> Function()? directory,
+    String? Function()? signedInUserId,
+    LocalDataOwnerStore? owner,
+  }) : _directory = directory ?? getApplicationSupportDirectory,
+       _signedIn = signedInUserId ?? _supabaseUserId,
+       _owner = owner;
 
   final Future<Directory> Function() _directory;
 
+  /// Who is signed in right now. Asked per read, because the answer changes
+  /// underneath a store that lives as long as the app does.
+  final String? Function() _signedIn;
+
+  /// Whose training is on the phone. Null reads every phone as unclaimed,
+  /// which is what a store with nobody to ask should assume.
+  final LocalDataOwnerStore? _owner;
+
   static const _fileName = 'backup_consent';
+
+  /// The session's user, or null — including when Supabase was never
+  /// initialised, which is a build with no backend rather than an error.
+  static String? _supabaseUserId() {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } on Object {
+      return null;
+    }
+  }
 
   Future<File> _file() async =>
       File(p.join((await _directory()).path, _fileName));
@@ -41,9 +76,29 @@ class FileBackupConsent implements BackupConsentStore {
       final file = await _file();
       if (!await file.exists()) return BackupConsent.unknown;
       final text = (await file.readAsString()).trim();
-      return BackupConsent.values.firstWhere(
-        (c) => c.name == text,
+      final String word;
+      final String? givenBy;
+      if (text.startsWith('{')) {
+        final decoded = jsonDecode(text);
+        if (decoded is! Map<String, dynamic>) return BackupConsent.unknown;
+        final answer = decoded['answer'];
+        final by = decoded['given_by'];
+        word = answer is String ? answer : '';
+        givenBy = by is String && by.isNotEmpty ? by : null;
+      } else {
+        // An older build's file: the bare word, nobody attached.
+        word = text;
+        givenBy = null;
+      }
+      final answer = BackupConsent.values.firstWhere(
+        (c) => c.name == word,
         orElse: () => BackupConsent.unknown,
+      );
+      return consentFor(
+        answer,
+        givenBy: givenBy,
+        signedIn: _signedIn(),
+        owner: await _owner?.read(),
       );
     } on Object {
       return BackupConsent.unknown;
@@ -58,7 +113,13 @@ class FileBackupConsent implements BackupConsentStore {
   @override
   Future<void> write(BackupConsent consent) async {
     try {
-      await (await _file()).writeAsString(consent.name, flush: true);
+      await (await _file()).writeAsString(
+        jsonEncode(<String, String?>{
+          'answer': consent.name,
+          'given_by': _signedIn(),
+        }),
+        flush: true,
+      );
     } on Object {
       // Deliberate: see above.
     }

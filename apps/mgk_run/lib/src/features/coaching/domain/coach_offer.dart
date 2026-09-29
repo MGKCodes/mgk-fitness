@@ -67,7 +67,26 @@ enum PurchaseOutcome {
   /// the only outcome better than selling something we cannot deliver.
   notIdentified,
 
-  /// The store refused, the network died, or the SDK is not configured.
+  /// The store has the payment and has not settled it -- a bank's extra
+  /// check, a parent's approval, a slow payment method. **Not a failure**:
+  /// the money may still move, and a runner told it failed would try again
+  /// and could pay twice.
+  pending,
+
+  /// No connection to the store. Whether anything was charged is not
+  /// something a dropped connection can say, so the screen does not say it.
+  offline,
+
+  /// This store account already has the subscription, or its receipt is
+  /// attached to another account. Restoring is the way to it, not buying
+  /// again.
+  alreadyOwned,
+
+  /// Anything else the store refused, or an SDK that is not configured.
+  ///
+  /// **Every refusal used to land here**, and the screen answered all of them
+  /// with "Nothing has been charged" -- including a payment still pending,
+  /// which may well be charged, and a subscription the runner already owns.
   failed;
 
   bool get isPurchased => this == PurchaseOutcome.purchased;

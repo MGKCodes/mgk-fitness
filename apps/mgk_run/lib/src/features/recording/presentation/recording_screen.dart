@@ -1857,7 +1857,8 @@ class _ProblemLine extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: AppTextButton(
-              label: 'Allow location',
+              // Not "Allow": the system prompt it raises is where that is said.
+              label: 'Continue',
               onPressed: onAskAgain,
             ),
           ),

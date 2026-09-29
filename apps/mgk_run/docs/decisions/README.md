@@ -23,7 +23,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0009](0009-greyscale-design-language.md) | Greyscale design language (unified with Liftio) | Accepted |
 | [0010](0010-strength-sessions-not-prescribed.md) | Strength sessions are scheduled, not prescribed | Accepted |
 | [0011](0011-a-plan-has-a-shape.md) | A plan has a shape (block / rhythm / horizon / log) | Accepted |
-| [0012](0012-backup-is-consented-restore-only-adds.md) | Backup is consented, and restore only ever adds | Amended in part by [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) |
+| [0012](0012-backup-is-consented-restore-only-adds.md) | Backup is consented, and restore only ever adds | Amended in part by [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md), [0035](0035-the-phones-training-belongs-to-one-account.md) |
 | [0013](0013-page-every-postgrest-read.md) | Page every PostgREST read | Accepted |
 | [0014](0014-model-is-chosen-per-surface-and-per-tier.md) | The model is chosen per surface, and per tier | Amended by [0030](0030-the-coach-is-the-paid-half.md) |
 | [0015](0015-spend-is-capped-over-three-windows.md) | Spend is capped over three windows, not one | Accepted |
@@ -43,9 +43,11 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Amended in part by [0030](0030-the-coach-is-the-paid-half.md) and [0038](0038-premium-buys-more-coaching-not-a-different-model.md) |
 | [0030](0030-the-coach-is-the-paid-half.md) | The coach is the paid half, on both apps | Amended in part by [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) |
 | [0031](0031-the-in-run-map-pans-and-follow-is-a-mode.md) | The in-run map pans, and following is a mode | Accepted |
-| [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) | Identity is an event, and the tier is re-read on resume | Accepted |
+| [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) | Identity is an event, and the tier is re-read on resume | Amended in part by [0035](0035-the-phones-training-belongs-to-one-account.md) |
 | [0033](0033-the-bottom-chrome-floats.md) | The bottom chrome floats, and every surface pads for it | Accepted |
 | [0034](0034-a-plan-starts-on-the-coming-monday.md) | A plan starts on the coming Monday | Accepted |
+| [0035](0035-the-phones-training-belongs-to-one-account.md) | The phone's training belongs to one account | Accepted |
+| [0036](0036-the-coach-asks-before-it-sends.md) | The coach asks before it sends | Accepted |
 | [0037](0037-the-sandbox-stays-open-in-production.md) | The sandbox stays open in production | Accepted |
 | [0038](0038-premium-buys-more-coaching-not-a-different-model.md) | Premium buys more coaching, not a different model | Accepted |
 | [0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md) | One commit, two stores, and the pubspec owns the build number | Accepted |

@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
+import '../data/supabase_coach_reports.dart';
+import '../domain/coach_report.dart';
+import '../domain/intake_conversation.dart';
 import '../domain/intake_slots.dart';
 import 'chat_widgets.dart';
+import 'coach_report_sheet.dart';
 import 'onboarding_controller.dart';
 
 /// The slot-filling onboarding conversation — a chat, not a form (onboarding.md).
@@ -15,6 +21,7 @@ class OnboardingScreen extends StatefulWidget {
     required this.controller,
     required this.onReview,
     this.onExit,
+    this.reporter = const SupabaseCoachReports(),
   });
 
   final OnboardingController controller;
@@ -26,6 +33,10 @@ class OnboardingScreen extends StatefulWidget {
   /// it — the standalone preview has nowhere to go.
   final VoidCallback? onExit;
 
+  /// Where a reply the runner reports goes; a long press on any of the
+  /// coach's replies opens the report sheet, as it does in the conversation.
+  final CoachReporter reporter;
+
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
@@ -33,6 +44,18 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
+
+  /// Replies reported from here, so each says so under it.
+  final Set<IntakeMessage> _reported = <IntakeMessage>{};
+
+  Future<void> _report(IntakeMessage message) async {
+    final sent = await reportCoachReply(
+      context,
+      reply: message.text,
+      reporter: widget.reporter,
+    );
+    if (sent && mounted) setState(() => _reported.add(message));
+  }
 
   OnboardingController get _c => widget.controller;
 
@@ -138,6 +161,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: ChatBubble(
                         text: message.text,
                         isUser: message.isUser,
+                        onReport: message.isUser
+                            ? null
+                            : () => unawaited(_report(message)),
+                        reported: _reported.contains(message),
                       ),
                     ),
                   if (_c.isBusy) const TypingBubble(),

@@ -22,6 +22,13 @@
 > policy that is wrong, and it drags the app into a stricter review bracket for
 > nothing.
 >
+> **Revised 2026-09-29**, again against the code. The coach now asks before
+> anything reaches the AI provider, and that permission is withdrawable in
+> Settings; a coach reply can be reported, which stores it; the conversation
+> also sends up to four recalled messages and the rolling summary; run notes
+> are backed up; Health is asked for steps alone; and two claims about backup
+> were false in the presence of the phone's own iCloud or Google backup.
+>
 > Still open, and different in kind from the above:
 >
 > 1. **A processor agreement with OpenRouter** covering special-category data.
@@ -42,7 +49,7 @@
 >    and an OS version for itself. Check their privacy manifest before filing
 >    the App Store's privacy labels.
 
-**Last updated:** 10 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 29 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 ## Summary
@@ -59,26 +66,29 @@ provider. We do not sell your data. You can delete everything at any time.
 ## What we collect
 
 - **Account data** — your email address, the account identifier it is keyed to,
-  and **the name you give the coach**, if you give one. Only if you create an
-  account; the app works without one.
+  **the name you give the coach**, if you give one, and the date you gave the
+  coach permission to send your training to the AI provider, if you did. Only
+  if you create an account; the app works without one.
 
   The name is optional and you can change or remove it at any time — clear the
   field and the coach stops using one. It is stored with your login rather than
   with your training, so it is what the app calls you and nothing more. It is
   **never sent to the AI provider**; see the sub-processors below.
 - **A profile photo, if you choose one** — and it is the one thing here that
-  **never leaves your phone**. It is copied into the app's own storage, it is
-  not uploaded, not sent to your coach, and not included in backup, so a new
-  phone starts again with your initials. Remove it in Account, or by deleting
-  the app.
+  **we never receive**. It is copied into the app's own storage, and it is never
+  uploaded to us or sent to your coach. Your phone's own backup (iCloud or
+  Google) may include it, as it may include the rest of the app's data; that
+  backup is between you and Apple or Google. Remove it in Account, or by
+  deleting the app.
 - **Profile data** — your unit preference, and your running profile: current
   volume, longest run, available days, a recent race or time trial, and any
   injury notes you choose to give. We do **not** ask for your date of birth or
   your weight.
 - **Activity data** — the runs you record, and any you add by hand: route
-  points, distance, duration and pace. If you give Apple Health permission we
-  also read your **step count** for the run. A heart rate is stored only if you
-  type one in; we do not read heart rate from a watch or a chest strap.
+  points, distance, duration, pace, and any note you write on a run. If you give
+  Apple Health permission we also read your **step count** for the run. A heart
+  rate is stored only if you type one in; we do not read heart rate from a watch
+  or a chest strap.
 - **Training data** — generated plans and sessions, whether each session was
   marked done or skipped, your rating of how hard it felt (RPE), and the plans
   you have finished with, so your coach knows what you have already tried.
@@ -87,6 +97,9 @@ provider. We do not sell your data. You can delete everything at any time.
   you wrote, so it may contain anything you chose to tell it, including how you
   feel and where you hurt. Treat it as the most personal thing here, because it
   is.
+- **Reports** — if you report one of the coach's replies: the reply, the reason
+  you chose and any note you add, kept with your account so we can review it.
+  They are deleted with your account.
 - **Usage records** — for each AI request, which part of the coach it came from,
   how many tokens it used and what it cost. Needed to enforce fair-use limits
   and keep the service affordable; it holds no training or message content.
@@ -96,15 +109,17 @@ We collect only what the coaching product needs (data minimisation).
 ## Health data
 
 Activity and profile data are **health data — special-category data under UK
-GDPR**. We process it to provide the coaching service you request (the lawful
-basis is your consent, which you can withdraw by deleting your data).
+GDPR**. We process it to provide the coaching service you request. The lawful
+basis is your **explicit consent**: the coach asks for it before anything is
+sent to the AI provider, backup asks for it before anything is stored on our
+servers, and you can withdraw either in Settings, or all of it by deleting your
+data.
 
 Apple **HealthKit** data is read only with your explicit permission, and **we
-never write anything to Health**. We ask for two things: your workouts, which
-we read to show you how many Health has recorded and then discard without
-storing, and your **step count for a run**, which we do store alongside that
-run. HealthKit data is never used for advertising and is not shared with third
-parties for their own purposes.
+never write anything to Health**. We ask for one thing: your **step count over
+each run you record**, which we store alongside that run. HealthKit data is
+never used for advertising and is not shared with third parties for their own
+purposes.
 
 On Android the app requests no health permissions at all.
 
@@ -120,9 +135,11 @@ On Android the app requests no health permissions at all.
   - To **generate or adapt a plan**: your training profile and the plan itself —
     goals, volumes, available days, session history, and your injury notes if
     you gave any.
-  - To **hold a conversation**: a written summary of your training *and up to
-    your last twenty messages, as you wrote them*. If you told your coach about
-    an injury, a symptom or how you are feeling, that text is sent.
+  - To **hold a conversation**: a written summary of your training and of what
+    you have told the coach before, *up to your last twenty messages, as you
+    wrote them*, and up to four older messages of yours that the coach recalls
+    because they match what you are asking. If you told your coach about an
+    injury, a symptom or how you are feeling, that text is sent.
 
   We never send your **name, email, or account identifier**, and we never send
   **raw GPS traces**. One honest qualification on the first of those: your
@@ -132,6 +149,11 @@ On Android the app requests no health permissions at all.
   We will not pretend the rest is anonymous: taken together it is health
   information about one person, and if you would rather it did not leave the
   app, do not use the coach.
+
+  **The coach asks first.** Before anything is sent to OpenRouter the app asks
+  your permission, saying what is sent and what is not, and until you agree
+  nothing is. You can withdraw it at any time in **Settings › Privacy &
+  legal**, and the coach asks again before its next request.
 
   **What we control, and what we do not.** Every request we make asks OpenRouter
   to route only to providers that do not keep or train on what we send. That
@@ -163,20 +185,23 @@ all. Data in transit is encrypted (HTTPS/TLS).
 ## Backing up is optional, and off until you ask
 
 **Nothing about your training** leaves your phone for our servers unless you
-turn on **Back up my data** in Settings. It starts off. With it off, your phone
-is the only copy, and an uninstall loses everything — which is the trade we let
-you make rather than make for you, because this is health information.
+turn on **Back up my data** in Settings. It starts off. With it off, we keep no
+copy: your training is on your phone, and in your phone's own backup if it
+makes one, and deleting the app deletes it from the phone — which is the trade
+we let you make rather than make for you, because this is health information.
 
-Two things are not covered by that switch, because they are what an account
-*is* rather than something it stores: your **email address**, which we need to
-sign you in, and your **unit preference**, which follows you to a new phone so
-the app opens in miles if that is how you left it. Both are written when you
-sign in and change, whatever the backup switch says. Neither is training data.
+Some things are not covered by that switch, because they are what an account
+*is*, or something you send us yourself, rather than training we keep: your
+**email address**, which we need to sign you in; your **unit preference**, which
+follows you to a new phone so the app opens in miles if that is how you left it;
+the **date you gave the coach permission** to send your training to the AI
+provider; and any **coach reply you report**. They are written when you sign
+in, change them or send them, whatever the backup switch says.
 
 With backup on:
 
-- Your runs, routes, plans and coach conversations are copied to our Supabase
-  project in **eu-west-1 (Ireland)**.
+- Your runs (with any note you wrote on one), routes, plans and coach
+  conversations are copied to our Supabase project in **eu-west-1 (Ireland)**.
 - Signing in on a new phone pulls them back down, so a lost or replaced device
   does not lose your training. The restore only ever **adds** — it will not
   overwrite anything already on the new phone.
@@ -185,8 +210,8 @@ With backup on:
   under Retention, are not part of that — use **Delete account** for those.
 
 The AI requests described above are a separate thing and happen either way: the
-coach cannot answer without sending your training context, so using the coach
-sends it whether or not backup is on.
+coach cannot answer without sending your training context, so using the coach,
+once you have given it permission, sends it whether or not backup is on.
 
 ## Sharing with our lifting app
 
@@ -204,13 +229,16 @@ and is deleted with the run it came from.
 ## Your rights
 
 Under UK GDPR you can access, correct, export, or delete your data, and withdraw
-consent. There are two in-app controls, and they do different things:
+consent. There are three in-app controls, and they do different things:
 
 - **Back up my data → off** withdraws consent to storing your training on our
   servers and deletes what is already there. Your phone keeps its copy.
+- **Coach and AI**, in Settings › Privacy & legal, withdraws your permission for
+  the coach to send anything to the AI provider. Nothing more is sent, and the
+  coach asks again before it next would.
 - **Delete account** removes every record this app holds for you — runs, route
-  points, splits, plans, sessions, your runner profile, and your coach
-  conversations and their summary. It sweeps every table keyed to your account
+  points, splits, plans, sessions, your runner profile, your coach
+  conversations and their summary, and any coach replies you reported. It sweeps every table keyed to your account
   rather than a list someone has to remember to update, so a feature added later
   is covered by that design rather than by our diligence.
 

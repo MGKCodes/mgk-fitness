@@ -89,3 +89,25 @@ class CoachNotEntitledException implements CoachException {
   @override
   String toString() => message;
 }
+
+/// The signed-in runner has not agreed to their training going to the AI
+/// provider, so nothing was sent.
+///
+/// Thrown by `CoachService` **before** a request is built, on every surface.
+/// The screens ask first, and this is what makes asking the rule rather than
+/// a habit: a caller added next month that forgets to ask still cannot send.
+///
+/// Neither a fault nor a door, for the same reason [CoachNotEntitledException]
+/// is not a fault. Retrying cannot help and paying cannot either; the answer
+/// is the question, which the UI puts back in front of them.
+class CoachConsentRequiredException implements CoachException {
+  const CoachConsentRequiredException();
+
+  @override
+  String get message =>
+      'Your coach needs your permission before anything is sent. Nothing was '
+      'sent.';
+
+  @override
+  String toString() => message;
+}

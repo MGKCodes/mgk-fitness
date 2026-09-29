@@ -14,14 +14,19 @@ import 'package:health/health.dart';
 /// product decision as much as a technical one. Nothing belongs here that the
 /// app does not actually put on a screen.
 ///
-/// - `WORKOUT` — runs recorded on a watch or in another app, imported into the
-///   log. Distance and energy ride on the workout itself, so the quantity types
-///   behind them are deliberately *not* requested.
 /// - `STEPS` — the one figure on a run summary that a GPS trace cannot produce.
 ///   Strava's summary for the same 10 km carried 8,468 of them and ours carried
-///   nothing, which is what put this here.
+///   nothing, which is what put this here. Cadence on the summary is derived
+///   from it.
+///
+/// **`WORKOUT` was on this list until 2026-09-29, and came off for that rule.**
+/// It was asked for so runs recorded on a watch could be imported into the
+/// log, and that import was never built: the only reader was a count on the
+/// Settings row. The sheet, the purpose string and the intro all promised the
+/// import regardless. Asking for a type to show a number is not a use, so the
+/// type went rather than the copy being bent round it. `HealthKitWorkouts.since`
+/// still exists for the day an import does, and has to put it back here first.
 const List<HealthDataType> kHealthReadTypes = <HealthDataType>[
-  HealthDataType.WORKOUT,
   HealthDataType.STEPS,
 ];
 

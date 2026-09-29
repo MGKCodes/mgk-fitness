@@ -12,12 +12,19 @@ import 'package:mgk_run/src/features/health/data/health_read_types.dart';
 /// These are the assertions that stand in for the symptom.
 void main() {
   test('every type the app reads is a type the app asks permission for', () {
-    // Workouts, imported into the log from a watch or another app.
-    expect(kHealthReadTypes, contains(HealthDataType.WORKOUT));
     // Steps, read over a finished run's window — the figure Strava had for the
     // 23 Aug 10 km (8,468) and this app had no way to produce, because a GPS
     // trace cannot count them.
     expect(kHealthReadTypes, contains(HealthDataType.STEPS));
+  });
+
+  test('workouts are not asked for, because nothing imports them', () {
+    // They were, until 2026-09-29, so runs recorded on a watch could be
+    // imported into the log. The import was never built; the only reader was
+    // a count on the Settings row, while the sheet, the purpose string and
+    // the intro all promised the import. Asking for a type to print a number
+    // is not a use. Put it back in the same change as an import that uses it.
+    expect(kHealthReadTypes, isNot(contains(HealthDataType.WORKOUT)));
   });
 
   test('the request is read-only and matches the types one for one', () {
@@ -37,6 +44,6 @@ void main() {
     // rule is that a type earns its place by appearing somewhere; heart rate,
     // energy and flights climbed are all readable and all deliberately absent
     // until something draws them (see the Phase 2 audit).
-    expect(kHealthReadTypes, hasLength(2));
+    expect(kHealthReadTypes, hasLength(1));
   });
 }
