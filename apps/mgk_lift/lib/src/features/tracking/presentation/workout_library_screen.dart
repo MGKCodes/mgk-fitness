@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../sync/presentation/backup_scheduler.dart';
@@ -174,78 +176,119 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
     if (mounted) await _load();
   }
 
+  /// The glass header's height below the status bar, until it has been
+  /// measured.
+  static const double _headerHeight = 72;
+
+  /// What the header measured, status bar included.
+  double? _header;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final saved = _saved;
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: Row(
-                children: <Widget>[
-                  AppIconButton(
-                    icon: Icons.arrow_back,
-                    tooltip: 'Back',
-                    color: AppColors.textSecondary,
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+      // A quiet photograph, the rows scrolling up under a glass header — the
+      // header is the one pane, and the rows stay solid (D6).
+      body: PhotoBackdrop(
+        image: 'assets/images/backgrounds/hero_home.webp',
+        scrim: ScrimStrength.quiet,
+        child: Builder(
+          builder: (context) {
+            final top = MediaQuery.paddingOf(context).top;
+            // Measured, not assumed: its two lines grow with the phone's text
+            // size, and the list starts wherever the header actually ends.
+            final header = _header ?? top + _headerHeight;
+            return Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: switch (saved) {
+                    // Null is "not read yet", empty is "you have none". A
+                    // spinner where the empty state belongs tells a new lifter
+                    // to wait for something that is never coming.
+                    null => const Center(child: CircularProgressIndicator()),
+                    final List<SavedWorkout> list when list.isEmpty => Padding(
+                      padding: EdgeInsets.only(top: header),
+                      child: _Empty(
+                        onBrowse: _browse,
+                        onBuild: () => _edit(null),
+                      ),
+                    ),
+                    final List<SavedWorkout> list => ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        header + AppSpacing.sm,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                      ),
                       children: <Widget>[
-                        const SectionLabel('Library'),
-                        Text(
-                          'Your workouts',
-                          style: theme.textTheme.titleLarge,
-                        ),
+                        for (final (i, workout) in list.indexed)
+                          Entrance(
+                            index: i,
+                            child: _WorkoutRow(
+                              workout: workout,
+                              lastDone: lastDone(workout.id, widget.log),
+                              onTap: () => _preview(workout),
+                              backup: widget.backup,
+                            ),
+                          ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: switch (saved) {
-                // Null is "not read yet", empty is "you have none". A spinner
-                // where the empty state belongs tells a new lifter to wait for
-                // something that is never coming.
-                null => const Center(child: CircularProgressIndicator()),
-                final List<SavedWorkout> list when list.isEmpty => _Empty(
-                  onBrowse: _browse,
-                  onBuild: () => _edit(null),
+                  },
                 ),
-                final List<SavedWorkout> list => ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  children: <Widget>[
-                    for (final (i, workout) in list.indexed)
-                      Entrance(
-                        index: i,
-                        child: _WorkoutRow(
-                          workout: workout,
-                          lastDone: lastDone(workout.id, widget.log),
-                          onTap: () => _preview(workout),
-                          backup: widget.backup,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _Measured(
+                    onHeight: (h) {
+                      if (h != _header) setState(() => _header = h);
+                    },
+                    child: GlassSurface.bar(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          AppSpacing.sm,
+                          top + AppSpacing.xs,
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 56),
+                          child: Row(
+                            children: <Widget>[
+                              AppIconButton(
+                                icon: Icons.arrow_back,
+                                tooltip: 'Back',
+                                color: AppColors.textSecondary,
+                                onPressed: () =>
+                                    Navigator.of(context).maybePop(),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    const SectionLabel('Library'),
+                                    Text(
+                                      'Your workouts',
+                                      style: theme.textTheme.titleLarge,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
+                    ),
+                  ),
                 ),
-              },
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
       // In the bar slot so "Push deleted. Undo" sits above these rather than
@@ -416,5 +459,38 @@ class _Empty extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Reports its child's height after layout — so what sits under a header can
+/// start where the header really ends, at any text size.
+class _Measured extends SingleChildRenderObjectWidget {
+  const _Measured({required this.onHeight, required super.child});
+
+  final ValueChanged<double> onHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderMeasured(onHeight);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderMeasured renderObject) =>
+      renderObject.onHeight = onHeight;
+}
+
+class _RenderMeasured extends RenderProxyBox {
+  _RenderMeasured(this.onHeight);
+
+  ValueChanged<double> onHeight;
+  double? _last;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final h = size.height;
+    if (h == _last) return;
+    _last = h;
+    // After the frame: a report during layout would rebuild mid-layout.
+    SchedulerBinding.instance.addPostFrameCallback((_) => onHeight(h));
   }
 }

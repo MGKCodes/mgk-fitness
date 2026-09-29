@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -269,36 +271,54 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                   ),
                   children: <Widget>[
                     if (widget.backup case final backup?) ...<Widget>[
-                      _BackupLine(hooks: backup, session: widget.session),
+                      Entrance(
+                        child: _BackupLine(
+                          hooks: backup,
+                          session: widget.session,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
                     ],
-                    _Bests(summary: _summary, massUnit: widget.massUnit),
+                    Entrance(
+                      index: 1,
+                      child: _Bests(
+                        summary: _summary,
+                        massUnit: widget.massUnit,
+                      ),
+                    ),
                     if (_lesson != _Lesson.none) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      _LessonCard(
-                        lesson: _lesson,
-                        workoutName: _workout?.name ?? widget.session.name,
-                        change: widget.lesson?.describe() ?? '',
-                        onUndo: _undoLesson,
-                        onApply: _applyAnyway,
-                        onKeep: () =>
-                            setState(() => _lesson = _Lesson.keptAsItWas),
-                        onSaveAsNew: _saveLessonAsNew,
+                      Entrance(
+                        index: 2,
+                        child: _LessonCard(
+                          lesson: _lesson,
+                          workoutName: _workout?.name ?? widget.session.name,
+                          change: widget.lesson?.describe() ?? '',
+                          onUndo: _undoLesson,
+                          onApply: _applyAnyway,
+                          onKeep: () =>
+                              setState(() => _lesson = _Lesson.keptAsItWas),
+                          onSaveAsNew: _saveLessonAsNew,
+                        ),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.lg),
                     const SectionLabel('What you did'),
                     const SizedBox(height: AppSpacing.sm),
-                    for (final exercise in widget.session.exercises)
-                      _MovementCard(
-                        exercise: exercise,
-                        massUnit: widget.massUnit,
-                        // Excludes this session, or "last time" would be the
-                        // sets immediately above it on the same card.
-                        previous: PreviousPerformance.of(
-                          widget.log,
-                          exercise.name,
-                          excludeSessionId: widget.session.id,
+                    for (final (i, exercise)
+                        in widget.session.exercises.indexed)
+                      Entrance(
+                        index: 3 + i,
+                        child: _MovementCard(
+                          exercise: exercise,
+                          massUnit: widget.massUnit,
+                          // Excludes this session, or "last time" would be the
+                          // sets immediately above it on the same card.
+                          previous: PreviousPerformance.of(
+                            widget.log,
+                            exercise.name,
+                            excludeSessionId: widget.session.id,
+                          ),
                         ),
                       ),
                     const SizedBox(height: AppSpacing.xl),
@@ -544,54 +564,61 @@ class _Bests extends StatelessWidget {
       children: <Widget>[
         SectionLabel(bests.length == 1 ? 'New best' : 'New bests'),
         const SizedBox(height: AppSpacing.sm),
-        for (final best in bests)
+        for (final (i, best) in bests.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: AppCard(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      // The one status colour on the screen, on the one thing
-                      // that is a status rather than a figure (ADR-0009).
-                      const Icon(
-                        Icons.trending_up,
-                        size: 18,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          best.movement,
-                          style: theme.textTheme.titleMedium,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+            // Lands rather than appears: grows in on a spring, a beat after
+            // the totals — the one moment on this screen that is news.
+            child: _Lands(
+              delay: AppMotion.stagger * (4 + i),
+              // Felt once, as the first best lands — not per card.
+              onLand: i == 0 ? () => unawaited(AppHaptics.commit()) : null,
+              child: AppCard(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        // The one status colour on the screen, on the one thing
+                        // that is a status rather than a figure (ADR-0009).
+                        const Icon(
+                          Icons.trending_up,
+                          size: 18,
+                          color: AppColors.success,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  // The set that happened, then the estimate — in that order,
-                  // because the first is a fact and the second is a fitted
-                  // line. "Around" rather than a flat claim for the same
-                  // reason: Epley is an estimate and saying so is the
-                  // difference between a record and an invention.
-                  Text(
-                    '${best.weight.label(massUnit)} × ${best.reps} '
-                    '— around ${best.estimate.label(massUnit)} for one',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Past ${best.previous.label(massUnit)}, '
-                    'set ${_shortDate(best.previousOn)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            best.movement,
+                            style: theme.textTheme.titleMedium,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.xs),
+                    // The set that happened, then the estimate — in that order,
+                    // because the first is a fact and the second is a fitted
+                    // line. "Around" rather than a flat claim for the same
+                    // reason: Epley is an estimate and saying so is the
+                    // difference between a record and an invention.
+                    Text(
+                      '${best.weight.label(massUnit)} × ${best.reps} '
+                      '— around ${best.estimate.label(massUnit)} for one',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Past ${best.previous.label(massUnit)}, '
+                      'set ${_shortDate(best.previousOn)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -900,4 +927,74 @@ class _LessonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Grows its child in on a spring, once, after [delay] — for a new best.
+/// Still under reduced motion.
+class _Lands extends StatefulWidget {
+  const _Lands({required this.child, this.delay = Duration.zero, this.onLand});
+
+  final Widget child;
+  final Duration delay;
+
+  /// Called once, as it starts to grow — with the animation, not on a timer
+  /// of its own, so nothing is left pending if the screen goes first.
+  final VoidCallback? onLand;
+
+  @override
+  State<_Lands> createState() => _LandsState();
+}
+
+class _LandsState extends State<_Lands> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: AppMotion.slow + widget.delay,
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _c,
+    curve: Interval(
+      widget.delay.inMicroseconds /
+          (AppMotion.slow + widget.delay).inMicroseconds,
+      1,
+      curve: AppMotion.snappy,
+    ),
+  );
+  bool _started = false;
+  bool _landed = false;
+
+  void _watch() {
+    if (_landed || _t.value <= 0) return;
+    _landed = true;
+    widget.onLand?.call();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _c.addListener(_watch);
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      // Still, and still felt: reduced motion does not change haptics.
+      _c.value = 1;
+      return;
+    }
+    _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _t,
+    builder: (context, child) => Opacity(
+      opacity: _c.value == 0 ? 0 : _t.value.clamp(0, 1),
+      child: Transform.scale(scale: 0.9 + 0.1 * _t.value, child: child),
+    ),
+    child: widget.child,
+  );
 }

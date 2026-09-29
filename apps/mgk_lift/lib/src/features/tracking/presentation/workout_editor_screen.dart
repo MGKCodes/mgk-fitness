@@ -175,8 +175,13 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
+        // A glass bar over a quiet photograph — the same header the library
+        // has, so the two read as one place. The body starts below the bar:
+        // the Scaffold adds its height to the top padding the SafeArea reads.
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-          backgroundColor: AppColors.bg,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: const GlassSurface.bar(child: SizedBox.expand()),
           leading: AppIconButton(
             icon: Icons.arrow_back,
             tooltip: 'Back',
@@ -184,101 +189,105 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
           ),
           title: Text(widget.workout == null ? 'New workout' : 'Edit workout'),
         ),
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  AppSpacing.lg,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SectionLabel('Name'),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.sentences,
-                      inputFormatters: <TextInputFormatter>[
-                        LengthLimitingTextInputFormatter(
-                          SessionLimits.nameLength,
+        body: PhotoBackdrop(
+          image: 'assets/images/backgrounds/hero_home.webp',
+          scrim: ScrimStrength.quiet,
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const SectionLabel('Name'),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _name,
+                        textCapitalization: TextCapitalization.sentences,
+                        inputFormatters: <TextInputFormatter>[
+                          LengthLimitingTextInputFormatter(
+                            SessionLimits.nameLength,
+                          ),
+                        ],
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        decoration: const InputDecoration(
+                          hintText: 'Push day, Leg day, Upper body',
                         ),
-                      ],
-                      onTapOutside: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
-                      decoration: const InputDecoration(
-                        hintText: 'Push day, Leg day, Upper body',
+                        onChanged: (_) => setState(() {}),
                       ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Row(
-                      children: <Widget>[
-                        const Expanded(child: SectionLabel('Movements')),
-                        Text(
-                          '${_rows.length}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: _rows.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nothing in it yet.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      )
-                    : ReorderableListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                        ),
-                        buildDefaultDragHandles: false,
-                        itemCount: _rows.length,
-                        // A dragged row lifts a little and settles back — the
-                        // row is the thing moving, not a copy of it.
-                        proxyDecorator: (child, _, animation) =>
-                            AnimatedBuilder(
-                              animation: animation,
-                              builder: (context, child) => Transform.scale(
-                                scale: 1 + 0.03 * animation.value,
-                                child: child,
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                elevation: 8 * animation.value,
-                                shadowColor: Colors.black,
-                                borderRadius: AppRadius.cardAll,
-                                child: child,
-                              ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Row(
+                        children: <Widget>[
+                          const Expanded(child: SectionLabel('Movements')),
+                          Text(
+                            '${_rows.length}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.textSecondary,
                             ),
-                        onReorder: (from, to) => setState(() {
-                          final target = to > from ? to - 1 : to;
-                          _rows.insert(target, _rows.removeAt(from));
-                        }),
-                        itemBuilder: (context, i) => _MovementEditor(
-                          key: _rows[i].key,
-                          index: i,
-                          movement: _rows[i].movement,
-                          onChanged: (m) =>
-                              setState(() => _rows[i].movement = m),
-                          onRemove: () => _remove(_rows[i]),
-                        ),
+                          ),
+                        ],
                       ),
-              ),
-            ],
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _rows.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Nothing in it yet.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        )
+                      : ReorderableListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                          ),
+                          buildDefaultDragHandles: false,
+                          itemCount: _rows.length,
+                          // A dragged row lifts a little and settles back — the
+                          // row is the thing moving, not a copy of it.
+                          proxyDecorator: (child, _, animation) =>
+                              AnimatedBuilder(
+                                animation: animation,
+                                builder: (context, child) => Transform.scale(
+                                  scale: 1 + 0.03 * animation.value,
+                                  child: child,
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  elevation: 8 * animation.value,
+                                  shadowColor: Colors.black,
+                                  borderRadius: AppRadius.cardAll,
+                                  child: child,
+                                ),
+                              ),
+                          onReorder: (from, to) => setState(() {
+                            final target = to > from ? to - 1 : to;
+                            _rows.insert(target, _rows.removeAt(from));
+                          }),
+                          itemBuilder: (context, i) => _MovementEditor(
+                            key: _rows[i].key,
+                            index: i,
+                            movement: _rows[i].movement,
+                            onChanged: (m) =>
+                                setState(() => _rows[i].movement = m),
+                            onRemove: () => _remove(_rows[i]),
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
         // The bar slot, not the foot of the body: a snackbar sits **above**
