@@ -186,6 +186,18 @@ const LegalDocument privacyPolicy = LegalDocument(
             'Delete account for those.',
       ],
     ),
+    // After the bullets, as it is in docs/privacy-policy.md. The in-app copy
+    // stopped at "Nothing about your training leaves your phone for our
+    // servers unless you turn on Back up my data", which read as covering the
+    // coach as well, and the coach's requests go through our server whatever
+    // the switch says.
+    LegalSection(
+      paragraphs: <String>[
+        'The AI requests described above are a separate thing and happen '
+            'either way: the coach cannot answer without sending your training '
+            'context, so using the coach sends it whether or not backup is on.',
+      ],
+    ),
     LegalSection(
       heading: 'Sharing with our lifting app',
       paragraphs: <String>[

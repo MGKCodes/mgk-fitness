@@ -240,6 +240,17 @@ void main() {
       expect(doc, contains('do not use the coach'));
     });
 
+    test('says the coach sends whether or not backup is on, in both', () {
+      // The doc said so and the app did not. In the app the backup section
+      // ended on "Nothing about your training leaves your phone for our
+      // servers unless you turn on Back up my data", which reads as covering
+      // the coach too; its requests go through our server either way.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('happen either way'));
+        expect(text, contains('whether or not backup is on'));
+      }
+    });
+
     test('promises the deletion path the app actually implements', () {
       expect(app, contains('delete'));
       expect(app, contains('Lift'));

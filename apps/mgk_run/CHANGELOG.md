@@ -463,5 +463,11 @@ been on a store, so everything the app does is still listed here.
   mid-row and the strip beneath it showed the backdrop's near-opaque foot as a
   full-width band. The reserve is gone; the per-tab clearance that was always
   doing the work stays.
+- **The backup switch no longer claims nothing leaves the phone.** The empty
+  Plan tab, the backup screen and the in-app privacy policy all said, in one
+  form or another, that nothing left the phone unless backup was on. The coach
+  sends a summary of the runner's training to the AI provider whatever the
+  switch says. All three now say what the switch decides — our servers — and
+  the backup screen admits the phone's own backup can hold a copy.
 
 [Unreleased]: https://github.com/MGKCodes/mgk-fitness/commits/main
