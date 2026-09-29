@@ -385,12 +385,17 @@ App Store Connect will not accept a submission without these. None are code.
 
       | Type | What | Linked |
       |---|---|---|
-      | Health & Fitness | Workouts and steps read from HealthKit; runs, traces, plans | Yes |
+      | Health & Fitness | Steps read from HealthKit over a run (Health); runs, traces, plans (Fitness) | Yes |
       | Location | Precise, in use **and** in background | Yes |
       | Identifiers | The Supabase `user_id`, which RevenueCat holds as a pseudonymous app user id | Yes |
-      | Purchases | Subscription state | Yes |
-      | User Content | The runner's own messages to the coach, which reach OpenRouter | Yes |
-      | Contact Info | Email, for the account | Yes |
+      | Purchases | Subscription state; App Functionality and Analytics, as RevenueCat declares it | Yes |
+      | User Content | The runner's own messages to the coach, which reach OpenRouter, and replies they report | Yes |
+      | Contact Info | Email, for the account, and the name the coach uses, if given | Yes |
+      | Usage Data | Product interaction: the coach usage ledger, one row per request | Yes |
+
+      `ios/Runner/PrivacyInfo.xcprivacy` declares exactly these (2026-09-29), and
+      `the_privacy_manifest_declares_what_is_sent_test.dart` pins the list. The
+      answers in App Store Connect have to say the same.
 
       Backup consent makes several of these conditional and the form has no way
       to express that. **Declare what is collected when consent is on**, which
