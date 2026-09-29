@@ -24,10 +24,11 @@ ever wanted.
 
 ## What build 26 is
 
-Everything build 25 had, plus three lanes of fixes and the consent the privacy
-policy has promised since 2026-09-01. The list of what 26 adds is in
-[app-store-1.0.0.md](app-store-1.0.0.md); every item on it has a row here
-marked **NEW**.
+Everything build 25 had, plus three lanes of fixes (the coach's consent and
+compliance copy, account and purchase safety, and recording robustness) and
+the consent the privacy policy has promised since 2026-09-01. The list of what
+26 adds is in [app-store-1.0.0.md](app-store-1.0.0.md); everything on it that a
+phone can show has a row here marked **NEW**.
 
 **Three facts shape this sheet.**
 
@@ -190,6 +191,9 @@ moving, and V needs the Android phone.
 - **Android never asks for the notification permission** (Android 13+), so the
   "Recording your run" notification only appears if notifications are on for
   Run in the phone's settings. Recording works either way.
+- **Android with approximate location only** still sits on "Acquiring GPS" and
+  records nothing: Android does not tell the app, so C26's warning is iPhone
+  only.
 - **Manual laps are not kept after Finish.**
 - **A runner at 0 km a week cannot build a plan.**
 - **Plan dates shift a day if the phone moves west across time zones.** Do not
@@ -197,7 +201,7 @@ moving, and V needs the Android phone.
 - **Adjusting a week from inside the Plan tab's week view** is not yet covered
   by the race-day rule. Use Home ▸ Adjust this week for D17.
 
-The last five are in [after-1.0.0.md](after-1.0.0.md), each with a date to
+The last six are in [after-1.0.0.md](after-1.0.0.md), each with a date to
 revisit.
 
 ---
@@ -223,7 +227,7 @@ revisit.
    the app *first*, sign out of the sandbox account *first*, and read the
    function log rather than the screen.
 9. **P on Android**, as Test 2.
-10. **Outside: C** (C21 to C25 included), **F**, then **V** on Android.
+10. **Outside: C** (C21 to C26 included), **F**, then **V** on Android.
 11. **H** — the screenshots, both phones. They need the data the earlier steps
     made.
 12. **E11 and E12** on the iPhone, as yourself.
@@ -299,6 +303,7 @@ revisit.
 | C23 | **iPhone: edge-swipe back mid-run** | **NEW.** The same dialog; the run does not vanish behind the swipe | ☐ |
 | C24 | **Double-tap Finish, fast** | **NEW.** One summary, one run in the log. Finish and Resume show a small spinner while it settles | ☐ |
 | C25 | **iPhone: mid-run, set Settings ▸ Run ▸ Location to Never**, come back, pause, set it back to While Using, then tap **Allow location** (it may read **Continue**) | **NEW.** The **same** run carries on. After Finish there is **one** run in the log, with both halves of the distance | ☐ |
+| C26 | **iPhone: Settings ▸ Run ▸ Location ▸ Precise Location off**, then start a run | **NEW.** A problem panel saying Run only has approximate location, with *Turn on Precise Location for Run in Settings* and a way to Settings — not a run stuck on "Acquiring GPS" that saves as 0 m. Turn Precise back on afterwards | ☐ |
 
 ## D. The coach and the plan
 
