@@ -85,6 +85,11 @@ class MgkLiftApp extends StatelessWidget {
       theme: AppTheme.dark,
       home: LiftShell(
         recorder: db == null ? null : DriftSessionRecorder(db),
+        // Fixing a past session reuses the session screen, with a recorder
+        // aimed at that session instead of the open one.
+        editorFor: db == null
+            ? null
+            : (id) => DriftSessionRecorder.editing(db, id),
         library: db == null ? null : DriftWorkoutLibrary(db),
         history: db == null ? null : DriftSessionHistory(db),
         // Device first, account when it can answer. The account half is what

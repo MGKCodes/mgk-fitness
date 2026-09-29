@@ -399,15 +399,28 @@ List<Session> sampleLog(DateTime now) {
 }
 
 class FakeHistory implements SessionHistory {
-  const FakeHistory(this._log);
+  FakeHistory(Iterable<Session> log) : _log = <Session>[...log];
 
   final List<Session> _log;
+  final Map<String, Session> _removed = <String, Session>{};
 
   @override
   Future<List<Session>> all({int? limit}) async {
     final sorted = <Session>[..._log]
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return limit == null ? sorted : sorted.take(limit).toList();
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    final at = _log.indexWhere((s) => s.id == id);
+    if (at >= 0) _removed[id] = _log.removeAt(at);
+  }
+
+  @override
+  Future<void> restore(String id) async {
+    final back = _removed.remove(id);
+    if (back != null) _log.add(back);
   }
 }
 

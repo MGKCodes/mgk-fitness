@@ -39,7 +39,15 @@ class ProfileSurface extends StatelessWidget {
     this.onOpenSettings,
     this.onOpenTrack,
     this.onOpenPhotos,
+    this.onOpenSession,
+    this.onOpenHistory,
   });
+
+  /// Opens a session from the recent list — to read it, edit it, delete it.
+  final ValueChanged<Session>? onOpenSession;
+
+  /// Every session, not the last five (F16). Null hides *See all*.
+  final VoidCallback? onOpenHistory;
 
   /// Finished sessions, newest first.
   final List<Session> log;
@@ -280,10 +288,29 @@ class ProfileSurface extends StatelessWidget {
             // sessions they have not done yet only repeats the card at the top.
             if (!empty) ...<Widget>[
               const SizedBox(height: AppSpacing.xl),
-              const SectionLabel('Recent sessions'),
-              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: <Widget>[
+                  const Expanded(child: SectionLabel('Recent sessions')),
+                  if (onOpenHistory != null)
+                    AppTextButton(
+                      label: 'See all',
+                      onPressed: onOpenHistory,
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
               for (final session in log.take(5))
-                _SessionRow(session: session, stats: stats, massUnit: massUnit),
+                _SessionRow(
+                  session: session,
+                  stats: stats,
+                  massUnit: massUnit,
+                  onTap: onOpenSession == null
+                      ? null
+                      : () => onOpenSession!(session),
+                ),
             ],
 
             const SizedBox(height: AppSpacing.lg),
@@ -637,17 +664,22 @@ class _SessionRow extends StatelessWidget {
     required this.session,
     required this.stats,
     required this.massUnit,
+    this.onTap,
   });
 
   final Session session;
   final TrainingStats stats;
   final MassUnit massUnit;
 
+  /// Opens the session. A session that could only be counted and never looked
+  /// at again could not be fixed either.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final volume = Mass.kilograms(session.volumeKg);
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: <Widget>[
@@ -676,8 +708,25 @@ class _SessionRow extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
+          if (onTap != null)
+            const Padding(
+              padding: EdgeInsets.only(left: AppSpacing.xs),
+              child: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: AppColors.textTertiary,
+              ),
+            ),
         ],
       ),
+    );
+    if (onTap == null) return row;
+    // The whole row, not just its words: a transparent fill is what makes the
+    // gaps between them part of the target.
+    return PressScale(
+      onTap: onTap,
+      scale: 0.98,
+      child: ColoredBox(color: Colors.transparent, child: row),
     );
   }
 }

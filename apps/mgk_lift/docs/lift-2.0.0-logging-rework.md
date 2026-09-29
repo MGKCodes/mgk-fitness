@@ -558,62 +558,66 @@ So every glass surface in Lift gets one of two things behind it: the photograph
 
 ### Shared components (`mgk_ui`, so Run gets them too)
 
-- [ ] **`GlassSurface` desaturates what is behind it.** A saturation-zero stage
+- [x] **`GlassSurface` desaturates what is behind it.** A saturation-zero stage
       in the same filter pass, so a green tick or a red badge under the pane
       reads as grey light instead of a coloured smudge — ADR-0009's greyscale,
       enforced by the material. Presets for a bar, a dock and a sheet.
-- [ ] **`showGlassSheet`** — sized to its content up to a ceiling, safe areas
+- [x] **`showGlassSheet`** — sized to its content up to a ceiling, safe areas
       top and bottom, keyboard-aware without climbing under the status bar,
-      drag detents with a selection haptic on each.
-- [ ] **`AppFilledButton`, `AppOutlinedButton`** — the press feel for the two
+      drag detents with a selection haptic on each. *No detents: Flutter's
+      modal sheet has none, and the sheets here are sized to what is in them.*
+- [x] **`AppFilledButton`, `AppOutlinedButton`** — the press feel for the two
       kinds of button that still have none (F20). And a test in each app that
       fails on a raw `FilledButton`, `OutlinedButton`, `TextButton.icon` or
       `InkWell` in presentation code, so this cannot drift back — principle 9.
-- [ ] **`AppToast`** — the undo and status message, on glass. The colour
+      *Lift's guard is in (13 raw buttons converted). Run's 38 are Run's lane.*
+- [x] **`AppToast`** — the undo and status message, on glass. The colour
       scheme gets its `inverseSurface` so no Material snackbar anywhere turns
       into a white bar (F24).
-- [ ] **Springs in `AppMotion`** — one snappy, one gentle — for presses, ticks,
+- [x] **Springs in `AppMotion`** — one snappy, one gentle — for presses, ticks,
       sheets and the dock. Curves stay for fades and entrances.
-- [ ] Run is checked against its board after each shared change.
-- [ ] **Track's workout row bleeds to the screen edge.** Two cards fill the
+- [x] Run is checked against its board after each shared change. *Its tests
+      (1,543) after each; the board itself on the Run lane's next pass.*
+- [x] **Track's workout row bleeds to the screen edge.** Two cards fill the
       width exactly, so a third is there and nothing says so — seen on the
       emulator with three saved. Let the row run past the page margin so the
       next card shows its edge.
-- [ ] **Larger text, both apps.** Nothing reads the phone's text size, and a
+- [ ] **Larger text, both apps.** *Still open: the new and reworked Lift
+      screens are pinned at 1.3× and 2×; the rest of both apps is not.* Nothing reads the phone's text size, and a
       fixed-height card on Track overflowed the first time anything was tried
       at 1.3×. Every screen checked at 1.3× and 2× on a 375pt phone, the way
       the Phase 3 screens now are; decide then whether a ceiling is needed.
 
 ### The session screen
 
-- [ ] **Photograph behind, content between two glass layers.** The backdrop
+- [x] **Photograph behind, content between two glass layers.** The backdrop
       moves from the near-opaque `quiet` scrim to `grounded`, with parallax.
-- [ ] **A top bar that folds.** At the top of the list: *In progress*, the
+- [x] **A top bar that folds.** At the top of the list: *In progress*, the
       name large, and elapsed · volume · sets · movements in one row. Scrolled:
       a slim glass bar with the name, the clock and **Finish**. The two-by-two
       card goes; the list scrolls under the bar.
-- [ ] **A bottom dock.** *Add exercise* lives there. When a set is ticked the
+- [x] **A bottom dock.** *Add exercise* lives there. When a set is ticked the
       rest timer grows out of it — a progress ring, the time, −30 / +30, Skip —
       and shrinks back when rest ends. It replaces the flat `RestBar`.
-- [ ] **The set you are on is the loud one** (F23). The next set lifts to
+- [x] **The set you are on is the loud one** (F23). The next set lifts to
       `elevated` with white numbers; done sets recede to secondary ink with a
       filled check.
-- [ ] **Cards stay solid** (`AppCard`), thumbnails sit on charcoal instead of
+- [x] **Cards stay solid** (`AppCard`), thumbnails sit on charcoal instead of
       black (F24).
 
 ### The other screens
 
-- [ ] **Track:** sections arrive in sequence, the figures count up, your
+- [x] **Track:** sections arrive in sequence, the figures count up, your
       workouts sit as glass cards over the photograph, the photo drifts as the
       screen scrolls.
-- [ ] **Summary:** the same arrival, the totals count up, a new best lands with
+- [x] **Summary:** the same arrival, the totals count up, a new best lands with
       a spring and a commit haptic, and the template-change and backup lines
       sit under the totals.
-- [ ] **Library, editor, history:** glass top bar over a quiet photograph;
+- [x] **Library, editor, history:** glass top bar over a quiet photograph;
       rows solid; a dragged row lifts (slight scale and shadow) while it moves.
-- [ ] **Sheets** (picker, preview, premades, Finish, confirmations) move to
-      `showGlassSheet` (F21, F22).
-- [ ] **Launch screens charcoal** on iOS and Android (F24).
+- [x] **Sheets** (picker, preview, premades, Finish, confirmations) move to
+      `showGlassSheet` (F21, F22). *Confirmations stay dialogs.*
+- [x] **Launch screens charcoal** on iOS and Android (F24).
 
 ### Motion, moment by moment
 
@@ -636,22 +640,34 @@ Haptics do not change with it.
 
 ### Keeping it smooth
 
-- [ ] At most two blurred layers on screen at once — the bar and the dock; a
+- [x] At most two blurred layers on screen at once — the bar and the dock; a
       sheet hides the dock. No glass inside a scrolling list.
 - [ ] Profiled on a real iPhone in a profile build: no dropped frames while
-      scrolling a six-movement session under the bars.
+      scrolling a six-movement session under the bars. *Needs the device —
+      on the TestFlight checklist.*
 
 ---
 
 ## Phase 6 — history you can fix
 
-- [ ] **Every session, not the last five** (F16). Profile's *Recent sessions*
+- [x] **Every session, not the last five** (F16). Profile's *Recent sessions*
       opens a full list, grouped by week.
-- [ ] **A session opens** to the summary layout, read-only, with **Edit** and
+- [x] **A session opens** to the summary layout, read-only, with **Edit** and
       **Delete**.
-- [ ] **Edit** reuses the session screen's rows, limits and input rules. Saving
+- [x] **Edit** reuses the session screen's rows, limits and input rules. Saving
       marks it for backup; personal bests and totals follow.
-- [ ] **Delete** is soft, with Undo, and reaches other devices as a tombstone.
+- [x] **Delete** is soft, with Undo, and reaches other devices as a tombstone.
+
+*How edit works, 2026-09-29:* the session screen itself, handed
+`DriftSessionRecorder.editing` — a recorder aimed at the finished session
+instead of the open one — so it is the same rows, limits and writes. No clock
+and no rest; **Done** saves (unticked sets go, as at Finish; the date and
+length stay), and back is Done. A session left with nothing ticked stays on
+the editor: deleting it is its page's job. History rows carry the backup mark
+the library's have.
+
+**Also found:** the Plan tab threw on every launch (a negative minimum height
+while laid out offstage) — in the logs since before this work; fixed in Phase 5.
 
 ---
 

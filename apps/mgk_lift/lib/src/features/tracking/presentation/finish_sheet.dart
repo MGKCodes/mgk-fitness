@@ -15,18 +15,35 @@ import '../domain/session.dart';
 ///
 /// Returns true to finish, null or false to keep going.
 class FinishSheet extends StatelessWidget {
-  const FinishSheet({super.key, required this.session, required this.massUnit});
+  const FinishSheet({
+    super.key,
+    required this.session,
+    required this.massUnit,
+    this.title,
+    this.actionLabel = 'Finish',
+  });
 
   final Session session;
   final MassUnit massUnit;
+
+  /// `Finish Push?`, or `Save Push?` for an edit to a past session.
+  final String? title;
+  final String actionLabel;
 
   static Future<bool?> show(
     BuildContext context, {
     required Session session,
     required MassUnit massUnit,
+    String? title,
+    String actionLabel = 'Finish',
   }) => showGlassSheet<bool>(
     context: context,
-    builder: (_) => FinishSheet(session: session, massUnit: massUnit),
+    builder: (_) => FinishSheet(
+      session: session,
+      massUnit: massUnit,
+      title: title,
+      actionLabel: actionLabel,
+    ),
   );
 
   @override
@@ -57,7 +74,10 @@ class FinishSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const SheetHandle(),
-            Text('Finish ${session.name}?', style: theme.textTheme.titleLarge),
+            Text(
+              title ?? 'Finish ${session.name}?',
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               <String>[
@@ -97,7 +117,7 @@ class FinishSheet extends StatelessWidget {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Finish',
+              label: actionLabel,
               onPressed: () => Navigator.of(context).pop(true),
             ),
             const SizedBox(height: AppSpacing.xs),

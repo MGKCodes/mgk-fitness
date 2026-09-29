@@ -54,7 +54,18 @@ class ActiveSessionScreen extends StatefulWidget {
     this.onOpenCoach,
     this.startRestOnOpen = false,
     this.now,
+    this.editing = false,
   });
+
+  /// Fixing a session that already happened, rather than logging one.
+  ///
+  /// The same rows, limits and input rules — the recorder is one aimed at that
+  /// session (`DriftSessionRecorder.editing`), so every change is written as
+  /// it is made. What changes is around the rows: no clock and no rest, the
+  /// date where the elapsed time was, **Done** where Finish was, and nothing
+  /// that would discard or save a copy. Leaving, by Done or by back, saves:
+  /// unticked sets go, as they do at Finish.
+  final bool editing;
 
   final SessionRecorder recorder;
 
@@ -454,8 +465,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     );
     if (completing) {
       // Only on completion. Un-ticking is a correction to the log, not the end
-      // of a set.
-      _startRest();
+      // of a set — and nobody is resting while fixing last week.
+      if (!widget.editing) _startRest();
       unawaited(AppHaptics.commit());
     }
   }
@@ -726,6 +737,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// no confirmation and no way back, and unticked sets were quietly kept. The
   /// sheet says what is being saved and — first — what is not.
   Future<void> _finish() async {
+    if (widget.editing) return _doneEditing();
     // Whatever is being typed is part of what is finished — settled first, so
     // its write is in the queue before the queue is waited on.
     await _settleFields();
@@ -780,6 +792,43 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     );
   }
 
+  bool _leaving = false;
+
+  /// Saves an edit to a past session and leaves — by Done or by back.
+  ///
+  /// Every change is already written; what this adds is Finish's rule, that
+  /// an unticked set did not happen, and the stamp that sends the session to
+  /// backup. With nothing ticked it stays: a session with no sets is not a
+  /// session, and deleting one is its page's job.
+  Future<void> _doneEditing() async {
+    if (_leaving) return;
+    await _settleFields();
+    await _writes;
+    if (!mounted) return;
+    if (_session.completedSets == 0) {
+      _say('Tick at least one set — or delete the session from its page.');
+      return;
+    }
+    if (_session.untickedSets > 0) {
+      final confirmed = await FinishSheet.show(
+        context,
+        session: _session,
+        massUnit: widget.massUnit,
+        title: 'Save ${_session.name}?',
+        actionLabel: 'Save',
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    await _writes;
+    await widget.recorder.finish();
+    if (!mounted) return;
+    unawaited(AppHaptics.commit());
+    widget.onFinished?.call();
+    _leaving = true;
+    _dropMessages();
+    Navigator.of(context).pop();
+  }
+
   Future<void> _confirmDiscard() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -825,8 +874,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     // Back, by arrow or gesture, and Discard all pop — each takes this
     // screen's Undo with it (see [_dropMessages]).
     return PopScope(
+      // Editing, back is Done: it saves, then leaves.
+      canPop: !widget.editing || _leaving,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _dropMessages();
+        if (didPop) {
+          _dropMessages();
+        } else if (widget.editing) {
+          unawaited(_doneEditing());
+        }
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
@@ -854,6 +909,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                           ? Padding(
                               padding: EdgeInsets.only(top: top + _barHeight),
                               child: _EmptyState(
+                                editing: widget.editing,
                                 onAdd: _addExercises,
                                 onOpenLibrary: widget.library == null
                                     ? null
@@ -868,6 +924,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                       left: 0,
                       right: 0,
                       child: _TopBar(
+                        editing: widget.editing,
                         scroll: _scroll,
                         // Folded from the start when there is no list to
                         // scroll — the empty state has no large title.
@@ -886,7 +943,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                         right: 0,
                         bottom: 0,
                         child: _Dock(
-                          rest: _rest,
+                          rest: widget.editing ? null : _rest,
                           clock: _clock,
                           onAdd: full ? null : _addExercises,
                           onAdjust: _adjustRest,
@@ -938,6 +995,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       ),
       children: <Widget>[
         _LargeTitle(
+          editing: widget.editing,
           name: _session.name,
           startedAt: _session.startedAt,
           clock: _clock,
@@ -994,7 +1052,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         // Not for a session from a saved workout — that workout learns from
         // it at Finish, and a save here made a second copy — and a statement
         // once saved, so a second tap cannot make a third.
-        if (widget.library != null && !_fromLibrary)
+        if (widget.library != null && !_fromLibrary && !widget.editing)
           Center(
             child: _savedToLibrary
                 ? Padding(
@@ -1015,14 +1073,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
           ),
         const SizedBox(height: AppSpacing.sm),
         // Destructive, so it sits at the bottom of the list rather than in
-        // the chrome.
-        Center(
-          child: AppTextButton(
-            label: 'Discard session',
-            onPressed: _confirmDiscard,
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+        // the chrome. Not while editing: a session that happened is deleted
+        // from its page, softly, with Undo.
+        if (!widget.editing)
+          Center(
+            child: AppTextButton(
+              label: 'Discard session',
+              onPressed: _confirmDiscard,
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1096,6 +1156,7 @@ class _KeyboardBar extends StatelessWidget {
 /// the way a navigation bar does.
 class _TopBar extends StatelessWidget {
   const _TopBar({
+    this.editing = false,
     required this.scroll,
     required this.alwaysFolded,
     required this.onBack,
@@ -1108,6 +1169,10 @@ class _TopBar extends StatelessWidget {
 
   final ScrollController scroll;
   final bool alwaysFolded;
+
+  /// Done instead of Finish, and no running clock — see
+  /// [ActiveSessionScreen.editing].
+  final bool editing;
 
   /// Leaves the session running and goes back. Safe and non-destructive: every
   /// change is already persisted, the session stays open, and Track offers to
@@ -1166,7 +1231,9 @@ class _TopBar extends StatelessWidget {
                       onPressed: onBack,
                       icon: Icons.arrow_back,
                       color: AppColors.textSecondary,
-                      tooltip: 'Back — the session stays open',
+                      tooltip: editing
+                          ? 'Back — your changes are saved'
+                          : 'Back — the session stays open',
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
@@ -1182,18 +1249,26 @@ class _TopBar extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            ValueListenableBuilder<DateTime>(
-                              valueListenable: clock,
-                              builder: (context, now, _) => Text(
-                                _clockText(now.difference(startedAt).abs()),
+                            if (editing)
+                              Text(
+                                'Editing',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: AppColors.textSecondary,
-                                  fontFeatures: const <FontFeature>[
-                                    FontFeature.tabularFigures(),
-                                  ],
+                                ),
+                              )
+                            else
+                              ValueListenableBuilder<DateTime>(
+                                valueListenable: clock,
+                                builder: (context, now, _) => Text(
+                                  _clockText(now.difference(startedAt).abs()),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontFeatures: const <FontFeature>[
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -1204,7 +1279,7 @@ class _TopBar extends StatelessWidget {
                       // empty row in the log and an empty card in the
                       // cross-app feed.
                       onPressed: canFinish ? onFinish : null,
-                      label: 'Finish',
+                      label: editing ? 'Done' : 'Finish',
                       style: FilledButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         minimumSize: const Size(0, 40),
@@ -1232,6 +1307,7 @@ class _TopBar extends StatelessWidget {
 /// collide, and it gives the list the height the card took.
 class _LargeTitle extends StatelessWidget {
   const _LargeTitle({
+    this.editing = false,
     required this.name,
     required this.startedAt,
     required this.clock,
@@ -1241,6 +1317,7 @@ class _LargeTitle extends StatelessWidget {
     required this.movements,
   });
 
+  final bool editing;
   final String name;
   final DateTime startedAt;
   final ValueListenable<DateTime> clock;
@@ -1257,7 +1334,7 @@ class _LargeTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const SectionLabel('In progress'),
+        SectionLabel(editing ? 'Editing' : 'In progress'),
         const SizedBox(height: AppSpacing.xs),
         Text(name, style: theme.textTheme.headlineSmall, maxLines: 2),
         const SizedBox(height: AppSpacing.sm),
@@ -1267,7 +1344,11 @@ class _LargeTitle extends StatelessWidget {
             TextSpan(
               children: <InlineSpan>[
                 TextSpan(
-                  text: _clockText(now.difference(startedAt).abs()),
+                  // Editing, the date: which session this is, not how long ago
+                  // it started.
+                  text: editing
+                      ? _dateText(startedAt)
+                      : _clockText(now.difference(startedAt).abs()),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
@@ -1527,11 +1608,13 @@ String _clockText(Duration d) {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
+    this.editing = false,
     required this.onAdd,
     required this.onOpenLibrary,
     required this.onDiscard,
   });
 
+  final bool editing;
   final VoidCallback onAdd;
 
   /// Fills the session from one of the lifter's saved workouts. **Null when
@@ -1552,13 +1635,15 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(
-              'The clock is running',
+              editing ? 'Nothing left in this session' : 'The clock is running',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Add the first movement when you get to it.',
+              editing
+                  ? 'Add a movement, or go back and delete the session.'
+                  : 'Add the first movement when you get to it.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -1566,7 +1651,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
             PrimaryButton(label: 'Add exercise', onPressed: onAdd),
-            if (onOpenLibrary != null) ...<Widget>[
+            if (onOpenLibrary != null && !editing) ...<Widget>[
               const SizedBox(height: AppSpacing.sm),
               AppOutlinedButton(
                 onPressed: onOpenLibrary,
@@ -1574,15 +1659,27 @@ class _EmptyState extends StatelessWidget {
                 expand: true,
               ),
             ],
-            const SizedBox(height: AppSpacing.sm),
-            AppTextButton(
-              label: 'Discard session',
-              onPressed: onDiscard,
-              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            ),
+            if (!editing) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              AppTextButton(
+                label: 'Discard session',
+                onPressed: onDiscard,
+                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+/// `Tue 23 Sep` — which session is being edited.
+String _dateText(DateTime d) {
+  const days = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = <String>[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}';
 }

@@ -323,7 +323,7 @@ class PreviewApp extends StatelessWidget {
       ),
       'profile-empty': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: const FakeHistory(<Session>[]),
+        history: FakeHistory(const <Session>[]),
         coach: FakeCoach(),
         today: previewNow,
         photos: InMemoryPhotoLibrary(),

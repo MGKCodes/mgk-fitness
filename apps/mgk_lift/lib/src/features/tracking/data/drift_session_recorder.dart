@@ -34,10 +34,29 @@ import 'session_hydration.dart';
 /// position, which SQLite then returned in whatever order it liked.
 class DriftSessionRecorder implements SessionRecorder {
   DriftSessionRecorder(this._db, {String Function()? idFactory})
-    : _newId = idFactory ?? newRowId;
+    : _newId = idFactory ?? newRowId,
+      _editing = null;
+
+  /// A recorder aimed at **one finished session**, for fixing it afterwards —
+  /// every change the live recorder can make, with the same limits and the
+  /// same writes, to that session instead of the open one.
+  ///
+  /// [finish] saves: unticked sets go as they do at Finish, the session is
+  /// stamped for backup, and its date and duration stay what they were. It
+  /// does not start sessions and does not discard them — deleting a session
+  /// that happened is a soft delete, and belongs to the history.
+  DriftSessionRecorder.editing(
+    this._db,
+    String workoutId, {
+    String Function()? idFactory,
+  }) : _newId = idFactory ?? newRowId,
+       _editing = workoutId;
 
   final AppDatabase _db;
   final String Function() _newId;
+
+  /// The finished session this edits, or null for the live recorder.
+  final String? _editing;
 
   /// The open workout row, without its children.
   ///
@@ -47,17 +66,28 @@ class DriftSessionRecorder implements SessionRecorder {
   /// and the moment the library had anything in it, "Resume session" would have
   /// offered the lifter their own routine and finishing it would have filed a
   /// workout they never did. See `Workouts.isTemplate`.
-  Future<WorkoutRow?> _openRow() =>
-      (_db.select(_db.workouts)
-            ..where(
-              (w) =>
-                  w.endedAt.isNull() &
-                  w.deletedAt.isNull() &
-                  w.isTemplate.equals(false),
-            )
-            ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
-            ..limit(1))
+  Future<WorkoutRow?> _openRow() {
+    final editing = _editing;
+    if (editing != null) {
+      return (_db.select(_db.workouts)..where(
+            (w) =>
+                w.id.equals(editing) &
+                w.deletedAt.isNull() &
+                w.isTemplate.equals(false),
+          ))
           .getSingleOrNull();
+    }
+    return (_db.select(_db.workouts)
+          ..where(
+            (w) =>
+                w.endedAt.isNull() &
+                w.deletedAt.isNull() &
+                w.isTemplate.equals(false),
+          )
+          ..orderBy([(w) => OrderingTerm.desc(w.startedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
 
   Future<WorkoutRow> _requireOpen() async {
     final row = await _openRow();
@@ -104,6 +134,9 @@ class DriftSessionRecorder implements SessionRecorder {
 
   @override
   Future<Session> start({String? name, DateTime? at}) async {
+    if (_editing != null) {
+      throw StateError('An editing recorder does not start sessions.');
+    }
     final now = at ?? DateTime.now();
     final id = _newId();
     await _db.transaction(() async {
@@ -529,8 +562,12 @@ class DriftSessionRecorder implements SessionRecorder {
         _db.workouts,
       )..where((w) => w.id.equals(open.id))).write(
         WorkoutsCompanion(
-          endedAt: Value(ended),
-          durationS: Value(ended.difference(open.startedAt).inSeconds.abs()),
+          // Editing keeps the session's own date and length: fixing Tuesday's
+          // reps on Thursday does not move the session to Thursday.
+          endedAt: _editing == null ? Value(ended) : const Value.absent(),
+          durationS: _editing == null
+              ? Value(ended.difference(open.startedAt).inSeconds.abs())
+              : const Value.absent(),
           updatedAt: Value(ended),
         ),
       );
@@ -543,6 +580,8 @@ class DriftSessionRecorder implements SessionRecorder {
 
   @override
   Future<void> discard() async {
+    // Not for a session that happened — see [DriftSessionRecorder.editing].
+    if (_editing != null) return;
     final open = await _openRow();
     if (open == null) return;
     // Hard delete: an abandoned session is not training that happened, so it

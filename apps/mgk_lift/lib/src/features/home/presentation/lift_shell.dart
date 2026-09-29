@@ -32,9 +32,12 @@ import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_messages.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../stats/domain/session_history.dart';
+import '../../stats/presentation/history_screen.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
 import '../../tracking/domain/workout_library.dart';
+import '../../tracking/presentation/active_session_screen.dart';
+import '../../tracking/presentation/session_summary_screen.dart';
 import '../../tracking/presentation/track_controller.dart';
 import '../../tracking/presentation/track_surface.dart';
 import '../../tracking/data/exercise_lookup.dart';
@@ -63,6 +66,7 @@ class LiftShell extends StatefulWidget {
   const LiftShell({
     super.key,
     this.recorder,
+    this.editorFor,
     this.library,
     this.units,
     this.history,
@@ -102,6 +106,10 @@ class LiftShell extends StatefulWidget {
   /// which is the right behaviour for a build with no on-device database — the
   /// app still runs and the action reads as unavailable rather than erroring.
   final SessionRecorder? recorder;
+
+  /// A recorder aimed at one finished session, for fixing it afterwards.
+  /// **Null hides Edit** on a past session — a build with no database.
+  final SessionRecorder Function(String workoutId)? editorFor;
 
   /// The lifter's saved workouts, which a session's empty state offers and a
   /// finished session can be added to. **Null hides both**, which is the right
@@ -273,6 +281,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// finishing a session on Track changes it.
   List<Session> _log = const <Session>[];
 
+  /// The same log, for screens pushed above the shell — the history list —
+  /// which a `setState` here does not reach.
+  final ValueNotifier<List<Session>> _logFeed = ValueNotifier<List<Session>>(
+    const <Session>[],
+  );
+
   /// The lifter's saved workouts, for Track's row. Read at the shell so the
   /// row and the library screen it opens cannot disagree about what exists.
   List<SavedWorkout> _workouts = const <SavedWorkout>[];
@@ -372,6 +386,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_authSub?.cancel());
     unawaited(_librarySub?.cancel());
     _backup?.dispose();
+    _logFeed.dispose();
     super.dispose();
   }
 
@@ -577,6 +592,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     final loaded = await source.all();
     if (!mounted) return;
     setState(() => _log = loaded);
+    _logFeed.value = loaded;
   }
 
   Future<void> _refreshSession() async {
@@ -676,6 +692,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                 ),
                 ProfileSurface(
                   log: _log,
+                  onOpenSession: _openPastSession,
+                  onOpenHistory: _openHistory,
                   now: widget.today,
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
@@ -1044,6 +1062,133 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     );
     if (!mounted) return;
     if (chosen != null) await _openWorkout(chosen);
+  }
+
+  /// Every session, grouped by week — following the log as it changes.
+  Future<void> _openHistory() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ValueListenableBuilder<List<Session>>(
+          valueListenable: _logFeed,
+          builder: (context, log, _) => HistoryScreen(
+            log: log,
+            massUnit: _units.mass,
+            now: widget.today,
+            backup: _backup?.status,
+            onOpen: _openPastSession,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A session that happened, on the summary's layout, with Edit and Delete.
+  Future<void> _openPastSession(Session session) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionSummaryScreen(
+          session: session,
+          massUnit: _units.mass,
+          // What came before it, so its bests are the bests it set then.
+          log: <Session>[
+            for (final s in _log)
+              if (s.startedAt.isBefore(session.startedAt)) s,
+          ],
+          offerSave: false,
+          backup: _backupHooks,
+          onEdit: widget.editorFor == null
+              ? null
+              : () => unawaited(_editPastSession(session)),
+          onDelete: widget.history == null
+              ? null
+              : () => unawaited(_deletePastSession(session)),
+        ),
+      ),
+    );
+  }
+
+  /// Fixes a past session with the session screen itself — the same rows,
+  /// limits and input rules — then shows its page again, as it now is.
+  Future<void> _editPastSession(Session session) async {
+    final make = widget.editorFor;
+    if (make == null) return;
+    final editor = make(session.id);
+    final current = await editor.current();
+    if (current == null || !mounted) return;
+    // In the page's place, so leaving the editor does not land on the page
+    // as it was before the edit.
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          recorder: editor,
+          session: current,
+          editing: true,
+          massUnit: _units.mass,
+          planner: widget.planner,
+          log: _log,
+          onFinished: () {
+            unawaited(_refreshLog());
+            _afterSession();
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _refreshLog();
+    if (!mounted) return;
+    for (final s in _log) {
+      if (s.id == session.id) {
+        await _openPastSession(s);
+        return;
+      }
+    }
+  }
+
+  /// Deletes a past session, softly, with Undo. It leaves the log and every
+  /// total at once, and reaches the other devices as a tombstone.
+  Future<void> _deletePastSession(Session session) async {
+    final history = widget.history;
+    if (history == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Delete ${session.name}?'),
+        content: const Text(
+          'It comes out of your log and every total. You can undo it for a '
+          'few seconds.',
+        ),
+        actions: <Widget>[
+          AppTextButton(
+            label: 'Keep it',
+            onPressed: () => Navigator.of(dialog).pop(false),
+          ),
+          AppTextButton(
+            label: 'Delete',
+            onPressed: () => Navigator.of(dialog).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await history.remove(session.id);
+    if (!mounted) return;
+    // Off the session's page, which no longer has a session.
+    Navigator.of(context).pop();
+    await _refreshLog();
+    _afterSession();
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      '${session.name} deleted.',
+      actionLabel: 'Undo',
+      onAction: () async {
+        await history.restore(session.id);
+        await _refreshLog();
+        _afterSession();
+      },
+    );
   }
 
   /// A session finished or was thrown away. Finish is a checkpoint — backup

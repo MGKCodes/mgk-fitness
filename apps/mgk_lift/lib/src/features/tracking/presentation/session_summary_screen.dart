@@ -42,7 +42,17 @@ class SessionSummaryScreen extends StatefulWidget {
     this.lesson,
     this.backup,
     this.onOpenCoach,
+    this.onEdit,
+    this.onDelete,
   });
+
+  /// Opened from the log rather than from Finish: the same layout, read, with
+  /// **Edit** and **Delete** where Finish's actions were. Either being set is
+  /// what makes it the history's view of the session.
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  bool get fromHistory => onEdit != null || onDelete != null;
 
   /// The session as it was finished. Must have ended — see [SessionSummary.of].
   final Session session;
@@ -260,6 +270,11 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                 onBack: () => Navigator.of(context).maybePop(),
                 summary: _summary,
                 massUnit: widget.massUnit,
+                // From the log, the date is the point: which Tuesday it was.
+                label: widget.fromHistory
+                    ? _dayLabel(widget.session.startedAt)
+                    : 'Session complete',
+                backTooltip: widget.fromHistory ? 'Back' : 'Back to Track',
               ),
               Expanded(
                 child: ListView(
@@ -322,45 +337,66 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                         ),
                       ),
                     const SizedBox(height: AppSpacing.xl),
-                    // Back to Track is the primary, not the coach. This screen
-                    // is read and then left, and leaving is the one action
-                    // every build has — the coach is absent from a free or
-                    // offline one, and the silver fill belongs on something
-                    // that is always there.
-                    PrimaryButton(
-                      label: 'Back to Track',
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                    if (widget.onOpenCoach != null) ...<Widget>[
+                    if (widget.fromHistory) ...<Widget>[
+                      if (widget.onEdit != null)
+                        AppOutlinedButton(
+                          label: 'Edit session',
+                          icon: Icons.edit_outlined,
+                          onPressed: widget.onEdit,
+                          expand: true,
+                        ),
                       const SizedBox(height: AppSpacing.sm),
-                      AppOutlinedButton(
-                        label: 'Talk it over with your coach',
-                        onPressed: _openCoach,
-                        expand: true,
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    if (_savedAs != null)
-                      Center(
-                        child: Text(
-                          // Not the snackbar's words. That one has already
-                          // said "X is in your workouts" and is on its way
-                          // out; this is what stays, and two widgets saying
-                          // the same sentence is one thing said twice.
-                          'Saved as $_savedAs.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiary,
+                      if (widget.onDelete != null)
+                        Center(
+                          child: AppTextButton(
+                            label: 'Delete session',
+                            onPressed: widget.onDelete,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      )
-                    else if (widget.library != null && widget.offerSave)
-                      Center(
-                        child: AppTextButton(
-                          label: 'Save to your workouts',
-                          onPressed: _save,
-                        ),
+                    ] else ...<Widget>[
+                      // Back to Track is the primary, not the coach. This screen
+                      // is read and then left, and leaving is the one action
+                      // every build has — the coach is absent from a free or
+                      // offline one, and the silver fill belongs on something
+                      // that is always there.
+                      PrimaryButton(
+                        label: 'Back to Track',
+                        onPressed: () => Navigator.of(context).maybePop(),
                       ),
+                      if (widget.onOpenCoach != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        AppOutlinedButton(
+                          label: 'Talk it over with your coach',
+                          onPressed: _openCoach,
+                          expand: true,
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.sm),
+                      if (_savedAs != null)
+                        Center(
+                          child: Text(
+                            // Not the snackbar's words. That one has already
+                            // said "X is in your workouts" and is on its way
+                            // out; this is what stays, and two widgets saying
+                            // the same sentence is one thing said twice.
+                            'Saved as $_savedAs.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      else if (widget.library != null && widget.offerSave)
+                        Center(
+                          child: AppTextButton(
+                            label: 'Save to your workouts',
+                            onPressed: _save,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -389,7 +425,12 @@ class _Header extends StatelessWidget {
     required this.onBack,
     required this.summary,
     required this.massUnit,
+    this.label = 'Session complete',
+    this.backTooltip = 'Back to Track',
   });
+
+  final String label;
+  final String backTooltip;
 
   /// Goes back to Track. Safe and unguarded: the session is finished and
   /// written, and nothing on this screen is in flight.
@@ -417,7 +458,7 @@ class _Header extends StatelessWidget {
                 onPressed: onBack,
                 icon: Icons.arrow_back,
                 color: AppColors.textSecondary,
-                tooltip: 'Back to Track',
+                tooltip: backTooltip,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -431,7 +472,7 @@ class _Header extends StatelessWidget {
                     // Where the running screen says "In progress". No date
                     // under it: the lifter finished this four seconds ago, and
                     // telling them which day it was is the app filling space.
-                    const SectionLabel('Session complete'),
+                    SectionLabel(label),
                     const SizedBox(height: 2),
                     Text(
                       summary.name,
@@ -997,4 +1038,17 @@ class _LandsState extends State<_Lands> with SingleTickerProviderStateMixin {
     ),
     child: widget.child,
   );
+}
+
+/// `Tuesday 23 Sep` — the day a past session happened.
+String _dayLabel(DateTime d) {
+  const days = <String>[
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', //
+    'Sunday',
+  ];
+  const months = <String>[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}';
 }
