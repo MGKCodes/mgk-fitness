@@ -13,38 +13,41 @@ Small fixes — a bug, a doc gap, a broken example — just send them.
 
 ## Branching
 
-`main` is the trunk. There is no long-lived `develop`: releases are tagged
-builds, so a permanent second trunk would buy staging this project doesn't need
-and cost a merge hop on every change.
+Two long-lived branches, and nothing else:
 
-Branches are named for the **lane** they own — the top-level tree the work
-belongs to:
+- **`develop`** is where the work happens: both apps, the shared packages and
+  the backend. Anything an app is built from lives here.
+- **`main`** is what has shipped. `develop` is promoted to it when both apps
+  release, and the release is tagged (`run/build-27`).
 
-```
-lift/rest-timer          apps/mgk_lift/
-run/split-drift          apps/mgk_run/
-ui/glass-tokens          packages/mgk_ui/
-db/session-schema        supabase/
-```
+**The website is the exception.** `web/` is not an app release and can move
+ahead of the apps, so a change there merges **straight to `main`**, which Vercel
+deploys, and `main` is then merged back into `develop` so that `develop` always
+contains it. The pages under `web/public/` are generated from each app's
+`docs/`: regenerate them on `develop`, and they can go to `main` while the
+in-app copy waits for the next build.
 
-The lane is deliberately coarser than the commit scope. `feat(coach)` and
-`feat(db)` are both `lift/` branches, because coaching and the drift schema
-both live inside `apps/mgk_lift` and can't be worked on independently anyway.
+There are no per-app lanes. Run and Lift once lived on separate `run/` and
+`lift/` branches, and the shared packages drifted apart between them: the same
+fix was copied across by hand, and one merge met eleven conflicts in shared
+files (1 October 2026). A short-lived branch is still fine for work that needs
+isolation, such as a risky refactor or a pull request. Name it for what it does
+(`fix/split-drift`), merge it back into `develop`, and delete it the same day.
 
-### Two lanes at once
+### Two sessions at once
 
-Two apps sharing a design system means two people — or two agents — working at
-the same time is the normal case, not the exception. What makes it safe is a
-worktree, not a branch:
+Two people, or two agents, working at the same time is the normal case. What
+keeps it safe is a worktree for the short-lived branch, not the branch alone:
 
 ```sh
-git worktree add .claude/worktrees/lift lift/rest-timer
+git worktree add .claude/worktrees/split-drift -b fix/split-drift develop
 ```
 
 A branch on its own isn't enough. Both checkouts would still share one working
 tree and one index, so `git add -A`, `git stash` or `git reset --hard` from
 either side reaches into the other's uncommitted work and there is no undo. A
-worktree gives each lane its own index and its own files.
+worktree gives each its own index and its own files. Remove it
+(`git worktree remove`) and delete the branch once it is merged.
 
 A fresh worktree is a fresh checkout: `.dart_tool/` and `*.g.dart` are ignored,
 so pub resolution and generated code don't come with it. Run Setup inside the
@@ -52,34 +55,30 @@ worktree before `flutter analyze` there means anything.
 
 ### Shared packages
 
-`mgk_ui` and `mgk_units` are imported by both apps, so they are the one place
-lanes overlap. The line that matters is additive versus mutative:
+`mgk_ui`, `mgk_auth` and `mgk_units` are imported by both apps, so a change to
+one is a change to both. The line that matters is additive versus mutative:
 
-- **Adding** — a new widget in a new file, plus one export in `mgk_ui.dart` —
-  is fine from any lane. Nothing that already exists changes behaviour, and the
-  only shared surface is a one-line append that merges cleanly.
+- **Adding** (a new widget in a new file, plus one export in `mgk_ui.dart`)
+  changes nothing that already exists.
 - **Changing** an existing widget's API, or any colour, spacing or motion
-  token, changes both apps underneath whoever else is working. Do it anyway
-  where the work calls for it — most of the good design-system changes are
-  found while building a real screen, and a rule that sends every one of them
-  to a separate branch means the shared layer only improves when somebody sits
-  down to improve it in the abstract, which is when it stops improving.
+  token, changes both apps. Do it anyway where the work calls for it: most of
+  the good design-system changes are found while building a real screen, and
+  the shared layer only improves if that is allowed.
 
-  What is not optional is finishing it: **run the other app's suite against the
-  result before merging, and say in the PR what will look different over
-  there.** A `ui/` branch merged to `main` first is still the cleaner route for
-  a change large enough to review on its own, and it stays available — it is
-  just not the toll on every token.
+  What is not optional is finishing it: **run the other app's suite before
+  pushing to `develop`, and say in the commit what will look different
+  there.** The full set is Run, Lift, `mgk_ui`, `mgk_auth` and
+  `deno test supabase/functions`.
 
 A token change is a two-app change whether or not the second app is open in
 front of you, and the person who finds out is the one whose running app just
 started rendering wrong. Running their tests is how you find out first.
 
-Worked example: the run lane changed `HeroNumeral`, `PressScale`, `AppCard`,
-`PaceBandMeter`, `MgkPageTransitions` and the button font token in one branch.
-All six were right, and Liftio inherited a font correction it had never asked
-for. What made that safe was `flutter test apps/mgk_lift` before the merge, not
-the branch it happened on.
+Worked example: work on Run changed `HeroNumeral`, `PressScale`, `AppCard`,
+`PaceBandMeter`, `MgkPageTransitions` and the button font token at once. All
+six were right, and Liftio inherited a font correction it had never asked for.
+What made that safe was `flutter test apps/mgk_lift` before the merge, not the
+branch it happened on.
 
 ## Sign your commits (DCO)
 
