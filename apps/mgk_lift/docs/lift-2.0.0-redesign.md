@@ -204,10 +204,15 @@ The plan is written against these; change the item if the answer differs.
 components come before the screens that use them; and the two things that need
 Matthew take calendar time.
 
-- [ ] **Merge `main` into the branch**, as the handover's *Merging with `main`*
+- [x] **Merge `main` into the branch**, as the handover's *Merging with `main`*
       says: `main`'s side in `supabase/functions` and its migration names, both
       sides in `web/`. Then Lift's, Run's and `mgk_ui`'s suites, both Deno
-      suites, `npm run legal` and `next build`.
+      suites, `npm run legal` and `next build`. *Done 2026-09-30 (`4816570`):
+      two conflicts, both `main`'s side, and one seam the merge could not show
+      (a new Run test importing the coach mark from where it used to live). Run
+      1,752 tests, Deno 214 + 21 + 7, `mgk_ui` 59, `mgk_units` 47, web build.
+      Lift 759 of 760: `in_workout_test`'s reordering test fails identically on
+      the commit before the merge, so it predates it and is fixed on its own.*
 - [ ] **Amend ADR-0009** for the photograph (R1, O6): where a screen leads with
       one, it may carry the top of the screen, with the scrim light under the
       headline; elsewhere the faint texture stands. Written as a platform
@@ -247,6 +252,14 @@ Matthew take calendar time.
         and Play's app-signing key.
       - Supabase, the hosted project: Apple and Google switched on, with every
         client id, and the redirect for Android's Apple flow.
+
+      *Apple's half done 2026-09-30, and it found something: Apple regenerated
+      Lift's profile on Frunt's distribution certificate, Run's already used
+      it, and both apps published through Frunt's App Store Connect key. By
+      Matthew's rule that nothing MGKFitness ships depends on Frunt, both apps
+      now sign with MGKFitness's own certificate and publish with its own key
+      ([store-setup.md](store-setup.md) 7b; `codemagic.yaml`). Google and
+      Supabase are next.*
 
 **Done when:** the branch contains `main` and every suite passes; the shared
 pieces are in `mgk_ui` and Run looks the same; the ADR amendment is written; the

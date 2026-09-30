@@ -229,30 +229,52 @@ Supabase and nowhere else: not into this repository, not into a chat.
 
 ### 7a. Apple Developer: the capability, a Services ID, a key
 
-- [ ] Identifiers › `com.mgkcodes.liftio` › tick **Sign In with Apple** › Edit ›
+- [x] Identifiers › `com.mgkcodes.liftio` › tick **Sign In with Apple** › Edit ›
       *Enable as a primary App ID* › Save. Apple warns that this invalidates the
-      app's provisioning profiles; 7b replaces them.
-- [ ] Identifiers › `com.mgkcodes.fitness.run` › tick **Sign In with Apple** ›
+      app's provisioning profiles; 7b replaces them. *Done 2026-09-30.*
+- [x] Identifiers › `com.mgkcodes.fitness.run` › tick **Sign In with Apple** ›
       Edit › *Group with an existing primary App ID* › `com.mgkcodes.liftio` ›
-      Save. One Apple ID then signs into both apps as one person.
-- [ ] Identifiers › **+** › *Services IDs* › description `MGKFitness`,
+      Save. One Apple ID then signs into both apps as one person. *Done.*
+- [x] Identifiers › **+** › *Services IDs* › description `MGKFitness`,
       identifier `com.mgkcodes.fitness.web` › Register. Open it › tick Sign In
       with Apple › Configure › primary App ID `com.mgkcodes.liftio`, domain
       `cwpwzxjjhxbkwhrgnasn.supabase.co`, return URL
       `https://cwpwzxjjhxbkwhrgnasn.supabase.co/auth/v1/callback` › Save. This
-      is what Android's Apple sign-in goes through.
-- [ ] Keys › **+** › name `MGKFitness Sign in with Apple` › tick Sign In with
+      is what Android's Apple sign-in goes through. *Done. Liftio 1.x's older
+      Services ID, `com.mgkcodes.liftio.siwa`, is still there and left alone:
+      check Supabase's current Apple settings before 7d changes them.*
+- [x] Keys › **+** › name `MGKFitness Sign in with Apple` › tick Sign In with
       Apple › Configure › `com.mgkcodes.liftio` › Save › Register › **Download**
-      the `.p8`. Apple allows one download. Note its Key ID, and the Team ID.
+      the `.p8`. Apple allows one download. *Done: Team ID `ZTS7SQYSA5`, Key ID
+      `43K62X7QPT`.*
 
-### 7b. Provisioning profiles
+### 7b. Signing: MGKFitness's own key, certificate and profiles
 
-- [ ] Profiles › *Lift MGKFitness App Store* › Edit › Save › Download. Then
-      Codemagic › Teams › Code signing identities › iOS provisioning profiles ›
-      upload it under the same reference name, replacing the old one (Lift signs
-      by hand; `codemagic.yaml`, `lift-ios-release`).
-- [ ] Profiles › Run's App Store profile › Edit › Save. Nothing to upload:
-      Codemagic fetches Run's.
+*Settled differently from the first draft, 2026-09-30.* Regenerating Lift's
+profile, Apple picked the team's newest distribution certificate, which is
+Frunt's, and Run's profile already used it; both apps also published through
+Frunt's App Store Connect key. **Nothing MGKFitness ships depends on anything of
+Frunt's**, so both apps now have their own, and `codemagic.yaml` points at them.
+
+- [x] App Store Connect › Users and Access › Integrations › Team Keys › **+** ›
+      `MGKFitness Codemagic`, App Manager › Download the `.p8`. *Key ID
+      `4HNLTYJL55`, issuer `12c1530c-e102-40b4-9b6c-932a0c120fde`.*
+- [x] Codemagic › Settings › Integrations › Developer Portal › Manage keys ›
+      Add another key: `mgkfitness_asc`, with that issuer, key id and `.p8`.
+- [x] Codemagic › Code signing identities › iOS certificates › **Generate
+      certificate** with `mgkfitness_asc`, Apple Distribution, reference name
+      `mgkfitness_distribution`. *Expires 2027-09-30.*
+- [x] Apple › Profiles › *Lift MGKFitness App Store* › Edit › the certificate
+      **expiring 2027-09-30** › Save › Download. Codemagic › iOS provisioning
+      profiles › delete the old one and upload this under the same reference
+      name (Lift signs by hand; `codemagic.yaml`, `lift-ios-release`).
+- [x] Apple › Profiles › *Run MGKFitness App Store* › Edit › the same
+      certificate › Save. Codemagic keeps its own copy of Run's profile too:
+      delete the old `mgk_fitness_run_appstore_profile` › **Fetch profiles**
+      with `mgkfitness_asc` › reference name `Run MGKFitness App Store`.
+- [ ] Run's workflow change (`app_store_connect: mgkfitness_asc`) reaches Run's
+      builds through `main`. Until then Run publishes through `frunt_asc`, which
+      still works; its signing is already MGKFitness's.
 
 ### 7c. Google Cloud: one project, and a client per platform
 
