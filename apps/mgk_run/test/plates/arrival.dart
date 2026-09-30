@@ -28,6 +28,7 @@
 library;
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
@@ -36,6 +37,9 @@ import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
+import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
+import 'package:mgk_run/src/features/coaching/domain/intake_conversation.dart';
+import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
@@ -124,7 +128,7 @@ void main() {
   /// reason the flow tests give: adding one should not silently strand this on
   /// a screen it does not know how to leave.
   Future<void> throughPermissions(WidgetTester tester) async {
-    for (final permission in introPermissions) {
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
       await tapText(tester, permission.cta);
       await tapText(tester, 'Continue');
     }
@@ -133,7 +137,20 @@ void main() {
   // --- Act one: arriving -----------------------------------------------------
 
   testWidgets('the first thing anybody sees', (tester) async {
-    await plate(tester, 'arrive-welcome', cold(), pixelRatio: 2);
+    await plate(
+      tester,
+      'arrive-welcome',
+      cold(),
+      pixelRatio: 2,
+      // **Settled, not pumped once.** The gate reads the intro store before it
+      // draws anything, and then the welcome staggers in over a second and a
+      // half. The September board took this plate at 0.7 s — a blank frame —
+      // and published it as `B1`, captioned "two doors and a wordmark".
+      drive: (tester) async {
+        await settle(tester);
+        await settle(tester);
+      },
+    );
   });
 
   testWidgets('the coach introduces itself', (tester) async {
@@ -198,6 +215,26 @@ void main() {
     );
   });
 
+  testWidgets('then Health, asked for steps and nothing else', (tester) async {
+    // iPhone only: Android has no Health step at all (`introPermissionsFor`).
+    // New wording in build 26 — it used to promise runs imported from a watch,
+    // which nothing ever did.
+    await plate(
+      tester,
+      'arrive-health',
+      cold(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await tester.pumpAndSettle();
+        await tapText(tester, 'Get started');
+        await tapText(tester, 'Sounds good');
+        await say(tester, 'Sam', 'Continue');
+        await tapText(tester, introPermissions.first.cta);
+        await tapText(tester, 'Continue');
+      },
+    );
+  });
+
   testWidgets('and it ends on a working app, with no account at all', (
     tester,
   ) async {
@@ -238,8 +275,8 @@ void main() {
   // flow is opened directly here because the tab's empty state is already on
   // the board as `shell-plan-empty` — what is missing is what happens after it.
 
-  Widget planFlow({bool acknowledged = true}) => CoachFlow(
-    coach: FakeCoachService(),
+  Widget planFlow({bool acknowledged = true, CoachClient? coach}) => CoachFlow(
+    coach: coach ?? FakeCoachService(),
     // The repository builds it, so the plan on the reveal is a real one.
     buildPlan: (profile) =>
         PlanRepository(store: DriftPlanStore(db)).create(profile),
@@ -276,7 +313,10 @@ void main() {
       drive: (tester) async {
         await tester.pumpAndSettle();
         await tapText(tester, 'I have a race coming up');
-        await tester.enterText(find.byType(TextField).first, '5k in 22');
+        await tester.enterText(
+          find.byType(TextField).first,
+          'A marathon in January',
+        );
         await tester.testTextInput.receiveAction(TextInputAction.send);
         await tester.pumpAndSettle();
       },
@@ -303,6 +343,47 @@ void main() {
       tester,
       'plan-reveal',
       planFlow(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await tester.pumpAndSettle();
+        await tapText(tester, 'I have a race coming up');
+        await untilReviewed(tester);
+        await tapText(tester, 'Review details');
+        await tapText(tester, 'Build my plan');
+      },
+    );
+  });
+
+  // --- A race too close for a block ------------------------------------------
+  //
+  // New in build 26 (EDGE-18, test sheet D18): a race less than six weeks
+  // after the coming Monday is refused, because the block would have to put
+  // race day inside base training. The sheet expects the refusal *before*
+  // anything is built. These two plates show where the runner actually meets
+  // it: the confirmation screen, and what "Build my plan" does from there.
+
+  testWidgets('a race three weeks out, as the confirmation hears it', (
+    tester,
+  ) async {
+    await plate(
+      tester,
+      'plan-near-race-confirm',
+      planFlow(coach: _NearRaceCoach()),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await tester.pumpAndSettle();
+        await tapText(tester, 'I have a race coming up');
+        await untilReviewed(tester);
+        await tapText(tester, 'Review details');
+      },
+    );
+  });
+
+  testWidgets('and what building it does', (tester) async {
+    await plate(
+      tester,
+      'plan-near-race',
+      planFlow(coach: _NearRaceCoach()),
       pixelRatio: 2,
       drive: (tester) async {
         await tester.pumpAndSettle();
@@ -382,4 +463,24 @@ void main() {
       },
     );
   });
+}
+
+/// The preview's scripted coach, hearing a race three weeks away rather than
+/// sixteen. Only the date differs; every line it says is the script's own.
+class _NearRaceCoach extends FakeCoachService {
+  @override
+  Future<IntakeTurn> intake({
+    required IntakeSlots slots,
+    required List<IntakeMessage> history,
+  }) async {
+    final turn = await super.intake(slots: slots, history: history);
+    if (turn.extracted.eventDate == null) return turn;
+    return IntakeTurn(
+      reply: turn.reply,
+      extracted: IntakeSlots(
+        goalDistanceMeters: turn.extracted.goalDistanceMeters,
+        eventDate: DateTime.now().add(const Duration(days: 21)),
+      ),
+    );
+  }
 }

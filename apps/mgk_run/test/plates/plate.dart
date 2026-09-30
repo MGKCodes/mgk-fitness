@@ -20,6 +20,7 @@ library;
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -109,20 +110,67 @@ Future<void> _loadIcons() async {
 
 final GlobalKey _boundary = GlobalKey();
 
+/// **The safe areas of the phone a plate is drawn as.**
+///
+/// A real iPhone never lays a screen out edge to edge: the status bar and the
+/// Dynamic Island take the top 59pt of a 393x852 phone and the home indicator
+/// the bottom 34pt, and every `SafeArea` in the app answers to those numbers.
+/// Plates used to be drawn with none, so a nav bar or a sheet's last button
+/// could sit where a thumb and the home indicator are and the board would call
+/// it fine. The top band is left empty rather than drawn: the clock is the
+/// phone's, not the app's.
+///
+/// Only the three phone sizes get insets. A crop of one component (the year
+/// grid, the coach mark, a route drawing) is not a screen and has none.
+EdgeInsets safeAreaFor(Size size) {
+  if (size == kPhone || size == kMaxPhone) {
+    return const EdgeInsets.only(top: 59, bottom: 34);
+  }
+  if (size == kSmallPhone) return const EdgeInsets.only(top: 20);
+  return EdgeInsets.zero;
+}
+
 /// Renders [child] at [size] and writes it to `plates/<name>.png`.
 ///
 /// [pixelRatio] 3 matches a modern phone's density, so hairline strokes are
 /// judged at the density they will actually be drawn at rather than at 1x,
 /// where a thin cut looks heavier than it is.
+///
+/// **[platform] is an iPhone unless a plate says otherwise.** `flutter test`
+/// runs as Android by default, so every plate before build 26 was quietly an
+/// Android screen: the paywall named a Google Play account, the intro dropped
+/// its Health step, and the App Store review screenshot cut from `paywall-store`
+/// described the wrong store. The board is read against the App Store build
+/// first; a plate that is about Android asks for it by name.
 Future<void> plate(
   WidgetTester tester,
   String name,
   Widget child, {
   Size size = kPhone,
   double pixelRatio = 3,
+  TargetPlatform platform = TargetPlatform.iOS,
   Future<void> Function(WidgetTester tester)? drive,
 }) async {
   await loadInter();
+  debugDefaultTargetPlatformOverride = platform;
+  // **The view, not only the surface.** `setSurfaceSize` sizes what is laid
+  // out, but `MediaQuery` reads the test *view*, which stays at its default
+  // 800x600. Every plate was therefore laid out at 393x852 while telling the
+  // app the screen was 800x600 — so each sheet that sizes itself off the
+  // screen (the coach's conversation, the consent sheet, the report sheet)
+  // came out the wrong height, and nothing looked broken enough to notice.
+  tester.view.devicePixelRatio = pixelRatio;
+  tester.view.physicalSize = size * pixelRatio;
+  final EdgeInsets inset = safeAreaFor(size);
+  tester.view.padding = FakeViewPadding(
+    top: inset.top * pixelRatio,
+    bottom: inset.bottom * pixelRatio,
+  );
+  tester.view.viewPadding = FakeViewPadding(
+    top: inset.top * pixelRatio,
+    bottom: inset.bottom * pixelRatio,
+  );
+  addTearDown(tester.view.reset);
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -165,4 +213,7 @@ Future<void> plate(
     // ignore: avoid_print
     print('plate -> ${file.absolute.path}');
   });
+  // Reset here rather than in a tear-down: the framework checks that no
+  // foundation debug variable is left set before tear-downs run.
+  debugDefaultTargetPlatformOverride = null;
 }
