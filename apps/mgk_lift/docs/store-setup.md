@@ -210,15 +210,13 @@ messages an hour for the whole project, Run included.
       real page rather than on `localhost`.
 - [ ] Then prove it: sign up from the app with a real address. Supabase rejects
       `example.com` and `.invalid` outright.
-- [ ] Authentication › Emails › **Reset password**: subject `Choose a new
-      password`, and as the body everything below the comment in
+- [ ] Authentication › Emails › **Reset password**, **once
+      `/reset-password` is live on the site** (it ships with this branch):
+      until then its link would be a 404. Subject `Choose a new password`, and
+      as the body everything below the comment in
       `supabase/templates/recovery.html`. Its link goes to
       `/reset-password` with a token hash; the default template's link cannot
       finish a reset, because both apps sign in with PKCE.
-- [ ] Vercel › `mgkfitness` › Settings › Environment Variables:
-      `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-      the same public values the apps are built with. Then redeploy: Next
-      writes them into the page at build time.
 - [ ] Then prove that: *Forgot your password?* in either app, open the email
       on a laptop, choose a new password, and sign in with it on the phone.
 
@@ -369,8 +367,8 @@ April and May 2026, several on hidden relay addresses; none with Google.*
 so every emailed link — a sign-up confirmation, a password reset — led to a dead
 page. It is `https://mgkfitness.mgkcodes.com` now. And a password reset could
 not finish: no page on the site let somebody choose a new password. The
-redesign's Phase 1 added one (`web/app/reset-password`); it works once step 6's
-template and two Vercel variables are in.
+redesign's Phase 1 added one (`web/app/reset-password`); it works once it is
+deployed and step 6's template is in.
 
 *Later, with step 6:* Apple's hidden addresses only accept mail from senders
 registered with Apple (Services › Sign in with Apple for Email Communication).

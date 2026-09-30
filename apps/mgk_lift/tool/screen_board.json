@@ -492,9 +492,8 @@
       "out": "Back arrow, Finish, Discard",
       "next": "Wait, or start the next set",
       "note": "The dock rises with the timer, the mark above it.",
-      "doc": "The dock exists only while resting (9): it rises from the bottom edge when a set is ticked and sinks when the rest ends or is skipped. Rest is never restored from disk, which is why this state can only be reached by ticking something.",
-      "flag": "Open question: the plan puts the mark bottom right, as on the tabs, which is also where each set's tick sits. Scrolling mid-session, the mark can cover the next tick, and a tap meant for the set opens the coach instead.",
-      "tags": ["free", "flag"]
+      "doc": "The dock exists only while resting (9): it rises from the bottom edge when a set is ticked and sinks when the rest ends or is skipped. Rest is never restored from disk, which is why this state can only be reached by ticking something. The mark sits bottom right, above the dock, as it does on every other screen: moving it to the top bar was considered, because that corner is also where a set's tick sits, and it was kept (30 September).",
+      "tags": ["free"]
     },
     "session-summary": {
       "code": "W11",

@@ -322,8 +322,10 @@ chooses a tier — which is only as good as signing in is.
       browser against a fake Supabase Auth: too short, refused as weak then
       accepted without verifying twice, the same password, an expired link,
       and no link. Run had no "Forgot your password?" at all; it has now.
-      Waiting on Matthew: the template pasted into Supabase and two public
-      values in Vercel (store-setup.md step 6).*
+      The page carries the project's two public values itself, so Vercel needs
+      nothing. Waiting on Matthew: the template pasted into Supabase once the
+      page is live (store-setup.md step 6), since neither connection can
+      change auth settings.*
 
 ### Lift
 
@@ -358,8 +360,9 @@ chooses a tier — which is only as good as signing in is.
       somebody else's Apple ID cannot revoke theirs. **Android sends no code**:
       getting one there needs Apple's web flow with a callback route and that
       route on the Services ID, so an Android deletion is logged `no_code`
-      (the function's README). Not deployed: `supabase functions deploy
-      delete-account` is Matthew's, and either order is safe, since the old
+      (the function's README). Not deployed: the deploy through the Supabase
+      connection was refused in auto mode, so `supabase functions deploy
+      delete-account` is Matthew's. Either order is safe, since the old
       function ignores the new field and the new one expects nothing of old
       apps.*
 
@@ -453,7 +456,7 @@ session open, Start asks before anything else begins.
       timer, which is otherwise unchanged (9).
 - [x] **The C on the session screen**, bottom right as on the tabs, and above the
       dock while it is up. The chat when subscribed, the sales screen when not.
-      *Built as written, and found wanting on the board (plate W10): bottom right is where each set's tick sits, so scrolling mid-session the mark can cover the next tick. The top bar, beside + Add, is the recommendation; waiting on Matthew.*
+      *Built as written, and found wanting on the board (plate W10): bottom right is where each set's tick sits, so scrolling mid-session the mark can cover the next tick. The top bar was offered instead; Matthew kept it bottom right on 30 September, where it is on every other screen.*
 - [x] **The bubble** (10, R7, O3). When a ticked set beats that movement's best
       estimated one-rep max — Epley, 12 reps or fewer, strictly greater, as
       `SessionSummary.of` counts it — the C opens with the best, holds, and

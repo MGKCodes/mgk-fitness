@@ -98,15 +98,11 @@ mail scanner that follows the link does not use it up. It calls Supabase Auth
 directly, with no client library, and signs its short session out once the
 password is changed.
 
-It needs two **public** values in Vercel's environment, the same two every copy
-of the apps carries, and a redeploy after setting them, since Next writes them
-into the page at build time:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-
-Without them the page says it is not working and gives the support address,
-rather than failing silently.
+It talks to the project with two **public** values, written in the form: the
+project's address and its publishable key, which every copy of both apps
+carries and the page's own JavaScript hands out anyway. `NEXT_PUBLIC_SUPABASE_URL`
+and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` override them, for a test against a
+stand-in server. Nothing secret goes there, which is why `.env*` stays ignored.
 
 ## Deploying
 
