@@ -3,6 +3,10 @@
 .packages
 build/
 pubspec_overrides.yaml
+# Written by `flutter pub get` in any package with a plugin in its graph,
+# which mgk_auth is the first shared one to have.
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # In a pub workspace the root lockfile is the only one, and it is committed.
 # Member packages must not carry their own.
