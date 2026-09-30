@@ -107,16 +107,39 @@ and run.
       message).
 
 6. **Console settings and decisions.**
-   - [ ] **Maps: MapTiler's Free plan is non-commercial, and a paid plan is not in
-         the launch budget (owner, 2026-09-30).** Proposed: **Mapbox raster
-         tiles**, free for commercial use up to 200,000 tiles a month. The tile
-         URL and attribution are build config (`MAP_TILE_URL_TEMPLATE`,
-         `MAP_ATTRIBUTION`); the code change is Mapbox's wordmark on the map and
-         the privacy policy naming Mapbox instead of MapTiler, so it rides in
-         build 27. Needs the owner's go-ahead and a Mapbox account and token.
-         (Google's mobile Maps SDK is also free, but is a rewrite of the map
-         layer, not a launch job.) Until then the App Store's Content Rights
-         answer (store-setup.md §10) is not true of the tiles.
+   - [ ] **Maps: moving to Esri (ArcGIS Location Platform), decided 2026-09-30.**
+         MapTiler's Free plan is non-commercial and its cheapest commercial plan
+         ($30/month) is not in the launch budget. Esri's free tier allows
+         commercial apps, gives 2M tiles a month, needs no card, and with
+         pay-as-you-go disabled (it is) the tiles stop at the limit rather than
+         bill. Mapbox was the first proposal and lost on needing a card with no
+         spending cap. Native Apple/Google maps are a post-1.0 question (after-1.0.0.md).
+         - [x] Account `MGKCodes` (portal mgkcodes.maps.arcgis.com), API key with
+               only the Static basemap tiles privilege, no referrers. Key tested
+               2026-09-30: `arcgis/dark-gray` returns 512 px PNGs with labels.
+               The key is in the local `config/app_config.json` under `_ESRI_*`
+               (git-ignored) and in the owner's password manager.
+         - [ ] **Build 27 code:** the tiles are 512 px, so `TileLayer` needs a
+               tile size of 512 with a zoom offset of -1 (or labels draw at half
+               size). Judge label size and sharpness, and re-tune
+               `kBasemapOpacity` by eye (0.85 was set against MapTiler).
+               Template: `…/static-basemap-tiles-service/v1/arcgis/dark-gray/static/tile/{z}/{y}/{x}?token=…`
+               (row before column).
+         - [ ] **Attribution** `Powered by Esri | Sources: Esri, TomTom, Garmin,
+               FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User
+               Community` (from the service's `copyrightText`); confirm Esri's
+               attribution rules before shipping.
+         - [ ] **Privacy policy** (web, in-app `legal_copy.dart`, `docs/privacy-policy.md`,
+               `compliance.md`, the legal tests) names Esri instead of MapTiler;
+               Play Data safety and App Privacy rows follow.
+         - [ ] **Codemagic** group `mgk_fitness_run_env`: swap `MAP_TILE_URL_TEMPLATE`
+               and `MAP_ATTRIBUTION` only once the tile-size change is on main.
+         - [ ] **The key expires 2027-09-29.** Generate the credential's second
+               key and ship it in an update by the end of August 2027, or every
+               installed copy loses its basemap (routes still draw). Better: serve
+               the tile URL from the backend so rotation needs no release (after-1.0.0.md).
+         Until the switch ships, the App Store's Content Rights answer
+         (store-setup.md §10) is not true of the tiles.
    - [ ] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
          Authorization value verbatim with no `Bearer` (store-setup.md §5).
    - [ ] **OpenRouter:** see item 3.
