@@ -3,7 +3,6 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
-import 'settings_row.dart';
 
 /// The backup decision, on a screen of its own.
 ///

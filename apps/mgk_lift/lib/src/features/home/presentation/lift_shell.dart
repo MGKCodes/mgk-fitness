@@ -960,6 +960,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
+          // On the account card. Only in a build that can sell: with no
+          // store there is no plan to have or not have.
+          planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
           onSyncNow: _backup == null ? null : _syncNow,
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,

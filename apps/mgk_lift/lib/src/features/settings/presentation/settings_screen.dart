@@ -12,11 +12,11 @@ import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
-import '../../purchases/presentation/restore_button.dart';
 import '../../sync/presentation/account_section.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../tracking/domain/rest_alerts.dart';
 import '../domain/unit_preferences.dart';
+import 'account_screen.dart';
 import 'credits_screen.dart';
 
 /// The shipped version, shown at the foot of Settings.
@@ -52,7 +52,12 @@ class SettingsScreen extends StatefulWidget {
     this.restAlerts,
     this.version = kAppVersion,
     this.now,
+    this.planLabel,
   });
+
+  /// What the account pays for, on its card: `Subscribed` or `Free`. Null in
+  /// a build that sells nothing.
+  final String? planLabel;
 
   /// The rest-over alert's permission. Null hides the row: a build with no
   /// notifications has nothing to switch on.
@@ -197,102 +202,150 @@ class _SettingsScreenState extends State<SettingsScreen> {
     status: status,
     isSignedIn: widget.isSignedIn,
     email: widget.email,
+    planLabel: widget.planLabel,
     onSyncNow: widget.onSyncNow,
     onSignIn: widget.onSignIn,
+    onOpen: widget.isSignedIn ? _openAccount : null,
     now: widget.now,
+  );
+
+  /// Sign out, restore and delete: one tap behind the card (19).
+  Future<void> _openAccount() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => AccountScreen(
+        email: widget.email,
+        backup: widget.backup,
+        planLabel: widget.planLabel,
+        onSyncNow: widget.onSyncNow,
+        onSignIn: widget.onSignIn,
+        onRestorePurchases: widget.onRestorePurchases,
+        onSignOut: widget.onSignOut,
+        auth: widget.auth,
+        deleter: widget.deleter,
+        onAccountGone: widget.onAccountGone,
+        now: widget.now,
+      ),
+    ),
+  );
+
+  Future<void> _pickMass() async {
+    final picked = await showChoiceSheet<MassUnit>(
+      context,
+      title: 'Weight',
+      options: const <(MassUnit, String)>[
+        (MassUnit.kilograms, 'Kilograms'),
+        (MassUnit.pounds, 'Pounds'),
+      ],
+      selected: _prefs.mass,
+      // The two are separate on purpose, and saying so heads off the "why
+      // didn't my weights change too" that one switch would cause.
+      note:
+          'A separate choice from distance — miles with kilograms is '
+          'ordinary. Your training is always stored in kilograms and '
+          'converted for display, so switching never changes what your '
+          'history means.',
+    );
+    if (picked != null) await _update(_prefs.copyWith(mass: picked));
+  }
+
+  Future<void> _pickDistance() async {
+    final picked = await showChoiceSheet<UnitSystem>(
+      context,
+      title: 'Distance',
+      // Named for what they are. "Metric" and "Imperial" make a lifter
+      // translate; kilometres and miles are the actual choice.
+      options: const <(UnitSystem, String)>[
+        (UnitSystem.metric, 'Kilometres'),
+        (UnitSystem.imperial, 'Miles'),
+      ],
+      selected: _prefs.distance,
+      note:
+          'Only affects cardio distances. Shared with Run — changing it here '
+          'changes it there too.',
+    );
+    if (picked != null) await _update(_prefs.copyWith(distance: picked));
+  }
+
+  /// A paragraph that used to sit under its row on every visit, now one tap
+  /// away (19): true, and worth reading once.
+  Future<void> _explain(String title, String body) =>
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.sheet),
+          ),
+        ),
+        builder: (sheet) {
+          final theme = Theme.of(sheet);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.md,
+                AppSpacing.xl,
+                AppSpacing.xl,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const Center(child: SheetHandle()),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(title, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    body,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+  static String _massLabel(MassUnit u) =>
+      u == MassUnit.kilograms ? 'Kilograms' : 'Pounds';
+
+  static String _distanceLabel(UnitSystem u) =>
+      u == UnitSystem.metric ? 'Kilometres' : 'Miles';
+
+  Widget _group(String label, List<Widget> rows) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.lg,
+      AppSpacing.lg,
+      0,
+    ),
+    child: SettingsGroup(label: label, children: rows),
   );
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final readOnly = widget.store == null;
+    final canChange = !readOnly && !_saving;
+    final quiet = theme.textTheme.bodySmall?.copyWith(
+      color: AppColors.textTertiary,
+      height: 1.4,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
           children: <Widget>[
-            const _Heading('Units'),
-
-            _Choice<UnitSystem>(
-              label: 'Distance',
-              // Named for what they are. "Metric" and "Imperial" make a lifter
-              // translate; kilometres and miles are the actual choice.
-              options: const <UnitSystem, String>{
-                UnitSystem.metric: 'Kilometres',
-                UnitSystem.imperial: 'Miles',
-              },
-              value: _prefs.distance,
-              enabled: !readOnly && !_saving,
-              onChanged: (v) => _update(_prefs.copyWith(distance: v)),
-              note:
-                  'Only affects cardio distances. Shared with Run — changing it '
-                  'here changes it there too.',
-            ),
-
-            _Choice<MassUnit>(
-              label: 'Weight',
-              options: const <MassUnit, String>{
-                MassUnit.kilograms: 'Kilograms',
-                MassUnit.pounds: 'Pounds',
-              },
-              value: _prefs.mass,
-              enabled: !readOnly && !_saving,
-              onChanged: (v) => _update(_prefs.copyWith(mass: v)),
-              // The two are separate on purpose, and saying so heads off the
-              // "why didn't my weights change too" that one switch would cause.
-              note:
-                  'A separate choice from distance — miles with kilograms is '
-                  'ordinary. Your training is always stored in kilograms and '
-                  'converted for display, so switching never changes what your '
-                  'history means.',
-            ),
-
-            if (readOnly)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  0,
-                  AppSpacing.xl,
-                  AppSpacing.md,
-                ),
-                child: Text(
-                  'Sign in to change these.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-
-            if (widget.restAlerts != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.lg),
-              const _Heading('Workout'),
-              SettingsTile(
-                icon: Icons.timer_outlined,
-                title: 'Rest timer alerts',
-                subtitle: switch (_alertsAllowed) {
-                  true =>
-                    'On. A buzz when rest is over, even with your phone '
-                        'locked.',
-                  false when _alertsRefused =>
-                    'Your phone said no. Turn on notifications for Lift in '
-                        "your phone's settings.",
-                  false => 'Off. Tap to get a buzz when rest is over.',
-                  null => ' ',
-                },
-                onTap: _alertsAllowed == false && !_alertsRefused
-                    ? _turnOnAlerts
-                    : null,
-                showChevron: false,
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.lg),
-            // One section, not two. The old screen had a "Backup" card and an
-            // "Account" row three headings apart, which said the account was a
-            // backup and the identity was something else. It is one thing.
-            const _Heading('Account'),
+            // **The account first (19)**, as Run's Settings has it: who is
+            // signed in and what they pay for, then where backup stands. The
+            // things done to an account — signing out, restoring, deleting —
+            // are one tap in, on the account screen, rather than rows here.
+            //
             // Live, so a run started here — or by a checkpoint while the
             // screen is open — is reported as it happens.
             if (widget.backup case final backup?)
@@ -302,221 +355,165 @@ class _SettingsScreenState extends State<SettingsScreen> {
               )
             else
               _account(const BackupStatus()),
-            if (widget.isSignedIn)
-              SettingsTile(
-                icon: Icons.logout,
-                title: 'Sign out',
-                // Says what survives, because the fear this row triggers is
-                // that signing out is a way to lose something.
-                subtitle: 'Your training stays on this phone',
-                onTap: widget.onSignOut,
-                showChevron: false,
+
+            // Units as rows, the value on the right (19). The explanations
+            // are on the sheet each opens, where the choice is made.
+            _group('Units', <Widget>[
+              SettingsRow(
+                title: 'Weight',
+                value: _massLabel(_prefs.mass),
+                onTap: canChange ? _pickMass : null,
+              ),
+              SettingsRow(
+                title: 'Distance',
+                value: _distanceLabel(_prefs.distance),
+                onTap: canChange ? _pickDistance : null,
+              ),
+            ]),
+            if (readOnly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl + AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.xl,
+                  0,
+                ),
+                child: Text('Sign in to change these.', style: quiet),
               ),
 
-            if (widget.onRestorePurchases != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: RestorePurchasesButton(
-                    onRestore: widget.onRestorePurchases,
-                  ),
+            if (widget.restAlerts != null)
+              _group('Workout', <Widget>[
+                SettingsRow(
+                  title: 'Rest timer alerts',
+                  value: switch (_alertsAllowed) {
+                    true => 'On',
+                    false when _alertsRefused => 'Not allowed',
+                    false => 'Off',
+                    null => ' ',
+                  },
+                  onTap: switch (_alertsAllowed) {
+                    false when !_alertsRefused => _turnOnAlerts,
+                    false => () => _explain(
+                      'Rest timer alerts',
+                      "Your phone said no. Turn on notifications for Lift in "
+                          "your phone's settings, and the buzz comes back.",
+                    ),
+                    true => () => _explain(
+                      'Rest timer alerts',
+                      'A buzz when rest is over, even with your phone locked. '
+                          'It names the next set, and it is withdrawn when you '
+                          'come back to the app, so there is never a second.',
+                    ),
+                    null => null,
+                  },
                 ),
-              ),
+              ]),
 
             if (widget.useCoach != null ||
-                (widget.isSignedIn && widget.coachMemory != null)) ...<Widget>[
-              const _Heading('Coach'),
-
-              if (widget.useCoach case final bool on) ...<Widget>[
-                SwitchListTile(
-                  value: on,
-                  onChanged: widget.onUseCoachChanged,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                  ),
-                  title: const Text('Use the AI coach'),
-                  subtitle: Text(
-                    on
-                        ? 'On. What you write is sent to OpenRouter.'
-                        : 'Off. Nothing is sent to OpenRouter.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                      height: 1.4,
+                (widget.isSignedIn && widget.coachMemory != null))
+              _group('Coach', <Widget>[
+                if (widget.useCoach case final bool on)
+                  // A consent control, so the row still says in one line where
+                  // the words go. What exactly is sent is behind the info
+                  // button, and the full disclosure is the next row.
+                  SwitchListTile(
+                    value: on,
+                    onChanged: widget.onUseCoachChanged,
+                    contentPadding: const EdgeInsets.only(
+                      left: AppSpacing.xl,
+                      right: AppSpacing.md,
+                    ),
+                    title: Row(
+                      children: <Widget>[
+                        const Flexible(child: Text('Use the AI coach')),
+                        AppIconButton(
+                          icon: Icons.info_outline,
+                          tooltip: 'What is sent',
+                          size: 18,
+                          color: AppColors.textTertiary,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _explain(
+                            'What the coach is sent',
+                            'Your messages, a summary of your recent training, '
+                                'and your injury notes if you gave any. Off '
+                                'means none of it leaves the app, and the coach '
+                                'mark goes away with it — logging, plans you '
+                                'already have, photos and syncing all keep '
+                                'working.',
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      on
+                          ? 'On. What you write is sent to OpenRouter.'
+                          : 'Off. Nothing is sent to OpenRouter.',
+                      style: quiet,
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    0,
-                    AppSpacing.xl,
-                    AppSpacing.sm,
-                  ),
-                  child: Text(
-                    // Named plainly, and it names what is actually at stake.
-                    // "Enable AI features" would be a category; the sentence a
-                    // lifter needs is the one about their own words.
-                    'Your messages, a summary of your recent training, and your '
-                    'injury notes if you gave any. Off means none of it leaves '
-                    'the app, and the coach mark goes away with it — logging, '
-                    'plans you already have, photos and syncing all keep '
-                    'working.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                      height: 1.4,
+                if (widget.useCoach != null)
+                  SettingsRow(
+                    // Reachable from beside the switch as well as from the
+                    // legal hub: somebody deciding whether to turn it off is
+                    // exactly who the disclosure is for.
+                    title: aiDisclosure.title,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            const LegalDocumentScreen(document: aiDisclosure),
+                      ),
                     ),
                   ),
-                ),
-                SettingsTile(
-                  icon: Icons.auto_awesome_outlined,
-                  title: aiDisclosure.title,
-                  // Reachable from beside the switch as well as from the legal
-                  // hub. Somebody deciding whether to turn it off is exactly
-                  // who the disclosure is for, and making them go and find it
-                  // under About is how a disclosure becomes decorative.
-                  subtitle: 'What is sent, and what is not',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          const LegalDocumentScreen(document: aiDisclosure),
+                if (widget.isSignedIn && widget.coachMemory != null)
+                  SettingsRow(
+                    // The title is where the app says the coach remembers at
+                    // all, so a lifter who never opens it still learns it.
+                    title: 'What your coach remembers',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            CoachMemoryScreen(store: widget.coachMemory!),
+                      ),
                     ),
                   ),
-                ),
-              ],
+              ]),
 
-              if (widget.isSignedIn && widget.coachMemory != null)
-                SettingsTile(
-                  icon: Icons.psychology_outlined,
-                  title: 'What your coach remembers',
-                  // The subtitle is where the app says the coach remembers at
-                  // all. A lifter who never opens the screen should still learn
-                  // it from the row.
-                  subtitle: 'Read it, or clear it',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          CoachMemoryScreen(store: widget.coachMemory!),
+            _group('About', <Widget>[
+              SettingsRow(
+                title: 'Privacy & legal',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => LegalScreen(
+                      email: widget.email,
+                      auth: widget.auth,
+                      deleter: widget.deleter,
+                      onAccountGone: widget.onAccountGone,
                     ),
-                  ),
-                ),
-            ],
-
-            const SizedBox(height: AppSpacing.lg),
-            const _Heading('About'),
-
-            SettingsTile(
-              icon: Icons.policy_outlined,
-              title: 'Privacy & legal',
-              subtitle: 'Terms, privacy policy, how your coach uses AI',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => LegalScreen(
-                    email: widget.email,
-                    auth: widget.auth,
-                    deleter: widget.deleter,
-                    onAccountGone: widget.onAccountGone,
                   ),
                 ),
               ),
-            ),
-            SettingsTile(
-              icon: Icons.workspace_premium_outlined,
-              title: 'Credits',
-              subtitle: 'Exercise illustrations, typeface, licences',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const CreditsScreen()),
+              SettingsRow(
+                title: 'Credits',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CreditsScreen(),
+                  ),
+                ),
               ),
-            ),
-            SettingsTile(
-              icon: Icons.info_outline,
-              title: 'Version',
-              subtitle: widget.version,
-              showChevron: false,
+            ]),
+
+            // The version in a footer, where people look for it, rather than
+            // as a row that looks like it goes somewhere.
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: Text(
+                'Lift ${widget.version}',
+                textAlign: TextAlign.center,
+                style: quiet,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Heading extends StatelessWidget {
-  const _Heading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.xl,
-      AppSpacing.lg,
-      AppSpacing.xl,
-      AppSpacing.xs,
-    ),
-    child: SectionLabel(text),
-  );
-}
-
-/// One labelled either/or, with the sentence explaining what it does under it.
-class _Choice<T> extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.options,
-    required this.value,
-    required this.enabled,
-    required this.onChanged,
-    required this.note,
-  });
-
-  final String label;
-  final Map<T, String> options;
-  final T value;
-  final bool enabled;
-  final ValueChanged<T> onChanged;
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.sm,
-        AppSpacing.xl,
-        AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          // Full width, so Distance and Weight line up instead of each sizing
-          // to its own longest word — and so the halves are big enough to hit
-          // without looking.
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<T>(
-              segments: <ButtonSegment<T>>[
-                for (final entry in options.entries)
-                  ButtonSegment<T>(value: entry.key, label: Text(entry.value)),
-              ],
-              selected: <T>{value},
-              showSelectedIcon: false,
-              onSelectionChanged: enabled
-                  ? (selected) => onChanged(selected.first)
-                  : null,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            note,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textTertiary,
-              height: 1.4,
-            ),
-          ),
-        ],
       ),
     );
   }

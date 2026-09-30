@@ -32,7 +32,16 @@ class AccountSection extends StatelessWidget {
     this.onSyncNow,
     this.onSignIn,
     this.now,
+    this.planLabel,
+    this.onOpen,
   });
+
+  /// What they pay for — `Subscribed`, `Free` — under the address, as Run's
+  /// profile card has it. Null says nothing.
+  final String? planLabel;
+
+  /// Opens the account screen, from the card's head. Null when there is none.
+  final VoidCallback? onOpen;
 
   final BackupStatus status;
   final bool isSignedIn;
@@ -73,32 +82,16 @@ class AccountSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(
-                  isSignedIn ? Icons.cloud_outlined : Icons.cloud_off_outlined,
-                  size: 20,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    // The address, when there is one. An account is a specific
-                    // thing belonging to a specific person, and naming it is
-                    // also how somebody signed in as the wrong address finds
-                    // out before they wonder where their training went.
-                    isSignedIn ? (email ?? 'Signed in') : 'Not signed in',
-                    style: theme.textTheme.titleSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (_syncing)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
+            _Head(
+              isSignedIn: isSignedIn,
+              // The address, when there is one. An account is a specific
+              // thing belonging to a specific person, and naming it is
+              // also how somebody signed in as the wrong address finds
+              // out before they wonder where their training went.
+              email: email,
+              planLabel: planLabel,
+              syncing: _syncing,
+              onOpen: onOpen,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -233,5 +226,100 @@ class AccountSection extends StatelessWidget {
     if (d.inMinutes < 60) return '${d.inMinutes} min ago';
     if (d.inHours < 24) return '${d.inHours}h ago';
     return '${d.inDays}d ago';
+  }
+}
+
+/// Who is signed in, as Run's profile card shows it: initials in a circle, the
+/// address, and what they pay for. Lift keeps no photograph of anybody (O1),
+/// so the circle holds a letter. Tapping it opens the account screen.
+class _Head extends StatelessWidget {
+  const _Head({
+    required this.isSignedIn,
+    required this.email,
+    required this.planLabel,
+    required this.syncing,
+    required this.onOpen,
+  });
+
+  final bool isSignedIn;
+  final String? email;
+  final String? planLabel;
+  final bool syncing;
+  final VoidCallback? onOpen;
+
+  String get _initial {
+    final e = email?.trim() ?? '';
+    return e.isEmpty ? '?' : e.characters.first.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final head = Row(
+      children: <Widget>[
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AppColors.elevated,
+            shape: BoxShape.circle,
+          ),
+          child: isSignedIn
+              ? Text(_initial, style: theme.textTheme.titleMedium)
+              : const Icon(
+                  Icons.cloud_off_outlined,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                isSignedIn ? (email ?? 'Signed in') : 'Not signed in',
+                style: theme.textTheme.titleSmall,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (isSignedIn && planLabel != null)
+                Text(
+                  planLabel!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (syncing)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else if (onOpen != null)
+          const Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: AppColors.textTertiary,
+          ),
+      ],
+    );
+    if (onOpen == null) return head;
+    return Semantics(
+      button: true,
+      label: 'Your account',
+      onTap: onOpen,
+      child: PressScale(
+        onTap: onOpen,
+        scale: 0.98,
+        // A transparent fill, so the gaps between the words are part of the
+        // target too.
+        child: ColoredBox(color: Colors.transparent, child: head),
+      ),
+    );
   }
 }

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mgk_ui/mgk_ui.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
+import 'app_card.dart';
+import 'section_label.dart';
+import 'sheet_handle.dart';
 
 /// One line of the settings index: what it is, what it is **set to**, and a
 /// chevron if there is somewhere to go.
@@ -21,7 +26,8 @@ import 'package:mgk_ui/mgk_ui.dart';
 /// and where somebody auditing does not.
 ///
 /// This is the standard shape in both platforms' own settings apps, for the
-/// same reason.
+/// same reason. Written for Run's Settings and shared when Lift's took the
+/// same shape (the redesign's finding 19).
 class SettingsRow extends StatelessWidget {
   const SettingsRow({
     super.key,
@@ -146,3 +152,72 @@ class SettingsGroup extends StatelessWidget {
     );
   }
 }
+
+/// A choice from a few, as a sheet: the options with a tick on the current one,
+/// and under them the sentence that explains it.
+///
+/// **The explanation lives here, not on the index.** Run's distance setting
+/// was a segmented control with two lines under it saying it is shared with
+/// Lift and that runs are stored in metric; both worth saying, neither worth
+/// saying every time somebody opens Settings. So the index shows the value and
+/// the sheet says the rest, where the choice is made. Both apps' units use it.
+///
+/// Returns the option picked, or null if the sheet was dismissed.
+Future<T?> showChoiceSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<(T, String)> options,
+  required T selected,
+  String? note,
+}) => showModalBottomSheet<T>(
+  context: context,
+  backgroundColor: AppColors.surface,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+  ),
+  builder: (sheetContext) {
+    final theme = Theme.of(sheetContext);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.md,
+          AppSpacing.xl,
+          AppSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const Center(child: SheetHandle()),
+            const SizedBox(height: AppSpacing.lg),
+            Text(title, style: theme.textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.md),
+            for (final (value, label) in options)
+              SettingsRow(
+                title: label,
+                trailing: value == selected
+                    ? const Icon(
+                        Icons.check,
+                        size: 20,
+                        color: AppColors.textPrimary,
+                      )
+                    : const SizedBox(width: 20),
+                onTap: () => Navigator.of(sheetContext).pop(value),
+              ),
+            if (note != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                note,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  },
+);

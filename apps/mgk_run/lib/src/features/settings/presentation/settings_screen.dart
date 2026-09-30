@@ -21,7 +21,6 @@ import '../../health/domain/workout_source.dart';
 import '../../coaching/domain/coach_subscription.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../onboarding/domain/intro_store.dart';
-import 'settings_row.dart';
 import 'permissions_screen.dart';
 import 'account_screen.dart';
 import 'backup_screen.dart';
@@ -435,58 +434,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// every time somebody opens Settings, so they say it here, where the choice
   /// is made.
   Future<void> _pickUnit() async {
-    final picked = await showModalBottomSheet<UnitSystem>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
-      ),
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xl,
-              AppSpacing.md,
-              AppSpacing.xl,
-              AppSpacing.xl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const Center(child: SheetHandle()),
-                const SizedBox(height: AppSpacing.lg),
-                Text('Distance', style: theme.textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                for (final option in UnitSystem.values)
-                  SettingsRow(
-                    title: option == UnitSystem.metric ? 'Kilometres' : 'Miles',
-                    trailing: option == _unit
-                        ? const Icon(
-                            Icons.check,
-                            size: 20,
-                            color: AppColors.textPrimary,
-                          )
-                        : const SizedBox(width: 20),
-                    onTap: () => Navigator.of(sheetContext).pop(option),
-                  ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Shared with Lift — changing it here changes it there too. '
-                  'Your runs are always stored in metric.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final picked = await showChoiceSheet<UnitSystem>(
+      context,
+      title: 'Distance',
+      options: const <(UnitSystem, String)>[
+        (UnitSystem.metric, 'Kilometres'),
+        (UnitSystem.imperial, 'Miles'),
+      ],
+      selected: _unit,
+      note:
+          'Shared with Lift — changing it here changes it there too. '
+          'Your runs are always stored in metric.',
     );
     if (picked != null && picked != _unit) await _select(picked);
   }

@@ -8,6 +8,7 @@ import 'package:mgk_lift/src/features/tracking/presentation/active_session_scree
 import 'package:mgk_lift/src/features/tracking/presentation/exercise_picker_sheet.dart';
 import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 
 /// The in-workout gaps the 2026-09-29 competitor research found, closed:
 /// a rest alert that reaches a locked phone, rest remembered per movement,
@@ -212,14 +213,18 @@ void main() {
     ) async {
       final alerts = FakeRestAlerts(isAllowed: false);
       await openSettings(tester, alerts);
-      expect(find.textContaining('Off. Tap to get a buzz'), findsOneWidget);
+      expect(find.widgetWithText(SettingsRow, 'Off'), findsOneWidget);
 
       alerts.isAllowed = true;
       await tester.tap(find.text('Rest timer alerts'));
       await tester.pumpAndSettle();
 
       expect(alerts.calls, contains('ask'));
-      expect(find.textContaining('On. A buzz when rest is over'), findsOne);
+      expect(find.widgetWithText(SettingsRow, 'On'), findsOneWidget);
+      // What On means, behind the row.
+      await tester.tap(find.text('Rest timer alerts'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('A buzz when rest is over'), findsOne);
     });
 
     testWidgets('refused by the phone, it says where the switch is', (
@@ -227,6 +232,10 @@ void main() {
     ) async {
       final alerts = FakeRestAlerts(isAllowed: false);
       await openSettings(tester, alerts);
+      await tester.tap(find.text('Rest timer alerts'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(SettingsRow, 'Not allowed'), findsOneWidget);
+
       await tester.tap(find.text('Rest timer alerts'));
       await tester.pumpAndSettle();
       expect(find.textContaining("your phone's settings"), findsOneWidget);

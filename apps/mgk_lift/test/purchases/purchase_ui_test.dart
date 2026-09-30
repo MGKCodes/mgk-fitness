@@ -91,8 +91,9 @@ void main() {
 
     final sheet = find.byType(SalesScreen);
     expect(sheet, findsOneWidget);
-    // What each adds, and that the second adds only room to talk.
-    expect(find.textContaining('feature for feature'), findsOneWidget);
+    // What each adds: the second, a better model and a bigger allowance
+    // (ADR-0041).
+    expect(find.textContaining('A better AI model'), findsOneWidget);
     for (final text in <String>['£1.00 / month', '£3.00 / month']) {
       expect(
         find.descendant(of: sheet, matching: find.text(text)),
@@ -423,7 +424,8 @@ void main() {
       expect(find.textContaining('A training plan built from'), findsOneWidget);
       expect(find.textContaining('reads your recent sessions'), findsOneWidget);
       expect(find.textContaining('Progress photos'), findsOneWidget);
-      expect(find.textContaining('feature for feature'), findsOneWidget);
+      expect(find.textContaining('A better AI model'), findsOneWidget);
+      expect(find.textContaining('A bigger monthly allowance'), findsOneWidget);
       // Nothing moves a planned session, and the coach reads nothing of Run.
       expect(find.textContaining('Thursday'), findsNothing);
       expect(find.textContaining('running'), findsNothing);

@@ -356,13 +356,18 @@ class _TierCard extends StatelessWidget {
   final VoidCallback? onChoose;
 
   /// What each tier adds, **one line per thing that ships**, with where it
-  /// lives. The two paid tiers hold the same features and differ only in how
-  /// much the coach will talk, which the second tier says first.
+  /// lives. The two paid tiers hold the same features; Premium adds a better
+  /// model and more room to use it (ADR-0041), and says so without naming
+  /// either, since both are configuration.
   static List<String> _adds(EntitlementTier tier) => switch (tier) {
+    // ADR-0041: a better model and a bigger allowance. Lift's chat is a
+    // human-facing surface, so `modelFor` gives Premium the sharp model.
     EntitlementTier.premium => const <String>[
-      'Everything in Coach, feature for feature',
+      'Everything in Coach',
+      // surfaces.ts `modelFor` with COACH_CHAT_MODEL_SHARP.
+      "A better AI model behind your coach's replies",
       // limits.ts: the monthly allowance per tier.
-      'Far more room to talk to your coach each month',
+      'A bigger monthly allowance to talk to your coach',
     ],
     _ => const <String>[
       // lift_intake and lift_plan, which read the log as the caller.

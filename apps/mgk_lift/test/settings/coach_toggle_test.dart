@@ -83,7 +83,9 @@ void main() {
         find.text('On. What you write is sent to OpenRouter.'),
         findsOneWidget,
       );
-      // The sentence under it is the one that says what "it" actually is.
+      // What "it" actually is, one tap away beside the switch (19).
+      await tester.tap(find.byTooltip('What is sent'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('injury notes'), findsOneWidget);
     });
 
