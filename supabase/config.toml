@@ -258,16 +258,22 @@ otp_expiry = 3600
 subject = "Choose a new password"
 content_path = "./supabase/templates/recovery.html"
 
+# The rest of what the dashboard holds, from the same folder
+# (supabase/templates/README.md).
+[auth.email.template.confirmation]
+subject = "Confirm your email for MGKFitness"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your MGKFitness password was changed"
+content_path = "./supabase/templates/password_changed_notification.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

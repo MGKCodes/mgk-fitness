@@ -216,10 +216,11 @@ messages an hour for the whole project, Run included.
 - [ ] Then prove it: sign up from the app with a real address. Supabase rejects
       `example.com` and `.invalid` outright.
 - [ ] Authentication › Emails › **Reset password**, **once
-      `/reset-password` is live on the site** (it ships with this branch):
-      until then its link would be a 404. Subject `Choose a new password`, and
-      as the body everything below the comment in
-      `supabase/templates/recovery.html`. Its link goes to
+      `/reset-password` is live on the site** (it is, since `c41f2bd`).
+      Subject `Choose a new password`, and as the body the whole of
+      `supabase/templates/recovery.html`. The confirmation and the
+      password-changed notice are beside it, with their subjects, in
+      `supabase/templates/README.md`. Its link goes to
       `/reset-password` with a token hash; the default template's link cannot
       finish a reset, because both apps sign in with PKCE.
 - [ ] Then prove that: *Forgot your password?* in either app, open the email
