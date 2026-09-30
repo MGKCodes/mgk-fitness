@@ -87,15 +87,13 @@ mail scanner that follows the link does not use it up. It calls Supabase Auth
 directly, with no client library, and signs its short session out once the
 password is changed.
 
-It needs two **public** values in Vercel's environment, the same two every copy
-of the apps carries, and a redeploy after setting them, since Next writes them
-into the page at build time:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-
-Without them the page says it is not working and gives the support address,
-rather than failing silently.
+It needs the project's two **public** values, the same two every copy of the
+apps carries: its address and its publishable key. Since `c41f2bd` they are
+written into `reset-password-form.tsx` as defaults, so Vercel needs no settings.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` still
+override them, which is how a test points the page at a stand-in server. A
+secret key never goes here, and `.env*` stays ignored so this folder cannot
+acquire one.
 
 ## Deploying
 

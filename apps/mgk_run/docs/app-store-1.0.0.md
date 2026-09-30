@@ -60,8 +60,8 @@ cut:
 **Still to do before cutting it, in order:** the Esri basemap (item 6), the
 policy naming Esri and the mail service in place of MapTiler, then the pubspec
 to `1.0.0+27`, both builds, and the tag. Owner steps that gate *launch* rather
-than the cut are under item 6: the mail service, the Vercel settings, the
-recovery template, deploying `delete-account`, and email confirmation on.
+than the cut are under item 6: the mail service, the recovery template, deploying
+`delete-account`, and email confirmation on.
 
 Run 1.0.0 ships on **both** stores, from one commit with one build number
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
@@ -235,9 +235,8 @@ and run.
          `236d1cc`): Run asks for a recovery email, which lands on
          `/reset-password` on the site. It works once the mail service is in,
          `supabase/templates/recovery.html` is pasted into Supabase's *Reset
-         password* template, and Vercel has `NEXT_PUBLIC_SUPABASE_URL` and
-         `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; until then the page says it
-         is not working and gives the support address.
+         password* template. The page carries the project's two public
+         values itself since `c41f2bd`, so Vercel needs no settings for it.
    - [ ] **Sign in with Apple and Google** reach Run in build 27 (`a7cb8fe`,
          from the Lift branch's `f7713a2`), with **Apple's tokens revoked on
          deletion** (`027e142`, from `0189fe0`; TN3194) and the policy naming
