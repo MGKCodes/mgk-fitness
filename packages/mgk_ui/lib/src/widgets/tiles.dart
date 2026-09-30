@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 
-import 'package:mgk_ui/mgk_ui.dart';
+import '../motion/app_motion.dart';
+import '../motion/count_up.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
+import 'app_card.dart';
+import 'glass_surface.dart';
+import 'section_label.dart';
 
-/// A headed panel — one of the two pieces of furniture Home is built out of,
-/// with [HomeStatTile] as the other.
+/// A headed panel — one of the pieces of furniture a front page is built out
+/// of, with [HomeStatTile] and [HeroStatTile] as the others.
 ///
-/// Home is a **grid of tiles, each carrying one fact** — the shape an iOS home
-/// screen widget takes, and the shape asked for. Before this it was a wordmark,
-/// one card and two-thirds of a screen of nothing (IMG_4702), which is a poor
-/// front page for a plan and a worse one for a runner who has not bought one.
+/// Run's Home is a **grid of tiles, each carrying one fact** — the shape an iOS
+/// home screen widget takes, and the shape asked for. Before this it was a
+/// wordmark, one card and two-thirds of a screen of nothing (IMG_4702), which
+/// is a poor front page for a plan and a worse one for a runner who has not
+/// bought one.
 ///
-/// Both live in the run app rather than in `packages/mgk_ui` only because that
-/// package was not open for editing when they were written. Neither knows
-/// anything about running, so both are candidates to move up into the design
-/// system the next time it is touched — at which point Lift gets a home screen
-/// with the same rhythm for free.
+/// These lived in the run app until 2026-09-30, only because this package was
+/// not open for editing when they were written; neither knew anything about
+/// running. They moved here when Lift's Track was rebuilt from them (the
+/// redesign's R12), so the two front pages share a rhythm. The names are the
+/// ones they started with.
 ///
 /// The eyebrow is not optional, and that is the point of having the component:
 /// a tile with no heading is the thing that made the old Today card read as two
@@ -156,8 +163,9 @@ class HomeStatTile extends StatelessWidget {
 
 /// Two tiles side by side, at the grid's gutter.
 ///
-/// A row rather than a `GridView`: Home is one scrolling column and a nested
-/// scrollable inside it is a scroll gesture fighting its parent for no gain.
+/// A row rather than a `GridView`: a front page is one scrolling column and a
+/// nested scrollable inside it is a scroll gesture fighting its parent for no
+/// gain.
 ///
 /// `CrossAxisAlignment.start`, never `stretch`. A stretched row hands its
 /// children a *tight* height taken from its own constraints, and inside a
@@ -178,6 +186,118 @@ class HomeTileRow extends StatelessWidget {
         const SizedBox(width: AppSpacing.md),
         Expanded(child: right),
       ],
+    );
+  }
+}
+
+/// The one number a front page leads with: full width, on glass, big.
+///
+/// The references Lift's redesign drew on put a single large figure in a wide
+/// tile over the photograph ("84 Your Hiking Score"), and that is this. It is
+/// glass rather than a card because it sits over the photograph, which is the
+/// only place glass has something to show (see [GlassSurface]).
+///
+/// **One per screen.** Two of these side by side is [HomeTileRow] of
+/// [HomeStatTile]s; a big number only reads as the point of the screen when
+/// nothing else is set at its size.
+class HeroStatTile extends StatelessWidget {
+  const HeroStatTile({
+    super.key,
+    required this.label,
+    required this.count,
+    this.format = _whole,
+    this.suffix,
+    this.caption,
+    this.onTap,
+  });
+
+  /// The eyebrow: `THIS WEEK`.
+  final String label;
+
+  /// The figure. Counts up from nothing the first time it is shown, and
+  /// tweens between values after, like every other headline figure.
+  final double count;
+
+  final String Function(double value) format;
+
+  /// Set small beside the figure: `of 4`. Part of the sentence the figure
+  /// starts, so it is secondary ink rather than a unit.
+  final String? suffix;
+
+  /// The line under: what the figure counts.
+  final String? caption;
+
+  final VoidCallback? onTap;
+
+  static String _whole(double value) => '${value.round()}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const numeral = TextStyle(
+      color: AppColors.textPrimary,
+      fontSize: 64,
+      fontWeight: FontWeight.w200,
+      height: 1,
+      letterSpacing: -1.5,
+      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+    );
+
+    return GlassSurface(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.lg,
+        AppSpacing.xl,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // Stretched: glass sizes to its content, and a front page's lead
+          // figure is the full width of the page whatever it says.
+          const SizedBox(width: double.infinity),
+          SectionLabel(label),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              CountUp(
+                value: count,
+                format: format,
+                duration: AppMotion.slow,
+                style: numeral,
+              ),
+              if (suffix != null) ...<Widget>[
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    suffix!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (caption != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              caption!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

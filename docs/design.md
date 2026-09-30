@@ -94,10 +94,13 @@ deloads fall) survives; the repetition does not.
 
 Nothing to show shows nothing, not noughts.
 
-**Held on Track.** The recent strip — sessions this week, week streak, last
-session — is omitted entirely on an empty log rather than rendering `0 / 0 / —`.
-Three noughts on day one reads as a scoreboard somebody is already losing, which
-is the opposite of what the screen is for.
+**Held on Track.** Its one number — sessions this week, since the 2026-09-30
+redesign — is omitted entirely on an empty log rather than rendering `0`, and the
+three starting points take the space instead. A nought on day one reads as a
+scoreboard somebody is already losing, which is the opposite of what the screen
+is for. (It was a strip of three — this week, week streak, last session — and
+the rule held for all three.) Once there is any history, none this week is a
+fact, and is shown.
 
 > An empty state is a sentence, not a zeroed instance of the full state.
 

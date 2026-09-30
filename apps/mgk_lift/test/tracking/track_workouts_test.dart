@@ -6,6 +6,7 @@ import 'package:mgk_lift/src/features/stats/data/drift_session_history.dart';
 import 'package:mgk_lift/src/features/tracking/data/drift_session_recorder.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
+import 'package:mgk_lift/src/features/tracking/domain/workout_template.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/track_surface.dart';
 
@@ -37,7 +38,16 @@ void main() {
     VoidCallback? onOpenLibrary,
     Session? openSession,
     List<Session> log = const <Session>[],
+    VoidCallback? onResume,
+    ValueChanged<SavedWorkout>? onDiscardAndStart,
+    ValueChanged<WorkoutSplit>? onAddStarter,
   }) async {
+    // A tall phone. Track's action pill is anchored at the foot and floats
+    // over the page, so in the default 800x600 test window it sat on top of
+    // the cards' Start buttons and took their taps.
+    tester.view.physicalSize = const Size(430 * 3, 1400 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -48,6 +58,9 @@ void main() {
             onOpenLibrary: onOpenLibrary,
             openSession: openSession,
             log: log,
+            onStartSession: onResume,
+            onDiscardAndStart: onDiscardAndStart,
+            onAddStarter: onAddStarter,
           ),
         ),
       ),
@@ -89,13 +102,24 @@ void main() {
     expect(find.text('Last done 23 Sep'), findsOneWidget);
   });
 
-  testWidgets('none saved: says how to get one, and offers to', (tester) async {
-    var opened = 0;
-    await pump(tester, onOpenLibrary: () => opened++);
+  testWidgets('none saved: the three starting points take the row', (
+    tester,
+  ) async {
+    WorkoutSplit? added;
+    await pump(tester, onOpenLibrary: () {}, onAddStarter: (s) => added = s);
 
-    expect(find.textContaining('then start it from here'), findsOneWidget);
-    await tester.tap(find.text('Add one'));
-    expect(opened, 1);
+    expect(find.text('START FROM ONE OF THESE'), findsOneWidget);
+    expect(find.text('Full Body'), findsOneWidget);
+    expect(find.text('Upper / Lower'), findsOneWidget);
+    await tester.tap(find.text('Add').first);
+    expect(added?.id, 'full-body');
+  });
+
+  testWidgets('none saved and nothing to offer: says how to get one', (
+    tester,
+  ) async {
+    await pump(tester, onOpenLibrary: () {});
+    expect(find.textContaining('save it as a workout'), findsOneWidget);
   });
 
   testWidgets('with no library there is no section at all', (tester) async {
@@ -104,7 +128,7 @@ void main() {
     expect(find.text('Push'), findsNothing);
   });
 
-  testWidgets('a card previews the workout, and Start starts it', (
+  testWidgets('Start on a card starts it, with no preview between', (
     tester,
   ) async {
     SavedWorkout? started;
@@ -115,26 +139,22 @@ void main() {
       onStart: (w) => started = w,
     );
 
-    await tester.tap(find.text('Push'));
-    await tester.pumpAndSettle();
-    // The whole workout before anything starts.
-    expect(find.text('4 × 6'), findsOneWidget);
-    expect(started, isNull);
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Start'));
+    await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
     expect(started, push);
   });
 
-  testWidgets('with a session open, the preview says to finish it first', (
+  testWidgets('with a session open, Start asks: resume it, or discard it', (
     tester,
   ) async {
     SavedWorkout? started;
+    var resumed = 0;
     await pump(
       tester,
       workouts: <SavedWorkout>[push],
       onOpenLibrary: () {},
       onStart: (w) => started = w,
+      onResume: () => resumed++,
       openSession: Session(
         id: 'open',
         name: 'Legs',
@@ -142,24 +162,54 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Push').last);
+    await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-
+    // In the question, not only in Track's headline, which says it too.
     expect(
-      find.text('Finish or discard the session you have open first.'),
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Legs is still open'),
+      ),
       findsOneWidget,
     );
+
     await tester.tap(
-      find.widgetWithText(FilledButton, 'Start'),
-      warnIfMissed: false,
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Resume Legs'),
+      ),
     );
     await tester.pumpAndSettle();
-    expect(started, isNull);
+    expect(resumed, 1);
+    expect(started, isNull, reason: 'a second session never starts over one');
   });
 
-  testWidgets('edit, duplicate and delete hand over to the library', (
+  testWidgets('discarding the open one starts the one asked for', (
     tester,
   ) async {
+    SavedWorkout? replaced;
+    await pump(
+      tester,
+      workouts: <SavedWorkout>[push],
+      onOpenLibrary: () {},
+      onStart: (_) {},
+      onResume: () {},
+      onDiscardAndStart: (w) => replaced = w,
+      openSession: Session(
+        id: 'open',
+        name: 'Legs',
+        startedAt: today.subtract(const Duration(minutes: 20)),
+      ),
+    );
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard it'));
+    await tester.pumpAndSettle();
+    expect(replaced, push);
+  });
+
+  testWidgets('the card itself opens the library', (tester) async {
     var opened = 0;
     await pump(
       tester,
@@ -169,8 +219,6 @@ void main() {
     );
 
     await tester.tap(find.text('Push'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Edit'));
     await tester.pumpAndSettle();
     expect(opened, 1);
   });
@@ -233,9 +281,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Push'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Start'));
+      await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Remove Cable Fly'));

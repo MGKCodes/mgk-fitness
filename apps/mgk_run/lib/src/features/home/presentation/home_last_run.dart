@@ -8,7 +8,6 @@ import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../recording/domain/run_summary.dart';
-import 'home_tiles.dart';
 
 /// What the coach asked for on the day of a run, so the run can be read against
 /// it.

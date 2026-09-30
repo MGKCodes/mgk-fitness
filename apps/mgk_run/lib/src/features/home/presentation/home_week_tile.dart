@@ -8,7 +8,6 @@ import '../../coaching/domain/training_plan.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../coaching/presentation/week_ribbon.dart';
-import 'home_tiles.dart';
 
 /// The rest of the week, as one tile.
 ///

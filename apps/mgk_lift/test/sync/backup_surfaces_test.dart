@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/stats/data/drift_session_history.dart';
@@ -273,7 +274,8 @@ void main() {
       final atLaunch = backup.runs;
 
       // Resume the open session and log a set: nothing goes up.
-      await tester.tap(find.widgetWithText(FilledButton, 'Resume session'));
+      // Track's action pill, which reads "Resume <name>" with a session open.
+      await tester.tap(find.byType(ActionPill));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Mark done').first);
       await tester.pump(const Duration(seconds: 5));

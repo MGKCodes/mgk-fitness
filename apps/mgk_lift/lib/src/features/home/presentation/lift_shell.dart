@@ -38,7 +38,9 @@ import '../../tracking/domain/rest_alerts.dart';
 import '../../tracking/domain/rest_lengths.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
+import '../../tracking/data/starters.dart';
 import '../../tracking/domain/workout_library.dart';
+import '../../tracking/domain/workout_template.dart';
 import '../../tracking/presentation/active_session_screen.dart';
 import '../../tracking/presentation/session_summary_screen.dart';
 import '../../tracking/presentation/track_controller.dart';
@@ -678,7 +680,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   (backup) => TrackSurface(
                     backup: backup,
                     onBackupAction: _onBackupAction,
-                    onOpenPlan: () => _go(_planTab),
+                    // Track's action pill shares the mark's row, so it has
+                    // to know whether the mark is there.
+                    coachBeside: coach != null,
                     openSession: _openSessionDetail,
                     log: _log,
                     onStartSession: widget.recorder == null
@@ -694,7 +698,11 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                     onStartWorkout: widget.recorder == null
                         ? null
                         : _openWorkout,
+                    onDiscardAndStart: widget.recorder == null
+                        ? null
+                        : _discardAndStart,
                     onOpenLibrary: widget.library == null ? null : _openLibrary,
+                    onAddStarter: widget.library == null ? null : _addStarter,
                   ),
                 ),
                 PlanSurface(
@@ -1080,6 +1088,43 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     // summary, before the summary teaches the workout. The row follows the
     // library's own `changes` instead.
     await _refreshSession();
+  }
+
+  /// The second answer to "Push is still open": throw it away and start the
+  /// workout asked for. Only ever reached through that question — nothing
+  /// discards a session without somebody saying so.
+  Future<void> _discardAndStart(SavedWorkout workout) async {
+    final recorder = widget.recorder;
+    if (recorder == null) return;
+    await recorder.discard();
+    await _refreshSession();
+    if (!mounted) return;
+    await _openWorkout(workout);
+  }
+
+  /// One of the three starting points (R11), added from Track's empty row,
+  /// with an Undo that takes back exactly what was added.
+  Future<void> _addStarter(WorkoutSplit split) async {
+    final library = widget.library;
+    if (library == null) return;
+    final added = await addStarter(library, split);
+    await _refreshWorkouts();
+    if (!mounted) return;
+    // Not awaited: the message never waits on the motor.
+    unawaited(AppHaptics.selection());
+    AppToast.show(
+      context,
+      added.length == 1
+          ? '${added.single.name} added.'
+          : '${split.name} added: ${added.length} workouts.',
+      actionLabel: 'Undo',
+      onAction: () async {
+        for (final w in added) {
+          await library.remove(w.id);
+        }
+        await _refreshWorkouts();
+      },
+    );
   }
 
   /// The whole library, from Track's "See all".

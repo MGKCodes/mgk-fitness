@@ -19,7 +19,14 @@ void main() {
 
     // SectionLabel uppercases its text — the eyebrow is a decision made once in
     // mgk_ui, not something each screen restates.
-    expect(find.text('TODAY'), findsOneWidget);
+    // The eyebrow names the day, since the headline under it says what
+    // today is for.
+    expect(
+      find.textContaining(
+        RegExp(r'^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY) '),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Ready when you are'), findsOneWidget);
 
     // The font is the trap worth guarding: mgk_ui ships Inter as a package
@@ -299,9 +306,12 @@ void trackContentTests() {
     // figures with a local widget that set its own label style; moving the row
     // onto StatBlock put it in the same treatment as Profile and the session
     // header, which is the point of the change rather than a side effect of it.
+    // One number (R12): this week's sessions. Streak and the rest are
+    // Profile's.
     expect(find.text('THIS WEEK'), findsOneWidget);
-    expect(find.text('WEEK STREAK'), findsOneWidget);
-    expect(find.text('LAST SESSION'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('sessions since Monday'), findsOneWidget);
+    expect(find.text('WEEK STREAK'), findsNothing);
   });
 
   testWidgets('an empty log shows no figures rather than zeroes', (

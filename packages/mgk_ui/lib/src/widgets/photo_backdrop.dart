@@ -27,7 +27,28 @@ class PhotoBackdrop extends StatelessWidget {
     this.scrim = ScrimStrength.balanced,
     this.alignment = Alignment.center,
     this.offset = 0,
-  });
+  }) : fit = BoxFit.cover;
+
+  /// **A screen that leads with its photograph**: the photo carries the top of
+  /// the screen at strength, full width, and fades into the charcoal base
+  /// before the content below it begins.
+  ///
+  /// An amendment to ADR-0009's signature treatment, made for Lift's redesign
+  /// (R1) and written up as its own decision: the faint texture stays the
+  /// default everywhere else. The references the redesign drew on let
+  /// photography do the work at the top of a front page, and at ~0.3 a photo
+  /// behind a headline is a rumour rather than a subject. Reserved for screens
+  /// that lead with a photograph — Track, Sign in — and the images for it are
+  /// composed for a headline over their top third.
+  const PhotoBackdrop.hero({
+    super.key,
+    required this.image,
+    this.child,
+    this.opacity = 0.82,
+    this.offset = 0,
+  }) : scrim = ScrimStrength.hero,
+       alignment = Alignment.topCenter,
+       fit = BoxFit.fitWidth;
 
   /// Asset path, declared by the consuming app —
   /// e.g. `assets/images/backgrounds/onboarding.jpg`.
@@ -48,6 +69,11 @@ class PhotoBackdrop extends StatelessWidget {
   /// background drifts behind the content — the depth cue ADR-0009 asks for.
   final double offset;
 
+  /// Cover for the texture; the full width, top-aligned, for a hero — so the
+  /// photograph's composition survives any phone's height instead of being
+  /// cropped at the sides.
+  final BoxFit fit;
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -60,7 +86,7 @@ class PhotoBackdrop extends StatelessWidget {
             opacity: opacity,
             child: Image.asset(
               image,
-              fit: BoxFit.cover,
+              fit: fit,
               alignment: alignment,
               // A missing asset must never take a screen down — the content is
               // legible on the charcoal base alone.
@@ -100,6 +126,20 @@ enum ScrimStrength {
   quiet(
     <Color>[Color(0xE01A1A1A), Color(0xF01A1A1A), Color(0xFD1A1A1A)],
     <double>[0, 0.55, 1],
+  ),
+
+  /// For [PhotoBackdrop.hero]: light where the headline sits, open through
+  /// the middle of the photograph, solid charcoal by two-thirds of the way
+  /// down — so whatever sits below it is on the base, not on the photo.
+  hero(
+    <Color>[
+      Color(0x8C1A1A1A),
+      Color(0x401A1A1A),
+      Color(0x471A1A1A),
+      Color(0xFF1A1A1A),
+      Color(0xFF1A1A1A),
+    ],
+    <double>[0, 0.2, 0.38, 0.66, 1],
   );
 
   const ScrimStrength(this.colors, this.stops);

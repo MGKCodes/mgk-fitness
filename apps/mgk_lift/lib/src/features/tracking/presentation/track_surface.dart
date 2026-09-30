@@ -7,9 +7,11 @@ import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
 import '../../sync/presentation/backup_messages.dart';
 import '../../sync/presentation/backup_scheduler.dart';
+import '../data/starters.dart';
 import '../domain/session.dart';
 import '../domain/workout_library.dart';
-import 'workout_preview_sheet.dart';
+import '../domain/workout_template.dart';
+import 'resume_or_discard.dart';
 
 /// **Track** — the front page, and the part that has to work in a basement.
 ///
@@ -19,14 +21,21 @@ import 'workout_preview_sheet.dart';
 /// set being logged right now. A gym with no signal is the normal case, not the
 /// edge case.
 ///
-/// That is the opposite posture to [PlanSurface], which needs a connection and
-/// says so, and the split is deliberate — this app is AI-driven, but the
-/// tracking underneath it is not allowed to depend on the AI being reachable.
+/// **Rebuilt 2026-09-30 from the design review** (finding 2: "it doesn't work
+/// as it is"). The references it drew on let a photograph carry the top of
+/// the screen with the headline set on it, lead with one big number, and give
+/// the screen one obvious action anchored low — and that is the shape now:
+///
+/// - the photograph, strong, fading into the charcoal (R1, [PhotoBackdrop.hero]);
+/// - one number, sessions this week (R12, [HeroStatTile]);
+/// - today's planned session with last time's numbers, or the open one;
+/// - the saved workouts, each startable in one tap (findings 4 and 7);
+/// - and the action pill, whose verb comes from the state, in the same row as
+///   the coach's mark.
 class TrackSurface extends StatelessWidget {
   const TrackSurface({
     super.key,
     this.onStartSession,
-    this.onOpenPlan,
     this.openSession,
     this.log = const <Session>[],
     this.plan,
@@ -35,7 +44,11 @@ class TrackSurface extends StatelessWidget {
     this.onStartPlanned,
     this.workouts = const <SavedWorkout>[],
     this.onStartWorkout,
+    this.onDiscardAndStart,
     this.onOpenLibrary,
+    this.onAddStarter,
+    this.movedDay,
+    this.coachBeside = false,
     this.backup,
     this.onBackupAction,
   });
@@ -47,50 +60,38 @@ class TrackSurface extends StatelessWidget {
   /// What the pill's action does — retry, sign in, or review in Settings.
   final ValueChanged<BackupAction>? onBackupAction;
 
-  /// The lifter's saved workouts, newest first — the row under *Next up*.
+  /// The lifter's saved workouts, newest first.
   final List<SavedWorkout> workouts;
 
-  /// Starts a session from one, sets laid out. Null hides the row's cards.
+  /// Starts a session from one, sets laid out. Null hides the Start buttons.
   final ValueChanged<SavedWorkout>? onStartWorkout;
+
+  /// Throws away the open session and starts this one instead — the second
+  /// answer to [askResumeOrDiscard]. Null leaves only Resume.
+  final ValueChanged<SavedWorkout>? onDiscardAndStart;
 
   /// Opens the whole library. **Null hides the section** — a build with no
   /// on-device database.
-  ///
-  /// Your workouts used to be reachable only from inside an empty session,
-  /// which meant starting the clock to browse them.
   final VoidCallback? onOpenLibrary;
+
+  /// Adds one of the three starting points (R11). Offered only while nothing
+  /// is saved; null hides them.
+  final ValueChanged<WorkoutSplit>? onAddStarter;
 
   /// Begins or resumes a session. Null while the recorder is not wired up,
   /// which reads as an unavailable action rather than an error.
   final VoidCallback? onStartSession;
 
-  final VoidCallback? onOpenPlan;
-
-  /// The open session — usually because the app was killed mid-workout.
-  ///
-  /// There used to be a `hasOpenSession` bool alongside this, and the two were
-  /// read by different parts of the screen: the headline switched on either,
-  /// the card only on the session. Nothing could ever set them apart — the
-  /// shell assigned `session != null` to one and `session` to the other in the
-  /// same `setState` — but the screen was written as though they could, which
-  /// left a branch where the headline announced an interrupted session above a
-  /// card showing today's planned one.
-  ///
-  /// **A different button label was not enough.** An interrupted session is the
-  /// one state where the lifter has genuinely lost their place, and the screen
-  /// has to say what they were doing rather than only that they were doing
-  /// something.
+  /// The open session — usually because the app was killed mid-workout. The
+  /// one state where the lifter has genuinely lost their place, so the screen
+  /// says what they were doing, not only that something is open.
   final Session? openSession;
 
-  /// Finished sessions, for the strip at the foot.
-  ///
-  /// Track is the screen people open most and it used to tell them nothing they
-  /// did not already know. This is the fix, and it is deliberately small: three
-  /// figures, not a dashboard.
+  /// Finished sessions, for this week's count and the "last done" lines.
   final List<Session> log;
 
-  /// The live block, when there is one. Null keeps the free-tier copy, which is
-  /// the honest state for most of the app's users and not a degraded one.
+  /// The live block, when there is one. Null is the free tier's honest state,
+  /// not a degraded one.
   final StandingPlan? plan;
 
   final MassUnit unit;
@@ -98,38 +99,53 @@ class TrackSurface extends StatelessWidget {
   /// Injected so "what is today" is testable without waiting for Thursday.
   final DateTime? today;
 
-  /// Starts a planned session — with its movements AND its targets, which is
-  /// the whole difference between a plan and a template.
-  /// Starts today's session, given the day of the split it is.
+  /// Starts a planned session, given the day of the split it is.
   final ValueChanged<String>? onStartPlanned;
 
-  /// What the screen is about, in three words.
-  ///
-  /// Reads the same state the card below does, so the two cannot disagree —
-  /// which they did: "Ready when you are" sat above a card naming today's
-  /// prescribed session.
-  ///
-  /// **It names the session rather than describing the state.** "Pick up where
-  /// you were" sat directly above a card labelled `Where you were`, which is
-  /// one thing said twice in the space of a screen — and the vaguer of the two
-  /// was the larger. Every branch here now reads like the planned one does.
+  /// Another day's session, brought forward to today from Plan (R8, *Do it
+  /// today*). It takes today's place on this screen, and says where it came
+  /// from.
+  final String? movedDay;
+
+  /// Whether the coach's mark sits at the foot of the screen, which the shell
+  /// knows. The action pill stops short of it so the two share one row;
+  /// without it, the pill takes the full width.
+  final bool coachBeside;
+
+  DateTime get _now => today ?? DateTime.now();
+
+  /// The planned day that is today's, whether by the calendar or brought
+  /// forward. A moved day beats the calendar: somebody chose it.
+  String? get _todays {
+    final p = plan;
+    if (p == null) return null;
+    final moved = movedDay;
+    if (moved != null && p.dayOrder.contains(moved)) return moved;
+    return p.dayFor(_now);
+  }
+
+  /// What the screen is about, in a few words. **It names the session rather
+  /// than describing the state**, and reads the same state the pill does, so
+  /// the two cannot disagree.
   String get _headline {
     final open = openSession;
     if (open != null) return '${open.name} is still open';
-    final todays = plan?.dayFor(today ?? DateTime.now());
-    if (todays != null) {
-      return 'Today is ${todays.toLowerCase()}';
-    }
-    if (plan != null) return 'Nothing scheduled today';
+    final todays = _todays;
+    if (todays != null) return 'Today is ${todays.toLowerCase()}';
+    if (plan != null) return 'A rest day';
     return 'Ready when you are';
   }
 
-  /// The second line, or null when the card below already carries it.
+  /// The second line, or null when the rest of the screen already says it.
   String? get _support {
     if (openSession != null) return null;
-    if (plan != null) return null;
-    return 'Start a session and log it set by set. It works with no signal '
-        'and syncs when you are back.';
+    if (plan != null) {
+      return _todays == null
+          ? 'Nothing owed today. Log something anyway if you feel like it.'
+          : null;
+    }
+    return 'Log a session set by set. It works with no signal and backs up '
+        'when you are back.';
   }
 
   @override
@@ -137,129 +153,412 @@ class TrackSurface extends StatelessWidget {
     final theme = Theme.of(context);
     final status = backup;
     final pill = status == null ? null : trackBackupMessage(status);
-    return _DriftingBackdrop(
-      builder: (scroll) => SafeArea(
-        // Fills the screen and scrolls past it — the Spacer still pushes the
-        // cards to the foot of a tall phone, and a short one can scroll to
-        // reach them rather than overflow.
-        child: CustomScrollView(
-          controller: scroll,
-          slivers: <Widget>[
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Padding(
-                // Top and bottom only: the sides are each section's, so the
-                // workouts row can run past them to the screen's edge.
-                padding: const EdgeInsets.fromLTRB(
-                  0,
-                  AppSpacing.xxl,
-                  0,
-                  AppSpacing.xl,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const _Side(Entrance(child: SectionLabel('Today'))),
-                    const SizedBox(height: AppSpacing.md),
-                    _Side(
-                      Entrance(
-                        child: Text(
-                          _headline,
-                          style: theme.textTheme.headlineSmall,
-                        ),
+    final size = MediaQuery.sizeOf(context);
+    final support = _support;
+    final todays = _todays;
+
+    // Where the shell draws the coach's mark: its bottom edge sits this far up
+    // (LiftShell positions it above the nav pill, off the device's own inset).
+    // The action pill is centred on it, so the two read as one row.
+    final inset = MediaQuery.viewPaddingOf(context).bottom;
+    final markBottom = AppSpacing.lg + inset + kNavPillHeight + AppSpacing.md;
+    final pillBottom = markBottom - (ActionPill.height - kCoachMarkSize) / 2;
+    final pillRight = coachBeside
+        ? AppSpacing.lg + kCoachMarkSize + AppSpacing.md
+        : AppSpacing.xl;
+
+    return _DriftingHero(
+      builder: (scroll) => Stack(
+        children: <Widget>[
+          CustomScrollView(
+            controller: scroll,
+            slivers: <Widget>[
+              SliverSafeArea(
+                bottom: false,
+                sliver: SliverPadding(
+                  // Room at the foot for the pill floating over it.
+                  padding: EdgeInsets.only(
+                    top: AppSpacing.xxl,
+                    bottom: pillBottom + ActionPill.height + AppSpacing.xl,
+                  ),
+                  sliver: SliverList.list(
+                    children: <Widget>[
+                      _Side(
+                        Entrance(child: SectionLabel(_eyebrow(_now))),
                       ),
-                    ),
-                    // The supporting line is dropped whenever the card below says
-                    // the same thing better. It used to run unconditionally, so an
-                    // interrupted session was announced twice — vaguely and large at
-                    // the top, then precisely and small underneath — and a planned
-                    // session sat under free-tier copy about logging set by set.
-                    if (_support != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.sm),
                       _Side(
-                        Text(
-                          _support!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+                        Entrance(
+                          child: Text(
+                            _headline,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.1,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
                       ),
-                    ],
-                    if (pill != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      _Side(
-                        _BackupPill(message: pill, onAction: onBackupAction),
-                      ),
-                    ],
-                    const Spacer(),
-
-                    // The interrupted session takes the card when there is one: it is
-                    // the most urgent thing on the screen, and what the plan wanted
-                    // today is beside the point once you are already mid-workout.
-                    _Side(
-                      Entrance(
-                        index: 1,
-                        child: openSession != null
-                            ? _Interrupted(
-                                session: openSession!,
-                                now: today ?? DateTime.now(),
-                              )
-                            : _NextUp(
-                                plan: plan,
-                                unit: unit,
-                                now: today ?? DateTime.now(),
+                      if (support != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        _Side(
+                          Entrance(
+                            child: Text(
+                              support,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
                               ),
-                      ),
-                    ),
-
-                    if (onOpenLibrary != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.lg),
-                      Entrance(
-                        index: 2,
-                        child: _YourWorkouts(
-                          workouts: workouts,
-                          log: log,
-                          onStart: onStartWorkout,
-                          onOpenLibrary: onOpenLibrary!,
-                          blocked: openSession != null,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                      if (pill != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.md),
+                        _Side(
+                          _BackupPill(message: pill, onAction: onBackupAction),
+                        ),
+                      ],
 
-                    if (log.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      _Side(
+                      // Air for the photograph: the tile lands over its lower
+                      // part, the way the references set their figures over
+                      // the picture rather than under it.
+                      SizedBox(height: (size.height * 0.16).clamp(48, 180)),
+
+                      // Absent beats zero (docs/design.md, principle 6): on day
+                      // one there is no number. A nought there reads as a
+                      // scoreboard somebody is already losing. Once there is
+                      // any history, none this week is a fact worth showing.
+                      if (log.any((Session s) => !s.isInProgress))
+                        _Side(
+                          Entrance(
+                            index: 1,
+                            child: _ThisWeek(log: log, plan: plan, now: _now),
+                          ),
+                        ),
+
+                      if (openSession != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.md),
+                        _Side(
+                          Entrance(
+                            index: 2,
+                            child: _Interrupted(
+                              session: openSession!,
+                              now: _now,
+                            ),
+                          ),
+                        ),
+                      ] else if (todays != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.md),
+                        _Side(
+                          Entrance(
+                            index: 2,
+                            child: _TodaysSession(
+                              plan: plan!,
+                              day: todays,
+                              movedFrom: todays == movedDay
+                                  ? _usualWeekday(plan!, todays)
+                                  : null,
+                              unit: unit,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      if (onOpenLibrary != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.xl),
                         Entrance(
                           index: 3,
-                          child: _RecentStrip(
+                          child: _YourWorkouts(
+                            workouts: workouts,
                             log: log,
-                            now: today ?? DateTime.now(),
+                            onStart: onStartWorkout == null
+                                ? null
+                                : (w) => _start(context, w),
+                            onOpenLibrary: onOpenLibrary!,
+                            onAddStarter: onAddStarter,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
 
-                    const SizedBox(height: AppSpacing.lg),
-                    _Side(
-                      Entrance(
-                        index: 4,
-                        child: _StartButton(
-                          plan: plan,
-                          now: today ?? DateTime.now(),
-                          openSession: openSession,
-                          onStartSession: onStartSession,
-                          onStartPlanned: onStartPlanned,
+                      // On a planned day the pill starts the plan, so starting
+                      // something else is here, quietly: offered, not pushed.
+                      if (openSession == null &&
+                          todays != null &&
+                          onStartSession != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        Center(
+                          child: AppTextButton(
+                            label: 'Start something else',
+                            onPressed: onStartSession,
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // What scrolls under the pill and the nav bar fades into the base
+          // rather than peeking out between them — seen on the first capture,
+          // where a card's Start button sat in the gap under the pill.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: pillBottom + ActionPill.height + AppSpacing.xxl,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      AppColors.bg.withValues(alpha: 0),
+                      AppColors.bg.withValues(alpha: 0.94),
+                      AppColors.bg,
+                    ],
+                    stops: const <double>[0, 0.3, 1],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: AppSpacing.xl,
+            right: pillRight,
+            bottom: pillBottom,
+            child: Entrance(
+              index: 4,
+              child: _StartPill(
+                plannedDay: todays,
+                openSession: openSession,
+                onStartSession: onStartSession,
+                onStartPlanned: onStartPlanned,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// A second Start with a session open asks first — the rule the preview
+  /// sheet used to hold (finding 7).
+  Future<void> _start(BuildContext context, SavedWorkout workout) async {
+    final open = openSession;
+    if (open == null) {
+      onStartWorkout?.call(workout);
+      return;
+    }
+    final choice = await askResumeOrDiscard(
+      context,
+      openName: open.name,
+      wantedName: workout.name,
+    );
+    switch (choice) {
+      case OpenSessionChoice.resume:
+        onStartSession?.call();
+      case OpenSessionChoice.discardAndStart:
+        onDiscardAndStart?.call(workout);
+      case null:
+        break;
+    }
+  }
+}
+
+/// `WEDNESDAY 30 SEP` — the day, because "Today" above "Today is upper" said
+/// the same word twice.
+String _eyebrow(DateTime now) {
+  const days = <String>[
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', //
+    'Friday', 'Saturday', 'Sunday',
+  ];
+  return '${days[now.weekday - 1]} ${now.day} ${_months[now.month - 1]}';
+}
+
+const List<String> _months = <String>[
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// The weekday a plan day normally falls on — `Thursday` for a Thursday
+/// session brought forward — or null if the plan does not say.
+String? _usualWeekday(StandingPlan plan, String day) {
+  const names = <String>[
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', //
+    'Friday', 'Saturday', 'Sunday',
+  ];
+  final i = plan.dayOrder.indexOf(day);
+  if (i < 0 || i >= plan.weekdays.length) return null;
+  return names[plan.weekdays[i] - 1];
+}
+
+/// The one number (R12): sessions this week, and "of 4" when a plan says how
+/// many there should be. Streak and volume stay on Profile.
+class _ThisWeek extends StatelessWidget {
+  const _ThisWeek({required this.log, required this.plan, required this.now});
+
+  final List<Session> log;
+  final StandingPlan? plan;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final week = TrainingStats.startOfWeek(now);
+    final done = log
+        .where(
+          (Session s) =>
+              !s.isInProgress &&
+              !TrainingStats.startOfWeek(s.startedAt).isBefore(week),
+        )
+        .length;
+    final planned = plan?.weekdays.length;
+    return HeroStatTile(
+      label: 'This week',
+      count: done.toDouble(),
+      suffix: planned == null ? null : 'of $planned',
+      caption: planned == null
+          ? '${done == 1 ? 'session' : 'sessions'} since Monday'
+          : 'planned sessions done since Monday',
+    );
+  }
+}
+
+/// Today's planned session: what it is, and what each movement was last time
+/// (the review's finding 17 moves it here from Plan; O5 in the plan).
+class _TodaysSession extends StatelessWidget {
+  const _TodaysSession({
+    required this.plan,
+    required this.day,
+    required this.movedFrom,
+    required this.unit,
+  });
+
+  final StandingPlan plan;
+  final String day;
+
+  /// `Thursday`, when this day was brought forward to today.
+  final String? movedFrom;
+
+  final MassUnit unit;
+
+  /// Enough to recognise the session; the rest is one tap away, inside it.
+  static const int _shown = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final slots = plan.slots[day] ?? const <MovementSlot>[];
+    final shown = slots.take(_shown).toList();
+    final more = slots.length - shown.length;
+
+    return GlassSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SizedBox(width: double.infinity),
+          Row(
+            children: <Widget>[
+              const Expanded(child: SectionLabel("Today's session")),
+              Text(
+                '${slots.length} ${slots.length == 1 ? 'movement' : 'movements'}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          if (movedFrom != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Moved from $movedFrom',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          for (final slot in shown) ...<Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    slot.movement,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Text(
+                  _lastTime(slot, unit),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          if (more > 0)
+            Text(
+              '+ $more more',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// `85 kg × 6`, or the prescription when there is no history yet.
+  static String _lastTime(MovementSlot slot, MassUnit unit) {
+    final kg = slot.lastTopKg;
+    final reps = slot.lastTopReps;
+    if (kg == null || reps == null) return '${slot.sets} × ${slot.reps}';
+    return '${Mass.kilograms(kg).label(unit)} × $reps';
+  }
+}
+
+/// One pill, three verbs, and the order matters. Resuming beats starting:
+/// "Start a session" on top of one already running is a lie about what
+/// happens. The planned session beats an empty one, because on a day the plan
+/// has something, that is what starting is for — and something else is still
+/// one tap away, under the workouts.
+class _StartPill extends StatelessWidget {
+  const _StartPill({
+    required this.plannedDay,
+    required this.openSession,
+    required this.onStartSession,
+    required this.onStartPlanned,
+  });
+
+  final String? plannedDay;
+  final Session? openSession;
+  final VoidCallback? onStartSession;
+  final ValueChanged<String>? onStartPlanned;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = openSession;
+    if (open != null) {
+      return ActionPill(label: 'Resume ${open.name}', onPressed: onStartSession);
+    }
+    final day = plannedDay;
+    if (day != null && onStartPlanned != null) {
+      return ActionPill(
+        label: "Start today's session",
+        onPressed: () => onStartPlanned!(day),
+      );
+    }
+    return ActionPill(label: 'Start a session', onPressed: onStartSession);
   }
 }
 
@@ -329,281 +628,282 @@ class _BackupPill extends StatelessWidget {
   }
 }
 
-/// **Your workouts**, one tap from Track: the saved ones as glass cards over
-/// the photograph — glass has something behind it here — and a way into the
-/// whole library.
-///
-/// A card opens the workout's preview; its Start begins a session with every
-/// set laid out. With a session already open, the preview says to finish that
-/// one first rather than starting a second over it.
+/// **Your workouts**, each with its own Start (finding 7: the preview was one
+/// step too many). Before anything is saved, the three starting points take
+/// the row instead (R11).
 class _YourWorkouts extends StatelessWidget {
   const _YourWorkouts({
     required this.workouts,
     required this.log,
     required this.onStart,
     required this.onOpenLibrary,
-    required this.blocked,
+    required this.onAddStarter,
   });
 
   final List<SavedWorkout> workouts;
   final List<Session> log;
   final ValueChanged<SavedWorkout>? onStart;
   final VoidCallback onOpenLibrary;
-
-  /// A session is open, so nothing new can start.
-  final bool blocked;
-
-  Future<void> _preview(BuildContext context, SavedWorkout workout) async {
-    final action = await WorkoutPreviewSheet.show(
-      context,
-      workout: workout,
-      lastDone: lastDone(workout.id, log),
-      blockedReason: blocked
-          ? 'Finish or discard the session you have open first.'
-          : null,
-    );
-    if (action == WorkoutAction.start) {
-      onStart?.call(workout);
-    } else if (action != null) {
-      // Edit, duplicate and delete belong to the library, which has the list
-      // they change; the preview here hands over to it.
-      onOpenLibrary();
-    }
-  }
+  final ValueChanged<WorkoutSplit>? onAddStarter;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final starters = workouts.isEmpty && onAddStarter != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         _Side(
           Row(
             children: <Widget>[
-              const Expanded(
+              Expanded(
                 child: SectionLabel(
-                  'Your workouts',
-                  emphasis: LabelEmphasis.stat,
+                  starters ? 'Start from one of these' : 'Your workouts',
                 ),
               ),
-              AppTextButton(
-                label: workouts.isEmpty ? 'Add one' : 'See all',
-                onPressed: onOpenLibrary,
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
+              if (!starters)
+                AppTextButton(
+                  label: 'See all',
+                  onPressed: onOpenLibrary,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        if (workouts.isEmpty)
+        const SizedBox(height: AppSpacing.sm),
+        if (workouts.isEmpty && !starters)
           _Side(
             Text(
-              'Save a session you liked, build one, or add a ready-made one — '
-              'then start it from here in one tap.',
+              'Finish a session and save it as a workout, and it will be '
+              'here to start in one tap.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
           )
         else
-          // As tall as the cards, not a fixed height: a fixed 104 overflowed
-          // once the text was larger than the default. One line each, so every
-          // card is the same three lines at whatever size the phone asks for.
           // The page's margin is on the scroll, not around it: the first card
           // lines up with everything above, and the row runs off the edge of
-          // the screen — so a third workout shows its edge instead of sitting
-          // out of sight with nothing to say it is there.
+          // the screen — so a third card shows its edge instead of sitting out
+          // of sight with nothing to say it is there.
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                for (final (i, workout) in workouts.indexed) ...<Widget>[
-                  if (i > 0) const SizedBox(width: AppSpacing.sm),
-                  Entrance(
-                    index: i,
-                    child: SizedBox(
-                      width: 180,
-                      child: PressScale(
-                        onTap: () => _preview(context, workout),
-                        child: GlassSurface(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                workout.name,
-                                style: theme.textTheme.titleSmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _counts(workout),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Text(
-                                _lastDoneShort(lastDone(workout.id, log)),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: AppColors.textTertiary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
+                if (starters)
+                  for (final (i, split) in starterSplits.indexed) ...<Widget>[
+                    if (i > 0) const SizedBox(width: AppSpacing.md),
+                    Entrance(
+                      index: i,
+                      child: _StarterCard(
+                        split: split,
+                        onAdd: () => onAddStarter!(split),
                       ),
                     ),
-                  ),
-                ],
+                  ]
+                else
+                  for (final (i, workout) in workouts.indexed) ...<Widget>[
+                    if (i > 0) const SizedBox(width: AppSpacing.md),
+                    Entrance(
+                      index: i,
+                      child: _WorkoutCard(
+                        workout: workout,
+                        lastDone: lastDone(workout.id, log),
+                        onStart: onStart == null
+                            ? null
+                            : () => onStart!(workout),
+                        onOpen: onOpenLibrary,
+                      ),
+                    ),
+                  ],
               ],
             ),
           ),
       ],
     );
   }
-
-  /// `2 movements · 7 sets` — and `1 movement`, not `1 movements`.
-  static String _counts(SavedWorkout w) =>
-      '${w.movementCount} ${w.movementCount == 1 ? 'movement' : 'movements'}'
-      ' · ${w.setCount} ${w.setCount == 1 ? 'set' : 'sets'}';
-
-  static String _lastDoneShort(DateTime? at) {
-    if (at == null) return 'Not done yet';
-    const months = <String>[
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return 'Last done ${at.day} ${months[at.month - 1]}';
-  }
 }
 
-/// What the plan has for today — or, on a rest day, what is next.
-///
-/// "Nothing scheduled" was a placeholder for exactly this. With no plan it
-/// still says that, because for a free lifter it is true and it is not a
-/// failure: tracking works without a coach, and the card says so rather than
-/// dangling a locked feature.
-class _NextUp extends StatelessWidget {
-  const _NextUp({required this.plan, required this.unit, required this.now});
+/// A saved workout: what it is, when it was last done, and Start.
+class _WorkoutCard extends StatelessWidget {
+  const _WorkoutCard({
+    required this.workout,
+    required this.lastDone,
+    required this.onStart,
+    required this.onOpen,
+  });
 
-  final StandingPlan? plan;
-  final MassUnit unit;
-  final DateTime now;
+  final SavedWorkout workout;
+  final DateTime? lastDone;
+  final VoidCallback? onStart;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final p = plan;
-    final today = p?.dayFor(now);
-    final movements = p == null ? const <MovementSlot>[] : p.movementsFor(now);
-
-    // **No "block finished".** There is no end to reach, so the only states are
-    // no plan, a training day, and a rest day -- and a rest day is an answer
-    // rather than a gap.
-    final (String title, String detail) = switch ((p, today)) {
-      (null, _) => (
-        'Nothing scheduled',
-        'Your coach builds the plan. Until then, log whatever you are doing.',
-      ),
-      (_, final String day) => (
-        day,
-        // One per line, as on Plan. Middle-dot joined, this wrapped into a
-        // dense block nobody reads standing up.
-        movements.map((m) => m.movement).join(String.fromCharCode(10)),
-      ),
-      _ => (
-        'Rest day',
-        'Nothing owed. Log something anyway if you feel like it.',
-      ),
-    };
-
-    return GlassSurface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SizedBox(width: double.infinity),
-          const SectionLabel('Next up', emphasis: LabelEmphasis.stat),
-          const SizedBox(height: AppSpacing.sm),
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            detail,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+    return SizedBox(
+      width: 196,
+      child: GlassSurface(
+        onTap: onOpen,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              workout.name,
+              style: theme.textTheme.titleMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              '${workout.movementCount} '
+              '${workout.movementCount == 1 ? 'movement' : 'movements'}'
+              ' · ${workout.setCount} ${workout.setCount == 1 ? 'set' : 'sets'}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              _lastDoneShort(lastDone),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: AppColors.textTertiary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _SmallPill(label: 'Start', onPressed: onStart),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _lastDoneShort(DateTime? at) {
+    if (at == null) return 'Not done yet';
+    return 'Last done ${at.day} ${_months[at.month - 1]}';
+  }
+}
+
+/// One of the three starting points, with its photograph.
+class _StarterCard extends StatelessWidget {
+  const _StarterCard({required this.split, required this.onAdd});
+
+  final WorkoutSplit split;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sessions = templatesOf(split);
+    return SizedBox(
+      width: 196,
+      child: GlassSurface(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              height: 96,
+              width: double.infinity,
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0, 0, 0, 1, 0, //
+                ]),
+                child: Image.asset(
+                  split.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: AppColors.surface),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(split.name, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${split.daysPerWeek} days a week · '
+                    '${sessions.length} '
+                    '${sessions.length == 1 ? 'workout' : 'workouts'}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _SmallPill(label: 'Add', onPressed: onAdd),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// One button, three meanings, and the order matters.
-///
-/// Resuming beats starting: "Start a session" on top of one already running is
-/// a lie about what happens. Starting the planned session beats starting an
-/// empty one, because on a day the plan has something, that is what "start" is
-/// for — and a lifter who wants something else can still add whatever they like
-/// once they are in.
-class _StartButton extends StatelessWidget {
-  const _StartButton({
-    required this.plan,
-    required this.now,
-    this.openSession,
-    this.onStartSession,
-    this.onStartPlanned,
-  });
+/// The card-sized action: a short silver pill, quieter than the page's own.
+class _SmallPill extends StatelessWidget {
+  const _SmallPill({required this.label, required this.onPressed});
 
-  final StandingPlan? plan;
-
-  /// The same session the card above reads, rather than a bool derived from it
-  /// — so "Resume session" and "Where you were" cannot describe different
-  /// states.
-  final Session? openSession;
-
-  final DateTime now;
-  final VoidCallback? onStartSession;
-
-  /// Starts today's session, given the day of the split it is.
-  final ValueChanged<String>? onStartPlanned;
+  final String label;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    if (openSession != null) {
-      return PrimaryButton(label: 'Resume session', onPressed: onStartSession);
-    }
-
-    final todays = plan?.dayFor(now);
-    if (todays != null && onStartPlanned != null) {
-      return PrimaryButton(
-        label: 'Start ${todays.toLowerCase()}',
-        onPressed: () => onStartPlanned!(todays),
-      );
-    }
-
-    return PrimaryButton(label: 'Start a session', onPressed: onStartSession);
+    final theme = Theme.of(context);
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: PressScale(
+        enabled: enabled,
+        onTap: onPressed,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.primary : AppColors.elevated,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: enabled ? AppColors.onPrimary : AppColors.textTertiary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-/// The session they were in the middle of.
-///
-/// Says what it was and how far in, because "Session in progress" plus a button
-/// is the app knowing something the lifter has forgotten and not telling them.
+/// The session they were in the middle of: what it was and how far in,
+/// because "Session in progress" plus a button is the app knowing something
+/// the lifter has forgotten and not telling them.
 class _Interrupted extends StatelessWidget {
   const _Interrupted({required this.session, required this.now});
 
@@ -620,11 +920,8 @@ class _Interrupted extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // Stretched, because GlassSurface sizes to its content and this card
-          // shares a slot with `Next up`. Left alone, the two states of the
-          // same position rendered at different widths on the same screen.
           const SizedBox(width: double.infinity),
-          const SectionLabel('Where you were', emphasis: LabelEmphasis.stat),
+          const SectionLabel('Where you were'),
           const SizedBox(height: AppSpacing.sm),
           Text(session.name, style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
@@ -645,65 +942,6 @@ class _Interrupted extends StatelessWidget {
   }
 }
 
-/// Three figures about their actual training.
-///
-/// Not a dashboard — Profile is where the log lives. This is the one line that
-/// makes opening Track worth something on a rest day, and the streak in
-/// particular is the figure people open an app to check.
-class _RecentStrip extends StatelessWidget {
-  const _RecentStrip({required this.log, required this.now});
-
-  final List<Session> log;
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context) {
-    final stats = TrainingStats.from(log, now: now);
-    final finished = log.where((Session s) => !s.isInProgress).toList()
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    final thisWeek = finished
-        .where(
-          (Session s) => !TrainingStats.startOfWeek(
-            s.startedAt,
-          ).isBefore(TrainingStats.startOfWeek(now)),
-        )
-        .length;
-
-    // StatBlock, not a local widget. This row used to be `_Figure`, a fourth
-    // copy of the design system's Stat that put the value above the label —
-    // the opposite of Profile and the session header, on the screen a lifter
-    // opens most. It also rendered without tabular figures, so a counter
-    // changing width shifted the row under it.
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: StatBlock.counting(
-            label: 'this week',
-            count: thisWeek.toDouble(),
-            format: (n) => '${n.round()}',
-          ),
-        ),
-        Expanded(
-          child: StatBlock.counting(
-            label: 'week streak',
-            count: stats.currentWeekStreak.toDouble(),
-            format: (n) => '${n.round()}',
-          ),
-        ),
-        if (finished.isNotEmpty)
-          Expanded(
-            child: StatBlock(
-              label: 'last session',
-              value: _ago(finished.first.startedAt, now),
-              // 'a month ago' in a third of a phone's width.
-              shrinkToFit: true,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 /// A gap a person would say out loud.
 String _ago(DateTime at, DateTime now) {
   final days = DateTime(
@@ -718,19 +956,20 @@ String _ago(DateTime at, DateTime now) {
   return '${days ~/ 7} weeks ago';
 }
 
-/// The photograph, drifting behind the content as it scrolls — the depth cue
-/// that says the cards are in front of it rather than printed on it. Owns the
-/// scroll controller so the surface above can stay stateless.
-class _DriftingBackdrop extends StatefulWidget {
-  const _DriftingBackdrop({required this.builder});
+/// The photograph, strong at the top and drifting behind the content as it
+/// scrolls — the depth cue that says the cards are in front of it rather than
+/// printed on it. Owns the scroll controller so the surface can stay
+/// stateless.
+class _DriftingHero extends StatefulWidget {
+  const _DriftingHero({required this.builder});
 
   final Widget Function(ScrollController scroll) builder;
 
   @override
-  State<_DriftingBackdrop> createState() => _DriftingBackdropState();
+  State<_DriftingHero> createState() => _DriftingHeroState();
 }
 
-class _DriftingBackdropState extends State<_DriftingBackdrop> {
+class _DriftingHeroState extends State<_DriftingHero> {
   final ScrollController _scroll = ScrollController();
 
   @override
@@ -744,11 +983,10 @@ class _DriftingBackdropState extends State<_DriftingBackdrop> {
     final content = widget.builder(_scroll);
     return AnimatedBuilder(
       animation: _scroll,
-      builder: (context, child) => PhotoBackdrop(
-        image: 'assets/images/backgrounds/hero_home.webp',
-        scrim: ScrimStrength.balanced,
+      builder: (context, child) => PhotoBackdrop.hero(
+        image: 'assets/images/backgrounds/hero_track.webp',
         offset:
-            -((_scroll.hasClients ? _scroll.offset : 0).clamp(0, 400)) * 0.15,
+            -((_scroll.hasClients ? _scroll.offset : 0).clamp(0, 400)) * 0.25,
         child: child,
       ),
       child: content,
@@ -756,8 +994,8 @@ class _DriftingBackdropState extends State<_DriftingBackdrop> {
   }
 }
 
-/// The page's side margin — on each section of Track rather than around the
-/// whole column, so the workouts row can run to the screen's edge.
+/// The page's side margin — on each section rather than around the whole
+/// column, so the workouts row can run to the screen's edge.
 class _Side extends StatelessWidget {
   const _Side(this.child);
 

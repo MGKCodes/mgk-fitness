@@ -186,6 +186,15 @@ class PreviewApp extends StatelessWidget {
         today: previewNow,
         hasCoachNote: true,
       ),
+      // Somebody new: nothing saved, nothing logged. The three starting points
+      // take the workouts row (R11), each added in one tap.
+      'track-starters': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(const <Session>[]),
+        coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(const <SavedWorkout>[]),
+        today: previewNow,
+      ),
       // With a store behind it, as a build with RevenueCat keys has: priced
       // from the store, with Restore, and Start coaching opening the sheet.
       'plan': (_) => LiftShell(

@@ -268,7 +268,19 @@ void main() {
       await seed(<String>['Bench press', 'Incline press']);
       await pump(tester);
 
-      await tester.ensureVisible(find.text('Reorder movements'));
+      // The list builds its rows lazily, so the button at its foot may not
+      // exist until the list scrolls to it: ensureVisible can only reach a
+      // row that is already built, which is how this test failed once the
+      // cards grew taller.
+      await tester.scrollUntilVisible(
+        find.text('Reorder movements'),
+        200,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Reorder movements'));
       await tester.pumpAndSettle();
