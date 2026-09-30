@@ -23,7 +23,7 @@ import 'src/features/settings/data/backup_health_factory.dart';
 import 'src/features/settings/data/file_local_data_owner.dart';
 import 'src/features/settings/data/file_profile_photo.dart';
 import 'src/features/settings/data/phone_runner_data.dart';
-import 'src/features/settings/domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import 'src/features/settings/presentation/phone_scope.dart';
 import 'src/features/onboarding/data/intro_store_factory.dart';
 import 'src/features/coaching/data/revenuecat_purchases.dart';

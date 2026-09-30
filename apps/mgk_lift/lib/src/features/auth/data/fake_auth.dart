@@ -8,13 +8,24 @@ import '../domain/account.dart';
 /// second near-identical fake is how two versions of "what signing in does"
 /// start disagreeing.
 class FakeAuth implements AuthService {
-  FakeAuth({Account? account, this.failWith}) : _account = account;
+  FakeAuth({
+    Account? account,
+    this.failWith,
+    this.providerOutcome = ProviderOutcome.signedIn,
+  }) : _account = account;
 
   Account? _account;
   final _controller = StreamController<Account?>.broadcast();
 
   /// Makes every call throw. For driving the error states without a server.
   final AuthFailure? failWith;
+
+  /// How Apple and Google end, when they do not fail: signed in, cancelled at
+  /// the provider's sheet, or still going in the browser.
+  final ProviderOutcome providerOutcome;
+
+  /// Which provider was last asked, for tests.
+  String? lastProvider;
 
   @override
   Account? get current => _account;
@@ -33,6 +44,29 @@ class FakeAuth implements AuthService {
     required String email,
     required String password,
   }) async => _finish(email);
+
+  @override
+  Future<ProviderOutcome> signInWithApple() async =>
+      _provider('apple', 'you@privaterelay.appleid.com');
+
+  @override
+  Future<ProviderOutcome> signInWithGoogle() async =>
+      _provider('google', 'you@gmail.com');
+
+  ProviderOutcome _provider(String provider, String email) {
+    lastProvider = provider;
+    if (providerOutcome != ProviderOutcome.signedIn) {
+      final failure = failWith;
+      if (failure != null) throw AuthException(failure);
+      return providerOutcome;
+    }
+    _finish(email);
+    return ProviderOutcome.signedIn;
+  }
+
+  /// Signs in from outside the screen, as Apple's browser sign-in on Android
+  /// does when its link comes back.
+  void arrive(String email) => _finish(email);
 
   Account _finish(String email) {
     final failure = failWith;

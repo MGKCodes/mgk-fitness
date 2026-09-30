@@ -50,6 +50,9 @@ class ActionPill extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: label,
+      // The tap a screen reader sends: the child's own is excluded with its
+      // semantics, so without this a double-tap found nothing to press.
+      onTap: enabled ? onPressed : null,
       excludeSemantics: true,
       child: PressScale(
         enabled: enabled,
@@ -132,6 +135,9 @@ class SmallPill extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: label,
+      // The tap a screen reader sends: the child's own is excluded with its
+      // semantics, so without this a double-tap found nothing to press.
+      onTap: enabled ? onPressed : null,
       excludeSemantics: true,
       child: PressScale(
         enabled: enabled,

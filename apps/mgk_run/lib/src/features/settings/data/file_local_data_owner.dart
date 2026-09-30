@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// The real [LocalDataOwnerStore]: one user id in a file beside the backup
 /// answer.

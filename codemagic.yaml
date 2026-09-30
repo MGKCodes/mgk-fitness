@@ -134,8 +134,8 @@
 #     its `DeveloperCertificates[0]` must be byte-identical to the certificate
 #     inside the .p12. If they differ, the build signs and then fails at the
 #     end. A profile is also a snapshot of the App ID's capabilities, so
-#     regenerate it after changing them — Lift has no entitlements file today,
-#     but In-App Purchase arrives with payments.
+#     regenerate it after changing them. Lift's first entitlements file
+#     (Sign in with Apple, 2026-09-30) is why its profile was regenerated.
 # ───────────────────────────────────────────────────────────────────────────
 
 # One workflow per app, all in this one file, because Codemagic reads exactly

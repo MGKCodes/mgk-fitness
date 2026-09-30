@@ -1,23 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
 
+/// The screen, opened on the email form unless [emailFirst] is false: most of
+/// these are about the form, which is one tap behind Apple and Google.
 Future<void> pump(
   WidgetTester tester,
   AuthService auth, {
   int pending = 0,
+  bool emailFirst = true,
 }) async {
   tester.view.physicalSize = const Size(1080, 4200);
   tester.view.devicePixelRatio = 2.625;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      home: SignInScreen(auth: auth, pendingWorkouts: pending),
+      home: SignInScreen(
+        auth: auth,
+        pendingWorkouts: pending,
+        emailFirst: emailFirst,
+      ),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// The screen pushed over a page, so what it pops with can be read.
+Future<List<bool?>> open(WidgetTester tester, AuthService auth) async {
+  tester.view.physicalSize = const Size(1080, 4200);
+  tester.view.devicePixelRatio = 2.625;
+  addTearDown(tester.view.reset);
+  final popped = <bool?>[];
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () async => popped.add(
+              await Navigator.of(context).push<bool>(
+                MaterialPageRoute<bool>(
+                  builder: (_) => SignInScreen(auth: auth),
+                ),
+              ),
+            ),
+            child: const Text('under'),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('under'));
+  await tester.pumpAndSettle();
+  return popped;
 }
 
 Future<void> fill(WidgetTester tester, String email, String password) async {
@@ -198,5 +235,147 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.current?.email, 'a@b.com');
+  });
+
+  group('Apple and Google', () {
+    testWidgets('come first, with email one tap behind them', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, FakeAuth(), emailFirst: false);
+
+      expect(find.byType(ProviderSignInButton), findsNWidgets(2));
+      expect(find.text('Continue with email'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+
+      await tester.tap(find.text('Continue with email'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextFormField), findsNWidgets(2));
+
+      // And back, without losing the way to the other two.
+      await tester.tap(find.text('Other ways to sign in'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderSignInButton), findsNWidgets(2));
+    });
+
+    testWidgets('say that they make an account too', (
+      WidgetTester tester,
+    ) async {
+      // "Sign in" alone reads as a door for people who already have one.
+      await pump(tester, FakeAuth(), emailFirst: false);
+      expect(find.textContaining('make your account too'), findsOneWidget);
+    });
+
+    testWidgets('say that hiding the email is a separate account (O2)', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, FakeAuth(), emailFirst: false);
+      expect(find.textContaining('Hide My Email'), findsOneWidget);
+    });
+
+    testWidgets('Apple signs in and closes the screen', (
+      WidgetTester tester,
+    ) async {
+      final auth = FakeAuth();
+      addTearDown(auth.dispose);
+      final popped = await open(tester, auth);
+
+      await tester.tap(find.text('Continue with Apple'));
+      await tester.pumpAndSettle();
+
+      expect(auth.lastProvider, 'apple');
+      expect(auth.current, isNotNull);
+      // Once: the call and the stream both report the sign-in, and a second
+      // pop would close the page under the screen.
+      expect(popped, <bool?>[true]);
+      expect(find.text('under'), findsOneWidget);
+    });
+
+    testWidgets('Google signs in and closes the screen', (
+      WidgetTester tester,
+    ) async {
+      final auth = FakeAuth();
+      addTearDown(auth.dispose);
+      final popped = await open(tester, auth);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(auth.lastProvider, 'google');
+      expect(popped, <bool?>[true]);
+    });
+
+    testWidgets('closing the provider\'s sheet says nothing', (
+      WidgetTester tester,
+    ) async {
+      // A choice, not a failure: a message would read as one.
+      final auth = FakeAuth(providerOutcome: ProviderOutcome.cancelled);
+      await pump(tester, auth, emailFirst: false);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(auth.current, isNull);
+      expect(find.text('Sign in'), findsOneWidget);
+      for (final failure in AuthFailure.values) {
+        expect(find.text(failure.message), findsNothing);
+      }
+      // And the buttons are usable again.
+      final apple = tester.widget<ProviderSignInButton>(
+        find.byType(ProviderSignInButton).first,
+      );
+      expect(apple.onPressed, isNotNull);
+    });
+
+    testWidgets('Apple in the browser says so, and closes when it lands', (
+      WidgetTester tester,
+    ) async {
+      // Android: Apple's sign-in finishes in the browser and the account
+      // arrives afterwards, through the link back into the app.
+      final auth = FakeAuth(providerOutcome: ProviderOutcome.continuing);
+      addTearDown(auth.dispose);
+      final popped = await open(tester, auth);
+
+      await tester.tap(find.text('Continue with Apple'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Finish signing in with Apple in your browser.'),
+        findsOneWidget,
+      );
+      expect(popped, isEmpty);
+
+      auth.arrive('you@privaterelay.appleid.com');
+      await tester.pumpAndSettle();
+      expect(popped, <bool?>[true]);
+    });
+
+    testWidgets('a refused sign-in says so, and points at email', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        FakeAuth(failWith: AuthFailure.providerRefused),
+        emailFirst: false,
+      );
+
+      await tester.tap(find.text('Continue with Apple'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AuthFailure.providerRefused.message), findsOneWidget);
+    });
+
+    testWidgets('no signal says the training is still safe', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        FakeAuth(failWith: AuthFailure.unavailable),
+        emailFirst: false,
+      );
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('safe on this device'), findsOneWidget);
+    });
   });
 }

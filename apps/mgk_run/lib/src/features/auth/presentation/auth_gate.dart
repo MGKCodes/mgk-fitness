@@ -26,8 +26,8 @@ import '../../recording/domain/run_summary.dart';
 import '../data/auth_repository.dart';
 import '../../onboarding/presentation/intro_screen.dart';
 import '../../settings/data/backup_eraser.dart';
-import '../../settings/domain/local_data.dart';
-import 'another_account_screen.dart';
+import 'package:mgk_auth/mgk_auth.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'sign_in_screen.dart';
 
 /// Routes between the sign-in flow and the app shell based on auth state.
@@ -359,6 +359,7 @@ class _AuthGateState extends State<AuthGate> {
           if (_mayUse == false) {
             _drewShell = false;
             return AnotherAccountScreen(
+              whatIsHere: 'The runs, plan and coach conversations',
               email: auth.currentEmail,
               onErase: () async {
                 await guard.eraseFor(userId);

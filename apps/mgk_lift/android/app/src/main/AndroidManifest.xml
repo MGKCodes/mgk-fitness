@@ -50,6 +50,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- The way back from Apple's sign-in, which on Android runs in
+                 the browser: Supabase sends it to com.mgkcodes.liftio://login-callback,
+                 which is on its redirect list, and supabase_flutter picks the
+                 session up from the link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.mgkcodes.liftio" android:host="login-callback"/>
+            </intent-filter>
         </activity>
         <!-- Shows a scheduled notification when its alarm fires — without it
              the rest-over alert is scheduled and never appears. No boot

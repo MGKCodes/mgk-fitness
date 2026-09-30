@@ -855,9 +855,12 @@ class PreviewApp extends StatelessWidget {
         coach: FakeCoach(failWith: CoachFailure.limitReached),
         opener: 'Ask me anything about this week.',
       ),
+      // Apple, Google and email, on the photograph (R1, R10).
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
-      'sign-in-error': (_) =>
-          SignInScreen(auth: FakeAuth(failWith: AuthFailure.wrongCredentials)),
+      // One tap in: the email form, as it always was, under the same headline
+      // space.
+      'sign-in-email': (_) =>
+          SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
       'credits': (_) => const CreditsScreen(),
 
       // ---- Privacy, legal and leaving --------------------------------------

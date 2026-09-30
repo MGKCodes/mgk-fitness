@@ -4,7 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
-import '../domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import '../domain/profile_photo.dart';
 
 /// Everything on this phone that belongs to a runner, in one place, so it can
@@ -22,7 +22,7 @@ import '../domain/profile_photo.dart';
 /// answer and the record of the last push. The medical-disclaimer marker, the
 /// intro marker and the distance unit stay -- they describe the install and a
 /// display preference, not the person who used it.
-class PhoneRunnerData implements LocalRunnerData {
+class PhoneRunnerData implements LocalTrainingData {
   PhoneRunnerData({
     required AppDatabase db,
     required ProfilePhotoStore photo,

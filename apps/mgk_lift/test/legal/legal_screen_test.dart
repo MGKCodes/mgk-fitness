@@ -123,6 +123,8 @@ void main() {
       addTearDown(auth.dispose);
       await pumpTall(tester, SignInScreen(auth: auth));
 
+      await tester.tap(find.text('Continue with email'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();
 

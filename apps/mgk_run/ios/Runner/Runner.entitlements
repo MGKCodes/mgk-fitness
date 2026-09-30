@@ -13,5 +13,11 @@
 	     clinical health records, which this app does not read. -->
 	<key>com.apple.developer.healthkit</key>
 	<true/>
+	<!-- Sign in with Apple, grouped under Lift's App ID so one Apple ID is
+	     one account across the suite. See Lift's docs/store-setup.md, 7a. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

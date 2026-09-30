@@ -11,7 +11,7 @@ import '../../coaching/domain/coach_subscription.dart';
 import '../../coaching/domain/manage_subscription.dart';
 import '../../coaching/presentation/manage_subscription_link.dart';
 import '../../settings/domain/backup_consent.dart';
-import '../../settings/domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import '../../settings/presentation/phone_scope.dart';
 import '../data/account_deletion_service.dart';
 import '../domain/account_deleter.dart';

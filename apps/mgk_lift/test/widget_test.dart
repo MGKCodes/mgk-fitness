@@ -5,6 +5,7 @@ import 'package:mgk_lift/src/features/tracking/presentation/track_surface.dart';
 import 'package:mgk_lift/main.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
+import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/coach_sheet.dart';
@@ -187,7 +188,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CoachSheet), findsNothing);
-    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.byType(SignInScreen), findsOneWidget);
   });
 
   testWidgets('on the free tier the mark goes to the offer, not a refusal', (

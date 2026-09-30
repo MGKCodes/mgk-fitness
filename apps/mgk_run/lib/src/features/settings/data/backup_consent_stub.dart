@@ -1,5 +1,5 @@
 import '../domain/backup_consent.dart';
-import '../domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// Web default (the preview harness only — Runio ships to iOS). No `dart:io`,
 /// so the answer lasts the session.

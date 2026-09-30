@@ -1,4 +1,7 @@
 import 'package:meta/meta.dart';
+import 'package:mgk_auth/mgk_auth.dart' show ProviderOutcome;
+
+export 'package:mgk_auth/mgk_auth.dart' show ProviderOutcome;
 
 /// Who is signed in, if anybody.
 @immutable
@@ -34,7 +37,11 @@ enum AuthFailure {
   needsConfirmation,
 
   /// No network, or the server is down. Nothing the lifter did.
-  unavailable;
+  unavailable,
+
+  /// Apple or Google, or the server behind them, said no. Not the lifter's to
+  /// fix, and not worth retrying the same way at once.
+  providerRefused;
 
   String get message => switch (this) {
     wrongCredentials => 'That email and password do not match.',
@@ -44,6 +51,8 @@ enum AuthFailure {
     needsConfirmation => 'Check your email and follow the link, then sign in.',
     unavailable =>
       'Could not reach the server. Your training is safe on this device.',
+    providerRefused =>
+      'That sign-in did not go through. Try again, or use your email.',
   };
 }
 
@@ -76,6 +85,16 @@ abstract interface class AuthService {
   /// Creates the account. May complete without a session when the project
   /// requires email confirmation — hence [AuthFailure.needsConfirmation].
   Future<Account> signUp({required String email, required String password});
+
+  /// Signs in with Apple, making the account the first time.
+  ///
+  /// [ProviderOutcome.cancelled] when they closed Apple's sheet, and
+  /// [ProviderOutcome.continuing] on Android, where Apple's sign-in finishes
+  /// in the browser and the account arrives on [changes] afterwards.
+  Future<ProviderOutcome> signInWithApple();
+
+  /// Signs in with Google, making the account the first time.
+  Future<ProviderOutcome> signInWithGoogle();
 
   Future<void> signOut();
 

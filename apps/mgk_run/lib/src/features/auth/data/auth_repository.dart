@@ -1,4 +1,7 @@
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'provider_ids.dart';
 
 /// What the app reacts to: **the identity changed**, not "gotrue emitted".
 ///
@@ -105,6 +108,28 @@ class AuthRepository {
       state.session == null ? AuthChange.signedOut : AuthChange.signedIn,
     _ => null,
   };
+
+  /// Signs in with Apple, making the account the first time.
+  ///
+  /// [ProviderOutcome.continuing] on Android, where Apple's sign-in finishes
+  /// in the browser and the session arrives through [authChanges]. Throws a
+  /// [ProviderSignInException] for anything but a sign-in or a cancel.
+  Future<ProviderOutcome> signInWithApple() async {
+    final outcome = await _providers().apple();
+    if (outcome == ProviderOutcome.signedIn) await ensureProfileBestEffort();
+    return outcome;
+  }
+
+  /// Signs in with Google, making the account the first time.
+  Future<ProviderOutcome> signInWithGoogle() async {
+    final outcome = await _providers().google();
+    if (outcome == ProviderOutcome.signedIn) await ensureProfileBestEffort();
+    return outcome;
+  }
+
+  /// Made per call: this class is `const`, and holds nothing between calls.
+  ProviderSignIn _providers() =>
+      ProviderSignIn(ids: runProviderIds, timeout: timeout);
 
   Future<void> signIn({required String email, required String password}) async {
     await _client.auth
@@ -216,7 +241,12 @@ class AuthRepository {
     );
   }
 
-  Future<void> signOut() => _client.auth.signOut();
+  Future<void> signOut() async {
+    await _client.auth.signOut();
+    // After, not before: leaving is what matters, and a Google account left
+    // remembered only means the next "Continue with Google" skips the chooser.
+    await _providers().forget();
+  }
 
   /// This app's own keys on the shared profile.
   ///

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// In-memory [AuthRepository] for the preview harness and widget tests. It
 /// never touches Supabase, so it drives the real [AuthGate] flow without a
@@ -116,6 +117,33 @@ class FakeAuthRepository extends AuthRepository {
     // real repository says the same thing for the same reason, whatever the
     // profile write did afterwards.
     return true;
+  }
+
+  /// How Apple and Google end when [failure] is null: signed in, cancelled at
+  /// the provider's sheet, or still going in the browser.
+  ProviderOutcome providerOutcome = ProviderOutcome.signedIn;
+
+  /// Which provider was last asked.
+  String? lastProvider;
+
+  @override
+  Future<ProviderOutcome> signInWithApple() =>
+      _provider('apple', 'you@privaterelay.appleid.com');
+
+  @override
+  Future<ProviderOutcome> signInWithGoogle() =>
+      _provider('google', 'you@gmail.com');
+
+  Future<ProviderOutcome> _provider(String provider, String email) async {
+    lastProvider = provider;
+    final error = failure;
+    if (error != null) throw error;
+    if (providerOutcome != ProviderOutcome.signedIn) return providerOutcome;
+    _email = email;
+    _signedIn = true;
+    _changes.add(AuthChange.signedIn);
+    await ensureProfileBestEffort();
+    return ProviderOutcome.signedIn;
   }
 
   @override

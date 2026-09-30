@@ -1,0 +1,36 @@
+name: mgk_auth
+description: "Signing in for the MGKCodes fitness suite: Apple and Google through Supabase, and whose training is on a phone."
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.41.0"
+
+# Joins the workspace defined by the root pubspec.
+resolution: workspace
+
+# **Not UI, and not either app's.** Lift and Run share one account (one
+# Supabase project, one Apple App ID group, one Google Cloud project), so the
+# way into it is written once, here. The buttons that start it are drawn by
+# mgk_ui; this package never builds a widget, which keeps the design system
+# free of three platform plugins and this package free of the design system.
+dependencies:
+  flutter:
+    sdk: flutter
+  crypto: ^3.0.7
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.0.0
+  supabase_flutter: ^2.17.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Already in the lockfile under supabase_flutter. Its MockClient lets the
+  # tests run a real GoTrueClient and read what it sends.
+  http: ^1.6.0
+  # Both in the lockfile under url_launcher, which supabase_flutter opens
+  # Apple's web sign-in with. A fake launcher is how the Android flow is
+  # tested without a browser.
+  plugin_platform_interface: ^2.1.8
+  url_launcher_platform_interface: ^2.3.2
