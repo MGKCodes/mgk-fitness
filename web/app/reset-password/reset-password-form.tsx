@@ -3,10 +3,18 @@
 import { useSearchParams } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
-// Public values, the same two every copy of both apps carries. Set in Vercel,
-// not committed, the way the apps take theirs from the build.
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+// **Public values**, the same two every copy of both apps carries and this
+// page's own JavaScript hands to anybody who opens it: the project's address
+// and its publishable key, which only ever acts as the person signed in.
+// Written here because a secret never is, and `.env*` stays ignored so this
+// folder cannot acquire one. The environment can still point the page
+// elsewhere, as a test against a stand-in server does.
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://cwpwzxjjhxbkwhrgnasn.supabase.co";
+const PUBLISHABLE_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  "sb_publishable_Mp7KWjw14O094SpZPDuOdQ_fvz9YrDz";
 
 // Lift asks for eight at sign-up and Run for six. It is one account, so the
 // stricter of the two.
