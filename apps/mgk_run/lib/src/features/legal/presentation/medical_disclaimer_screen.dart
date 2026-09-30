@@ -42,7 +42,12 @@ class MedicalDisclaimerScreen extends StatelessWidget {
               )
             : null,
       ),
+      // The bottom inset is the panel's to take, not the page's: a SafeArea
+      // round the whole column stopped the panel's fill 34pt short of the
+      // bottom edge, a strip of page under a bar that looked cut off (board C9,
+      // G1). The reference view has no panel and keeps the plain inset.
       body: SafeArea(
+        bottom: !_isGate,
         child: Column(
           children: <Widget>[
             if (_isGate)
@@ -79,16 +84,24 @@ class MedicalDisclaimerScreen extends StatelessWidget {
             if (_isGate)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  16,
+                  20,
+                  20 + MediaQuery.paddingOf(context).bottom,
+                ),
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
                   border: Border(top: BorderSide(color: AppColors.elevated)),
                 ),
                 child: Column(
                   children: <Widget>[
-                    FilledButton(
+                    // Full width, like every other step's main action. A bare
+                    // FilledButton sizes to its label, so this was a narrow
+                    // centred pill under a column of full-width ones.
+                    PrimaryButton(
+                      label: 'I understand',
                       onPressed: onAcknowledge,
-                      child: const Text('I understand'),
                     ),
                     if (onDecline != null) ...<Widget>[
                       const SizedBox(height: 4),

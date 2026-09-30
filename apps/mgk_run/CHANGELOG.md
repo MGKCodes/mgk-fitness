@@ -383,6 +383,9 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The medical notice's "I understand" is full width**, like every other
+  step's main action, and the panel behind it reaches the bottom of the
+  screen instead of stopping short of it.
 - **Adding a run by hand no longer opens on errors, or on Treadmill.** "How
   far did you go?" and "How long did it take?" showed in red before anything
   had been typed; a field now says what is wrong once you have typed in it or
