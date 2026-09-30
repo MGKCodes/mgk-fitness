@@ -383,6 +383,8 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The weekday chips on the plan's confirmation screen show M and W
+  whole.** On a 393pt iPhone both were drawn with their right edge faded out.
 - **The start screen names today's session the way Home does.** It read
   "6.00 km · easy" one tap after Home said "6 km", and showed two kinds by
   their code names ("marathonPace", "timeTrial"). It now reads "6 km · easy

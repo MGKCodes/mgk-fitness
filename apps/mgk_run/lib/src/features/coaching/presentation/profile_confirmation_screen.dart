@@ -501,6 +501,9 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
                   padding: EdgeInsets.only(right: d == 7 ? 0 : 4),
                   child: ChoiceChip(
                     label: Center(child: Text('$d')),
+                    // Matched to the weekday row below, so the two rows of
+                    // seven share one rhythm.
+                    labelPadding: EdgeInsets.zero,
                     showCheckmark: false,
                     selected: _daysPerWeek == d,
                     onSelected: (_) => setState(() => _daysPerWeek = d),
@@ -532,6 +535,11 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
                     // "✓ ✓ W ✓ F ✓ ✓" — you can only tell which days are selected
                     // by counting positions. The selected fill carries the state.
                     showCheckmark: false,
+                    // The label's own 8pt either side, on a chip this narrow,
+                    // left M and W narrower than their glyphs at 393pt, so
+                    // both were drawn with the right edge faded out (board
+                    // G4). The chip is the target; the letter only has to fit.
+                    labelPadding: EdgeInsets.zero,
                     selected: _weekdays.contains(day),
                     onSelected: (on) => setState(() {
                       on ? _weekdays.add(day) : _weekdays.remove(day);
