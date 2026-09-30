@@ -45,6 +45,15 @@ const nextConfig: NextConfig = {
       // in the Play listing's terms field and App Store Connect's EULA field,
       // neither of which can be corrected without a resubmission.
       { source: "/run/terms", destination: "/run/terms-of-use.html" },
+      // Lift's three, written by apps/mgk_lift/tool/build_legal_pages.py with
+      // Run's renderer. Lift renders its terms in the app as well as linking
+      // them, so all three are pinned by Lift's legal_copy_test.dart.
+      { source: "/lift/privacy", destination: "/lift/privacy-policy.html" },
+      { source: "/lift/terms", destination: "/lift/terms-of-use.html" },
+      {
+        source: "/lift/ai-disclosure",
+        destination: "/lift/ai-disclosure.html",
+      },
     ];
   },
   // One URL per document. Files in `public/` are served at their own path
@@ -68,6 +77,21 @@ const nextConfig: NextConfig = {
       {
         source: "/run/terms-of-use.html",
         destination: "/run/terms",
+        permanent: true,
+      },
+      {
+        source: "/lift/privacy-policy.html",
+        destination: "/lift/privacy",
+        permanent: true,
+      },
+      {
+        source: "/lift/terms-of-use.html",
+        destination: "/lift/terms",
+        permanent: true,
+      },
+      {
+        source: "/lift/ai-disclosure.html",
+        destination: "/lift/ai-disclosure",
         permanent: true,
       },
     ];

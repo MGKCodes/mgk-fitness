@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "legal": "python ../apps/mgk_run/tool/build_legal_pages.py"
+    "legal": "cd ../apps/mgk_run && python tool/build_legal_pages.py && cd ../mgk_lift && python tool/build_legal_pages.py"
   },
   "dependencies": {
     "next": "16.3.4",
