@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The start screen names today's session the way Home does.** It read
+  "6.00 km · easy" one tap after Home said "6 km", and showed two kinds by
+  their code names ("marathonPace", "timeTrial"). It now reads "6 km · easy
+  run".
 - **The spinners on Resume and Finish while a run saves sit clear of their
   labels,** and Resume's is no longer dark on the grey of a disabled button.
 - **A run that location stopped before it began offers only what applies.**

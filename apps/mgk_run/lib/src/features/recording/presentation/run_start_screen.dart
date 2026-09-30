@@ -6,7 +6,9 @@ import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/training_plan.dart';
+import '../../coaching/presentation/session_labels.dart';
 import '../domain/run_point.dart';
 import '../../../core/config/app_config.dart';
 import 'route_map.dart';
@@ -238,9 +240,17 @@ class _RunStartScreenState extends State<RunStartScreen> {
   }
 }
 
-/// What today asks for, in one line, in the runner's own unit.
+/// What today asks for, in one line, in the runner's own unit: "6 km · easy
+/// run".
+///
+/// **In Home's words, since Home is the tap before this.** It read "6.00 km ·
+/// easy" under a card that had just said "6 km" (board R24): a prescription
+/// formatted as a measurement, and the kind as the enum's own name, which for
+/// two kinds was `marathonPace` and `timeTrial`. [formatPrescribed] and
+/// [kindLabel] are what every other surface uses; a runner's own name for the
+/// session ("parkrun") is kept as they wrote it.
 String _sessionLine(PlannedSession session, UnitSystem unit) {
-  if (session.distanceMeters <= 0) return session.kind.name;
-  final Distance distance = Distance.meters(session.distanceMeters);
-  return '${distance.format(unit)} · ${session.kind.name}';
+  final String what = session.label ?? kindLabel(session.kind).toLowerCase();
+  if (session.distanceMeters <= 0) return what;
+  return '${formatPrescribed(session.distanceMeters, unit)} · $what';
 }
