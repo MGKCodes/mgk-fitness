@@ -46,6 +46,7 @@ class TrackSurface extends StatelessWidget {
     this.onStartWorkout,
     this.onDiscardAndStart,
     this.onOpenLibrary,
+    this.onOpenWorkout,
     this.onAddStarter,
     this.movedDay,
     this.coachBeside = false,
@@ -73,6 +74,10 @@ class TrackSurface extends StatelessWidget {
   /// Opens the whole library. **Null hides the section** — a build with no
   /// on-device database.
   final VoidCallback? onOpenLibrary;
+
+  /// Opens the library at one workout, its row open to every movement. Null
+  /// opens the library at the top.
+  final ValueChanged<SavedWorkout>? onOpenWorkout;
 
   /// Adds one of the three starting points (R11). Offered only while nothing
   /// is saved; null hides them.
@@ -183,9 +188,7 @@ class TrackSurface extends StatelessWidget {
                   ),
                   sliver: SliverList.list(
                     children: <Widget>[
-                      _Side(
-                        Entrance(child: SectionLabel(_eyebrow(_now))),
-                      ),
+                      _Side(Entrance(child: SectionLabel(_eyebrow(_now)))),
                       const SizedBox(height: AppSpacing.sm),
                       _Side(
                         Entrance(
@@ -275,6 +278,7 @@ class TrackSurface extends StatelessWidget {
                                 ? null
                                 : (w) => _start(context, w),
                             onOpenLibrary: onOpenLibrary!,
+                            onOpenWorkout: onOpenWorkout,
                             onAddStarter: onAddStarter,
                           ),
                         ),
@@ -549,7 +553,10 @@ class _StartPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final open = openSession;
     if (open != null) {
-      return ActionPill(label: 'Resume ${open.name}', onPressed: onStartSession);
+      return ActionPill(
+        label: 'Resume ${open.name}',
+        onPressed: onStartSession,
+      );
     }
     final day = plannedDay;
     if (day != null && onStartPlanned != null) {
@@ -637,6 +644,7 @@ class _YourWorkouts extends StatelessWidget {
     required this.log,
     required this.onStart,
     required this.onOpenLibrary,
+    required this.onOpenWorkout,
     required this.onAddStarter,
   });
 
@@ -644,6 +652,7 @@ class _YourWorkouts extends StatelessWidget {
   final List<Session> log;
   final ValueChanged<SavedWorkout>? onStart;
   final VoidCallback onOpenLibrary;
+  final ValueChanged<SavedWorkout>? onOpenWorkout;
   final ValueChanged<WorkoutSplit>? onAddStarter;
 
   @override
@@ -719,7 +728,9 @@ class _YourWorkouts extends StatelessWidget {
                         onStart: onStart == null
                             ? null
                             : () => onStart!(workout),
-                        onOpen: onOpenLibrary,
+                        onOpen: onOpenWorkout == null
+                            ? onOpenLibrary
+                            : () => onOpenWorkout!(workout),
                       ),
                     ),
                   ],
@@ -782,8 +793,8 @@ class _WorkoutCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: AppSpacing.md),
-            _SmallPill(label: 'Start', onPressed: onStart),
+            const SizedBox(height: AppSpacing.sm),
+            SmallPill(label: 'Start', onPressed: onStart),
           ],
         ),
       ),
@@ -849,52 +860,12 @@ class _StarterCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  _SmallPill(label: 'Add', onPressed: onAdd),
+                  const SizedBox(height: AppSpacing.sm),
+                  SmallPill(label: 'Add', onPressed: onAdd),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The card-sized action: a short silver pill, quieter than the page's own.
-class _SmallPill extends StatelessWidget {
-  const _SmallPill({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final enabled = onPressed != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      excludeSemantics: true,
-      child: PressScale(
-        enabled: enabled,
-        onTap: onPressed,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: enabled ? AppColors.primary : AppColors.elevated,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: enabled ? AppColors.onPrimary : AppColors.textTertiary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
         ),
       ),
     );

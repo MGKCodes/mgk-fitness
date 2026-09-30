@@ -6,7 +6,6 @@ import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/track_surface.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/workout_editor_screen.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/workout_library_screen.dart';
-import 'package:mgk_lift/src/features/tracking/presentation/workout_preview_sheet.dart';
 
 /// The workout screens on the narrowest phone the app supports, with the text
 /// turned up. A fixed-height card on Track overflowed the first time this was
@@ -74,25 +73,32 @@ void main() {
         expect(tester.takeException(), isNull);
       });
 
-      testWidgets('the preview', (tester) async {
+      // The row opened to every movement — where the preview's list went.
+      testWidgets('the library, a row open', (tester) async {
+        final library = InMemoryWorkoutLibrary();
+        final saved = await library.save(
+          name: long.name,
+          movements: long.movements,
+        );
         await pump(
           tester,
-          Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => WorkoutPreviewSheet.show(
-                  context,
-                  workout: long,
-                  blockedReason:
-                      'Finish or discard the session you have open first.',
-                ),
-                child: const Text('open'),
-              ),
-            ),
+          WorkoutLibraryScreen(
+            library: library,
+            lookup: lookup,
+            openAt: saved.id,
           ),
         );
-        await tester.tap(find.text('open'));
-        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('the library, empty: the starters', (tester) async {
+        await pump(
+          tester,
+          WorkoutLibraryScreen(
+            library: InMemoryWorkoutLibrary(),
+            lookup: lookup,
+          ),
+        );
         expect(tester.takeException(), isNull);
       });
 

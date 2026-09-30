@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -6,22 +8,48 @@ import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../sync/presentation/backup_scheduler.dart';
 import '../data/exercise_lookup.dart';
+import '../data/starters.dart';
 import '../domain/session.dart';
 import '../domain/workout_library.dart';
-import 'premade_library_sheet.dart';
+import '../domain/workout_template.dart';
+import 'resume_or_discard.dart';
 import 'workout_editor_screen.dart';
-import 'workout_preview_sheet.dart';
+
+/// What the library was left with.
+sealed class LibraryOutcome {
+  const LibraryOutcome();
+}
+
+/// Start this workout — throwing away the session that was open first, when
+/// the lifter said so.
+final class StartWorkout extends LibraryOutcome {
+  const StartWorkout(this.workout, {this.discardingOpen = false});
+
+  final SavedWorkout workout;
+
+  /// True only when the lifter answered "Discard it" to "Push is still open".
+  final bool discardingOpen;
+}
+
+/// Go back to the session that was already open.
+final class ResumeOpen extends LibraryOutcome {
+  const ResumeOpen();
+}
 
 /// **Your workouts** — the lifter's library, and what a session starts from.
 ///
-/// A screen, not the sheet it replaced. The sheet was reachable only from
-/// inside an empty session — so browsing your own workouts started the clock
-/// first — and it was a fixed 85% of the screen, half empty with three rows in
-/// it. This is reached from Track as well, and does everything a library
-/// should: preview, start, edit, duplicate, delete with Undo, build one, and
-/// add the ready-made ones.
+/// Each row does the two things a row is for: **Start**, and a "…" for Edit,
+/// Duplicate and Delete. Tapping the row opens it in place to every movement
+/// with its sets and reps.
 ///
-/// Pops with the workout the lifter chose to start, or null.
+/// **There is no preview any more** (the design review's finding 7). A row
+/// opened a sheet that showed the workout and offered Start, which was one
+/// screen between the lifter and the thing they came to do; what the sheet
+/// showed now opens inside the row, and Start is on the row itself. Nor is
+/// there a builder (R5): a workout comes from a session saved as one, or from
+/// one of the three starters, and the editor is for changing one that exists.
+///
+/// Pops with a [LibraryOutcome], or null.
 class WorkoutLibraryScreen extends StatefulWidget {
   const WorkoutLibraryScreen({
     super.key,
@@ -29,42 +57,52 @@ class WorkoutLibraryScreen extends StatefulWidget {
     required this.lookup,
     this.log = const <Session>[],
     this.startLabel = 'Start',
-    this.blockedReason,
+    this.openSessionName,
+    this.openAt,
     this.backup,
   });
 
   final WorkoutLibrary library;
   final ExerciseLookup lookup;
 
-  /// For "last done", and the picker's recent movements.
+  /// For "last done", and the editor's recent movements.
   final List<Session> log;
 
-  /// See [WorkoutPreviewSheet.startLabel].
+  /// `Start`, or `Use` when the library was opened to fill a session that is
+  /// already running.
   final String startLabel;
 
-  /// See [WorkoutPreviewSheet.blockedReason].
-  final String? blockedReason;
+  /// The session already open, when there is one. Start then asks whether to
+  /// resume it or discard it — a session is never overwritten without being
+  /// asked, and the library no longer says "no" and leaves it at that.
+  final String? openSessionName;
+
+  /// The workout whose row starts open — Track's card opens the library at
+  /// the workout it shows.
+  final String? openAt;
 
   /// Where backup stands, for the mark on a row not yet backed up. Null is a
   /// build with no server.
   final ValueListenable<BackupStatus>? backup;
 
-  static Future<SavedWorkout?> open(
+  static Future<LibraryOutcome?> open(
     BuildContext context, {
     required WorkoutLibrary library,
     required ExerciseLookup lookup,
     List<Session> log = const <Session>[],
     String startLabel = 'Start',
-    String? blockedReason,
+    String? openSessionName,
+    String? openAt,
     ValueListenable<BackupStatus>? backup,
-  }) => Navigator.of(context).push<SavedWorkout>(
-    MaterialPageRoute<SavedWorkout>(
+  }) => Navigator.of(context).push<LibraryOutcome>(
+    MaterialPageRoute<LibraryOutcome>(
       builder: (_) => WorkoutLibraryScreen(
         library: library,
         lookup: lookup,
         log: log,
         startLabel: startLabel,
-        blockedReason: blockedReason,
+        openSessionName: openSessionName,
+        openAt: openAt,
         backup: backup,
       ),
     ),
@@ -74,8 +112,14 @@ class WorkoutLibraryScreen extends StatefulWidget {
   State<WorkoutLibraryScreen> createState() => _WorkoutLibraryScreenState();
 }
 
+enum _RowAction { edit, duplicate, delete }
+
 class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
   List<SavedWorkout>? _saved;
+
+  /// The row opened to its movements. One at a time: two open rows is a
+  /// comparison nobody asked for, pushing the rest of the list off the screen.
+  late String? _expanded = widget.openAt;
 
   @override
   void initState() {
@@ -92,21 +136,80 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
   void _say(String message, {String? action, VoidCallback? onAction}) =>
       AppToast.show(context, message, actionLabel: action, onAction: onAction);
 
-  Future<void> _preview(SavedWorkout workout) async {
-    final action = await WorkoutPreviewSheet.show(
+  Future<void> _start(SavedWorkout workout) async {
+    final open = widget.openSessionName;
+    if (open == null) {
+      Navigator.of(context).pop(StartWorkout(workout));
+      return;
+    }
+    final choice = await askResumeOrDiscard(
       context,
-      workout: workout,
-      lastDone: lastDone(workout.id, widget.log),
-      startLabel: widget.startLabel,
-      blockedReason: widget.blockedReason,
+      openName: open,
+      wantedName: workout.name,
     );
-    if (!mounted || action == null) return;
-    switch (action) {
-      case WorkoutAction.start:
-        Navigator.of(context).pop(workout);
-      case WorkoutAction.edit:
+    if (!mounted || choice == null) return;
+    Navigator.of(context).pop(switch (choice) {
+      OpenSessionChoice.resume => const ResumeOpen(),
+      OpenSessionChoice.discardAndStart => StartWorkout(
+        workout,
+        discardingOpen: true,
+      ),
+    });
+  }
+
+  Future<void> _more(SavedWorkout workout) async {
+    final choice = await showGlassSheet<_RowAction>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const SheetHandle(),
+              SectionLabel(workout.name),
+              const SizedBox(height: AppSpacing.sm),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit'),
+                onTap: () => Navigator.of(sheet).pop(_RowAction.edit),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.copy_outlined),
+                title: const Text('Duplicate'),
+                onTap: () => Navigator.of(sheet).pop(_RowAction.duplicate),
+              ),
+              const Divider(height: AppSpacing.lg),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.danger,
+                ),
+                title: const Text(
+                  'Delete',
+                  style: TextStyle(color: AppColors.danger),
+                ),
+                onTap: () => Navigator.of(sheet).pop(_RowAction.delete),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _RowAction.edit:
         await _edit(workout);
-      case WorkoutAction.duplicate:
+      case _RowAction.duplicate:
         final copy = await widget.library.save(
           name: uniqueWorkoutName(workout.name, <String>[
             for (final w in _saved ?? const <SavedWorkout>[]) w.name,
@@ -115,12 +218,12 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
         );
         await _load();
         _say('${copy.name} added.');
-      case WorkoutAction.delete:
+      case _RowAction.delete:
         await _delete(workout);
     }
   }
 
-  Future<void> _edit(SavedWorkout? workout) async {
+  Future<void> _edit(SavedWorkout workout) async {
     await Navigator.of(context).push<SavedWorkout>(
       MaterialPageRoute<SavedWorkout>(
         builder: (_) => WorkoutEditorScreen(
@@ -171,9 +274,25 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
     );
   }
 
-  Future<void> _browse() async {
-    await PremadeLibrarySheet.show(context, library: widget.library);
-    if (mounted) await _load();
+  /// One of the three starting points (R11), with an Undo that takes back
+  /// exactly what was added.
+  Future<void> _addStarter(WorkoutSplit split) async {
+    final added = await addStarter(widget.library, split);
+    await _load();
+    if (!mounted) return;
+    unawaited(AppHaptics.selection());
+    _say(
+      added.length == 1
+          ? '${added.single.name} added.'
+          : '${split.name} added: ${added.length} workouts.',
+      action: 'Undo',
+      onAction: () async {
+        for (final w in added) {
+          await widget.library.remove(w.id);
+        }
+        await _load();
+      },
+    );
   }
 
   /// The glass header's height below the status bar, until it has been
@@ -189,53 +308,77 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
     final saved = _saved;
     return Scaffold(
       backgroundColor: AppColors.bg,
-      // A quiet photograph, the rows scrolling up under a glass header — the
-      // header is the one pane, and the rows stay solid (D6).
+      // Track's photograph, carried on so the library reads as a step further
+      // into the same place. At texture strength — this screen does not lead
+      // with it — and open through the middle, where the rows are, so the
+      // glass has something to be glass over.
       body: PhotoBackdrop(
-        image: 'assets/images/backgrounds/hero_home.webp',
-        scrim: ScrimStrength.quiet,
+        image: 'assets/images/backgrounds/hero_track.webp',
         child: Builder(
           builder: (context) {
             final top = MediaQuery.paddingOf(context).top;
+            final bottom = MediaQuery.paddingOf(context).bottom;
             // Measured, not assumed: its two lines grow with the phone's text
             // size, and the list starts wherever the header actually ends.
             final header = _header ?? top + _headerHeight;
+            final padding = EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              header + AppSpacing.md,
+              AppSpacing.lg,
+              bottom + AppSpacing.xxl,
+            );
             return Stack(
               children: <Widget>[
                 Positioned.fill(
-                  child: switch (saved) {
-                    // Null is "not read yet", empty is "you have none". A
-                    // spinner where the empty state belongs tells a new lifter
-                    // to wait for something that is never coming.
-                    null => const Center(child: CircularProgressIndicator()),
-                    final List<SavedWorkout> list when list.isEmpty => Padding(
-                      padding: EdgeInsets.only(top: header),
-                      child: _Empty(
-                        onBrowse: _browse,
-                        onBuild: () => _edit(null),
-                      ),
-                    ),
-                    final List<SavedWorkout> list => ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        header + AppSpacing.sm,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                      ),
-                      children: <Widget>[
-                        for (final (i, workout) in list.indexed)
-                          Entrance(
-                            index: i,
-                            child: _WorkoutRow(
-                              workout: workout,
-                              lastDone: lastDone(workout.id, widget.log),
-                              onTap: () => _preview(workout),
-                              backup: widget.backup,
+                  // Every row's glass reads one blur of the photograph instead
+                  // of taking a pass each — what makes glass rows affordable
+                  // in a list. The rows never overlap, which grouping needs.
+                  child: BackdropGroup(
+                    child: switch (saved) {
+                      // Null is "not read yet", empty is "you have none". A
+                      // spinner where the empty state belongs tells a new
+                      // lifter to wait for something that is never coming.
+                      null => const Center(child: CircularProgressIndicator()),
+                      final List<SavedWorkout> list when list.isEmpty =>
+                        ListView(
+                          padding: padding,
+                          children: <Widget>[_Starters(onAdd: _addStarter)],
+                        ),
+                      final List<SavedWorkout> list => ListView(
+                        padding: padding,
+                        children: <Widget>[
+                          for (final (i, workout) in list.indexed)
+                            Entrance(
+                              index: i,
+                              child: _WorkoutRow(
+                                key: ValueKey<String>(workout.id),
+                                workout: workout,
+                                lastDone: lastDone(workout.id, widget.log),
+                                expanded: _expanded == workout.id,
+                                startLabel: widget.startLabel,
+                                onToggle: () => setState(
+                                  () => _expanded = _expanded == workout.id
+                                      ? null
+                                      : workout.id,
+                                ),
+                                onStart: () => _start(workout),
+                                onMore: () => _more(workout),
+                                backup: widget.backup,
+                              ),
+                            ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'To add one, finish a session and save it as a '
+                            'workout.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textTertiary,
                             ),
                           ),
-                      ],
-                    ),
-                  },
+                        ],
+                      ),
+                    },
+                  ),
                 ),
                 Positioned(
                   top: 0,
@@ -291,126 +434,308 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
           },
         ),
       ),
-      // In the bar slot so "Push deleted. Undo" sits above these rather than
-      // over them.
-      bottomNavigationBar: saved == null || saved.isEmpty
-          ? null
-          : SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: AppOutlinedButton(
-                        onPressed: () => _edit(null),
-                        icon: Icons.add,
-                        label: 'Build one',
-                        expand: true,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppOutlinedButton(
-                        onPressed: _browse,
-                        icon: Icons.library_add_outlined,
-                        label: 'Ready-made',
-                        expand: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
     );
   }
 }
 
 class _WorkoutRow extends StatelessWidget {
   const _WorkoutRow({
+    super.key,
     required this.workout,
     required this.lastDone,
-    required this.onTap,
+    required this.expanded,
+    required this.startLabel,
+    required this.onToggle,
+    required this.onStart,
+    required this.onMore,
     this.backup,
   });
 
   final SavedWorkout workout;
   final DateTime? lastDone;
-  final VoidCallback onTap;
+  final bool expanded;
+  final String startLabel;
+  final VoidCallback onToggle;
+  final VoidCallback onStart;
+  final VoidCallback onMore;
   final ValueListenable<BackupStatus>? backup;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tabular = <FontFeature>[const FontFeature.tabularFigures()];
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
-        onTap: onTap,
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+      child: Semantics(
+        expanded: expanded,
+        child: GlassSurface(
+          grouped: true,
+          onTap: onToggle,
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
                 children: <Widget>[
-                  Text(
-                    workout.name,
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    workoutLine(workout, lastDone),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          workout.name,
+                          style: theme.textTheme.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          workoutLine(workout, lastDone),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    // The movements themselves: "6 movements" does not tell a
-                    // Push from a Pull in a list of six saved workouts.
-                    workout.movementNames.take(3).join(' · ') +
-                        (workout.movementCount > 3
-                            ? ' + ${workout.movementCount - 3} more'
-                            : ''),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
+                  // A quiet mark on a workout this phone has and the server
+                  // does not — only for somebody signed in, for whom that is
+                  // news. Signed out, every row would carry it, which says
+                  // nothing.
+                  if (backup case final backup?)
+                    ValueListenableBuilder<BackupStatus>(
+                      valueListenable: backup,
+                      builder: (context, status, _) =>
+                          status.state == BackupState.signedOut ||
+                              status.isBackedUp(workout.id)
+                          ? const SizedBox.shrink()
+                          : const Padding(
+                              padding: EdgeInsets.only(right: AppSpacing.sm),
+                              child: Tooltip(
+                                message: 'Not backed up yet',
+                                child: Icon(
+                                  Icons.cloud_off_outlined,
+                                  size: 16,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  SmallPill(label: startLabel, onPressed: onStart),
+                  AppIconButton(
+                    icon: Icons.more_horiz,
+                    tooltip: 'More for ${workout.name}',
+                    color: AppColors.textSecondary,
+                    onPressed: onMore,
                   ),
                 ],
               ),
-            ),
-            // A quiet mark on a workout this phone has and the server does
-            // not — only for somebody signed in, for whom that is news. Signed
-            // out, every row would carry it, which says nothing.
-            if (backup case final backup?)
-              ValueListenableBuilder<BackupStatus>(
-                valueListenable: backup,
-                builder: (context, status, _) =>
-                    status.state == BackupState.signedOut ||
-                        status.isBackedUp(workout.id)
-                    ? const SizedBox.shrink()
-                    : const Padding(
-                        padding: EdgeInsets.only(right: AppSpacing.xs),
-                        child: Tooltip(
-                          message: 'Not backed up yet',
-                          child: Icon(
-                            Icons.cloud_off_outlined,
-                            size: 16,
+              AnimatedSize(
+                duration: AppMotion.base,
+                curve: AppMotion.standard,
+                alignment: Alignment.topCenter,
+                child: expanded
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          0,
+                          AppSpacing.sm,
+                          AppSpacing.md,
+                          0,
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            for (final (i, m) in workout.movements.indexed)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xs,
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    // At least 24 wide, so the names line up;
+                                    // wider when the text is, rather than
+                                    // breaking "10" in two.
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        minWidth: 24,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: AppSpacing.xs,
+                                        ),
+                                        child: Text(
+                                          '${i + 1}',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: AppColors.textTertiary,
+                                                fontFeatures: tabular,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        m.name,
+                                        style: theme.textTheme.bodyMedium,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Text(
+                                      prescription(m),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontFeatures: tabular,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.xs,
+                          right: AppSpacing.md,
+                        ),
+                        child: Text(
+                          // The movements themselves: "6 movements" does not
+                          // tell a Push from a Pull in a list of six.
+                          workout.movementNames.take(3).join(' · ') +
+                              (workout.movementCount > 3
+                                  ? ' + ${workout.movementCount - 3} more'
+                                  : ''),
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textTertiary,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
               ),
-            const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Nothing saved yet: the three starting points (R11), each one tap from being
+/// in the library — because an empty list with a builder under it was the same
+/// blank page the library was meant to solve.
+class _Starters extends StatelessWidget {
+  const _Starters({required this.onAdd});
+
+  final ValueChanged<WorkoutSplit> onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text('Nothing saved yet', style: theme.textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Start from one of these, or finish a session and save it as a '
+          'workout.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        for (final (i, split) in starterSplits.indexed)
+          Entrance(
+            index: i,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _StarterRow(split: split, onAdd: () => onAdd(split)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StarterRow extends StatelessWidget {
+  const _StarterRow({required this.split, required this.onAdd});
+
+  final WorkoutSplit split;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sessions = templatesOf(split);
+    // The sessions by name, unless the one session is the split's own name
+    // again: "Full Body · Full Body" said nothing twice.
+    final holds = sessions.length == 1
+        ? '1 workout'
+        : sessions.map((t) => t.name).join(', ');
+    return GlassSurface(
+      grouped: true,
+      padding: EdgeInsets.zero,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            SizedBox(
+              width: 88,
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0, 0, 0, 1, 0, //
+                ]),
+                child: Image.asset(
+                  split.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: AppColors.surface),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(split.name, style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${split.daysPerWeek} days a week · $holds',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    SmallPill(label: 'Add', onPressed: onAdd),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -418,49 +743,24 @@ class _WorkoutRow extends StatelessWidget {
   }
 }
 
-/// Nothing saved yet — leading with the ready-made ones, because a blank
-/// builder is the same blank page the library was meant to solve.
-class _Empty extends StatelessWidget {
-  const _Empty({required this.onBrowse, required this.onBuild});
+/// `3 × 8`, or `3 sets` when there is no rep target.
+String prescription(TemplateMovement m) => m.repTarget == null
+    ? '${m.sets} ${m.sets == 1 ? 'set' : 'sets'}'
+    : '${m.sets} × ${m.repTarget}';
 
-  final VoidCallback onBrowse;
-  final VoidCallback onBuild;
+/// `6 movements · 18 sets · last done 23 Sep`, the line under a workout's name.
+String workoutLine(SavedWorkout w, DateTime? lastDone) => <String>[
+  '${w.movementCount} ${w.movementCount == 1 ? 'movement' : 'movements'}',
+  '${w.setCount} ${w.setCount == 1 ? 'set' : 'sets'}',
+  lastDone == null ? 'not done yet' : 'last done ${_shortDate(lastDone)}',
+].join(' · ');
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text(
-            'Nothing saved yet',
-            style: theme.textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Start from one of ours, build your own, or save a session once '
-            'you have done it.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          PrimaryButton(label: 'Browse ready-made', onPressed: onBrowse),
-          const SizedBox(height: AppSpacing.sm),
-          AppOutlinedButton(
-            label: 'Build one',
-            onPressed: onBuild,
-            expand: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
+String _shortDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+
+const List<String> _months = <String>[
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 
 /// Reports its child's height after layout — so what sits under a header can
 /// start where the header really ends, at any text size.

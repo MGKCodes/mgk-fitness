@@ -30,7 +30,10 @@ void main() {
 
   /// The editor, pushed over a page it can pop back to — its back arrow and
   /// its Save both leave.
-  Future<void> open(WidgetTester tester, {SavedWorkout? workout}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    required SavedWorkout workout,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -68,13 +71,15 @@ void main() {
     ],
   );
 
-  testWidgets('Save waits for a name and a movement', (tester) async {
-    await open(tester);
-    expect(find.text('New workout'), findsOneWidget);
-    expect(saveButton(tester).onPressed, isNull);
+  testWidgets('Save waits for a movement', (tester) async {
+    await open(tester, workout: await push());
+    expect(find.text('Edit workout'), findsOneWidget);
+    expect(saveButton(tester).onPressed, isNotNull);
 
-    await tester.enterText(find.byType(TextField).first, 'Push');
-    await tester.pump();
+    await tester.tap(find.byTooltip('Remove Barbell Bench Press'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove Cable Fly'));
+    await tester.pumpAndSettle();
     // A name and nothing in it would start an empty session.
     expect(saveButton(tester).onPressed, isNull);
 

@@ -907,14 +907,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   Future<void> _openLibrary() async {
     final library = widget.library;
     if (library == null) return;
-    final workout = await WorkoutLibraryScreen.open(
+    final outcome = await WorkoutLibraryScreen.open(
       context,
       library: library,
       lookup: _lookup,
       log: widget.log,
-      startLabel: 'Use this workout',
+      // It fills this session rather than starting another, so nothing is
+      // open to ask about, and the verb says what it does.
+      startLabel: 'Use',
     );
-    if (workout == null || !mounted) return;
+    if (outcome is! StartWorkout || !mounted) return;
+    final workout = outcome.workout;
     setState(() => _filledFromLibrary = true);
     await _enqueue(
       () => widget.recorder.fillFromLibrary(

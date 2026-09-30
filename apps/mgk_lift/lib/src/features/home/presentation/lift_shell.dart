@@ -702,6 +702,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                         ? null
                         : _discardAndStart,
                     onOpenLibrary: widget.library == null ? null : _openLibrary,
+                    onOpenWorkout: widget.library == null
+                        ? null
+                        : (w) => _openLibrary(at: w),
                     onAddStarter: widget.library == null ? null : _addStarter,
                   ),
                 ),
@@ -1127,22 +1130,31 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     );
   }
 
-  /// The whole library, from Track's "See all".
-  Future<void> _openLibrary() async {
+  /// The whole library, from Track's "See all" — or opened at one workout,
+  /// from its card.
+  Future<void> _openLibrary({SavedWorkout? at}) async {
     final library = widget.library;
     if (library == null) return;
-    final chosen = await WorkoutLibraryScreen.open(
+    final outcome = await WorkoutLibraryScreen.open(
       context,
       library: library,
       lookup: ExerciseLookup(),
       log: _log,
       backup: _backup?.status,
-      blockedReason: _openSessionDetail == null
-          ? null
-          : 'Finish or discard the session you have open first.',
+      openSessionName: _openSessionDetail?.name,
+      openAt: at?.id,
     );
     if (!mounted) return;
-    if (chosen != null) await _openWorkout(chosen);
+    switch (outcome) {
+      case StartWorkout(:final workout, discardingOpen: true):
+        await _discardAndStart(workout);
+      case StartWorkout(:final workout):
+        await _openWorkout(workout);
+      case ResumeOpen():
+        await _openSession();
+      case null:
+        break;
+    }
   }
 
   /// Every session, grouped by week — following the log as it changes.

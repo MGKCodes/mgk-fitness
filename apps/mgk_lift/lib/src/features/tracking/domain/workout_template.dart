@@ -43,10 +43,9 @@ class WorkoutTemplate {
   /// **It orders rather than filters, and it used to do the opposite.** The
   /// template picker showed only these six, because it started a session
   /// directly and that is a decision made standing up in a hurry. That picker
-  /// is gone — see `PremadeLibrarySheet`, which adds to the lifter's library
-  /// instead. Curating a library is the opposite kind of decision, made once
-  /// and sitting down, so hiding nine of the fifteen there would be the app
-  /// withholding something for no reason it could give.
+  /// is gone, and so is the ready-made sheet that followed it: three starters
+  /// are shown now (`starters.dart`, R11), and the whole catalogue is the
+  /// coach's raw material, ordered by this.
   ///
   /// This is a display rule, not a tier: tracking is free and stays free, and
   /// nothing here is withheld to sell anything.

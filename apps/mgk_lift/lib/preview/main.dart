@@ -33,9 +33,7 @@ import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
-import '../src/features/tracking/presentation/workout_preview_sheet.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
-import '../src/features/tracking/presentation/premade_library_sheet.dart';
 import '../src/features/tracking/presentation/save_workout_prompt.dart';
 import '../src/features/tracking/presentation/workout_editor_screen.dart';
 import '../src/features/tracking/data/exercise_lookup.dart';
@@ -292,30 +290,15 @@ class PreviewApp extends StatelessWidget {
         library: InMemoryWorkoutLibrary(),
         lookup: ExerciseLookup(),
       ),
-      // What a workout holds, set by set, before the clock starts.
-      'workout-preview': (_) => _SheetHost(
-        open: (context) => WorkoutPreviewSheet.show(
-          context,
-          workout: _savedWorkouts().first,
-          lastDone: previewNow.subtract(const Duration(days: 6)),
-        ),
+      // Opened at one workout, as Track's card opens it: its row open to every
+      // movement, sets × reps — what the preview sheet showed, in place.
+      'workout-library-open': (_) => WorkoutLibraryScreen(
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        lookup: ExerciseLookup(),
+        log: sampleLog(previewNow),
+        openAt: _savedWorkouts().first.id,
       ),
-      // A session is already open, so Start says why it cannot.
-      'workout-preview-blocked': (_) => _SheetHost(
-        open: (context) => WorkoutPreviewSheet.show(
-          context,
-          workout: _savedWorkouts().first,
-          blockedReason: 'Finish or discard the session you have open first.',
-        ),
-      ),
-      'premade-library': (_) => _SheetHost(
-        behind: _emptySessionScreen(),
-        open: (context) => PremadeLibrarySheet.show(
-          context,
-          library: InMemoryWorkoutLibrary(_savedWorkouts()),
-        ),
-      ),
-      // Add a movement. Reached from the running session and from the builder,
+      // Add a movement. Reached from the running session and from the editor,
       // and never once photographed before today — a 266-row catalogue with
       // form images on it, reviewed by nobody.
       'exercise-picker': (_) => _SheetHost(
@@ -337,17 +320,7 @@ class PreviewApp extends StatelessWidget {
         open: (context) =>
             ReorderSheet.show(context, exercises: _longSession().exercises),
       ),
-      'workout-builder': (_) => WorkoutEditorScreen(
-        library: InMemoryWorkoutLibrary(),
-        lookup: ExerciseLookup(),
-        initialName: 'Wednesday push',
-        initialMovements: const <TemplateMovement>[
-          TemplateMovement('Barbell Bench Press', repTarget: 5),
-          TemplateMovement('Dumbbell Shoulder Press', repTarget: 10),
-          TemplateMovement('Cable Tricep Pushdown', sets: 4),
-        ],
-      ),
-      // Editing one that exists: the same screen, titled for it.
+      // The editor, reached from a row's "…" → Edit.
       'workout-editor': (_) => WorkoutEditorScreen(
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
         lookup: ExerciseLookup(),
@@ -1831,22 +1804,10 @@ class _SheetHostState extends State<_SheetHost> {
       const Scaffold(backgroundColor: AppColors.bg, body: SizedBox.expand());
 }
 
-/// The session screen a sheet opens over, in its two useful states.
-///
-/// A session with nothing in it yet is what the two library sheets and the
-/// premade picker are offered from; a session in progress is what the exercise
-/// picker and the swap sheet are reached from. Naming them here rather than
-/// writing the constructor out at each call site keeps the fixture — and so the
-/// ground under every sheet screenshot — identical across all five.
-Widget _emptySessionScreen() {
-  final session = _emptySession();
-  return ActiveSessionScreen(
-    recorder: FakeSessionRecorder(session),
-    session: session,
-    now: previewNow,
-  );
-}
-
+/// The session screen a sheet opens over: a session in progress, which is
+/// what the exercise picker, the reorder sheet and the swap sheet are reached
+/// from. Named here rather than written out at each call site, so the ground
+/// under every sheet screenshot is identical.
 Widget _runningSessionScreen() {
   final session = _openSession();
   return ActiveSessionScreen(

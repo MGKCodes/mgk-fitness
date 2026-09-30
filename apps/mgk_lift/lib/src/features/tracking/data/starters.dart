@@ -14,7 +14,11 @@ import 'workout_templates.dart';
 /// Three because they cover the question a new lifter actually has — how many
 /// days can you train? — at three, four and three-to-six: a whole body each
 /// time, an upper/lower alternation, and push, pull, legs.
-const List<String> starterSplitIds = <String>['full-body', 'upper-lower', 'ppl'];
+const List<String> starterSplitIds = <String>[
+  'full-body',
+  'upper-lower',
+  'ppl',
+];
 
 /// The starters, in the order they are offered.
 final List<WorkoutSplit> starterSplits = <WorkoutSplit>[

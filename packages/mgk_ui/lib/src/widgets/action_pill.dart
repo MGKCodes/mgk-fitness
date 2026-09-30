@@ -109,3 +109,58 @@ class ActionPill extends StatelessWidget {
     );
   }
 }
+
+/// The card-sized action: a short silver pill for the one thing a card or a
+/// row does — `Start`, `Add` — quieter than the page's [ActionPill].
+///
+/// It sits inside something tappable (a card that opens, a row that expands),
+/// so the pill's own target is taller than it looks: 44 high around a 36 pill,
+/// so a thumb that lands just off it presses it rather than the card behind.
+class SmallPill extends StatelessWidget {
+  const SmallPill({super.key, required this.label, required this.onPressed});
+
+  final String label;
+
+  /// Null draws it disabled.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: PressScale(
+        enabled: enabled,
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: enabled ? AppColors.primary : AppColors.elevated,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            // Hugs its label, so a row's Start is a pill beside the text and
+            // not a bar across it.
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: enabled ? AppColors.onPrimary : AppColors.textTertiary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

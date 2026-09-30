@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -159,5 +160,95 @@ void main() {
       ),
     );
     expect(find.text('set'), findsOneWidget);
+  });
+
+  group('SmallPill', () {
+    testWidgets('hugs its label, and its target is taller than it looks', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          SizedBox(
+            width: 300,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[SmallPill(label: 'Start', onPressed: () {})],
+            ),
+          ),
+        ),
+      );
+      final size = tester.getSize(find.byType(SmallPill));
+      expect(size.width, lessThan(150));
+      expect(size.height, 44);
+    });
+
+    testWidgets('presses, and is a disabled button without an action', (
+      tester,
+    ) async {
+      var presses = 0;
+      await tester.pumpWidget(
+        _host(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SmallPill(label: 'Start', onPressed: () => presses++),
+              const SmallPill(label: 'Add', onPressed: null),
+            ],
+          ),
+        ),
+      );
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      expect(presses, 1);
+
+      final add = tester.getSemantics(find.byType(SmallPill).last);
+      expect(
+        add,
+        matchesSemantics(
+          label: 'Add',
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: false,
+        ),
+      );
+    });
+  });
+
+  group('GlassSurface.grouped', () {
+    testWidgets('shares the blur of the group it is in', (tester) async {
+      await tester.pumpWidget(
+        _host(
+          BackdropGroup(
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                GlassSurface(grouped: true, child: Text('one')),
+                GlassSurface(grouped: true, child: Text('two')),
+              ],
+            ),
+          ),
+        ),
+      );
+      final keys = <BackdropKey?>[
+        for (final r in tester.renderObjectList<RenderBackdropFilter>(
+          find.byType(BackdropFilter),
+        ))
+          r.backdropKey,
+      ];
+      expect(keys, hasLength(2));
+      // One backdrop, read by both panes.
+      expect(keys.first, isNotNull);
+      expect(keys.first, same(keys.last));
+    });
+
+    testWidgets('is an ordinary pane unless asked', (tester) async {
+      await tester.pumpWidget(
+        _host(BackdropGroup(child: const GlassSurface(child: Text('one')))),
+      );
+      final filter = tester.renderObject<RenderBackdropFilter>(
+        find.byType(BackdropFilter),
+      );
+      expect(filter.backdropKey, isNull);
+    });
   });
 }

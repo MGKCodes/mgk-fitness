@@ -49,6 +49,7 @@ class GlassSurface extends StatelessWidget {
     this.desaturate = true,
     this.edge = true,
     this.onTap,
+    this.grouped = false,
   });
 
   /// Pinned to an edge, content scrolling under it: square, a stronger frost
@@ -65,7 +66,8 @@ class GlassSurface extends StatelessWidget {
        luminance = 1.08,
        sheen = false,
        desaturate = true,
-       edge = false;
+       edge = false,
+       grouped = false;
 
   /// Controls floating over content — the session's dock, the keyboard bar.
   /// Rounded, lit from above, a little brighter than a bar so it reads as the
@@ -81,7 +83,8 @@ class GlassSurface extends StatelessWidget {
        luminance = 1.12,
        sheen = true,
        desaturate = true,
-       edge = true;
+       edge = true,
+       grouped = false;
 
   /// A sheet risen from the bottom: rounded at the top only.
   const GlassSurface.sheet({
@@ -97,7 +100,8 @@ class GlassSurface extends StatelessWidget {
        luminance = 1.06,
        sheen = true,
        desaturate = true,
-       edge = true;
+       edge = true,
+       grouped = false;
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -128,13 +132,25 @@ class GlassSurface extends StatelessWidget {
   /// both sides reads as a frame; the bar draws its own hairline.
   final bool edge;
 
+  /// Shares one blur with its siblings under the nearest [BackdropGroup].
+  ///
+  /// **What makes glass affordable in a list.** Each pane is otherwise its own
+  /// backdrop pass, and a column of them was why the old rule said "no glass
+  /// inside a scrolling list" — a rule the design review then asked to break,
+  /// wanting glass rows and glass cards. Grouped, the engine blurs the
+  /// backdrop once and each pane reads its own region of it, identical to the
+  /// eye. **Only for panes that never overlap each other**: grouped panes
+  /// stacked over one another look as if one filter were applied. Without a
+  /// [BackdropGroup] above it, a grouped pane is an ordinary one.
+  final bool grouped;
+
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? AppRadius.cardAll;
 
     return ClipRRect(
       borderRadius: radius,
-      child: BackdropFilter(
+      child: _backdrop(
         // Blur and lift together in one filter: composing is a single pass, and
         // brightening *after* the blur lifts the whole pane evenly rather than
         // amplifying the brightest pixels behind it into blown-out blobs.
@@ -197,6 +213,11 @@ class GlassSurface extends StatelessWidget {
       ),
     );
   }
+
+  Widget _backdrop({required ui.ImageFilter filter, required Widget child}) =>
+      grouped
+      ? BackdropFilter.grouped(filter: filter, child: child)
+      : BackdropFilter(filter: filter, child: child);
 
   /// A 5x4 colour matrix that scales RGB about their midpoint, lifting the pane
   /// without clipping highlights the way a plain multiply does — and, when

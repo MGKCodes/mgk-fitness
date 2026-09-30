@@ -8,13 +8,14 @@ import '../domain/session.dart';
 import '../domain/workout_library.dart';
 import 'exercise_picker_sheet.dart';
 
-/// Builds a workout, or edits one — its name, its movements in order, and each
+/// Edits a saved workout — its name, its movements in order, and each
 /// movement's sets and rep target.
 ///
-/// **This replaced a builder that could only create.** A saved workout could be
-/// started or deleted and nothing else, while the premade sheet told lifters
-/// they could "rename, edit or delete yours". Now they can, and the same screen
-/// serves both: [workout] null is a new one.
+/// **Editing only (R5).** The same screen used to build a workout from nothing
+/// as well, and the design review found that nobody wanted to: a workout now
+/// comes from a session saved as one, or from a starter. This is what "…" →
+/// Edit opens, and the way back from saying yes to a change at Finish that
+/// should have been no.
 ///
 /// Returns the saved workout, or null if the lifter backed out.
 class WorkoutEditorScreen extends StatefulWidget {
@@ -22,23 +23,17 @@ class WorkoutEditorScreen extends StatefulWidget {
     super.key,
     required this.library,
     required this.lookup,
-    this.workout,
+    required this.workout,
     this.log = const <Session>[],
-    this.initialName,
-    this.initialMovements = const <TemplateMovement>[],
   });
 
   final WorkoutLibrary library;
   final ExerciseLookup lookup;
 
-  /// The workout being edited, or null to build a new one.
-  final SavedWorkout? workout;
+  final SavedWorkout workout;
 
   /// For the picker's recent movements.
   final List<Session> log;
-
-  final String? initialName;
-  final List<TemplateMovement> initialMovements;
 
   @override
   State<WorkoutEditorScreen> createState() => _WorkoutEditorScreenState();
@@ -55,11 +50,10 @@ class _Row {
 
 class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
   late final TextEditingController _name = TextEditingController(
-    text: widget.workout?.name ?? widget.initialName ?? '',
+    text: widget.workout.name,
   );
   late final List<_Row> _rows = <_Row>[
-    for (final m in widget.workout?.movements ?? widget.initialMovements)
-      _Row(m),
+    for (final m in widget.workout.movements) _Row(m),
   ];
   late final String _initialName = _name.text;
   late final List<TemplateMovement> _initial = <TemplateMovement>[
@@ -121,17 +115,9 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
     if (!_canSave) return;
     setState(() => _saving = true);
     final movements = <TemplateMovement>[for (final r in _rows) r.movement];
-    final existing = widget.workout;
-    final saved = existing == null
-        // Exactly what they typed. The `(2)` suffix is for names the *app*
-        // chose — see [uniqueWorkoutName].
-        ? await widget.library.save(
-            name: _name.text.trim(),
-            movements: movements,
-          )
-        : await widget.library.update(
-            existing.copyWith(name: _name.text.trim(), movements: movements),
-          );
+    final saved = await widget.library.update(
+      widget.workout.copyWith(name: _name.text.trim(), movements: movements),
+    );
     if (!mounted) return;
     Navigator.of(context).pop(saved);
   }
@@ -187,7 +173,7 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
             tooltip: 'Back',
             onPressed: _leave,
           ),
-          title: Text(widget.workout == null ? 'New workout' : 'Edit workout'),
+          title: const Text('Edit workout'),
         ),
         body: PhotoBackdrop(
           image: 'assets/images/backgrounds/hero_home.webp',
