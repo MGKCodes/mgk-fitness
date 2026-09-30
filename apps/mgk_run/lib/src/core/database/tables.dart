@@ -248,9 +248,22 @@ class PlanSessions extends Table {
   /// last opened. Date-only (midnight local).
   DateTimeColumn get scheduledDate => dateTime()();
 
-  /// `rest` | `recovery` | `easy` | `long` | `marathon_pace` | `threshold` |
-  /// `interval`.
+  /// `recovery` | `easy` | `long` | `marathon_pace` | `threshold` |
+  /// `interval` | `time_trial` for a run, or `strength` for a day that carries
+  /// strength work and no run. A rest day has no row.
   TextColumn get kind => text()();
+
+  /// **Strength work on this day as well as the run.**
+  ///
+  /// Strength can share a day with a run (`_strengthDays` stacks it onto run
+  /// days once the free ones are used up), and a day is one row here: the key
+  /// is the plan, the week and the weekday. So a shared day is the run's row
+  /// with this set, and a strength-only day is a row of kind `strength`.
+  ///
+  /// Before schema 12 only the runs were written at all, so every strength day
+  /// read back as rest the first time a week was loaded from disk rather than
+  /// from the builder, and Home called a gym day "Rest day".
+  BoolColumn get withStrength => boolean().withDefault(const Constant(false))();
 
   RealColumn get targetDistanceM => real().withDefault(const Constant(0))();
 

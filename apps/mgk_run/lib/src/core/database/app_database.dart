@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -176,6 +176,15 @@ class AppDatabase extends _$AppDatabase {
         // recorder never got a chance to write a real pause.
         await m.addColumn(runs, runs.pausedTotalS);
         await m.addColumn(runs, runs.notCountingSince);
+      }
+      if (from < 12) {
+        // Strength days kept on disk (see [PlanSessions.withStrength]).
+        // Additive and defaulted, and **not backfilled**: a week written before
+        // this had its strength days dropped on the way in, so there is nothing
+        // on the phone to recover them from. Those weeks go on reading as runs
+        // only, which is what was stored; the next week the builder writes
+        // carries its strength days.
+        await m.addColumn(planSessions, planSessions.withStrength);
       }
     }),
   );

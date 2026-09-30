@@ -383,6 +383,11 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Strength days stay in the plan after the app is reopened.** A week kept
+  its strength days only while it was still in memory; read back from the
+  phone, every strength day was a rest day, and Home said "Rest day" over a
+  gym day. Weeks written before this update cannot get theirs back; the next
+  week the plan writes keeps them.
 - **The plan calendar opens with this week at the top.** A few weeks into a
   plan it opened with "This week" and its dates tucked under the header.
 - **The coach's consent sheet shows when there is more to read.** On a small

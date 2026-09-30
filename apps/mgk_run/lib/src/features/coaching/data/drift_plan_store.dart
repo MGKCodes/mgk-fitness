@@ -152,8 +152,14 @@ class DriftPlanStore implements PlanStore {
     if (rows.isEmpty) return null;
     return TrainingWeek(
       skeletonIndex: weekNumber,
+      // Day by day, a day's run before its strength, which is the order the
+      // builder writes a shared day in.
       sessions: <PlannedSession>[
-        for (final row in rows) _sessionFrom(row, plan.id),
+        for (final row in rows) ...<PlannedSession>[
+          _sessionFrom(row, plan.id),
+          if (row.withStrength && row.kind != _strength)
+            PlannedSession(weekday: row.weekday, kind: SessionKind.strength),
+        ],
       ],
       // Provisional is a property of the whole week; every row of a week carries
       // the same flag, so the first is authoritative.
@@ -162,28 +168,51 @@ class DriftPlanStore implements PlanStore {
   }
 
   @override
-  Future<void> saveWeek(StoredPlan plan, TrainingWeek week) =>
-      _db.replaceWeekSessions(
-        planId: plan.id,
-        weekNumber: week.skeletonIndex,
-        sessions: <PlanSessionsCompanion>[
-          // Only training days become rows — a rest day is the absence of one.
-          for (final s in week.runs)
-            PlanSessionsCompanion.insert(
-              planId: plan.id,
-              weekNumber: week.skeletonIndex,
+  Future<void> saveWeek(StoredPlan plan, TrainingWeek week) {
+    final runDays = <int>{for (final s in week.runs) s.weekday};
+    final strengthDays = <int>{for (final s in week.support) s.weekday};
+    return _db.replaceWeekSessions(
+      planId: plan.id,
+      weekNumber: week.skeletonIndex,
+      sessions: <PlanSessionsCompanion>[
+        // Only days with something on them become rows — a rest day is the
+        // absence of one. **Strength days included.** This wrote `week.runs`
+        // and nothing else, so a strength day survived exactly as long as the
+        // week stayed in memory and read back as rest from disk.
+        for (final s in week.runs)
+          PlanSessionsCompanion.insert(
+            planId: plan.id,
+            weekNumber: week.skeletonIndex,
+            weekday: s.weekday,
+            scheduledDate: plan.dateFor(
+              weekIndex: week.skeletonIndex,
               weekday: s.weekday,
-              scheduledDate: plan.dateFor(
-                weekIndex: week.skeletonIndex,
-                weekday: s.weekday,
-              ),
-              kind: sessionKindToWire(s.kind),
-              targetDistanceM: Value(s.distanceMeters),
-              label: Value(s.label),
-              provisional: Value(week.provisional),
             ),
-        ],
-      );
+            kind: sessionKindToWire(s.kind),
+            targetDistanceM: Value(s.distanceMeters),
+            label: Value(s.label),
+            withStrength: Value(strengthDays.contains(s.weekday)),
+            provisional: Value(week.provisional),
+          ),
+        for (final day in strengthDays.difference(runDays).toList()..sort())
+          PlanSessionsCompanion.insert(
+            planId: plan.id,
+            weekNumber: week.skeletonIndex,
+            weekday: day,
+            scheduledDate: plan.dateFor(
+              weekIndex: week.skeletonIndex,
+              weekday: day,
+            ),
+            kind: _strength,
+            targetDistanceM: const Value(0),
+            provisional: Value(week.provisional),
+          ),
+      ],
+    );
+  }
+
+  /// The wire name of a strength-only row.
+  static final String _strength = sessionKindToWire(SessionKind.strength);
 
   /// The session row [date] falls on, addressed by the slot the date resolves to
   /// rather than by the stored `scheduledDate`.
@@ -194,8 +223,17 @@ class DriftPlanStore implements PlanStore {
   /// occurrence that was materialised first — so a parkrun runner's "mark done"
   /// looked up July, found a row dated May, and silently did nothing
   /// ([StoredPlan.dateFor]).
-  Future<PlanSessionRow?> _rowOn(StoredPlan plan, DateTime date) =>
-      _db.sessionAt(plan.id, plan.weekIndexOn(date), date.weekday);
+  ///
+  /// A strength-only row is not a session to mark: statuses belong to runs,
+  /// the way [InMemoryPlanStore] answers them off `runOn`.
+  Future<PlanSessionRow?> _rowOn(StoredPlan plan, DateTime date) async {
+    final row = await _db.sessionAt(
+      plan.id,
+      plan.weekIndexOn(date),
+      date.weekday,
+    );
+    return row == null || row.kind == _strength ? null : row;
+  }
 
   @override
   Future<SessionStatus?> statusOn(StoredPlan plan, DateTime date) async {
