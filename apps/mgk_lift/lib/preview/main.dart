@@ -380,6 +380,7 @@ class PreviewApp extends StatelessWidget {
         recorder: FakeSessionRecorder(_emptySession()),
         session: _emptySession(),
         now: previewNow,
+        onOpenCoach: () {},
       ),
       'session': (_) {
         final s = _openSession();
@@ -387,6 +388,8 @@ class PreviewApp extends StatelessWidget {
           recorder: FakeSessionRecorder(s),
           session: s,
           now: previewNow,
+          // The mark rides on the session too, as on the tabs.
+          onOpenCoach: () {},
         );
       },
       // A six-movement template, three of them finished. The case the collapse
@@ -398,6 +401,8 @@ class PreviewApp extends StatelessWidget {
           recorder: FakeSessionRecorder(s),
           session: s,
           now: previewNow,
+          // The mark rides on the session too, as on the tabs.
+          onOpenCoach: () {},
         );
       },
       // Mid-rest, with the bar showing. The fixture ticks a set on open, which
@@ -409,6 +414,8 @@ class PreviewApp extends StatelessWidget {
           session: s,
           startRestOnOpen: true,
           now: previewNow,
+          // The mark rides on the session too, as on the tabs.
+          onOpenCoach: () {},
         );
       },
       // Rest ran out forty-two seconds ago: the dock counts up rather than
@@ -421,15 +428,16 @@ class PreviewApp extends StatelessWidget {
           startRestOnOpen: true,
           restElapsedOnOpen: const Duration(seconds: 132),
           now: previewNow,
+          // The mark rides on the session too, as on the tabs.
+          onOpenCoach: () {},
         );
       },
       // ---- The summary, which is what finishing now opens -------------------
       //
-      // Three, because the interesting variation is not the layout — it is
-      // what the screen has to say when there is nothing to celebrate. All
-      // three carry a library so the save offer renders, and a coach so the
-      // conversation does; both are absent in a free build and both draw
-      // nothing when they are.
+      // Several, because the interesting variation is not the layout — it is
+      // what the screen has to say when there is nothing to celebrate. Each
+      // carries a coach so the mark renders; an offline build has none, and
+      // the mark is then absent rather than inert.
       //
       // The ordinary session: worked hard, beat nothing. `_finishedSession`
       // is pitched against `sampleLog` so the bench, the shoulder press and
