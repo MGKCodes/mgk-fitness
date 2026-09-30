@@ -11,7 +11,7 @@ import 'settings_row.dart';
 ///
 /// It was, with three paragraphs under it, and those paragraphs were not
 /// decoration. Backing up sends **special-category health data** under UK GDPR
-/// — runs, routes, heart rate, injury notes, and everything said to the coach —
+/// — runs, routes, injury notes, and everything said to the coach —
 /// so the consent has to be informed, and the text was the informing.
 ///
 /// That produced a bind. The index needed the text to keep the consent honest,
@@ -81,11 +81,12 @@ class BackupScreen extends StatelessWidget {
             // Named plainly. A runner deciding whether to upload their injury
             // notes and their conversations with the coach is entitled to know
             // that is what the switch covers, rather than "your activity".
+            // Not "heart rate", which the app does not record (ADR-0024); one
+            // typed into a run by hand goes with the run.
             Text(
-              'Runs, routes, heart rate, your plan and what the coach '
-              'remembers about you. This is health information, so it is only '
-              'sent if you say so, and turning it off deletes what has already '
-              'been stored.',
+              'Runs, routes, your plan and what the coach remembers about you. '
+              'This is health information, so it is only sent if you say so, '
+              'and turning it off deletes what has already been stored.',
               style: bodyDim,
             ),
             const SizedBox(height: AppSpacing.md),

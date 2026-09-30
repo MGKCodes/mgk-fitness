@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The backup screens no longer list heart rate.** The backup prompt and
+  Back up my data named heart rate among what is backed up; the app records
+  none. A heart rate typed into a run by hand still goes with that run, as the
+  privacy policy already says.
 - **Account's payment-failed line starts its sentence with a capital.** It
   read "Your last payment did not go through. the App Store is retrying it".
 - **The days before a new plan starts say so.** A plan starts on the coming
