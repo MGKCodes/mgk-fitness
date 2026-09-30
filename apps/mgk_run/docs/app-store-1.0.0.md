@@ -37,6 +37,32 @@ order to work in.
 | **Testing** | One sitting, on build 26, on both phones: [the test sheet](testflight-1.0.0-test-sheet.md). Testing build 25 was dropped |
 | **Tag `run/build-25`** | On `12d74d8`, the commit that shipped (moved from `a6eb6e1` on 2026-09-29) |
 
+### Build 27, in preparation (2026-09-30)
+
+**Build 27 replaces 26 as the release candidate**, because it carries changes a
+reviewer and a runner will meet, so the test sitting and the submission below
+move to it. On `main` at session close (`9ccdc42` and the docs after it), not yet
+cut:
+
+- **Sign in with Apple and Google** (`a7cb8fe`), **"Forgot password?"**
+  (`2642003`), **Apple's tokens revoked on deletion** (`027e142`) and the
+  policy naming both providers (`3a77908`). All four were built for both apps
+  in the Lift session on `lift/release-2.0.0` and **ported** here, Run's half
+  and the shared packages only. They pass their own tests and the full suites
+  (Run 1,837), but **nobody in the Run lane has read them line by line**: review
+  the auth and deletion changes before cutting.
+- **Support mail** `run@mgkfitness.mgkcodes.com` everywhere Run-facing
+  (`4afb16d`).
+- **MGKFitness's own App Store Connect key** in `codemagic.yaml` (`b3d7a0e`).
+  On the first build, confirm Codemagic signed with the profile on the
+  certificate expiring **2027-09-30**: it holds Frunt's key as well.
+
+**Still to do before cutting it, in order:** the Esri basemap (item 6), the
+policy naming Esri and the mail service in place of MapTiler, then the pubspec
+to `1.0.0+27`, both builds, and the tag. Owner steps that gate *launch* rather
+than the cut are under item 6: the mail service, the Vercel settings, the
+recovery template, deploying `delete-account`, and email confirmation on.
+
 Run 1.0.0 ships on **both** stores, from one commit with one build number
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 This document is the checklist for both; the runbooks are
@@ -190,9 +216,15 @@ and run.
          identity-linking docs and production checklist). What it needs:
          - **A mail service** (custom SMTP). The built-in one sends only to the
            Supabase team, so with confirmation on and nothing else, every
-           sign-up would wait for a mail that never comes. Resend's free tier,
-           on MGKFitness's own account (never Frunt's), from
-           `noreply@mgkfitness.mgkcodes.com`.
+           sign-up would wait for a mail that never comes. **Brevo's free plan**
+           (300 a day, commercial use, SMTP on 587), on its own account, from
+           `noreply@mgkfitness.mgkcodes.com`. *Resend was the first choice and
+           lost:* the Resend team in use is Frunt's, and a second team is a
+           paid feature ($20/month). **Next step:** add the domain in Brevo and
+           check its DNS records against the email routing (the MX on
+           `mgkfitness` itself must stay Cloudflare's) before adding them; then
+           Supabase ▸ Authentication ▸ SMTP settings, the recovery template, and
+           Brevo named in the policy as the mail processor.
          - **The app already copes:** a sign-up without a session reads
            *"Check your email to confirm your account."* Build 27 adds a
            plainer message for signing in before confirming, and sends the
@@ -243,13 +275,20 @@ and run.
          **phone screenshots** at 2:1 or narrower (missing), and the 512 icon
          re-saved with alpha if Play refuses it
          ([play-listing.md](play-listing.md) § Graphics).
-9. - [ ] **The build 26 sitting**, on both phones: [the test
+9. - [ ] **The build 27 sitting**, on both phones: [the test
       sheet](testflight-1.0.0-test-sheet.md), including the Android
       foreground-service video (section V) and the screenshots (section H).
+      *Was build 26 until 2026-09-30.* **The sheet needs rows it does not
+      have yet:** Sign in with Apple (iOS natively, Android through the
+      browser), Google on both, "Forgot password?" from the email to a new
+      password, deleting an account that has an Apple identity (Apple should
+      ask to confirm, and the account's Apple ID page should stop listing
+      MGKFitness), and, once confirmation is on, a new sign-up that waits for
+      its email.
 10. **Submit.**
-    - [ ] App Store: build 26 with **both subscriptions attached**, demo
+    - [ ] App Store: build 27 with **both subscriptions attached**, demo
           account A in Sign-in, the review notes, **manual release**.
-    - [ ] Play: build 26 promoted from internal to production, **managed
+    - [ ] Play: build 27 promoted from internal to production, **managed
           publishing on** (play-setup.md §11).
     - [ ] Release both when both are approved.
 

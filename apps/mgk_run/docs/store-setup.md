@@ -660,6 +660,33 @@ free and the coach is the subscription.
 
 ---
 
+## 11. Sign in with Apple and Google — Run's half
+
+Added 2026-09-30. Both apps sign into one account, so the providers were set
+up **once, for the suite**, in the Lift session, and the full runbook is Lift's
+`docs/store-setup.md`, step 7, which reaches `main` when `lift/release-2.0.0`
+merges. Until then this is Run's record. **Recorded from that runbook, not
+re-checked from this lane:** the first build 27 on a phone is what proves it.
+
+| Where | Run's part |
+|---|---|
+| Apple ▸ Identifiers | `com.mgkcodes.fitness.run` has Sign In with Apple, **grouped under** `com.mgkcodes.liftio` so one Apple ID is one account across both apps |
+| Apple ▸ Services ID | `com.mgkcodes.fitness.web`, for Android's browser flow; key `43K62X7QPT`, team `ZTS7SQYSA5` |
+| Google Cloud `mgk-fitness` | iOS client *Run iOS* (the id is in `lib/src/features/auth/data/provider_ids.dart`, reversed in `Info.plist`); Android clients for `com.mgkcodes.fitness.run` at the Play signing, upload and debug SHA-1s |
+| Supabase ▸ Providers | Apple *Client IDs* include `com.mgkcodes.fitness.run`, with the Services ID first; Google *Client IDs* include Run's iOS id |
+| Supabase ▸ URL Configuration | `com.mgkcodes.fitness.run://login-callback`, Android's way back from Apple |
+| Supabase ▸ Edge Function secrets | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, which `delete-account` needs to revoke Apple's tokens |
+
+**Two dates that stop things working if missed:**
+
+- **Supabase's Apple secret expires around 2027-03-30.** Regenerate it by
+  **2027-03-20**, or Android's Apple sign-in stops.
+- **Run's Codemagic signing** is `mgkfitness_distribution`, expiring
+  **2027-09-30**.
+
+A profile is a snapshot of its App ID's capabilities: change one, and
+regenerate the profile on the MGKFitness certificate, never Frunt's.
+
 ## When nothing happens
 
 The webhook never throws and never guesses. Every event either writes a row or
