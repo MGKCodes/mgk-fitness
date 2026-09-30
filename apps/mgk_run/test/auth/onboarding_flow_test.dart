@@ -327,7 +327,11 @@ void main() {
           historySource: () async => const [],
           requestPermission: (_) async => true,
           devAccounts: const <DevAccount>[
-            DevAccount(label: 'Dev', email: 'dev@runio.app', password: 'x'),
+            DevAccount(
+              label: 'Dev',
+              email: 'dev@mgkfitness.mgkcodes.com',
+              password: 'x',
+            ),
           ],
         ),
       ),

@@ -6,8 +6,16 @@ import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 
 void main() {
   const devAccounts = <DevAccount>[
-    DevAccount(label: 'Runner A', email: 'a@runio.app', password: 'password'),
-    DevAccount(label: 'Runner B', email: 'b@runio.app', password: 'secret6'),
+    DevAccount(
+      label: 'Runner A',
+      email: 'a@mgkfitness.mgkcodes.com',
+      password: 'password',
+    ),
+    DevAccount(
+      label: 'Runner B',
+      email: 'b@mgkfitness.mgkcodes.com',
+      password: 'secret6',
+    ),
   ];
 
   testWidgets('shows developer quick sign-in buttons when accounts are given', (
@@ -49,7 +57,7 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Runner B'));
     await tester.pump();
 
-    expect(auth.lastEmail, 'b@runio.app');
+    expect(auth.lastEmail, 'b@mgkfitness.mgkcodes.com');
     expect(auth.lastPassword, 'secret6');
   });
 }

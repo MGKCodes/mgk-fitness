@@ -12,7 +12,10 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );
@@ -31,7 +34,10 @@ void main() {
     // and in the settings behind it. `hitTestable` because the tabs live in an
     // IndexedStack — the Profile tab is built while Home is showing, and a
     // plain finder would count text the runner cannot see.
-    expect(find.text('dev@runio.app').hitTestable(), findsNothing);
+    expect(
+      find.text('dev@mgkfitness.mgkcodes.com').hitTestable(),
+      findsNothing,
+    );
     expect(find.byTooltip('Sign out'), findsNothing);
   });
 
@@ -46,7 +52,10 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => throw Exception('history is offline'),
         ),
       ),

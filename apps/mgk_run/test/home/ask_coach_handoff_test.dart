@@ -67,7 +67,10 @@ void main() {
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -108,7 +111,10 @@ void main() {
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -148,7 +154,10 @@ void main() {
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           initialTab: 2,
         ),
@@ -187,7 +196,10 @@ void main() {
           aiConsent: InMemoryAiConsentStore.granted(),
           disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           access: CoachAccess.free,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -239,7 +251,10 @@ void main() {
           aiConsent: InMemoryAiConsentStore.granted(),
           disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           access: CoachAccess.free,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,

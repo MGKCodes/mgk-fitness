@@ -65,7 +65,10 @@ void main() {
           // the_coach_asks_before_anything_leaves_test.dart.
           aiConsent: InMemoryAiConsentStore.granted(),
           disclaimer: InMemoryDisclaimerStore(acknowledged: true),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => const [],
           planStore: store,
         ),
@@ -137,7 +140,10 @@ void main() {
         home: HomeShell(
           aiConsent: InMemoryAiConsentStore.granted(),
           disclaimer: InMemoryDisclaimerStore(acknowledged: true),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => <RunSummary>[
             RunSummary(
               startedAt: DateTime.now().subtract(const Duration(days: 2)),
@@ -278,7 +284,10 @@ void main() {
             // tests were exercising six ungated doors into the paid product,
             // which is how the hole survived review.
             access: CoachAccess.subscribed,
-            auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+            auth: FakeAuthRepository(
+              signedIn: true,
+              email: 'dev@mgkfitness.mgkcodes.com',
+            ),
             historySource: () async => const <RunSummary>[],
             chatClient: chat,
             planStore: store,

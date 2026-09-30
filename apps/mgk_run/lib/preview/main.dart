@@ -126,11 +126,19 @@ Future<void> main() async {
 /// Fake accounts injected into the `app` flow so the debug quick-sign-in
 /// buttons appear without a backend. Not real credentials.
 const List<DevAccount> _sampleDevAccounts = <DevAccount>[
-  DevAccount(label: 'Runner A', email: 'a@runio.app', password: 'password'),
-  DevAccount(label: 'Runner B', email: 'b@runio.app', password: 'password'),
+  DevAccount(
+    label: 'Runner A',
+    email: 'a@mgkfitness.mgkcodes.com',
+    password: 'password',
+  ),
+  DevAccount(
+    label: 'Runner B',
+    email: 'b@mgkfitness.mgkcodes.com',
+    password: 'password',
+  ),
 ];
 
-const String _fakeEmail = 'dev@runio.app';
+const String _fakeEmail = 'dev@mgkfitness.mgkcodes.com';
 
 /// A keyless basemap for the harness **only**, so map surfaces can be designed
 /// and screenshotted without a MapTiler key on every dev machine. The app never

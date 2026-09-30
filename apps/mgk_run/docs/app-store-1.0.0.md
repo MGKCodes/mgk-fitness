@@ -106,18 +106,35 @@ and run.
       25 came from, 2026-09-29 (annotated, with the build records in the
       message).
 
-6. **Console settings and one decision.**
-   - [ ] **MapTiler: confirm a paid plan.** The Free plan is non-commercial
-         only, and the App Store's Content Rights answer (store-setup.md §10)
-         says we hold the rights to the tiles.
+6. **Console settings and decisions.**
+   - [ ] **Maps: MapTiler's Free plan is non-commercial, and a paid plan is not in
+         the launch budget (owner, 2026-09-30).** Proposed: **Mapbox raster
+         tiles**, free for commercial use up to 200,000 tiles a month. The tile
+         URL and attribution are build config (`MAP_TILE_URL_TEMPLATE`,
+         `MAP_ATTRIBUTION`); the code change is Mapbox's wordmark on the map and
+         the privacy policy naming Mapbox instead of MapTiler, so it rides in
+         build 27. Needs the owner's go-ahead and a Mapbox account and token.
+         (Google's mobile Maps SDK is also free, but is a rewrite of the map
+         layer, not a launch job.) Until then the App Store's Content Rights
+         answer (store-setup.md §10) is not true of the tiles.
    - [ ] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
          Authorization value verbatim with no `Bearer` (store-setup.md §5).
+   - [ ] **OpenRouter:** see item 3.
+   - [ ] **Support address `run@mgkfitness.mgkcodes.com`** (the owner's choice,
+         2026-09-30) cannot receive mail yet: `mgkfitness.mgkcodes.com` is a
+         CNAME to Vercel, and a name with a CNAME can have no MX records. Owner:
+         replace the CNAME with Vercel's A record (DNS only), add the subdomain
+         in Cloudflare Email Routing, route `run@` to the studio inbox, send a
+         test. Then every `hello@mgkcodes.com` in the app, the legal pages and
+         the web pages moves to it (in-app copy in build 27).
    - [ ] **Supabase Auth: email confirmation is off. Decide** whether to turn
          it on, with custom SMTP, before public launch. It changes the sign-up
          flow, so it is a product decision, not a setting to flip.
-   - [ ] **`dev@runio.app`** is a production account on a domain MGKCodes may
-         not own. Confirm the domain is ours, or change that account's email:
-         whoever holds the domain can reset its password.
+   - [ ] **`dev@runio.app`** is a seeded developer account from the Runio days
+         (ten made-up July runs, all uploaded on 2026-07-25), used by the preview
+         harness's quick sign-in, on a domain MGKCodes does not own. Change its
+         email to `dev@mgkfitness.mgkcodes.com` in Supabase ▸ Authentication, or
+         delete it. The repo's fixtures moved off runio.app on 2026-09-30.
 7. **The store forms.** No build needed; start now.
    - [ ] App Store Connect: Premium's description (store-setup.md §2), the two
          review accounts (§9), and every submission form (§10).

@@ -137,7 +137,10 @@ void main() {
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => const [],
           chatClient: chat,
           planClient: _AdaptRecorder(revision ?? validRevision),

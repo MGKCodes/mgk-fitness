@@ -95,7 +95,10 @@ void main() {
       // and the coach is the paid half (ADR-0030). Unpinned it was `free`, and
       // passed -- which is what an ungated `_askCoach` looks like from a test.
       access: CoachAccess.subscribed,
-      auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+      auth: FakeAuthRepository(
+        signedIn: true,
+        email: 'dev@mgkfitness.mgkcodes.com',
+      ),
       historySource: DriftRunRepository(db).fetchRuns,
       runEditor: RunEditor(db: db),
       recorderFactory: () => RecordingRunRecorder(source: source, db: db),

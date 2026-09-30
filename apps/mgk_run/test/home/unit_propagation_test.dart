@@ -24,7 +24,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           unitSettings: InMemoryUnitSettings(unit: stored),
         ),
@@ -62,7 +65,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           unitSettings: InMemoryUnitSettings(),
         ),
       ),
@@ -74,7 +80,7 @@ void main() {
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
     // Profile is about running: the signed-in address is not on it.
-    expect(find.text('dev@runio.app'), findsNothing);
+    expect(find.text('dev@mgkfitness.mgkcodes.com'), findsNothing);
 
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
@@ -82,7 +88,7 @@ void main() {
     expect(find.text('Settings'), findsWidgets);
     // The account facts moved here off Profile. Still above the fold: Account
     // is the first band on the page.
-    expect(find.text('dev@runio.app'), findsOneWidget);
+    expect(find.text('dev@mgkfitness.mgkcodes.com'), findsOneWidget);
     // The unit is on the index as a value now — `Distance · Kilometres` —
     // with the choice itself in a sheet. So this asserts the row is present
     // and set, which is what "the unit is in Settings" actually means after
@@ -113,7 +119,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           unitSettings: store,
         ),

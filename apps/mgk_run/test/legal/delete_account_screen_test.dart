@@ -36,7 +36,11 @@ void main() {
       MaterialApp(
         home: DeleteAccountScreen(
           auth:
-              auth ?? FakeAuthRepository(signedIn: true, email: 'a@runio.app'),
+              auth ??
+              FakeAuthRepository(
+                signedIn: true,
+                email: 'a@mgkfitness.mgkcodes.com',
+              ),
           deleter: deleter,
         ),
       ),
@@ -167,7 +171,10 @@ void main() {
       // outcome is still read first either way -- what the wait cost was an
       // app closed here keeping a session to an account that no longer
       // existed, and an erased phone claiming itself for that session.
-      final auth = FakeAuthRepository(signedIn: true, email: 'a@runio.app');
+      final auth = FakeAuthRepository(
+        signedIn: true,
+        email: 'a@mgkfitness.mgkcodes.com',
+      );
       await tester.binding.setSurfaceSize(const Size(420, 1400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
@@ -303,7 +310,10 @@ void main() {
     testWidgets('shows the reason and keeps the runner signed in', (
       tester,
     ) async {
-      final auth = FakeAuthRepository(signedIn: true, email: 'a@runio.app');
+      final auth = FakeAuthRepository(
+        signedIn: true,
+        email: 'a@mgkfitness.mgkcodes.com',
+      );
       await pumpScreen(
         tester,
         auth: auth,

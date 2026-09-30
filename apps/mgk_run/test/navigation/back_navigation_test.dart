@@ -77,16 +77,25 @@ void main() {
     'Settings': () => SettingsScreen(
       unit: UnitSystem.metric,
       settings: InMemoryUnitSettings(),
-      auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+      auth: FakeAuthRepository(
+        signedIn: true,
+        email: 'dev@mgkfitness.mgkcodes.com',
+      ),
     ),
     'Privacy & legal': () => LegalScreen(
-      auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+      auth: FakeAuthRepository(
+        signedIn: true,
+        email: 'dev@mgkfitness.mgkcodes.com',
+      ),
       deleter: _IdleDeleter(),
     ),
     'Privacy policy': () => const PrivacyPolicyScreen(),
     'Medical disclaimer (read-only)': () => const MedicalDisclaimerScreen(),
     'Delete account': () => DeleteAccountScreen(
-      auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+      auth: FakeAuthRepository(
+        signedIn: true,
+        email: 'dev@mgkfitness.mgkcodes.com',
+      ),
       deleter: _IdleDeleter(),
     ),
     'Run summary': () => RunSummaryScreen(summary: summary),

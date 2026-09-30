@@ -25,7 +25,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: LegalScreen(
-          auth: FakeAuthRepository(signedIn: signedIn, email: 'a@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: signedIn,
+            email: 'a@mgkfitness.mgkcodes.com',
+          ),
           deleter: _NeverDeleter(),
           aiConsent: consent,
         ),

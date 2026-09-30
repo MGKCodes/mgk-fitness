@@ -203,7 +203,10 @@ void main() {
           // these are tests about conversations, and where a tier comes
           // from belongs to entitlement_repository_test.dart.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => someRuns(),
           chatClient: chat,
           planClient: planClient,
@@ -364,7 +367,10 @@ void main() {
           // these are tests about conversations, and where a tier comes
           // from belongs to entitlement_repository_test.dart.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => someRuns(),
           chatClient: chat,
           planClient: _AdaptRecorder(validRevision),

@@ -19,7 +19,7 @@ void main() {
   Future<void> pump(
     WidgetTester tester, {
     DateTime? memberSince,
-    String? email = 'dev@runio.app',
+    String? email = 'dev@mgkfitness.mgkcodes.com',
   }) async {
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -46,10 +46,10 @@ void main() {
     // the editable name moved to Account when the card became a profile --
     // the name was otherwise on this screen twice, as the card's headline and
     // as a row's value.
-    expect(find.text('dev@runio.app'), findsOneWidget);
+    expect(find.text('dev@mgkfitness.mgkcodes.com'), findsOneWidget);
     expect(find.textContaining('since July 2026'), findsNothing);
 
-    await tester.tap(find.text('dev@runio.app'));
+    await tester.tap(find.text('dev@mgkfitness.mgkcodes.com'));
     await tester.pumpAndSettle();
     expect(find.textContaining('July 2026'), findsOneWidget);
     expect(find.text('Coach calls you'), findsOneWidget);
@@ -84,7 +84,7 @@ void main() {
     ) async {
       final auth = FakeAuthRepository(
         signedIn: true,
-        email: 'dev@runio.app',
+        email: 'dev@mgkfitness.mgkcodes.com',
         name: name,
       );
       await tester.binding.setSurfaceSize(const Size(420, 1400));
@@ -249,7 +249,7 @@ void main() {
             settings: InMemoryUnitSettings(),
             auth: FakeAuthRepository(
               signedIn: signedIn,
-              email: signedIn ? 'dev@runio.app' : null,
+              email: signedIn ? 'dev@mgkfitness.mgkcodes.com' : null,
             ),
           ),
         ),
@@ -266,7 +266,7 @@ void main() {
       // then the ways out. `topOf` throws on anything missing, so this list
       // existing at all asserts that every row drew.
       final order = <String>[
-        'dev@runio.app',
+        'dev@mgkfitness.mgkcodes.com',
         'PREFERENCES',
         'Distance',
         'YOUR DATA',
@@ -368,7 +368,10 @@ void main() {
         home: SettingsScreen(
           unit: UnitSystem.metric,
           settings: InMemoryUnitSettings(),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );
@@ -411,7 +414,10 @@ void main() {
           home: SettingsScreen(
             unit: UnitSystem.metric,
             settings: InMemoryUnitSettings(),
-            auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+            auth: FakeAuthRepository(
+              signedIn: true,
+              email: 'dev@mgkfitness.mgkcodes.com',
+            ),
             consentStore: InMemoryBackupConsent(consent),
             backupHealthStore: InMemoryBackupHealth(health),
           ),
@@ -490,7 +496,7 @@ void main() {
 
     // Two taps in: the card, then the button at the foot of the account
     // screen. It was one, beside the units.
-    await tester.tap(find.text('dev@runio.app'));
+    await tester.tap(find.text('dev@mgkfitness.mgkcodes.com'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete account'));
     await tester.pumpAndSettle();
