@@ -410,6 +410,15 @@ Two gaps this plan does not list, one of them a hard rejection.
 
 ## Phase 3 — Payments, through RevenueCat
 
+> **Where this stands, 2026-09-30.** The client side is built: RevenueCat
+> behind the `Purchases` seam, one purchase sheet selling both tiers, Restore,
+> the full renewal disclosure, and RevenueCat named in the privacy policy. The
+> `revenuecat` webhook is shared with Run and deployed. The boxes below are kept
+> as written; [submission-week.md](submission-week.md) workstream B is where
+> each one is ticked, and [store-setup.md](store-setup.md) is the dashboard half
+> that is Matthew's. The purchase screen itself is being redesigned: finding 15
+> of [design-review-2026-09-30.md](design-review-2026-09-30.md).
+
 `core.entitlements` already models the store lifecycle exactly — `product` in
 `(free, paid, premium)`, `status` in `(active, expired, grace, refunded,
 revoked)` — and already revokes write access from `authenticated`. The table is
@@ -558,9 +567,20 @@ app cannot leave broken.
       is the column and nothing writes it. The units work above establishes the
       pattern to copy — a device store, an account store, one composing
       repository — so this is now a smaller job than it was.
-- [ ] **Rest-timer buzz is foreground-only.** Needs a local-notification plugin
+- [x] **Rest-timer buzz is foreground-only.** Needs a local-notification plugin
       and a runtime permission — and on Android, a permission that must be
       requested, not just declared.
+
+      **Done 2026-09-29** (`4bd3e9c`), pulled forward because competitor
+      research ranked an untrustworthy rest timer the commonest complaint in the
+      category. `flutter_local_notifications`, scheduled for the rest's fixed end
+      when the app leaves the foreground and withdrawn on return; offered once
+      as a toast beside the first rest, with a row in Settings as the way back.
+      Exact on Android 12 and 13, inexact (about 13 s) on 14 and later without
+      `USE_EXACT_ALARM`, which Play reserves for alarm apps. Proved on an
+      emulator release build. iOS "Time Sensitive" delivery, which gets through a
+      Focus mode, is not claimed: it needs a new App ID capability and so a new
+      provisioning profile.
 - [ ] **`daily-ai-summary` still calls `api.anthropic.com` directly** and is the
       only place holding an `ANTHROPIC_API_KEY`. Move it behind a coach surface.
 - [ ] Unset `DAILY_GLOBAL_LIMIT` on production — a legacy Liftio secret nothing
@@ -571,7 +591,9 @@ app cannot leave broken.
 ## Phase 6 — Submission
 
 - [ ] Screenshots for both stores at current required sizes. Liftio's
-      `v1.4.0 app screenshots` folder shows the previous set.
+      `v1.4.0 app screenshots` folder shows the previous set. **Waiting on the
+      redesign** in [design-review-2026-09-30.md](design-review-2026-09-30.md),
+      by Matthew's decision on 2026-09-29.
 - [ ] App Store metadata: description, keywords, what's new for 2.0.0. Say
       plainly that this is a rewrite. The listing name changes from `Liftio` to
       `MGKFitness: Lift` in the same submission — existing users see the icon

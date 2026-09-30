@@ -9,6 +9,15 @@ Same discipline as the punch list: tick items as they land, and when something
 is settled differently from how it is written here, **change the item and say
 why**.
 
+> **Reopened 2026-09-30.** Matthew's design review,
+> [design-review-2026-09-30.md](design-review-2026-09-30.md), reopens parts of
+> this plan: **D1** (learn at Finish automatically, with Undo) becomes a question
+> at Finish, asked only when movements were added; the standalone builder (W5)
+> and the saved-workout preview (W15) are questioned or removed; the premade
+> library is simplified in favour of the coach offering workouts; and "Add
+> exercise" leaves the dock. Nothing here has been changed yet. The next plan
+> decides, and edits the items it changes.
+
 ---
 
 ## Read this first

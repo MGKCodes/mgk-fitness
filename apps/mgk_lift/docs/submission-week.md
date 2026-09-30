@@ -478,8 +478,10 @@ that is what the disclosure says.
 
 ### F. Store assets and metadata
 
-- [ ] **Screenshots for both stores** *(me)*. The preview harness already renders
-      every screen; `capture_screens_web.mjs` hardcodes a 390×844 viewport, and
+- [ ] **Screenshots for both stores** *(me)*. **Waiting on the redesign** in
+      [design-review-2026-09-30.md](design-review-2026-09-30.md), by Matthew's
+      decision on 2026-09-29: the screens are about to change. The preview
+      harness already renders every screen; `capture_screens_web.mjs` hardcodes a 390×844 viewport, and
       making that configurable and running at 430×932 @ DPR 3 yields 1290×2796 —
       Apple's 6.9-inch requirement, and comfortably within Play's. One run covers
       both stores with real screens over seeded data.
@@ -657,8 +659,9 @@ hinder a submission.
 
 - **Pose selection is session state** (Phase 5). A bug in a paid feature's
   preferences, not a submission gate.
-- **Rest-timer buzz is foreground-only** (Phase 5). Needs a local-notification
-  plugin; the timer works, it is the buzz that does not survive backgrounding.
+- ~~**Rest-timer buzz is foreground-only** (Phase 5).~~ **Done 2026-09-29**
+  (`4bd3e9c`): a local notification at the rest's end with the app in the
+  background. See release-2.0.0.md Phase 5.
 - **`daily-ai-summary` calls `api.anthropic.com` directly** (Phase 5). Lift never
   invokes it — checked. It is Run's and the platform's debt.
 - **`DAILY_GLOBAL_LIMIT` unset on production** (Phase 5). A legacy Liftio secret
