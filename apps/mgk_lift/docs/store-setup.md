@@ -209,7 +209,103 @@ messages an hour for the whole project, Run included.
 - [ ] Then prove it: sign up from the app with a real address. Supabase rejects
       `example.com` and `.invalid` outright.
 
-## 7. When each of these lands
+## 7. Sign in with Apple and Google, both apps
+
+Added 2026-09-30 for the redesign ([lift-2.0.0-redesign.md](lift-2.0.0-redesign.md),
+R10). Lift and Run share one account, so both providers are set up once, for the
+suite, and both apps ship with them. Four dashboards, in this order, because each
+hands the next a value:
+
+| Value | From | Goes into |
+|---|---|---|
+| Team ID | Apple, top right of the portal | Supabase's Apple secret; an Edge Function secret |
+| Services ID `com.mgkcodes.fitness.web` | 7a | Supabase's Apple *Client IDs*, first |
+| Key ID, and the `.p8` file | 7a | Supabase's Apple secret; an Edge Function secret |
+| Web client id and secret | 7c | Supabase's Google provider |
+| iOS client ids, Lift's and Run's | 7c | Supabase's Google *Client IDs*; each app's `Info.plist` (me) |
+
+Only the `.p8` file and the Google client secret are secret. They go into
+Supabase and nowhere else: not into this repository, not into a chat.
+
+### 7a. Apple Developer: the capability, a Services ID, a key
+
+- [ ] Identifiers › `com.mgkcodes.liftio` › tick **Sign In with Apple** › Edit ›
+      *Enable as a primary App ID* › Save. Apple warns that this invalidates the
+      app's provisioning profiles; 7b replaces them.
+- [ ] Identifiers › `com.mgkcodes.fitness.run` › tick **Sign In with Apple** ›
+      Edit › *Group with an existing primary App ID* › `com.mgkcodes.liftio` ›
+      Save. One Apple ID then signs into both apps as one person.
+- [ ] Identifiers › **+** › *Services IDs* › description `MGKFitness`,
+      identifier `com.mgkcodes.fitness.web` › Register. Open it › tick Sign In
+      with Apple › Configure › primary App ID `com.mgkcodes.liftio`, domain
+      `cwpwzxjjhxbkwhrgnasn.supabase.co`, return URL
+      `https://cwpwzxjjhxbkwhrgnasn.supabase.co/auth/v1/callback` › Save. This
+      is what Android's Apple sign-in goes through.
+- [ ] Keys › **+** › name `MGKFitness Sign in with Apple` › tick Sign In with
+      Apple › Configure › `com.mgkcodes.liftio` › Save › Register › **Download**
+      the `.p8`. Apple allows one download. Note its Key ID, and the Team ID.
+
+### 7b. Provisioning profiles
+
+- [ ] Profiles › *Lift MGKFitness App Store* › Edit › Save › Download. Then
+      Codemagic › Teams › Code signing identities › iOS provisioning profiles ›
+      upload it under the same reference name, replacing the old one (Lift signs
+      by hand; `codemagic.yaml`, `lift-ios-release`).
+- [ ] Profiles › Run's App Store profile › Edit › Save. Nothing to upload:
+      Codemagic fetches Run's.
+
+### 7c. Google Cloud: one project, and a client per platform
+
+- [ ] console.cloud.google.com › new project `MGKFitness`.
+- [ ] Google Auth Platform › **Branding**: app name `MGKFitness`, support email
+      and developer contact `hello@mgkcodes.com`. **No logo**: a logo sends the
+      app to Google for verification, which takes days, and sign-in works
+      without one.
+- [ ] **Audience**: External › *Publish app*. The scopes are Google's basic
+      three (email, profile, openid), which need no review.
+- [ ] **Clients** › Create client, once for each:
+      - *Web application* `Supabase`, authorised redirect URI
+        `https://cwpwzxjjhxbkwhrgnasn.supabase.co/auth/v1/callback`. Keep its
+        client id and secret.
+      - *iOS* `Lift`, bundle id `com.mgkcodes.liftio`; *iOS* `Run`, bundle id
+        `com.mgkcodes.fitness.run`. Keep both client ids.
+      - *Android*, one client per package and fingerprint, for
+        `com.mgkcodes.liftio` and `com.mgkcodes.fitness.run` each:
+        - the upload key, `mgkfitness_upload`, which both apps share: Play
+          Console › Run › App integrity › App signing › *Upload key
+          certificate*, SHA-1;
+        - Play's app-signing key, on the same page: Run's now, Lift's once its
+          first upload exists (step 2);
+        - this computer's debug key, for emulator builds:
+          `05:EC:3F:BF:39:2D:7D:3B:EA:36:26:C8:FA:B7:FB:C9:00:99:C9:98`.
+
+### 7d. Supabase: switch both on
+
+- [ ] Authentication › Sign In / Providers › **Apple** › enable.
+      *Client IDs*: `com.mgkcodes.fitness.web,com.mgkcodes.liftio,com.mgkcodes.fitness.run`,
+      with the Services ID **first**, or Apple refuses Android's sign-in.
+      *Secret Key (for OAuth)*: generate it with the tool Supabase links from
+      that panel (Chrome or Firefox), from the Team ID, Key ID, Services ID and
+      the `.p8` › Save. **It expires after six months**: set a reminder for
+      2027-03-30.
+- [ ] **Google** › enable. *Client IDs*: the web client id first, then Lift's and
+      Run's iOS ids. *Client Secret*: the web client's. *Skip nonce check*:
+      **on**, because Google's iOS sign-in cannot carry one through › Save.
+- [ ] Authentication › URL Configuration › Redirect URLs: add
+      `com.mgkcodes.liftio://login-callback` and
+      `com.mgkcodes.fitness.run://login-callback`, the way back from Android's
+      Apple sign-in.
+- [ ] Edge Functions › Secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
+      `APPLE_PRIVATE_KEY` (the `.p8` file's contents), so `delete-account` can
+      revoke Apple's tokens when an account is deleted.
+- [ ] Tell me the Team ID, the Key ID, the Services ID and the two iOS client
+      ids. None of those is secret.
+
+*Later, with step 6:* Apple's hidden addresses only accept mail from senders
+registered with Apple (Services › Sign in with Apple for Email Communication).
+Nothing the app sends needs it yet.
+
+## 8. When each of these lands
 
 | Done | Unblocks |
 |---|---|
@@ -218,6 +314,7 @@ messages an hour for the whole project, Run included.
 | 2 | the first Android internal build |
 | 5 | purchases reaching `core.entitlements` |
 | 6 | new people being able to sign up at all |
+| 7 | the sign-in build for both apps (the redesign's Phase 1) |
 | web pages deployed (mine) | privacy URL, support URL, deletion URL in both stores |
 
 The sandbox pass after that follows Run's runbook, step 8: buy, watch
