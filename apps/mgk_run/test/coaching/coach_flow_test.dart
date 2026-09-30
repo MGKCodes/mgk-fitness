@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
+import 'package:mgk_run/src/features/coaching/data/plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_conversation.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
+import 'package:mgk_run/src/features/coaching/domain/plan_validator.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
@@ -220,6 +222,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(attempts, 2, reason: 'retry rebuilds from the profile it kept');
       expect(find.text('Here it is.'), findsOneWidget);
+    });
+
+    testWidgets('a build the validator refuses goes back to the details', (
+      tester,
+    ) async {
+      // Screen board G7. Retrying the same details can only be refused the
+      // same way, so the way on is the details, with what was confirmed still
+      // in them.
+      await tester.binding.setSurfaceSize(const Size(420, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await openFlow(
+        tester,
+        onPop: () {},
+        buildPlan: (profile) async =>
+            throw PlanRejectedException(const <Violation>[
+              Violation(
+                'race_day_outside_final_week',
+                'race day falls in week 3',
+              ),
+            ]),
+      );
+
+      await toReveal(tester);
+      await tester.pumpAndSettle();
+      expect(find.text('Try again'), findsNothing);
+
+      await tester.tap(find.text('Change the race'));
+      await tester.pumpAndSettle();
+      expect(find.text('Confirm your details'), findsOneWidget);
+      expect(find.text('1 Nov 2026'), findsOneWidget);
+      expect(find.text('40.0'), findsOneWidget);
     });
   });
 }

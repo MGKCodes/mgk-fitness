@@ -59,6 +59,23 @@ const double kMaxGoalMeters = 100000;
 /// regenerated long before the runner reached them.
 const int kMaxDaysToRace = 730;
 
+/// What a runner is told about a race too close to build a block for, wherever
+/// they meet it: a goal the coach proposes, the confirmation screen at the end
+/// of intake, and a build the validator refused for the same reason. One
+/// string, so the three places cannot drift into three different rules.
+const String kRaceTooCloseMessage =
+    'A plan needs at least $kMinPlanWeeks weeks before race day. '
+    'Pick a later race, or build a plan without one.';
+
+/// Whether [date] is too close to build a block for, counted from the Monday
+/// the block would start on (ADR-0034) rather than from [now].
+///
+/// The six-week rule on its own, for the screens that already guard the rest
+/// of a date (in the past, years away) in their own words. [GoalDraft.issues]
+/// applies exactly this test.
+bool raceTooCloseToPlan(DateTime date, DateTime now) =>
+    daysBetweenDates(comingMondayFrom(now), date) < kMinPlanWeeks * 7;
+
 /// A proposed change to the runner's target, before anything is rebuilt.
 ///
 /// Both fields nullable, and the combinations are the plan shapes of ADR-0011
@@ -154,8 +171,7 @@ class GoalDraft {
       final days = _daysBetween(now, date);
       if (days < 0) {
         out.add(const GoalIssue('event', 'That date has already passed.'));
-      } else if (daysBetweenDates(comingMondayFrom(now), date) <
-          kMinPlanWeeks * 7) {
+      } else if (raceTooCloseToPlan(date, now)) {
         // EDGE-18. The old floor here was a flat 7 days, checked against
         // `now` — but a block starts the coming Monday (ADR-0034), not
         // today, and `buildSkeleton` clamps up to `kMinPlanWeeks` weeks
@@ -165,13 +181,7 @@ class GoalDraft {
         // it. Counting from the actual start closes the gap outright,
         // using the same number `buildSkeleton` clamps to rather than a
         // second guess at it.
-        out.add(
-          GoalIssue(
-            'event',
-            'A plan needs at least $kMinPlanWeeks weeks before race day. '
-                'Pick a later race, or build a plan without one.',
-          ),
-        );
+        out.add(const GoalIssue('event', kRaceTooCloseMessage));
       } else if (days > kMaxDaysToRace) {
         out.add(
           GoalIssue(

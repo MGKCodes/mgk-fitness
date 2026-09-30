@@ -82,7 +82,7 @@ class PlanRepository {
   ///
   /// The skeleton is validated first: an invalid arc is a bug in generation, and
   /// storing it would bake that bug into the runner's block. Throws
-  /// [PlanStoreException] listing the violations rather than persisting it.
+  /// [PlanRejectedException] listing the violations rather than persisting it.
   ///
   /// The current week's sessions are generated and stored in the same call, so
   /// today's session — and any mark on it — is durable from the moment the plan
@@ -113,12 +113,7 @@ class PlanRepository {
       rules: rules ?? PlanRules.forShape(shapeOf(profile)),
       startDate: start,
     );
-    if (!result.isValid) {
-      throw PlanStoreException(
-        'refusing to store a skeleton the validator rejects: '
-        '${result.violations.join('; ')}',
-      );
-    }
+    if (!result.isValid) throw PlanRejectedException(result.violations);
 
     final plan = StoredPlan(
       id: _newId(),

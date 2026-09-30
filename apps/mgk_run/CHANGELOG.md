@@ -383,6 +383,12 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A race too close to plan for is caught before anything is built.** The
+  confirmation screen says a plan needs six weeks before race day, under the
+  date, and holds Build my plan until the race moves later or comes out
+  ("Build without a race"). If the builder refuses a plan anyway, it says why
+  in plain words rather than printing its own error, and offers a way back to
+  the details instead of a Try again that would fail the same way.
 - **A run the phone stopped halfway is recovered, not lost.** If the app was
   killed during a run -- iOS reclaiming memory, a swipe from the app switcher,
   a reboot, a crash -- the run stayed on the phone, invisible, forever. The next
