@@ -201,9 +201,18 @@ class CoachBrief {
           'place — they are logging runs and training by feel.';
     }
 
-    final week = plan.weekIndexOn(today);
+    // **Before the plan's first Monday its week 1 is ahead, not current**
+    // (ADR-0034). `weekIndexOn(today)` answers 1 for a block on those days, so
+    // the coach was told the runner was "in week 1 of 16" on a Wednesday when
+    // week 1 began the following Monday, and would talk about "this week's"
+    // sessions that were next week's. Read the week off the start instead, and
+    // say plainly that it has not begun.
+    final started = plan.hasStartedBy(today);
+    final anchor = started ? today : plan.startDate;
+    final notStarted = started ? '' : '${_notStarted(plan, today)} ';
+    final week = plan.weekIndexOn(anchor);
     final total = plan.skeleton.weeks.length;
-    final slot = plan.weekOn(today);
+    final slot = plan.weekOn(anchor);
     final volume = _distance(Distance.meters(slot.volumeMeters), unit);
     final goalMeters = plan.profile.goalDistanceMeters;
     final goal = goalMeters == null
@@ -238,6 +247,10 @@ class CoachBrief {
                 'before you say anything about what comes next.',
           _ => 'They are $days days out from the event.',
         };
+        if (!started) {
+          return '${notStarted}It is a $total-week $goal block. $where '
+              'Its first week is $phase of about $volume.';
+        }
         return 'They are in week $week of $total of a $goal block. $where '
             'This is $phase of about $volume.';
 
@@ -258,8 +271,9 @@ class CoachBrief {
                   'a week. Do not tell them they are ready before that.';
         return 'They are working toward being able to run $goal, with no race '
             'entered — so there is no date to plan back from and nothing to '
-            'taper into. They are $week weeks in. This is $phase of about '
-            '$volume.$standing';
+            'taper into. '
+            '${started ? 'They are $week weeks in. This is $phase of about $volume.' : '${notStarted}Its first week is $phase of about $volume.'}'
+            '$standing';
 
       case PlanShape.rhythm:
         final commitments = plan.profile.commitments;
@@ -268,9 +282,9 @@ class CoachBrief {
             : 'They run ${plan.profile.daysPerWeek} times a week, including '
                   '${_commitmentPhrase(commitments, unit)}';
         return '$rhythm. There is no race and no block — the plan is to keep '
-            'turning up, and about $volume a week is what that looks like. Do '
-            'not push them toward a goal race unless they raise it; '
-            'consistency is what they came for.';
+            'turning up, and about $volume a week is what that looks like. '
+            '${notStarted}Do not push them toward a goal race unless they '
+            'raise it; consistency is what they came for.';
 
       case PlanShape.log:
         return 'They have not told you what they are training for. They are '
@@ -336,6 +350,33 @@ class CoachBrief {
     if (words.length == 1) return words.single;
     return '${words.sublist(0, words.length - 1).join(', ')} and ${words.last}';
   }
+
+  /// That the plan is still ahead, when it starts, and that nothing is asked
+  /// of the days before: "Their plan has not started. It starts on Monday 5
+  /// October, in 5 days, and nothing is set for the days before it."
+  static String _notStarted(StoredPlan plan, DateTime today) {
+    final start = plan.startDate;
+    final days = daysBetweenDates(today, start);
+    final when = days == 1 ? 'tomorrow' : 'in $days days';
+    return 'Their plan has not started. It starts on '
+        '${_weekdayWord(start.weekday)} ${start.day} ${_monthWord(start.month)}, '
+        '$when, and nothing is set for the days before it.';
+  }
+
+  static String _monthWord(int month) => const <String>[
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][month - 1];
 
   static String _weekdayWord(int weekday) => const <String>[
     'Monday',

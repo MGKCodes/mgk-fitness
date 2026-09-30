@@ -383,6 +383,11 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Before a new plan starts, the Plan tab's header and the coach say so.**
+  The header read "112 days · week 1 of 16" over a week headed "Starts
+  Monday 5 Oct", and the coach was told the runner was already in week 1. The
+  header now reads "112 days · starts Monday 5 Oct", and the coach is told the
+  plan starts on that date and nothing is set before it.
 - **A week that cannot be opened says so in plain words.** Opening a week
   from the calendar when the phone could not read it showed the app's own
   internal error text.

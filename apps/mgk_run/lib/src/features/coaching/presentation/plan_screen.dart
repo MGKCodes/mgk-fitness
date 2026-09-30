@@ -462,32 +462,42 @@ class _GoalStrip extends StatelessWidget {
       readiness: assessReadiness(plan.profile, runs, now: today),
     );
 
-    final strip = Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(
-            headline.goal,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+    final strip = LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              headline.goal,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-        Text(
-          headline.position,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        if (onOpenBlock != null)
-          const Padding(
-            padding: EdgeInsets.only(left: 2),
-            child: Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AppColors.textTertiary,
+          // Its natural width, up to most of the row. "112 days · starts
+          // Monday 5 Oct" is longer than any week number, and at its natural
+          // width took the goal's room and then overflowed the row; past the
+          // cap it wraps instead.
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
+            child: Text(
+              headline.position,
+              textAlign: TextAlign.end,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-      ],
+          if (onOpenBlock != null)
+            const Padding(
+              padding: EdgeInsets.only(left: 2),
+              child: Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.textTertiary,
+              ),
+            ),
+        ],
+      ),
     );
 
     if (onOpenBlock == null) return strip;
