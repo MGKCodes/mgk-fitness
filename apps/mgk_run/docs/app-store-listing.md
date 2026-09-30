@@ -308,8 +308,11 @@ Read-only. The app reads step count for the time window of a run recorded in the
 MEDICAL
 Not a medical device. A medical disclaimer is shown before the first plan or conversation, and the description and terms say the same.
 
+SIGNING IN
+Sign in with Apple, Sign in with Google, or an email and password, all on the one sign-in screen. The demo accounts above use email and password.
+
 ACCOUNT DELETION
-Profile tab > Settings (gear, top right) > Privacy & legal > Delete account. It is also on the account screen: tap the card at the top of Settings, then Delete account. Typing DELETE confirms, and the server data is deleted at once.
+Profile tab > Settings (gear, top right) > Privacy & legal > Delete account. It is also on the account screen: tap the card at the top of Settings, then Delete account. Typing DELETE confirms, and the server data is deleted at once. For an account made with Apple, the app asks Apple to confirm, and the server revokes the app's Apple tokens when the login is deleted.
 
 No ads, no analytics, no crash reporting and no tracking.
 ```

@@ -37,12 +37,12 @@ color:var(--muted);font-size:.9rem}
 <body>
 <main>
 <h1>Privacy Policy — MGKFitness: Lift</h1>
-<p><strong>Last updated:</strong> 29 September 2026 · <strong>Controller:</strong> MGKCodes Ltd · <strong>Contact:</strong> hello@mgkcodes.com</p>
+<p><strong>Last updated:</strong> 30 September 2026 · <strong>Controller:</strong> MGKCodes Ltd · <strong>Contact:</strong> hello@mgkcodes.com</p>
 <h2>Summary</h2>
 <p>MGKFitness: Lift is a strength-training log with an optional AI coach. Your sessions live on your phone and tracking works with no account at all. Signing in stores them on our servers. To coach you it sends your training context, and what you say in the conversation, to an AI provider. We do not sell your data. You can delete everything at any time.</p>
 <h2>What we collect</h2>
 <ul><li>
-<strong>Account data</strong> — email / auth identifier.
+<strong>Account data</strong> — your email address and an account identifier. If you sign in with Apple or Google, that is what they pass us too: an email address and an identifier, and nothing else. We do not ask either for your name or photograph. With Apple's Hide My Email, the address is one Apple forwards to yours, and we never see the real one.
 </li><li>
 <strong>Training data</strong> — the sessions you log: exercise names, sets, reps, weight, set type, and for cardio work its duration and distance. Session and exercise notes are free text you wrote, so they hold whatever you chose to put there.
 </li><li>
@@ -63,6 +63,8 @@ color:var(--muted);font-size:.9rem}
 <ul><li>
 <strong>Supabase</strong> — hosts our database, authentication, and server functions.
 </li><li>
+<strong>Apple and Google</strong> — only if you sign in with them. They confirm who you are and pass us an email address and an identifier; we tell them nothing about your training. On an iPhone, deleting an account made with Apple asks Apple to confirm first, so that when the login goes we can also end the app's access to your Apple ID.
+</li><li>
 <strong>OpenRouter</strong> — routes our AI requests to the model provider that serves the model we have selected. Requests are made by our server, not your device, so the provider never sees your IP address or device. To build or adapt a plan we send your plan answers: goal, weeks, days available, equipment, and your injury notes if you gave any. To hold a conversation we send a written summary of your recent training and the messages in that conversation, as you wrote them — so if you told your coach about an injury, a symptom or how you are feeling, that text is sent. We never send your name, email, or account identifier, and we never send your progress photos. But we will not pretend the rest is anonymous: taken together it is health information about one person, and if you would rather it did not leave the app, turn the coach off in Settings or do not use it.
 </li><li>
 <strong>RevenueCat</strong> — handles subscription purchases on the App Store and Google Play, and tells our server whether yours is active. We send it your account identifier and nothing else: no training, no photos, and nothing you said to your coach. Like any purchase SDK it also collects technical information of its own about the install, such as a device-scoped identifier, your store country and your app version.
@@ -78,6 +80,7 @@ color:var(--muted);font-size:.9rem}
 <p>Your sessions live on your device, which is the copy the app actually works from — it logs, reads and plans with no network at all. Signing in copies your sessions to our Supabase project in eu-west-1 (Ireland). Data in transit is encrypted with HTTPS/TLS.</p>
 <h2>Your account</h2>
 <p>You do not need an account to track your training, and with no account nothing leaves your phone at all. Signing in stores your sessions on our servers under your MGKFitness account, which is the same account MGKFitness: Run uses. There is no separate switch — <strong>signing in is the switch.</strong></p>
+<p>You can sign in with Apple, with Google, or with an email address and a password. Choosing Hide My Email with Apple starts a separate account, because the address Apple gives us is not one any other account uses.</p>
 <h2>Your rights</h2>
 <p>Under UK GDPR you can access, correct, export, or delete your data, and withdraw consent. Delete account removes every record we hold for you — your sessions, exercises and sets, your plans, your coach conversations and your usage records. Your phone keeps its own copy until you uninstall.</p>
 <p><strong>Deletion asks how much</strong>, because your login is your MGKFitness account and it is shared with MGKFitness: Run. Delete this app only, and we erase everything this app holds; your account survives so Run keeps working. Delete your whole account, and everything Run holds goes too, along with the login itself.</p>

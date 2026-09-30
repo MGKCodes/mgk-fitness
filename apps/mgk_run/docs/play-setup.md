@@ -317,7 +317,7 @@ Top-level questions:
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** — HTTPS/TLS throughout |
-| Which of the following methods of account creation does your app support? | **Username and password** (email and password, in the app) |
+| Which of the following methods of account creation does your app support? | **Username and password** (email and password, in the app) and **OAuth** (Sign in with Google, and Sign in with Apple, which on Android runs in the browser) |
 | Delete account URL | `https://mgkfitness.mgkcodes.com/run/delete-account` |
 | Do you provide a way for users to request that some or all of their data is deleted, without requiring them to delete their account? | **Yes** — turning backup off erases the server copy of their training |
 
@@ -328,8 +328,8 @@ Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 | Location | Approximate location | Optional | App functionality | MapTiler's tile requests for the map on screen |
 | Location | Precise location | Optional | App functionality | Route traces, sent only with backup on |
 | Personal info | Name | Optional | App functionality, Account management | The name the coach uses, if given |
-| Personal info | Email address | Optional | Account management | The account; the app works signed out |
-| Personal info | User IDs | Optional | Account management, App functionality | The Supabase user id, also RevenueCat's app user id |
+| Personal info | Email address | Optional | Account management | The account, typed in or passed on by Google or Apple at sign-in; the app works signed out |
+| Personal info | User IDs | Optional | Account management, App functionality | The Supabase user id, also RevenueCat's app user id; and Google's or Apple's identifier for the runner, when they sign in with one |
 | Financial info | Purchase history | Optional | App functionality, Analytics | The subscription, via RevenueCat |
 | Health and fitness | Health info | Optional | App functionality | Injury notes and symptoms the runner types, a heart rate typed in by hand |
 | Health and fitness | Fitness info | Optional | App functionality | Runs, distance, pace, plans, effort ratings |

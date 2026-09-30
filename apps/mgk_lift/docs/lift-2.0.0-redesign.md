@@ -365,13 +365,23 @@ chooses a tier — which is only as good as signing in is.
 
 ### The policies
 
-- [ ] Both apps' privacy policies name Apple and Google as ways to sign in, and
+- [x] Both apps' privacy policies name Apple and Google as ways to sign in, and
       what they pass on: an email address and an identifier. Lift:
       `legal_copy.dart`, `docs/privacy-policy.md`, and the web page from
       `tool/build_legal_pages.py`. Run: the same three plus its legal site,
       pinned by Run's *what we collect* test. The store answers in
       `store-listing.md` and Run's store docs.
-      *Open.*
+      *Done, dated 30 September. Lift lists Apple and Google under who we share
+      with; Run's heading says sub-processors, which they are not (they run
+      their own sign-in), so there they are a paragraph after the list. Both
+      say iPhone deletion asks Apple to confirm and ends the app's access to
+      the Apple ID, and nothing about Android, which does not. The store
+      answers add no data type (an email address and an identifier are
+      already declared), and say where each can now come from; Play's account
+      methods gain OAuth. Both sets of review notes name the three ways in and
+      the revocation. Lift's "What's New" no longer tells Liftio's Apple users
+      to "sign in with the same email", and its review notes follow the
+      redesign's doors to the sales screen.*
 
 **Done when:** on a release build of each app, on each platform, a new person can
 sign up with Apple and with Google, sign into the other app as the same account,

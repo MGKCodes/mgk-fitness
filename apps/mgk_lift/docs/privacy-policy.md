@@ -29,7 +29,7 @@
      editing the policy.
 -->
 
-**Last updated:** 29 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 30 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 hello@mgkcodes.com
 
 ## Summary
@@ -46,7 +46,11 @@ everything at any time.
 
 ## What we collect
 
-- **Account data** — email / auth identifier.
+- **Account data** — your email address and an account identifier. If you sign
+  in with Apple or Google, that is what they pass us too: an email address and
+  an identifier, and nothing else. We do not ask either for your name or
+  photograph. With Apple's Hide My Email, the address is one Apple forwards to
+  yours, and we never see the real one.
 - **Training data** — the sessions you log: exercise names, sets, reps, weight,
   set type, and for cardio work its duration and distance. Session and exercise
   notes are free text you wrote, so they hold whatever you chose to put there.
@@ -81,6 +85,11 @@ which you can withdraw by deleting your data).
 ## Who we share it with
 
 - **Supabase** — hosts our database, authentication, and server functions.
+- **Apple and Google** — only if you sign in with them. They confirm who you
+  are and pass us an email address and an identifier; we tell them nothing
+  about your training. On an iPhone, deleting an account made with Apple asks
+  Apple to confirm first, so that when the login goes we can also end the app's
+  access to your Apple ID.
 - **OpenRouter** — routes our AI requests to the model provider that serves the
   model we have selected. Requests are made by our server, not your device, so
   the provider never sees your IP address or device. To build or adapt a plan we
@@ -139,6 +148,10 @@ You do not need an account to track your training, and with no account nothing
 leaves your phone at all. Signing in stores your sessions on our servers under
 your MGKFitness account, which is the same account MGKFitness: Run uses. There is
 no separate switch — **signing in is the switch.**
+
+You can sign in with Apple, with Google, or with an email address and a
+password. Choosing Hide My Email with Apple starts a separate account, because
+the address Apple gives us is not one any other account uses.
 
 ## Your rights
 

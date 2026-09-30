@@ -79,6 +79,20 @@ void main() {
       ]);
     });
 
+    test('names Apple and Google, and what signing in with them passes on', () {
+      // The redesign's Phase 1 added both. What they hand over is the claim
+      // that makes them lawful here: an address and an identifier (O1), and
+      // the revocation Apple requires when an account made with it goes.
+      bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
+        'If you sign in with Apple or Google, that is what they pass us too: '
+            'an email address and an identifier, and nothing else.',
+        'Apple and Google — only if you sign in with them.',
+        "end the app's access to your Apple ID",
+        'You can sign in with Apple, with Google, or with an email address '
+            'and a password.',
+      ]);
+    });
+
     test('says what a purchase tells RevenueCat, and what it tells us', () {
       // RevenueCat reached the pipeline on 2026-09-29 and this is the sentence
       // that makes that lawful: what goes to it is an identifier and nothing

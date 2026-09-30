@@ -8,7 +8,9 @@ appears anywhere: prices live in the stores (submission-week decision 6).
 What the code does, which every answer below rests on:
 
 - **No account is needed to track.** With no account nothing leaves the phone.
-  Signing in (email and password, Supabase, EU) backs workouts up.
+  Signing in (Apple, Google, or email and password; Supabase, EU) backs
+  workouts up. Apple and Google pass an email address and an identifier, and
+  nothing else (O1).
 - **Paid half:** the AI coach, training plans and progress photos, as Coach or
   Premium Coach. Photos go to a private Supabase bucket. Coach text goes to
   OpenRouter, sent by our server, never with name, email or account id.
@@ -96,11 +98,12 @@ gym,workout log,weightlifting,strength,tracker,sets,reps,rest timer,progress pho
 
 > Liftio is now MGKFitness: Lift, rebuilt from the ground up, so the icon and
 > name on your home screen have changed. Your account and backed-up history
-> carry over: sign in with the same email.
+> carry over: sign in the same way you did before.
 >
 > New: saved workouts that start ready-filled and learn from your sessions, a
-> rest timer that reaches your lock screen, every session editable, and an
-> optional AI coach with training plans and progress photos.
+> rest timer that reaches your lock screen, every session editable, sign in
+> with Google, and an optional AI coach with training plans and progress
+> photos.
 
 ### App Review information
 
@@ -113,9 +116,11 @@ account). Notes:
 >
 > The paid half (AI coach, training plans, progress photos) is sold as two
 > monthly auto-renewing subscriptions, Coach and Premium Coach. The purchase
-> screen opens from Start coaching on the Plan tab, or from Unlock photos
-> under Profile > Progress photos. It shows both tiers, the renewal terms, links to the terms
-> and privacy policy, and Restore purchases. Restore is also in Settings.
+> screen opens from Start coaching on the Plan tab, from the C button at the
+> bottom right of any tab, or from Unlock photos under Profile > Progress
+> photos. It shows both tiers, the renewal terms, links to the terms and
+> privacy policy, and Restore purchases. Restore is also under Settings > the
+> account card.
 >
 > The demo account below is already subscribed, so the coach, plans and photos
 > are open without purchasing.
@@ -125,7 +130,12 @@ account). Notes:
 > mark in the coach sheet), in Settings > Use the AI coach (a switch that turns
 > it off entirely), and in Privacy & legal.
 >
-> Account deletion: Profile > Settings > Privacy & legal > Delete account.
+> Signing in: Sign in with Apple, Sign in with Google, or an email and
+> password, all on the one sign-in screen.
+>
+> Account deletion: Profile > Settings > Privacy & legal > Delete account. For
+> an account made with Apple, the app asks Apple to confirm, and the server
+> revokes the app's Apple tokens when the login is deleted.
 >
 > This version replaces Liftio 1.4.0 under the same bundle id; the app was
 > renamed.
@@ -140,8 +150,8 @@ account), **not used for tracking**, purpose **App Functionality** only.
 
 | Apple data type | Collected | What it is in Lift |
 |---|---|---|
-| Contact Info › Email Address | Yes | The account login |
-| Identifiers › User ID | Yes | The Supabase user id, also passed to RevenueCat |
+| Contact Info › Email Address | Yes | The account login: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
+| Identifiers › User ID | Yes | The Supabase user id, also passed to RevenueCat; and Apple's or Google's identifier for the lifter, when they sign in with one |
 | Health & Fitness › Fitness | Yes | Logged workouts: movements, sets, reps, weights |
 | Health & Fitness › Health | Yes | Injury notes typed into plan intake, and whatever a lifter tells the coach about their body |
 | User Content › Photos or Videos | Yes | Progress photos (paid; private bucket) |
@@ -207,6 +217,9 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | App activity › Other user-generated content | Optional | Session and exercise notes |
 | Financial info › Purchase history | Optional | Only if subscribed |
 | App activity › Other actions | Optional | AI usage records for fair-use limits |
+
+Signing in with Apple or Google adds no type to either table: they pass an
+email address and an identifier, which are the two rows already there.
 
 "Optional" is honest here: every one of them depends on the lifter choosing to
 sign in, subscribe or use the coach. The core feature, logging, collects nothing

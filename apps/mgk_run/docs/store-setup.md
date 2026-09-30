@@ -609,16 +609,19 @@ Backup consent makes several of these conditional, and the form cannot say
 
 | Data type | Linked to the user | Purposes | What it is |
 |---|---|---|---|
-| Email Address | Yes | App Functionality | The account |
+| Email Address | Yes | App Functionality | The account: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
 | Name | Yes | App Functionality | The name the coach uses, if given; kept in auth metadata and never sent to the model |
 | Health | Yes | App Functionality | HealthKit **step count** over a recorded run, stored with the run and sent to us only with backup on; injury notes and symptoms typed to the coach |
 | Fitness | Yes | App Functionality | Runs, pace, splits, plans and effort ratings, sent to the coach and, with backup on, stored |
 | Precise Location | Yes | App Functionality | Route traces, stored with backup on |
 | Coarse Location | **No** | App Functionality | MapTiler's tile requests show roughly where the map is. A judgement call: no account or id goes with them, and over-declaring costs nothing |
 | Other User Content | Yes | App Functionality | Messages to the coach, the rolling summary, and replies the runner reports |
-| User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id |
+| User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id; and Apple's or Google's identifier for the runner, when they sign in with one |
 | Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it |
 | Product Interaction | Yes | App Functionality | The coach usage ledger: one row per request, kept 31 days |
+
+Signing in with Apple or Google adds no type: they pass an email address and
+an identifier, which are two rows already here.
 
 **Not collected:** Photos (the profile photo never leaves the phone), Device
 ID, Crash Data, Performance Data, Other Diagnostic Data, Contacts, Browsing
