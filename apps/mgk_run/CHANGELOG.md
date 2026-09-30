@@ -383,6 +383,9 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A week that cannot be opened says so in plain words.** Opening a week
+  from the calendar when the phone could not read it showed the app's own
+  internal error text.
 - **Strength days stay in the plan after the app is reopened.** A week kept
   its strength days only while it was still in memory; read back from the
   phone, every strength day was a rest day, and Home said "Rest day" over a

@@ -2593,11 +2593,14 @@ class _PlanTabState extends State<_PlanTab> {
     final TrainingWeek week;
     try {
       week = await widget.plans.weekFor(plan, slot);
-    } on PlanStoreException catch (e) {
+    } on PlanStoreException {
       if (!mounted) return;
+      // In the runner's words, never the store's. This printed the exception's
+      // own message, which is written for a log ("plan p-1 week 5 day 3 has
+      // unknown kind ..."), the same leak as the plan reveal's validator text.
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ).showSnackBar(const SnackBar(content: Text(kWeekUnopenedMessage)));
       return;
     }
     if (!mounted) return;
@@ -2719,6 +2722,15 @@ class _PlanTabState extends State<_PlanTab> {
     );
   }
 }
+
+/// What the Plan tab says when a week it was asked to open cannot be read.
+///
+/// The plan itself is fine (it is on screen), so this says that, and that
+/// trying again is worth it: a store read that failed once usually does not
+/// fail twice.
+const String kWeekUnopenedMessage =
+    'That week could not be opened. Your plan is still saved, so try again '
+    'in a moment.';
 
 /// Shown when a plan is on disk but could not be read — a schema mismatch or a
 /// corrupt row. Deliberately distinct from [_PlanEmpty]: the runner's block may
