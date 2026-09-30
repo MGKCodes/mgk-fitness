@@ -307,14 +307,23 @@ chooses a tier — which is only as good as signing in is.
       Android flow needs a way back (`<package>://login-callback`, already in
       Supabase's redirect list).
       *Google's reversed iOS client ids are URL schemes in both `Info.plist`s; Apple's way back on Android is an intent filter in both manifests.*
-- [ ] **A password reset that finishes.** *Found during the dashboards,
+- [x] **A password reset that finishes.** *Found during the dashboards,
       2026-09-30.* "Forgot your password?" sends an email whose link can only
       land on the Site URL, and no page there lets anybody choose a new
       password, so a reset has never been able to complete in either app. A
-      small page on `mgkfitness.mgkcodes.com` does it (`web/`), and both apps'
-      `sendPasswordReset` pass it as `redirectTo`. Apple and Google accounts
-      have no password to forget.
-      *Open.*
+      small page on `mgkfitness.mgkcodes.com` does it (`web/`), and the reset
+      email links to it. Apple and Google accounts have no password to forget.
+      *Built differently from first written: the **email template** names the
+      page, with a token hash, instead of the apps passing it as `redirectTo`.
+      Both apps sign in with PKCE, so a redirect would arrive with a code only
+      the phone that asked can exchange, and a copy of Lift installed before
+      2.0.0 passes no redirect at all. The page verifies the hash when the form
+      is sent, so a mail scanner does not spend it, and was checked in a
+      browser against a fake Supabase Auth: too short, refused as weak then
+      accepted without verifying twice, the same password, an expired link,
+      and no link. Run had no "Forgot your password?" at all; it has now.
+      Waiting on Matthew: the template pasted into Supabase and two public
+      values in Vercel (store-setup.md step 6).*
 
 ### Lift
 

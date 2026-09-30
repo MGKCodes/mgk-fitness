@@ -80,6 +80,14 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _busy = false;
   String? _message;
 
+  /// The next step rather than a failure: a confirmation to go and look for,
+  /// a reset on its way. Said in the quiet colour, because in the error colour
+  /// "Check your email to confirm your account" read as the account not being
+  /// made.
+  String? _notice;
+
+  bool _sendingReset = false;
+
   /// Which provider's sheet is up, if any.
   SignInProvider? _asking;
 
@@ -97,6 +105,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _asking = provider;
       _message = null;
+      _notice = null;
     });
     try {
       final outcome = switch (provider) {
@@ -117,7 +126,7 @@ class _SignInScreenState extends State<SignInScreen> {
           });
           if (mounted) {
             setState(
-              () => _message = 'Finish signing in with Apple in your browser.',
+              () => _notice = 'Finish signing in with Apple in your browser.',
             );
           }
       }
@@ -143,6 +152,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _busy = true;
       _message = null;
+      _notice = null;
     });
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -160,7 +170,7 @@ class _SignInScreenState extends State<SignInScreen> {
           widget.onSignUpIntent?.call(false);
           if (mounted) {
             setState(
-              () => _message = 'Check your email to confirm your account.',
+              () => _notice = 'Check your email to confirm your account.',
             );
           }
         } else {
@@ -183,6 +193,27 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (!email.contains('@')) {
+      setState(() {
+        _notice = null;
+        _message = 'Enter your email first.';
+      });
+      return;
+    }
+    setState(() => _sendingReset = true);
+    await widget.auth.sendPasswordReset(email);
+    if (!mounted) return;
+    setState(() {
+      _sendingReset = false;
+      _message = null;
+      // The same words whether or not the address has an account: anything
+      // else is a way for anybody to find out who is registered.
+      _notice = 'If that address has an account, a reset link is on its way.';
+    });
+  }
+
   /// One-tap sign in as a pre-seeded developer account (debug builds only).
   Future<void> _quickSignIn(DevAccount account) async {
     // Signing *in*, whatever the screen was showing. Without this the sign-up
@@ -193,6 +224,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _busy = true;
       _message = null;
+      _notice = null;
     });
     try {
       await widget.auth.signIn(
@@ -382,12 +414,35 @@ class _SignInScreenState extends State<SignInScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ],
+                      if (_notice != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _notice!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       PrimaryButton(
                         label: _isSignUp ? 'Sign up' : 'Sign in',
                         onPressed: _submit,
                         busy: _busy,
                       ),
+                      // Signing in only: somebody making an account has no
+                      // password to forget. The link opens a page on the site,
+                      // not the app, so it works from a laptop's inbox too.
+                      if (!_isSignUp)
+                        AppTextButton(
+                          label: 'Forgot your password?',
+                          onPressed: _busy || _sendingReset
+                              ? null
+                              : _resetPassword,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                          ),
+                        ),
                       AppTextButton(
                         label: _isSignUp
                             ? 'Have an account? Sign in'
@@ -397,6 +452,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             : () => setState(() {
                                 _isSignUp = !_isSignUp;
                                 _message = null;
+                                _notice = null;
                               }),
                       ),
                       if (kDebugMode &&

@@ -149,4 +149,69 @@ void main() {
       );
     });
   });
+
+  group('Forgot your password?', () {
+    Future<void> tapForgot(WidgetTester tester) async {
+      final forgot = find.text('Forgot your password?');
+      await tester.ensureVisible(forgot);
+      await tester.pumpAndSettle();
+      await tester.tap(forgot);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is offered when signing in, not when signing up', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(home: SignInScreen(auth: FakeAuthRepository())),
+      );
+      expect(find.text('Forgot your password?'), findsOneWidget);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SignInScreen(
+            key: UniqueKey(),
+            auth: FakeAuthRepository(),
+            initialSignUp: true,
+          ),
+        ),
+      );
+      expect(find.text('Forgot your password?'), findsNothing);
+    });
+
+    testWidgets('asks for the email first', (tester) async {
+      final auth = FakeAuthRepository();
+      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
+
+      await tapForgot(tester);
+
+      expect(find.text('Enter your email first.'), findsOneWidget);
+      expect(auth.lastReset, isNull);
+    });
+
+    testWidgets('sends the reset and says the same thing for any address', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository();
+      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Email'),
+        ' runner@example.com ',
+      );
+      await tapForgot(tester);
+
+      expect(auth.lastReset, 'runner@example.com');
+      final notice = tester.widget<Text>(
+        find.text(
+          'If that address has an account, a reset link is on its way.',
+        ),
+      );
+      // A next step, not a failure, so not in the error colour.
+      final error = Theme.of(
+        tester.element(find.byType(SignInScreen)),
+      ).colorScheme.error;
+      expect(notice.style?.color, isNot(error));
+    });
+  });
 }

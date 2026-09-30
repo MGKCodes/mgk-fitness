@@ -103,6 +103,9 @@ class SupabaseAuth implements AuthService {
     await _providers.forget();
   }
 
+  /// The link lands on mgkfitness.mgkcodes.com/reset-password. The email
+  /// template names that page, so no redirect is passed from here, and copies
+  /// of the app installed before it existed get a working reset too.
   @override
   Future<void> sendPasswordReset(String email) async {
     try {

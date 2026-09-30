@@ -251,6 +251,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# The reset link lands on web/app/reset-password. Local only: production's
+# copy is pasted into the dashboard, and `supabase config push` would also
+# push this file's localhost site_url, so it is never run against it.
+[auth.email.template.recovery]
+subject = "Choose a new password"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
