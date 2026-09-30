@@ -33,9 +33,9 @@ import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_report.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_controller.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 
 import 'fixture.dart';
 import 'plate.dart';

@@ -610,13 +610,10 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
-        "lib/src/features/home/presentation/training_charts.dart",
-        "lib/src/features/coaching/presentation/coach_reveal.dart",
-        "lib/src/features/coaching/presentation/coach_button.dart"
+        "lib/src/features/home/presentation/training_charts.dart"
       ]
     },
     "A2": {
@@ -734,7 +731,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -762,7 +758,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -779,7 +774,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -796,7 +790,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -813,7 +806,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -982,7 +974,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -1514,10 +1505,7 @@
       "reach": "any tab, once per new observation",
       "job": "The coach mark delivering an observation, then retracting.",
       "done": "One line and one sentence about the runner's training, readable in the second or two it is up. Caught mid-reveal on purpose.",
-      "files": [
-        "lib/src/features/coaching/presentation/coach_reveal.dart",
-        "lib/src/features/coaching/presentation/coach_button.dart"
-      ],
+      "files": [],
       "size": "393×240"
     },
     "C6": {
@@ -1527,10 +1515,7 @@
       "reach": "any tab, not subscribed",
       "job": "What the mark says to a runner without the subscription.",
       "done": "Reads as a sign ('Coaching is a subscription…') rather than as a broken observation, and plays once rather than every visit.",
-      "files": [
-        "lib/src/features/coaching/presentation/coach_reveal.dart",
-        "lib/src/features/coaching/presentation/coach_button.dart"
-      ],
+      "files": [],
       "size": "393×240",
       "isnew": "New since the September board."
     },
@@ -1541,10 +1526,7 @@
       "reach": "after the line has played",
       "job": "The mark at rest.",
       "done": "A small C in the corner, clear of content it could hide.",
-      "files": [
-        "lib/src/features/coaching/presentation/coach_reveal.dart",
-        "lib/src/features/coaching/presentation/coach_button.dart"
-      ],
+      "files": [],
       "size": "393×240"
     },
     "C14": {
@@ -1555,9 +1537,7 @@
       "job": "Tapping the coach with no account.",
       "done": "Asks for an account before anything else: never the permission sheet or a price without one. The name from the intro is already known.",
       "files": [
-        "lib/src/features/auth/presentation/sign_in_screen.dart",
-        "lib/src/features/coaching/presentation/coach_reveal.dart",
-        "lib/src/features/coaching/presentation/coach_button.dart"
+        "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
       "isnew": "Order settled in build 26."
     },
@@ -1902,7 +1882,6 @@
       "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
       "files": [
         "lib/src/features/settings/presentation/settings_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "Rebuilt as an index on 11 Sep."
@@ -1916,7 +1895,6 @@
       "done": "The card shows the name and says everything is on this phone only; no Sign out or Delete account; backup reads 'Not set up'. Permissions reads 'Not set' only because a test cannot ask the phone. The DEVELOPER block is debug-only.",
       "files": [
         "lib/src/features/settings/presentation/settings_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ]
     },
@@ -1955,7 +1933,6 @@
       "done": "A large avatar with Add a photo, a line saying the photo never leaves the phone, Details, and Coaching with Plan, Status and Manage subscription.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "Manage subscription is new in build 26."
@@ -1969,7 +1946,6 @@
       "done": "The sentence under Coaching names Google Play as the place to cancel or change it, and Manage subscription opens Play's page for Run, because the store that bills is the one named.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "platform": "Android",
@@ -1984,7 +1960,6 @@
       "done": "Plan Free, Status Not subscribed, no Manage subscription row, and a sentence saying recording is free and the coach is the subscription.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ]
     },
@@ -1997,7 +1972,6 @@
       "done": "Plan reads Premium Coach, Status Active, Manage subscription present.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ]
     },
@@ -2010,7 +1984,6 @@
       "done": "Status in red; the sentence says the store is retrying, the coach is locked until it succeeds, and the fix is in the store. A sentence that opens with the store opens with a capital: 'The App Store is retrying it'.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "changed": "Build 27: it read '… did not go through. the App Store is retrying it'."
@@ -2024,7 +1997,6 @@
       "done": "Status Ended; says they are not being charged and everything recorded is still theirs; Manage subscription stays so they can resubscribe.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "'Ended' a day after expiry is new in build 26."
@@ -2038,7 +2010,6 @@
       "done": "Name and photo are editable; Coaching reads Free; a Create an account button with one line on what an account is for; no Sign out or Delete.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ]
     },
@@ -2051,10 +2022,8 @@
       "done": "'Sign out?' with 'Also remove my data from this phone' off by default and the sentence saying runs stay on this device. Stay signed in and Sign out.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart",
         "lib/src/features/settings/presentation/settings_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "The switch is new in build 26."
@@ -2068,10 +2037,8 @@
       "done": "The sentence changes to say runs, plan, conversations, name and photo are removed from this phone, and that anything not backed up is gone for good.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart",
         "lib/src/features/settings/presentation/settings_screen.dart",
-        "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "New in build 26."
@@ -2255,7 +2222,6 @@
       "job": "A second account signs in on a phone holding the first account's training.",
       "done": "Says the training belongs to a different account; offers 'Erase this phone's training and continue as' the new address, and Sign out; explains erasing only touches this phone. The new account never silently receives the old one's runs.",
       "files": [
-        "lib/src/features/auth/presentation/another_account_screen.dart",
         "lib/src/features/auth/presentation/auth_gate.dart"
       ],
       "isnew": "New in build 26."
@@ -2270,7 +2236,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -2287,7 +2252,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
@@ -2315,7 +2279,6 @@
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
-        "lib/src/features/home/presentation/home_tiles.dart",
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
