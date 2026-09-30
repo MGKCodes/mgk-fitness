@@ -65,7 +65,7 @@ import '../../history/domain/run_writer.dart';
 import '../../history/domain/run_draft.dart';
 import '../../settings/domain/backup_consent.dart';
 import '../../settings/domain/backup_health.dart';
-import '../../settings/domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import '../../profile/domain/backup_state.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../onboarding/domain/intro_store.dart';

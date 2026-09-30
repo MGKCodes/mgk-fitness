@@ -4,7 +4,7 @@ import '../../coaching/data/purchase_client.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../domain/backup_consent.dart';
 import '../domain/backup_health.dart';
-import '../domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// What belongs to the phone rather than to any screen: one of each, made once
 /// in `main.dart` and shared by everything that reads or erases them.

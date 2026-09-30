@@ -27,6 +27,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
@@ -40,7 +41,6 @@ import 'package:mgk_run/src/features/legal/presentation/legal_screen.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
-import 'package:mgk_run/src/features/settings/domain/local_data.dart';
 import 'package:mgk_run/src/features/settings/domain/profile_photo.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
@@ -573,7 +573,7 @@ class _Refuses implements AccountDeleter {
 }
 
 /// Training on the phone, which [LocalDataGuard] asks about.
-class _Training implements LocalRunnerData {
+class _Training implements LocalTrainingData {
   bool _has = true;
 
   @override

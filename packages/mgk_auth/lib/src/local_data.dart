@@ -4,19 +4,24 @@ import 'package:flutter/foundation.dart';
 ///
 /// ## Why this exists
 ///
-/// The phone holds one database, one profile photo, one stored name and one
-/// backup answer, and none of it says who it belongs to -- the coach's memory
-/// rows carry no user id by design, because the local database was only ever
-/// meant to hold one runner. That was fine while one account was all a phone
-/// ever saw. It stopped being fine the moment a second one signed in: the
-/// launch restore and backfill ran for them, and every local run the server
-/// lacked was pushed into *their* account, traces and all. They saw the first
-/// runner's log, plan, injury notes and coach transcripts, and the coach wrote
-/// its brief about them from somebody else's training.
+/// Each app keeps one database, one profile photo, one stored name and one
+/// backup answer on the phone, and none of it says who it belongs to: the
+/// local database was only ever meant to hold one person. That was fine while
+/// one account was all a phone ever saw. It stopped being fine in Run the
+/// moment a second one signed in (`ab02080`): the launch restore and backfill
+/// ran for them, and every local run the server lacked was pushed into *their*
+/// account, traces and all. They saw the first runner's log, plan, injury
+/// notes and coach transcripts, and the coach wrote its brief about them from
+/// somebody else's training.
 ///
-/// So the phone now records which account its training belongs to. It is a
-/// file beside the others rather than a column, deliberately: a column would be
-/// a schema change on every table, and the question is about the phone, not
+/// Lift had the same hole with sessions and photographs, and signing in with
+/// Apple and Google makes a second account on one phone far more likely (an
+/// Apple sign-in that hides the address is a new account), so the rule moved
+/// here, for both apps.
+///
+/// So the phone records which account its training belongs to. It is a file
+/// beside the others rather than a column, deliberately: a column would be a
+/// schema change on every table, and the question is about the phone, not
 /// about a row.
 abstract interface class LocalDataOwnerStore {
   /// The account the training here belongs to, or null when nobody has
@@ -46,10 +51,12 @@ class InMemoryLocalDataOwner implements LocalDataOwnerStore {
   Future<void> clear() async => _owner = null;
 }
 
-/// Everything on this phone that belongs to a runner: the runs and their
-/// traces, the plans and the profile inside them, what the coach remembers,
-/// the profile photo, the name the coach uses, and the backup answer.
-abstract interface class LocalRunnerData {
+/// Everything on this phone that belongs to one person, as each app counts
+/// it. Run's is the runs and their traces, the plans, what the coach
+/// remembers, the photo, the name and the backup answer; Lift's is the
+/// sessions, the saved workouts, the photographs and the settings that are
+/// somebody's.
+abstract interface class LocalTrainingData {
   /// True when none of it is here. Must not throw; a phone it cannot read
   /// counts as holding something, which is the direction that asks.
   Future<bool> isEmpty();
@@ -65,25 +72,25 @@ abstract interface class LocalRunnerData {
 /// claims it, and whatever they record is theirs.
 ///
 /// **The first account to sign in while training is here becomes its owner.**
-/// That is the ordinary path, not a loophole: a runner records for weeks with
-/// no account (ADR-0019), then creates one, and the runs they recorded are
-/// theirs. It is also what an existing install looks like the first time this
-/// runs, with a session already in hand.
+/// That is the ordinary path, not a loophole: somebody trains for weeks with no
+/// account, then creates one, and what they recorded is theirs. It is also what
+/// an existing install looks like the first time this runs, with a session
+/// already in hand.
 ///
 /// **A different account signing in while training is here is asked, before
 /// anything else happens,** whether to erase it or sign out. Nothing restores,
-/// backfills, mirrors or talks to the coach until that is answered -- see
-/// `AuthGate` and `HomeShell._doRestoreThenLoad`, and `consentFor`, which keeps
-/// a yes to backing up from applying to training that is not the asker's.
+/// backfills, mirrors or talks to the coach until that is answered. Each app
+/// holds its own work back on that answer (Run: `AuthGate` and
+/// `HomeShell._doRestoreThenLoad`; Lift: `LiftShell`).
 class LocalDataGuard {
   LocalDataGuard({
     required LocalDataOwnerStore owner,
-    required LocalRunnerData data,
+    required LocalTrainingData data,
   }) : _owner = owner,
        _data = data;
 
   final LocalDataOwnerStore _owner;
-  final LocalRunnerData _data;
+  final LocalTrainingData _data;
 
   /// Counts completed erasures, so anything holding a copy of the phone's
   /// training in memory -- the shell, the name the gate read at launch -- can
@@ -152,11 +159,11 @@ class LocalDataGuard {
 
   /// Leaves the training where it is and the phone unclaimed.
   ///
-  /// For an account that has been deleted while its runner kept this phone's
-  /// copy. The account it belonged to is gone, so the phone is back where a
-  /// runner with no account starts: the next account to sign in claims it --
-  /// including this runner's own, should they make one again, which is exactly
-  /// who should not be asked to erase their own runs to do it.
+  /// For an account that has been deleted while its owner kept this phone's
+  /// copy. The account it belonged to is gone, so the phone is back where
+  /// somebody with no account starts: the next account to sign in claims it --
+  /// including this person's own, should they make one again, which is exactly
+  /// who should not be asked to erase their own training to do it.
   Future<void> release() async {
     await _owner.clear();
     _askedFor = null;

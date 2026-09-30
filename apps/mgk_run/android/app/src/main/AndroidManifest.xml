@@ -60,6 +60,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- The way back from Apple's sign-in, which on Android runs in
+                 the browser: Supabase sends it to com.mgkcodes.fitness.run://login-callback,
+                 which is on its redirect list, and supabase_flutter picks the
+                 session up from the link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.mgkcodes.fitness.run" android:host="login-callback"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

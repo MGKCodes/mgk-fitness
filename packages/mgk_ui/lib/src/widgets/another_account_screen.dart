@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:mgk_ui/mgk_ui.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
+import 'app_buttons.dart';
+import 'primary_button.dart';
 
 /// Shown instead of the app when an account signs in on a phone whose training
 /// belongs to a different one.
 ///
 /// **Two ways out and no third.** Carrying on with the training as it is would
-/// be the bug this exists to stop: the backfill pushing one runner's runs and
-/// traces into another's account, the coach briefed from somebody else's
-/// injury notes, the log and the photo on show to whoever signed in. So the
-/// account that just arrived either erases what is here and starts clean, or
-/// signs out and leaves it exactly as it was.
+/// be the bug this exists to stop: a backup pushing one person's training into
+/// another's account, the coach briefed from somebody else's notes, the log
+/// and the photo on show to whoever signed in. So the account that just
+/// arrived either erases what is here and starts clean, or signs out and
+/// leaves it exactly as it was.
 ///
-/// Nothing restores, backfills, mirrors or talks to the coach while this is on
-/// screen; see `LocalDataGuard`. It cannot be dismissed, because every way of
-/// dismissing it is one of the two answers.
+/// Nothing restores, backs up or talks to the coach while this is on screen;
+/// see `LocalDataGuard` in mgk_auth. It cannot be dismissed, because every way
+/// of dismissing it is one of the two answers.
+///
+/// Written for Run (`ab02080`) and shared when Lift needed the same question:
+/// only [whatIsHere] differs between the apps.
 class AnotherAccountScreen extends StatefulWidget {
   const AnotherAccountScreen({
     super.key,
     required this.email,
+    required this.whatIsHere,
     required this.onErase,
     required this.onSignOut,
   });
@@ -25,6 +33,10 @@ class AnotherAccountScreen extends StatefulWidget {
   /// Who just signed in. Null only for an account with no address, which this
   /// app does not create; the sentence then names nobody rather than guessing.
   final String? email;
+
+  /// What this app keeps, as the start of a sentence: `The runs, plan and
+  /// coach conversations`, `The sessions, workouts and photos`.
+  final String whatIsHere;
 
   /// Erases this phone's training and continues as the account signed in.
   /// Throws when the training could not be erased.
@@ -104,9 +116,9 @@ class _AnotherAccountScreenState extends State<AnotherAccountScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'The runs, plan and coach conversations on this phone were '
-                'recorded under a different account. To continue as $account, '
-                'erase them from this phone first.',
+                '${widget.whatIsHere} on this phone were recorded under a '
+                'different account. To continue as $account, erase them from '
+                'this phone first.',
                 style: body,
               ),
               const SizedBox(height: AppSpacing.md),

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/settings/data/file_backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
-import 'package:mgk_run/src/features/settings/domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// **A yes to backing up was the phone's, not the runner's.**
 ///

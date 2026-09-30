@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/features/settings/domain/local_data.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 
 /// **The rule about whose training is on the phone.**
 ///
@@ -132,7 +132,7 @@ void main() {
   );
 }
 
-class _Training implements LocalRunnerData {
+class _Training implements LocalTrainingData {
   bool hasTraining = false;
   bool failErase = false;
   int erased = 0;

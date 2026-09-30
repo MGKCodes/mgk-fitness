@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
@@ -10,7 +11,12 @@ import '../../../dev/dev_persona.dart';
 import '../../../dev/dev_persona_controls.dart';
 import '../data/auth_repository.dart';
 
-/// Email + password sign in / sign up.
+/// Sign in or sign up: with Apple, with Google, or with an email and password.
+///
+/// **Apple and Google above the form (R10).** One tap and no password for
+/// anybody with either on the phone, and the same account Lift signs into.
+/// Google is only offered beside Apple (App Store guideline 4.8), and the two
+/// are drawn with equal weight.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({
     super.key,
@@ -74,8 +80,58 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _busy = false;
   String? _message;
 
+  /// Which provider's sheet is up, if any.
+  SignInProvider? _asking;
+
+  /// Apple on Android: signing in continues in the browser, and the session
+  /// arrives on the auth stream afterwards. A pushed gate needs telling when it
+  /// does; the flow is swapped out by the same stream on its own.
+  StreamSubscription<AuthChange>? _arrivals;
+
+  Future<void> _withProvider(SignInProvider provider) async {
+    if (_busy || _asking != null) return;
+    // Intent, not outcome, and before the call — see [SignInScreen
+    // .onSignUpIntent]. Apple and Google do both without saying which, so the
+    // half of the screen the runner chose is the only answer there is.
+    widget.onSignUpIntent?.call(_isSignUp);
+    setState(() {
+      _asking = provider;
+      _message = null;
+    });
+    try {
+      final outcome = switch (provider) {
+        SignInProvider.apple => await widget.auth.signInWithApple(),
+        SignInProvider.google => await widget.auth.signInWithGoogle(),
+      };
+      switch (outcome) {
+        case ProviderOutcome.signedIn:
+          widget.onAuthenticated?.call();
+        case ProviderOutcome.cancelled:
+          // No session, so the claim above is taken back rather than left to
+          // fire on a later sign-in.
+          widget.onSignUpIntent?.call(false);
+        case ProviderOutcome.continuing:
+          await _arrivals?.cancel();
+          _arrivals = widget.auth.authChanges().listen((change) {
+            if (change == AuthChange.signedIn) widget.onAuthenticated?.call();
+          });
+          if (mounted) {
+            setState(
+              () => _message = 'Finish signing in with Apple in your browser.',
+            );
+          }
+      }
+    } catch (error) {
+      widget.onSignUpIntent?.call(false);
+      if (mounted) setState(() => _message = _messageFor(error));
+    } finally {
+      if (mounted) setState(() => _asking = null);
+    }
+  }
+
   @override
   void dispose() {
+    unawaited(_arrivals?.cancel());
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -243,6 +299,34 @@ class _SignInScreenState extends State<SignInScreen> {
                         const Entrance(index: 1, child: _WhatYouGet()),
                       ],
                       const SizedBox(height: 32),
+                      ProviderSignInButton.apple(
+                        busy: _asking == SignInProvider.apple,
+                        onPressed: _busy || _asking != null
+                            ? null
+                            : () => _withProvider(SignInProvider.apple),
+                      ),
+                      const SizedBox(height: 12),
+                      ProviderSignInButton.google(
+                        busy: _asking == SignInProvider.google,
+                        onPressed: _busy || _asking != null
+                            ? null
+                            : () => _withProvider(SignInProvider.google),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        // O2. Apple's relay address is a different address, so
+                        // there is nothing to join it to an existing account by.
+                        'Choosing Hide My Email with Apple starts a separate '
+                        'account.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      const _Or(),
+                      const SizedBox(height: 24),
                       // First, and only when signing up. The coach's whole
                       // pitch is that it is *yours*, and it had no idea what to
                       // call you — so the first thing it ever said was
@@ -351,6 +435,31 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 }
 
+/// "or", between the providers and the form.
+class _Or extends StatelessWidget {
+  const _Or();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: <Widget>[
+        const Expanded(child: Divider()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'or with your email',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+        const Expanded(child: Divider()),
+      ],
+    );
+  }
+}
+
 /// What to print when authenticating fails.
 ///
 /// **A dead connection earns its own sentence.** This screen used to print
@@ -383,6 +492,14 @@ class _SignInScreenState extends State<SignInScreen> {
 /// The words are the ones the account-deletion path already uses for the same
 /// fact, because it is the same fact.
 String _messageFor(Object error) {
+  if (error is ProviderSignInException) {
+    return switch (error.failure) {
+      ProviderFailure.unavailable =>
+        'We could not reach the server. Check your connection and try again.',
+      ProviderFailure.refused =>
+        'That sign-in did not go through. Try again, or use your email.',
+    };
+  }
   if (error is AuthRetryableFetchException || error is TimeoutException) {
     return 'We could not reach the server. Check your connection and try '
         'again.';

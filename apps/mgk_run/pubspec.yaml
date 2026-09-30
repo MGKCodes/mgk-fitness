@@ -47,6 +47,11 @@ dependencies:
   mgk_units:
     path: ../../packages/mgk_units
 
+  # Signing in, shared: Apple and Google into the suite's one account, and
+  # whose training is on the phone. Not UI; the buttons are mgk_ui's.
+  mgk_auth:
+    path: ../../packages/mgk_auth
+
   cupertino_icons: ^1.0.8
   drift: ^2.34.2
   sqlite3_flutter_libs: ^0.6.0+eol
