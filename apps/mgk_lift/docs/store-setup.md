@@ -89,13 +89,15 @@ attached.
 Lift has never been on Play, so this is a new app. The account already has
 production access (frunt is live on it), so no 14-day closed test is needed.
 
-- [ ] **Create app:** name `MGKFitness: Lift`, default language English (UK),
-      App, Free, with in-app purchases.
-- [ ] **Upload the first `.aab` by hand** to Internal testing. The Play API
-      cannot create a listing, only add to one. Tell me when the app exists
-      and I will start `lift-android-release`; download the `.aab` from that
-      Codemagic build's artifacts. Signing uses the suite's `mgkfitness_upload`
-      key, which Run already uploaded; nothing to create.
+- [x] **Create app:** name `MGKFitness: Lift`, default language English (UK),
+      App, Free, with in-app purchases. *Done 2026-09-30.*
+- [x] **Upload the first `.aab` by hand** to Internal testing. The Play API
+      cannot create a listing, only add to one. *Done 2026-09-30, as a **draft**
+      release nobody receives: the bundle from Codemagic build
+      `6abbfae2126571e3df662103` (`4d12c46`), signed with the suite's
+      `mgkfitness_upload` key (checked: `EC:4D:11:…:33:CF`). This claimed
+      `com.mgkcodes.liftio` on Play and made Play generate Lift's app-signing
+      key, whose fingerprint Google sign-in needed (7c).*
 - [ ] Monetize › Subscriptions:
   - `lift.coach.monthly`, base plan id `monthly`, auto-renewing, 1 month.
   - `lift.coach.premium.monthly`, base plan id `monthly`.
@@ -278,50 +280,86 @@ Frunt's**, so both apps now have their own, and `codemagic.yaml` points at them.
 
 ### 7c. Google Cloud: one project, and a client per platform
 
-- [ ] console.cloud.google.com › new project `MGKFitness`.
-- [ ] Google Auth Platform › **Branding**: app name `MGKFitness`, support email
-      and developer contact `hello@mgkcodes.com`. **No logo**: a logo sends the
-      app to Google for verification, which takes days, and sign-in works
-      without one.
-- [ ] **Audience**: External › *Publish app*. The scopes are Google's basic
-      three (email, profile, openid), which need no review.
-- [ ] **Clients** › Create client, once for each:
-      - *Web application* `Supabase`, authorised redirect URI
-        `https://cwpwzxjjhxbkwhrgnasn.supabase.co/auth/v1/callback`. Keep its
-        client id and secret.
-      - *iOS* `Lift`, bundle id `com.mgkcodes.liftio`; *iOS* `Run`, bundle id
-        `com.mgkcodes.fitness.run`. Keep both client ids.
-      - *Android*, one client per package and fingerprint, for
-        `com.mgkcodes.liftio` and `com.mgkcodes.fitness.run` each:
-        - the upload key, `mgkfitness_upload`, which both apps share: Play
-          Console › Run › App integrity › App signing › *Upload key
-          certificate*, SHA-1;
-        - Play's app-signing key, on the same page: Run's now, Lift's once its
-          first upload exists (step 2);
-        - this computer's debug key, for emulator builds:
-          `05:EC:3F:BF:39:2D:7D:3B:EA:36:26:C8:FA:B7:FB:C9:00:99:C9:98`.
+*Done 2026-09-30, in the **existing** `mgk-fitness` project (number
+365688330886), where Run's Play publishing account already lives, rather than a
+new one.*
+
+- [x] Google Auth Platform › **Branding**: app name `MGKFitness`, support email
+      and developer contact `mgkcodes@gmail.com` (the dropdown only offers the
+      Google account's own addresses). **No logo**: a logo sends the app to
+      Google for verification, which takes days. Home, privacy and terms links
+      are Run's pages (`https://mgkfitness.mgkcodes.com`, `/run/privacy`,
+      `/run/terms`), the only live ones; **move them to pages that cover both
+      apps once Lift's are live.** Authorized domains `mgkcodes.com` and
+      `cwpwzxjjhxbkwhrgnasn.supabase.co`: `supabase.co` itself is refused,
+      because it is on the public suffix list.
+- [x] **Audience**: External › *Publish app*, now *In production*. The scopes
+      are Google's basic three, which need no review.
+- [x] **Clients**, eight:
+      - *Web application* `Supabase`, redirect URI
+        `https://cwpwzxjjhxbkwhrgnasn.supabase.co/auth/v1/callback`:
+        `365688330886-s5g8kf5kvmpo5qao0atqepufvfbkhmca.apps.googleusercontent.com`.
+        Its secret is in Matthew's password manager and in Supabase, nowhere
+        else.
+      - *iOS* `Lift iOS` (`com.mgkcodes.liftio`, team `ZTS7SQYSA5`):
+        `365688330886-ql9t29qtqbq15ove1nv3b0irh5dhr7vu.apps.googleusercontent.com`
+      - *iOS* `Run iOS` (`com.mgkcodes.fitness.run`):
+        `365688330886-vmjfroatcea25al1ggm524bhcfkkqqht.apps.googleusercontent.com`
+      - *Android*, one per package and fingerprint (Android needs no client id
+        in the app; the web id is its `serverClientId`):
+
+        | Client | Package | SHA-1 |
+        |---|---|---|
+        | `Run Android Play` | `com.mgkcodes.fitness.run` | `B6:DD:0A:6D:D8:E3:B9:7A:9F:45:D3:27:6D:78:D7:8D:CD:AE:5B:4E` |
+        | `Run Android upload` | `com.mgkcodes.fitness.run` | `EC:4D:11:C1:E7:EA:1C:B7:57:4F:5F:B5:71:ED:96:33:C1:C3:33:CF` |
+        | `Run Android debug` | `com.mgkcodes.fitness.run` | `05:EC:3F:BF:39:2D:7D:3B:EA:36:26:C8:FA:B7:FB:C9:00:99:C9:98` |
+        | `Lift Android Play` | `com.mgkcodes.liftio` | `61:B5:49:8F:DD:AB:BF:D9:E4:2A:96:C8:0D:22:B5:E1:AD:1E:BF:60` |
+        | `Lift Android upload` | `com.mgkcodes.liftio` | `EC:4D:11:C1:E7:EA:1C:B7:57:4F:5F:B5:71:ED:96:33:C1:C3:33:CF` |
+        | `Lift Android debug` | `com.mgkcodes.liftio` | `05:EC:3F:BF:39:2D:7D:3B:EA:36:26:C8:FA:B7:FB:C9:00:99:C9:98` |
+
+        The upload key is `mgkfitness_upload`, which both apps share; the debug
+        key is this computer's. Play's app-signing fingerprints are on each
+        app's Protected with Play › Play Store protection › *Manage Play app
+        signing* page (App integrity moved there). Firebase App Check is off.
 
 ### 7d. Supabase: switch both on
 
-- [ ] Authentication › Sign In / Providers › **Apple** › enable.
-      *Client IDs*: `com.mgkcodes.fitness.web,com.mgkcodes.liftio,com.mgkcodes.fitness.run`,
-      with the Services ID **first**, or Apple refuses Android's sign-in.
-      *Secret Key (for OAuth)*: generate it with the tool Supabase links from
-      that panel (Chrome or Firefox), from the Team ID, Key ID, Services ID and
-      the `.p8` › Save. **It expires after six months**: set a reminder for
-      2027-03-30.
-- [ ] **Google** › enable. *Client IDs*: the web client id first, then Lift's and
-      Run's iOS ids. *Client Secret*: the web client's. *Skip nonce check*:
-      **on**, because Google's iOS sign-in cannot carry one through › Save.
-- [ ] Authentication › URL Configuration › Redirect URLs: add
+*Done 2026-09-30. Both providers were already on, from Liftio 1.x: Apple with
+`com.mgkcodes.liftio.siwa,com.mgkcodes.liftio`, Google with a client from
+another project (`864868708679-…`). Ten accounts sign in with Apple, from
+April and May 2026, several on hidden relay addresses; none with Google.*
+
+- [x] Authentication › Sign In / Providers › **Apple**. *Client IDs*:
+      `com.mgkcodes.fitness.web,com.mgkcodes.liftio,com.mgkcodes.fitness.run,com.mgkcodes.liftio.siwa`,
+      with the Services ID **first**, or Apple refuses Android's sign-in, and
+      Liftio's old one last until 2.0.0 has replaced Liftio 1.x. The existing
+      Apple accounts keep working because Lift's App ID is the group's primary:
+      Apple's user ids and relay addresses belong to it. *Secret Key (for
+      OAuth)*: generated with Supabase's in-browser tool from the Team ID, Key
+      ID, Services ID and the `.p8`. **It expires after six months, around
+      2027-03-30: regenerate it by 2027-03-20** or Android's Apple sign-in
+      stops.
+- [x] **Google**. *Client IDs*: the web client id first, then Lift's and Run's
+      iOS ids; the old project's client is gone, since nobody signs in with
+      Google. *Client Secret*: the new web client's. *Skip nonce checks*:
+      **on**, for Google's iOS sign-in; switch it back off if the plugin can
+      pass a nonce.
+- [x] Authentication › URL Configuration › Redirect URLs:
       `com.mgkcodes.liftio://login-callback` and
       `com.mgkcodes.fitness.run://login-callback`, the way back from Android's
       Apple sign-in.
-- [ ] Edge Functions › Secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
+- [x] Edge Functions › Secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
       `APPLE_PRIVATE_KEY` (the `.p8` file's contents), so `delete-account` can
-      revoke Apple's tokens when an account is deleted.
-- [ ] Tell me the Team ID, the Key ID, the Services ID and the two iOS client
-      ids. None of those is secret.
+      revoke Apple's tokens when an account is deleted. The two ids' digests
+      were checked against their values; nothing reads them until the
+      redesign's Phase 1.
+
+*Found on the way:* the **Site URL** was still `http://localhost:3000` (step 6),
+so every emailed link — a sign-up confirmation, a password reset — led to a dead
+page. It is `https://mgkfitness.mgkcodes.com` now. And a password reset still
+cannot finish: no page on the site lets somebody choose a new password, and
+neither app asks Supabase to send them back into it. The redesign's Phase 1
+adds that page.
 
 *Later, with step 6:* Apple's hidden addresses only accept mail from senders
 registered with Apple (Services › Sign in with Apple for Email Communication).

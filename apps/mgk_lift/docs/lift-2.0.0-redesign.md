@@ -238,7 +238,7 @@ Matthew take calendar time.
       headline over the top. Today's Track hero is a 35 KB file made to sit at
       30%. *Needs the Replicate connection; the screens use placeholders until
       then.*
-- [ ] **The sign-in dashboards** *(Matthew)*, added to
+- [x] **The sign-in dashboards** *(Matthew)*, added to
       [store-setup.md](store-setup.md) with owners:
       - Apple: Sign in with Apple on both App IDs (`com.mgkcodes.liftio`,
         `com.mgkcodes.fitness.run`), grouped under one primary App ID; a
@@ -258,8 +258,14 @@ Matthew take calendar time.
       it, and both apps published through Frunt's App Store Connect key. By
       Matthew's rule that nothing MGKFitness ships depends on Frunt, both apps
       now sign with MGKFitness's own certificate and publish with its own key
-      ([store-setup.md](store-setup.md) 7b; `codemagic.yaml`). Google and
-      Supabase are next.*
+      ([store-setup.md](store-setup.md) 7b; `codemagic.yaml`).*
+
+      *All done the same day, walked through screen by screen. Google's clients
+      live in the existing `mgk-fitness` Cloud project; Lift's Play app was
+      created and given a draft first upload so Play would generate the
+      fingerprint Google needed; and Supabase already had both providers on
+      from Liftio 1.x, with ten Apple accounts that keep working because Lift
+      is the primary App ID. Every value is in store-setup.md 7a–7d.*
 
 **Done when:** the branch contains `main` and every suite passes; the shared
 pieces are in `mgk_ui` and Run looks the same; the ADR amendment is written; the
@@ -289,7 +295,15 @@ chooses a tier — which is only as good as signing in is.
       erase.
 - [ ] **Links back into the app.** Neither app has a URL scheme or an intent
       filter today; Google on iOS needs its reversed client id, and Apple's
-      Android flow needs a way back.
+      Android flow needs a way back (`<package>://login-callback`, already in
+      Supabase's redirect list).
+- [ ] **A password reset that finishes.** *Found during the dashboards,
+      2026-09-30.* "Forgot your password?" sends an email whose link can only
+      land on the Site URL, and no page there lets anybody choose a new
+      password, so a reset has never been able to complete in either app. A
+      small page on `mgkfitness.mgkcodes.com` does it (`web/`), and both apps'
+      `sendPasswordReset` pass it as `redirectTo`. Apple and Google accounts
+      have no password to forget.
 
 ### Lift
 
@@ -607,7 +621,9 @@ the other-account screen.
 
 ## Builds
 
-Each one Matthew's go, because each is outward-facing.
+Each one Matthew's go, because each is outward-facing, and **each is both
+platforms**: iOS to TestFlight and Android to Play's internal testing, since
+signing in, the photographs and the glass all behave differently on each.
 
 1. **After Phase 1: signing in.** A Lift build from this branch, and a Run build
    carrying the same sign-in — from `main` once this branch is merged back, or
