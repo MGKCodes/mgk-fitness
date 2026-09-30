@@ -383,6 +383,13 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The days before a new plan starts say so.** A plan starts on the coming
+  Monday, and until then Home set that weekday's session from next week as
+  today's ("5 km today") and counted "0 of 7" against it, while the Plan tab
+  headed next week "This week" and lit the same day of it as today. Home now
+  says when the plan starts and what comes first, sets nothing for today and
+  counts the week from your runs; the Plan tab and the calendar head that week
+  "Starts Monday 5 Oct" with no day lit.
 - **A race too close to plan for is caught before anything is built.** The
   confirmation screen says a plan needs six weeks before race day, under the
   date, and holds Build my plan until the race moves later or comes out

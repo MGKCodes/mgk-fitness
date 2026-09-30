@@ -1,6 +1,7 @@
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../recording/domain/run_summary.dart';
+import '../domain/training_history.dart' show nextRunAfter;
 import '../domain/plan_builder.dart';
 import '../domain/plan_headline.dart';
 import '../domain/plan_history.dart';
@@ -297,6 +298,23 @@ class PlanRepository {
     UnitSystem unit = UnitSystem.metric,
   }) async {
     final now = _now();
+    // **Before the plan's first Monday nothing is asked of today** (ADR-0034).
+    // `weekOn(now)` answers with week 1 for such a day, so this used to read
+    // today's weekday out of *next* week and prescribe it: a Wednesday build
+    // was told "5 km today" off the following Wednesday's session. What the
+    // runner is owed instead is when it starts and what comes first.
+    if (!plan.hasStartedBy(now)) {
+      final first = plan.weekOn(plan.startDate);
+      final week = await weekFor(plan, first);
+      return TodayView(
+        slot: first,
+        session: null,
+        status: SessionStatus.planned,
+        heading: todayHeading(plan.profile, first),
+        startsOn: plan.startDate,
+        firstSession: nextRunAfter(week, 0),
+      );
+    }
     final slot = plan.weekOn(now);
     final week = await weekFor(plan, slot);
     final session = week.runOn(now.weekday);
@@ -442,10 +460,25 @@ class TodayView {
     required this.heading,
     this.support,
     this.race,
+    this.startsOn,
+    this.firstSession,
   });
 
-  /// The skeleton week today falls in.
+  /// The skeleton week today falls in. Week 1 before the plan has started,
+  /// which is the week it will start with rather than one today is in.
   final SkeletonWeek slot;
+
+  /// The Monday the plan starts on, while today is still before it; null once
+  /// it has begun.
+  ///
+  /// Set means **a day before the plan**: [session] and [support] are null
+  /// because nothing is asked of it, not because it is a rest day, and
+  /// [firstSession] says what the plan opens with.
+  final DateTime? startsOn;
+
+  /// The first run of week 1, for a plan that has not started. Null once it
+  /// has, and for a first week with no run in it.
+  final PlannedSession? firstSession;
 
   /// What to head the card — already resolved for the plan's shape, so the
   /// card can draw it without knowing there are shapes ([todayHeading]).

@@ -31,6 +31,12 @@ import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 /// to pass, which is the whole shape of this failure — so this drives the real
 /// [HomeShell], with a real plan behind it, and reaches the door the way a
 /// runner does.
+/// Three weeks ago, so the plan is under way on whatever day the suite runs.
+/// A plan starts on the coming Monday (ADR-0034) and asks nothing of the days
+/// before it, so one built "today" is a runner with no session yet on six days
+/// of the week out of seven.
+DateTime _underWay() => DateTime.now().subtract(const Duration(days: 21));
+
 void main() {
   late AppDatabase db;
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
@@ -52,7 +58,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final store = DriftPlanStore(db);
-    final repo = PlanRepository(store: store);
+    final repo = PlanRepository(store: store, now: _underWay);
     final plan = await repo.create(aProfile());
 
     // The tile only draws `_Locked` when the run answered something, so the
@@ -110,7 +116,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final store = DriftPlanStore(db);
-    final repo = PlanRepository(store: store);
+    final repo = PlanRepository(store: store, now: _underWay);
     final plan = await repo.create(aProfile());
     final now = DateTime.now();
     final TrainingWeek week = await repo.weekFor(plan, plan.weekOn(now));

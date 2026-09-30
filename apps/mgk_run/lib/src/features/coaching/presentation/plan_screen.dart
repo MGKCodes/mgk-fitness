@@ -185,7 +185,13 @@ class PlanScreen extends StatelessWidget {
     StoredPlan plan,
     DateTime today,
   ) {
-    final currentIndex = plan.weekIndexOn(today);
+    // **Before the plan starts, the week shown is the one it starts with**
+    // (ADR-0034), anchored on its own first day rather than on today: a
+    // rhythm's index wraps for a date before the start, and its dates would
+    // come from the cycle before. Nothing in it is today, so nothing is lit.
+    final started = plan.hasStartedBy(today);
+    final anchor = started ? today : plan.startDate;
+    final currentIndex = plan.weekIndexOn(anchor);
     final planWeeks = plan.skeleton.weeks;
 
     return <Widget>[
@@ -199,8 +205,9 @@ class PlanScreen extends StatelessWidget {
           plan: plan,
           slot: planWeeks[currentIndex - 1],
           week: weeks[currentIndex],
-          today: today,
-          statusFor: statusFor,
+          anchor: anchor,
+          today: started ? today : null,
+          statusFor: started ? statusFor : null,
           unit: unit,
           paces: paces,
           onOpenCalendar: onOpenCalendar,
@@ -213,7 +220,7 @@ class PlanScreen extends StatelessWidget {
             date: plan.dateFor(
               weekIndex: currentIndex,
               weekday: weekday,
-              on: today,
+              on: anchor,
             ),
             paces: paces,
             unit: unit,
@@ -231,6 +238,7 @@ class _WeekBlock extends StatelessWidget {
   const _WeekBlock({
     required this.plan,
     required this.slot,
+    required this.anchor,
     required this.today,
     required this.unit,
     required this.week,
@@ -242,6 +250,13 @@ class _WeekBlock extends StatelessWidget {
 
   final StoredPlan plan;
   final SkeletonWeek slot;
+
+  /// The day the week is read from: today once the plan has started, its
+  /// first day before then.
+  final DateTime anchor;
+
+  /// Today, when it falls in this week. Null before the plan starts, which
+  /// is what keeps a day of next week from being lit as today.
   final DateTime? today;
   final UnitSystem unit;
   final SessionStatus? Function(int weekday)? statusFor;
@@ -281,8 +296,10 @@ class _WeekBlock extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       SectionLabel(
-                        'This week · '
-                        '${weekRangeLabel(plan.dateFor(weekIndex: slot.index, weekday: 1, on: today))}',
+                        today == null
+                            ? planStartsLabel(plan.startDate)
+                            : 'This week · '
+                                  '${weekRangeLabel(plan.dateFor(weekIndex: slot.index, weekday: 1, on: anchor))}',
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -336,7 +353,7 @@ class _WeekBlock extends StatelessWidget {
             weekStart: plan.dateFor(
               weekIndex: slot.index,
               weekday: 1,
-              on: today,
+              on: anchor,
             ),
             paces: paces,
             today: today,

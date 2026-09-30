@@ -57,11 +57,17 @@ class _PlanCalendarScreenState extends State<PlanCalendarScreen> {
   /// open; the exact landing does not need to be pixel-perfect.
   static const double _paneExtent = 208;
 
+  /// The day the calendar is read from: today once the plan has started, its
+  /// first day before then (ADR-0034), so a rhythm does not open on the last
+  /// week of a cycle it has not begun.
+  DateTime _anchor(DateTime today) =>
+      widget.plan.hasStartedBy(today) ? today : widget.plan.startDate;
+
   @override
   void initState() {
     super.initState();
     final today = widget.now ?? DateTime.now();
-    final current = widget.plan.weekIndexOn(today);
+    final current = widget.plan.weekIndexOn(_anchor(today));
     _scroll = ScrollController(
       initialScrollOffset: (current - 1) * _paneExtent,
     );
@@ -76,7 +82,9 @@ class _PlanCalendarScreenState extends State<PlanCalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final today = widget.now ?? DateTime.now();
-    final current = widget.plan.weekIndexOn(today);
+    final started = widget.plan.hasStartedBy(today);
+    final anchor = _anchor(today);
+    final current = widget.plan.weekIndexOn(anchor);
     final weeks = widget.plan.skeleton.weeks;
 
     return Scaffold(
@@ -120,20 +128,22 @@ class _PlanCalendarScreenState extends State<PlanCalendarScreen> {
                   weekStart: widget.plan.dateFor(
                     weekIndex: slot.index,
                     weekday: 1,
-                    on: today,
+                    on: anchor,
                   ),
-                  today: isCurrent ? today : null,
-                  statusFor: isCurrent ? widget.statusFor : null,
+                  // Nothing is today before the plan starts.
+                  today: isCurrent && started ? today : null,
+                  statusFor: isCurrent && started ? widget.statusFor : null,
                   dimmed: beyondHorizon,
-                  title:
-                      (isCurrent ? 'This week · ' : '') +
-                      weekRangeLabel(
-                        widget.plan.dateFor(
-                          weekIndex: slot.index,
-                          weekday: 1,
-                          on: today,
-                        ),
-                      ),
+                  title: isCurrent && !started
+                      ? planStartsLabel(widget.plan.startDate)
+                      : (isCurrent ? 'This week · ' : '') +
+                            weekRangeLabel(
+                              widget.plan.dateFor(
+                                weekIndex: slot.index,
+                                weekday: 1,
+                                on: anchor,
+                              ),
+                            ),
                   subtitle: _subtitle(slot, beyondHorizon),
                   unit: widget.unit,
                   onTapDay: widget.onOpenWeek == null

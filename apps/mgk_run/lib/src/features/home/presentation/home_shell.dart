@@ -1567,6 +1567,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (plan != null) {
         planProfile = plan.profile;
         today = await _plans.today(plan, unit: _unit);
+      }
+      // **Before the plan's first Monday there is no plan week to count**
+      // (ADR-0034). `today.slot` is week 1 on those days, so the week tile
+      // counted "0 of 7" against sessions that start next Monday, the ribbon
+      // lit next week's Wednesday as today, and a run recorded now was read
+      // against a session set for a week later. Until it starts, the week is
+      // answered off the log, the way it is for a runner with no plan.
+      if (plan != null && today != null && today.startsOn == null) {
         thisWeek = await _plans.weekFor(plan, today.slot);
         // Computed here rather than in the widget, like every other line that
         // depends on the plan's shape (ADR-0011). Home takes two strings.
@@ -2451,7 +2459,14 @@ class _PlanTabState extends State<_PlanTab> {
 
     // Only the weeks the calendar actually draws. Materialising the whole block
     // would generate sessions for weeks that are still going to move.
-    final first = plan.weekIndexOn(DateTime.now());
+    //
+    // From the plan's own start while it is still ahead (ADR-0034): a rhythm's
+    // index wraps for a date before it, so this loaded the last week of the
+    // cycle and left the tab waiting on week 1.
+    final now = DateTime.now();
+    final first = plan.weekIndexOn(
+      plan.hasStartedBy(now) ? now : plan.startDate,
+    );
     final last = (first + kPlannedWeekHorizon - 1).clamp(
       1,
       plan.skeleton.weeks.length,
