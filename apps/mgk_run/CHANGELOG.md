@@ -383,6 +383,9 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Adding a run shows the unit on an empty Distance field.** It appeared
+  only once you tapped into the field, so nothing said whether it wanted
+  kilometres or miles.
 - **A run that never started no longer shows today's session.** When
   location stopped a run before it began, the panel still carried the
   session's effort text and "To go 5.00". It now shows the problem, what

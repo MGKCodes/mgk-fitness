@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
 import 'package:mgk_run/src/features/history/domain/run_writer.dart';
 import 'package:mgk_run/src/features/history/presentation/run_form_screen.dart';
@@ -12,7 +13,11 @@ import 'package:mgk_run/src/features/history/presentation/run_form_screen.dart';
 void main() {
   final now = DateTime(2026, 9, 30, 18, 5);
 
-  Future<_Writer> pump(WidgetTester tester, {RunDraft? initial}) async {
+  Future<_Writer> pump(
+    WidgetTester tester, {
+    RunDraft? initial,
+    UnitSystem unit = UnitSystem.metric,
+  }) async {
     final writer = _Writer();
     await tester.binding.setSurfaceSize(const Size(420, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -23,6 +28,7 @@ void main() {
           editor: writer,
           runId: initial == null ? null : 'run-1',
           initial: initial,
+          unit: unit,
           now: () => now,
         ),
       ),
@@ -45,6 +51,37 @@ void main() {
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNull,
     );
+  });
+
+  // The unit was suffix text, which Material draws only once a field is
+  // focused or filled: an empty Distance gave no sign of km or miles.
+  testWidgets('an empty Distance says its unit before anything is typed', (
+    tester,
+  ) async {
+    // Present is not enough: Material keeps suffix text in the tree at zero
+    // opacity until the field is focused or filled. Shown means no fade above
+    // it is at zero.
+    void expectShown(String unit) {
+      final label = find.descendant(of: distance, matching: find.text(unit));
+      expect(label, findsOneWidget);
+      final fades = <double>[
+        for (final w in tester.widgetList<AnimatedOpacity>(
+          find.ancestor(of: label, matching: find.byType(AnimatedOpacity)),
+        ))
+          w.opacity,
+        for (final w in tester.widgetList<Opacity>(
+          find.ancestor(of: label, matching: find.byType(Opacity)),
+        ))
+          w.opacity,
+      ];
+      expect(fades.where((o) => o == 0), isEmpty, reason: '$unit is hidden');
+    }
+
+    await pump(tester);
+    expectShown('km');
+
+    await pump(tester, unit: UnitSystem.imperial);
+    expectShown('mi');
   });
 
   testWidgets('Kind starts outdoors', (tester) async {

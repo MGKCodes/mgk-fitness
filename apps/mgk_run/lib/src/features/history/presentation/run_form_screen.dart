@@ -355,7 +355,23 @@ class _RunFormScreenState extends State<RunFormScreen> {
               decimal ? RegExp(r'[0-9.]') : RegExp(r'[0-9]'),
             ),
           ],
-          decoration: InputDecoration(suffixText: suffix),
+          // The unit as a suffix *icon*, not suffix text: Material draws
+          // suffix text only once a field is focused or filled, so an empty
+          // Distance on Add a run gave no sign whether it wanted km or miles
+          // until the runner had already started typing.
+          decoration: InputDecoration(
+            suffixIcon: Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
+              child: Text(
+                suffix,
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            suffixIconConstraints: const BoxConstraints(),
+          ),
         ),
       ),
       _issueText(field, issues),
