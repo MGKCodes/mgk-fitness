@@ -94,6 +94,14 @@ class FakeAuthRepository extends AuthRepository {
     await ensureProfileBestEffort();
   }
 
+  /// The address the last reset was sent to.
+  String? lastReset;
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    lastReset = email.trim();
+  }
+
   /// The name the last sign-up passed, so a test can assert it travelled.
   String? lastName;
 

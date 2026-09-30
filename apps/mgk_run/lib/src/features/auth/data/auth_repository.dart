@@ -138,6 +138,20 @@ class AuthRepository {
     await ensureProfileBestEffort();
   }
 
+  /// Sends a reset email, and says nothing about whether it went.
+  ///
+  /// Reporting failure for an unknown address would be a way to find out who
+  /// has an account, so the screen says "if that address has an account" either
+  /// way. The link lands on mgkfitness.mgkcodes.com/reset-password: the email
+  /// template names the page, so no redirect is passed from here.
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(email.trim()).timeout(timeout);
+    } on Object {
+      // Deliberately swallowed; see above.
+    }
+  }
+
   /// Returns true if a session was created (email confirmation disabled), or
   /// false if the user must confirm their email before signing in.
   ///

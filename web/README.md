@@ -55,6 +55,7 @@ not run Python, so an uncommitted page is a deploy that serves nothing.
 | `/run/medical-disclaimer` | `public/run/medical-disclaimer.html` |
 | `/run/support` | a real page, not generated |
 | `/run/delete-account` | a real page, not generated |
+| `/reset-password` | a real page, for both apps; see below |
 
 This table said `/run/terms` served **nothing** until 2026-09-11, on the
 reasoning that the EULA is Apple's and Apple hosts it. That stopped being true
@@ -70,6 +71,31 @@ document the app has to reproduce word for word.
 The `.html` paths redirect to the clean ones, so each document answers at one
 address. A legal URL that works two ways is one that gets copied into App Store
 Connect wrong, and that field cannot be corrected without a new submission.
+
+## Resetting a password
+
+`/reset-password` is where "Forgot your password?" ends, in Lift and in Run.
+One page, because it is one account.
+
+**The email brings people here, not the apps.** Supabase's *Reset password*
+template (`../supabase/templates/recovery.html`, pasted into the dashboard)
+links to this page with a token hash. The apps sign in with PKCE, so a reset
+sent back through them would carry a code only the phone that asked can
+exchange; a token hash works on any device, so the email can be opened on a
+laptop. The page verifies it when the form is sent, not when it loads, so a
+mail scanner that follows the link does not use it up. It calls Supabase Auth
+directly, with no client library, and signs its short session out once the
+password is changed.
+
+It needs two **public** values in Vercel's environment, the same two every copy
+of the apps carries, and a redeploy after setting them, since Next writes them
+into the page at build time:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+Without them the page says it is not working and gives the support address,
+rather than failing silently.
 
 ## Deploying
 
@@ -111,8 +137,6 @@ fine to anybody signed in to the team.
 
 ## What is not here yet
 
-- Lift's pages. They land beside Run's, from the same generator, when the
-  rewrite ships.
 - Marketing. Tailwind and a lint config come with it; scaffolding them for one
   support page would be furniture.
 - Anything that needs a secret. If a contact form arrives, its key lives in

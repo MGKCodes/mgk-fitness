@@ -1,0 +1,21 @@
+<!--
+  The "Reset password" email. Supabase Dashboard › Authentication › Emails ›
+  Reset password: paste everything below this comment into the body, and set
+  the subject to "Choose a new password".
+
+  It links to the page with {{ .TokenHash }}, not to {{ .ConfirmationURL }}.
+  Both apps sign in with PKCE, so the confirmation URL would arrive at the page
+  carrying a code only the phone that asked can exchange. The page verifies the
+  hash itself, and only when the form is sent, so a mail scanner that opens
+  the link does not use it up. See web/app/reset-password/.
+
+  {{ .SiteURL }} is https://mgkfitness.mgkcodes.com in production. The link
+  names the page itself rather than {{ .RedirectTo }}, so a reset asked for
+  from a copy of Lift or Run that is already installed, which passes no
+  redirect, arrives at the same page.
+-->
+<h2>Choose a new password</h2>
+<p>Somebody asked to reset the password for {{ .Email }}, the account you use in Lift and Run.</p>
+<p><a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery">Choose a new password</a></p>
+<p>The link works once. If you did not ask for this, ignore this email: your password has not changed.</p>
+<p>MGKCodes Ltd</p>
