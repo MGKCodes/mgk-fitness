@@ -1,7 +1,26 @@
 import 'package:flutter/material.dart';
 
-import 'package:mgk_ui/mgk_ui.dart';
-import '../domain/coach_note.dart';
+import '../motion/app_motion.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
+import 'coach_mark.dart';
+
+/// One thing the coach says: a heading, and why.
+///
+/// Each app works out its own — Run's `CoachNote` from the runs, Lift's new
+/// bests from the sets — and this is only what [CoachReveal] needs of one to
+/// say it. Kept apart from both so the reveal can be shared without either
+/// app's reasoning coming with it.
+@immutable
+class CoachLine {
+  const CoachLine({required this.headline, required this.detail});
+
+  /// One line, in the coach's voice.
+  final String headline;
+
+  /// The evidence behind it, so the remark is checkable rather than flattering.
+  final String detail;
+}
 
 /// How long the reveal takes: arrive, type, hold, retract.
 ///
@@ -12,9 +31,10 @@ const Duration kCoachRevealDuration = Duration(milliseconds: 3400);
 /// The coach says its piece, then goes back to its corner.
 ///
 /// **Both versions were half right.** The dock had presence and cost 76px of
-/// every screen forever; the mark costs 44px and says nothing. A runner opening
+/// every screen forever; the mark costs 44px and says nothing. Somebody opening
 /// the tab wants to be told the one thing worth knowing — and then wants their
-/// page back. So the mark arrives as a line of speech, types it, holds it long
+/// page back. Written for Run's Home; shared when Lift's mark learned to say
+/// new bests (R7). So the mark arrives as a line of speech, types it, holds it long
 /// enough to read, and retracts into itself.
 ///
 /// Three rules keep it from becoming the thing everyone turns off:
@@ -48,7 +68,7 @@ class CoachReveal extends StatefulWidget {
 
   /// What the coach has noticed. Null renders the resting mark and nothing
   /// else — there is no such thing as an empty announcement.
-  final CoachNote? note;
+  final CoachLine? note;
 
   /// Whether to play the **locked** line instead, for a runner who has not
   /// bought the coach.
@@ -81,7 +101,7 @@ class CoachReveal extends StatefulWidget {
   /// "buys", not "costs": the gate sheet deliberately quotes no price (the
   /// store does, in the runner's own currency), and promising a figure that the
   /// next screen does not show is a small lie the paywall does not need.
-  static const CoachNote lockedNote = CoachNote(
+  static const CoachLine lockedNote = CoachLine(
     headline: 'Coaching is a subscription.',
     detail:
         'A plan that moves with you, and a coach reading your training. '
@@ -171,7 +191,7 @@ class _CoachRevealState extends State<CoachReveal>
   /// A real note wins over the locked line so that the two can never race — a
   /// caller that passes both has a bug, and showing the observation is the
   /// half of that bug a paying runner would not notice.
-  CoachNote? get _shown =>
+  CoachLine? get _shown =>
       widget.note ?? (widget.locked ? CoachReveal.lockedNote : null);
 
   void _maybePlay() {
@@ -329,7 +349,7 @@ class _TypedNote extends StatelessWidget {
     this.muted = false,
   });
 
-  final CoachNote note;
+  final CoachLine note;
   final Animation<double> progress;
 
   /// The locked line: dimmer, and shown whole rather than typed. See

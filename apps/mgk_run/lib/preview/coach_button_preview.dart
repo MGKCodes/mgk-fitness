@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
 
 /// The coach mark, at real size over the real backdrop.

@@ -159,121 +159,101 @@ List<TemplateMovement> movementsOf(Session session) {
   ];
 }
 
-/// What changed between the workout a session started from and the session as
-/// it finished — the rule that lets a template **learn from the session**, so
-/// a movement removed today does not have to be removed again next week.
+/// What a session did to the **movements** of the workout it came from — the
+/// only thing a session can now change about a workout (R3).
 ///
-/// The table in `docs/lift-2.0.0-logging-rework.md`, Phase 3:
+/// It replaced `TemplateUpdate`, which learned everything — set counts, order,
+/// movements — applied at Finish with an Undo on the summary. The design review found that a
+/// workout quietly rewriting itself was the wrong default, and that the thing
+/// worth keeping was the one a lifter decides on purpose: *I dropped the flyes
+/// and did dips instead.* So Finish asks one question, only when a movement
+/// was added or removed (a swap reads as both), and yes changes only those.
+/// Set counts, rep targets and order stay as the workout had them; a session
+/// never changes them, and never asks about them.
 ///
-/// | In the session | The template |
-/// |---|---|
-/// | movement removed with ✕ | removed |
-/// | movement added, and done | added, at the same position |
-/// | movement added, nothing ticked | not added — Finish drops it |
-/// | movements reordered | new order |
-/// | set rows added or removed | the set count follows |
-/// | movement kept, nothing ticked | unchanged — skipping is not removing |
-/// | sets left unticked | unchanged — a skipped set is not a removed one |
-/// | reps and weights | never changed by a session |
-/// | warm-ups | not part of a template |
-///
-/// It reads the session **before** Finish drops its unticked sets — a row left
-/// unticked is still a row the lifter kept, so it still counts.
-@immutable
-class TemplateUpdate {
-  const TemplateUpdate._({
-    required this.before,
-    required this.after,
-    required this.removed,
+/// Matched by name, case-insensitively, in order — a workout holding the same
+/// movement twice matches each to its own — and with the learning table's
+/// rules for what is not a change: a movement kept and skipped is not
+/// removed, and one added and never done is not added.
+class MovementChange {
+  const MovementChange._({
     required this.added,
-    required this.reordered,
-    required this.resized,
-  });
+    required this.removed,
+    required List<({TemplateMovement movement, int? after})> additions,
+    required Set<int> removedAt,
+  }) : _additions = additions,
+       _removedAt = removedAt;
 
-  /// Compares the workout as it was when the session started with the session.
-  ///
-  /// Movements are matched by name, case-insensitively, in order — so a
-  /// workout holding the same movement twice matches each to its own.
-  factory TemplateUpdate.between(
+  factory MovementChange.between(
     List<TemplateMovement> before,
     Session session,
   ) {
     final unmatched = <int>[for (var i = 0; i < before.length; i++) i];
-    final matchedFrom = <int>[];
-    final after = <TemplateMovement>[];
-    final added = <String>[];
-    final resized = <String>[];
-
+    final additions = <({TemplateMovement movement, int? after})>[];
+    // The workout's movement the session last passed, so an added one lands
+    // after it: "at its position", in the workout's own order.
+    int? anchor;
     for (final e in session.exercises) {
       final key = e.name.toLowerCase();
       final at = unmatched.indexWhere(
         (i) => before[i].name.toLowerCase() == key,
       );
-      final index = at < 0 ? null : unmatched.removeAt(at);
-      final was = index == null ? null : before[index];
-      // A movement added today and never done is not part of the workout —
-      // Finish drops it from the session, and has just told the lifter so.
-      if (was == null && !e.sets.any((s) => s.isCompleted)) continue;
-      // By position, not by value: two identical entries are two movements.
-      if (index != null) matchedFrom.add(index);
-      final rows = e.sets.where((s) => !s.isWarmup).length;
-      // Nothing laid out at all is a movement not started, not one with its
-      // sets removed: the count stays as it was.
-      final sets = rows == 0
-          ? (was?.sets ?? TemplateMovement.defaultSets)
-          : rows.clamp(1, SessionLimits.setsPerMovement);
-      if (was == null) {
-        added.add(e.name);
-      } else if (was.sets != sets) {
-        resized.add(e.name);
+      if (at >= 0) {
+        anchor = unmatched.removeAt(at);
+        continue;
       }
-      after.add(
-        TemplateMovement(e.name, sets: sets, repTarget: was?.repTarget),
-      );
+      // Added today and never done: Finish drops it, and has said so.
+      if (!e.sets.any((s) => s.isCompleted)) continue;
+      final rows = e.sets.where((s) => !s.isWarmup).length;
+      additions.add((
+        movement: TemplateMovement(
+          e.name,
+          sets: rows == 0
+              ? TemplateMovement.defaultSets
+              : rows.clamp(1, SessionLimits.setsPerMovement),
+        ),
+        after: anchor,
+      ));
     }
-
-    final removed = <String>[for (final i in unmatched) before[i].name];
-    var reordered = false;
-    for (var i = 1; i < matchedFrom.length; i++) {
-      if (matchedFrom[i] < matchedFrom[i - 1]) reordered = true;
-    }
-
-    return TemplateUpdate._(
-      before: List<TemplateMovement>.unmodifiable(before),
-      after: List<TemplateMovement>.unmodifiable(after),
-      removed: removed,
-      added: added,
-      reordered: reordered,
-      resized: resized,
+    return MovementChange._(
+      added: <String>[for (final a in additions) a.movement.name],
+      removed: <String>[for (final i in unmatched) before[i].name],
+      additions: additions,
+      removedAt: unmatched.toSet(),
     );
   }
 
-  final List<TemplateMovement> before;
-  final List<TemplateMovement> after;
-  final List<String> removed;
+  /// Movements done today that the workout does not have, in session order.
   final List<String> added;
-  final bool reordered;
 
-  /// Movements whose set count changed.
-  final List<String> resized;
+  /// The workout's movements that were taken out of the session.
+  final List<String> removed;
 
-  bool get isEmpty =>
-      removed.isEmpty && added.isEmpty && !reordered && resized.isEmpty;
+  final List<({TemplateMovement movement, int? after})> _additions;
+  final Set<int> _removedAt;
 
-  /// `removed Cable Fly, added Dips` — the line under the summary's totals.
-  String describe() {
-    final parts = <String>[
-      if (removed.isNotEmpty) 'removed ${_list(removed)}',
-      if (added.isNotEmpty) 'added ${_list(added)}',
-      if (resized.isNotEmpty) 'new set count on ${_list(resized)}',
-      if (reordered) 'new order',
+  bool get isEmpty => added.isEmpty && removed.isEmpty;
+
+  /// `+ Dips, − Cable Fly`: the line under the question.
+  String describe() => <String>[
+    for (final name in added) '+ $name',
+    for (final name in removed) '− $name',
+  ].join(', ');
+
+  /// [before] — the workout as the session started from it — with only this
+  /// change made: the removed movements gone, the added ones after the
+  /// movement they followed in the session, everything else untouched.
+  List<TemplateMovement> applyTo(List<TemplateMovement> before) {
+    List<TemplateMovement> after(int? index) => <TemplateMovement>[
+      for (final a in _additions)
+        if (a.after == index) a.movement,
     ];
-    return parts.join(', ');
+    return <TemplateMovement>[
+      ...after(null),
+      for (var i = 0; i < before.length; i++) ...<TemplateMovement>[
+        if (!_removedAt.contains(i)) before[i],
+        ...after(i),
+      ],
+    ];
   }
-
-  static String _list(List<String> names) => switch (names.length) {
-    1 => names.single,
-    2 => '${names[0]} and ${names[1]}',
-    _ => '${names[0]} and ${names.length - 1} more',
-  };
 }

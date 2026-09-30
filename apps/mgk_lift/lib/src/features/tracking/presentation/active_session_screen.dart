@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -13,6 +13,7 @@ import '../domain/rest_timer.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/planned_movement.dart';
 import '../../planning/presentation/swap_sheet.dart';
+import '../../stats/domain/training_stats.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
@@ -21,7 +22,6 @@ import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'finish_sheet.dart';
 import 'reorder_sheet.dart';
-import 'save_workout_prompt.dart';
 import 'session_summary_screen.dart';
 import 'workout_library_screen.dart';
 
@@ -197,17 +197,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// session at most, and in practice once ever. See [_offerRestAlerts].
   bool _consideredAlerts = false;
 
-  /// Whether this session has already been saved to the library, or was filled
-  /// **from** it. Either suppresses the offer to save on the way out.
-  bool _savedToLibrary = false;
-  bool _filledFromLibrary = false;
+  /// Each movement's best estimated one-rep max before this session, by
+  /// lower-cased name, read from the log the first time the movement is
+  /// ticked. Null is a movement never done: nothing to beat.
+  final Map<String, Mass?> _bestBefore = <String, Mass?>{};
 
-  /// Started from a saved workout — here, or from Track with its sets laid out.
-  bool get _fromLibrary => _filledFromLibrary || _session.templateId != null;
+  /// The best this session has already announced for each movement, so a set
+  /// that only matches it says nothing.
+  final Map<String, Mass> _bestToday = <String, Mass>{};
 
-  /// The name field of the save dialog. See [promptToSaveWorkout] for why it is
-  /// owned here rather than built with the dialog.
-  final TextEditingController _nameField = TextEditingController();
+  /// What the mark is saying, while it says it: a new best (R7). Cleared when
+  /// the line has been shown.
+  CoachLine? _bubble;
+
+  /// Keys each bubble, so a second new best plays again rather than being
+  /// taken for the first.
+  int _bubbles = 0;
 
   /// Exercises the lifter has opened or closed **by hand**, keyed by id. Only
   /// the overrides; a finished movement collapses on its own.
@@ -293,7 +298,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     _ticker?.cancel();
     _clock.dispose();
     _scroll.dispose();
-    _nameField.dispose();
     for (final node in _focus.values) {
       node.dispose();
     }
@@ -614,9 +618,48 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       if (!widget.editing) {
         _startRest(movement: _exerciseOf(set.id)?.name);
         unawaited(_offerRestAlerts());
+        _checkBest(set);
       }
       unawaited(AppHaptics.commit());
     }
+  }
+
+  /// Says so when the set just ticked is a new best for its movement (R7, O3).
+  ///
+  /// **The same rule as the summary's**, so the two can never disagree about
+  /// what a best is: Epley, twelve reps or fewer, strictly greater than every
+  /// session before, and never on a movement with no history — a first time is
+  /// not a best, there is nothing to have beaten (see [SessionSummary.of]).
+  /// Worked out here from the log the screen already has: no network, no
+  /// model, and free for everyone, because bests are tracking.
+  void _checkBest(SessionSet set) {
+    if (set.isWarmup) return;
+    final movement = _exerciseOf(set.id)?.name;
+    if (movement == null) return;
+    final estimate = TrainingStats.estimateOneRepMax(
+      Mass.kilograms(set.weightKg),
+      set.reps,
+    );
+    if (estimate == null) return;
+    final key = movement.toLowerCase();
+    final before = _bestBefore.putIfAbsent(
+      key,
+      () => TrainingStats.bestOneRepMax(widget.log, movement)?.estimate,
+    );
+    if (before == null) return;
+    final bar = _bestToday[key] ?? before;
+    if (estimate.kilograms <= bar.kilograms) return;
+    _bestToday[key] = estimate;
+    final unit = widget.massUnit;
+    setState(() {
+      _bubbles++;
+      _bubble = CoachLine(
+        headline: 'New best: $movement',
+        detail:
+            '${Mass.kilograms(set.weightKg).label(unit)} × ${set.reps}, about '
+            '${estimate.label(unit)} for one. Past ${bar.label(unit)}.',
+      );
+    });
   }
 
   /// The movement [setId] belongs to, as the session holds it now.
@@ -918,7 +961,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     );
     if (outcome is! StartWorkout || !mounted) return;
     final workout = outcome.workout;
-    setState(() => _filledFromLibrary = true);
     await _enqueue(
       () => widget.recorder.fillFromLibrary(
         workoutId: workout.id,
@@ -927,21 +969,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         snapshot: TemplateMovement.encode(workout.movements),
       ),
     );
-  }
-
-  /// Saves what is on screen to the library, under a name the lifter confirms.
-  Future<void> _saveToLibrary() async {
-    final library = widget.library;
-    if (library == null || _session.exercises.isEmpty) return;
-    final name = await promptToSaveWorkout(
-      context,
-      library: library,
-      field: _nameField,
-      suggestedName: _session.name,
-      movements: workoutMovementsOf(_session),
-    );
-    if (name == null || !mounted) return;
-    setState(() => _savedToLibrary = true);
   }
 
   // ---- ending -------------------------------------------------------------------------------
@@ -959,52 +986,113 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     await _writes;
     if (!mounted) return;
 
-    final confirmed = await FinishSheet.show(
+    // The question is worked out before the sheet, so the sheet can ask it
+    // (R3, R4) — and read **before** Finish drops the unticked sets, because a
+    // row left unticked is a set skipped today, not one removed.
+    final offer = await _saveOffer();
+    if (!mounted) return;
+    final decision = await FinishSheet.show(
       context,
       session: _session,
       massUnit: widget.massUnit,
+      offer: offer,
     );
-    if (confirmed != true || !mounted) return;
+    if (decision == null || !mounted) return;
 
     // Finish is a write like any other, so it waits its turn.
     await _writes;
-
-    // What this session did to the workout it came from — read **before**
-    // Finish drops the unticked sets, because a row left unticked is a set
-    // skipped today, not one removed from the workout.
     final started = _session;
-    final snapshot = TemplateMovement.decode(started.templateSnapshot);
-    final lesson = snapshot == null || started.templateId == null
-        ? null
-        : TemplateUpdate.between(snapshot, started);
-    final fromLibrary = _fromLibrary;
-
     final finished = await widget.recorder.finish();
     if (!mounted) return;
     unawaited(AppHaptics.commit());
+    final kept = decision.save && offer != null
+        ? await _keep(offer, decision, started, finished)
+        : null;
+    if (!mounted) return;
     widget.onFinished?.call();
 
     // A replacement is not a pop, so the PopScope below does not see it.
     _dropMessages();
+    // After the drop, so it outlives this screen and is read on the summary.
+    if (kept != null) AppToast.show(context, kept);
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => SessionSummaryScreen(
           session: finished,
           massUnit: widget.massUnit,
           log: widget.log,
-          library: widget.library,
-          // No offer to save a session that came from the library — its
-          // workout learns from it instead — or one saved already, or one
-          // with nothing in it.
-          offerSave:
-              !_savedToLibrary && !fromLibrary && finished.exercises.isNotEmpty,
-          templateId: started.templateId,
-          lesson: lesson,
           backup: widget.backup,
           onOpenCoach: widget.onOpenCoach,
         ),
       ),
     );
+  }
+
+  /// What Finish can offer about a workout, or null when there is nothing to
+  /// ask: a session from a saved workout whose movements did not change, one
+  /// being edited, or a build with no library.
+  Future<SaveOffer?> _saveOffer() async {
+    final library = widget.library;
+    if (library == null || widget.editing) return null;
+    final id = _session.templateId;
+    final snapshot = TemplateMovement.decode(_session.templateSnapshot);
+    if (id == null || snapshot == null) {
+      return SaveAsWorkout(suggestedName: _session.name);
+    }
+    final change = MovementChange.between(snapshot, _session);
+    if (change.isEmpty) return null;
+    final current = await library.byId(id);
+    if (current == null) {
+      return SaveAsNewWorkout(workoutName: _session.name, change: change);
+    }
+    return UpdateWorkout(
+      workoutName: current.name,
+      change: change,
+      editedMeanwhile: !listEquals(current.movements, snapshot),
+    );
+  }
+
+  /// Does what the lifter said yes to at Finish, and says what it did.
+  Future<String?> _keep(
+    SaveOffer offer,
+    FinishDecision decision,
+    Session started,
+    Session finished,
+  ) async {
+    final library = widget.library;
+    if (library == null) return null;
+    final snapshot =
+        TemplateMovement.decode(started.templateSnapshot) ??
+        const <TemplateMovement>[];
+    switch (offer) {
+      case UpdateWorkout(:final change):
+        final id = started.templateId;
+        final current = id == null ? null : await library.byId(id);
+        if (current == null) return null;
+        // Onto the workout the session started from: only the movements
+        // change, and on a conflict the lifter has said to replace the edit.
+        await library.update(
+          current.copyWith(movements: change.applyTo(snapshot)),
+        );
+        return '${current.name} is updated for next time.';
+      case SaveAsNewWorkout(:final workoutName, :final change):
+        final taken = <String>[for (final w in await library.all()) w.name];
+        final saved = await library.save(
+          name: uniqueWorkoutName(decision.name ?? workoutName, taken),
+          movements: change.applyTo(snapshot),
+        );
+        return '${saved.name} is in your workouts.';
+      case SaveAsWorkout(:final suggestedName):
+        final movements = movementsOf(finished);
+        if (movements.isEmpty) return null;
+        // Exactly what they typed. The `(2)` suffix is for names the app
+        // chose — see [uniqueWorkoutName].
+        final saved = await library.save(
+          name: decision.name ?? suggestedName,
+          movements: movements,
+        );
+        return '${saved.name} is in your workouts.';
+    }
   }
 
   bool _leaving = false;
@@ -1025,14 +1113,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       return;
     }
     if (_session.untickedSets > 0) {
-      final confirmed = await FinishSheet.show(
+      // Never the save question: a session that happened does not rewrite
+      // the workout it came from, however it is corrected afterwards.
+      final decision = await FinishSheet.show(
         context,
         session: _session,
         massUnit: widget.massUnit,
         title: 'Save ${_session.name}?',
         actionLabel: 'Save',
       );
-      if (confirmed != true || !mounted) return;
+      if (decision == null || !mounted) return;
     }
     await _writes;
     await widget.recorder.finish();
@@ -1100,18 +1190,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        // **Content between two panes of glass.** The photograph behind, the
-        // list scrolling between a bar that folds in at the top and a dock at
-        // the bottom — the one material in the app, used where it has
-        // something to refract (D6). The cards themselves stay solid.
+        // **A soft light, not a photograph (R13).** The design review found
+        // the gym photo behind the session busy under a list of numbers; the
+        // references sit a workout on a dark gradient with one light, which
+        // gives the glass heading and bar something to blur without anything
+        // to read past. The light drifts at a fraction of the scroll — the
+        // depth cue that says the list is in front of it.
         body: AnimatedBuilder(
           animation: _scroll,
-          builder: (context, child) => PhotoBackdrop(
-            image: 'assets/images/backgrounds/hero_home.webp',
-            scrim: ScrimStrength.grounded,
-            // The photograph drifts at a fraction of the scroll — the depth
-            // cue that says the list is in front of it, not painted on it.
-            offset: -(_scrollOffset.clamp(0, 600)) * 0.12,
+          builder: (context, child) => GlowBackdrop(
+            light: Alignment(0.55, -1.05 - _scrollOffset.clamp(0, 600) / 1500),
             child: child,
           ),
           child: Column(
@@ -1150,19 +1238,37 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                         clock: _clock,
                         canFinish: canFinish,
                         onFinish: _finish,
+                        // In the bar, beside Finish (9): it was the dock's
+                        // resting state, which kept a pane of glass across
+                        // the foot of the screen for a button used a few
+                        // times a session.
+                        onAdd: full ? null : _addExercises,
                       ),
                     ),
-                    if (!empty && !(editing && keyboardUp))
+                    if (!(editing && keyboardUp))
                       Positioned(
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        child: _Dock(
-                          rest: widget.editing ? null : _rest,
-                          clock: _clock,
-                          onAdd: full ? null : _addExercises,
-                          onAdjust: _adjustRest,
-                          onDismiss: () => setState(() => _rest = null),
+                        child: _Foot(
+                          coach: widget.onOpenCoach == null
+                              ? null
+                              : CoachReveal(
+                                  key: ValueKey<int>(_bubbles),
+                                  note: _bubble,
+                                  onTap: widget.onOpenCoach,
+                                  onFinished: () {
+                                    if (mounted) setState(() => _bubble = null);
+                                  },
+                                ),
+                          dock: widget.editing || _rest == null
+                              ? null
+                              : _Dock(
+                                  rest: _rest!,
+                                  clock: _clock,
+                                  onAdjust: _adjustRest,
+                                  onDismiss: () => setState(() => _rest = null),
+                                ),
                         ),
                       ),
                   ],
@@ -1271,31 +1377,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               onPressed: _reorder,
             ),
           ),
-        // Here rather than in the header: saving is decided about the shape
-        // of a session after seeing it, and the list is where the shape is.
-        //
-        // Not for a session from a saved workout — that workout learns from
-        // it at Finish, and a save here made a second copy — and a statement
-        // once saved, so a second tap cannot make a third.
-        if (widget.library != null && !_fromLibrary && !widget.editing)
-          Center(
-            child: _savedToLibrary
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: Text(
-                      'Saved to your workouts',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  )
-                : AppTextButton(
-                    label: 'Save to your workouts',
-                    onPressed: _saveToLibrary,
-                  ),
-          ),
         const SizedBox(height: AppSpacing.sm),
         // Destructive, so it sits at the bottom of the list rather than in
         // the chrome. Not while editing: a session that happened is deleted
@@ -1390,6 +1471,7 @@ class _TopBar extends StatelessWidget {
     required this.clock,
     required this.canFinish,
     required this.onFinish,
+    required this.onAdd,
   });
 
   final ScrollController scroll;
@@ -1411,6 +1493,9 @@ class _TopBar extends StatelessWidget {
   final ValueListenable<DateTime> clock;
   final bool canFinish;
   final VoidCallback onFinish;
+
+  /// Adds movements. Null when the session is full.
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -1498,7 +1583,24 @@ class _TopBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: AppSpacing.xs),
+                    Tooltip(
+                      message: 'Add exercise',
+                      excludeFromSemantics: true,
+                      child: AppTextButton(
+                        label: 'Add',
+                        icon: Icons.add,
+                        onPressed: onAdd,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
                     AppFilledButton(
                       // Nothing ticked is not a session. Finishing would put an
                       // empty row in the log and an empty card in the
@@ -1556,55 +1658,114 @@ class _LargeTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SectionLabel(editing ? 'Editing' : 'In progress'),
-        const SizedBox(height: AppSpacing.xs),
-        Text(name, style: theme.textTheme.headlineSmall, maxLines: 2),
-        const SizedBox(height: AppSpacing.sm),
-        ValueListenableBuilder<DateTime>(
-          valueListenable: clock,
-          builder: (context, now, _) => Text.rich(
-            TextSpan(
-              children: <InlineSpan>[
-                TextSpan(
-                  // Editing, the date: which session this is, not how long ago
-                  // it started.
-                  text: editing
-                      ? _dateText(startedAt)
-                      : _clockText(now.difference(startedAt).abs()),
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+    // On glass (8): the session's name and where it stands, as one panel over
+    // the light rather than loose type on the page.
+    return GlassSurface(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SectionLabel(editing ? 'Editing' : 'In progress'),
+          const SizedBox(height: AppSpacing.xs),
+          Text(name, style: theme.textTheme.headlineSmall, maxLines: 2),
+          const SizedBox(height: AppSpacing.sm),
+          ValueListenableBuilder<DateTime>(
+            valueListenable: clock,
+            builder: (context, now, _) => Text.rich(
+              TextSpan(
+                children: <InlineSpan>[
+                  TextSpan(
+                    // Editing, the date: which session this is, not how long ago
+                    // it started.
+                    text: editing
+                        ? _dateText(startedAt)
+                        : _clockText(now.difference(startedAt).abs()),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    ),
                   ),
-                ),
-                TextSpan(
-                  text: <String>[
-                    '',
-                    if (volumeKg > 0) Mass.kilograms(volumeKg).label(massUnit),
-                    '$completedSets ${completedSets == 1 ? 'set' : 'sets'}',
-                    '$movements ${movements == 1 ? 'movement' : 'movements'}',
-                  ].join('  ·  '),
-                ),
-              ],
-            ),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
+                  TextSpan(
+                    text: <String>[
+                      '',
+                      if (volumeKg > 0)
+                        Mass.kilograms(volumeKg).label(massUnit),
+                      '$completedSets ${completedSets == 1 ? 'set' : 'sets'}',
+                      '$movements ${movements == 1 ? 'movement' : 'movements'}',
+                    ].join('  ·  '),
+                  ),
+                ],
+              ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// The dock: *Add exercise* at rest, the rest timer while resting.
+/// What floats at the foot of the session: the coach's mark, and the rest
+/// timer's dock under it while resting.
 ///
-/// **The timer grows out of the dock** rather than arriving as a second bar:
-/// ticking a set changes what the one control at the bottom of the screen is
-/// for, on a spring, and it goes back when rest is over. It replaced a flat
-/// strip pinned under the list.
+/// **The mark rides above the dock**, as it rides above the nav pill on the
+/// tabs, so the two never cover each other. The dock rises from the bottom
+/// edge when a rest starts and sinks when it ends; the mark moves with it.
+class _Foot extends StatelessWidget {
+  const _Foot({required this.coach, required this.dock});
+
+  final Widget? coach;
+  final Widget? dock;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ?coach,
+          AnimatedSwitcher(
+            duration: AppMotion.base,
+            switchInCurve: AppMotion.entrance,
+            switchOutCurve: AppMotion.exit,
+            transitionBuilder: (child, animation) => SizeTransition(
+              sizeFactor: animation,
+              axisAlignment: 1,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+            child: dock == null
+                ? const SizedBox(
+                    key: ValueKey<String>('none'),
+                    width: double.infinity,
+                  )
+                : Padding(
+                    key: const ValueKey<String>('dock'),
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: dock,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The dock: the rest timer, while resting — and only then.
+///
+/// **The dock exists only while resting (9).** It used to be there all the
+/// time, holding *Add exercise* between rests: a pane of glass across the foot
+/// of the screen for a button used a few times a session. Add is in the top
+/// bar now, and the dock rises with the timer and goes when the rest does.
 ///
 /// Rest is still not a mode. Nothing behind the dock is blocked; tick the next
 /// set and the timer starts again, ignore it and it sits there.
@@ -1612,87 +1773,33 @@ class _Dock extends StatelessWidget {
   const _Dock({
     required this.rest,
     required this.clock,
-    required this.onAdd,
     required this.onAdjust,
     required this.onDismiss,
   });
 
-  final RestTimer? rest;
+  final RestTimer rest;
 
   /// The screen's one-second ticker, which the countdown repaints from.
   final ValueListenable<DateTime> clock;
 
-  /// Null when the session is full.
-  final VoidCallback? onAdd;
   final void Function(Duration by) onAdjust;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
-    final timer = rest;
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: GlassSurface.dock(
-        padding: EdgeInsets.zero,
-        child: AnimatedSize(
-          duration: AppMotion.base,
-          curve: AppMotion.snappy,
-          alignment: Alignment.bottomCenter,
-          child: AnimatedSwitcher(
-            duration: AppMotion.base,
-            switchInCurve: AppMotion.entrance,
-            switchOutCurve: AppMotion.exit,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
-                child: child,
-              ),
-            ),
-            child: timer == null
-                ? _AddRow(key: const ValueKey<String>('add'), onAdd: onAdd)
-                : ValueListenableBuilder<DateTime>(
-                    key: const ValueKey<String>('rest'),
-                    valueListenable: clock,
-                    builder: (context, now, _) => _RestRow(
-                      timer: timer,
-                      now: now,
-                      onAdjust: onAdjust,
-                      onDismiss: onDismiss,
-                      onAdd: onAdd,
-                    ),
-                  ),
-          ),
+    return GlassSurface.dock(
+      padding: EdgeInsets.zero,
+      child: ValueListenableBuilder<DateTime>(
+        valueListenable: clock,
+        builder: (context, now, _) => _RestRow(
+          timer: rest,
+          now: now,
+          onAdjust: onAdjust,
+          onDismiss: onDismiss,
         ),
       ),
     );
   }
-}
-
-class _AddRow extends StatelessWidget {
-  const _AddRow({super.key, required this.onAdd});
-
-  final VoidCallback? onAdd;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: double.infinity,
-    child: AppTextButton(
-      label: 'Add exercise',
-      icon: Icons.add,
-      onPressed: onAdd,
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.textPrimary,
-        minimumSize: const Size.fromHeight(52),
-      ),
-    ),
-  );
 }
 
 /// The countdown, in the dock: a ring draining with the time left, the time,
@@ -1703,7 +1810,6 @@ class _RestRow extends StatelessWidget {
     required this.now,
     required this.onAdjust,
     required this.onDismiss,
-    required this.onAdd,
   });
 
   final RestTimer timer;
@@ -1713,7 +1819,6 @@ class _RestRow extends StatelessWidget {
   final DateTime now;
   final void Function(Duration by) onAdjust;
   final VoidCallback onDismiss;
-  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -1812,13 +1917,6 @@ class _RestRow extends StatelessWidget {
                       foregroundColor: AppColors.textPrimary,
                       visualDensity: VisualDensity.compact,
                     ),
-                  ),
-                  AppIconButton(
-                    icon: Icons.add,
-                    tooltip: 'Add exercise',
-                    onPressed: onAdd,
-                    color: AppColors.textSecondary,
-                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),

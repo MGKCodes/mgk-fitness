@@ -102,7 +102,7 @@ void main() {
   });
 
   group('the summary', () {
-    testWidgets('says saved at once, then backed up, live', (tester) async {
+    testWidgets('says it is backing up, then goes, live', (tester) async {
       final status = ValueNotifier<BackupStatus>(
         const BackupStatus(
           state: BackupState.running,
@@ -122,7 +122,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Saved on this phone. Backing up…'), findsOneWidget);
+      // The pill says what backup is doing; the session being on the phone is
+      // the whole premise of the screen (14).
+      expect(find.text('Backing up…'), findsOneWidget);
 
       // The run that Finish started lands a moment later.
       status.value = BackupStatus(
@@ -132,8 +134,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Backed up.'), findsOneWidget);
-      expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
+      // Gone once it has: a pill saying "Backed up." for as long as the screen
+      // is open is a line nobody needs.
+      expect(find.text('Backing up…'), findsNothing);
+      expect(find.text('Backed up.'), findsNothing);
     });
 
     testWidgets('a failure offers a retry', (tester) async {
@@ -161,6 +165,30 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Retry'));
       expect(retried, 1);
+    });
+
+    testWidgets('signed out, says the session is on the phone and stops', (
+      tester,
+    ) async {
+      // The account card's rule: it reports, it does not sell.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionSummaryScreen(
+            session: finished,
+            backup: BackupHooks(
+              status: ValueNotifier<BackupStatus>(
+                const BackupStatus(
+                  state: BackupState.signedOut,
+                  pending: SyncPending(workouts: 1, lastSyncedAt: null),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Saved on this phone.'), findsOneWidget);
+      expect(find.textContaining('Sign in'), findsNothing);
     });
 
     testWidgets('with no server, says nothing about backup', (tester) async {

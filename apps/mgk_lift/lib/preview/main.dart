@@ -34,7 +34,7 @@ import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
-import '../src/features/tracking/presentation/save_workout_prompt.dart';
+import '../src/features/tracking/presentation/finish_sheet.dart';
 import '../src/features/tracking/presentation/workout_editor_screen.dart';
 import '../src/features/tracking/data/exercise_lookup.dart';
 import '../src/features/photos/data/in_memory_photo_library.dart';
@@ -438,7 +438,6 @@ class PreviewApp extends StatelessWidget {
       'session-summary': (_) => SessionSummaryScreen(
         session: _finishedSession(),
         log: sampleLog(previewNow),
-        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         onOpenCoach: () {},
       ),
       // The same session with 95 on the bench instead of 85, which is the only
@@ -447,26 +446,42 @@ class PreviewApp extends StatelessWidget {
       'session-summary-pb': (_) => SessionSummaryScreen(
         session: _finishedSession(benchTopKg: 95),
         log: sampleLog(previewNow),
-        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         onOpenCoach: () {},
       ),
-      // A session started from a saved workout, with Cable Fly taken out: the
-      // workout learns it here, with Undo — so it is out next week as well.
-      'session-summary-lesson': (_) => SessionSummaryScreen(
-        session: _finishedSession(),
-        log: sampleLog(previewNow),
-        library: InMemoryWorkoutLibrary(_savedWorkouts()),
-        offerSave: false,
-        templateId: _savedWorkouts().first.id,
-        lesson: _lesson(),
-        onOpenCoach: () {},
+      // The question the summary no longer asks, where it is asked now (R3,
+      // R4): a session from Wednesday push with Cable Fly taken out and Dips
+      // added, on by default.
+      'finish-sheet-save': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
+        open: (context) => FinishSheet.show(
+          context,
+          session: _openSession(),
+          massUnit: MassUnit.kilograms,
+          offer: UpdateWorkout(
+            workoutName: 'Wednesday push',
+            change: MovementChange.between(
+              _savedWorkouts().first.movements,
+              _openSession(),
+            ),
+          ),
+        ),
+      ),
+      // A session started blank: Save as a workout, switched on to show the
+      // name it would be kept under.
+      'finish-sheet-blank': (_) => _SheetHost(
+        behind: _runningSessionScreen(),
+        open: (context) => FinishSheet.show(
+          context,
+          session: _openSession(),
+          massUnit: MassUnit.kilograms,
+          offer: SaveAsWorkout(suggestedName: _openSession().name),
+        ),
       ),
       // The line under the totals: offline in a basement, and a moment later
       // backed up.
       'session-summary-offline': (_) => SessionSummaryScreen(
         session: _finishedSession(),
         log: sampleLog(previewNow),
-        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         backup: BackupHooks(
           status: _backup(
             state: BackupState.offline,
@@ -482,7 +497,6 @@ class PreviewApp extends StatelessWidget {
       'session-summary-backed-up': (_) => SessionSummaryScreen(
         session: _finishedSession(),
         log: sampleLog(previewNow),
-        library: InMemoryWorkoutLibrary(_savedWorkouts()),
         backup: BackupHooks(
           status: _backup(
             pending: SyncPending(
@@ -499,11 +513,8 @@ class PreviewApp extends StatelessWidget {
       // say it cannot tell rather than say nothing moved. The second movement
       // was added and never worked, which is the only case where the movement
       // count is larger than the list of sets explains.
-      'session-summary-short': (_) => SessionSummaryScreen(
-        session: _shortSession(),
-        library: InMemoryWorkoutLibrary(),
-        onOpenCoach: () {},
-      ),
+      'session-summary-short': (_) =>
+          SessionSummaryScreen(session: _shortSession(), onOpenCoach: () {}),
       'photos': (_) => const _PhotosPreview(),
       'photo-series': (_) => const _PhotosPreview(view: _PhotosView.series),
       'photo-source': (_) => const _PhotosPreview(view: _PhotosView.source),
@@ -904,7 +915,6 @@ class PreviewApp extends StatelessWidget {
       // Three of them are the loudest controls on their host — add a movement,
       // keep this workout, delete a photo — and the fourth is the only thing
       // progress photos are for.
-      'save-workout': (_) => const _SaveWorkoutPreview(),
       'series-playback': (_) =>
           const _PhotosPreview(view: _PhotosView.playback),
     };
@@ -1613,53 +1623,6 @@ class _PhotosPreviewState extends State<_PhotosPreview> {
   }
 }
 
-/// The save prompt, over the summary that offers it.
-///
-/// A widget rather than a `_SheetHost` closure because the dialog's field
-/// belongs to the calling screen — [promptToSaveWorkout] says so itself, and
-/// creating a controller that outlives nothing would reproduce exactly the bug
-/// its doc comment warns about.
-class _SaveWorkoutPreview extends StatefulWidget {
-  const _SaveWorkoutPreview();
-
-  @override
-  State<_SaveWorkoutPreview> createState() => _SaveWorkoutPreviewState();
-}
-
-class _SaveWorkoutPreviewState extends State<_SaveWorkoutPreview> {
-  final TextEditingController _field = TextEditingController();
-  late final Session _session = _finishedSession();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      promptToSaveWorkout(
-        context,
-        library: InMemoryWorkoutLibrary(),
-        field: _field,
-        suggestedName: _session.name,
-        movements: workoutMovementsOf(_session),
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _field.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => SessionSummaryScreen(
-    session: _session,
-    log: sampleLog(previewNow),
-    library: InMemoryWorkoutLibrary(_savedWorkouts()),
-    onOpenCoach: () {},
-  );
-}
-
 /// Twelve weeks of front and back shots, with two weeks missed in the middle.
 List<ProgressPhoto> _samplePhotos(String path) {
   final thisWeek = ProgressPhoto.weekOf(previewNow);
@@ -1824,38 +1787,6 @@ Widget _runningSessionScreen() {
 ///
 /// Enough to show the list, the movement summary line and the premade
 /// back-reference without being a wall of identical rows.
-/// What a session did to *Wednesday push*: every set laid out and worked,
-/// and Cable Fly removed.
-TemplateUpdate _lesson() {
-  final workout = _savedWorkouts().first;
-  SessionExercise worked(String name, int sets) => SessionExercise(
-    id: name,
-    name: name,
-    orderIndex: 0,
-    sets: <SessionSet>[
-      for (var i = 0; i < sets; i++)
-        SessionSet(
-          id: '$name-$i',
-          setNumber: i + 1,
-          reps: 5,
-          isCompleted: true,
-        ),
-    ],
-  );
-  return TemplateUpdate.between(
-    workout.movements,
-    Session(
-      id: 'lesson',
-      name: workout.name,
-      startedAt: previewNow.subtract(const Duration(hours: 1)),
-      exercises: <SessionExercise>[
-        worked('Barbell Bench Press', 4),
-        worked('Dumbbell Shoulder Press', 3),
-        worked('Cable Tricep Pushdown', 3),
-      ],
-    ),
-  );
-}
 
 List<SavedWorkout> _savedWorkouts() => <SavedWorkout>[
   SavedWorkout(

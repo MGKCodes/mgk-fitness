@@ -47,7 +47,6 @@ import '../../settings/domain/unit_settings.dart';
 import '../../coaching/presentation/adjust_reasons_sheet.dart';
 import '../../coaching/presentation/chat_controller.dart';
 import '../../coaching/presentation/coach_conversation.dart';
-import '../../coaching/presentation/coach_reveal.dart';
 import '../../coaching/presentation/chat_entry.dart';
 import '../../coaching/presentation/coach_flow.dart';
 import '../../coaching/presentation/coach_gate_sheet.dart';

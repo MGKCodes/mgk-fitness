@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -9,8 +7,6 @@ import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import '../domain/session_summary.dart';
-import '../domain/workout_library.dart';
-import 'save_workout_prompt.dart';
 
 /// What a session was, shown once, immediately after it ends.
 ///
@@ -36,10 +32,6 @@ class SessionSummaryScreen extends StatefulWidget {
     required this.session,
     this.massUnit = MassUnit.kilograms,
     this.log = const <Session>[],
-    this.library,
-    this.offerSave = true,
-    this.templateId,
-    this.lesson,
     this.backup,
     this.onOpenCoach,
     this.onEdit,
@@ -66,32 +58,12 @@ class SessionSummaryScreen extends StatefulWidget {
   /// rather than as an error.
   final List<Session> log;
 
-  /// The lifter's saved workouts — where this session could be saved, and
-  /// where the workout it came from learns from it. Null is a build with no
-  /// on-device database, and hides both.
-  final WorkoutLibrary? library;
-
-  /// Whether to offer "Save to your workouts". The session screen decides:
-  /// not for a session with nothing in it, one already saved from the button in
-  /// the running list, or one started from the library — which already has its
-  /// workout, and teaches it instead ([lesson]).
-  final bool offerSave;
-
-  /// The saved workout this session was started from, if any.
-  final String? templateId;
-
-  /// What the session did to that workout — see [TemplateUpdate]. Applied here
-  /// on arrival, with Undo; asked about instead when the workout changed while
-  /// the session ran; offered as a new workout when it was deleted meanwhile.
-  final TemplateUpdate? lesson;
-
-  /// Whether this session is backed up, said under the totals. Null is a
+  /// Whether this session is backed up, in the pill at the top. Null is a
   /// build with no server, where there is nothing to say beyond the log.
   final BackupHooks? backup;
 
-  /// Opens the coach. **Null hides the action** rather than showing one that
-  /// leads nowhere — there is no coach in a free or offline build, the same
-  /// rule the coach mark itself follows.
+  /// Opens the coach, from the mark. **Null hides the mark** rather than
+  /// showing one that leads nowhere — there is no coach in an offline build.
   final VoidCallback? onOpenCoach;
 
   @override
@@ -103,141 +75,6 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
     widget.session,
     log: widget.log,
   );
-
-  /// The name field of the save dialog. Owned here rather than built with the
-  /// dialog — see [promptToSaveWorkout] for why that distinction is not
-  /// cosmetic.
-  final TextEditingController _nameField = TextEditingController();
-
-  /// Set once the workout has been kept, so the offer becomes a statement.
-  /// Leaving the button there would invite a second copy of the same workout.
-  String? _savedAs;
-
-  /// Where the workout's lesson stands. See [_learn].
-  _Lesson _lesson = _Lesson.none;
-
-  /// The workout as it was before the lesson was applied — what Undo puts
-  /// back — or, when the lesson is waiting to be asked about, as it is now.
-  SavedWorkout? _workout;
-
-  @override
-  void initState() {
-    super.initState();
-    _learn();
-  }
-
-  @override
-  void dispose() {
-    _nameField.dispose();
-    super.dispose();
-  }
-
-  /// **The workout learns from the session** — decision D1: applied, not
-  /// asked, with Undo on this screen, so a movement removed today does not
-  /// have to be removed again next week.
-  ///
-  /// Applied only when the workout is exactly as it was when the session
-  /// started. If it changed meanwhile — edited here or on another device — the
-  /// session's changes were made against a workout that no longer exists, so
-  /// the lifter is asked instead of having one edit silently beat the other.
-  /// If it was deleted, the lesson is offered as a new workout.
-  Future<void> _learn() async {
-    final library = widget.library;
-    final id = widget.templateId;
-    final lesson = widget.lesson;
-    if (library == null || id == null || lesson == null || lesson.isEmpty) {
-      return;
-    }
-    final current = await library.byId(id);
-    if (!mounted) return;
-    if (current == null) {
-      setState(() => _lesson = _Lesson.missing);
-      return;
-    }
-    if (!_same(current.movements, lesson.before)) {
-      setState(() {
-        _workout = current;
-        _lesson = _Lesson.changedMeanwhile;
-      });
-      return;
-    }
-    await library.update(current.copyWith(movements: lesson.after));
-    if (!mounted) return;
-    setState(() {
-      _workout = current;
-      _lesson = _Lesson.applied;
-    });
-  }
-
-  Future<void> _undoLesson() async {
-    final library = widget.library;
-    final before = _workout;
-    if (library == null || before == null) return;
-    await library.update(before);
-    if (mounted) setState(() => _lesson = _Lesson.undone);
-  }
-
-  Future<void> _applyAnyway() async {
-    final library = widget.library;
-    final current = _workout;
-    final lesson = widget.lesson;
-    if (library == null || current == null || lesson == null) return;
-    await library.update(current.copyWith(movements: lesson.after));
-    if (mounted) setState(() => _lesson = _Lesson.appliedOnRequest);
-  }
-
-  Future<void> _saveLessonAsNew() async {
-    final library = widget.library;
-    final lesson = widget.lesson;
-    if (library == null || lesson == null) return;
-    final name = await promptToSaveWorkout(
-      context,
-      library: library,
-      field: _nameField,
-      suggestedName: widget.session.name,
-      movements: lesson.after,
-    );
-    if (name == null || !mounted) return;
-    setState(() {
-      _savedAs = name;
-      _lesson = _Lesson.none;
-    });
-  }
-
-  static bool _same(List<TemplateMovement> a, List<TemplateMovement> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  /// **The save offer lives here rather than as a dialog before this screen.**
-  ///
-  /// It used to fire the instant Finish was tapped: a naming dialog was the
-  /// first — and until this screen existed, the only — thing a lifter saw of
-  /// the session they had just ended. That put a modal question in front of the
-  /// answer, and the question is one the session screen's own note already
-  /// says needs the answer first: *saving is something you decide about the
-  /// shape of a session after seeing it.* The summary is where the shape is
-  /// now, so this is where the offer belongs.
-  ///
-  /// It is also cheaper to decline. A dialog costs a tap to dismiss whether or
-  /// not it was wanted; a button on a screen somebody was going to read anyway
-  /// costs nothing to ignore.
-  Future<void> _save() async {
-    final library = widget.library;
-    if (library == null) return;
-    final name = await promptToSaveWorkout(
-      context,
-      library: library,
-      field: _nameField,
-      suggestedName: widget.session.name,
-      movements: workoutMovementsOf(widget.session),
-    );
-    if (name == null || !mounted) return;
-    setState(() => _savedAs = name);
-  }
 
   /// Leaves the summary, then opens the coach.
   ///
@@ -254,154 +91,145 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
     open();
   }
 
+  /// What the mark says as the summary arrives: the session's new bests (13,
+  /// R7), then it closes. Null says nothing — most sessions set no best, and
+  /// the mark is not there to fill the silence.
+  /// Cleared once said, so the mark goes back to resting rather than holding
+  /// a line nobody can see.
+  late CoachLine? _bests = _bestsLine(_summary, widget.massUnit);
+
+  static CoachLine? _bestsLine(SessionSummary summary, MassUnit unit) {
+    final bests = summary.personalBests;
+    if (bests.isEmpty) return null;
+    if (bests.length == 1) {
+      final b = bests.single;
+      return CoachLine(
+        headline: 'New best: ${b.movement}',
+        detail:
+            '${b.weight.label(unit)} × ${b.reps}, about ${b.estimate.label(unit)} '
+            'for one. Past ${b.previous.label(unit)}.',
+      );
+    }
+    final names = <String>[for (final b in bests) b.movement];
+    return CoachLine(
+      headline: '${bests.length} new bests',
+      detail:
+          '${names.take(names.length - 1).join(', ')} and ${names.last}, '
+          'each past its best.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final backup = widget.backup;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final mark = widget.onOpenCoach != null && !widget.fromHistory;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: PhotoBackdrop(
-        image: 'assets/images/backgrounds/hero_home.webp',
-        scrim: ScrimStrength.quiet,
-        child: SafeArea(
-          child: Column(
-            children: <Widget>[
-              _Header(
-                onBack: () => Navigator.of(context).maybePop(),
-                summary: _summary,
-                massUnit: widget.massUnit,
-                // From the log, the date is the point: which Tuesday it was.
-                label: widget.fromHistory
-                    ? _dayLabel(widget.session.startedAt)
-                    : 'Session complete',
-                backTooltip: widget.fromHistory ? 'Back' : 'Back to Track',
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    AppSpacing.xxl,
+      // The session's own light (R13): the screen it was logged on, ended.
+      body: GlowBackdrop(
+        child: Stack(
+          children: <Widget>[
+            SafeArea(
+              bottom: false,
+              child: Column(
+                children: <Widget>[
+                  _Header(
+                    onBack: () => Navigator.of(context).maybePop(),
+                    summary: _summary,
+                    massUnit: widget.massUnit,
+                    // From the log, the date is the point: which Tuesday it was.
+                    label: widget.fromHistory
+                        ? _dayLabel(widget.session.startedAt)
+                        : 'Session complete',
+                    backTooltip: widget.fromHistory ? 'Back' : 'Done',
+                    // At the top, where it is seen first (14): backing up, and
+                    // then gone; or why not, with the one thing that fixes it.
+                    backup: backup == null || widget.fromHistory
+                        ? null
+                        : _BackupPill(hooks: backup, session: widget.session),
                   ),
-                  children: <Widget>[
-                    if (widget.backup case final backup?) ...<Widget>[
-                      Entrance(
-                        child: _BackupLine(
-                          hooks: backup,
-                          session: widget.session,
-                        ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                        AppSpacing.lg,
+                        AppSpacing.xxl +
+                            bottom +
+                            (mark ? kCoachMarkClearance : 0),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    Entrance(
-                      index: 1,
-                      child: _Bests(
-                        summary: _summary,
-                        massUnit: widget.massUnit,
-                      ),
-                    ),
-                    if (_lesson != _Lesson.none) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      Entrance(
-                        index: 2,
-                        child: _LessonCard(
-                          lesson: _lesson,
-                          workoutName: _workout?.name ?? widget.session.name,
-                          change: widget.lesson?.describe() ?? '',
-                          onUndo: _undoLesson,
-                          onApply: _applyAnyway,
-                          onKeep: () =>
-                              setState(() => _lesson = _Lesson.keptAsItWas),
-                          onSaveAsNew: _saveLessonAsNew,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                    const SectionLabel('What you did'),
-                    const SizedBox(height: AppSpacing.sm),
-                    for (final (i, exercise)
-                        in widget.session.exercises.indexed)
-                      Entrance(
-                        index: 3 + i,
-                        child: _MovementCard(
-                          exercise: exercise,
-                          massUnit: widget.massUnit,
-                          // Excludes this session, or "last time" would be the
-                          // sets immediately above it on the same card.
-                          previous: PreviousPerformance.of(
-                            widget.log,
-                            exercise.name,
-                            excludeSessionId: widget.session.id,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (widget.fromHistory) ...<Widget>[
-                      if (widget.onEdit != null)
-                        AppOutlinedButton(
-                          label: 'Edit session',
-                          icon: Icons.edit_outlined,
-                          onPressed: widget.onEdit,
-                          expand: true,
-                        ),
-                      const SizedBox(height: AppSpacing.sm),
-                      if (widget.onDelete != null)
-                        Center(
-                          child: AppTextButton(
-                            label: 'Delete session',
-                            onPressed: widget.onDelete,
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.danger,
-                            ),
-                          ),
-                        ),
-                    ] else ...<Widget>[
-                      // Back to Track is the primary, not the coach. This screen
-                      // is read and then left, and leaving is the one action
-                      // every build has — the coach is absent from a free or
-                      // offline one, and the silver fill belongs on something
-                      // that is always there.
-                      PrimaryButton(
-                        label: 'Back to Track',
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                      if (widget.onOpenCoach != null) ...<Widget>[
+                      children: <Widget>[
+                        const SectionLabel('What you did'),
                         const SizedBox(height: AppSpacing.sm),
-                        AppOutlinedButton(
-                          label: 'Talk it over with your coach',
-                          onPressed: _openCoach,
-                          expand: true,
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.sm),
-                      if (_savedAs != null)
-                        Center(
-                          child: Text(
-                            // Not the snackbar's words. That one has already
-                            // said "X is in your workouts" and is on its way
-                            // out; this is what stays, and two widgets saying
-                            // the same sentence is one thing said twice.
-                            'Saved as $_savedAs.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textTertiary,
+                        for (final (i, exercise)
+                            in widget.session.exercises.indexed)
+                          Entrance(
+                            index: 1 + i,
+                            child: _MovementCard(
+                              exercise: exercise,
+                              massUnit: widget.massUnit,
+                              // Excludes this session, or "last time" would be
+                              // the sets immediately above it on the same card.
+                              previous: PreviousPerformance.of(
+                                widget.log,
+                                exercise.name,
+                                excludeSessionId: widget.session.id,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        )
-                      else if (widget.library != null && widget.offerSave)
-                        Center(
-                          child: AppTextButton(
-                            label: 'Save to your workouts',
-                            onPressed: _save,
+                        const SizedBox(height: AppSpacing.xl),
+                        if (widget.fromHistory) ...<Widget>[
+                          if (widget.onEdit != null)
+                            AppOutlinedButton(
+                              label: 'Edit session',
+                              icon: Icons.edit_outlined,
+                              onPressed: widget.onEdit,
+                              expand: true,
+                            ),
+                          const SizedBox(height: AppSpacing.sm),
+                          if (widget.onDelete != null)
+                            Center(
+                              child: AppTextButton(
+                                label: 'Delete session',
+                                onPressed: widget.onDelete,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                ),
+                              ),
+                            ),
+                        ] else
+                          // One way out (12). Nothing is left pending here any
+                          // more — the workout was asked about at Finish — so
+                          // the button says what the screen is: done.
+                          PrimaryButton(
+                            label: 'Done',
+                            onPressed: () => Navigator.of(context).maybePop(),
                           ),
-                        ),
-                    ],
-                  ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // The mark, as on every other screen, saying the session's new
+            // bests and closing (13, R7). It no longer has to count as Finish
+            // (R4): a tap is the conversation, nothing more.
+            if (mark)
+              Positioned(
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                bottom: AppSpacing.lg + bottom,
+                child: CoachReveal(
+                  note: _bests,
+                  onTap: _openCoach,
+                  onFinished: () {
+                    if (mounted) setState(() => _bests = null);
+                  },
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -426,11 +254,15 @@ class _Header extends StatelessWidget {
     required this.summary,
     required this.massUnit,
     this.label = 'Session complete',
-    this.backTooltip = 'Back to Track',
+    this.backTooltip = 'Done',
+    this.backup,
   });
 
   final String label;
   final String backTooltip;
+
+  /// Where backup stands, above the totals. Null says nothing.
+  final Widget? backup;
 
   /// Goes back to Track. Safe and unguarded: the session is finished and
   /// written, and nothing on this screen is in flight.
@@ -485,14 +317,39 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
+          if (backup case final pill?) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            Align(alignment: Alignment.centerLeft, child: pill),
+          ],
           const SizedBox(height: AppSpacing.md),
-          AppCard(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.md,
-            ),
+          // On glass, and louder (12): one number leads — the load moved, or
+          // the sets for a session with no load in it — and the other three sit
+          // under it. The grid of four equal cells read as a form.
+          GlassSurface(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                SectionLabel(
+                  summary.volume == Mass.zero ? 'Sets' : 'Volume',
+                  emphasis: LabelEmphasis.stat,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                CountUp(
+                  value: summary.volume == Mass.zero
+                      ? summary.workingSets.toDouble()
+                      : summary.volume.kilograms,
+                  format: (n) => summary.volume == Mass.zero
+                      ? '${n.round()}'
+                      : Mass.kilograms(n).label(massUnit),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w300,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   children: <Widget>[
                     Expanded(
@@ -504,36 +361,15 @@ class _Header extends StatelessWidget {
                         shrinkToFit: true,
                       ),
                     ),
-                    Expanded(
-                      // The totals count up to their value as the summary
-                      // arrives — the session adding itself up.
-                      child: summary.volume == Mass.zero
-                          ? const StatBlock(
-                              label: 'Volume',
-                              value: '—',
-                              shrinkToFit: true,
-                            )
-                          : StatBlock.counting(
-                              label: 'Volume',
-                              count: summary.volume.kilograms,
-                              format: (kg) =>
-                                  Mass.kilograms(kg).label(massUnit),
-                              shrinkToFit: true,
-                            ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: StatBlock.counting(
-                        label: 'Sets',
-                        count: summary.workingSets.toDouble(),
-                        format: (n) => '${n.round()}',
-                        shrinkToFit: true,
+                    if (summary.volume != Mass.zero)
+                      Expanded(
+                        child: StatBlock.counting(
+                          label: 'Sets',
+                          count: summary.workingSets.toDouble(),
+                          format: (n) => '${n.round()}',
+                          shrinkToFit: true,
+                        ),
                       ),
-                    ),
                     Expanded(
                       child: StatBlock.counting(
                         label: 'Movements',
@@ -560,126 +396,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// What went past a previous best, or the one line saying nothing did.
-///
-/// **A session with no personal best is the ordinary session, not a failed
-/// one.** Most training is not a record and is not supposed to be, so the
-/// absence gets one quiet line and no panel, no empty-state illustration and no
-/// encouragement — anything larger would make the ordinary case look like a
-/// problem the screen is apologising for.
-///
-/// It is a line rather than silence, though, and that is the deliberate part.
-/// Rendering nothing at all leaves two different facts looking identical: "we
-/// compared, and nothing beat your best" and "we did not look". The first is
-/// information; the second is what a lifter assumes when a section they have
-/// seen before is missing.
-class _Bests extends StatelessWidget {
-  const _Bests({required this.summary, required this.massUnit});
-
-  final SessionSummary summary;
-  final MassUnit massUnit;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bests = summary.personalBests;
-
-    if (bests.isEmpty) {
-      return Text(
-        summary.hasEstimate
-            ? 'No new bests today.'
-            // The other silence, said plainly. A session worked entirely above
-            // twelve reps produces no estimate at all — see
-            // TrainingStats.estimateOneRepMax — and reporting that as "no new
-            // bests" would be claiming a comparison that was never made.
-            : 'No best to compare today — a one-rep max can only be '
-                  'estimated up to 12 reps.',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: AppColors.textSecondary,
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SectionLabel(bests.length == 1 ? 'New best' : 'New bests'),
-        const SizedBox(height: AppSpacing.sm),
-        for (final (i, best) in bests.indexed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            // Lands rather than appears: grows in on a spring, a beat after
-            // the totals — the one moment on this screen that is news.
-            child: _Lands(
-              delay: AppMotion.stagger * (4 + i),
-              // Felt once, as the first best lands — not per card.
-              onLand: i == 0 ? () => unawaited(AppHaptics.commit()) : null,
-              child: AppCard(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        // The one status colour on the screen, on the one thing
-                        // that is a status rather than a figure (ADR-0009).
-                        const Icon(
-                          Icons.trending_up,
-                          size: 18,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            best.movement,
-                            style: theme.textTheme.titleMedium,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    // The set that happened, then the estimate — in that order,
-                    // because the first is a fact and the second is a fitted
-                    // line. "Around" rather than a flat claim for the same
-                    // reason: Epley is an estimate and saying so is the
-                    // difference between a record and an invention.
-                    Text(
-                      '${best.weight.label(massUnit)} × ${best.reps} '
-                      '— around ${best.estimate.label(massUnit)} for one',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Past ${best.previous.label(massUnit)}, '
-                      'set ${_shortDate(best.previousOn)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// One movement, and the sets that actually happened on it.
-///
-/// **Completed sets only.** A row that was added and never ticked is a set the
-/// lifter did not do, and a record of a session that lists it is not a record
-/// of the session. A movement where none of them were ticked says so rather
-/// than disappearing — it was in the session, and quietly dropping it would
-/// make the movement count above disagree with the list.
-///
-/// Warm-ups are shown and marked `W`, the same marker the running row carries.
-/// They are excluded from the volume and the set count above, so listing them
-/// unmarked would put four ticked sets under a header saying three, which is
-/// the exact contradiction the marker was added to the live screen to fix.
 class _MovementCard extends StatelessWidget {
   const _MovementCard({
     required this.exercise,
@@ -794,43 +510,29 @@ const List<String> _months = <String>[
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/// Where the workout's lesson stands.
-enum _Lesson {
-  /// Nothing to say: not from a workout, or nothing changed.
-  none,
-
-  /// Applied on arrival; Undo is offered.
-  applied,
-
-  /// Undone; the workout is as it was.
-  undone,
-
-  /// The workout changed while the session ran; the lifter is asked.
-  changedMeanwhile,
-
-  /// Asked, and they said update it.
-  appliedOnRequest,
-
-  /// Asked, and they said keep it.
-  keptAsItWas,
-
-  /// The workout was deleted while the session ran.
-  missing,
-}
-
-/// The one line about the workout this session came from — what changed in it,
-/// and the way back.
-/// Where this session stands: on this phone at once, then backed up — or why
-/// not, with the one thing that would fix it.
+/// Where this session stands, as a pill at the top of the summary (14).
+///
+/// *Backing up…*, then **gone** once it has: a line that says "Backed up."
+/// for as long as the screen is open is a line nobody needs. On a failure, the
+/// reason and the one thing that fixes it. Signed out, *Saved on this phone.*
+/// and nothing more — the account card's rule, that it reports and does not
+/// sell. The words are [sessionBackupMessage]'s.
 ///
 /// **Live.** Finish is a checkpoint, and the run it starts lands a couple of
-/// seconds after this screen does; the line changes under the lifter's eyes
-/// rather than asking them to come back and check.
-class _BackupLine extends StatelessWidget {
-  const _BackupLine({required this.hooks, required this.session});
+/// seconds after this screen does, so the pill changes under the lifter's eyes.
+class _BackupPill extends StatelessWidget {
+  const _BackupPill({required this.hooks, required this.session});
 
   final BackupHooks hooks;
   final Session session;
+
+  /// The message without the reassurance every state opens with: the pill is
+  /// what backup is doing, and the session being on the phone is the summary's
+  /// whole premise.
+  static String _short(String text) {
+    const saved = 'Saved on this phone. ';
+    return text.startsWith(saved) ? text.substring(saved.length) : text;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -843,201 +545,79 @@ class _BackupLine extends StatelessWidget {
           sessionId: session.id,
           finishedAt: session.endedAt ?? session.startedAt,
         );
-        final backedUp = message.text == 'Backed up.';
-        final icon = backedUp
-            ? Icons.cloud_done_outlined
-            : status.retrying || status.state == BackupState.expired
-            ? Icons.cloud_off_outlined
-            : Icons.smartphone_outlined;
+        final done = message.text == 'Backed up.';
         final action = switch (message.action) {
-          BackupAction.retry when hooks.onRetry != null => AppTextButton(
-            label: 'Retry',
-            onPressed: hooks.onRetry,
+          BackupAction.retry when hooks.onRetry != null => (
+            'Retry',
+            hooks.onRetry,
           ),
-          BackupAction.signIn when hooks.onSignIn != null => AppTextButton(
-            label: 'Sign in',
-            onPressed: hooks.onSignIn,
+          BackupAction.signIn when hooks.onSignIn != null => (
+            'Sign in',
+            hooks.onSignIn,
           ),
           _ => null,
         };
+        final trouble =
+            status.retrying ||
+            status.state == BackupState.expired ||
+            status.state == BackupState.failed;
         return AnimatedSwitcher(
-          duration: AppMotion.fast,
-          child: Row(
-            key: ValueKey<String>(message.text),
-            children: <Widget>[
-              Icon(icon, size: 18, color: AppColors.textSecondary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  message.text,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+          duration: AppMotion.base,
+          child: done
+              ? const SizedBox(key: ValueKey<String>('done'))
+              : GlassSurface(
+                  key: ValueKey<String>(message.text),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.xs,
+                    action == null ? AppSpacing.md : AppSpacing.xs,
+                    AppSpacing.xs,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        trouble
+                            ? Icons.cloud_off_outlined
+                            : status.state == BackupState.running
+                            ? Icons.cloud_upload_outlined
+                            : Icons.smartphone_outlined,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.xs,
+                          ),
+                          child: Text(
+                            _short(message.text),
+                            style: theme.textTheme.bodySmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      if (action case (final label, final onTap))
+                        AppTextButton(
+                          label: label,
+                          onPressed: onTap,
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-              ?action,
-            ],
-          ),
         );
       },
     );
   }
-}
-
-class _LessonCard extends StatelessWidget {
-  const _LessonCard({
-    required this.lesson,
-    required this.workoutName,
-    required this.change,
-    required this.onUndo,
-    required this.onApply,
-    required this.onKeep,
-    required this.onSaveAsNew,
-  });
-
-  final _Lesson lesson;
-  final String workoutName;
-
-  /// `removed Cable Fly, added Dips`.
-  final String change;
-
-  final VoidCallback onUndo;
-  final VoidCallback onApply;
-  final VoidCallback onKeep;
-  final VoidCallback onSaveAsNew;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final (String text, List<Widget> actions) = switch (lesson) {
-      _Lesson.applied => (
-        '$workoutName updated — $change.',
-        <Widget>[AppTextButton(label: 'Undo', onPressed: onUndo)],
-      ),
-      _Lesson.undone => ('$workoutName kept as it was.', const <Widget>[]),
-      _Lesson.changedMeanwhile => (
-        '$workoutName changed while you trained. Update it with today\'s '
-            'changes — $change?',
-        <Widget>[
-          AppTextButton(label: 'Keep it', onPressed: onKeep),
-          AppTextButton(
-            label: 'Update',
-            onPressed: onApply,
-            style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
-          ),
-        ],
-      ),
-      _Lesson.appliedOnRequest => ('$workoutName updated.', const <Widget>[]),
-      _Lesson.keptAsItWas => ('$workoutName kept as it was.', const <Widget>[]),
-      _Lesson.missing => (
-        '$workoutName was deleted while you trained. Keep today\'s version as '
-            'a new workout?',
-        <Widget>[AppTextButton(label: 'Save as new', onPressed: onSaveAsNew)],
-      ),
-      _Lesson.none => ('', const <Widget>[]),
-    };
-    return AppCard(
-      color: AppColors.elevated,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(
-                  Icons.bookmark_outline,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
-            ],
-          ),
-          if (actions.isNotEmpty)
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
-        ],
-      ),
-    );
-  }
-}
-
-/// Grows its child in on a spring, once, after [delay] — for a new best.
-/// Still under reduced motion.
-class _Lands extends StatefulWidget {
-  const _Lands({required this.child, this.delay = Duration.zero, this.onLand});
-
-  final Widget child;
-  final Duration delay;
-
-  /// Called once, as it starts to grow — with the animation, not on a timer
-  /// of its own, so nothing is left pending if the screen goes first.
-  final VoidCallback? onLand;
-
-  @override
-  State<_Lands> createState() => _LandsState();
-}
-
-class _LandsState extends State<_Lands> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: AppMotion.slow + widget.delay,
-  );
-  late final Animation<double> _t = CurvedAnimation(
-    parent: _c,
-    curve: Interval(
-      widget.delay.inMicroseconds /
-          (AppMotion.slow + widget.delay).inMicroseconds,
-      1,
-      curve: AppMotion.snappy,
-    ),
-  );
-  bool _started = false;
-  bool _landed = false;
-
-  void _watch() {
-    if (_landed || _t.value <= 0) return;
-    _landed = true;
-    widget.onLand?.call();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    _c.addListener(_watch);
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      // Still, and still felt: reduced motion does not change haptics.
-      _c.value = 1;
-      return;
-    }
-    _c.forward();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _t,
-    builder: (context, child) => Opacity(
-      opacity: _c.value == 0 ? 0 : _t.value.clamp(0, 1),
-      child: Transform.scale(scale: 0.9 + 0.1 * _t.value, child: child),
-    ),
-    child: widget.child,
-  );
 }
 
 /// `Tuesday 23 Sep` — the day a past session happened.

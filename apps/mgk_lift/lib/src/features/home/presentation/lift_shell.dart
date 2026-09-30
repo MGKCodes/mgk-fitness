@@ -1295,7 +1295,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
             for (final s in _log)
               if (s.startedAt.isBefore(session.startedAt)) s,
           ],
-          offerSave: false,
           backup: _backupHooks,
           onEdit: widget.editorFor == null
               ? null

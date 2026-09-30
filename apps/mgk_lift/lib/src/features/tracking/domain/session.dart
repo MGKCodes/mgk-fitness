@@ -26,7 +26,7 @@ class Session {
 
   /// That workout as it stood when the session started — what the session is
   /// compared against at Finish, so the workout can learn from it. See
-  /// `TemplateUpdate`. Kept on this device only; nothing uploads it.
+  /// `MovementChange`. Kept on this device only; nothing uploads it.
   ///
   /// Raw rather than decoded so the domain type here stays free of the
   /// template's; `TemplateMovement.decode` reads it.

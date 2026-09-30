@@ -103,7 +103,14 @@ void main() {
       //
       // The volume is 80×8 + 85×6: the warm-up is out, the same as in the
       // running header, so the numbers a lifter watched climb are the ones
-      // they land on.
+      // they land on. It leads, large, and the other three sit under it.
+      expect(
+        find.descendant(
+          of: find.byType(GlassSurface),
+          matching: find.text('1150 kg'),
+        ),
+        findsOneWidget,
+      );
       expect(
         <String>[
           for (final stat in tester.widgetList<StatBlock>(
@@ -111,7 +118,7 @@ void main() {
           ))
             '${stat.label} ${stat.value}',
         ],
-        <String>['Duration 47:00', 'Volume 1150 kg', 'Sets 2', 'Movements 3'],
+        <String>['Duration 47:00', 'Sets 2', 'Movements 3'],
       );
     });
 
@@ -202,72 +209,55 @@ void main() {
       ),
     ];
 
-    testWidgets('names the set that did it and what it beat', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SessionSummaryScreen(session: bench(100, 5), log: log),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('NEW BEST'), findsOneWidget);
-      // The set that happened first, then the estimate — and the estimate is
-      // hedged, because Epley is a fitted line rather than a measurement.
-      expect(find.text('100 kg × 5 — around 116.5 kg for one'), findsOneWidget);
-      expect(find.text('Past 105 kg, set 30 Jul'), findsOneWidget);
-    });
-
-    testWidgets('a session that beat nothing says so, and nothing more', (
+    testWidgets('the mark says the new best, then closes (13, R7)', (
       tester,
     ) async {
-      // The ordinary session. It is not a failure and must not be dressed as
-      // one — one quiet line, no panel and no encouragement.
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SessionSummaryScreen(session: bench(85, 5), log: log),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('No new bests today.'), findsOneWidget);
-      expect(find.text('NEW BEST'), findsNothing);
-      expect(find.text('NEW BESTS'), findsNothing);
-    });
-
-    testWidgets('a session above the rep cap says it could not tell', (
-      tester,
-    ) async {
-      // Two different facts: "we compared and nothing beat your best", and
-      // "there was nothing here to compare". Rendering them the same would
-      // tell a lifter who trained in fifteens that they went backwards.
       await tester.pumpWidget(
         MaterialApp(
           home: SessionSummaryScreen(
-            session: _finished(
-              exercises: <SessionExercise>[
-                SessionExercise(
-                  id: 'e1',
-                  name: 'Dumbbell Bicep Curl',
-                  orderIndex: 0,
-                  sets: <SessionSet>[_set('s1', 1, 14, 15)],
-                ),
-              ],
-            ),
+            session: bench(100, 5),
+            log: log,
+            onOpenCoach: () {},
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Mid-sentence: typed out, and held long enough to read.
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(find.text('New best: Barbell Bench Press'), findsOneWidget);
+      // The set that happened first, then the estimate — hedged, because
+      // Epley is a fitted line rather than a measurement.
+      expect(find.textContaining('100 kg × 5, about'), findsOneWidget);
+      expect(find.textContaining('Past 105 kg'), findsOneWidget);
 
-      expect(
-        find.textContaining('can only be estimated up to 12 reps'),
-        findsOneWidget,
+      await tester.pumpAndSettle();
+      expect(find.text('New best: Barbell Bench Press'), findsNothing);
+      expect(find.byType(CoachButton), findsOneWidget);
+    });
+
+    testWidgets('a session that beat nothing says nothing at all', (
+      tester,
+    ) async {
+      // The ordinary session. It is not a failure and must not be dressed as
+      // one, and the mark is not there to fill the silence.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionSummaryScreen(
+            session: bench(85, 5),
+            log: log,
+            onOpenCoach: () {},
+          ),
+        ),
       );
-      expect(find.text('No new bests today.'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1500));
+
+      expect(find.textContaining('New best'), findsNothing);
+      expect(find.textContaining('new bests'), findsNothing);
+      expect(find.byType(CoachButton), findsOneWidget);
     });
   });
 
   group('leaving', () {
-    testWidgets('back to Track pops the summary', (tester) async {
+    testWidgets('Done pops the summary', (tester) async {
       await tester.pumpWidget(
         _pushed(SessionSummaryScreen(session: _finished())),
       );
@@ -275,21 +265,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('SESSION COMPLETE'), findsOneWidget);
 
-      await tester.tap(find.text('Back to Track'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
       await tester.pumpAndSettle();
 
       expect(find.text('SESSION COMPLETE'), findsNothing);
       expect(find.text('Track'), findsOneWidget);
     });
 
-    testWidgets('the coach action is absent without a coach', (tester) async {
+    testWidgets('the mark is absent without a coach', (tester) async {
       await tester.pumpWidget(
         MaterialApp(home: SessionSummaryScreen(session: _finished())),
       );
       await tester.pumpAndSettle();
 
-      // Absent rather than inert: there is no coach in a free or offline
-      // build, and a button that opens nothing is worse than no button.
+      // Absent rather than inert: there is no coach in an offline build, and
+      // a mark that opens nothing is worse than no mark.
+      expect(find.byType(CoachButton), findsNothing);
       expect(find.text('Talk it over with your coach'), findsNothing);
     });
 
@@ -306,7 +297,7 @@ void main() {
       await tester.tap(find.text('Track'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Talk it over with your coach'));
+      await tester.tap(find.byType(CoachButton));
       await tester.pumpAndSettle();
 
       // The coach is a sheet over the surface you were on, and its gates
@@ -314,78 +305,6 @@ void main() {
       // would hide both behind a screen the lifter has finished with.
       expect(opened, isTrue);
       expect(find.text('SESSION COMPLETE'), findsNothing);
-    });
-  });
-
-  group('keeping the session', () {
-    testWidgets('the offer is absent when there is nowhere to save', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SessionSummaryScreen(
-            session: _finished(
-              exercises: const <SessionExercise>[
-                SessionExercise(id: 'e1', name: 'Cable Fly', orderIndex: 0),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Save to your workouts'), findsNothing);
-    });
-
-    testWidgets('saving names the workout and then stops asking', (
-      tester,
-    ) async {
-      final library = InMemoryWorkoutLibrary();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SessionSummaryScreen(
-            session: _finished(
-              name: 'Evening session',
-              exercises: const <SessionExercise>[
-                SessionExercise(
-                  id: 'e1',
-                  name: 'Barbell Bench Press',
-                  orderIndex: 0,
-                ),
-                SessionExercise(id: 'e2', name: 'Cable Fly', orderIndex: 1),
-              ],
-            ),
-            library: library,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Save to your workouts'));
-      await tester.pumpAndSettle();
-
-      // The same dialog the running screen opens, because it is literally the
-      // same function.
-      expect(find.text('Name this workout'), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'Chest day');
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      await tester.pumpAndSettle();
-
-      expect((await library.all()).single.movementNames, <String>[
-        'Barbell Bench Press',
-        'Cable Fly',
-      ]);
-
-      // The write, the haptic and the snackbar are all awaited before the
-      // screen rebuilds, so the frame has to be pumped again after them —
-      // without this the assertions below read the tree as it stood before
-      // the save returned.
-      await tester.pumpAndSettle();
-
-      // The offer becomes a statement. Leaving the button there invites a
-      // second copy of the same workout.
-      expect(find.text('Save to your workouts'), findsNothing);
-      expect(find.text('Saved as Chest day.'), findsOneWidget);
     });
   });
 
@@ -449,7 +368,7 @@ void main() {
       expect(find.text('In progress'), findsNothing);
     });
 
-    testWidgets('the save offer moves to the summary rather than blocking it', (
+    testWidgets('nothing is left to answer on the summary (R4)', (
       tester,
     ) async {
       final library = InMemoryWorkoutLibrary();
@@ -458,10 +377,10 @@ void main() {
 
       await finishSession(tester);
 
-      // No dialog in front of the answer. The offer is on the screen the
-      // lifter was going to read anyway, where declining it costs nothing.
+      // Asked at Finish, so the summary has one exit and no offer.
+      expect(find.text('Save to your workouts'), findsNothing);
       expect(find.text('Name this workout'), findsNothing);
-      expect(find.text('Save to your workouts'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
     });
   });
 }

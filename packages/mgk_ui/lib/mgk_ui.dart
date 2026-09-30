@@ -28,6 +28,7 @@ export 'src/widgets/app_card.dart';
 export 'src/widgets/app_toast.dart';
 export 'src/widgets/conversation_bubble.dart';
 export 'src/widgets/coach_mark.dart';
+export 'src/widgets/coach_reveal.dart';
 export 'src/widgets/floating_nav_bar.dart';
 export 'src/widgets/glass_surface.dart';
 export 'src/widgets/glow_backdrop.dart';

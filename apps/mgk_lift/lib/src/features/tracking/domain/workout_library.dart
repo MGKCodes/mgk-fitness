@@ -101,7 +101,7 @@ abstract interface class WorkoutLibrary {
   /// Replaces a workout's name and movements, keeping its id and its place.
   ///
   /// The editor's save, and the session's lesson — a template learning from
-  /// the session that ran it (see [TemplateUpdate]) is this call.
+  /// the session that ran it (see [MovementChange]) is this call.
   Future<SavedWorkout> update(SavedWorkout workout);
 
   /// Deletes a saved workout. Sessions done from it stay in the log.

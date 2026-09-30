@@ -73,7 +73,7 @@ class Workouts extends Table {
   /// encoded `TemplateMovement`s. Set on a session row, never on a template.
   ///
   /// It is what Finish compares the session against so the workout can learn
-  /// from it (`TemplateUpdate`), and it has to be the workout *as it was*:
+  /// from it (`MovementChange`), and it has to be the workout *as it was*:
   /// compared against the current one instead, an edit made on another device
   /// mid-session would read as something this session did.
   ///

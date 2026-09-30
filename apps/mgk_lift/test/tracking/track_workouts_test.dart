@@ -301,9 +301,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Push updated — removed Cable Fly.'), findsOneWidget);
+      // Asked at Finish now (R3), on by default, and said as it is done.
+      expect(find.text('Push is updated for next time.'), findsOneWidget);
 
-      await tester.tap(find.text('Back to Track'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
       await tester.pumpAndSettle();
       expect(find.text('1 movement · 3 sets'), findsOneWidget);
     });

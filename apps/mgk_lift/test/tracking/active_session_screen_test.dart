@@ -304,9 +304,9 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('Skip'));
-      await tester.pump();
+      await settleDock(tester);
 
       expect(find.text('RESTING'), findsNothing);
     });
@@ -317,7 +317,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('+30s'));
       await tester.pump();
 
@@ -334,7 +334,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('+30s'));
       await tester.pump();
 
@@ -781,4 +781,12 @@ Future<void> finishSession(WidgetTester tester) async {
 Future<void> leaveField(WidgetTester tester) async {
   FocusManager.instance.primaryFocus?.unfocus();
   await tester.pumpAndSettle();
+}
+
+/// Lets the rest dock finish rising or sinking. It exists only while resting
+/// (9) and moves over [AppMotion.base]; a button inside it cannot be tapped
+/// mid-rise, and a leaving one is still in the tree until it has gone.
+Future<void> settleDock(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }

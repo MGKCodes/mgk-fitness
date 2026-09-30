@@ -404,10 +404,10 @@ void main() {
     });
   });
 
-  group('the workout learns from the session', () {
-    List<TemplateMovement> after(List<TemplateMovement> before, Session s) =>
-        TemplateUpdate.between(before, s).after;
-
+  // The logging rework's Phase 3 learning table, row by row, against R3:
+  // whether Finish asks, and what a yes changes. Only movements added or
+  // removed ask; set counts, rep targets and order never do, and never change.
+  group('what a session can change about its workout (R3)', () {
     SessionExercise ex(
       String name,
       int rows, {
@@ -447,111 +447,121 @@ void main() {
       TemplateMovement('Dips', sets: 3),
     ];
 
-    test('a movement removed is removed', () {
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[ex('Bench', 3), ex('Dips', 3)]),
-      );
-      expect(u.after.map((m) => m.name), <String>['Bench', 'Dips']);
-      expect(u.removed, <String>['Fly']);
-      expect(u.describe(), 'removed Fly');
+    MovementChange change(List<SessionExercise> e) =>
+        MovementChange.between(before, session(e));
+
+    test('a movement removed with ✕ asks, and yes removes it', () {
+      final c = change(<SessionExercise>[ex('Bench', 3), ex('Dips', 3)]);
+      expect(c.isEmpty, isFalse);
+      expect(c.removed, <String>['Fly']);
+      expect(c.describe(), '− Fly');
+      expect(c.applyTo(before), const <TemplateMovement>[
+        TemplateMovement('Bench', sets: 3, repTarget: 5),
+        TemplateMovement('Dips', sets: 3),
+      ]);
     });
 
-    test('a movement added and done is added, where it was', () {
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[
-          ex('Bench', 3),
-          ex('Pushdown', 2, ticked: 1),
-          ex('Fly', 3),
-          ex('Dips', 3),
-        ]),
-      );
-      expect(u.after.map((m) => m.name), <String>[
+    test('a movement added and done asks, and lands where it was done', () {
+      final c = change(<SessionExercise>[
+        ex('Bench', 3),
+        ex('Pushdown', 2, ticked: 1),
+        ex('Fly', 3),
+        ex('Dips', 3),
+      ]);
+      expect(c.added, <String>['Pushdown']);
+      expect(c.describe(), '+ Pushdown');
+      expect(c.applyTo(before).map((m) => m.name), <String>[
         'Bench',
         'Pushdown',
         'Fly',
         'Dips',
       ]);
-      expect(u.after[1].sets, 2);
-      expect(u.added, <String>['Pushdown']);
+      // With the sets it was done for today: there is nothing else to go on.
+      expect(c.applyTo(before)[1].sets, 2);
     });
 
-    test('a movement added and never done is not added', () {
+    test('a movement added first lands first', () {
+      final c = change(<SessionExercise>[
+        ex('Pushdown', 2, ticked: 2),
+        ex('Bench', 3),
+        ex('Fly', 3),
+        ex('Dips', 3),
+      ]);
+      expect(c.applyTo(before).first.name, 'Pushdown');
+    });
+
+    test('a movement added and never done does not ask', () {
       // Finish drops it from the session and says so; the workout agrees.
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[
-          ex('Bench', 3),
-          ex('Pushdown', 2),
-          ex('Fly', 3),
-          ex('Dips', 3),
-        ]),
-      );
-      expect(u.isEmpty, isTrue);
+      final c = change(<SessionExercise>[
+        ex('Bench', 3),
+        ex('Pushdown', 2),
+        ex('Fly', 3),
+        ex('Dips', 3),
+      ]);
+      expect(c.isEmpty, isTrue);
     });
 
-    test('a swap is the old movement out and the new one in its place', () {
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[
+    test(
+      'a swap is both, and yes puts the new one in the old one\'s place',
+      () {
+        final c = change(<SessionExercise>[
           ex('Bench', 3),
           ex('Pec Deck', 3, ticked: 2),
           ex('Dips', 3),
-        ]),
-      );
-      expect(u.after.map((m) => m.name), <String>['Bench', 'Pec Deck', 'Dips']);
-      expect(u.describe(), 'removed Fly, added Pec Deck');
+        ]);
+        expect(c.describe(), '+ Pec Deck, − Fly');
+        expect(c.applyTo(before).map((m) => m.name), <String>[
+          'Bench',
+          'Pec Deck',
+          'Dips',
+        ]);
+      },
+    );
+
+    test('a new order never asks, and yes would not change it', () {
+      final c = change(<SessionExercise>[
+        ex('Dips', 3),
+        ex('Bench', 3),
+        ex('Fly', 3),
+      ]);
+      expect(c.isEmpty, isTrue);
+      expect(c.applyTo(before), before);
     });
 
-    test('a new order is kept', () {
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[ex('Dips', 3), ex('Bench', 3), ex('Fly', 3)]),
-      );
-      expect(u.reordered, isTrue);
-      expect(u.after.map((m) => m.name), <String>['Dips', 'Bench', 'Fly']);
+    test('rows added or removed never ask, and counts stay the workout\'s', () {
+      final c = change(<SessionExercise>[
+        ex('Bench', 4, warmups: 2),
+        ex('Fly', 2),
+        ex('Dips', 3),
+      ]);
+      expect(c.isEmpty, isTrue);
+      expect(c.applyTo(before).map((m) => m.sets), <int>[3, 3, 3]);
     });
 
-    test('rows added or removed change the count; warm-ups do not', () {
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[
-          ex('Bench', 4, warmups: 2),
-          ex('Fly', 2),
-          ex('Dips', 3),
-        ]),
-      );
-      expect(u.after.map((m) => m.sets), <int>[4, 2, 3]);
-      expect(u.resized, <String>['Bench', 'Fly']);
-    });
-
-    test('a movement skipped, or sets left unticked, change nothing', () {
+    test('a movement kept and skipped does not ask', () {
       // Fly kept but never started; Dips with its rows all unticked.
-      final u = TemplateUpdate.between(
-        before,
-        session(<SessionExercise>[
-          ex('Bench', 3, ticked: 3),
-          ex('Fly', 0),
-          ex('Dips', 3),
-        ]),
-      );
-      expect(u.isEmpty, isTrue);
-      expect(u.after, before);
+      final c = change(<SessionExercise>[
+        ex('Bench', 3, ticked: 3),
+        ex('Fly', 0),
+        ex('Dips', 3),
+      ]);
+      expect(c.isEmpty, isTrue);
     });
 
-    test('rep targets survive; reps and weights never change the workout', () {
-      expect(
-        after(
-          before,
-          session(<SessionExercise>[
-            ex('Bench', 3),
-            ex('Fly', 3),
-            ex('Dips', 3),
-          ]),
-        ).first.repTarget,
-        5,
-      );
+    test('with other changes, only the movements change', () {
+      // Fly removed, Pushdown added — and the order and a set count changed
+      // too, which yes must not carry.
+      final c = change(<SessionExercise>[
+        ex('Dips', 5, ticked: 5),
+        ex('Pushdown', 3, ticked: 3),
+        ex('Bench', 2, ticked: 2),
+      ]);
+      expect(c.describe(), '+ Pushdown, − Fly');
+      expect(c.applyTo(before), const <TemplateMovement>[
+        TemplateMovement('Bench', sets: 3, repTarget: 5),
+        TemplateMovement('Dips', sets: 3),
+        TemplateMovement('Pushdown', sets: 3),
+      ]);
     });
 
     test('a movement twice is two movements', () {
@@ -560,7 +570,7 @@ void main() {
         TemplateMovement('Fly'),
         TemplateMovement('Bench', sets: 2),
       ];
-      final u = TemplateUpdate.between(
+      final c = MovementChange.between(
         twice,
         session(<SessionExercise>[
           ex('Bench', 3),
@@ -568,7 +578,17 @@ void main() {
           ex('Bench', 2),
         ]),
       );
-      expect(u.isEmpty, isTrue);
+      expect(c.isEmpty, isTrue);
+
+      // And removing the second Bench removes that one, not the first.
+      final dropped = MovementChange.between(
+        twice,
+        session(<SessionExercise>[ex('Bench', 3), ex('Fly', 3)]),
+      );
+      expect(dropped.applyTo(twice), const <TemplateMovement>[
+        TemplateMovement('Bench'),
+        TemplateMovement('Fly'),
+      ]);
     });
   });
 
