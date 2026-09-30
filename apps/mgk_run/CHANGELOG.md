@@ -383,6 +383,8 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The plan calendar opens with this week at the top.** A few weeks into a
+  plan it opened with "This week" and its dates tucked under the header.
 - **The coach's consent sheet shows when there is more to read.** On a small
   phone "Never sent" and how long things are kept were below the fold with
   nothing to say so. The foot of the text now fades while there is more, and
