@@ -85,6 +85,15 @@ enum BillingStore {
     BillingStore.appStore => 'the App Store',
     BillingStore.googlePlay => 'Google Play',
   };
+
+  /// [label] where it opens a sentence: "The App Store is retrying it".
+  ///
+  /// A second getter rather than a capital in [label], which is right in the
+  /// middle of a sentence and is used there far more often. Account's
+  /// payment-failed line began "the App Store is retrying it" (screen board
+  /// T8).
+  String get sentenceLabel =>
+      '${label.substring(0, 1).toUpperCase()}${label.substring(1)}';
 }
 
 /// A tier and its standing, which are independent: a premium subscriber whose

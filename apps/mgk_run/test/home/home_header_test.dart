@@ -18,6 +18,12 @@ import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 /// The top of Home used to be the time of day — the one line on the screen a
 /// runner already knew before they opened it — while what they were training
 /// for lived a tab away. These pin the swap.
+/// Three weeks ago, so the plan is under way on whatever day the suite runs.
+/// A plan starts on the coming Monday (ADR-0034) and asks nothing of the days
+/// before it, so one built "today" is a runner with no session yet on six days
+/// of the week out of seven.
+DateTime _underWay() => DateTime.now().subtract(const Duration(days: 21));
+
 void main() {
   late AppDatabase db;
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
@@ -54,7 +60,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final store = DriftPlanStore(db);
-    if (profile != null) await PlanRepository(store: store).create(profile);
+    if (profile != null) {
+      await PlanRepository(store: store, now: _underWay).create(profile);
+    }
 
     await tester.pumpWidget(
       MaterialApp(

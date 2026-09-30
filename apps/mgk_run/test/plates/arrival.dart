@@ -40,7 +40,9 @@ import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_conversation.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
+import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
+import 'package:mgk_run/src/features/coaching/presentation/plan_reveal_screen.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
@@ -359,8 +361,10 @@ void main() {
   // New in build 26 (EDGE-18, test sheet D18): a race less than six weeks
   // after the coming Monday is refused, because the block would have to put
   // race day inside base training. The sheet expects the refusal *before*
-  // anything is built. These two plates show where the runner actually meets
-  // it: the confirmation screen, and what "Build my plan" does from there.
+  // anything is built, and since build 27 the confirmation screen gives it,
+  // with Build my plan held until the date moves or the race comes out. The
+  // second plate is the builder's own refusal, for anything that reaches it
+  // another way: it can no longer be reached from the first, so it is built.
 
   testWidgets('a race three weeks out, as the confirmation hears it', (
     tester,
@@ -379,18 +383,31 @@ void main() {
     );
   });
 
-  testWidgets('and what building it does', (tester) async {
+  testWidgets('and what the builder says if one reaches it', (tester) async {
+    // The real repository and the real validator, so the words on the plate
+    // are the ones a refusal actually produces rather than a fake's.
+    final nearRace = RunnerProfile(
+      goalDistanceMeters: 10000,
+      eventDate: DateTime.now().add(const Duration(days: 21)),
+      currentWeeklyMeters: 30000,
+      longestRecentMeters: 12000,
+      daysPerWeek: 4,
+      availableWeekdays: const <int>{1, 3, 5, 6},
+      timeTrialDistanceMeters: 5000,
+      timeTrialDuration: const Duration(minutes: 25),
+    );
     await plate(
       tester,
       'plan-near-race',
-      planFlow(coach: _NearRaceCoach()),
+      PlanRevealScreen(
+        build: () => PlanRepository(store: DriftPlanStore(db)).create(nearRace),
+        onDone: (_) {},
+        onChangeDetails: () {},
+      ),
       pixelRatio: 2,
       drive: (tester) async {
-        await tester.pumpAndSettle();
-        await tapText(tester, 'I have a race coming up');
-        await untilReviewed(tester);
-        await tapText(tester, 'Review details');
-        await tapText(tester, 'Build my plan');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 700));
       },
     );
   });

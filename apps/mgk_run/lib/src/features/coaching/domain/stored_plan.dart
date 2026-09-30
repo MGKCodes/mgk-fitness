@@ -92,6 +92,19 @@ class StoredPlan {
   int _weeksFromStart(DateTime date) =>
       (daysBetweenDates(startDate, date) / 7).floor();
 
+  /// Whether the plan has begun by [date]: false on the days between building
+  /// it and the Monday it starts on (ADR-0034), true from that Monday on.
+  ///
+  /// **Its own state rather than a week.** [weekIndexOn] still answers for a
+  /// date before the start (week 1 for a plan that progresses, a wrapped index
+  /// for a rhythm) and has to go on doing so, because [dateFor] is its inverse.
+  /// What that answer cannot carry is that it names a week the runner is not in
+  /// yet, which is how Home came to prescribe "5 km today" and count "0 of 7"
+  /// against next week, and the Plan tab to head next week "This week" with
+  /// the same weekday of it lit as today (screen board H6, P5). Screens ask
+  /// this first and decide what a day before the plan looks like.
+  bool hasStartedBy(DateTime date) => daysBetweenDates(startDate, date) >= 0;
+
   /// True once [date] is past the plan's final week — the event has been and
   /// gone, so the runner is due a new plan rather than a stale one.
   ///

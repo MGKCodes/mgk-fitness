@@ -26,6 +26,15 @@ String weekdayLongName(int weekday) => _weekdayLongNames[weekday - 1];
 /// Short month name, `1`..`12`.
 String monthShortName(int month) => _monthNames[month - 1];
 
+/// "Monday 5 Oct": a day named in full, for a date close enough that the
+/// weekday is how a runner thinks of it.
+String dayAndDate(DateTime date) =>
+    '${weekdayLongName(date.weekday)} ${date.day} ${monthShortName(date.month)}';
+
+/// "Starts Monday 5 Oct": what heads a plan's first week while it is still
+/// ahead, where "This week" would be heading next week (ADR-0034).
+String planStartsLabel(DateTime start) => 'Starts ${dayAndDate(start)}';
+
 /// What a session kind is called: **the activity, not the physiology.**
 ///
 /// "Threshold", "Easy" and "Recovery" name an intensity. They are the coach's

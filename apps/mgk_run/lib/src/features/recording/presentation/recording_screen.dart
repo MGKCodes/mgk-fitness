@@ -425,6 +425,13 @@ class _RecordingScreenState extends State<RecordingScreen> {
   bool get _recording => _status == RecorderStatus.recording;
   bool get _acquiring => _recording && _points.isEmpty && _problem == null;
 
+  /// A problem stopped the run before it began: the recorder abandoned the row
+  /// and went back to idle, so there is nothing to resume and nothing to
+  /// finish. Distinct from a problem mid-run, which leaves a real run paused
+  /// or still recording behind it.
+  bool get _neverStarted =>
+      _problem != null && _status == RecorderStatus.idle && _points.isEmpty;
+
   /// Fixes have stopped arriving, and nothing reported it.
   ///
   /// Distinct from [_acquiring], which is the honest opening state of a run
@@ -695,6 +702,8 @@ class _RecordingScreenState extends State<RecordingScreen> {
   }
 
   Future<void> _cancel() async {
+    // Nothing was recorded, so there is no progress to warn about losing.
+    if (_neverStarted) return _leaveUnstarted();
     final discard = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -715,6 +724,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
       ),
     );
     if (discard != true) return;
+    await widget.recorder.discard();
+    if (mounted) widget.onCancel?.call();
+  }
+
+  /// Leaves a run that never started. No question first: nothing was recorded,
+  /// and "your progress won't be saved" would be about progress there is none
+  /// of. Discarded rather than stopped, so no empty run reaches the log.
+  Future<void> _leaveUnstarted() async {
     await widget.recorder.discard();
     if (mounted) widget.onCancel?.call();
   }
@@ -922,6 +939,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   laps: _laps,
                   problem: _problem,
                   onAskAgain: _askAgain,
+                  onLeave: _neverStarted && widget.onCancel != null
+                      ? _leaveUnstarted
+                      : null,
                   recording: _recording,
                   onLap: _markLap,
                   onTogglePause: _togglePause,
@@ -1066,6 +1086,7 @@ class _Panel extends StatefulWidget {
     required this.onLap,
     required this.onTogglePause,
     required this.onFinish,
+    this.onLeave,
     this.finishing = false,
   });
 
@@ -1114,6 +1135,13 @@ class _Panel extends StatefulWidget {
   final VoidCallback onLap;
   final Future<void> Function() onTogglePause;
   final Future<void> Function() onFinish;
+
+  /// Set only for a run a problem stopped before it began. The row then
+  /// offers leaving and nothing else: Resume and Finish over a run that never
+  /// started (board R16 to R19, R28) resumed nothing and finished an empty
+  /// run. The problem's own remedy, Continue or Open Settings, is on the
+  /// problem line above.
+  final Future<void> Function()? onLeave;
 
   /// True from the first tap on Finish until the run is settled. Disables
   /// Resume and Finish and shows progress on Finish instead of its icon —
@@ -1434,7 +1462,17 @@ class _PanelState extends State<_Panel> {
                   // the reversible one, because that is the button being aimed at.
                   Row(
                     children: <Widget>[
-                      if (widget.recording) ...<Widget>[
+                      if (widget.onLeave != null)
+                        // One control, the row's full width, so the row keeps
+                        // the height the collapsed detent was computed with.
+                        Expanded(
+                          child: _ControlButton(
+                            label: 'Close',
+                            icon: Icons.close,
+                            onPressed: widget.onLeave,
+                          ),
+                        )
+                      else if (widget.recording) ...<Widget>[
                         // Lap is on the row rather than below the fold: it is the one
                         // control that is useless unless it is under the thumb at the
                         // moment the runner crests the hill. It goes when paused,
@@ -1615,17 +1653,31 @@ class _ControlButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           if (busy)
+            // In the icon's 18pt box, drawn smaller: an icon glyph has air
+            // inside its box and a ring does not, so a ring filling the box
+            // sat against the label (board R29). And in the button's own
+            // foreground rather than a colour picked for the enabled fill: a
+            // busy button is a disabled one, so Resume's ring was dark
+            // `onPrimary` on the disabled grey.
             SizedBox(
               height: 18,
               width: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: filled ? AppColors.onPrimary : AppColors.textPrimary,
+              child: Center(
+                child: SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: Builder(
+                    builder: (context) => CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: IconTheme.of(context).color,
+                    ),
+                  ),
+                ),
               ),
             )
           else
             Icon(icon, size: 18),
-          const SizedBox(width: AppSpacing.xs),
+          SizedBox(width: busy ? AppSpacing.sm : AppSpacing.xs),
           Text(label, maxLines: 1, softWrap: false),
         ],
       ),

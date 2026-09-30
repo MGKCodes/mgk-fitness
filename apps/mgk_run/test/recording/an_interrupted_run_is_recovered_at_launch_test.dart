@@ -78,6 +78,9 @@ void main() {
     // stop().
     expect(run.distanceMeters, closeTo(1990, 20));
     expect(run.duration, const Duration(seconds: 199));
+    // Carried by the log's read, so the summary can say so (board F7, test
+    // sheet C21) rather than only Edit.
+    expect(run.notes, kRecoveredRunNote);
     // The trace itself is untouched by recovery — still every fix that
     // ever landed (rule 1), same as `fetchRuns`' summary-only reads.
     expect(await db.pointsForRun('killed-run'), hasLength(200));

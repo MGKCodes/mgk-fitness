@@ -16,11 +16,18 @@ class _CountingRecorder extends FakeRunRecorder {
   _CountingRecorder(RecorderProblem problem) : super(failsWith: problem);
 
   int starts = 0;
+  int discards = 0;
 
   @override
   Future<void> start() async {
     starts++;
     await super.start();
+  }
+
+  @override
+  Future<void> discard() async {
+    discards++;
+    await super.discard();
   }
 }
 
@@ -33,6 +40,9 @@ class _CountingRecorder extends FakeRunRecorder {
 /// app, find Run in a list, find Location, change it, come back, start the run
 /// again, against one tap that re-shows the prompt just dismissed.
 void main() {
+  var left = 0;
+  setUp(() => left = 0);
+
   Future<_CountingRecorder> pumpProblem(
     WidgetTester tester,
     RecorderProblem problem,
@@ -41,6 +51,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final _CountingRecorder recorder = _CountingRecorder(problem);
+    // A fresh screen each time: a loop over problems would otherwise hand a
+    // new recorder to the state still listening to the last one.
+    await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
@@ -57,6 +70,7 @@ void main() {
             Distance.meters(5000),
             const Duration(minutes: 24, seconds: 30),
           ),
+          onCancel: () => left++,
         ),
       ),
     );
@@ -167,27 +181,78 @@ void main() {
     expect(find.byType(PaceBandMeter), findsNothing);
     // The message itself is still there, and so is the way out.
     expect(find.textContaining('Nothing is being tracked'), findsOneWidget);
-    expect(find.text('Finish'), findsOneWidget);
+    expect(find.text('Close'), findsOneWidget);
 
     await recorder.stop();
   });
 
-  testWidgets('every problem state keeps Finish reachable', (
+  testWidgets('every problem state keeps a way out reachable', (
     WidgetTester tester,
   ) async {
     for (final RecorderProblem problem in RecorderProblem.values) {
       final _CountingRecorder recorder = await pumpProblem(tester, problem);
 
       // A runner who cannot record still has to be able to leave the screen.
-      final Rect finish = tester.getRect(find.text('Finish'));
+      final Rect close = tester.getRect(find.text('Close'));
       expect(
-        (Offset.zero & kPhone).contains(finish.center),
+        (Offset.zero & kPhone).contains(close.center),
         isTrue,
-        reason: 'Finish is off-screen on $problem',
+        reason: 'Close is off-screen on $problem',
       );
       expect(tester.takeException(), isNull);
 
       await recorder.stop();
     }
+  });
+
+  // Board R16 to R19 and R28: Resume and Finish under a problem that stopped
+  // the run before it began. Resume resumed nothing, and Finish finished a run
+  // with nothing in it.
+  testWidgets('a run that never started offers no Resume and no Finish', (
+    WidgetTester tester,
+  ) async {
+    for (final RecorderProblem problem in RecorderProblem.values) {
+      final _CountingRecorder recorder = await pumpProblem(tester, problem);
+
+      expect(find.text('Resume'), findsNothing, reason: '$problem');
+      expect(find.text('Finish'), findsNothing, reason: '$problem');
+      expect(find.text('Pause'), findsNothing, reason: '$problem');
+      expect(find.text('Close'), findsOneWidget, reason: '$problem');
+
+      await recorder.stop();
+    }
+  });
+
+  testWidgets('and leaving it asks nothing and keeps nothing', (
+    WidgetTester tester,
+  ) async {
+    final _CountingRecorder recorder = await pumpProblem(
+      tester,
+      RecorderProblem.permissionDeniedForever,
+    );
+
+    await tester.tap(find.text('Close'));
+    await tester.pump();
+
+    // No "Discard this run? Your progress won't be saved.": there is none.
+    expect(find.text('Discard this run?'), findsNothing);
+    expect(recorder.discards, 1);
+    expect(left, 1);
+  });
+
+  testWidgets('the close control in the corner does the same', (
+    WidgetTester tester,
+  ) async {
+    final _CountingRecorder recorder = await pumpProblem(
+      tester,
+      RecorderProblem.locationServicesOff,
+    );
+
+    await tester.tap(find.byTooltip('Cancel run'));
+    await tester.pump();
+
+    expect(find.text('Discard this run?'), findsNothing);
+    expect(recorder.discards, 1);
+    expect(left, 1);
   });
 }

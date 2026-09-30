@@ -1,4 +1,5 @@
 import '../domain/plan_history.dart';
+import '../domain/plan_validator.dart';
 import '../domain/race_day.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
@@ -96,6 +97,27 @@ class PlanStoreException implements Exception {
 
   @override
   String toString() => 'PlanStoreException: $message';
+}
+
+/// A plan the validator refused to store (CLAUDE.md rule 2).
+///
+/// A [PlanStoreException] still, so everything that already catches one keeps
+/// catching it, but **typed**, because what it means to a runner depends on
+/// which rule said no. Its [message] is the validator's own text, written for
+/// the model's retry and for tests; the plan reveal used to print it under the
+/// coach's apology, "[race_day_outside_final_week] race day falls in week 3 of
+/// 6" and all. A screen reads [violations] and says something of its own.
+class PlanRejectedException extends PlanStoreException {
+  PlanRejectedException(this.violations)
+    : super(
+        'refusing to store a skeleton the validator rejects: '
+        '${violations.join('; ')}',
+      );
+
+  final List<Violation> violations;
+
+  /// Whether the validator refused it for [code].
+  bool has(String code) => violations.any((v) => v.code == code);
 }
 
 /// An in-memory [PlanStore]. The default when nothing is injected, so the plan

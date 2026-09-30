@@ -17,10 +17,11 @@
   ],
   "board": {
     "title": "MGKFitness: Run, every screen at build 26",
-    "eyebrow": "apps/mgk_run · build 26 (1.0.0+26)",
+    "eyebrow": "apps/mgk_run · build 26 (1.0.0+26), with the UI fixes for build 27",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "Re-drawn on 30 Sep with the UI fixes for build 27, every plate at one commit. Fixed, with the \"done right\" line now describing the fixed screen and the old defect kept beside it: G4, G6, G7, H6, P5, T8, K1, T16, F7, S6, C9, G1, R16, R17, R18, R19, R28, R29, R24, T15, C8, P4.",
       "New for build 26: the coach's permission sheet and the notice before any price (C7, C8, C9), reporting a reply (C10 to C12), every paywall answer (Y2 to Y9), the account's subscription states and Manage subscription (T4 to T10), signing out with the erase switch (T11, T12), withdrawing the coach's permission (T13 to T15), every delete-account state (L1 to L7), another account's training on the phone (X1), Precise Location off (R28), finishing and leaving a run (R29, R30), a recovered run (F7, F8), a race too close to plan for (G6, G7) and the Health step (B9).",
       "Also new since 2 Sep: the start screen and count-in (R24, R25), the recentre control and full-screen map (R26, R27), the locked coach line (C6), the week a plan is built (H6, P5), backup and permissions (T16, T17), the legal documents (T18, T19) and the backup prompt (K1, K2).",
       "Every plate is drawn as an iPhone now. The September board was drawn as Android without saying so, and at the wrong screen height for anything that sizes itself to the screen, so sheets were shorter than on a phone.",
@@ -832,7 +833,8 @@
         "lib/src/features/legal/domain/legal_copy.dart",
         "lib/src/features/coaching/presentation/coach_flow.dart",
         "lib/src/features/coaching/presentation/onboarding_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: 'I understand' is full width and the panel reaches the bottom edge (see C9)."
     },
     "G2": {
       "file": "plan-shape",
@@ -865,10 +867,11 @@
       "how": "driven",
       "reach": "G3 › Review details",
       "job": "Everything the coach heard, handed back to be corrected before anything is built.",
-      "done": "Every value is editable in place, the days chosen match what was said, and Build my plan only lights when the form is complete. Check the weekday chips: M and W are drawn with their right edge faded out.",
+      "done": "Every value is editable in place, the days chosen match what was said, and Build my plan only lights when the form is complete. Every weekday chip shows its letter whole.",
       "files": [
         "lib/src/features/coaching/presentation/profile_confirmation_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: M and W were drawn with their right edge faded out."
     },
     "G5": {
       "file": "plan-reveal",
@@ -887,22 +890,24 @@
       "how": "driven",
       "reach": "G3 with a race 21 days away › Review details",
       "job": "The confirmation screen for a race too close to build a block for.",
-      "done": "The test sheet (D18) expects the runner to be told here, before anything is built: 'A plan needs at least 6 weeks before race day.' On this plate nothing warns, and Build my plan is lit.",
+      "done": "The test sheet (D18) expects the runner to be told here, before anything is built: 'A plan needs at least 6 weeks before race day. Pick a later race, or build a plan without one.' It is said under the date, with 'Build without a race' below it, and the button reads 'Fix the race date above' and stays dark until the date moves or the race comes out.",
       "files": [
         "lib/src/features/coaching/presentation/profile_confirmation_screen.dart"
       ],
-      "isnew": "The six-week rule is new in build 26."
+      "isnew": "The six-week rule is new in build 26.",
+      "changed": "Build 27: nothing warned here, and Build my plan was lit."
     },
     "G7": {
       "file": "plan-near-race",
-      "name": "And what building it does",
-      "how": "driven",
-      "reach": "G6 › Build my plan",
-      "job": "What the runner meets when the too-close race reaches the plan builder.",
-      "done": "It should say plainly that the race is too close and offer a later race or a plan without one. What it shows is 'That did not work, and it is on me rather than on you' above the validator's own error text, and a Try again that will fail the same way.",
+      "name": "And if the builder refuses one",
+      "how": "built",
+      "reach": "a build the validator refuses (G6 now stops a too-close race first)",
+      "job": "What the runner meets when the plan builder refuses a plan: here, the race too close, as the real repository and validator refuse it.",
+      "done": "The coach says plainly why: 'A plan needs at least 6 weeks before race day. Pick a later race, or build a plan without one.' Change the race goes back to the details as confirmed, and Not now leaves. No validator text anywhere, and no Try again, because the same details would be refused the same way.",
       "files": [
         "lib/src/features/coaching/presentation/plan_reveal_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: it showed 'That did not work, and it is on me rather than on you' above the validator's own error text, with a Try again that failed identically. Built rather than driven now, because G6 no longer lets the race through."
     },
     "P1": {
       "file": "plan-week",
@@ -946,11 +951,12 @@
       "how": "built",
       "reach": "Plan › Calendar",
       "job": "The block as a calendar, opening on the current week.",
-      "done": "It opens on the week today falls in, with today highlighted; later weeks say they firm up closer to the time. Check the top: the current week's title ('This week', its dates) opens tucked under the header, so the first card starts mid-way.",
+      "done": "It opens on the week today falls in, its title ('This week' and its dates) at the top under the header, with today highlighted; later weeks say they firm up closer to the time.",
       "files": [
         "lib/src/features/coaching/presentation/plan_calendar_screen.dart",
         "lib/src/features/coaching/presentation/week_calendar.dart"
-      ]
+      ],
+      "changed": "Build 27: the title opened tucked under the header, the first card starting mid-way."
     },
     "N3": {
       "file": "shell-plan-empty",
@@ -971,7 +977,7 @@
       "how": "driven",
       "reach": "Build a plan on a Wednesday › See my week › Home",
       "job": "Home in the days between building a plan and the Monday it starts.",
-      "done": "Home and the Plan tab should agree on when training starts. Here Home prescribes '5 km today' and counts '0 of 7' for this week, while the plan's week 1 begins next Monday. Read it beside P5.",
+      "done": "Home and the Plan tab agree on when training starts. Today says 'Your plan starts Monday' and its date, what the first session is, and that nothing is set before then, over Record a run; the week is counted from the runner's own runs, not against sessions not yet due. Read it beside P5.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -981,7 +987,8 @@
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
       ],
-      "isnew": "Plans start on the coming Monday since build 25."
+      "isnew": "Plans start on the coming Monday since build 25.",
+      "changed": "Build 27: Home prescribed '5 km today' off next week's same weekday and counted '0 of 7' for this week."
     },
     "P5": {
       "file": "shell-plan-not-started",
@@ -989,12 +996,13 @@
       "how": "driven",
       "reach": "Same day › Nav bar › Plan",
       "job": "The Plan tab on the day a plan is built.",
-      "done": "The week labelled 'This week' should contain today. Here it is next week (5 to 11 Oct) and Wednesday 7 Oct is highlighted as today, so the tab is a week ahead of the calendar.",
+      "done": "The week shown is the one the plan starts with, headed 'Starts Monday' and its date rather than 'This week', and no day of it is lit as today.",
       "files": [
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
-      ]
+      ],
+      "changed": "Build 27: it was headed 'This week' (next week's dates) with next Wednesday lit as today."
     },
     "R24": {
       "file": "run-start",
@@ -1002,11 +1010,12 @@
       "how": "driven",
       "reach": "Home › Start",
       "job": "The start screen: the map, today's session, and a Start that does not start the clock yet.",
-      "done": "Today's session is named above one big Start; the close control leaves without recording anything; nothing is being timed yet. Check the session line: '6.00 km · easy' here, where Home says '6 km'. (The map is blank: no tiles or position in a test.)",
+      "done": "Today's session is named above one big Start in Home's words ('6 km · easy run'); the close control leaves without recording anything; nothing is being timed yet. (The map is blank: no tiles or position in a test.)",
       "files": [
         "lib/src/features/recording/presentation/run_start_screen.dart"
       ],
-      "isnew": "New since the September board."
+      "isnew": "New since the September board.",
+      "changed": "Build 27: it read '6.00 km · easy' where Home says '6 km'."
     },
     "R25": {
       "file": "run-count",
@@ -1158,13 +1167,14 @@
       "how": "built",
       "reach": "R6 › Finish",
       "job": "The moment between tapping Finish and the summary opening.",
-      "done": "Both buttons show a spinner and ignore further taps, so a double tap makes one run. Check the spinner sits clear of the label; here it touches it, and on Resume it is dark on grey.",
+      "done": "Both buttons show a spinner and ignore further taps, so a double tap makes one run. Each spinner sits clear of its label, in the label's own grey.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "Build 27: the spinners touched their labels, and Resume's was dark on grey."
     },
     "R30": {
       "file": "27-discard",
@@ -1277,12 +1287,13 @@
       "how": "built",
       "reach": "Start › Don't Allow",
       "job": "Location was refused at the start.",
-      "done": "A plain sentence saying nothing is tracked until it is allowed, with Continue to ask again. Check the Resume and Finish buttons under it: this run never started.",
+      "done": "A plain sentence saying nothing is tracked until it is allowed, with Continue to ask again, and Close as the only control on the row: this run never started, so there is nothing to resume or finish.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
-      ]
+      ],
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
     },
     "R17": {
       "file": "12-permission-forever",
@@ -1290,12 +1301,13 @@
       "how": "built",
       "reach": "Start, location set to Never",
       "job": "Location is off for the app in the phone's settings.",
-      "done": "Says where to change it and offers Open Settings; asking again would do nothing, so it does not offer that.",
+      "done": "Says where to change it and offers Open Settings; asking again would do nothing, so it does not offer that. Close is the only control on the row.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
-      ]
+      ],
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
     },
     "R18": {
       "file": "13-services-off",
@@ -1303,12 +1315,13 @@
       "how": "built",
       "reach": "Start, phone-wide location off",
       "job": "The phone's own location switch is off.",
-      "done": "Gives the written path to the switch rather than an Open Settings button that cannot reach it.",
+      "done": "Gives the written path to the switch rather than an Open Settings button that cannot reach it. Close is the only control on the row.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
-      ]
+      ],
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
     },
     "R28": {
       "file": "25-precise-off",
@@ -1316,13 +1329,14 @@
       "how": "built",
       "reach": "iPhone: Settings › Run › Location › Precise off › Start",
       "job": "The iPhone has given the app only approximate location, which cannot measure a run.",
-      "done": "Says Run only has approximate location and to turn on Precise Location for Run in Settings, with Open Settings. It must not sit on 'Acquiring GPS' and save a 0 m run. iPhone only; Android cannot tell the app.",
+      "done": "Says Run only has approximate location and to turn on Precise Location for Run in Settings, with Open Settings, and Close as the only control on the row. It must not sit on 'Acquiring GPS' and save a 0 m run. iPhone only; Android cannot tell the app.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
     },
     "R19": {
       "file": "14-location-failed",
@@ -1330,12 +1344,13 @@
       "how": "built",
       "reach": "mid-run, location stops",
       "job": "Location stopped arriving.",
-      "done": "Says nothing is being added and that it usually clears outdoors; no false claim that the run has paused. Drawn here at the start of a run; on a phone it happens mid-run.",
+      "done": "Says nothing is being added and that it usually clears outdoors; no false claim that the run has paused. Drawn here at the start of a run, where the row offers only Close; mid-run, where it usually happens, the run keeps its own controls.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
-      ]
+      ],
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
     },
     "R20": {
       "file": "15-small-early",
@@ -1435,20 +1450,21 @@
       "how": "driven",
       "reach": "Record, swipe the app away, relaunch › Profile › the run",
       "job": "A run interrupted before Finish, recovered at the next launch.",
-      "done": "It is in the log with its route, finished at the last fix, and never as a 0.00 km entry. The test sheet (C21) expects the note 'Recovered automatically…' on it; the summary shows no note anywhere. It only appears in Edit (F8).",
+      "done": "It is in the log with its route, finished at the last fix, and never as a 0.00 km entry. The note the test sheet (C21) expects, 'Recovered automatically…', is on the summary under the numbers.",
       "files": [
         "lib/src/features/recording/presentation/run_summary_screen.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "isnew": "Recovery is new in build 26."
+      "isnew": "Recovery is new in build 26.",
+      "changed": "Build 27: the summary showed no note; only Edit (F8) had it."
     },
     "F8": {
       "file": "run-recovered-note",
       "name": "Its note, in Edit",
       "how": "driven",
       "reach": "F7 › Edit",
-      "job": "The recovered run's note, where it actually appears.",
-      "done": "Reads 'Recovered automatically — recording stopped when the app closed, before you pressed Finish.' A runner will only see it if they open Edit.",
+      "job": "The recovered run's note, where it can be changed.",
+      "done": "Reads 'Recovered automatically — recording stopped when the app closed, before you pressed Finish.' The same note is on the run's summary (F7).",
       "files": [
         "lib/src/features/history/presentation/run_form_screen.dart"
       ],
@@ -1562,12 +1578,13 @@
       "how": "driven",
       "reach": "the mark, never agreed, smallest phone",
       "job": "The consent sheet where it has to scroll.",
-      "done": "Agree and Not now stay pinned and visible; the question and the start of 'What is sent' are above the fold. 'Never sent' and the retention line are only reachable by scrolling, and nothing on screen says there is more.",
+      "done": "Agree and Not now stay pinned and visible; the question and the start of 'What is sent' are above the fold, and the foot of the text fades while there is more below, so 'Never sent' and the retention line are known to be there.",
       "files": [
         "lib/src/features/coaching/presentation/ai_consent_sheet.dart"
       ],
       "size": "320×568",
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "Build 27: nothing on screen said there was more to read."
     },
     "C9": {
       "file": "coach-disclaimer",
@@ -1575,13 +1592,14 @@
       "how": "driven",
       "reach": "C7 › Agree",
       "job": "The medical notice, asked once per phone, after the permission and before any price.",
-      "done": "Two separate answers, never one button for both. Check 'I understand': it is a small centred pill where every other step's main action is full width, and the panel behind the buttons stops short of the bottom edge.",
+      "done": "Two separate answers, never one button for both. 'I understand' is full width like every other step's main action, and the panel behind the buttons runs to the bottom edge.",
       "files": [
         "lib/src/features/legal/presentation/medical_disclaimer_screen.dart",
         "lib/src/features/legal/presentation/legal_document_view.dart",
         "lib/src/features/legal/domain/legal_copy.dart"
       ],
-      "isnew": "The conversation shows it since build 26."
+      "isnew": "The conversation shows it since build 26.",
+      "changed": "Build 27: 'I understand' was a narrow centred pill, and the panel stopped short of the bottom edge."
     },
     "C5": {
       "file": "coach-gate-after-consent",
@@ -1868,11 +1886,11 @@
       "how": "driven",
       "reach": "Profile › Add a run",
       "job": "Logging a run the phone did not record: a treadmill, a race, a run elsewhere.",
-      "done": "Defaults to now; distance, time and kind are all that is required, and the button reads 'Fill in the details above' until they are. Check two things: the red prompts under Distance and Time show before anything has been typed, and Kind starts on Treadmill.",
+      "done": "Defaults to now and to Outdoor; distance, time and kind are all that is required, and the button reads 'Fill in the details above' until they are. No field shows a problem before it has been typed in or left.",
       "files": [
         "lib/src/features/history/presentation/run_form_screen.dart"
       ],
-      "changed": "The September board's S6 was a copy of S7: the tap never reached the button."
+      "changed": "The September board's S6 was a copy of S7: the tap never reached the button. Build 27: the red prompts under Distance and Time showed before anything was typed, and Kind started on Treadmill."
     },
     "T1": {
       "file": "settings",
@@ -1907,11 +1925,12 @@
       "how": "built",
       "reach": "T1 › Back up my data",
       "job": "The backup switch, with what it sends and what switching it off does.",
-      "done": "The switch is the first thing on the screen; the text says it is health information, off until asked for, and that switching off deletes what was stored; the coach is described as separate; last backed-up time at the foot. Check the first line: it lists heart rate, which the app does not record.",
+      "done": "The switch is the first thing on the screen; the text says it is health information, off until asked for, and that switching off deletes what was stored; the coach is described as separate; last backed-up time at the foot. The first line lists nothing the app does not record.",
       "files": [
         "lib/src/features/settings/presentation/backup_screen.dart"
       ],
-      "isnew": "Copy changed in build 26."
+      "isnew": "Copy changed in build 26.",
+      "changed": "Build 27: the first line listed heart rate."
     },
     "T17": {
       "file": "settings-permissions",
@@ -1987,12 +2006,13 @@
       "how": "built",
       "reach": "T1 › the profile card, billing retry",
       "job": "A subscription whose last payment failed and is being retried.",
-      "done": "Status in red; the sentence says the store is retrying, the coach is locked until it succeeds, and the fix is in the store. Check the capital: it begins a sentence with 'the App Store'.",
+      "done": "Status in red; the sentence says the store is retrying, the coach is locked until it succeeds, and the fix is in the store. A sentence that opens with the store opens with a capital: 'The App Store is retrying it'.",
       "files": [
         "lib/src/features/settings/presentation/account_screen.dart",
         "lib/src/features/settings/presentation/settings_row.dart",
         "lib/src/features/settings/presentation/avatar.dart"
-      ]
+      ],
+      "changed": "Build 27: it read '… did not go through. the App Store is retrying it'."
     },
     "T9": {
       "file": "account-ended",
@@ -2087,12 +2107,13 @@
       "how": "built",
       "reach": "T14 › Withdraw",
       "job": "After withdrawing.",
-      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation says it is done. Note the confirmation bar is light on a dark app.",
+      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation on the app's dark surface says it is done.",
       "files": [
         "lib/src/features/legal/presentation/legal_screen.dart",
         "lib/src/features/settings/presentation/settings_tile.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "Build 27: the confirmation bar was light on a dark app. Every snackbar in both apps takes the suite surface now."
     },
     "T18": {
       "file": "legal-disclaimer",
@@ -2126,10 +2147,11 @@
       "how": "driven",
       "reach": "record a second run, no account",
       "job": "The one time the app asks to back up a runner's data: after the second run, when there is something worth keeping.",
-      "done": "Says how many runs are on this phone only and what losing the phone costs; Back them up and Keep them on this phone only; asked once. Check the list of what is backed up: it names heart rate.",
+      "done": "Says how many runs are on this phone only and what losing the phone costs; Back them up and Keep them on this phone only; asked once. The list of what is backed up names only what the app keeps: runs, routes, the plan and what the coach remembers.",
       "files": [
         "lib/src/features/settings/presentation/backup_consent_prompt.dart"
-      ]
+      ],
+      "changed": "Build 27: the list named heart rate, which the app does not record."
     },
     "K2": {
       "file": "account-gate",

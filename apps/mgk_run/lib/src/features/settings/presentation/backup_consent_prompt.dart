@@ -36,9 +36,13 @@ Future<BackupConsent?> askBackupConsent(BuildContext context) =>
                 // deciding whether to upload their injury notes and their
                 // conversations with the coach is entitled to know that is the
                 // decision they are making.
-                'Your runs, routes, heart rate, your plan and what the coach '
-                'remembers about you would be stored to your account, so you '
-                'can pick up on a new phone.',
+                //
+                // No "heart rate": the app records none (ADR-0024). One typed
+                // into a run by hand is part of that run, so "your runs"
+                // already covers it without implying a sensor.
+                'Your runs, routes, your plan and what the coach remembers '
+                'about you would be stored to your account, so you can pick '
+                'up on a new phone.',
                 style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
               ),
               const SizedBox(height: 12),
@@ -124,10 +128,10 @@ Future<BackupConsent?> askKeepRunsSafe(
             // word for word: a runner deciding this is entitled to know it
             // covers their injury notes and what they told the coach, not just
             // "their activity".
-            'Backing up stores your runs, routes, heart rate, your plan and '
-            'what the coach remembers about you to an account, so you can pick '
-            'up on a new phone. This is health information, so we only keep it '
-            'if you say so, and turning it off deletes what has been stored.',
+            'Backing up stores your runs, routes, your plan and what the coach '
+            'remembers about you to an account, so you can pick up on a new '
+            'phone. This is health information, so we only keep it if you say '
+            'so, and turning it off deletes what has been stored.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textTertiary,
               height: 1.45,

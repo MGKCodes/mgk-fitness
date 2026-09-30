@@ -79,7 +79,15 @@ void main() {
     List<RunSummary> runs = const <RunSummary>[],
   }) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(profile);
+    // Built ten weeks ago, so the plan is under way whatever day the suite
+    // runs on, and a race a few days either side of today falls in its final
+    // week. Built today, it would start on the coming Monday (ADR-0034) and
+    // ask nothing of today at all; and a block's race has to sit in its last
+    // week or the validator refuses it.
+    await PlanRepository(
+      store: store,
+      now: () => DateTime.now().subtract(const Duration(days: 70)),
+    ).create(profile);
 
     await tester.binding.setSurfaceSize(const Size(430, 2400));
     addTearDown(() => tester.binding.setSurfaceSize(null));

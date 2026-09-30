@@ -20,6 +20,7 @@ import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.da
 import 'package:mgk_run/src/features/coaching/presentation/week_list.dart';
 import 'package:mgk_run/src/features/home/presentation/home_tab.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/recording/presentation/run_start_screen.dart';
 
 /// **No surface renders a prescribed distance with a decimal in it.**
 ///
@@ -114,6 +115,25 @@ void main() {
     final name = unit.isMetric ? 'metric' : 'imperial';
 
     group('in $name', () {
+      // Board R24: "6.00 km · easy" on the start screen, one tap after Home
+      // said "6 km".
+      testWidgets('the start screen', (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: RunStartScreen(
+              onStart: () {},
+              plannedSession: monday,
+              unit: unit,
+            ),
+          ),
+        );
+        await tester.pump();
+        expectNoDecimals(tester, 'The start screen');
+        if (unit.isMetric) {
+          expect(find.text('6 km · easy run'), findsOneWidget);
+        }
+      });
+
       testWidgets("the Plan tab's week list", (tester) async {
         await pump(
           tester,

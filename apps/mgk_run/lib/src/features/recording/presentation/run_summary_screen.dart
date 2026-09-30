@@ -184,6 +184,16 @@ class RunSummaryScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
                 Entrance(index: 2, child: _StatGrid(tiles: _tiles())),
+                // What is written on the run, under the numbers it is about.
+                //
+                // It was only ever in Edit › Notes, so a run the app finished
+                // itself after being killed carried "Recovered automatically"
+                // where nobody reading the run would see it (board F7, test
+                // sheet C21), and a runner's own note was as hidden.
+                if (_writtenNote case final written?) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(index: 2, child: _WrittenNote(text: written)),
+                ],
                 // The numbers first — that is what the screen is for — then the
                 // coach's read of them, above the splits a pacing note refers
                 // to.
@@ -294,6 +304,12 @@ class RunSummaryScreen extends StatelessWidget {
         ))
           effort,
     ];
+  }
+
+  /// The run's note, trimmed; null when there is nothing written.
+  String? get _writtenNote {
+    final text = summary.notes?.trim();
+    return text == null || text.isEmpty ? null : text;
   }
 
   List<_Tile> _tiles() {
@@ -757,6 +773,39 @@ class _RecordBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The note on a run, headed the way the splits are and set in the quieter
+/// ink: it is about the run rather than a measure of it.
+class _WrittenNote extends StatelessWidget {
+  const _WrittenNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'NOTES',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: AppColors.textSecondary,
+            letterSpacing: 3,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          text,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.45,
+          ),
+        ),
+      ],
     );
   }
 }

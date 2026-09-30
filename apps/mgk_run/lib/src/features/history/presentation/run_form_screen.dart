@@ -33,7 +33,7 @@ class RunFormScreen extends StatefulWidget {
   final String? runId;
 
   /// What to open with. For an edit this is the stored run; for an add it is
-  /// usually null, and the form starts at "today, treadmill".
+  /// usually null, and the form starts at "now, outdoors".
   final RunDraft? initial;
 
   final UnitSystem unit;
@@ -61,15 +61,30 @@ class _RunFormScreenState extends State<RunFormScreen> {
   bool _saving = false;
   String? _failure;
 
+  /// The fields whose problems are shown.
+  ///
+  /// **A problem is shown once the runner has had a chance to cause it.** The
+  /// form opened with "How far did you go?" and "How long did it take?" in red
+  /// under two empty fields, before anything had been typed (board S6): an
+  /// empty form reading as a wrong one. A field joins this set when it is typed
+  /// in or left, and one that opens with a value in it (every field of an
+  /// edit) starts here. The button still says what is missing either way.
+  final Set<String> _touched = <String>{'started_at', 'type'};
+
   @override
   void initState() {
     super.initState();
     final d = widget.initial;
-    // A new run defaults to now rather than to nothing: a runner adding a
-    // treadmill session has almost always just done it, and a wrong date is
-    // easier to spot than an empty one is to remember.
+    // A new run defaults to now rather than to nothing: a runner adding a run
+    // has almost always just done it, and a wrong date is easier to spot than
+    // an empty one is to remember.
     _startedAt = d?.startedAt ?? widget.now();
-    _type = d?.type ?? kTypeTreadmill;
+    // Outdoors, because that is what a running app's runs mostly are. It
+    // started on Treadmill, the kind this form was first written for, which
+    // made every run added after a phone died or was left at home a
+    // treadmill run unless somebody noticed (board S6). RunDraft keeps its own
+    // default for the coach's log_run, which is a different guess.
+    _type = d?.type ?? kTypeOutdoor;
     _rpe = d?.rpe;
     _distance = TextEditingController(
       text: d?.distanceMeters == null
@@ -79,6 +94,19 @@ class _RunFormScreenState extends State<RunFormScreen> {
     _duration = TextEditingController(text: _hms(d?.duration));
     _hr = TextEditingController(text: d?.avgHr?.toString() ?? '');
     _notes = TextEditingController(text: d?.notes ?? '');
+    for (final (field, c) in <(String, TextEditingController)>[
+      ('distance', _distance),
+      ('duration', _duration),
+      ('avg_hr', _hr),
+    ]) {
+      if (c.text.isNotEmpty) _touched.add(field);
+    }
+    if (_rpe != null) _touched.add('rpe');
+  }
+
+  void _touch(String field) {
+    if (_touched.contains(field)) return;
+    setState(() => _touched.add(field));
   }
 
   @override
@@ -277,6 +305,7 @@ class _RunFormScreenState extends State<RunFormScreen> {
   );
 
   Widget _issueText(String field, List<RunIssue> issues) {
+    if (!_touched.contains(field)) return const SizedBox.shrink();
     final issue = issues.where((i) => i.field == field).firstOrNull;
     if (issue == null) return const SizedBox.shrink();
     return Padding(
@@ -315,16 +344,19 @@ class _RunFormScreenState extends State<RunFormScreen> {
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      TextField(
-        controller: c,
-        onChanged: (_) => setState(() {}),
-        keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.allow(
-            decimal ? RegExp(r'[0-9.]') : RegExp(r'[0-9]'),
-          ),
-        ],
-        decoration: InputDecoration(suffixText: suffix),
+      _TouchOnLeave(
+        onLeave: () => _touch(field),
+        child: TextField(
+          controller: c,
+          onChanged: (_) => setState(() => _touched.add(field)),
+          keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.allow(
+              decimal ? RegExp(r'[0-9.]') : RegExp(r'[0-9]'),
+            ),
+          ],
+          decoration: InputDecoration(suffixText: suffix),
+        ),
       ),
       _issueText(field, issues),
     ],
@@ -338,14 +370,17 @@ class _RunFormScreenState extends State<RunFormScreen> {
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      TextField(
-        controller: c,
-        onChanged: (_) => setState(() {}),
-        keyboardType: TextInputType.datetime,
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
-        ],
-        decoration: InputDecoration(hintText: hint),
+      _TouchOnLeave(
+        onLeave: () => _touch(field),
+        child: TextField(
+          controller: c,
+          onChanged: (_) => setState(() => _touched.add(field)),
+          keyboardType: TextInputType.datetime,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+          ],
+          decoration: InputDecoration(hintText: hint),
+        ),
       ),
       _issueText(field, issues),
     ],
@@ -387,8 +422,10 @@ class _RunFormScreenState extends State<RunFormScreen> {
                   // Tapping the chosen effort again clears it, because it is
                   // optional and there would otherwise be no way back to "I
                   // would rather not say".
-                  onSelected: (_) =>
-                      setState(() => _rpe = _rpe == e ? null : e),
+                  onSelected: (_) => setState(() {
+                    _rpe = _rpe == e ? null : e;
+                    _touched.add('rpe');
+                  }),
                 ),
               ),
             ),
@@ -465,4 +502,23 @@ class _RunFormScreenState extends State<RunFormScreen> {
     final mm = d.minute.toString().padLeft(2, '0');
     return '${d.day} ${months[d.month - 1]} ${d.year}, $hh:$mm';
   }
+}
+
+/// Calls [onLeave] when focus leaves [child]: the moment a field the runner
+/// went into and came out of empty is theirs to be told about.
+class _TouchOnLeave extends StatelessWidget {
+  const _TouchOnLeave({required this.onLeave, required this.child});
+
+  final VoidCallback onLeave;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onFocusChange: (focused) {
+      if (!focused) onLeave();
+    },
+    child: child,
+  );
 }

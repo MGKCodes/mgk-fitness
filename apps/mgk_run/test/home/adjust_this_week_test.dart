@@ -90,6 +90,12 @@ TrainingWeek? validRevision(TrainingWeek week) {
   return TrainingWeek(skeletonIndex: week.skeletonIndex, sessions: sessions);
 }
 
+/// Three weeks ago, so the plan is under way on whatever day the suite runs.
+/// A plan starts on the coming Monday (ADR-0034) and asks nothing of the days
+/// before it, so one built "today" is a runner with no session yet on six days
+/// of the week out of seven.
+DateTime _underWay() => DateTime.now().subtract(const Duration(days: 21));
+
 /// The category's loudest complaint is a plan that will not bend. Runio could
 /// always bend one — but only for a runner willing to type a paragraph at the
 /// coach. These cover the door onto that engine: it is on Home, it is one tap,
@@ -119,7 +125,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final store = DriftPlanStore(db);
-    if (withPlan) await PlanRepository(store: store).create(aProfile());
+    if (withPlan) {
+      await PlanRepository(store: store, now: _underWay).create(aProfile());
+    }
     final chat = _RecordingChat();
 
     await tester.pumpWidget(

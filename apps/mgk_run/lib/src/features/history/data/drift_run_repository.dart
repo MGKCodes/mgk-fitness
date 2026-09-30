@@ -160,6 +160,7 @@ RunSummary runSummaryFromLocal(
   // runner who declined it. The screen draws no tile rather than a zero, so a
   // column that is mostly empty is the designed state and not a gap.
   steps: row.steps,
+  notes: row.notes,
   type: row.type,
   points: points,
   splits: splits,

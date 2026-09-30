@@ -63,6 +63,12 @@ class _UnreadableStore implements PlanStore {
   ) async => false;
 }
 
+/// Three weeks ago, so the plan is under way on whatever day the suite runs.
+/// A plan starts on the coming Monday (ADR-0034) and asks nothing of the days
+/// before it, so one built "today" is a runner with no session yet on six days
+/// of the week out of seven.
+DateTime _underWay() => DateTime.now().subtract(const Duration(days: 21));
+
 void main() {
   late AppDatabase db;
 
@@ -145,7 +151,7 @@ void main() {
     // Seed storage the way a previous session would have left it, then start the
     // app cold: no coach injected, so nothing could regenerate this.
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(aProfile());
+    await PlanRepository(store: store, now: _underWay).create(aProfile());
 
     await openPlan(tester, store);
 
@@ -164,7 +170,7 @@ void main() {
     tester,
   ) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(aProfile());
+    await PlanRepository(store: store, now: _underWay).create(aProfile());
 
     await openPlan(tester, store, history: () async => ranToday());
 
@@ -189,7 +195,7 @@ void main() {
     tester,
   ) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(aProfile());
+    await PlanRepository(store: store, now: _underWay).create(aProfile());
 
     await openPlan(tester, store);
 
@@ -213,7 +219,7 @@ void main() {
 
   testWidgets('the plan tab does not disturb Home', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(aProfile());
+    await PlanRepository(store: store, now: _underWay).create(aProfile());
 
     await tester.pumpWidget(shell(store));
     await tester.pumpAndSettle();

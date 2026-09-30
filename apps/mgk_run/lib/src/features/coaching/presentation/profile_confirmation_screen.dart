@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
+import '../domain/goal_draft.dart';
 import '../domain/intake_slots.dart';
 import '../domain/plan_shape.dart';
 import '../domain/runner_profile.dart';
@@ -46,6 +47,15 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
   int? _daysPerWeek;
   late Set<int> _weekdays;
 
+  /// What the runner is after, as intake claimed it — until they take the race
+  /// out on this screen, which makes a block a horizon.
+  late PlanShape? _shape;
+
+  /// The runner took the race out here. Keeps the date row on screen, reading
+  /// "No race", so the removal can be undone by picking a date rather than by
+  /// going back through the conversation.
+  bool _raceRemoved = false;
+
   /// What the runner repeats every week — the substance of a rhythm.
   ///
   /// Held rather than rebuilt from the form, because there is no field for it:
@@ -70,6 +80,7 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
     _daysPerWeek = s.daysPerWeek;
     _weekdays = {...?s.availableWeekdays};
     _commitments = <PlanCommitment>[...?s.commitments];
+    _shape = s.shape;
   }
 
   @override
@@ -93,7 +104,7 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
   /// has a field on this screen, and dropping them changed what the runner was
   /// while they were checking it. A rhythm arrived here and left as a log.
   IntakeSlots get _current => IntakeSlots(
-    shape: widget.slots.shape,
+    shape: _shape,
     commitments: _commitments.isEmpty ? null : _commitments,
     goalDistanceMeters: _metersFromKm(_goalKm.text),
     eventDate: _eventDate,
@@ -111,9 +122,39 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
   /// leaving the row blank means.
   static const Set<int> _anyDay = <int>{1, 2, 3, 4, 5, 6, 7};
 
+  /// A race too close to build a block for, in the words the coach uses for
+  /// the same thing ([GoalDraft]); null when the date is fine or there is none.
+  ///
+  /// **Here as well as in the builder, because this is where it can still be
+  /// fixed.** The slots' own checks only ask whether the date is in the future,
+  /// so a race three weeks out lit "Build my plan", and the refusal arrived one
+  /// screen later as the skeleton validator's error text over a Try again that
+  /// failed the same way every time (test sheet D18). Not a slot sanity check:
+  /// those also decide when the intake conversation is finished, and a coach
+  /// that silently kept asking about a date it had already been given would be
+  /// worse than this screen saying why.
+  ///
+  /// Only the six-week rule. A date already gone has its own line from the
+  /// slots, and the picker cannot reach one years away.
+  static String? _raceIssue(IntakeSlots s, DateTime now) {
+    final date = s.eventDate;
+    if (date == null || s.resolvedShape != PlanShape.block) return null;
+    if (!date.isAfter(now)) return null;
+    return raceTooCloseToPlan(date, now) ? kRaceTooCloseMessage : null;
+  }
+
+  /// The way out the message offers: the same plan toward the same distance,
+  /// with nothing to taper into (a horizon, ADR-0011).
+  void _removeRace() => setState(() {
+    _eventDate = null;
+    _shape = PlanShape.horizon;
+    _raceRemoved = true;
+  });
+
   void _confirm() {
     final s = _current;
-    if (!s.isComplete(widget.now())) return;
+    final now = widget.now();
+    if (!s.isComplete(now) || _raceIssue(s, now) != null) return;
     widget.onConfirm(
       RunnerProfile(
         // Nullable on RunnerProfile, and null is a real answer rather than
@@ -157,15 +198,28 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
       firstDate: now,
       lastDate: now.add(const Duration(days: 365 * 2)),
     );
-    if (picked != null) setState(() => _eventDate = picked);
+    if (picked == null) return;
+    setState(() {
+      _eventDate = picked;
+      // Picking a date is putting the race back.
+      if (_raceRemoved) {
+        _raceRemoved = false;
+        _shape = widget.slots.shape;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final slots = _current;
     final now = widget.now();
-    final issues = slots.sanityIssues(now);
-    final complete = slots.isComplete(now);
+    final raceIssue = _raceIssue(slots, now);
+    final issues = <SlotIssue>[
+      ...slots.sanityIssues(now),
+      if (raceIssue != null) SlotIssue('event_date', raceIssue),
+    ];
+    final filledIn = slots.isComplete(now);
+    final complete = filledIn && raceIssue == null;
     // The validator's own view of what this runner is, so the fields shown and
     // the button's enabled state can never disagree about it.
     final shape = slots.resolvedShape;
@@ -219,7 +273,8 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
                     ),
                   // Only a block has one. A horizon is a distance with no race
                   // entered, which is the whole distinction between them.
-                  if (shape == PlanShape.block) _dateField(issues),
+                  if (shape == PlanShape.block || _raceRemoved)
+                    _dateField(issues, tooClose: raceIssue != null),
                   if (shape == PlanShape.rhythm) _commitmentsField(),
                   _numberField(
                     'Weekly volume now',
@@ -256,7 +311,13 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
               child: PrimaryButton(
-                label: complete ? 'Build my plan' : 'Fill in the details above',
+                label: complete
+                    ? 'Build my plan'
+                    // Everything else is filled in, so "fill in the details"
+                    // would send them looking for a blank that is not there.
+                    : filledIn
+                    ? 'Fix the race date above'
+                    : 'Fill in the details above',
                 onPressed: complete ? _confirm : null,
               ),
             ),
@@ -324,30 +385,56 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
     ),
   );
 
-  Widget _dateField(List<SlotIssue> issues) => _labeled(
-    'Event date',
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        InkWell(
-          onTap: _pickDate,
-          borderRadius: BorderRadius.circular(14),
-          child: InputDecorator(
-            decoration: const InputDecoration(),
-            child: Text(
-              _eventDate == null ? 'Pick a date' : _dateLabel(_eventDate!),
-              style: TextStyle(
-                color: _eventDate == null
-                    ? AppColors.textTertiary
-                    : AppColors.textPrimary,
+  Widget _dateField(List<SlotIssue> issues, {required bool tooClose}) =>
+      _labeled(
+        'Event date',
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            InkWell(
+              onTap: _pickDate,
+              borderRadius: BorderRadius.circular(14),
+              child: InputDecorator(
+                decoration: const InputDecoration(),
+                child: Text(
+                  _eventDate != null
+                      ? _dateLabel(_eventDate!)
+                      : _raceRemoved
+                      ? 'No race'
+                      : 'Pick a date',
+                  style: TextStyle(
+                    color: _eventDate == null
+                        ? AppColors.textTertiary
+                        : AppColors.textPrimary,
+                  ),
+                ),
               ),
             ),
-          ),
+            _issueText('event_date', issues),
+            // The second half of the message, as something to press. A later
+            // race is the field above; this is the other answer.
+            if (tooClose)
+              AppTextButton(
+                label: 'Build without a race',
+                onPressed: _removeRace,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            if (_raceRemoved)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 2),
+                child: Text(
+                  'The plan builds toward the distance instead. Pick a date '
+                  'to add a race back.',
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                ),
+              ),
+          ],
         ),
-        _issueText('event_date', issues),
-      ],
-    ),
-  );
+      );
 
   /// What the runner repeats every week, shown back for checking.
   ///
@@ -414,6 +501,9 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
                   padding: EdgeInsets.only(right: d == 7 ? 0 : 4),
                   child: ChoiceChip(
                     label: Center(child: Text('$d')),
+                    // Matched to the weekday row below, so the two rows of
+                    // seven share one rhythm.
+                    labelPadding: EdgeInsets.zero,
                     showCheckmark: false,
                     selected: _daysPerWeek == d,
                     onSelected: (_) => setState(() => _daysPerWeek = d),
@@ -445,6 +535,11 @@ class _ProfileConfirmationScreenState extends State<ProfileConfirmationScreen> {
                     // "✓ ✓ W ✓ F ✓ ✓" — you can only tell which days are selected
                     // by counting positions. The selected fill carries the state.
                     showCheckmark: false,
+                    // The label's own 8pt either side, on a chip this narrow,
+                    // left M and W narrower than their glyphs at 393pt, so
+                    // both were drawn with the right edge faded out (board
+                    // G4). The chip is the target; the letter only has to fit.
+                    labelPadding: EdgeInsets.zero,
                     selected: _weekdays.contains(day),
                     onSelected: (on) => setState(() {
                       on ? _weekdays.add(day) : _weekdays.remove(day);

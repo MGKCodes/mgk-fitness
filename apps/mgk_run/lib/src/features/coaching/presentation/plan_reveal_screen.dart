@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import '../data/plan_store.dart';
+import '../domain/goal_draft.dart';
 import '../domain/plan_headline.dart';
 import '../domain/plan_shape.dart';
 import '../domain/stored_plan.dart';
@@ -41,6 +43,7 @@ class PlanRevealScreen extends StatefulWidget {
     super.key,
     required this.build,
     required this.onDone,
+    this.onChangeDetails,
     this.unit = UnitSystem.metric,
     this.now = DateTime.now,
   });
@@ -52,6 +55,11 @@ class PlanRevealScreen extends StatefulWidget {
   /// build failed and they backed out.
   final void Function(StoredPlan? plan) onDone;
 
+  /// Back to the confirmation screen, for a build the validator refused: the
+  /// details are what has to change, so asking again with the same ones would
+  /// fail the same way. Null offers only [onDone]'s way out.
+  final VoidCallback? onChangeDetails;
+
   final UnitSystem unit;
   final DateTime Function() now;
 
@@ -61,7 +69,7 @@ class PlanRevealScreen extends StatefulWidget {
 
 class _PlanRevealScreenState extends State<PlanRevealScreen> {
   StoredPlan? _plan;
-  String? _error;
+  PlanBuildFailure? _failure;
 
   @override
   void initState() {
@@ -70,21 +78,14 @@ class _PlanRevealScreenState extends State<PlanRevealScreen> {
   }
 
   Future<void> _build() async {
-    setState(() => _error = null);
+    setState(() => _failure = null);
     try {
       final plan = await widget.build();
       if (!mounted) return;
       setState(() => _plan = plan);
     } catch (e) {
       if (!mounted) return;
-      // Whatever went wrong, this is not the screen to explain a stack trace
-      // on. A `PlanStoreException` carries a runner-readable message; anything
-      // else gets one.
-      setState(
-        () => _error = e is Exception && '$e'.contains(':')
-            ? '$e'.split(':').skip(1).join(':').trim()
-            : 'The plan could not be built. Please try again.',
-      );
+      setState(() => _failure = PlanBuildFailure.from(e));
     }
   }
 
@@ -104,8 +105,13 @@ class _PlanRevealScreenState extends State<PlanRevealScreen> {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
-              child: _error != null
-                  ? _Failed(message: _error!, onRetry: _build, onLeave: _leave)
+              child: _failure != null
+                  ? _Failed(
+                      failure: _failure!,
+                      onRetry: _build,
+                      onChangeDetails: widget.onChangeDetails,
+                      onLeave: _leave,
+                    )
                   : plan == null
                   ? const _Building()
                   : _Revealed(
@@ -150,47 +156,124 @@ class _Building extends StatelessWidget {
   }
 }
 
-/// The plan could not be built. Never a dead end: the profile is still in
-/// memory upstream, so trying again costs nothing but the wait.
-class _Failed extends StatelessWidget {
-  const _Failed({
-    required this.message,
-    required this.onRetry,
-    required this.onLeave,
+/// What a failed build says to the runner, and what it can offer them.
+///
+/// **Never the error's own text.** This used to print whatever followed the
+/// first colon of the exception, on the theory that a `PlanStoreException`
+/// carried a runner-readable message. None of them does, and the one a runner
+/// actually met was the validator's: "refusing to store a skeleton the
+/// validator rejects: [race_day_outside_final_week] race day falls in week 3
+/// of 6", under an apology and over a Try again that could only fail the same
+/// way (screen board G7). So the error is read for what it *is*, and the words
+/// are written here.
+class PlanBuildFailure {
+  const PlanBuildFailure._({
+    required this.said,
+    this.detail,
+    required this.canRetry,
+    this.changeLabel,
   });
 
-  final String message;
+  factory PlanBuildFailure.from(Object error) {
+    if (error is PlanRejectedException) {
+      // The confirmation screen stops a race this close before it gets here,
+      // with the same words; this is the builder's copy of the same rule, for
+      // anything that reaches it another way.
+      if (error.has('race_day_outside_final_week')) {
+        return const PlanBuildFailure._(
+          said: kRaceTooCloseMessage,
+          canRetry: false,
+          changeLabel: 'Change the race',
+        );
+      }
+      // Any other refusal is about the details too, so they are what to
+      // change, and asking again with the same ones cannot help.
+      return const PlanBuildFailure._(
+        said:
+            'I could not build a plan that holds together from those details.',
+        detail: 'Check them and change anything that looks wrong.',
+        canRetry: false,
+        changeLabel: 'Check the details',
+      );
+    }
+    // A network, a store or a coach that did not answer: worth another go.
+    return const PlanBuildFailure._(
+      said: 'That did not work, and it is on me rather than on you.',
+      detail: 'The plan could not be built. Please try again.',
+      canRetry: true,
+    );
+  }
+
+  /// The coach's line.
+  final String said;
+
+  /// A plainer line under it, when there is more to say.
+  final String? detail;
+
+  /// Whether the same request could succeed a second time.
+  final bool canRetry;
+
+  /// What going back to the details is called, when that is the fix.
+  final String? changeLabel;
+}
+
+/// The plan could not be built. Never a dead end: there is always a way off
+/// the screen, and a second attempt is offered only where one could work.
+class _Failed extends StatelessWidget {
+  const _Failed({
+    required this.failure,
+    required this.onRetry,
+    required this.onLeave,
+    this.onChangeDetails,
+  });
+
+  final PlanBuildFailure failure;
   final VoidCallback onRetry;
   final VoidCallback onLeave;
+  final VoidCallback? onChangeDetails;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final detail = failure.detail;
+    final change = failure.changeLabel;
+    // The primary is whatever can actually move things on. With nothing to
+    // retry and nowhere to go back to, leaving is it.
+    final Widget? primary = failure.canRetry
+        ? PrimaryButton(label: 'Try again', onPressed: onRetry)
+        : change != null && onChangeDetails != null
+        ? PrimaryButton(label: change, onPressed: onChangeDetails)
+        : null;
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const Said('That did not work, and it is on me rather than on you.'),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          message,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        PrimaryButton(label: 'Try again', onPressed: onRetry),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: AppTextButton(
-            label: 'Not now',
-            onPressed: onLeave,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
+        Said(failure.said),
+        if (detail != null) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            detail,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.4,
             ),
           ),
-        ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        if (primary != null) ...<Widget>[
+          primary,
+          const SizedBox(height: AppSpacing.sm),
+          Center(
+            child: AppTextButton(
+              label: 'Not now',
+              onPressed: onLeave,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ] else
+          PrimaryButton(label: 'Not now', onPressed: onLeave),
       ],
     );
   }

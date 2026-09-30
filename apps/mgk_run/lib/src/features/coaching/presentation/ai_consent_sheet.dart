@@ -97,44 +97,49 @@ class AiConsentSheet extends StatelessWidget {
                 child: SheetHandle(),
               ),
               // Scrolls, because the buttons must never be what gets cut off on
-              // a small phone with large text.
+              // a small phone with large text. And says so: at 320pt "Never
+              // sent" and the retention line were below the edge with nothing
+              // to suggest it (board C8), on the one sheet whose job is to be
+              // read before it is answered.
               Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(intro, style: body),
-                      const SizedBox(height: AppSpacing.lg),
-                      const SectionLabel('What is sent'),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final line in sent) _Point(line, style: body),
-                      const SizedBox(height: AppSpacing.md),
-                      const SectionLabel('Never sent'),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final line in neverSent) _Point(line, style: body),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(control, style: body),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(withdraw, style: body),
-                      AppTextButton(
-                        label: 'Read the privacy policy',
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const PrivacyPolicyScreen(),
+                child: ScrollEdgeFade(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(intro, style: body),
+                        const SizedBox(height: AppSpacing.lg),
+                        const SectionLabel('What is sent'),
+                        const SizedBox(height: AppSpacing.sm),
+                        for (final line in sent) _Point(line, style: body),
+                        const SizedBox(height: AppSpacing.md),
+                        const SectionLabel('Never sent'),
+                        const SizedBox(height: AppSpacing.sm),
+                        for (final line in neverSent) _Point(line, style: body),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(control, style: body),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(withdraw, style: body),
+                        AppTextButton(
+                          label: 'Read the privacy policy',
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PrivacyPolicyScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

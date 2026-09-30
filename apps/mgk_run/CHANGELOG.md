@@ -383,6 +383,58 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The plan calendar opens with this week at the top.** A few weeks into a
+  plan it opened with "This week" and its dates tucked under the header.
+- **The coach's consent sheet shows when there is more to read.** On a small
+  phone "Never sent" and how long things are kept were below the fold with
+  nothing to say so. The foot of the text now fades while there is more, and
+  stops once you reach the end.
+- **Confirmations at the foot of the screen are dark, like the rest of the
+  app.** "Withdrawn. Your coach will ask before it sends anything." and every
+  other one arrived as a white bar with dark text.
+- **The weekday chips on the plan's confirmation screen show M and W
+  whole.** On a 393pt iPhone both were drawn with their right edge faded out.
+- **The start screen names today's session the way Home does.** It read
+  "6.00 km · easy" one tap after Home said "6 km", and showed two kinds by
+  their code names ("marathonPace", "timeTrial"). It now reads "6 km · easy
+  run".
+- **The spinners on Resume and Finish while a run saves sit clear of their
+  labels,** and Resume's is no longer dark on the grey of a disabled button.
+- **A run that location stopped before it began offers only what applies.**
+  With location refused, off, approximate or failing at the start, the run
+  screen showed Resume and Finish over a run that had not started. It now
+  shows the problem's own fix (Continue or Open Settings, where one exists)
+  and Close, which leaves without asking about progress there is none of.
+- **The medical notice's "I understand" is full width**, like every other
+  step's main action, and the panel behind it reaches the bottom of the
+  screen instead of stopping short of it.
+- **Adding a run by hand no longer opens on errors, or on Treadmill.** "How
+  far did you go?" and "How long did it take?" showed in red before anything
+  had been typed; a field now says what is wrong once you have typed in it or
+  left it. Kind starts on Outdoor.
+- **A run's note shows on its summary.** The note was only in Edit, so a run
+  the app recovered after it was closed mid-run gave no sign of it where the
+  run is read. The summary now shows "Recovered automatically", or whatever
+  note the run carries, under the numbers.
+- **The backup screens no longer list heart rate.** The backup prompt and
+  Back up my data named heart rate among what is backed up; the app records
+  none. A heart rate typed into a run by hand still goes with that run, as the
+  privacy policy already says.
+- **Account's payment-failed line starts its sentence with a capital.** It
+  read "Your last payment did not go through. the App Store is retrying it".
+- **The days before a new plan starts say so.** A plan starts on the coming
+  Monday, and until then Home set that weekday's session from next week as
+  today's ("5 km today") and counted "0 of 7" against it, while the Plan tab
+  headed next week "This week" and lit the same day of it as today. Home now
+  says when the plan starts and what comes first, sets nothing for today and
+  counts the week from your runs; the Plan tab and the calendar head that week
+  "Starts Monday 5 Oct" with no day lit.
+- **A race too close to plan for is caught before anything is built.** The
+  confirmation screen says a plan needs six weeks before race day, under the
+  date, and holds Build my plan until the race moves later or comes out
+  ("Build without a race"). If the builder refuses a plan anyway, it says why
+  in plain words rather than printing its own error, and offers a way back to
+  the details instead of a Try again that would fail the same way.
 - **A run the phone stopped halfway is recovered, not lost.** If the app was
   killed during a run -- iOS reclaiming memory, a swipe from the app switcher,
   a reboot, a crash -- the run stayed on the phone, invisible, forever. The next

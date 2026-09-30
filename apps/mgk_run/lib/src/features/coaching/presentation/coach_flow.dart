@@ -173,6 +173,33 @@ class _CoachFlowState extends State<CoachFlow> {
   /// without sending the runner back through the conversation.
   RunnerProfile? _profile;
 
+  /// [profile] as slots again, for the confirmation screen to open on.
+  ///
+  /// The answers the confirmation filled in for questions nobody was asked go
+  /// back to blank: no volume is zero there and no constraint is every day, and
+  /// showing those as though the runner had said them would be the screen
+  /// putting words in their mouth. The shape is read off the profile, so a race
+  /// taken out on the way here stays out.
+  static IntakeSlots _slotsFrom(RunnerProfile profile) => IntakeSlots(
+    shape: shapeOf(profile),
+    commitments: profile.commitments.isEmpty ? null : profile.commitments,
+    goalDistanceMeters: profile.goalDistanceMeters,
+    eventDate: profile.eventDate,
+    currentWeeklyMeters: profile.currentWeeklyMeters > 0
+        ? profile.currentWeeklyMeters
+        : null,
+    longestRecentMeters: profile.longestRecentMeters > 0
+        ? profile.longestRecentMeters
+        : null,
+    daysPerWeek: profile.daysPerWeek > 0 ? profile.daysPerWeek : null,
+    availableWeekdays: profile.availableWeekdays.length >= 7
+        ? null
+        : profile.availableWeekdays,
+    timeTrialDistanceMeters: profile.timeTrialDistanceMeters,
+    timeTrialDuration: profile.timeTrialDuration,
+    injuryNotes: profile.injuryNotes,
+  );
+
   @override
   Widget build(BuildContext context) {
     final atConfirm = _step == _Step.confirmation;
@@ -223,6 +250,12 @@ class _CoachFlowState extends State<CoachFlow> {
           unit: widget.unit,
           now: widget.now,
           onDone: (plan) => Navigator.of(context).pop(plan),
+          // A refused build goes back to the details with the runner's own
+          // edits in them, not to what intake first heard.
+          onChangeDetails: () => setState(() {
+            _slots = _slotsFrom(_profile!);
+            _step = _Step.confirmation;
+          }),
         ),
       },
     );

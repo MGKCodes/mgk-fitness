@@ -6,6 +6,7 @@ import '../../coaching/data/plan_repository.dart';
 import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/race_day.dart';
 import '../../coaching/domain/session_effort.dart';
+import '../../coaching/domain/stored_plan.dart' show addDays;
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/presentation/session_labels.dart';
@@ -156,7 +157,15 @@ class HomeTodayTile extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
           ],
 
-          if (racing && race.phase == RacePhase.today)
+          if (session != null && session.startsOn != null)
+            _BeforeThePlan(
+              startsOn: session.startsOn!,
+              first: session.firstSession,
+              unit: unit,
+              ranToday: _ranToday,
+              onRecord: onFreeRun,
+            )
+          else if (racing && race.phase == RacePhase.today)
             _RaceDay(
               race: race,
               unit: unit,
@@ -215,7 +224,12 @@ class HomeTodayTile extends StatelessWidget {
           // the week the runner would be adjusting is the one they have
           // already run, and the coach cannot move a session that has been the
           // point of the whole block since January.
-          if (onAdjustWeek != null && !racing) ...<Widget>[
+          //
+          // Nor before the plan starts: "this week" is not a plan week yet, and
+          // the coach is one tap away for anything about the first one.
+          if (onAdjustWeek != null &&
+              !racing &&
+              session?.startsOn == null) ...<Widget>[
             const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,
@@ -628,6 +642,66 @@ class _EffortLineState extends State<_EffortLine> {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// A day before the plan starts: when it does, and what it opens with.
+///
+/// **Nothing is prescribed, because nothing has been.** A plan starts on the
+/// coming Monday (ADR-0034), and on the days before it this card used to read
+/// today's weekday out of week 1 and set it as today's session, so a Wednesday
+/// build was told "5 km today" off the following Wednesday (screen board H6).
+/// It is not a rest day either: the plan has not begun, so any run is the
+/// runner's own, and recording one is the action.
+class _BeforeThePlan extends StatelessWidget {
+  const _BeforeThePlan({
+    required this.startsOn,
+    required this.first,
+    required this.unit,
+    required this.ranToday,
+    required this.onRecord,
+  });
+
+  final DateTime startsOn;
+  final PlannedSession? first;
+  final UnitSystem unit;
+  final bool ranToday;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final run = first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Your plan starts ${dayAndDate(startsOn)}',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          <String>[
+            if (run != null)
+              'First up: ${sessionName(run).toLowerCase()}, '
+                  '${formatPrescribed(run.distanceMeters, unit)}, on '
+                  '${dayAndDate(addDays(startsOn, run.weekday - 1))}.',
+            'Nothing is set before then.',
+          ].join(' '),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        StartRunButton(
+          label: ranToday ? 'Record another run' : 'Record a run',
+          onTap: onRecord,
+        ),
       ],
     );
   }
