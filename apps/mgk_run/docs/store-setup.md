@@ -376,7 +376,7 @@ RevenueCat ▸ Integrations ▸ Webhooks.
 - [x] Leave the event set at everything. The function ignores what it does not
       handle and answers 200 anyway, because a webhook that 4xxs an event it
       chose not to handle gets retried until RevenueCat gives up and alerts.
-- [ ] **Check there is exactly one webhook** (added 2026-09-29, before
+- [x] **Check there is exactly one webhook** (added 2026-09-29, before
       review). One integration, pointed at `…/functions/v1/revenuecat`, with
       the Authorization value verbatim and no `Bearer`. A second, older one
       left in the project would deliver every event twice, or to a URL that

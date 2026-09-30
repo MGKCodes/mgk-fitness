@@ -84,12 +84,21 @@ and run.
    deployed, so something else deployed them today too. A later deploy of
    `coach` from `lift/release-2.0.0` would drop the expiry fix and the request
    guards (that branch merged main before them).
-3. - [ ] **OpenRouter: turn on account-wide Zero Data Retention, and set a hard
-      credit limit on the API key.** Five minutes. The first makes the
-      policy's "providers that do not keep or train on what we send" a setting
-      rather than a per-request hope, and settles publication blocker 3 in
-      Gate 2. The second caps what a leaked key or a runaway surface can
-      spend.
+3. - [x] **OpenRouter: account-wide Zero Data Retention, and a hard credit
+      limit on the API key.** Done 2026-09-30. Privacy ▸ Zero Data Retention is
+      on for every provider row, and *Allow free endpoints that train on
+      request data* is off (it was on). Checked first against OpenRouter's
+      public ZDR list: Premium's `gemini-3.8-flash` and every current
+      Flash-Lite have ZDR endpoints on Google Vertex, so nothing the coach uses
+      lost its route. Proven after: the next real coach message (a Standard
+      account, Gemini 3.1 Flash Lite) shows **Google Vertex** as its provider
+      in OpenRouter's log. This settles publication blocker 3 in Gate 2: the
+      policy's "providers that do not keep or train on what we send" is now a
+      setting. The key is renamed `mgkfitness_prod` (it serves Run and Lift
+      alike, through the one `coach` function and its one
+      `OPENROUTER_API_KEY`) with a **$10 monthly limit**, shared by both apps.
+      Reaching it stops the coach for paying runners until the month resets;
+      a key per app is an after-1.0 question.
 4. **Ship `main` and cut build 26.**
    - [x] `run/release-26` pushed to `main` as `431db9c` (fast-forward, 53
          commits), 2026-09-29. Vercel deploys `web/` from it.
@@ -140,9 +149,12 @@ and run.
                the tile URL from the backend so rotation needs no release (after-1.0.0.md).
          Until the switch ships, the App Store's Content Rights answer
          (store-setup.md §10) is not true of the tiles.
-   - [ ] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
+   - [x] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
          Authorization value verbatim with no `Bearer` (store-setup.md §5).
-   - [ ] **OpenRouter:** see item 3.
+         Checked 2026-09-30: one connection, both environments, all apps, all
+         events, and a TestFlight purchase that day wrote its row within 11
+         seconds, which a wrong header would have refused.
+   - [x] **OpenRouter:** see item 3.
    - [x] **Support address `run@mgkfitness.mgkcodes.com`**, receiving since
          2026-09-30. `mgkfitness.mgkcodes.com` was a CNAME to Vercel, and a name
          with a CNAME can have no MX records, so it is now `A 76.76.21.21` (DNS
@@ -169,11 +181,20 @@ and run.
    - [ ] **Supabase Auth: email confirmation is off. Decide** whether to turn
          it on, with custom SMTP, before public launch. It changes the sign-up
          flow, so it is a product decision, not a setting to flip.
-   - [ ] **`dev@runio.app`** is a seeded developer account from the Runio days
-         (ten made-up July runs, all uploaded on 2026-07-25), used by the preview
-         harness's quick sign-in, on a domain MGKCodes does not own. Change its
-         email to `dev@mgkfitness.mgkcodes.com` in Supabase ▸ Authentication, or
-         delete it. The repo's fixtures moved off runio.app on 2026-09-30.
+   - [x] **`dev@runio.app` is now `dev@mgkfitness.mgkcodes.com`**, 2026-09-30:
+         the seeded developer account from the Runio days (ten made-up July
+         runs), used by the preview harness's quick sign-in and the live tests,
+         on a domain MGKCodes does not own. Renamed rather than deleted, same
+         user id, because the live restore test expects the account's runs to
+         come back. The dashboard cannot change an email and a self-service
+         change waits on a confirmation mail the default SMTP never sends, so
+         it went through the admin API (`PUT /auth/v1/admin/users/{id}` with
+         `email_confirm`) from the owner's terminal. **PowerShell 5.1 needs
+         `-UserAgent`**: its default begins `Mozilla/5.0`, and Supabase refuses
+         a secret key from anything that looks like a browser. The old address
+         no longer signs in; the local `config/app_config.json` follows.
+         Found on the way: the live restore test still queried the `runio`
+         schema, retired 2026-08-06, and now reads `run` and `coach`.
 7. **The store forms.** No build needed; start now.
    - [ ] App Store Connect: Premium's description (store-setup.md §2), the two
          review accounts (§9), and every submission form (§10).

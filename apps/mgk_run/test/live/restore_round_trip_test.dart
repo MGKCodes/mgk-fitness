@@ -26,7 +26,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// fresh install is. No emulator and no device needed.
 ///
 /// What this cannot tell you is whether iOS really deletes app data on
-/// uninstall. That is the operating system's behaviour, not Runio's, and no test
+/// uninstall. That is the operating system's behaviour, not Run's, and no test
 /// here or on a device would be testing our code.
 ///
 /// Tagged `live` so the ordinary suite stays hermetic and free. Run it with:
@@ -77,15 +77,13 @@ void main() {
 
   tearDownAll(() async {
     // Everything this test made, gone again, in dependency order.
-    final runio = client.schema('runio');
-    await runio.from('plan_sessions').delete().eq('plan_id', planId);
-    await runio.from('plan_weeks').delete().eq('plan_id', planId);
-    await runio.from('plans').delete().eq('id', planId);
-    await runio
-        .from('coach_turns')
-        .delete()
-        .like('conversation_id', 'roundtrip-%');
-    await runio.from('coach_conversations').delete().like('id', 'roundtrip-%');
+    final run = client.schema('run');
+    final coach = client.schema('coach');
+    await run.from('plan_sessions').delete().eq('plan_id', planId);
+    await run.from('plan_weeks').delete().eq('plan_id', planId);
+    await run.from('plans').delete().eq('id', planId);
+    await coach.from('turns').delete().like('conversation_id', 'roundtrip-%');
+    await coach.from('conversations').delete().like('id', 'roundtrip-%');
     await client.dispose();
   });
 
@@ -135,8 +133,8 @@ void main() {
     // Asserted against the server rather than against the push returning
     // without error, because a push failure is swallowed by design (rule 1) and
     // that is precisely how this stayed broken for a year.
-    final runio = client.schema('runio');
-    final storedPlan = await runio
+    final run = client.schema('run');
+    final storedPlan = await run
         .from('plans')
         .select('id, weeks, goal_distance_m, strength_days_per_week')
         .eq('id', planId)
@@ -149,13 +147,13 @@ void main() {
     expect(storedPlan!['weeks'], plan.skeleton.weeks.length);
     expect(storedPlan['goal_distance_m'], closeTo(21097, 1));
 
-    final storedWeeks = await runio
+    final storedWeeks = await run
         .from('plan_weeks')
         .select('week_number')
         .eq('plan_id', planId);
     expect(storedWeeks, hasLength(plan.skeleton.weeks.length));
 
-    final storedSessions = await runio
+    final storedSessions = await run
         .from('plan_sessions')
         .select('weekday')
         .eq('plan_id', planId);
@@ -165,8 +163,9 @@ void main() {
       reason: 'create materialises this week and next',
     );
 
-    final storedTurns = await runio
-        .from('coach_turns')
+    final storedTurns = await client
+        .schema('coach')
+        .from('turns')
         .select('role, body')
         .eq('conversation_id', conversationId);
     expect(storedTurns, hasLength(2));
@@ -209,7 +208,7 @@ void main() {
     expect(restoredWeek, isNotNull, reason: 'this week has no sessions');
     expect(restoredWeek!.sessions, isNotEmpty);
 
-    // And the conversation, which is the most sensitive thing Runio holds.
+    // And the conversation, which is the most sensitive thing Run holds.
     final restoredTurns = await newPhone.select(newPhone.coachTurns).get();
     expect(restoredTurns, hasLength(greaterThanOrEqualTo(2)));
     expect(
