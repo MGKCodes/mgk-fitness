@@ -778,9 +778,16 @@ class _RecordingScreenState extends State<RecordingScreen> {
             // the first few minutes — and once the band starts speaking, the
             // panel gives the height back and the map takes it, by which time
             // the route has a shape worth the space.
+            // **A run that never started has no session on its panel.** The
+            // problem line has said nothing is being recorded; the effort
+            // brief, "TO GO 5.00" and the session's band below the fold
+            // were all describing a run that does not exist (board R16 to
+            // R19, R28). The readouts stay, reading zero, because that is
+            // true; the prescription goes until there is a run to hold it.
+            final session = _neverStarted ? null : widget.plannedSession;
             final showBrief =
                 !_warmedUp &&
-                widget.plannedSession != null &&
+                session != null &&
                 briefFitsOn(
                   height,
                   bottomInset: MediaQuery.paddingOf(context).bottom,
@@ -934,7 +941,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   effortCapped: _effortCapped,
                   showBrief: showBrief,
                   splits: _splits,
-                  session: widget.plannedSession,
+                  session: session,
                   climbMeters: climbMeters(_points),
                   laps: _laps,
                   problem: _problem,

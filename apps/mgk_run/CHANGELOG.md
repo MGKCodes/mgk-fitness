@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A run that never started no longer shows today's session.** When
+  location stopped a run before it began, the panel still carried the
+  session's effort text and "To go 5.00". It now shows the problem, what
+  was recorded (nothing) and Close.
 - **Before a new plan starts, the Plan tab's header and the coach say so.**
   The header read "112 days · week 1 of 16" over a week headed "Starts
   Monday 5 Oct", and the coach was told the runner was already in week 1. The
