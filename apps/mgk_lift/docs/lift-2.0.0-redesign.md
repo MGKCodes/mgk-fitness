@@ -9,7 +9,10 @@ changes screens and flows and, for signing in, both apps and the server.
 Same discipline as [lift-2.0.0-logging-rework.md](lift-2.0.0-logging-rework.md):
 tick items as they land, and when something is settled differently from how it
 is written here, **change the item and say why**. The order of the phases is the
-order of work.
+order of work — with one change, made on 30 September at Matthew's request to
+see the new screens first: the screens of Phases 2 to 6 were built before
+Phase 1's server and web work (Apple's token revocation, the password-reset
+page, the policies), which is still open.
 
 > **What this replaces in the logging rework.** D1 (a saved workout learns at
 > Finish automatically, with Undo) and Phase 3's "The template learns"; the
@@ -213,12 +216,12 @@ Matthew take calendar time.
       1,752 tests, Deno 214 + 21 + 7, `mgk_ui` 59, `mgk_units` 47, web build.
       Lift 759 of 760: `in_workout_test`'s reordering test fails identically on
       the commit before the merge, so it predates it and is fixed on its own.*
-- [ ] **Amend ADR-0009** for the photograph (R1, O6): where a screen leads with
+- [x] **Amend ADR-0009** for the photograph (R1, O6): where a screen leads with
       one, it may carry the top of the screen, with the scrim light under the
       headline; elsewhere the faint texture stands. Written as a platform
       decision beside ADR-0009 — the ADR itself says a change like this is never
       a one-app edit — and principle 8 in `docs/design.md` points to it.
-- [ ] **Shared pieces into `mgk_ui`**, Run's suite after each:
+- [x] **Shared pieces into `mgk_ui`**, Run's suite after each:
       - Run's `HomeTile`, `HomeStatTile` and `HomeTileRow` (`home_tiles.dart`),
         as they are — they import nothing from Run — plus a wide stat tile for
         R12.
@@ -228,16 +231,20 @@ Matthew take calendar time.
       - `storeName`, `storeAccountName`, `renewalWording`, and Lift's
         `RestorePurchasesButton`.
       - The soft-light backdrop (R13), beside `PhotoBackdrop`.
-- [ ] **The board catches up** with plates for the Finish sheet — with unticked
+      *Done, and more went in: the sign-in buttons, `AnotherAccountScreen`, `ActionPill`, `SmallPill`, `GlowBackdrop`, grouped glass, and Run's `SettingsRow`, `SettingsGroup` and unit sheet (Phase 6). `CoachNote` stayed in Run and extends a new `CoachLine`, which is all the reveal needs.*
+- [x] **The board catches up** with plates for the Finish sheet — with unticked
       sets, and for a session from a saved workout — so the screen that takes the
       save question is photographed before it changes.
-- [ ] **Point the old plans here.** The logging rework's items that R3–R8 and
+      *The board's version 12 has the sheet's two questions (`finish-sheet-save`, `finish-sheet-blank`); the plain sheet with unticked sets is in both.*
+      *Written as [ADR-0042](../../mgk_run/docs/decisions/0042-a-screen-that-leads-with-its-photograph.md), with pointers from 0009 and principle 8.*
+- [x] **Point the old plans here.** The logging rework's items that R3–R8 and
       R13 replace are edited to say so, and the design review links here.
-- [ ] **Photographs** (R1, R13): new greyscale heroes for Track and Sign in, made
+- [x] **Photographs** (R1, R13): new greyscale heroes for Track and Sign in, made
       as the current ones were (Replicate, per ADR-0009) and composed for a
       headline over the top. Today's Track hero is a 35 KB file made to sit at
       30%. *Needs the Replicate connection; the screens use placeholders until
       then.*
+      *Generated 30 September (`assets/images/backgrounds/SOURCES.md`): Track's and Sign in's heroes. The session screen uses the soft light (R13) instead.*
 - [x] **The sign-in dashboards** *(Matthew)*, added to
       [store-setup.md](store-setup.md) with owners:
       - Apple: Sign in with Apple on both App IDs (`com.mgkcodes.liftio`,
@@ -281,22 +288,25 @@ chooses a tier — which is only as good as signing in is.
 
 ### Shared
 
-- [ ] **One way of signing in, used by both apps**: Apple natively on iOS
+- [x] **One way of signing in, used by both apps**: Apple natively on iOS
       (`sign_in_with_apple`, then `signInWithIdToken` with a nonce), Apple's web
       flow on Android, Google natively on both (`google_sign_in`, then
       `signInWithIdToken`). Email and password stay. Where it lives — a small
       workspace package, since it is not UI — is settled when it is written; the
       buttons go in `mgk_ui`.
-- [ ] **Email only** (O1).
-- [ ] **The other-account guard, shared.** Run's `LocalDataGuard` and
+      *`packages/mgk_auth`: `ProviderSignIn`, tested against a real `GoTrueClient`. Google is native on both platforms; Apple native on iOS and the browser on Android.*
+- [x] **Email only** (O1).
+- [x] **The other-account guard, shared.** Run's `LocalDataGuard` and
       `AnotherAccountScreen` move where both apps can use them: an account
       signing in on a phone whose training belongs to another either erases it
       and starts clean, or signs out and leaves it. Each app supplies its own
       erase.
-- [ ] **Links back into the app.** Neither app has a URL scheme or an intent
+      *`LocalDataGuard` and the owner file are in `mgk_auth`, the screen in `mgk_ui`. Lift's erase (`PhoneTrainingData`) takes every table, the photo files and the saved plan; deleting the account releases the phone.*
+- [x] **Links back into the app.** Neither app has a URL scheme or an intent
       filter today; Google on iOS needs its reversed client id, and Apple's
       Android flow needs a way back (`<package>://login-callback`, already in
       Supabase's redirect list).
+      *Google's reversed iOS client ids are URL schemes in both `Info.plist`s; Apple's way back on Android is an intent filter in both manifests.*
 - [ ] **A password reset that finishes.** *Found during the dashboards,
       2026-09-30.* "Forgot your password?" sends an email whose link can only
       land on the Site URL, and no page there lets anybody choose a new
@@ -304,19 +314,21 @@ chooses a tier — which is only as good as signing in is.
       small page on `mgkfitness.mgkcodes.com` does it (`web/`), and both apps'
       `sendPasswordReset` pass it as `redirectTo`. Apple and Google accounts
       have no password to forget.
+      *Open.*
 
 ### Lift
 
-- [ ] **The sign-in screen** (1, S1, S2) on the new photograph (R1): *Continue
+- [x] **The sign-in screen** (1, S1, S2) on the new photograph (R1): *Continue
       with Apple* and *Continue with Google* above email and password, and the O2
       line under Apple. Guideline 4.8: Google is offered only beside Apple.
-- [ ] Lift's first entitlements file (Sign in with Apple). `codemagic.yaml`'s
+      *On the generated photograph: Apple, Google, and Continue with email, which opens the old form. The O2 line reads "Choosing Hide My Email with Apple starts a separate account."*
+- [x] Lift's first entitlements file (Sign in with Apple). `codemagic.yaml`'s
       note that Lift "declares no entitlements" changes with it.
-- [ ] `SupabaseAuth` and `FakeAuth` gain the two providers behind `AuthService`.
+- [x] `SupabaseAuth` and `FakeAuth` gain the two providers behind `AuthService`.
 
 ### Run
 
-- [ ] Run's sign-in screen gains the same two buttons, in Run's layout, and Run's
+- [x] Run's sign-in screen gains the same two buttons, in Run's layout, and Run's
       entitlements gain Sign in with Apple beside HealthKit. Run's suite.
 
 ### Deleting an account
@@ -328,6 +340,7 @@ chooses a tier — which is only as good as signing in is.
       only if it deletes the login (`auth_user_deletable`). A failed revoke never
       blocks the deletion, which Apple requires be fulfilled regardless. Deno
       tests against a fake Apple endpoint.
+      *Open: needs the app to fetch a fresh authorisation code before deleting, and the function to exchange it.*
 
 ### The policies
 
@@ -337,6 +350,7 @@ chooses a tier — which is only as good as signing in is.
       `tool/build_legal_pages.py`. Run: the same three plus its legal site,
       pinned by Run's *what we collect* test. The store answers in
       `store-listing.md` and Run's store docs.
+      *Open.*
 
 **Done when:** on a release build of each app, on each platform, a new person can
 sign up with Apple and with Google, sign into the other app as the same account,
@@ -349,42 +363,44 @@ with Apple's tokens revoked.
 
 ### Track (2, 17, R12)
 
-- [ ] **Rebuilt from the shared tiles.** The photograph carries the top of the
+- [x] **Rebuilt from the shared tiles.** The photograph carries the top of the
       screen with the headline set on it; one wide tile, sessions this week; your
       workouts, each with **Start**; one main button anchored low, with the C
       beside it in the same row.
-- [ ] **The button's words still come from the state**, as `_headline` and
+- [x] **The button's words still come from the state**, as `_headline` and
       `_StartButton` decide them now: *Start a session*; *Start today's session:
       Upper*, with the day's movements and last time's numbers in a glass card
       above it (O5); *Resume session*, with the interrupted card. On a planned
       day, starting something else is a quiet link under the button.
-- [ ] **Out:** the three-number strip (`_RecentStrip`) and *Next up*, whose jobs
+- [x] **Out:** the three-number strip (`_RecentStrip`) and *Next up*, whose jobs
       the tile and the planned card take over.
-- [ ] **A local copy of the active plan**, refreshed whenever it loads, so
+- [x] **A local copy of the active plan**, refreshed whenever it loads, so
       today's session shows with no signal.
-- [ ] **Do it today** (R8, O4): a day chosen on Plan becomes Track's session for
+      *`CachedStandingPlanStore` with a file on the phone; the other-account erase clears it.*
+- [x] **Do it today** (R8, O4): a day chosen on Plan becomes Track's session for
       today, "moved from Thursday". A choice on this phone, not a plan edit.
+      *`MovedDayStore`, device-local; cleared when that session is finished or the day ends.*
 
 ### Your workouts (4, 6, 7, R5)
 
-- [ ] **Glass rows over the photograph.** Each has **Start** and a "…" (Edit,
+- [x] **Glass rows over the photograph.** Each has **Start** and a "…" (Edit,
       Duplicate, Delete). Tapping the row opens it in place to the full list,
       sets × reps — what the preview showed, without the extra screen.
-- [ ] **The preview sheet goes** (W15, W16). Its rule moves to Start: with a
+- [x] **The preview sheet goes** (W15, W16). Its rule moves to Start: with a
       session open, Start asks *"Push is still open. Resume it, or discard it and
       start Pull?"*. The backstops stay: `TrackController.openWorkout` resumes,
       and the recorder throws `SessionInProgress`.
-- [ ] **Build one goes**, from the bar and from the empty state. The editor
+- [x] **Build one goes**, from the bar and from the empty state. The editor
       opens from "…" → Edit only.
-- [ ] Track's workout cards get the same Start and the same rule.
+- [x] Track's workout cards get the same Start and the same rule.
 
 ### Starters (5, R11)
 
-- [ ] **The ready-made sheet goes.** Three starters — Full Body, Upper / Lower,
+- [x] **The ready-made sheet goes.** Three starters — Full Body, Upper / Lower,
       PPL: the offered splits less *Upper / Lower + PPL* — appear in the empty
       library and in Track's empty *Your workouts*, each added with one tap and
       an Undo.
-- [ ] The catalogue (15 sessions, 8 splits) stays in `workout_templates.dart` as
+- [x] The catalogue (15 sessions, 8 splits) stays in `workout_templates.dart` as
       the coach's raw material, and `premadeId` still records where a copy came
       from.
 
@@ -396,23 +412,24 @@ session open, Start asks before anything else begins.
 
 ## Phase 3 — during a workout (3, 8, 9, 10)
 
-- [ ] **The soft-light backdrop** (R13) replaces `hero_home.webp` behind the
+- [x] **The soft-light backdrop** (R13) replaces `hero_home.webp` behind the
       session (`active_session_screen.dart` 1106–1111).
-- [ ] **The heading on glass** (8): title, clock, volume, sets and movements
+- [x] **The heading on glass** (8): title, clock, volume, sets and movements
       (`_LargeTitle`) in a glass panel, over the soft light. The folding bar
       stays.
-- [ ] **+ Add beside Finish** in the top bar (`_TopBar`). `_AddRow` goes, and the
+- [x] **+ Add beside Finish** in the top bar (`_TopBar`). `_AddRow` goes, and the
       dock exists only while resting: it rises from the bottom edge with the
       timer, which is otherwise unchanged (9).
-- [ ] **The C on the session screen**, bottom right as on the tabs, and above the
+- [x] **The C on the session screen**, bottom right as on the tabs, and above the
       dock while it is up. The chat when subscribed, the sales screen when not.
-- [ ] **The bubble** (10, R7, O3). When a ticked set beats that movement's best
+      *Built as written, and found wanting on the board (plate W10): bottom right is where each set's tick sits, so scrolling mid-session the mark can cover the next tick. The top bar, beside + Add, is the recommendation; waiting on Matthew.*
+- [x] **The bubble** (10, R7, O3). When a ticked set beats that movement's best
       estimated one-rep max — Epley, 12 reps or fewer, strictly greater, as
       `SessionSummary.of` counts it — the C opens with the best, holds, and
       closes. The bests are worked out once per session from the log the screen
       already has (`widget.log`) and checked on each tick: no network, no model,
       free for everyone.
-- [ ] *Save to your workouts* at the foot of the list goes (R4).
+- [x] *Save to your workouts* at the foot of the list goes (R4).
 
 **Done when:** a session looks and behaves as above on the emulator; a new best
 plays the bubble once; and a best matched rather than beaten plays nothing.
@@ -423,37 +440,38 @@ plays the bubble once; and a best matched rather than beaten plays nothing.
 
 ### The Finish sheet (R3, R4)
 
-- [ ] **The update is worked out before the sheet, not after.** Today
+- [x] **The update is worked out before the sheet, not after.** Today
       `TemplateUpdate.between` runs once the sheet has returned
       (`active_session_screen.dart` 972–976); it moves ahead of it, and the sheet
       takes the result.
-- [ ] **The question**, when a session from a saved workout added or removed
+- [x] **The question**, when a session from a saved workout added or removed
       movements (a swap already reads as both): *"Save to Push for next time?
       + Dips, − Cable Fly"*, on. A new set count or a new order alone never asks.
-- [ ] **Yes changes only the movements.** Removed ones go and added ones land at
+- [x] **Yes changes only the movements.** Removed ones go and added ones land at
       their position; set counts, rep targets and order stay as the workout had
       them. `TemplateUpdate.after` carries resizes and order today, so this
       needs its own result.
-- [ ] **The two conflicts move into the sheet.** Edited on another phone while
+- [x] **The two conflicts move into the sheet.** Edited on another phone while
       training: the line says so, off, and on overwrites it (today's *Update*).
       Deleted meanwhile: *"Save today's session as a new workout?"*, off.
-- [ ] **A session started blank:** *Save as a workout*, off; switched on, a name
+- [x] **A session started blank:** *Save as a workout*, off; switched on, a name
       field holding the session's name.
-- [ ] Editing a past session (`_doneEditing`) never asks. It has no test today;
+- [x] Editing a past session (`_doneEditing`) never asks. It has no test today;
       it gets one.
 
 ### The summary (12, 13, 14)
 
-- [ ] **The totals on glass, and louder.**
-- [ ] ***Back to Track* becomes *Done*.**
-- [ ] **Out:** *Talk it over with your coach*, the new-bests section (`_Bests`),
+- [x] **The totals on glass, and louder.**
+- [x] ***Back to Track* becomes *Done*.**
+- [x] **Out:** *Talk it over with your coach*, the new-bests section (`_Bests`),
       the lesson (`_LessonCard`, `_Lesson`, `_learn`) and *Save to your
       workouts*.
-- [ ] **The C, and the bubble** (13, R7): the session's new bests, then it
+- [x] **The C, and the bubble** (13, R7): the session's new bests, then it
       closes. A tap opens the chat about this session when subscribed — the
       session is its first turn — and the sales screen when not. It no longer
       needs to count as Finish (R4).
-- [ ] **The backup pill at the top** (14): *Backing up…*, then gone when it
+      *The bubble and the routing are done. "The session is its first turn" is not: the chat opens as it does from anywhere else.*
+- [x] **The backup pill at the top** (14): *Backing up…*, then gone when it
       succeeds; on failure, the reason and a way to Settings, where *Sync now*
       is. Signed out: *Saved on this phone.* and nothing more — the account
       card's rule that it reports and does not sell. The states are
@@ -469,33 +487,34 @@ exit.
 
 ### The sales screen (15, R6)
 
-- [ ] **A full-screen route replaces the purchase sheet.** A photograph and one
+- [x] **A full-screen route replaces the purchase sheet.** A photograph and one
       headline; each tier a card with its benefits as bullets, and its store
       price and period. **Choosing a tier is the purchase**, as Run's screen
       already works. Restore, the store's renewal wording and the terms and
       privacy links stay: every assertion in `purchase_ui_test.dart` carries over
       (guidelines 3.1.1 and 3.1.2(a)).
-- [ ] **It promises only what ships.** Each bullet names the code behind it, and
+- [x] **It promises only what ships.** Each bullet names the code behind it, and
       the move-Thursday promise goes (*Found while planning*).
-- [ ] **Signed out, the offer shows in full**; choosing a tier asks for the
+- [x] **Signed out, the offer shows in full**; choosing a tier asks for the
       account — Apple, Google or email — then goes on to the store. The three
       guards stay: the screen, `_identified`, and the identity sync.
-- [ ] **Its doors:** the C wherever it is, and Plan's and Photos' buttons.
+- [x] **Its doors:** the C wherever it is, and Plan's and Photos' buttons.
       `_openCoach` stops sending the unsubscribed to Plan and the signed-out to
       sign in.
-- [ ] **Photos reads the result**, and shows the library after a purchase.
+- [x] **Photos reads the result**, and shows the library after a purchase.
 
 ### Plan (16, 17, R8)
 
-- [ ] **Unsubscribed:** what Plan is for, briefly, and one button to the sales
+- [x] **Unsubscribed:** what Plan is for, briefly, and one button to the sales
       screen.
-- [ ] **Subscribed, no plan yet** (16): what happens next, in three steps — tell
+- [x] **Subscribed, no plan yet** (16): what happens next, in three steps — tell
       the coach your goal and your days, it builds the block, today's session
       appears on Track — and one button, *Build a plan*.
-- [ ] **A live plan, led by the calendar** (17): how the week is going, the week
+- [x] **A live plan, led by the calendar** (17): how the week is going, the week
       and the whole block, the goals, and why this split. Today says what today
       is and links to Track; **nothing starts here.** Every other day offers *Do
       it today*.
+      *The week strip leads and the chosen day's detail follows it; the Today card went into that detail. "How the week is going" is still the plan's own counts, not sessions done against it.*
 
 **Done when:** an unsubscribed person reaches the same sales screen from the C on
 every screen, from Plan and from Photos; buying from any of them unlocks the
@@ -507,26 +526,28 @@ screen they came from; and Plan has no Start.
 
 ### Profile (18, R9)
 
-- [ ] **The six numbers on glass**, as tiles.
-- [ ] **Previous workouts first:** a contained card of the last five — name,
+- [x] **The six numbers on glass**, as tiles.
+- [x] **Previous workouts first:** a contained card of the last five — name,
       date, duration, volume, sets — with *See all* to the history.
-- [ ] **Bests in a contained card** until the exercise stats screen (R9).
-- [ ] The year grid, consistency, most trained and the photos card are kept and
+- [x] **Bests in a contained card** until the exercise stats screen (R9).
+- [x] The year grid, consistency, most trained and the photos card are kept and
       tightened, not removed.
 
 ### Settings (19)
 
-- [ ] **The account first:** Run's profile card shape — initials, email, plan —
+- [x] **The account first:** Run's profile card shape — initials, email, plan —
       opening an account screen with sign out, restore and delete. Lift keeps no
       photograph of anybody (O1).
-- [ ] **Units as rows**, the value on the right, each opening a small sheet with
+      *The card shows `Subscribed` or `Free` rather than the tier, because the entitlement gate answers only whether somebody has paid. Profile's "Runs you log in Run appear here too." went too: nothing in Lift reads Run's data.*
+- [x] **Units as rows**, the value on the right, each opening a small sheet with
       its explanation: Run's `SettingsRow` and unit sheet. Distance and weight
       are shared MGKFitness settings, so the rows and the sheet move into
       `mgk_ui` and Run uses them from there.
-- [ ] **Explanations behind a tap:** the rest-alert, coach and backup paragraphs
+- [x] **Explanations behind a tap:** the rest-alert, coach and backup paragraphs
       become one-line rows, with the paragraph behind an info tap or on the
       detail screen.
-- [ ] **Spacing rethought** around groups, as Run's are, with the version in a
+      *Rest alerts and the coach's paragraph are behind a tap; the coach switch keeps its one line naming OpenRouter, because it is a consent control. The backup card keeps its short problem line.*
+- [x] **Spacing rethought** around groups, as Run's are, with the version in a
       footer.
 
 **Done when:** on a 375 pt phone the account and the units are on screen without

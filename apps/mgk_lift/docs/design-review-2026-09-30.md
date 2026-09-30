@@ -1,5 +1,7 @@
 # Design review, 30 September 2026
 
+> **The plan that answers this review:** [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), with the thirteen decisions settled the same day.
+
 Matthew's pass over the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1)
 (version 11, built from `8a0014a` on 2026-09-29, 84 plates). These are his
 findings, recorded screen by screen with the code each one touches. **This is not

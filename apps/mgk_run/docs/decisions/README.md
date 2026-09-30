@@ -53,3 +53,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md) | One commit, two stores, and the pubspec owns the build number | Accepted |
 | [0040](0040-our-terms-and-apples-eula.md) | Our terms are the terms of use; App Store Connect keeps Apple's EULA | Accepted |
 | [0041](0041-premium-is-a-better-model-and-a-bigger-allowance.md) | Premium is a better model and a bigger allowance; which model is configuration | Accepted |
+| [0042](0042-a-screen-that-leads-with-its-photograph.md) | A screen that leads with its photograph may carry it at strength | Accepted |

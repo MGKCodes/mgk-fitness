@@ -125,7 +125,10 @@ broken.
 
 With no accent colour, the photography carries the identity (ADR-0009). Content
 sits **on** it with a scrim, never in a panel floating above it, and the scrim is
-chosen per screen: light where a headline sits, heavy under a price.
+chosen per screen: light where a headline sits, heavy under a price. A screen
+that leads with its photograph — Track and Sign in — may carry it at strength
+over the top of the screen; everywhere else it is the faint texture
+([ADR-0042](../apps/mgk_run/docs/decisions/0042-a-screen-that-leads-with-its-photograph.md)).
 
 > A flat dark screen where a photograph should be is throwing away the only
 > colour decision this product makes.

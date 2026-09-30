@@ -15,8 +15,15 @@ why**.
 > at Finish, asked only when movements were added; the standalone builder (W5)
 > and the saved-workout preview (W15) are questioned or removed; the premade
 > library is simplified in favour of the coach offering workouts; and "Add
-> exercise" leaves the dock. Nothing here has been changed yet. The next plan
-> decides, and edits the items it changes.
+> exercise" leaves the dock. **Settled the same day in
+> [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md)**, which replaces D1 and
+> this plan's "The template learns" (R3, R4: a question at Finish that changes
+> only the movements), the builder (R5), the preview (Start on each row), the
+> ready-made library as a way to start (R11: three starters), *Add exercise* as
+> the dock's resting state (+ Add in the top bar), and the photograph behind a
+> workout (R13: a soft light). The items below are kept as the record of what
+> was built; where they conflict with the redesign, the redesign is what
+> ships.
 
 ---
 
@@ -88,7 +95,7 @@ The short version, so the phases below can refer to it by number.
 Each of these changes what gets built. The recommendation is what this file is
 written against; change the item if the answer differs.
 
-- **D1. Template updates apply automatically, with Undo.** The summary says
+- **D1. Template updates apply automatically, with Undo.** *(Superseded by the redesign's R3 and R4.)* The summary says
   *"Push updated — removed Cable Fly · Undo"*. Asking every time is the
   alternative; it is safer against one-off changes (a machine taken today) but
   it is exactly the repeated decision the lifter asked not to make. Undo covers
@@ -385,6 +392,8 @@ per session.
       add can be undone, and the copy previews in the library like any other.*
 
 ### The template learns (settled item 1, D1)
+
+> **Replaced by the redesign's R3 and R4** ([lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), Phase 4): the session no longer rewrites its workout; Finish asks, and yes changes only the movements. `TemplateUpdate` is gone; `MovementChange` replaced it.
 
 The session keeps the template's id (already stored as `templateId`) and a
 snapshot of its structure at start — a local-only column, never synced. At
