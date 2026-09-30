@@ -151,6 +151,37 @@ class ProfileSurface extends StatelessWidget {
               massUnit: massUnit,
               placeholder: empty,
             ),
+
+            // **What was done, before what it adds up to** (18). The last
+            // five sessions were the last thing on the page, under the year
+            // grid and the rankings; they are what somebody opens Profile to
+            // look back at, so they come straight after the numbers.
+            if (!empty) ...<Widget>[
+              const SizedBox(height: AppSpacing.xl),
+              _Contained(
+                label: 'Previous workouts',
+                action: onOpenHistory == null
+                    ? null
+                    : AppTextButton(
+                        label: 'See all',
+                        onPressed: onOpenHistory,
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                children: <Widget>[
+                  for (final session in log.take(5))
+                    _SessionRow(
+                      session: session,
+                      stats: stats,
+                      massUnit: massUnit,
+                      onTap: onOpenSession == null
+                          ? null
+                          : () => onOpenSession!(session),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppSpacing.xl),
 
             const SectionLabel('Last 52 weeks'),
@@ -161,49 +192,48 @@ class ProfileSurface extends StatelessWidget {
             _Consistency(stats: stats, placeholder: empty),
             const SizedBox(height: AppSpacing.xl),
 
-            Row(
-              children: <Widget>[
-                const Expanded(child: SectionLabel('Personal bests')),
-                // The number needs its unit and its caveat in the same breath:
-                // an estimate, not a tested max. The footnote below the list
-                // carries the rest of it.
-                const SectionLabel(
-                  'Est. 1RM',
-                  emphasis: LabelEmphasis.stat,
-                  color: AppColors.textTertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (empty)
-              for (var i = 0; i < _ghostRows; i++)
-                const _GhostRow(subtitle: true)
-            else if (bests.isEmpty)
-              // A real state, not an error. `estimateOneRepMax` refuses
-              // anything over 12 reps or without load, so a lifter doing
-              // bodyweight work and high-rep accessories has a full log and no
-              // estimate anywhere in it. Saying so beats an empty gap.
-              Text(
-                'No estimate yet. One comes from a working set of 12 reps or '
-                'fewer with weight on the bar.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              )
-            else
-              for (final best in bests)
-                _BestRow(best: best, massUnit: massUnit),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              // Stated every time, not only when a movement is missing. It is
-              // the reason a lift someone is proud of might not be on this
-              // list, and a lifter should not have to work that out.
-              'Estimated with Epley from your best working set — not a tested '
-              'max. Nothing over 12 reps counts, because past that the formula '
-              'is guessing.',
-              style: theme.textTheme.bodySmall?.copyWith(
+            // Contained (R9): until the exercise stats screen ships, the bests
+            // are one card on this page rather than a list that runs into the
+            // next section.
+            _Contained(
+              label: 'Personal bests',
+              action: const SectionLabel(
+                'Est. 1RM',
+                emphasis: LabelEmphasis.stat,
                 color: AppColors.textTertiary,
               ),
+              children: <Widget>[
+                if (empty)
+                  for (var i = 0; i < _ghostRows; i++)
+                    const _GhostRow(subtitle: true)
+                else if (bests.isEmpty)
+                  // A real state, not an error. `estimateOneRepMax` refuses
+                  // anything over 12 reps or without load, so a lifter doing
+                  // bodyweight work and high-rep accessories has a full log and
+                  // no estimate anywhere in it. Saying so beats an empty gap.
+                  Text(
+                    'No estimate yet. One comes from a working set of 12 reps '
+                    'or fewer with weight on the bar.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  )
+                else
+                  for (final best in bests)
+                    _BestRow(best: best, massUnit: massUnit),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  // Stated every time, not only when a movement is missing. It
+                  // is the reason a lift someone is proud of might not be on
+                  // this list, and a lifter should not have to work that out.
+                  'Estimated with Epley from your best working set — not a '
+                  'tested max. Nothing over 12 reps counts, because past that '
+                  'the formula is guessing.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.xl),
 
@@ -281,48 +311,6 @@ class ProfileSurface extends StatelessWidget {
                 ),
               ),
             ],
-
-            // The only section that stays hidden while the log is empty.
-            // "Most trained" and "Personal bests" name things the app works
-            // out for a lifter, which is worth advertising; a list of the
-            // sessions they have not done yet only repeats the card at the top.
-            if (!empty) ...<Widget>[
-              const SizedBox(height: AppSpacing.xl),
-              Row(
-                children: <Widget>[
-                  const Expanded(child: SectionLabel('Recent sessions')),
-                  if (onOpenHistory != null)
-                    AppTextButton(
-                      label: 'See all',
-                      onPressed: onOpenHistory,
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              for (final session in log.take(5))
-                _SessionRow(
-                  session: session,
-                  stats: stats,
-                  massUnit: massUnit,
-                  onTap: onOpenSession == null
-                      ? null
-                      : () => onOpenSession!(session),
-                ),
-            ],
-
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              // Says where the numbers come from. Cross-app awareness is the
-              // point of the suite, and this is where a lifter meets it. Shown
-              // on an empty log too — it is one more thing this screen becomes.
-              'Runs you log in Run appear here too.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            ),
           ],
         ),
       ),
@@ -389,58 +377,46 @@ class _HeadlineStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatBlock(
-                  label: 'Sessions',
-                  value: _or('${stats.sessions}'),
-                ),
-              ),
-              Expanded(
-                child: StatBlock(
-                  label: 'Volume',
-                  value: _or(compactVolume(stats.totalVolume, massUnit)),
-                  shrinkToFit: true,
-                ),
-              ),
-              Expanded(
-                child: StatBlock(
-                  label: 'Sets',
-                  value: _or('${stats.totalSets}'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatBlock(
-                  label: 'Time',
-                  value: _or(_compactDuration(stats.totalTime)),
-                  shrinkToFit: true,
-                ),
-              ),
-              Expanded(
-                child: StatBlock(
-                  label: 'Per week',
-                  value: _or(stats.sessionsPerWeek.toStringAsFixed(1)),
-                ),
-              ),
-              Expanded(
-                child: StatBlock(
-                  label: 'Streak',
-                  value: _or('${stats.currentWeekStreak}w'),
-                ),
-              ),
-            ],
+    // Six tiles on glass (18), three to a row, rather than six figures on one
+    // card: each number is its own thing to read, and the grid reads as one.
+    final tiles = <Widget>[
+      StatBlock(label: 'Sessions', value: _or('${stats.sessions}')),
+      StatBlock(
+        label: 'Volume',
+        value: _or(compactVolume(stats.totalVolume, massUnit)),
+        shrinkToFit: true,
+      ),
+      StatBlock(label: 'Sets', value: _or('${stats.totalSets}')),
+      StatBlock(
+        label: 'Time',
+        value: _or(_compactDuration(stats.totalTime)),
+        shrinkToFit: true,
+      ),
+      StatBlock(
+        label: 'Per week',
+        value: _or(stats.sessionsPerWeek.toStringAsFixed(1)),
+      ),
+      StatBlock(label: 'Streak', value: _or('${stats.currentWeekStreak}w')),
+    ];
+    Widget row(List<Widget> three) => Row(
+      children: <Widget>[
+        for (final (i, tile) in three.indexed) ...<Widget>[
+          if (i > 0) const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: GlassSurface(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: tile,
+            ),
           ),
         ],
-      ),
+      ],
+    );
+    return Column(
+      children: <Widget>[
+        row(tiles.sublist(0, 3)),
+        const SizedBox(height: AppSpacing.sm),
+        row(tiles.sublist(3)),
+      ],
     );
   }
 
@@ -659,6 +635,42 @@ class _FrequencyRow extends StatelessWidget {
   }
 }
 
+/// A section in a card of its own: its label and an action on one line, then
+/// its rows on glass. For the lists that should read as finished things on the
+/// page rather than as text that runs into the next section (18, R9).
+class _Contained extends StatelessWidget {
+  const _Contained({required this.label, required this.children, this.action});
+
+  final String label;
+  final Widget? action;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassSurface(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(child: SectionLabel(label)),
+              ?action,
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
 class _SessionRow extends StatelessWidget {
   const _SessionRow({
     required this.session,
@@ -690,11 +702,15 @@ class _SessionRow extends StatelessWidget {
               children: <Widget>[
                 Text(session.name, style: theme.textTheme.bodyMedium),
                 Text(
-                  '${_shortDate(session.startedAt)} · '
-                  '${session.exercises.length} '
-                  'movement${session.exercises.length == 1 ? '' : 's'} · '
-                  '${session.completedSets} '
-                  'set${session.completedSets == 1 ? '' : 's'}',
+                  <String>[
+                    _shortDate(session.startedAt),
+                    if (session.endedAt case final ended?)
+                      _HeadlineStats._compactDuration(
+                        ended.difference(session.startedAt),
+                      ),
+                    '${session.completedSets} '
+                        'set${session.completedSets == 1 ? '' : 's'}',
+                  ].join(' · '),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textTertiary,
                   ),

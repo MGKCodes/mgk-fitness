@@ -142,7 +142,7 @@ void main() {
       await tester.pumpWidget(wrap(const ProfileSurface(log: <Session>[])));
       await tester.pumpAndSettle();
 
-      expect(find.text('RECENT SESSIONS'), findsNothing);
+      expect(find.text('PREVIOUS WORKOUTS'), findsNothing);
     });
   });
 
@@ -391,9 +391,11 @@ void main() {
     });
   });
 
-  testWidgets('the cross-app line is present once there is a log', (
+  testWidgets('claims nothing about Run, which it does not read', (
     WidgetTester tester,
   ) async {
+    // It said "Runs you log in Run appear here too." Nothing in Lift reads
+    // Run's data; the line was a promise, and a false one.
     await tester.pumpWidget(
       wrap(
         ProfileSurface(
@@ -406,7 +408,37 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Runs you log in Run appear here too.'), findsOneWidget);
+    expect(find.textContaining('Run'), findsNothing);
+  });
+
+  testWidgets('previous workouts come before what they add up to (18)', (
+    WidgetTester tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(1179, 4800)
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      wrap(
+        ProfileSurface(
+          now: DateTime(2026, 8, 6),
+          log: <Session>[
+            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final previous = tester.getTopLeft(find.text('PREVIOUS WORKOUTS')).dy;
+    expect(
+      previous,
+      lessThan(tester.getTopLeft(find.text('LAST 52 WEEKS')).dy),
+    );
+    expect(
+      previous,
+      lessThan(tester.getTopLeft(find.text('PERSONAL BESTS')).dy),
+    );
   });
 
   group('personal bests', () {
