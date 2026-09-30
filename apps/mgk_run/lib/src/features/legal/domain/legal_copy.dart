@@ -55,7 +55,11 @@ const LegalDocument privacyPolicy = LegalDocument(
             'keyed to, the name you give the coach, if you give one, and the '
             'date you gave the coach permission to send your training to the '
             'AI provider, if you did. Only if you create an account; the app '
-            'works without one. The name is optional, you can change or remove '
+            'works without one. If you sign in with Apple or Google, they pass '
+            'us an email address and an identifier, and nothing else: we do '
+            'not ask either for your name or photograph. With Apple’s Hide My '
+            'Email, the address is one Apple forwards to yours, and we never '
+            'see the real one. The name is optional, you can change or remove '
             'it at any time, and it is never sent to the AI provider.',
         'A profile photo, if you choose one — and it is the one thing here '
             'we never receive. It is copied into the app’s own storage, and it '
@@ -161,6 +165,15 @@ const LegalDocument privacyPolicy = LegalDocument(
         'We do not sell personal data, and we do not use it for third-party '
             'advertising. The app contains no analytics, no advertising SDK '
             'and no crash reporter, and reads no advertising identifier.',
+        'Apple and Google are not sub-processors. They are two of the three '
+            'ways you can sign in, beside an email address and a password, and '
+            'they hold your Apple ID or Google account on their own terms. They '
+            'pass us an email address and an identifier; we tell them nothing '
+            'about your training. Choosing Hide My Email with Apple starts a '
+            'separate profile, because the address Apple gives us is not one '
+            'any other account uses. On an iPhone, deleting an account made '
+            'with Apple asks Apple to confirm first, so that when the login '
+            'goes we can also end the app’s access to your Apple ID.',
       ],
     ),
     LegalSection(

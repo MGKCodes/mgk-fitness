@@ -212,6 +212,20 @@ void main() {
       }
     });
 
+    test('names Apple and Google as ways in, not as sub-processors', () {
+      // The redesign's Phase 1 added both. They are controllers of their own
+      // sign-in, so listing them among our processors would be wrong; what
+      // they pass on (O1) and the revocation Apple requires are the claims.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('Apple and Google are not sub-processors.'));
+        expect(
+          text,
+          contains('They pass us an email address and an identifier'),
+        );
+        expect(text, contains('access to your Apple ID'));
+      }
+    });
+
     test('is honest that usage records survive a deletion', () {
       // They do, by design: they are the spend ledger, and erasing them would
       // let a deletion reset a rate limit. The policy previously listed them
@@ -325,6 +339,7 @@ void main() {
       'the coach conversation': 'what you say to your coach',
       'a reported coach reply': 'if you report one of the coach',
       'the note written on a run': 'any note you write on a run',
+      'what Apple and Google pass on': 'if you sign in with apple or google',
       'the usage meter': 'how many tokens',
     };
 
@@ -516,6 +531,7 @@ void main() {
         'asks your permission',
         'up to four older messages',
         'if you report one of the coach',
+        'Apple and Google are not sub-processors.',
       ]) {
         expect(page, contains(phrase), reason: 'the page lacks: $phrase');
       }
