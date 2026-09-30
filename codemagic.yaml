@@ -44,9 +44,12 @@
 #  2. App Store Connect API key → Team settings ▸ Integrations ▸ **Developer
 #     Portal** ▸ Manage keys. Codemagic folded the App Store Connect key into
 #     that integration; there is no separate "App Store Connect" row. One key
-#     with App Manager covers signing AND the TestFlight upload, for every app
-#     in the team — already present as `frunt_asc`, which is what the workflow
-#     below references.
+#     with App Manager covers signing AND the TestFlight upload for both
+#     MGKFitness apps: `mgkfitness_asc` (key 4HNLTYJL55, 2026-09-30), which the
+#     workflows below reference. **Not `frunt_asc`**, although an App Store
+#     Connect key is issued to the team and would work: nothing MGKFitness
+#     ships may depend on anything of Frunt's, so a key rotated or revoked for
+#     Frunt can never stop Run or Lift shipping.
 #  3a. Environment group `mgk_fitness_supabase` (Application settings ▸
 #     Environment variables, mark Secure) with:
 #       SUPABASE_URL              the shared MGKCodes fitness project (ADR-0008)
@@ -98,8 +101,8 @@
 #     the setup block), so both halves have to sit in Codemagic ▸ Teams ▸ Code
 #     signing identities:
 #
-#       iOS certificates       the .p12 AND its password, reference name
-#                              `Lift MGKFitness Distribution`
+#       iOS certificates       `mgkfitness_distribution`, which Run's
+#                              profile uses too (see below)
 #       Provisioning profiles  the .mobileprovision, reference name
 #                              `Lift MGKFitness App Store`
 #
@@ -108,24 +111,23 @@
 #     UI says so. A mismatch fails the build before a machine starts, listing
 #     the names it does have — which is at least a readable failure.
 #
-#     Lift's certificate is NOT the one Run and Frunt use. Codemagic holds
-#     `frunt_distribution` (Apple Distribution, June 2027) for those two and
-#     fetches their profiles automatically; Lift's is EAS's older certificate
-#     (March 2027), uploaded here because EAS holds the only copy of its
-#     private key. Moving Lift onto the June certificate would let it fetch
-#     like Run does — worth doing once a release is not riding on it. Both come out of EAS, which still holds the private key
-#     for the certificate it generated — `eas credentials -p ios` in the old
-#     Expo project, build profile `production`, then download credentials to
-#     credentials.json. That yields `dist-cert.p12` and its password.
+#     **Both apps sign with MGKFitness's own certificate**,
+#     `mgkfitness_distribution` (Apple Distribution, expiring 2027-09-30).
+#     Codemagic generated it on 2026-09-30 from `mgkfitness_asc` and holds its
+#     private key. Before that, Lift signed with EAS's legacy certificate
+#     (March 2027, the Codemagic entry `Lift MGKFitness Distribution`, now
+#     unused) and Run with the certificate Codemagic calls
+#     `frunt_distribution`, which is Frunt's and stays Frunt's alone.
 #
-#     **Generate the profile in the Apple portal, not from EAS.** What EAS
-#     hands back is its own cached `*[expo] …` blob, which is stale the moment
-#     anything changes in the portal, and a deleted profile still signs
-#     locally — it fails at the upload, after a full green build. Profiles ▸ +
-#     ▸ Distribution ▸ App Store Connect ▸ the `com.mgkcodes.liftio` App ID ▸
-#     the certificate **expiring 2027-03-03**, which is the one the .p12
-#     contains. A profile whose certificate you do not hold the key for is the
-#     failure this whole workflow exists to avoid.
+#     **Generate the profile in the Apple portal**, and pick the certificate
+#     by its expiry: Profiles ▸ `Lift MGKFitness App Store` ▸ Edit ▸ the
+#     certificate **expiring 2027-09-30** ▸ Save ▸ Download, then upload it
+#     here under the same reference name. Apple offers every distribution
+#     certificate in the team, and on regenerating a profile it chose
+#     Frunt's; a profile whose certificate Codemagic has no key for, or that
+#     belongs to another product, is the failure this setup exists to avoid.
+#     Regenerate it whenever the App ID's capabilities change: a profile is a
+#     snapshot of them (Sign in with Apple was added 2026-09-30).
 #
 #     Verify the pair before uploading, offline and in seconds: the profile is
 #     a CMS-wrapped plist (`openssl smime -inform der -verify -noverify`), and
@@ -308,12 +310,11 @@ workflows:
     # wrong thing — or nothing.
     working_directory: apps/mgk_run
     integrations:
-      # Named for frunt because that product registered it first, but an App
-      # Store Connect API key is issued to the TEAM, not to an app: the same
-      # key signs and uploads everything under MGKCodes Ltd. Referenced rather
-      # than duplicated because the .p8 downloads exactly once, so a second
-      # entry would mean a second Apple key for no benefit.
-      app_store_connect: frunt_asc
+      # MGKFitness's own key (setup note 2). Until 2026-09-30 this was
+      # `frunt_asc`, on the reasoning that a key is issued to the team rather
+      # than an app. It is, and that is not the point: Run must not stop
+      # shipping because of something done to Frunt.
+      app_store_connect: mgkfitness_asc
     environment:
       ios_signing:
         distribution_type: app_store
@@ -556,14 +557,14 @@ workflows:
   #     build reports no script output at all, which reads like a broken config
   #     rather than a missing prerequisite.
   #
-  #     Lift declares no entitlements and needs no capabilities — no Sign in
-  #     with Apple, no HealthKit, no push. Camera and photo library are
-  #     Info.plist usage strings, not App ID capabilities. So this profile does
-  #     not need regenerating unless that changes; a profile is a snapshot of
+  #     Lift's App ID has one capability, Sign in with Apple (2026-09-30, the
+  #     redesign's R10); no HealthKit, no push. Camera and photo library are
+  #     Info.plist usage strings, not App ID capabilities. The profile needs
+  #     regenerating whenever that list changes; a profile is a snapshot of
   #     the App ID's capabilities at the moment it was made.
   #
-  # The App Store Connect API key is NOT repeated: `frunt_asc` is issued to the
-  # team, not to an app, and the .p8 downloads exactly once.
+  # The App Store Connect API key is the same as Run's, `mgkfitness_asc`
+  # (setup note 2): one key for the MGKFitness apps, none of Frunt's.
   # ─────────────────────────────────────────────────────────────────────────
   lift-ios-release:
     name: Lift — iOS TestFlight
@@ -576,10 +577,10 @@ workflows:
         - $CM_BUILD_DIR/apps/mgk_lift/ios/Pods
     working_directory: apps/mgk_lift
     integrations:
-      # Still here, but now only for `publishing` at the foot of this workflow:
-      # the TestFlight upload authenticates with this key. Signing no longer
-      # goes through it — see `ios_signing` below.
-      app_store_connect: frunt_asc
+      # Only for `publishing` at the foot of this workflow: the TestFlight
+      # upload authenticates with this key. Signing does not go through it;
+      # see `ios_signing` below.
+      app_store_connect: mgkfitness_asc
     environment:
       ios_signing:
         # Manual signing, where Run uses `distribution_type` +
@@ -595,14 +596,14 @@ workflows:
         # live in ZTS7SQYSA5, and Run's fetch works from the same key), and
         # profile type (App Store, no provisioned devices).
         #
-        # The team does hold TWO distribution certificates, which is worth
-        # knowing whatever the cause: a legacy `iPhone Distribution` expiring
-        # 2027-03-03 that EAS created and still holds the private key for, and
-        # an `Apple Distribution` expiring 2027-06-03 that Frunt and Run's
-        # profiles use. Every Liftio profile hung off the EAS one. Re-pointing
-        # Lift's profile at the June certificate was the obvious fix and it did
-        # NOT work — 6a885451 failed identically — so the fetch failure remains
-        # genuinely unexplained. Do not spend another build on a theory.
+        # The team holds THREE distribution certificates: a legacy `iPhone
+        # Distribution` expiring 2027-03-03 that EAS created (Lift's until
+        # 2026-09-30), an `Apple Distribution` expiring 2027-06-03 that is
+        # Frunt's, and MGKFitness's own `Apple Distribution` expiring
+        # 2027-09-30, which both apps now use (setup note 6). Re-pointing
+        # Lift's profile at a newer certificate did NOT fix the fetch —
+        # 6a885451 failed identically — so the fetch failure remains genuinely
+        # unexplained. Do not spend another build on a theory.
         #
         # These are reference names in Codemagic ▸ Teams ▸ Code signing
         # identities, NOT files in this repo — setup note 6 above. Uploading
@@ -612,7 +613,7 @@ workflows:
         provisioning_profiles:
           - "Lift MGKFitness App Store"
         certificates:
-          - "Lift MGKFitness Distribution"
+          - "mgkfitness_distribution"
       groups:
         # The only group Lift needs. `AppConfig` reads exactly these two values,
         # so there is no lift-specific group to create — an empty one would be a
