@@ -383,6 +383,9 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Confirmations at the foot of the screen are dark, like the rest of the
+  app.** "Withdrawn. Your coach will ask before it sends anything." and every
+  other one arrived as a white bar with dark text.
 - **The weekday chips on the plan's confirmation screen show M and W
   whole.** On a 393pt iPhone both were drawn with their right edge faded out.
 - **The start screen names today's session the way Home does.** It read

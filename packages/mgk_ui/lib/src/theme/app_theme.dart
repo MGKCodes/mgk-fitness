@@ -121,6 +121,24 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
       ),
+      // **A confirmation on the suite's own surface, not a light slab.** Left
+      // unset, Material paints a snackbar in the scheme's `inverseSurface`,
+      // which this scheme never names and so defaults to `onSurface`: a white
+      // bar with dark text across an app that is dark everywhere else. Run's
+      // "Withdrawn" confirmation is where a screen board caught it (T15); every
+      // snackbar in both apps was the same. Surface and primary text, as the
+      // dialogs that confirm things already are.
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: AppColors.surface,
+        contentTextStyle: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textPrimary,
+          fontSize: 14,
+          height: 1.4,
+        ),
+        actionTextColor: AppColors.primary,
+        closeIconColor: AppColors.textSecondary,
+      ),
     );
   }
 
