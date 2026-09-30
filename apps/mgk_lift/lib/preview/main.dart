@@ -45,6 +45,7 @@ import '../src/features/photos/presentation/pose_series_screen.dart';
 import '../src/features/photos/presentation/series_playback_screen.dart';
 import '../src/features/settings/domain/unit_preferences.dart';
 import '../src/features/settings/presentation/credits_screen.dart';
+import '../src/features/settings/presentation/account_screen.dart';
 import '../src/features/settings/presentation/settings_screen.dart';
 import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/sync/presentation/backup_scheduler.dart';
@@ -556,11 +557,25 @@ class PreviewApp extends StatelessWidget {
         now: previewNow,
         isSignedIn: true,
         email: 'matt@example.com',
+        planLabel: 'Subscribed',
         backup: _backup(),
         onSignOut: () {},
         onSyncNow: () {},
         coachMemory: FakeCoachMemory(),
         restAlerts: FakeRestAlerts(),
+      ),
+      // One tap behind the card (19): backup, the plan and Restore, and the
+      // two ways out.
+      'settings-account': (_) => AccountScreen(
+        email: 'matt@example.com',
+        planLabel: 'Subscribed',
+        backup: _backup(),
+        onSyncNow: () {},
+        onRestorePurchases: () async {},
+        onSignOut: () {},
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+        now: previewNow,
       ),
       'account-signed-out': (_) => SettingsScreen(
         initial: const UnitPreferences(),
