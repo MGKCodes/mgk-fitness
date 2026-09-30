@@ -48,7 +48,7 @@ void main() {
 
   testWidgets('home, as a runner on a plan actually sees it', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(plateProfile());
+    await seedPlan(store);
     final runs = plateLog();
 
     await plate(
@@ -59,15 +59,17 @@ void main() {
         planStore: store,
         historySource: () async => runs,
         coach: FakeCoachService(),
+        // A runner with a plan is a subscriber: the plan is the coach's.
+        access: CoachAccess.subscribed,
       ),
       pixelRatio: 2,
-      drive: settle,
+      drive: rest,
     );
   });
 
   testWidgets('the profile tab, under the same chrome', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(plateProfile());
+    await seedPlan(store);
     final runs = plateLog();
 
     await plate(
@@ -79,15 +81,16 @@ void main() {
         historySource: () async => runs,
         coach: FakeCoachService(),
         initialTab: 2,
+        access: CoachAccess.subscribed,
       ),
       pixelRatio: 2,
-      drive: settle,
+      drive: rest,
     );
   });
 
   testWidgets('and the plan tab', (tester) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(plateProfile());
+    await seedPlan(store);
     final runs = plateLog();
 
     await plate(
@@ -99,9 +102,59 @@ void main() {
         historySource: () async => runs,
         coach: FakeCoachService(),
         initialTab: 1,
+        access: CoachAccess.subscribed,
       ),
       pixelRatio: 2,
-      drive: settle,
+      drive: rest,
+    );
+  });
+
+  /// **The week a plan is built, before it has started.**
+  ///
+  /// A block starts on the coming Monday (ADR-0034), so between building one
+  /// and that Monday the runner holds a plan whose week 1 is still ahead. This
+  /// is the state the test sheet's D16 row asks about, and the one plate where
+  /// Home and the Plan tab can be read against each other for it.
+  testWidgets('home the week a plan is built, before it starts', (
+    tester,
+  ) async {
+    final store = DriftPlanStore(db);
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'home-plan-not-started',
+      HomeShell(
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        access: CoachAccess.subscribed,
+      ),
+      pixelRatio: 2,
+      drive: rest,
+    );
+  });
+
+  testWidgets('and the plan tab, the week a plan is built', (tester) async {
+    final store = DriftPlanStore(db);
+    await PlanRepository(store: store).create(plateProfile());
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'shell-plan-not-started',
+      HomeShell(
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        access: CoachAccess.subscribed,
+        initialTab: 1,
+      ),
+      pixelRatio: 2,
+      drive: rest,
     );
   });
 
@@ -136,7 +189,7 @@ void main() {
         initialTab: initialTab,
       ),
       pixelRatio: 2,
-      drive: settle,
+      drive: rest,
     );
   }
 
@@ -185,7 +238,7 @@ void main() {
     required CoachAccess access,
   }) async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(plateProfile());
+    await seedPlan(store);
     final runs = plateLog();
 
     await plate(
@@ -200,7 +253,7 @@ void main() {
       ),
       pixelRatio: 2,
       drive: (tester) async {
-        await settle(tester);
+        await rest(tester);
         await tester.scrollUntilVisible(
           find.text('AGAINST THE PLAN'),
           220,
@@ -271,9 +324,10 @@ void main() {
         planStore: store,
         historySource: () async => runs,
         coach: FakeCoachService(),
+        access: CoachAccess.subscribed,
       ),
       pixelRatio: 2,
-      drive: drive ?? settle,
+      drive: drive ?? rest,
     );
   }
 
@@ -303,7 +357,7 @@ void main() {
       racingIn: -1,
       extra: <RunSummary>[_theRace()],
       drive: (tester) async {
-        await settle(tester);
+        await rest(tester);
         await tester.tap(find.text('Add your result'));
         await settle(tester);
       },
@@ -321,7 +375,7 @@ void main() {
       // constructed one by hand would be the thin-fixture mistake this file
       // exists to avoid — it would not prove the plan had actually closed.
       drive: (tester) async {
-        await settle(tester);
+        await rest(tester);
         await tester.tap(find.text('Add your result'));
         await settle(tester);
         await tester.tap(find.textContaining('That was my time'));

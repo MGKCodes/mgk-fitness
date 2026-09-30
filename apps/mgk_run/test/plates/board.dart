@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_run_recorder.dart';
@@ -360,6 +362,23 @@ void main() {
       await rec.stop();
     });
 
+    testWidgets('approximate location only', (WidgetTester tester) async {
+      // New in build 26 (C26 on the test sheet). An iPhone with Precise
+      // Location off used to sit on "Acquiring GPS" and save a 0 m run; the
+      // recorder now reports it as its own problem, with the one fix that
+      // works.
+      final FakeRunRecorder rec = recorder(
+        failsWith: RecorderProblem.reducedAccuracy,
+      );
+      await shot(
+        tester,
+        '25-precise-off',
+        screen(rec),
+        drive: (WidgetTester t) async => t.pump(),
+      );
+      await rec.stop();
+    });
+
     testWidgets('location failed', (WidgetTester tester) async {
       final FakeRunRecorder rec = recorder(
         failsWith: RecorderProblem.locationFailed,
@@ -369,6 +388,58 @@ void main() {
         '14-location-failed',
         screen(rec),
         drive: (WidgetTester t) async => t.pump(),
+      );
+      await rec.stop();
+    });
+  });
+
+  group('leaving a run', () {
+    testWidgets('finishing, while the run is being saved', (
+      WidgetTester tester,
+    ) async {
+      // New in build 26 (C24). A double tap on Finish used to make two runs;
+      // the controls now hold a spinner until the first tap has settled. The
+      // save is held open here so the plate can see the moment it lasts.
+      clock = DateTime(2026, 1, 1, 8);
+      final Completer<void> saving = Completer<void>();
+      final _SlowStop rec = _SlowStop(
+        saving.future,
+        interval: const Duration(milliseconds: 20),
+        now: () => clock,
+      );
+      await shot(
+        tester,
+        '26-finishing',
+        screen(rec),
+        drive: (WidgetTester t) async {
+          await advance(125)(t);
+          await rec.pause();
+          await t.pump();
+          await t.tap(find.text('Finish'));
+          // Far enough into the spinner's sweep that it reads as one: at a
+          // third of a second it is a single dot.
+          await t.pump(const Duration(milliseconds: 300));
+          await t.pump(const Duration(milliseconds: 450));
+        },
+      );
+      saving.complete();
+      await tester.pump();
+    });
+
+    testWidgets('back mid-run asks first', (WidgetTester tester) async {
+      // New in build 26 (C22/C23). Back and the iOS edge swipe used to pop
+      // the screen and leave the run recording out of sight. Every way out now
+      // meets this question; the close button is the one a plate can press.
+      final FakeRunRecorder rec = recorder();
+      await shot(
+        tester,
+        '27-discard',
+        screen(rec),
+        drive: (WidgetTester t) async {
+          await advance(125)(t);
+          await t.tap(find.byTooltip('Cancel run'));
+          await advance(10)(t);
+        },
       );
       await rec.stop();
     });
@@ -423,4 +494,18 @@ void main() {
       await rec.stop();
     });
   });
+}
+
+/// A recorder whose save takes as long as [_saving] says, so the finishing
+/// state — which lasts a fraction of a second on a phone — can be looked at.
+class _SlowStop extends FakeRunRecorder {
+  _SlowStop(this._saving, {super.interval, super.now});
+
+  final Future<void> _saving;
+
+  @override
+  Future<void> stop() async {
+    await _saving;
+    await super.stop();
+  }
 }

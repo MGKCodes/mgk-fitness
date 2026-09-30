@@ -31,7 +31,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
-import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
@@ -61,47 +60,13 @@ void main() {
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  /// The seeded app, with every seam a destination needs actually plugged in.
-  ///
-  /// The shell hides a control it cannot honour — no `runEditor` and there is
-  /// no "Add a run", no chat client and the coach mark is absent rather than
-  /// inert. So a board built on a half-wired shell would show a smaller app
-  /// than the one that ships, and would do it silently.
+  /// The seeded app — see [plateApp], which this used to be.
   HomeShell app(
     DriftPlanStore store,
     List<RunSummary> runs, {
     int initialTab = 0,
-    // **Pinned, never inferred.** Since ADR-0030 the coach mark is a door for
-    // an unsubscribed runner: tapping it opens the gate sheet rather than the
-    // conversation. The shell defaults to `free`, so the two conversation
-    // plates below silently became plates of the gate the day that landed —
-    // a valid PNG of the wrong screen, wearing the right caption, which is the
-    // one failure a board cannot notice about itself.
     CoachAccess access = CoachAccess.subscribed,
-  }) => HomeShell(
-    // **With a name on it.** The fake defaults to none, so Settings correctly
-    // drew "Nothing in particular" against the one row on the page that is
-    // supposed to hold what the coach was told — the board reporting an empty
-    // state as the design, which is the exact failure `shell.dart`'s header
-    // catalogues four instances of.
-    auth: FakeAuthRepository(
-      signedIn: true,
-      email: 'runner@example.com',
-      name: 'Sam',
-    ),
-    planStore: store,
-    historySource: () async => runs,
-    coach: FakeCoachService(),
-    runEditor: RunEditor(db: db),
-    unitSettings: InMemoryUnitSettings(),
-    initialTab: initialTab,
-    access: access,
-    // A shop, so the gate draws the state that ships rather than the state a
-    // build with no RevenueCat key falls back to. Both are real; only one of
-    // them is what a runner will meet.
-    purchases: FakePurchases(),
-    entitlements: FakeEntitlements(access),
-  );
+  }) => plateApp(db, store, runs, initialTab: initialTab, access: access);
 
   /// Taps the coach's mark.
   ///
@@ -131,37 +96,10 @@ void main() {
     await settle(tester);
   }
 
-  /// Scrolls [label] into view and taps it.
-  ///
-  /// `ensureVisible` is not enough on Profile: the log header lives in a lazy
-  /// sliver, so before the page is scrolled the row does not exist to be made
-  /// visible and the finder throws rather than scrolling. This drags until the
-  /// widget is built, which is the difference between off-screen and not-there.
-  Future<void> reach(
-    WidgetTester tester,
-    String label, {
-    Finder? within,
-  }) async {
-    final target = find.text(label);
-    if (target.evaluate().isEmpty && within != null) {
-      await tester.scrollUntilVisible(
-        target,
-        280,
-        scrollable: find
-            .descendant(of: within, matching: find.byType(Scrollable))
-            .first,
-      );
-    }
-    await tester.ensureVisible(target.last);
-    await settle(tester);
-    await tester.tap(target.last);
-    await settle(tester);
-  }
-
   /// A store with the marathon plan already in it, built by the repository.
   Future<DriftPlanStore> seeded() async {
     final store = DriftPlanStore(db);
-    await PlanRepository(store: store).create(plateProfile());
+    await seedPlan(store);
     return store;
   }
 
@@ -293,47 +231,11 @@ void main() {
   });
 
   // --- Settings --------------------------------------------------------------
-
-  testWidgets('settings, from the icon on Profile', (tester) async {
-    final store = await seeded();
-    final runs = plateLog();
-
-    await plate(
-      tester,
-      'settings',
-      app(store, runs, initialTab: 2),
-      pixelRatio: 2,
-      drive: (tester) async {
-        await settle(tester);
-        await tester.tap(find.byTooltip('Settings'));
-        await settle(tester);
-      },
-    );
-  });
-
-  testWidgets('and its foot, where the account and the law are', (
-    tester,
-  ) async {
-    final store = await seeded();
-    final runs = plateLog();
-
-    await plate(
-      tester,
-      'settings-foot',
-      app(store, runs, initialTab: 2),
-      pixelRatio: 2,
-      drive: (tester) async {
-        await settle(tester);
-        await tester.tap(find.byTooltip('Settings'));
-        await settle(tester);
-        // Scrolled to a row rather than dragged by a distance: the fold hides
-        // permissions, backup and the account, and a fixed drag would land
-        // somewhere different the next time a section is added above it.
-        await tester.ensureVisible(find.text('Delete account').last);
-        await settle(tester);
-      },
-    );
-  });
+  //
+  // Settings with an account moved to `account.dart`, built rather than driven:
+  // the shell hands Settings no entitlement source of its own, so a driven plate
+  // always printed "Free" on a subscriber's card. Its foot went with the long
+  // page it was the bottom of (the index fits one screen since 2026-09-11).
 
   /// **The same screen for the runner who has no account — which is now most of
   /// them — and the reason this pair belongs on a board rather than in a test.**
@@ -396,8 +298,28 @@ void main() {
       app(store, runs, initialTab: 2),
       pixelRatio: 2,
       drive: (tester) async {
+        await rest(tester);
+        // **Scrolled clear of the header, then tapped.** `reach` scrolled the
+        // row to the top edge, where Profile's pinned header sits over it, so
+        // the tap landed on the header and the plate drew the log instead of
+        // the form. The September board published that picture as `S6`: a
+        // byte-for-byte copy of `S7`, captioned as a form nobody could see.
+        final scrollable = find
+            .descendant(
+              of: find.byType(ProfileScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(
+          find.text('Add a run'),
+          280,
+          scrollable: scrollable,
+        );
+        await tester.drag(scrollable, const Offset(0, 240));
         await settle(tester);
-        await reach(tester, 'Add a run', within: find.byType(ProfileScreen));
+        await tester.tap(find.text('Add a run'));
+        await settle(tester);
+        expect(find.text('Add a run'), findsWidgets);
       },
     );
   });
@@ -442,8 +364,13 @@ void main() {
   // plate is the number the app would print.
 
   Future<(StoredPlan, PlanRepository)> plan() async {
-    final repo = PlanRepository(store: DriftPlanStore(db));
-    return (await repo.create(plateProfile()), repo);
+    // Three weeks in, like every other plate of a runner on a plan: a block
+    // built today has not started (ADR-0034), and its calendar calls next week
+    // "this week" — which is `H6`'s subject, not these plates'.
+    final store = DriftPlanStore(db);
+    await seedPlan(store);
+    final repo = PlanRepository(store: store);
+    return ((await repo.load())!, repo);
   }
 
   testWidgets('a week opened, with the day the runner came from focused', (
@@ -459,14 +386,18 @@ void main() {
     await plate(
       tester,
       'week-detail',
-      WeekDetailScreen(
-        week: week,
-        slot: slot,
-        paces: pacesFor(stored.profile)!,
-        profile: stored.profile,
-        focusedWeekday: DateTime.wednesday,
+      pushed(
+        WeekDetailScreen(
+          week: week,
+          slot: slot,
+          paces: pacesFor(stored.profile)!,
+          profile: stored.profile,
+          focusedWeekday: DateTime.wednesday,
+        ),
       ),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 
@@ -478,34 +409,40 @@ void main() {
     await plate(
       tester,
       'plan-block',
-      PlanBlockScreen(
-        plan: stored,
-        // Read off the log rather than the profile, exactly as the shell reads
-        // it: readiness is a fact about what the runner has done lately, and a
-        // screen handed only a plan would have to fall back on a profile that
-        // ages.
-        readiness: assessReadiness(
-          stored.profile,
-          plateLog(),
-          now: DateTime.now(),
+      pushed(
+        PlanBlockScreen(
+          plan: stored,
+          // Read off the log rather than the profile, exactly as the shell reads
+          // it: readiness is a fact about what the runner has done lately, and a
+          // screen handed only a plan would have to fall back on a profile that
+          // ages.
+          readiness: assessReadiness(
+            stored.profile,
+            plateLog(),
+            now: DateTime.now(),
+          ),
         ),
       ),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 
   testWidgets('and the calendar, week by week', (tester) async {
     final (stored, _) = await plan();
     final weeks = <int, TrainingWeek>{
-      for (var i = 0; i < 3; i++)
+      for (var i = 0; i < 6; i++)
         i + 1: buildFallbackWeek(stored.skeleton.weeks[i], stored.profile),
     };
 
     await plate(
       tester,
       'plan-calendar',
-      PlanCalendarScreen(plan: stored, weeks: weeks),
+      pushed(PlanCalendarScreen(plan: stored, weeks: weeks)),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 }
