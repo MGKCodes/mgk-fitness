@@ -386,14 +386,18 @@ void main() {
     await plate(
       tester,
       'week-detail',
-      WeekDetailScreen(
-        week: week,
-        slot: slot,
-        paces: pacesFor(stored.profile)!,
-        profile: stored.profile,
-        focusedWeekday: DateTime.wednesday,
+      pushed(
+        WeekDetailScreen(
+          week: week,
+          slot: slot,
+          paces: pacesFor(stored.profile)!,
+          profile: stored.profile,
+          focusedWeekday: DateTime.wednesday,
+        ),
       ),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 
@@ -405,19 +409,23 @@ void main() {
     await plate(
       tester,
       'plan-block',
-      PlanBlockScreen(
-        plan: stored,
-        // Read off the log rather than the profile, exactly as the shell reads
-        // it: readiness is a fact about what the runner has done lately, and a
-        // screen handed only a plan would have to fall back on a profile that
-        // ages.
-        readiness: assessReadiness(
-          stored.profile,
-          plateLog(),
-          now: DateTime.now(),
+      pushed(
+        PlanBlockScreen(
+          plan: stored,
+          // Read off the log rather than the profile, exactly as the shell reads
+          // it: readiness is a fact about what the runner has done lately, and a
+          // screen handed only a plan would have to fall back on a profile that
+          // ages.
+          readiness: assessReadiness(
+            stored.profile,
+            plateLog(),
+            now: DateTime.now(),
+          ),
         ),
       ),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 
@@ -431,8 +439,10 @@ void main() {
     await plate(
       tester,
       'plan-calendar',
-      PlanCalendarScreen(plan: stored, weeks: weeks),
+      pushed(PlanCalendarScreen(plan: stored, weeks: weeks)),
       pixelRatio: 2,
+      // Past the push: the screen slides in over the page it was opened from.
+      drive: settle,
     );
   });
 }

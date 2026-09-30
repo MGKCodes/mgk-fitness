@@ -302,12 +302,14 @@ void main() {
     await plate(
       tester,
       'run-complete',
-      RunSummaryScreen(
-        summary: finished,
-        history: log,
-        justFinished: true,
-        onDone: () {},
-        onAskCoach: () {},
+      pushed(
+        RunSummaryScreen(
+          summary: finished,
+          history: log,
+          justFinished: true,
+          onDone: () {},
+          onAskCoach: () {},
+        ),
       ),
       pixelRatio: 2,
       // Past the route's reveal: the drawing has plates of its own (`F4`-`F6`),
@@ -326,13 +328,16 @@ void main() {
     await plate(
       tester,
       'run-from-log',
-      RunSummaryScreen(
-        summary: finished,
-        history: log,
-        onEdit: () {},
-        onAskCoach: () {},
+      pushed(
+        RunSummaryScreen(
+          summary: finished,
+          history: log,
+          onEdit: () {},
+          onAskCoach: () {},
+        ),
       ),
       pixelRatio: 2,
+      drive: settle,
     );
   });
 
@@ -451,15 +456,17 @@ void main() {
     await plate(
       tester,
       'run-complete-record',
-      RunSummaryScreen(
-        summary: finished,
-        // An empty log, which is what a first 10K actually looks like: nothing
-        // to beat is the commonest way to set a record and the one a new
-        // runner meets first.
-        history: const <RunSummary>[],
-        justFinished: true,
-        onDone: () {},
-        onAskCoach: () {},
+      pushed(
+        RunSummaryScreen(
+          summary: finished,
+          // An empty log, which is what a first 10K actually looks like: nothing
+          // to beat is the commonest way to set a record and the one a new
+          // runner meets first.
+          history: const <RunSummary>[],
+          justFinished: true,
+          onDone: () {},
+          onAskCoach: () {},
+        ),
       ),
       pixelRatio: 2,
       // Past the route's reveal: the drawing has plates of its own (`F4`-`F6`),
