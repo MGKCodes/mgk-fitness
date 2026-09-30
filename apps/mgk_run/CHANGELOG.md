@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Adding a run by hand no longer opens on errors, or on Treadmill.** "How
+  far did you go?" and "How long did it take?" showed in red before anything
+  had been typed; a field now says what is wrong once you have typed in it or
+  left it. Kind starts on Outdoor.
 - **A run's note shows on its summary.** The note was only in Edit, so a run
   the app recovered after it was closed mid-run gave no sign of it where the
   run is read. The summary now shows "Recovered automatically", or whatever
