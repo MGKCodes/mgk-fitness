@@ -108,6 +108,11 @@ which you can withdraw by deleting your data).
   your coach. Like any purchase SDK it also collects technical information of
   its own about the install, such as a device-scoped identifier, your store
   country and your app version.
+- **SMTP2GO** — sends the emails your account needs: the link to confirm your
+  address when you sign up, the link to reset your password, and a note when
+  your password changes. It receives your email address and the email itself,
+  through its servers in the EU, and nothing about your training. Its open and
+  click tracking are turned off.
 
 We do not sell personal data, and we do not use it for third-party advertising.
 

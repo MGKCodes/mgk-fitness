@@ -98,6 +98,9 @@ void main() {
         expect(text, contains('OpenRouter'));
         expect(text, contains('RevenueCat'));
         expect(text, contains('MapTiler'));
+        // The mail service (30 September 2026): it receives every address that
+        // is confirmed or reset.
+        expect(text, contains('SMTP2GO'));
         expect(
           text,
           isNot(contains('Anthropic')),
@@ -470,13 +473,14 @@ void main() {
       }
     });
 
-    test('the privacy policy names the same four sub-processors', () {
+    test('the privacy policy names the same sub-processors', () {
       final page = readPublished('privacy-policy.html');
       for (final processor in <String>[
         'Supabase',
         'OpenRouter',
         'RevenueCat',
         'MapTiler',
+        'SMTP2GO',
       ]) {
         expect(page, contains(processor));
       }

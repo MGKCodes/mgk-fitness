@@ -225,11 +225,11 @@ got a confirmation or a reset.
       was accepted, the old one then refused, and the "password was changed"
       notice followed a minute later. The account was deleted through
       `delete-account`, which answered `account_deleted: true`.
-- [ ] **Email confirmation is still off** (a sign-up is confirmed on
-      creation). Run's `app-store-1.0.0.md` turns it on before submission,
-      because Apple and Google sign-in link to any account with the same
-      email; it covers Lift 2.0.0 for the same reason. The mail it needs now
-      works, and `confirmation.html` is in.
+- [x] **Email confirmation is on**, since 30 September, for both apps. It
+      has to be: Apple and Google sign-in link to any account with the same
+      email, and with confirmation off somebody could register an address
+      first and keep a way into the account its owner later signs in to. The
+      email is `confirmation.html`, sent through SMTP2GO.
 
 ## 7. Sign in with Apple and Google, both apps
 

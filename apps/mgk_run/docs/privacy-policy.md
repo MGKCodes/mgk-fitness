@@ -175,6 +175,11 @@ On Android the app requests no health permissions at all.
   IP address. This happens whether or not you have an account. Configured per
   build; a build with no tile provider draws routes with no basemap and contacts
   no one.
+- **SMTP2GO** — sends the emails your account needs: the link to confirm your
+  address when you sign up, the link to reset your password, and a note when
+  your password changes. It receives your email address and the email itself,
+  through its servers in the EU, and nothing about your training. Its open and
+  click tracking are turned off.
 
 We do not sell personal data, and we do not use it for third-party advertising.
 The app contains **no analytics, no advertising SDK and no crash reporter**, and

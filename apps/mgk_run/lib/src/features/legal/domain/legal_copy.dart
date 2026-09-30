@@ -160,6 +160,12 @@ const LegalDocument privacyPolicy = LegalDocument(
             'receives the map coordinates being displayed and, like any web '
             'request, your IP address. This happens whether or not you have an '
             'account.',
+        'SMTP2GO — sends the emails your account needs: the link to confirm '
+            'your address when you sign up, the link to reset your password, '
+            'and a note when your password changes. It receives your email '
+            'address and the email itself, through its servers in the EU, and '
+            'nothing about your training. Its open and click tracking are '
+            'turned off.',
       ],
       paragraphs: <String>[
         'We do not sell personal data, and we do not use it for third-party '

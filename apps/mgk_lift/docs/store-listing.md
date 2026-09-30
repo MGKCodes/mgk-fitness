@@ -201,8 +201,8 @@ review notes.
 - **Can users request deletion?** Yes: in the app, and at
   `https://mgkfitness.mgkcodes.com/lift/delete-account`.
 - **Is any data shared?** **No.** Supabase, OpenRouter (and the model provider
-  it routes to) and RevenueCat process data on our behalf, which Play counts as
-  service providers rather than sharing.
+  it routes to), RevenueCat and SMTP2GO (the account's emails) process data on
+  our behalf, which Play counts as service providers rather than sharing.
 
 Collected, all for **App functionality**, none for advertising or analytics:
 

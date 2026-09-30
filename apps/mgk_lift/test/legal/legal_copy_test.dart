@@ -75,6 +75,9 @@ void main() {
         'Supabase',
         'OpenRouter',
         'RevenueCat',
+        // The mail service (30 September 2026): it receives every address
+        // that is confirmed or reset.
+        'SMTP2GO',
         'eu-west-1 (Ireland)',
       ]);
     });

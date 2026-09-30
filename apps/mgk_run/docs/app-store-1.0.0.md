@@ -205,7 +205,9 @@ and run.
          `codemagic.yaml` change to `main`, which is where Run builds from.
          **Verify on build 27** that Codemagic's automatic signing chose the
          profile on the 2027-09-30 certificate: it holds Frunt's key too.
-   - [ ] **Supabase Auth: email confirmation goes on before submission.**
+   - [x] **Supabase Auth: email confirmation goes on before submission.**
+         *On since 30 September 2026*, sent through SMTP2GO with the designed
+         templates in `supabase/templates/`, and proved end to end.
          *Decided 2026-09-30:* off only for development. It has to be on by
          the time the reviewed build is live, because build 27 adds Google and
          Apple sign-in, and Supabase links a provider sign-in to any existing
