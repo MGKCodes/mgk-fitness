@@ -96,7 +96,8 @@ class AccountDeletionService implements AccountDeleter {
         return 'Please sign in again, then retry the deletion.';
       case 'not_configured':
         return 'Deletion is not set up on the server yet. '
-            'Email hello@mgkcodes.com and we will remove your data.';
+            'Email run@mgkfitness.mgkcodes.com and we will remove your '
+            'data.';
       case 'delete_failed':
         return 'The server could not complete the deletion. '
             'Nothing was removed. Please try again.';

@@ -235,7 +235,10 @@ void main() {
 
       expect(find.text('Your data is deleted'), findsOneWidget);
       expect(find.textContaining('Your login is still active'), findsOneWidget);
-      expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
+      expect(
+        find.textContaining('run@mgkfitness.mgkcodes.com'),
+        findsOneWidget,
+      );
       expect(find.textContaining('along with your login'), findsNothing);
     });
 
@@ -284,7 +287,10 @@ void main() {
         find.textContaining('Your login could not be removed'),
         findsOneWidget,
       );
-      expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
+      expect(
+        find.textContaining('run@mgkfitness.mgkcodes.com'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('says the profile went too when it held nothing else', (

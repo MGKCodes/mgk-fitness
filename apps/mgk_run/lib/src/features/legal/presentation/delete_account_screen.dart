@@ -480,10 +480,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     if (result.accountDeleted) return '$removed, along with your login.';
     if (result.loginRetainedForSiblingApp) {
       return '$removed. Your login is still active because Lift is using '
-          'it — email hello@mgkcodes.com if you want that removed too.';
+          'it — email run@mgkfitness.mgkcodes.com if you want that removed '
+          'too.';
     }
     return '$removed. Your login could not be removed — email '
-        'hello@mgkcodes.com and we will remove it.';
+        'run@mgkfitness.mgkcodes.com and we will remove it.';
   }
 
   String? get _phoneSentence => switch (_phoneCopy) {

@@ -256,8 +256,8 @@ const LegalDocument privacyPolicy = LegalDocument(
             '$kPlatformName: Lift. If the profile holds no data from Lift, '
             'deletion removes the profile itself. If it does, we delete '
             'everything this app holds and keep only the profile, so your '
-            'data in Lift survives — email hello@mgkcodes.com to remove the '
-            'profile as well.',
+            'data in Lift survives — email run@mgkfitness.mgkcodes.com to '
+            'remove the profile as well.',
       ],
     ),
     LegalSection(
@@ -283,7 +283,7 @@ const LegalDocument privacyPolicy = LegalDocument(
     ),
     LegalSection(
       heading: 'Contact',
-      paragraphs: <String>['MGKCodes Ltd — hello@mgkcodes.com.'],
+      paragraphs: <String>['MGKCodes Ltd — run@mgkfitness.mgkcodes.com.'],
     ),
   ],
   footnote: 'Controller: MGKCodes Ltd. We note the date this policy changes.',

@@ -24,7 +24,7 @@ export default function RunSupportPage() {
       <p className="eyebrow">MGKFitness: Run</p>
       <h1>Support</h1>
       <p className="lede">
-        Email <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>. It is
+        Email <a href="mailto:run@mgkfitness.mgkcodes.com">run@mgkfitness.mgkcodes.com</a>. It is
         read by the person who built the app, so please say what you were doing
         when it went wrong rather than only what went wrong.
       </p>

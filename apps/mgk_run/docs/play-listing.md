@@ -229,6 +229,6 @@ carries them.
 |---|---|
 | App category | Health & Fitness |
 | Tags | Optional; up to five from Play's own list |
-| Contact email | hello@mgkcodes.com |
+| Contact email | run@mgkfitness.mgkcodes.com |
 | Website | https://mgkfitness.mgkcodes.com |
 | Privacy policy | https://mgkfitness.mgkcodes.com/run/privacy |

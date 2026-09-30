@@ -47,7 +47,7 @@ export default function RunDeleteAccountPage() {
 
       <h2>If you have uninstalled it</h2>
       <p>
-        Email <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a> from
+        Email <a href="mailto:run@mgkfitness.mgkcodes.com">run@mgkfitness.mgkcodes.com</a> from
         the address your account uses, with <strong>Delete my Run account</strong>{" "}
         as the subject. We will confirm when it is done.
       </p>

@@ -164,7 +164,7 @@ describes a mechanism rather than a list somebody maintains:
 
 A login surviving with no data behind it is recoverable; erasing the sibling
 app's data is not, so the tie breaks that way. When the login is retained the app
-says so plainly and points at hello@mgkcodes.com for removing it.
+says so plainly and points at run@mgkfitness.mgkcodes.com for removing it.
 
 **This table was wrong in four places until 2026-09-07, and one of them was a
 promise the code had stopped keeping.** It named the `runio` schema, renamed to

@@ -143,13 +143,29 @@ and run.
    - [ ] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
          Authorization value verbatim with no `Bearer` (store-setup.md §5).
    - [ ] **OpenRouter:** see item 3.
-   - [ ] **Support address `run@mgkfitness.mgkcodes.com`** (the owner's choice,
-         2026-09-30) cannot receive mail yet: `mgkfitness.mgkcodes.com` is a
-         CNAME to Vercel, and a name with a CNAME can have no MX records. Owner:
-         replace the CNAME with Vercel's A record (DNS only), add the subdomain
-         in Cloudflare Email Routing, route `run@` to the studio inbox, send a
-         test. Then every `hello@mgkcodes.com` in the app, the legal pages and
-         the web pages moves to it (in-app copy in build 27).
+   - [x] **Support address `run@mgkfitness.mgkcodes.com`**, receiving since
+         2026-09-30. `mgkfitness.mgkcodes.com` was a CNAME to Vercel, and a name
+         with a CNAME can have no MX records, so it is now `A 76.76.21.21` (DNS
+         only; the pages were checked through that address before the switch
+         and again after it). The subdomain is added in Cloudflare Email
+         Routing, `run@` forwards to `mgkcodes@gmail.com` beside `hello@`, and
+         a test from outside arrived in the inbox, not spam. Receive-only:
+         replies go out from `mgkcodes@gmail.com`, which is also true of
+         `hello@`. Every Run-facing `hello@mgkcodes.com` moved in build 27: the
+         app, the policy and terms (both re-dated 30 September), the generated
+         pages, `/run/support`, `/run/delete-account` and the Play contact
+         email. Three stay on purpose: the repo README (the studio's
+         address), `web/app/layout.tsx` (the footer Lift's pages share) and the
+         OpenRouter letter (a record of what was sent).
+   - [x] **MGKFitness signs and publishes with its own key and certificate.**
+         Both iOS workflows used `frunt_asc`, and Run's App Store profile was on
+         the certificate Codemagic calls `frunt_distribution`. The owner made
+         `mgkfitness_asc` (key 4HNLTYJL55) and `mgkfitness_distribution`
+         (expiring 2027-09-30) on 2026-09-30 and regenerated both profiles on
+         it; `31310e1` wired Lift on its branch, and build 27 brings the same
+         `codemagic.yaml` change to `main`, which is where Run builds from.
+         **Verify on build 27** that Codemagic's automatic signing chose the
+         profile on the 2027-09-30 certificate: it holds Frunt's key too.
    - [ ] **Supabase Auth: email confirmation is off. Decide** whether to turn
          it on, with custom SMTP, before public launch. It changes the sign-up
          flow, so it is a product decision, not a setting to flip.

@@ -243,7 +243,7 @@ def build(src_name: str, out_name: str) -> str:
 <main>
 <h1>{html.escape(title)}</h1>
 {body}
-<footer>MGKCodes Ltd &middot; <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a></footer>
+<footer>MGKCodes Ltd &middot; <a href="mailto:run@mgkfitness.mgkcodes.com">run@mgkfitness.mgkcodes.com</a></footer>
 </main>
 </body>
 </html>

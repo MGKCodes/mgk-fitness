@@ -18,8 +18,8 @@
 > the two disagree about an App Store purchase, Apple's wins; these terms govern
 > everything else.
 
-**Last updated:** 10 September 2026 · **Provider:** MGKCodes Ltd (England and Wales) ·
-**Contact:** hello@mgkcodes.com
+**Last updated:** 30 September 2026 · **Provider:** MGKCodes Ltd (England and Wales) ·
+**Contact:** run@mgkfitness.mgkcodes.com
 
 ## 1. Who we are, and what this covers
 
@@ -72,7 +72,7 @@ always.**
 
 You can use the app without an account. If you create one, you must give an
 accurate email address, keep your login secure, and tell us at
-hello@mgkcodes.com if you believe someone else has used it.
+run@mgkfitness.mgkcodes.com if you believe someone else has used it.
 
 You must be at least 16 to create an account.
 
@@ -100,7 +100,7 @@ the app at the point of purchase.
 **Refunds are the store's decision, not ours.** Apple and Google each operate
 their own refund process and their own rules, and we have no ability to issue,
 refuse or expedite one. If you believe you are owed a refund, ask them. If
-something we did caused the problem, email hello@mgkcodes.com and we will help
+something we did caused the problem, email run@mgkfitness.mgkcodes.com and we will help
 you make the case, but the decision is not ours to make.
 
 If a subscription lapses, your runs, plans and history remain on your device and
@@ -190,7 +190,7 @@ protection of the mandatory consumer law of the country you live in.
 
 ## 13. Contact
 
-MGKCodes Ltd — hello@mgkcodes.com
+MGKCodes Ltd — run@mgkfitness.mgkcodes.com
 
 Support, and answers to the things people most often write in about:
 [mgkfitness.mgkcodes.com/run/support](https://mgkfitness.mgkcodes.com/run/support)

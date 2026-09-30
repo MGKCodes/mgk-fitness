@@ -49,8 +49,8 @@
 >    and an OS version for itself. Check their privacy manifest before filing
 >    the App Store's privacy labels.
 
-**Last updated:** 29 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
-hello@mgkcodes.com
+**Last updated:** 30 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+run@mgkfitness.mgkcodes.com
 
 ## Summary
 
@@ -248,7 +248,7 @@ consent. There are three in-app controls, and they do different things:
   are pruned after 31 days regardless. And your **login** survives if our
   lifting app still holds data on it — see below.
 
-To exercise any right, use those controls or contact hello@mgkcodes.com. If
+To exercise any right, use those controls or contact run@mgkfitness.mgkcodes.com. If
 you have already uninstalled the app, ask us at
 https://mgkfitness.mgkcodes.com/run/delete-account — the in-app control is
 faster and complete, but it is no use to you once the app is gone.
@@ -256,7 +256,7 @@ faster and complete, but it is no use to you once the app is gone.
 Your login is your **MGKFitness profile**, shared with our lifting app
 **MGKFitness: Lift**. If the profile holds no data from Lift, deletion removes
 the profile itself. If it does, we delete everything this app holds and keep only
-the profile, so your data in Lift survives — email hello@mgkcodes.com to remove
+the profile, so your data in Lift survives — email run@mgkfitness.mgkcodes.com to remove
 the profile as well.
 
 ## Retention
@@ -282,4 +282,4 @@ We'll update this policy as the product evolves and note the date above.
 
 ## Contact
 
-MGKCodes Ltd — hello@mgkcodes.com.
+MGKCodes Ltd — run@mgkfitness.mgkcodes.com.

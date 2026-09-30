@@ -276,8 +276,8 @@ void main() {
       expect(app, contains('delete'));
       expect(app, contains('Lift'));
       expect(doc, contains('Lift'));
-      expect(app, contains('hello@mgkcodes.com'));
-      expect(doc, contains('hello@mgkcodes.com'));
+      expect(app, contains('run@mgkfitness.mgkcodes.com'));
+      expect(doc, contains('run@mgkfitness.mgkcodes.com'));
     });
 
     test('carries no unresolved draft placeholders', () {
