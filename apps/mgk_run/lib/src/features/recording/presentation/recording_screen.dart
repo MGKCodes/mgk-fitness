@@ -1653,17 +1653,31 @@ class _ControlButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           if (busy)
+            // In the icon's 18pt box, drawn smaller: an icon glyph has air
+            // inside its box and a ring does not, so a ring filling the box
+            // sat against the label (board R29). And in the button's own
+            // foreground rather than a colour picked for the enabled fill: a
+            // busy button is a disabled one, so Resume's ring was dark
+            // `onPrimary` on the disabled grey.
             SizedBox(
               height: 18,
               width: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: filled ? AppColors.onPrimary : AppColors.textPrimary,
+              child: Center(
+                child: SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: Builder(
+                    builder: (context) => CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: IconTheme.of(context).color,
+                    ),
+                  ),
+                ),
               ),
             )
           else
             Icon(icon, size: 18),
-          const SizedBox(width: AppSpacing.xs),
+          SizedBox(width: busy ? AppSpacing.sm : AppSpacing.xs),
           Text(label, maxLines: 1, softWrap: false),
         ],
       ),

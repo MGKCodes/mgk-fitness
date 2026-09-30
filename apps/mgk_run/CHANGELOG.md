@@ -383,6 +383,8 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The spinners on Resume and Finish while a run saves sit clear of their
+  labels,** and Resume's is no longer dark on the grey of a disabled button.
 - **A run that location stopped before it began offers only what applies.**
   With location refused, off, approximate or failing at the start, the run
   screen showed Resume and Finish over a run that had not started. It now
