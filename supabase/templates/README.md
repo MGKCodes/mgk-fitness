@@ -31,9 +31,23 @@ Authentication › URL Configuration if a link ever lands somewhere odd.
 
 ## The design, and its rules
 
-The apps' own greys (`mgk_ui`'s `AppColors`): background `#1A1A1A`, the card on
-`#2D2D2D` with a `#404040` edge, white headline, `#9CA3AF` text, and the silver
-`#C0C0C0` pill as the one button. Greyscale because the apps are (ADR-0009).
+**Written by `build_templates.py`**, which holds the one frame all three
+share: edit it, run it, and paste the files that changed. Editing a file by
+hand is how three emails start to disagree.
+
+**Light first, with a dark version.** The first design was charcoal only, and
+the Gmail app in dark mode inverted it into light grey with a dark button: it
+ignores an email's own dark styles and flips the colours of anything it thinks
+is dark. So the base is light (a white card on `#F2F2F2`, a `#1A1A1A` headline,
+a charcoal pill), and a `prefers-color-scheme: dark` block, with Outlook.com's
+`[data-ogsc]` equivalent, swaps in the apps' own greys (`mgk_ui`'s
+`AppColors`): `#1A1A1A` page, `#2D2D2D` card with a `#404040` edge, white
+headline, `#9CA3AF` text, the silver `#C0C0C0` pill. Apple Mail and iOS Mail
+show that version in dark mode; Gmail inverts the light one, which lands close
+to it. Greyscale either way (ADR-0009).
+
+The address in the text is a `mailto:` link styled like the words around it,
+so Gmail does not turn it into a blue link of its own.
 
 - **No images.** Mail clients block them by default, and a picture fetched from
   our server tells us when somebody opened the email. The wordmark is text.
