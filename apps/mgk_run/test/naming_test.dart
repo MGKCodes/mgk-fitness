@@ -65,4 +65,17 @@ void main() {
           '${offenders.join('\n')}',
     );
   });
+
+  // The changelog's entries are dated records and keep the names they were
+  // written under, which is the exemption above. Its opening line is not a
+  // record: it says, today, whose changes the file lists, and it still said
+  // Runio a month after the name was retired.
+  test('the changelog opens with the name the app has now', () {
+    final opening = File('CHANGELOG.md')
+        .readAsLinesSync()
+        .skipWhile((l) => !l.startsWith('All notable changes'))
+        .first;
+    expect(opening, contains('MGKFitness: Run'));
+    expect(opening, isNot(contains('Runio')));
+  });
 }

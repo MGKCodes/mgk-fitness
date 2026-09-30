@@ -344,6 +344,10 @@ void main() {
       await upgrading.customStatement(
         'ALTER TABLE runs DROP COLUMN not_counting_since',
       );
+      // And schema 12's.
+      await upgrading.customStatement(
+        'ALTER TABLE plan_sessions DROP COLUMN with_strength',
+      );
       await upgrading.customStatement('PRAGMA user_version = 8');
       await upgrading.close();
 

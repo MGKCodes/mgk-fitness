@@ -19,6 +19,7 @@
     "",
     "Build 27 UI fixes (30 Sep): every board plate re-rendered at 43a36eb, the",
     "commit after the fixes, and re-stamped. hero_weights again not retaken.",
+    "Follow-ups (30 Sep): the plates they touch re-rendered at 46d0e80; the rest stay at 43a36eb.",
     "",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
@@ -81,22 +82,22 @@
     },
     "11-permission-denied": {
       "source": "test/plates/board.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "12-permission-forever": {
       "source": "test/plates/board.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "13-services-off": {
       "source": "test/plates/board.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "14-location-failed": {
       "source": "test/plates/board.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "15-small-early": {
@@ -151,7 +152,7 @@
     },
     "25-precise-off": {
       "source": "test/plates/board.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "26-finishing": {
@@ -181,7 +182,7 @@
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "account-google-play": {
@@ -206,7 +207,7 @@
     },
     "add-run": {
       "source": "test/plates/flows.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "another-account": {
@@ -216,42 +217,42 @@
     },
     "arrive-greeting": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-health": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-home": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-name": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-permission": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-permission-allowed": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "coach-answering": {
@@ -386,7 +387,7 @@
     },
     "keep-runs-safe": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "last-run-free": {
@@ -486,37 +487,37 @@
     },
     "plan-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-disclaimer": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-intake": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-near-race": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-near-race-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-reveal": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-shape": {
       "source": "test/plates/arrival.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "plan-week": {
@@ -586,7 +587,7 @@
     },
     "run-recovered-note": {
       "source": "test/plates/journeys.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "run-start": {
@@ -631,7 +632,7 @@
     },
     "shell-plan-not-started": {
       "source": "test/plates/shell.dart",
-      "sha": "43a36eb17c42664ac9c7938dfe1cef3e8a93d844",
+      "sha": "46d0e802aae4caeca9635805643161d12381069c",
       "captured": "2026-09-30"
     },
     "shell-profile": {

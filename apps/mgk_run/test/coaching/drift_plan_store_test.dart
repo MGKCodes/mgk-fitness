@@ -10,6 +10,7 @@ import 'package:mgk_run/src/features/coaching/domain/plan_validator.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
+import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 
 /// The plan must survive an app restart. These tests treat "a fresh
 /// [DriftPlanStore] over the same database" as a relaunch — the widget tree and
@@ -482,6 +483,95 @@ void main() {
       await expectLater(
         DriftPlanStore(db).loadActivePlan(),
         throwsA(isA<PlanStoreException>()),
+      );
+    });
+  });
+
+  // A strength day survived exactly as long as its week stayed in memory:
+  // saveWeek wrote `week.runs` and nothing else, so the week read back from
+  // disk had no strength in it and Home called a gym day "Rest day". The
+  // existing "a strength day is not called a rest day" test never reloaded a
+  // week, which is how it passed.
+  group('strength days survive a reload', () {
+    RunnerProfile withStrength({
+      required int runs,
+      required Set<int> available,
+      int strength = 2,
+    }) => RunnerProfile(
+      goalDistanceMeters: 21097.5,
+      eventDate: DateTime(2026, 11, 15),
+      currentWeeklyMeters: 30000,
+      longestRecentMeters: 14000,
+      daysPerWeek: runs,
+      strengthDaysPerWeek: strength,
+      availableWeekdays: available,
+    );
+
+    Future<(TrainingWeek, TrainingWeek)> saveAndReload(
+      RunnerProfile profile,
+    ) async {
+      final plan = aPlan(profile: profile);
+      await DriftPlanStore(db).savePlan(plan);
+      final week = buildFallbackWeek(plan.skeleton.weeks.first, profile);
+      await DriftPlanStore(db).saveWeek(plan, week);
+      // A brand-new store: nothing held over from the write.
+      final back = await DriftPlanStore(db).loadWeek(plan, week.skeletonIndex);
+      return (week, back!);
+    }
+
+    Set<int> strengthDays(TrainingWeek w) => {
+      for (final s in w.support) s.weekday,
+    };
+
+    test('on days with no run', () async {
+      final (week, back) = await saveAndReload(
+        withStrength(runs: 3, available: const <int>{1, 2, 3, 4, 5, 6, 7}),
+      );
+      expect(strengthDays(week), hasLength(2));
+      expect(strengthDays(back), strengthDays(week));
+      for (final day in strengthDays(week)) {
+        expect(back.runOn(day), isNull);
+        expect(back.sessionOn(day)?.kind, SessionKind.strength);
+      }
+      // And the runs are exactly what they were.
+      expect(
+        [for (final s in back.runs) (s.weekday, s.kind, s.distanceMeters)],
+        [for (final s in week.runs) (s.weekday, s.kind, s.distanceMeters)],
+      );
+    });
+
+    test('and on a day it shares with a run', () async {
+      // Five runs on five available days leaves no free day, so the builder
+      // stacks strength onto run days rather than dropping it.
+      final (week, back) = await saveAndReload(
+        withStrength(runs: 5, available: const <int>{1, 2, 4, 6, 7}),
+      );
+      final shared = strengthDays(week).where((d) => week.runOn(d) != null);
+      expect(shared, isNotEmpty, reason: 'the fixture has to share a day');
+      expect(strengthDays(back), strengthDays(week));
+      for (final day in shared) {
+        expect(back.runOn(day), isNotNull, reason: 'the run is still there');
+        expect(back.sessionOn(day)?.kind.isRun, isTrue, reason: 'run wins');
+      }
+      expect(back.volumeMeters, week.volumeMeters);
+    });
+
+    test('a strength-only day still has no status to mark', () async {
+      final profile = withStrength(
+        runs: 3,
+        available: const <int>{1, 2, 3, 4, 5, 6, 7},
+      );
+      final (week, _) = await saveAndReload(profile);
+      final plan = (await DriftPlanStore(db).loadActivePlan())!;
+      final day = strengthDays(week).first;
+      final date = plan.dateFor(weekIndex: week.skeletonIndex, weekday: day);
+
+      expect(await DriftPlanStore(db).statusOn(plan, date), isNull);
+      expect(
+        await DriftPlanStore(
+          db,
+        ).setStatusOn(plan, date, SessionStatus.completed),
+        isFalse,
       );
     });
   });

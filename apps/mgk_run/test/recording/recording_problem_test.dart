@@ -4,6 +4,7 @@ import 'package:mgk_run/preview/fake_run_recorder.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
+import 'package:mgk_run/src/features/recording/presentation/recording_readout.dart';
 import 'package:mgk_run/src/features/recording/presentation/recording_screen.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -218,6 +219,34 @@ void main() {
       expect(find.text('Finish'), findsNothing, reason: '$problem');
       expect(find.text('Pause'), findsNothing, reason: '$problem');
       expect(find.text('Close'), findsOneWidget, reason: '$problem');
+
+      await recorder.stop();
+    }
+  });
+
+  // Board R16 to R19 and R28, the second half: the panel still carried the
+  // session, its effort brief and "TO GO 5.00", on a run that never began.
+  testWidgets('and carries no session: no brief, no TO GO, no target', (
+    WidgetTester tester,
+  ) async {
+    for (final RecorderProblem problem in RecorderProblem.values) {
+      final _CountingRecorder recorder = await pumpProblem(tester, problem);
+
+      expect(find.textContaining('TO GO'), findsNothing, reason: '$problem');
+      expect(
+        find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_EffortBrief',
+        ),
+        findsNothing,
+        reason: '$problem',
+      );
+      expect(
+        find.byType(TargetBand, skipOffstage: false),
+        findsNothing,
+        reason: '$problem',
+      );
+      // What is true stays: nothing has been recorded.
+      expect(find.text('0.00'), findsOneWidget, reason: '$problem');
 
       await recorder.stop();
     }

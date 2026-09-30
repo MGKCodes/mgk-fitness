@@ -9,6 +9,8 @@ import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_shape.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
+import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
+import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -215,8 +217,15 @@ void main() {
     // `runs` filters to running, so a day carrying only strength came back null
     // and Home said "Rest day · Nothing scheduled" over it — while the Coach
     // tab, reading the same stored week, listed Strength on that day.
+    //
+    // **Read back from disk.** This used to compare the week as the builder
+    // handed it over with today's card, and both only ever saw a week still in
+    // memory. The store wrote runs and nothing else, so from the second read
+    // on every strength day was rest, and this test could not see it. It also
+    // asked about whatever weekday the suite ran on; it now asks about every
+    // strength day of the week, from a plan already under way.
     final store = DriftPlanStore(db);
-    final plan = await PlanRepository(store: store).create(
+    final plan = await PlanRepository(store: store, now: _underWay).create(
       RunnerProfile(
         goalDistanceMeters: 42195,
         eventDate: DateTime.now().add(const Duration(days: 112)),
@@ -227,24 +236,32 @@ void main() {
         availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
       ),
     );
+    final monday = mondayOf(DateTime.now());
+    final slot = plan.weekOn(monday);
 
-    final repo = PlanRepository(store: store);
-    final week = await repo.weekFor(plan, plan.weekOn(DateTime.now()));
-    final today = await repo.today(plan);
+    Set<int> gymDays(TrainingWeek w) => <int>{
+      for (var d = 1; d <= 7; d++)
+        if (w.runOn(d) == null && w.sessionOn(d) != null) d,
+    };
 
-    final runToday = week.runOn(DateTime.now().weekday);
-    final anyToday = week.sessionOn(DateTime.now().weekday);
+    final built = await PlanRepository(store: store).weekFor(plan, slot);
+    final stored = await PlanRepository(
+      store: DriftPlanStore(db),
+    ).weekFor(plan, slot);
+    expect(gymDays(built), hasLength(2), reason: 'the fixture has gym days');
+    expect(gymDays(stored), gymDays(built), reason: 'and keeps them on disk');
 
-    if (runToday == null && anyToday != null) {
+    for (final day in gymDays(stored)) {
+      final today = await PlanRepository(
+        store: DriftPlanStore(db),
+        now: () => addDays(monday, day - 1),
+      ).today(plan);
+      expect(today.session, isNull, reason: 'day $day has no run');
       expect(
-        today.support,
-        isNotNull,
+        today.support?.kind,
+        SessionKind.strength,
         reason: 'a day with support and no run must report the support',
       );
-    } else {
-      // Whichever day the suite runs on, the two must never disagree: support
-      // is only ever set when there is no run.
-      expect(today.support, isNull);
     }
   });
 

@@ -879,10 +879,11 @@
       "how": "driven",
       "reach": "G4 › Build my plan",
       "job": "The plan arrives, with its shape in three numbers.",
-      "done": "Length, biggest week and longest run in whole numbers, the race and the countdown at the top, and one button to the week. The plan starts on the coming Monday.",
+      "done": "Length, biggest week and longest run in whole numbers, the race and the countdown at the top, and one button to the week. The plan starts on the coming Monday, and the line under the race says so ('starts Monday' and its date) rather than naming a week not yet begun.",
       "files": [
         "lib/src/features/coaching/presentation/plan_reveal_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: the line read '112 days · week 1 of 16' before week 1 had begun."
     },
     "G6": {
       "file": "plan-near-race-confirm",
@@ -996,13 +997,13 @@
       "how": "driven",
       "reach": "Same day › Nav bar › Plan",
       "job": "The Plan tab on the day a plan is built.",
-      "done": "The week shown is the one the plan starts with, headed 'Starts Monday' and its date rather than 'This week', and no day of it is lit as today.",
+      "done": "The week shown is the one the plan starts with, headed 'Starts Monday' and its date rather than 'This week', and no day of it is lit as today. The header above agrees: the countdown, then 'starts Monday' and the date, not a week number.",
       "files": [
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
       ],
-      "changed": "Build 27: it was headed 'This week' (next week's dates) with next Wednesday lit as today."
+      "changed": "Build 27: it was headed 'This week' (next week's dates) with next Wednesday lit as today. The header read '112 days · week 1 of 16'."
     },
     "R24": {
       "file": "run-start",
@@ -1287,13 +1288,13 @@
       "how": "built",
       "reach": "Start › Don't Allow",
       "job": "Location was refused at the start.",
-      "done": "A plain sentence saying nothing is tracked until it is allowed, with Continue to ask again, and Close as the only control on the row: this run never started, so there is nothing to resume or finish.",
+      "done": "A plain sentence saying nothing is tracked until it is allowed, with Continue to ask again, and Close as the only control on the row: this run never started, so there is nothing to resume or finish. The panel carries no session either: no effort brief, no \"To go\", only the zeros that are true.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started. The session's effort text and 'To go 5.00' stayed on the panel."
     },
     "R17": {
       "file": "12-permission-forever",
@@ -1301,13 +1302,13 @@
       "how": "built",
       "reach": "Start, location set to Never",
       "job": "Location is off for the app in the phone's settings.",
-      "done": "Says where to change it and offers Open Settings; asking again would do nothing, so it does not offer that. Close is the only control on the row.",
+      "done": "Says where to change it and offers Open Settings; asking again would do nothing, so it does not offer that. Close is the only control on the row. The panel carries no session either: no effort brief, no \"To go\", only the zeros that are true.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started. The session's effort text and 'To go 5.00' stayed on the panel."
     },
     "R18": {
       "file": "13-services-off",
@@ -1315,13 +1316,13 @@
       "how": "built",
       "reach": "Start, phone-wide location off",
       "job": "The phone's own location switch is off.",
-      "done": "Gives the written path to the switch rather than an Open Settings button that cannot reach it. Close is the only control on the row.",
+      "done": "Gives the written path to the switch rather than an Open Settings button that cannot reach it. Close is the only control on the row. The panel carries no session either: no effort brief, no \"To go\", only the zeros that are true.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started. The session's effort text and 'To go 5.00' stayed on the panel."
     },
     "R28": {
       "file": "25-precise-off",
@@ -1329,14 +1330,14 @@
       "how": "built",
       "reach": "iPhone: Settings › Run › Location › Precise off › Start",
       "job": "The iPhone has given the app only approximate location, which cannot measure a run.",
-      "done": "Says Run only has approximate location and to turn on Precise Location for Run in Settings, with Open Settings, and Close as the only control on the row. It must not sit on 'Acquiring GPS' and save a 0 m run. iPhone only; Android cannot tell the app.",
+      "done": "Says Run only has approximate location and to turn on Precise Location for Run in Settings, with Open Settings, and Close as the only control on the row. It must not sit on 'Acquiring GPS' and save a 0 m run. iPhone only; Android cannot tell the app. The panel carries no session either: no effort brief, no \"To go\", only the zeros that are true.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
       "isnew": "New in build 26.",
-      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started. The session's effort text and 'To go 5.00' stayed on the panel."
     },
     "R19": {
       "file": "14-location-failed",
@@ -1344,13 +1345,13 @@
       "how": "built",
       "reach": "mid-run, location stops",
       "job": "Location stopped arriving.",
-      "done": "Says nothing is being added and that it usually clears outdoors; no false claim that the run has paused. Drawn here at the start of a run, where the row offers only Close; mid-run, where it usually happens, the run keeps its own controls.",
+      "done": "Says nothing is being added and that it usually clears outdoors; no false claim that the run has paused. Drawn here at the start of a run, where the row offers only Close; mid-run, where it usually happens, the run keeps its own controls. The panel carries no session either: no effort brief, no \"To go\", only the zeros that are true.",
       "files": [
         "lib/src/features/recording/presentation/recording_screen.dart",
         "lib/src/features/recording/presentation/recording_readout.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
-      "changed": "Build 27: Resume and Finish sat under it, over a run that never started."
+      "changed": "Build 27: Resume and Finish sat under it, over a run that never started. The session's effort text and 'To go 5.00' stayed on the panel."
     },
     "R20": {
       "file": "15-small-early",
@@ -1886,11 +1887,11 @@
       "how": "driven",
       "reach": "Profile › Add a run",
       "job": "Logging a run the phone did not record: a treadmill, a race, a run elsewhere.",
-      "done": "Defaults to now and to Outdoor; distance, time and kind are all that is required, and the button reads 'Fill in the details above' until they are. No field shows a problem before it has been typed in or left.",
+      "done": "Defaults to now and to Outdoor; distance, time and kind are all that is required, and the button reads 'Fill in the details above' until they are. No field shows a problem before it has been typed in or left. Distance shows its unit (km or mi) before anything is typed.",
       "files": [
         "lib/src/features/history/presentation/run_form_screen.dart"
       ],
-      "changed": "The September board's S6 was a copy of S7: the tap never reached the button. Build 27: the red prompts under Distance and Time showed before anything was typed, and Kind started on Treadmill."
+      "changed": "The September board's S6 was a copy of S7: the tap never reached the button. Build 27: the red prompts under Distance and Time showed before anything was typed, and Kind started on Treadmill. The unit appeared only once the field was tapped."
     },
     "T1": {
       "file": "settings",

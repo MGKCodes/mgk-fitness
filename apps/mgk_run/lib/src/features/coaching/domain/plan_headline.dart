@@ -49,6 +49,16 @@ PlanHeadline planHeadline(
       final days = daysBetweenDates(today, profile.eventDate!);
       final weeks = plan.skeleton.weeks.length;
       final current = plan.weekIndexOn(today);
+      // Before the plan's first Monday there is no current week (ADR-0034):
+      // `weekIndexOn` answers 1, and "week 1 of 16" on the Wednesday before it
+      // disagreed with the week below it, headed "Starts Monday 5 Oct". The
+      // countdown still counts; the week number waits for the start.
+      if (!plan.hasStartedBy(today)) {
+        return PlanHeadline(
+          goal: raceName(goalMeters!) ?? '$goal goal',
+          position: '$days days · ${_starts(plan)}',
+        );
+      }
       return PlanHeadline(
         // "Marathon", not "Marathon goal" — the word is already the goal.
         goal: raceName(goalMeters!) ?? '$goal goal',
@@ -74,12 +84,14 @@ PlanHeadline planHeadline(
       // No date to count down to, so the count is of readiness — the only thing
       // a horizon is actually progressing toward. "Week 9 · no date set" said
       // where they were in a plan and nothing about whether it was working.
-      final current = plan.weekIndexOn(today);
+      final current = plan.hasStartedBy(today)
+          ? 'week ${plan.weekIndexOn(today)}'
+          : _starts(plan);
       return PlanHeadline(
         goal: 'Building toward ${_lowerIfNamed(goalMeters!, goal!)}',
         position: readiness == null
-            ? 'week $current · no date set'
-            : 'week $current · ${readiness.summary}',
+            ? '$current · no date set'
+            : '$current · ${readiness.summary}',
       );
 
     case PlanShape.rhythm:
@@ -104,6 +116,9 @@ PlanHeadline planHeadline(
       return const PlanHeadline(goal: 'Your runs', position: 'no plan set');
   }
 }
+
+/// "starts Monday 5 Oct": where a plan still ahead of its first Monday is.
+String _starts(StoredPlan plan) => 'starts ${dayAndDate(plan.startDate)}';
 
 /// What the Today card is headed. **Just "Today".**
 ///

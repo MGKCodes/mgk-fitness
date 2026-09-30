@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Runio are documented here.
+All notable changes to MGKFitness: Run are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -383,6 +383,26 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Adding a run shows the unit on an empty Distance field.** It appeared
+  only once you tapped into the field, so nothing said whether it wanted
+  kilometres or miles.
+- **A run that never started no longer shows today's session.** When
+  location stopped a run before it began, the panel still carried the
+  session's effort text and "To go 5.00". It now shows the problem, what
+  was recorded (nothing) and Close.
+- **Before a new plan starts, the Plan tab's header and the coach say so.**
+  The header read "112 days · week 1 of 16" over a week headed "Starts
+  Monday 5 Oct", and the coach was told the runner was already in week 1. The
+  header now reads "112 days · starts Monday 5 Oct", and the coach is told the
+  plan starts on that date and nothing is set before it.
+- **A week that cannot be opened says so in plain words.** Opening a week
+  from the calendar when the phone could not read it showed the app's own
+  internal error text.
+- **Strength days stay in the plan after the app is reopened.** A week kept
+  its strength days only while it was still in memory; read back from the
+  phone, every strength day was a rest day, and Home said "Rest day" over a
+  gym day. Weeks written before this update cannot get theirs back; the next
+  week the plan writes keeps them.
 - **The plan calendar opens with this week at the top.** A few weeks into a
   plan it opened with "This week" and its dates tucked under the header.
 - **The coach's consent sheet shows when there is more to read.** On a small

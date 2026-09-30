@@ -322,7 +322,10 @@ void main() {
 
     expect(chat.briefs, hasLength(1));
     final brief = chat.briefs.single;
-    expect(brief, contains('of a 42 km block'));
+    // "of a 42 km block" once the plan is under way; "a 16-week 42 km block"
+    // on the days before its first Monday, which is what a plan built "today"
+    // is on six days out of seven.
+    expect(brief, contains('42 km block'));
     expect(brief, contains('Their last run was yesterday'));
     expect(
       brief,
