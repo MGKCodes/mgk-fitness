@@ -6,7 +6,6 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
-import '../../coaching/presentation/coach_button.dart' show CoachLetter;
 import '../domain/live_metrics.dart';
 import '../../coaching/domain/prescribed_distance.dart' show raceName;
 import '../domain/best_effort.dart';

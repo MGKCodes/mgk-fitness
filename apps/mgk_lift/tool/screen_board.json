@@ -1,0 +1,1513 @@
+{
+  "$comment": [
+    "The board's words. Images come from the capture; everything a person reads",
+    "comes from here.",
+    "",
+    "Kept as data next to the capture script, not inside the generator, for the",
+    "reason capture_screens_web.mjs gives for parsing screen names out of the",
+    "harness: anything that names a screen twice drifts. The generator fails",
+    "loudly if a key here is missing from the capture or vice versa, so this file",
+    "cannot quietly fall behind the app.",
+    "",
+    "CODES ARE PINNED, NOT POSITIONAL. Each screen carries its own, and the",
+    "generator only checks that it is unique and starts with its act's letter.",
+    "Adding a screen means giving it the next free number in its act; nothing",
+    "already on the board moves. Prose refers to other plates as {{key}} and the",
+    "generator substitutes the code, so a reference cannot go stale either.",
+    "",
+    "host — shell: a tab root, so nav bar and coach mark are both on it",
+    "       pushed: a full screen over the shell, with a back affordance",
+    "       sheet: a modal bottom sheet, dismissed by drag or scrim",
+    "       dialog: an alert, dismissed by its own buttons",
+    "in/out/next follow docs/navigation.md, which is the audit these answer to."
+  ],
+
+  "previous": "30 September 2026, version 13",
+  "since": "the redesign's last phase: search that finds words, other names and a typo, with chips for muscle and equipment; and one movement over time, reached from its name anywhere, which is where Profile's bests went",
+
+  "acts": [
+    {
+      "letter": "S",
+      "title": "Signing in",
+      "sub": "Reached, never launched into",
+      "lede": "Tracking is never gated, so the app opens usable and an account is optional. These screens exist only because somebody asked for something that needs a server. Apple and Google come first, as one tap and no password; email is one tap behind them.",
+      "racks": [{ "title": "The account", "screens": ["sign-in", "sign-in-email"] }]
+    },
+    {
+      "letter": "T",
+      "title": "Track — now",
+      "sub": "The tab the app opens on, and the whole free half",
+      "lede": "\"Track\", not \"Home\": in Run the front page is a summary of the day; here it is the thing you are actually doing in the gym, and the label should say so. One primary button, whose verb is decided by what the plan and the recorder have to say. The coach mark sits bottom-right on this and every other tab — the shell reserves that room, which is why a screenshot without it is a screenshot of a build nobody ships.",
+      "racks": [
+        { "title": "The tab, at rest", "screens": ["track", "track-starters", "track-coach"] },
+        { "title": "With something in flight", "screens": ["track-open", "track-planned", "track-interrupted"] },
+        { "title": "When backup needs you", "screens": ["track-backup-failed", "track-backup-refused"] }
+      ]
+    },
+    {
+      "letter": "W",
+      "title": "A workout, start to finish",
+      "sub": "The only flow in the app that is really a flow",
+      "lede": "One screen replaces another here, and the summary is where it ends rather than a detour off it. Every set is written the moment it is ticked, which is what makes backing out safe, an interrupted session resumable, and Finish a replacement rather than a push — back must never return to a session that has ended.",
+      "racks": [
+        { "title": "Starting one", "screens": ["session-empty", "workout-library-empty", "workout-library"] },
+        { "title": "Your workouts", "screens": ["workout-library-open", "workout-editor"] },
+        { "title": "In the session", "screens": ["session", "exercise-picker", "swap-sheet", "session-long", "session-resting"] },
+        { "title": "Rest, and changing course", "screens": ["session-rest-over", "exercise-picker-replace", "reorder-sheet"] },
+        { "title": "Finishing it", "screens": ["finish-sheet-save", "finish-sheet-blank", "session-summary", "session-summary-pb", "session-summary-short"] },
+        { "title": "Whether it is backed up", "screens": ["session-summary-offline", "session-summary-backed-up"] }
+      ]
+    },
+    {
+      "letter": "P",
+      "title": "Plan — ahead",
+      "sub": "Behind the entitlement, and the paywall is the empty state",
+      "lede": "The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. Past it: no week number, no end date, no completion. Those are marathon ideas, and \"get stronger\" has no week 12 — the week is derived from weekdays rather than scheduled into, which is why a rest day here is an answer and not a gap.",
+      "racks": [
+        { "title": "The offer", "screens": ["plan", "sales", "sales-signed-out", "plan-entitled"] },
+        { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest"] }
+      ]
+    },
+    {
+      "letter": "C",
+      "title": "The coach",
+      "sub": "A sheet over where you were, never a fourth destination",
+      "lede": "The mark floats over all three tabs (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app. Opening it checks the account and the entitlement <em>before</em> the message rather than after, so a refusal never arrives on a screen with no route to the thing that would fix it. What opens is a sheet over the surface you were on — you can still see where you were, which is the difference between asking about this and leaving to go and ask.",
+      "racks": [
+        { "title": "The conversation", "screens": ["coach-empty", "coach", "coach-resumed", "coach-limit"] },
+        { "title": "Where a conversation goes when it ends", "screens": ["coach-history", "coach-history-empty", "coach-past"] },
+        { "title": "Judged in a bubble, not in a table", "screens": ["coach-eval-jump", "coach-eval-joint-pain"] },
+        { "title": "After a session", "screens": ["plan-review-after", "plan-review-answered"] }
+      ]
+    },
+    {
+      "letter": "Q",
+      "title": "The intake, end to end",
+      "sub": "Four questions behind the paywall, and what the coach does with them",
+      "lede": "This act carried a flag on every plate in it until 2026-08-28. <code>planning/domain/intake_flow.dart</code> defined seven questions with their own controls and a step count, and it was imported by its own test and the preview harness — <strong>nothing else</strong>. What shipped was bubbles and a composer. The gap is now closed in the direction the storage allowed. Four of the seven land in <code>PlanIntake</code>, which persists, and those are built — these plates are <code>PlanIntakeScreen</code> itself rather than a fake transcript in a coach sheet. The other three are body facts that <code>docs/coach-profile.md</code> puts in <code>core</code>, and <code>core</code> has nowhere to put them: no <code>body_metrics</code>, no <code>height_cm</code>, no <code>year_of_birth</code> in any migration. They were three plates of a conversation the backend could not record, so they are cut rather than rendered and discarded. The wheel that asks them is built and ships in the coach — what is missing is a table, not a control. The last two plates stay flagged, and say what for.",
+      "racks": [
+        { "title": "Ordered by leverage, not by convention", "screens": ["intake-1-days", "intake-2-equipment", "intake-3-injuries", "intake-4-goal"] },
+        { "title": "Enough, and what follows", "screens": ["intake-11-ready", "intake-9-split", "intake-10-swap"] }
+      ]
+    },
+    {
+      "letter": "G",
+      "title": "Progress — behind",
+      "sub": "The log, the year, and one photograph a week",
+      "lede": "The third tab, and the one a new account has nothing to put in — so its empty state shows the shape of what is coming rather than collapsing to a line of apology. Photos are one stream per pose at one photograph a week, and the cadence is the feature: a body does not change between Tuesday and Wednesday, and an app that accepts a photo a day teaches the wrong habit. Four plates here had never been photographed before this board.",
+      "racks": [
+        { "title": "Profile", "screens": ["profile", "profile-empty"] },
+        { "title": "Every session", "screens": ["history", "session-past", "session-editing"] },
+        { "title": "One movement", "screens": ["exercise-stats", "exercise-stats-bodyweight"] },
+        { "title": "Progress photos", "screens": ["photos-empty", "photos", "photo-source"] },
+        { "title": "One pose, every week", "screens": ["photo-series", "photo-actions", "photo-delete-confirm", "series-playback"] }
+      ]
+    },
+    {
+      "letter": "A",
+      "title": "Account and settings",
+      "sub": "Pushed from Profile's gear — nothing here is on a tab",
+      "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. The account reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
+      "racks": [
+        { "title": "Units and account", "screens": ["settings", "settings-signed-in", "settings-account", "account-signed-out", "account-synced", "account-problems"] },
+        { "title": "The coach switch", "screens": ["settings-coach", "settings-coach-off"] },
+        { "title": "What the coach remembers", "screens": ["coach-memory", "coach-memory-empty", "coach-memory-error"] },
+        { "title": "About", "screens": ["credits"] }
+      ]
+    },
+    {
+      "letter": "L",
+      "title": "Privacy, legal and leaving",
+      "sub": "Pushed from Settings › Privacy & legal — the surface a reviewer goes looking for",
+      "lede": "Liftio's changelog is a list of rejections bought once, and this act is where they are not bought twice. All six plates landed on 2026-09-01 and not one had ever been photographed, which made them the largest blind spot on the board: the part of the app most likely to be the reason it is rejected was the part with no picture of it. The documents render from bundled copy rather than a fetch, so they are readable offline and cannot change under the person who agreed to them, and a staleness test pins each one to its file in docs/. Every one still carries a draft, legally unreviewed banner — legal review is a real open item, not a formality.",
+      "racks": [
+        { "title": "The hub", "screens": ["legal", "legal-signed-out"] },
+        { "title": "The three documents", "screens": ["terms", "privacy", "ai-disclosure"] },
+        { "title": "Leaving", "screens": ["delete-account"] }
+      ]
+    }
+  ],
+
+  "screens": {
+    "settings-coach": {
+      "code": "A9",
+      "title": "Settings — the coach switch",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › a build with a coach in it",
+      "out": "App bar back",
+      "next": "Turn the coach off, or open the disclosure beside it",
+      "note": "One line naming OpenRouter on the switch; the rest behind the info button.",
+      "doc": "useCoach and deleter are both null-hides-the-control, and not one of the four Settings plates passed either — so the Coach heading, the switch, the disclosure row beside it and the route to deletion rendered on no plate at all. The whole of the 2026-09-01 compliance work was invisible to the board that exists to prove it is there.",
+      "tags": ["free"]
+    },
+    "settings-coach-off": {
+      "code": "A10",
+      "title": "Settings — coach off",
+      "host": "pushed",
+      "in": "{{settings-coach}} › the switch",
+      "out": "App bar back",
+      "next": "Turn it back on",
+      "note": "Off means absent, not inert.",
+      "doc": "The subtitle stops naming OpenRouter in the present tense, and the mark leaves every other surface — which is what makes this a consent control rather than a display preference. It is device-local for the same reason: an account row is something a restore could quietly flip back on. Building a plan is an AI request too, so the switch had to reach _canPlan, or Plan would have gone on sending the intake answers — injury notes included — with the coach switched off.",
+      "tags": ["free"]
+    },
+    "legal": {
+      "code": "L1",
+      "title": "Privacy & legal",
+      "host": "pushed",
+      "in": "{{settings}} › Privacy & legal",
+      "out": "App bar back",
+      "next": "Any of the three documents, or leave",
+      "note": "The one place the compliance surfaces are reachable from.",
+      "doc": "Three data-rights documents kept together rather than scattered through Settings, and deliberately the same shape as run's, so the two apps do not present compliance differently. The email at the top says which account the rights below apply to — which is also how somebody signed in as the wrong address finds out.",
+      "tags": ["free"]
+    },
+    "legal-signed-out": {
+      "code": "L2",
+      "title": "Privacy & legal — no account",
+      "host": "pushed",
+      "in": "{{legal}} › before anybody has signed in",
+      "out": "App bar back",
+      "next": "Read any of the three",
+      "note": "The deletion row is absent, not disabled.",
+      "doc": "Both halves of deletion are null and the row is gone entirely. An app that cannot delete an account should not offer to, and Guideline 5.1.1(v) only applies where one can be created in the first place. This is the state a reviewer reaches first, because tracking has never needed a sign-in.",
+      "tags": ["free"]
+    },
+    "terms": {
+      "code": "L3",
+      "title": "Terms of use",
+      "host": "pushed",
+      "in": "{{legal}} › Terms of use",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Bundled, not fetched.",
+      "doc": "Rendered from structure rather than markdown, so it takes the app's own typography, needs no parser, and cannot silently change under the person who agreed to it. The source of truth is docs/terms-of-use.md and a staleness test pins the load-bearing sentences to it. This is also where the auto-renew disclosure has to be written when payments land — a test currently fails if anybody writes half of it.",
+      "tags": ["free"]
+    },
+    "privacy": {
+      "code": "L4",
+      "title": "Privacy policy",
+      "host": "pushed",
+      "in": "{{legal}} › Privacy policy",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Same renderer, different document.",
+      "doc": "One parameterised screen rather than run's three near-identical classes: nothing about rendering the policy differs from rendering the terms, and three classes is three places for a padding change to be applied twice and forgotten once.",
+      "tags": ["free"]
+    },
+    "ai-disclosure": {
+      "code": "L5",
+      "title": "How your coach uses AI",
+      "host": "pushed",
+      "in": "{{legal}} › also the mark in {{coach}}, and beside the switch in {{settings-coach}}",
+      "out": "App bar back",
+      "next": "—",
+      "note": "Reachable from three places, on purpose.",
+      "doc": "Guideline 5.1.2(i), and more acute here than it was for Liftio, which sent numerical aggregates only — Lift sends the lifter's own words about their body and injuries to OpenRouter. Names the provider, what is sent, and what is not. The affordance sits in the coach sheet's top bar and shows mid-intake as well as in conversation, because the questionnaire is where the injury notes are typed.",
+      "tags": ["free"]
+    },
+    "delete-account": {
+      "code": "L6",
+      "title": "Delete account",
+      "host": "pushed",
+      "in": "{{legal}} › Delete account",
+      "out": "App bar back, until it has happened",
+      "next": "Choose a scope, type DELETE",
+      "note": "Opens on the narrower scope, disarmed.",
+      "doc": "Guideline 5.1.1(v). One login serves the whole suite, so \"delete my account\" names two different requests and the app has to ask which — run offers neither and sends no scope at all, which the function reads as everything. The narrow choice still cannot promise the login survives, and this screen says so before the tap rather than after it: if Run holds nothing, a profile with nothing behind it is not kept on somebody's behalf.",
+      "flag": "The done state is not on this board. It exists only after a typed phrase and a tap, so the harness cannot address it without faking a state the code cannot reach. Both scopes were proved against the deployed function on 2026-09-01 instead.",
+      "tags": ["free", "flag"]
+    },
+    "sign-in": {
+      "code": "S1",
+      "title": "Sign in",
+      "host": "pushed",
+      "in": "Settings › Back up your training, or anything that needs an account",
+      "out": "Back arrow, blocked while a sign-in is in flight",
+      "next": "Continue with Apple, Google, or email",
+      "note": "Apple and Google first, email one tap behind; on the generated photograph.",
+      "doc": "Most people arriving here already have Apple or Google on the phone, so those are one tap and no password, drawn with equal weight, and Google only ever beside Apple (guideline 4.8). The same buttons make an account, which the line under the headline says. The nine sessions waiting are stated as a fact, not argued for. Done right: somebody who opened it by accident can leave without feeling they lost anything, and nobody reads Hide My Email and then finds a second account they did not know about.",
+      "tags": ["free"]
+    },
+    "sign-in-email": {
+      "code": "S3",
+      "title": "Sign in with email",
+      "host": "pushed",
+      "in": "{{sign-in}} › Continue with email",
+      "out": "Other ways to sign in, or back",
+      "next": "Sign in, or Create an account",
+      "note": "The form that used to be the whole screen, on the same photograph.",
+      "doc": "Email and password stay for everybody without Apple or Google, and for the accounts made before either existed. One form toggles between signing in and making an account, as before. Wrong credentials never say which half was wrong, and a password reset says the same thing whether or not the address has an account. Done right: the keyboard never hides the field being typed in or its button.",
+      "tags": ["free"]
+    },
+
+    "track": {
+      "code": "T1",
+      "title": "Track",
+      "host": "shell",
+      "in": "Launch, and the nav bar",
+      "out": "Nav bar — no back, correctly; nothing sits above a tab root",
+      "next": "Start a session, or a workout's own Start",
+      "note": "The photograph, one number, your workouts, one pill. Where a free account lives.",
+      "doc": "Rebuilt from the design review: the photograph carries the top with the headline on it, one big number (sessions this week, left off an empty log), the saved workouts each with their own Start, and one action pill anchored low beside the coach's mark. Done right: in the gym, the thing to press is obvious without reading, and nothing on the screen competes with it.",
+      "tags": ["free"],
+      "arch": {
+        "class": "LiftShell",
+        "file": "lib/src/features/home/presentation/lift_shell.dart",
+        "adrs": ["0004", "0009", "0017"],
+        "action": "Tapping Start a session",
+        "path": [
+          {
+            "depth": 0,
+            "call": "Stack[ MediaQuery(padding + coachMarkReserve) → IndexedStack, CoachButton ]",
+            "symbol": "CoachButton",
+            "note": "The room for the mark is reserved by the thing that knows whether there is a mark. Each surface reserving it itself meant dead space above the nav bar whenever the coach was absent, and three places to keep in step."
+          },
+          {
+            "depth": 1,
+            "call": "IndexedStack(index: _index, children: [Track, Plan, Profile])",
+            "symbol": "TrackSurface",
+            "note": "Indexed rather than rebuilt, so switching tabs keeps each surface's scroll position and in-flight state. The shell holds the units, so a change in Settings reaches Track and Profile without either reloading."
+          },
+          {
+            "depth": 0,
+            "call": "TrackController(recorder, library).openSession(context, …)",
+            "symbol": "TrackController.openSession",
+            "note": "One controller for both entry points — plain start and planned start — so the resume rule cannot be implemented twice and drift."
+          },
+          {
+            "depth": 1,
+            "call": "await recorder.current() ?? await recorder.start()",
+            "symbol": "SessionRecorder.start",
+            "note": "Resume beats start, always. The open session is offered back rather than replaced, which is what makes walking away from the gym safe."
+          },
+          {
+            "depth": 1,
+            "call": "→ push ActiveSessionScreen",
+            "symbol": "ActiveSessionScreen",
+            "note": "A push, not a replacement: Track is still underneath, and backing out lands on it with the session still open."
+          },
+          {
+            "depth": 0,
+            "call": "on return → _refreshSession(); _refreshLog()",
+            "symbol": "SessionHistory",
+            "note": "Refreshed on return as well as via onDone. Backing out with the session still open must leave Track offering to resume it, and onDone only fires when it ended."
+          }
+        ]
+      }
+    },
+    "track-starters": {
+      "code": "T8",
+      "title": "Track, before anything is saved",
+      "host": "shell",
+      "in": "Launch, on a new install",
+      "out": "Nav bar",
+      "next": "Add a starter, or Start a session",
+      "note": "Three starting points where the saved workouts will be.",
+      "doc": "Full Body, Upper / Lower and PPL, each added in one tap with an Undo, instead of an empty row or a catalogue of fifteen (R11). No number yet: an empty log shows none rather than a zero. Done right: from a first open, a starter is a started session in two taps.",
+      "tags": ["free"]
+    },
+    "track-coach": {
+      "code": "T2",
+      "title": "Track — the coach has something",
+      "host": "shell",
+      "in": "Nav bar › Track, with an unread note",
+      "out": "Nav bar",
+      "next": "Tap the mark",
+      "note": "The unread dot, and nothing else changed.",
+      "doc": "The only difference from {{track}} is the dot on the mark, which is the entire reason both plates exist. The mark is a mark and not a dock (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app.",
+      "tags": ["free"]
+    },
+    "track-open": {
+      "code": "T3",
+      "title": "Track — a session is open",
+      "host": "shell",
+      "in": "Nav bar › Track, with a session still running",
+      "out": "Nav bar",
+      "next": "Resume session",
+      "note": "The pill says Resume, in the same place.",
+      "doc": "Backing out of a session leaves it open on purpose, since every change is already written, so Track offers it back. The pill becomes \"Resume\" rather than a second control appearing, and starting a different workout asks whether to resume this one or discard it.",
+      "tags": ["free"]
+    },
+    "track-planned": {
+      "code": "T4",
+      "title": "Track — today is in the plan",
+      "host": "shell",
+      "in": "Nav bar › Track, with a plan that has something for today",
+      "out": "Nav bar",
+      "next": "Start upper — the day's name, not \"today's session\"",
+      "note": "Today's session, with last time's numbers, above the pill.",
+      "doc": "When a plan has something for today, the glass card above the pill lists the day's movements with last time's numbers, and the pill starts it. Starting something else is a quiet link under it: offered, not pushed.",
+      "tags": ["paid"]
+    },
+    "track-interrupted": {
+      "code": "T5",
+      "title": "Track — walked away mid-session",
+      "host": "shell",
+      "in": "Nav bar › Track, a day after a session was left open",
+      "out": "Nav bar",
+      "next": "Resume session",
+      "note": "Yesterday's session, two sets in, still offered.",
+      "doc": "The case an app that only ever shows \"today\" gets wrong. The session is a day old and still open, and the screen offers it back rather than hiding it or quietly closing it — nothing in Lift ever ends a session on the lifter's behalf.",
+      "tags": ["free"]
+    },
+
+    "session-empty": {
+      "code": "W1",
+      "title": "Session — nothing in it yet",
+      "host": "pushed",
+      "in": "{{track}} › Start a session",
+      "out": "Back arrow — the session stays open",
+      "next": "Add exercise, or Your workouts",
+      "note": "The clock is already running; the mark sits bottom right.",
+      "doc": "A blank session, on the soft light that replaced the gym photograph (R13). Adding a movement is the primary and the lifter's own library is the quieter second. Back is deliberately unguarded: the session is already written, and Track offers it back.",
+      "tags": ["free"]
+    },
+    "workout-library-empty": {
+      "code": "W2",
+      "title": "Your workouts, empty",
+      "host": "pushed",
+      "in": "{{session-empty}} › Your workouts, or Track › See all",
+      "out": "Back arrow",
+      "next": "Add a starter",
+      "note": "The three starters, each one tap from being in the library.",
+      "doc": "Nothing saved yet, so the three starting points take the page (R11): no builder, no catalogue. Each is added with an Undo. Done right: nobody meets a blank page asking them to design a programme before they have trained.",
+      "tags": ["free"]
+    },
+    "workout-library": {
+      "code": "W3",
+      "title": "Your workouts",
+      "host": "pushed",
+      "in": "Track › See all, or {{session-empty}} › Your workouts",
+      "out": "Back arrow",
+      "next": "Start, or … for Edit, Duplicate, Delete",
+      "note": "Glass rows over Track's photograph, each with its own Start.",
+      "doc": "Each row does the two things a row is for: Start, and a … for Edit, Duplicate and Delete. There is no preview any more: it was one screen between the lifter and the thing they came to do (finding 7). With a session already open, Start asks whether to resume it or discard it and start this one.",
+      "tags": ["free"]
+    },
+    "workout-library-open": {
+      "code": "W24",
+      "title": "Your workouts, one open",
+      "host": "pushed",
+      "in": "Track › a workout card, or {{workout-library}} › tap a row",
+      "out": "Back arrow",
+      "next": "Start",
+      "note": "The row opened in place to every movement, sets × reps.",
+      "doc": "What the preview sheet showed, without the sheet. Track's workout cards open the library at their workout, already open. Done right: choosing between a heavy and a light Push takes a glance, not a screen.",
+      "tags": ["free"]
+    },
+    "session": {
+      "code": "W6",
+      "title": "Session — running",
+      "host": "pushed",
+      "in": "{{session-empty}} › a movement added",
+      "out": "Back arrow, Finish, or Discard session",
+      "next": "Tick a set",
+      "note": "The heading on glass, + Add beside Finish, and the mark.",
+      "doc": "The screen the app exists for, on a dark gradient with one light instead of the gym photograph. The name and where the session stands sit on one pane of glass; + Add moved into the bar beside Finish, so nothing floats at the foot of the screen until a rest starts. A ticked set that beats that movement's best makes the mark say so and close: the summary's own rule, worked out on the phone, free for everyone.",
+      "tags": ["free", "new"],
+      "arch": {
+        "class": "ActiveSessionScreen",
+        "file": "lib/src/features/tracking/presentation/active_session_screen.dart",
+        "adrs": ["0004", "0010", "0017"],
+        "action": "Ticking a set",
+        "path": [
+          {
+            "depth": 0,
+            "call": "ExerciseCard.onToggle(set)",
+            "symbol": "ExerciseCard",
+            "note": "The common path, and one tap. Weight and reps are already carried forward from the set above, so typing is the exception."
+          },
+          {
+            "depth": 1,
+            "call": "if (!set.isCompleted) _startRest()",
+            "symbol": "RestTimer",
+            "note": "Only on completion. Un-ticking is a correction to the log, not the end of a set — so it must not start a rest."
+          },
+          {
+            "depth": 2,
+            "call": "RestTimer(startedAt: _now, duration: _restLength)",
+            "symbol": "RestTimer.defaultRest",
+            "note": "Held in the widget, never written. This is why the resting state is unreachable without a tap, and why the harness needs startRestOnOpen to photograph it."
+          },
+          {
+            "depth": 1,
+            "call": "recorder.updateSet(set.id, isCompleted: !set.isCompleted)",
+            "symbol": "SessionRecorder.updateSet",
+            "note": "Not awaited by the tap. The write goes to the on-device database and returns; the network is not consulted and cannot fail here, so no spinner ever blocks a set being logged."
+          },
+          {
+            "depth": 2,
+            "call": "→ Drift, on device",
+            "symbol": "DriftSessionRecorder",
+            "note": "The device is the source of truth for a session in progress. Sync is a later, separate concern that cannot lose a set."
+          },
+          {
+            "depth": 1,
+            "call": "_apply(…) → setState(_session = updated)",
+            "symbol": "Session.completedSets",
+            "note": "The recorder returns the whole updated session rather than an ack, so the screen never has to guess what changed. Finish enables itself off completedSets > 0."
+          }
+        ]
+      }
+    },
+    "exercise-picker": {
+      "code": "W7",
+      "title": "Add a movement",
+      "host": "sheet",
+      "in": "{{session}} › Add exercise",
+      "out": "Drag or scrim",
+      "next": "Pick one, or type your own",
+      "note": "266 movements, found by any of their words, with chips for muscle and equipment.",
+      "doc": "Search the catalogue or type your own; both end as a name on the session, and the catalogue simply gets you there faster and brings a picture. Search takes words in any order (\"curl bicep\"), other names (db, rdl, single arm, pull up and pull-up) and one typo in a long word, ranked below a clean match. Chips for muscle group and equipment narrow it, with search or without, the rare equipment under Other (11). Done right: a lifter at a free cable station finds something for triceps without knowing its catalogue name.",
+      "tags": ["free", "new"]
+    },
+    "swap-sheet": {
+      "code": "W8",
+      "title": "Swap a movement",
+      "host": "sheet",
+      "in": "{{session}} › a movement's swap icon",
+      "out": "Drag or scrim",
+      "next": "Take the replacement, or leave it",
+      "note": "Built on the frame every \"ask for a change\" sheet shares.",
+      "doc": "Asks the coach for a substitute and shows what it proposes against what you have actually lifted. Built on AskCoachSheet, the shared frame for every ask-for-a-change sheet — written because swapping a movement and changing a week had already drifted into two heights and two label conventions in a day.",
+      "tags": ["paid"]
+    },
+    "session-long": {
+      "code": "W9",
+      "title": "Session — six movements",
+      "host": "pushed",
+      "in": "{{session}} › a template with more in it than fits",
+      "out": "Back arrow, Finish, Discard",
+      "next": "Tick a set",
+      "note": "Three finished and folded to a line each, under the glass heading.",
+      "doc": "The case the collapse exists for: expanded throughout, this session is around 2,000px and the movement you are actually on is off screen. A finished movement folds to one line and reopens on a tap.",
+      "tags": ["free"]
+    },
+    "session-resting": {
+      "code": "W10",
+      "title": "Session — resting",
+      "host": "pushed",
+      "in": "{{session}} › tick a set",
+      "out": "Back arrow, Finish, Discard",
+      "next": "Wait, or start the next set",
+      "note": "The dock rises with the timer, the mark above it.",
+      "doc": "The dock exists only while resting (9): it rises from the bottom edge when a set is ticked and sinks when the rest ends or is skipped. Rest is never restored from disk, which is why this state can only be reached by ticking something. The mark sits bottom right, above the dock, as it does on every other screen: moving it to the top bar was considered, because that corner is also where a set's tick sits, and it was kept (30 September).",
+      "tags": ["free"]
+    },
+    "session-summary": {
+      "code": "W11",
+      "title": "Summary — an ordinary session",
+      "host": "pushed",
+      "in": "{{session}} › Finish, which replaces the session",
+      "out": "Done, or the back arrow",
+      "next": "Done",
+      "note": "The totals on glass with one leading, and one exit.",
+      "doc": "Worked hard, beat nothing, which is the common case, and the mark stays quiet about it. The load moved leads, large, with duration, sets and movements under it. Nothing is pending here any more: the workout was asked about at Finish, so the button just says Done. Finish replaces rather than pushes, so back never returns to a session that has ended.",
+      "tags": ["free", "new"],
+      "arch": {
+        "class": "SessionSummaryScreen",
+        "file": "lib/src/features/tracking/presentation/session_summary_screen.dart",
+        "adrs": ["0010", "0017"],
+        "action": "Working out what to celebrate",
+        "path": [
+          {
+            "depth": 0,
+            "call": "SessionSummary.of(session, log: priorSessions)",
+            "symbol": "SessionSummary.of",
+            "note": "Asserts the session has ended. A summary of an open session would report no bests at all rather than reporting none honestly, so it is a programming error rather than a state to handle."
+          },
+          {
+            "depth": 1,
+            "call": "prior = log.where((s) => s.id != session.id)",
+            "symbol": "Session.isInProgress",
+            "note": "The session filters itself out of its own history. Left in, every movement would be compared against itself and could never beat anything."
+          },
+          {
+            "depth": 1,
+            "call": "for each movement, seen.add(name.toLowerCase()) ?? skip",
+            "symbol": "SessionExercise.name",
+            "note": "A lifter who came back to the bench at the end has one movement here, not two — the best already folds every exercise of that name in the session."
+          },
+          {
+            "depth": 1,
+            "call": "today = TrainingStats.bestOneRepMax([session], name)",
+            "symbol": "TrainingStats.bestOneRepMax",
+            "note": "Null skips the movement entirely. Epley is capped at 12 reps, so fifteens produce nothing — which is the honest answer rather than a number invented to fill the row."
+          },
+          {
+            "depth": 2,
+            "call": "Epley: weight × (1 + reps / 30), null above 12 reps",
+            "symbol": "TrainingStats.estimateOneRepMax",
+            "note": "A fitted line, not a measurement. At 30 reps it claims a double. The old app capped at 30; this is stricter, because a confidently wrong best is worse than no best."
+          },
+          {
+            "depth": 1,
+            "call": "before = TrainingStats.bestOneRepMax(prior, name)",
+            "symbol": "PersonalBest",
+            "note": "Null skips too — a movement with no history is not a best, because there is nothing to have beaten. Counting it would make a first session nothing but bests, which empties the word."
+          },
+          {
+            "depth": 1,
+            "call": "if (today <= before) skip     // strictly greater",
+            "symbol": "PersonalBest.previous",
+            "note": "Matching a best is not setting one. A session that repeats last week's top set to the kilogram should not be told it moved."
+          }
+        ]
+      }
+    },
+    "session-summary-pb": {
+      "code": "W12",
+      "title": "Summary — a personal best",
+      "host": "pushed",
+      "in": "{{session}} › Finish, having beaten something",
+      "out": "Done, or the back arrow",
+      "next": "Done, or tap the mark",
+      "note": "The mark says the new best, then closes.",
+      "doc": "95 × 5 estimates at about 111 kg against the 105 kg already in the log. Bests are strictly greater, and a movement with no history is not a best. The bubble says it to everyone, because bests are tracking; only the tap differs, the chat for subscribers and the offer for everyone else.",
+      "tags": ["free"]
+    },
+    "session-summary-short": {
+      "code": "W13",
+      "title": "Summary — a first session",
+      "host": "pushed",
+      "in": "{{session}} › Finish, with nothing to compare against",
+      "out": "Done, or the back arrow",
+      "next": "Done",
+      "note": "A first session: nothing to compare against, and nothing claimed.",
+      "doc": "Nothing in the log to compare against, and fifteens are past what Epley can estimate, so the summary claims no best and the mark says nothing. The second movement was added and never worked, which is the only case where the movement count is larger than the sets explain.",
+      "tags": ["free"]
+    },
+
+    "plan": {
+      "code": "P1",
+      "title": "Plan — what it is for",
+      "host": "shell",
+      "in": "Nav bar › Plan, on a free account",
+      "out": "Nav bar",
+      "next": "Start coaching, which opens {{sales}}",
+      "note": "What Plan is for, and one button to the sales screen.",
+      "doc": "Unsubscribed, Plan says what it holds, briefly, and sends the purchase to the one screen that sells (R6). Its old pitch promised a coach that moves Thursday's session when your shoulder is sore, which nothing can do, and one that sees your running, which it does not; both are gone, and so is its own price table. It still says tracking stays free.",
+      "tags": ["free"]
+    },
+    "sales": {
+      "code": "P8",
+      "title": "The coach, for sale",
+      "host": "pushed",
+      "in": "The C, for anybody unsubscribed; {{plan}} › Start coaching; Photos › Unlock photos",
+      "out": "Close, or a tier",
+      "next": "Subscribe to Coach, or to Premium Coach",
+      "note": "One screen from every door; each tier lists only what ships.",
+      "doc": "It replaced a sheet and three pitches that each sold differently (R6). Choosing a tier is the purchase: no second button that might still be buying the first. Each line is something the code does, and two promises the old pitch made are gone: moving Thursday's session, and a coach that sees your running. The renewal terms, both links and Restore sit at the foot, as guideline 3.1.2 wants. Done right: a reviewer can match every line to a feature, and nobody pays for something the app cannot do.",
+      "tags": ["paid"]
+    },
+    "sales-signed-out": {
+      "code": "P9",
+      "title": "The coach, for sale, signed out",
+      "host": "pushed",
+      "in": "The C, signed out",
+      "out": "Close, or a tier",
+      "next": "Choose a tier, then sign in",
+      "note": "The offer in full; the account is asked for when a tier is chosen.",
+      "doc": "A purchase must belong to an account, because the webhook keys the entitlement on it, but the offer is shown before anything is asked. Choosing a tier opens Sign in, with Apple, Google or email, attaches the account to the store, and then buys. Backing out of signing in buys nothing.",
+      "tags": ["paid"]
+    },
+    "plan-entitled": {
+      "code": "P2",
+      "title": "Plan — paid, no block yet",
+      "host": "shell",
+      "in": "Nav bar › Plan, once the entitlement reads true",
+      "out": "Nav bar",
+      "next": "Build a plan",
+      "note": "Three steps, then Build a plan.",
+      "doc": "Paid, with no plan yet (16): what happens next, in three steps — tell the coach your goal and your days, it builds the block, today's session appears on Track — and one button. \"Build a plan\" alone was an instruction with no picture of what followed it.",
+      "tags": ["paid"]
+    },
+    "plan-standing": {
+      "code": "P5",
+      "title": "Plan — a training day",
+      "host": "shell",
+      "in": "Nav bar › Plan, entitled, with a plan",
+      "out": "Nav bar",
+      "next": "Start today's workout, or Change the split",
+      "note": "The calendar first; today links to Track; no Start anywhere.",
+      "doc": "A live plan leads with the week (17). Nothing starts here (R8): today's session starts from Track, like every session, and the day card says so with a link. Every other day offers Do it today, which puts that session on Track for today — a choice on this phone for one day, not a plan edit.",
+      "tags": ["paid"],
+      "arch": {
+        "class": "StandingPlanSurface",
+        "file": "lib/src/features/planning/presentation/standing_plan_surface.dart",
+        "adrs": ["0010", "0011"],
+        "action": "Starting today's workout",
+        "path": [
+          {
+            "depth": 0,
+            "call": "plan.dayFor(today)",
+            "symbol": "StandingPlan.dayFor",
+            "note": "weekdays.indexOf(date.weekday) into dayOrder. There is no calendar and no session rows — the week is a function of the date, which is why a plan never falls behind and a rest day is an answer rather than a gap."
+          },
+          {
+            "depth": 1,
+            "call": "null → onStartToday is null, not disabled",
+            "symbol": "StandingPlanSurface",
+            "note": "Null rather than a greyed button, because on a rest day there is genuinely nothing to start rather than something withheld."
+          },
+          {
+            "depth": 0,
+            "call": "LiftShell._openPlannedSession(day)",
+            "symbol": "SessionPrescription.forDay",
+            "note": "Turns today's slots into movements with targets, worked out from what this lifter has actually lifted — and left blank where there is nothing to work it out from."
+          },
+          {
+            "depth": 1,
+            "call": "increment: 2.5 kg for a main lift, 1 kg otherwise",
+            "symbol": "SessionPrescription.incrementKg",
+            "note": "Different by movement class because they are different in the gym: a barbell takes the smallest pair of plates most racks have; the next dumbbell up on a lateral raise is a 20% jump nobody makes cleanly."
+          },
+          {
+            "depth": 0,
+            "call": "TrackController.openPlanned(context, day, movements)",
+            "symbol": "TrackController.openPlanned",
+            "note": "Resuming still wins. An open session is offered back exactly as it is for a plain start — filling a plan over the top of one somebody is halfway through would destroy the sets they had already logged."
+          },
+          {
+            "depth": 1,
+            "call": "→ push ActiveSessionScreen",
+            "symbol": "SessionFromPlan",
+            "note": "The link from plan to session is written when the session FINISHES, not when it starts: a session opened and abandoned is not one they did."
+          }
+        ]
+      }
+    },
+    "plan-standing-rest": {
+      "code": "P6",
+      "title": "Plan — a rest day",
+      "host": "shell",
+      "in": "Nav bar › Plan, on a Wednesday",
+      "out": "Nav bar",
+      "next": "Change the split",
+      "note": "Nothing owed, nothing behind.",
+      "doc": "A rest day is an answer, not an empty state — which is the whole point of deriving the week from weekdays rather than scheduling sessions into it. Nothing is overdue, because nothing was ever booked.",
+      "tags": ["paid"]
+    },
+
+    "coach-empty": {
+      "code": "C1",
+      "title": "Coach — nothing said yet",
+      "host": "sheet",
+      "in": "The mark, on any tab",
+      "out": "App bar back; a reply in flight is abandoned",
+      "next": "Ask something",
+      "note": "A sheet over where you were, so you can still see it.",
+      "doc": "Not a fourth destination pushed on top of the app — you can still see the surface you came from, which is the difference between asking about this and leaving to go and ask. Opening it checks the account and the entitlement before the message rather than after, so a refusal never arrives on a screen with no route to the fix.",
+      "tags": ["paid"],
+      "arch": {
+        "class": "CoachSheet",
+        "file": "lib/src/features/coaching/presentation/coach_sheet.dart",
+        "adrs": ["0014", "0015", "0017"],
+        "action": "Tapping the mark",
+        "path": [
+          {
+            "depth": 0,
+            "call": "LiftShell._openCoach()",
+            "symbol": "LiftShell",
+            "note": "The shell owns what opening the coach means, so both gates live in one place rather than at every call site."
+          },
+          {
+            "depth": 1,
+            "call": "if (coach == null) return          // no mark at all",
+            "symbol": "CoachService",
+            "note": "The mark stays absent rather than inert when there is no server. A mark that cannot open anything is worse than no mark."
+          },
+          {
+            "depth": 1,
+            "call": "if (account == null) → _openSignIn()",
+            "symbol": "AuthService",
+            "note": "Checked before the message, not after. Sending a question and getting \"sign in\" back means the lifter typed something for nothing, and the refusal lands on a screen with no route to the fix."
+          },
+          {
+            "depth": 1,
+            "call": "if (!isEntitled) → _go(planTab)",
+            "symbol": "PlanSurface",
+            "note": "The free tier is sent to the offer rather than shown a refusal — the tab whose empty state IS the pitch."
+          },
+          {
+            "depth": 1,
+            "call": "CoachSheet.show(context, coach: …, transcript: …)",
+            "symbol": "CoachSheet.show",
+            "note": "The server enforces both gates again before spending anything. This only stops a round trip that cannot succeed."
+          },
+          {
+            "depth": 2,
+            "call": "heightFactor: 0.88, useRootNavigator: true",
+            "symbol": "CoachTranscript",
+            "note": "Tall enough that a conversation is not a peephole, short enough that the surface behind stays visible. Root navigator, or the nav bar draws over the composer."
+          },
+          {
+            "depth": 2,
+            "call": "barrierColor: black @ 45%",
+            "symbol": "CoachScreen",
+            "note": "A scrim, not a blackout. Seeing where you came from is the difference between a sheet and a screen."
+          }
+        ]
+      }
+    },
+    "coach": {
+      "code": "C2",
+      "title": "Coach — the opening line",
+      "host": "sheet",
+      "in": "{{track-coach}} › the mark",
+      "out": "App bar back",
+      "next": "Answer, or ask your own",
+      "note": "\"Your bench has not moved in three weeks.\"",
+      "doc": "The coach opens on an observation drawn from the log rather than a greeting, because a blank conversation puts the work of starting it on the lifter. Glass over the surface underneath — the one presentation GlassSurface says does not work on flat charcoal, which is why every coach preview goes through the real sheet.",
+      "tags": ["paid"]
+    },
+    "coach-resumed": {
+      "code": "C3",
+      "title": "Coach — resumed",
+      "host": "sheet",
+      "in": "The mark, on a conversation already going",
+      "out": "App bar back",
+      "next": "Carry on",
+      "note": "Worth checking against a real account before trusting it.",
+      "doc": "Reopening on what was already said — the state a returning lifter is actually in, and the one that did not exist until the transcript was wired. Run's one live conversation is keyed by a legacy client-generated id rather than the one its client and edge function both use, and resume reads empty for exactly that reason.",
+      "tags": ["paid"]
+    },
+    "coach-history": {
+      "code": "C9",
+      "title": "Previous conversations",
+      "host": "sheet",
+      "in": "{{coach}} \u203a the history control",
+      "out": "Drag down, or Close",
+      "next": "Open one, read-only",
+      "note": "Where last month's conversation went.",
+      "doc": "A conversation ends after thirty minutes of silence (ADR-0002), so the coach no longer opens on whatever was last said however long ago \u2014 which is what let it read a month-old exchange as current. The cost is that a lifter stops finding last week's conversation waiting for them, so it is kept, and it is here: the same words, in a place that says plainly they are over. Rows lead with the opening line rather than the date, because a column of dates is a filing cabinet.",
+      "tags": ["paid"]
+    },
+    "coach-history-empty": {
+      "code": "C10",
+      "title": "Nothing kept yet",
+      "host": "sheet",
+      "in": "{{coach-history}} \u203a before there is a history",
+      "out": "Drag down, or Close",
+      "next": "Talk to the coach",
+      "note": "Empty and loading are different states.",
+      "doc": "Says what will fill it rather than that it is empty. The distinction that matters here is against the loading state: a list that draws this message while the read is outstanding tells a lifter with ten conversations that they have none, which is why the two are separate rather than one falsy check.",
+      "tags": ["paid"]
+    },
+    "coach-past": {
+      "code": "C11",
+      "title": "One, read back",
+      "host": "pushed",
+      "in": "{{coach-history}} \u203a a row",
+      "out": "App bar back",
+      "next": "Nothing \u2014 it has ended",
+      "note": "Read-only by construction: there is no composer.",
+      "doc": "The whole conversation, not the window {{coach-resumed}} shows \u2014 that one answers \"what does the coach still have in mind\", this one answers \"what was said\", and a read-back truncated at twenty turns would silently cut the thing somebody opened it to re-read. Nothing here loads it back into the live conversation: reopening an old transcript to write into it is exactly the endless chat sessions exist to end, and the footer says so rather than leaving somebody hunting for a box that is not there.",
+      "tags": ["paid"]
+    },
+    "coach-limit": {
+      "code": "C4",
+      "title": "Coach — out of turns",
+      "host": "sheet",
+      "in": "{{coach}} › ask past the daily limit",
+      "out": "App bar back",
+      "next": "Come back tomorrow",
+      "note": "Names the limit rather than failing vaguely.",
+      "doc": "The server enforces the limit too — this is the client stopping a round trip that cannot succeed, not the rule itself.",
+      "tags": ["paid"]
+    },
+    "coach-eval-jump": {
+      "code": "C5",
+      "title": "Coach — \"should I try 140?\"",
+      "host": "sheet",
+      "in": "The mark, on any tab",
+      "out": "App bar back",
+      "next": "Take the number it gives",
+      "note": "An eval scenario, rendered where a person would read it.",
+      "doc": "One of the situations supabase/evals/scenarios.ts puts the coach in, on screen so the rule can be judged as a person reads it rather than as a verdict in a table. A rule that looks right in a spec and wrong in a bubble is wrong.",
+      "tags": ["paid"]
+    },
+    "coach-eval-joint-pain": {
+      "code": "C6",
+      "title": "Coach — three weeks of knee pain",
+      "host": "sheet",
+      "in": "The mark, on any tab",
+      "out": "App bar back",
+      "next": "See a physiotherapist",
+      "note": "The refusal that has to be a refusal.",
+      "doc": "The coach declines to diagnose, says so plainly, and still does the part that is its job — leaving squats out of next week either way. This is the eval where a hedge would be worse than a refusal.",
+      "tags": ["paid"]
+    },
+    "plan-review-after": {
+      "code": "C7",
+      "title": "Post-session review — asked",
+      "host": "sheet",
+      "in": "{{session-summary}} › after a planned day",
+      "out": "Drag or scrim",
+      "next": "Pick how it felt",
+      "note": "What \"adapt the plan\" became.",
+      "doc": "Adapting a week had no subject once plans stopped having weeks, so what the feature was for moved here: the coach reads what happened and asks, and the lifter's own answer is what changes the next session.",
+      "tags": ["paid"]
+    },
+    "plan-review-answered": {
+      "code": "C8",
+      "title": "Post-session review — answered",
+      "host": "sheet",
+      "in": "{{plan-review-after}} › pick how it felt",
+      "out": "Drag or scrim",
+      "next": "Swap it, or leave it",
+      "note": "Holds the weight, says why, then raises what you did not ask about.",
+      "doc": "Two sessions at the same weight is not a stall — the coach holds rather than adds, and explains that. Then it raises the thing the lifter did not ask about: a lateral raise that has not moved in six sessions.",
+      "tags": ["paid"]
+    },
+
+    "intake-1-days": {
+      "code": "Q1",
+      "title": "Days a week",
+      "host": "pushed",
+      "in": "{{plan-entitled}} › Build a plan",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
+      "note": "First, because it decides the split outright.",
+      "doc": "Days decides the split outright, which is why it leads — the order is by leverage rather than convention. It is also the one question with no way past it: a plan cannot be built without knowing how often somebody trains, so this is the only field the flow marks required.",
+      "tags": ["paid"]
+    },
+    "intake-2-equipment": {
+      "code": "Q2",
+      "title": "Equipment",
+      "host": "pushed",
+      "in": "{{intake-1-days}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
+      "note": "Decides whether the movements are possible at all.",
+      "doc": "Second because it decides whether the movements are possible at all. Everything after this is a constraint on a plan that already has a shape. The last row is the way out, and it is a row rather than a separate control because declining is an answer — it goes into the transcript the coach reads back.",
+      "tags": ["paid"]
+    },
+    "intake-3-injuries": {
+      "code": "Q3",
+      "title": "Injuries",
+      "host": "pushed",
+      "in": "{{intake-2-equipment}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
+      "note": "A hard constraint, and its own way of being declined.",
+      "doc": "\"Nothing to work around\" is the only option offered, and it is the skip as well as an answer — a real reply rather than a refusal, so a \"prefer not to say\" underneath it would be two rows for one intention.",
+      "tags": ["paid"]
+    },
+    "intake-4-goal": {
+      "code": "Q4",
+      "title": "The goal",
+      "host": "pushed",
+      "in": "{{intake-3-injuries}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Tap an option, or answer in your own words",
+      "note": "Fourth, because it moves rep ranges and little else.",
+      "doc": "Most apps open with this question and then do nothing with the answer. It moves rep ranges at the margin, which is worth exactly fourth place. Three options rather than six: \"lose weight\" and \"gain weight\" are nutrition goals whose training answer is the same block as \"build muscle\", so offering them separately costs a decision and buys nothing.",
+      "tags": ["paid"]
+    },
+    "intake-11-ready": {
+      "code": "Q11",
+      "title": "Ready to build",
+      "host": "pushed",
+      "in": "{{intake-4-goal}} › answer",
+      "out": "App bar back — blocked while a turn is in flight",
+      "next": "Build my plan",
+      "note": "The options stop, because there is nothing left to ask.",
+      "doc": "Nothing left to ask, so the options stop and the button appears — which is the whole of the summary. It appears the moment a block could be built rather than when the coach decides the conversation is over, and there is one definition of \"enough\": every field answered or declined, in intake_flow.dart. PlanIntake carried a second one that disagreed in both directions, and it is gone. Q11 rather than Q5 because codes are pinned in the data — the three body questions that held 5, 6 and 7 were cut, and nothing that survived them moves.",
+      "tags": ["paid"]
+    },
+    "intake-9-split": {
+      "code": "Q9",
+      "title": "The split it chose",
+      "host": "sheet",
+      "in": "Designed: after generation",
+      "out": "Designed: back",
+      "next": "Take it, or ask for another",
+      "note": "Named by the coach with its reason attached.",
+      "doc": "Not picked from a list of three: the app checks what a plan does, not what it is called, and the name arrives with the reasoning that produced it.",
+      "tags": ["paid", "flag"],
+      "flag": "The coach sheet is real; this conversation is not — the split is named on {{plan-standing}}, not in chat."
+    },
+    "intake-10-swap": {
+      "code": "Q10",
+      "title": "Swap before starting",
+      "host": "sheet",
+      "in": "Designed: from the proposed split",
+      "out": "Designed: back",
+      "next": "Swap, or start",
+      "note": "The capability is real; only this entry point is not.",
+      "doc": "Changing a movement before the block begins, which in the shipping app happens afterwards from the plan screen's \"Change the split\".",
+      "tags": ["paid", "flag"],
+      "flag": "The coach sheet is real, and so is the swap — but it happens after the block starts, from {{plan-standing}}."
+    },
+
+    "profile": {
+      "code": "G1",
+      "title": "Profile",
+      "host": "shell",
+      "in": "Nav bar › Profile",
+      "out": "Nav bar",
+      "next": "Open photos, settings, or the log",
+      "note": "Six tiles on glass, the last five sessions, then the most trained, each opening its movement.",
+      "doc": "What was done comes before what it adds up to (18): the six numbers as tiles on glass, then the last five sessions in a card with See all, then the year grid, consistency and the most trained. Each most-trained row opens its movement ({{exercise-stats}}), which is where the bests went (R9): five numbers with nothing behind them became one screen per movement with its line. A line promising that runs from Run appear here went: nothing in Lift reads them.",
+      "tags": ["free", "new"]
+    },
+    "profile-empty": {
+      "code": "G2",
+      "title": "Profile — nothing logged",
+      "host": "shell",
+      "in": "Nav bar › Profile, on a new account",
+      "out": "Nav bar",
+      "next": "Log a session",
+      "note": "Dashes, not zeros, in the same six tiles.",
+      "doc": "Run's Profile still collapses to \"No runs yet.\" — the same complaint you made about Lift, still open there.",
+      "tags": ["free"]
+    },
+    "photos-empty": {
+      "code": "G3",
+      "title": "Progress photos — empty",
+      "host": "pushed",
+      "in": "{{profile}} › Progress photos",
+      "out": "App bar back",
+      "next": "Add this week's",
+      "note": "The empty state has to teach the cadence.",
+      "doc": "One stream per pose, one photo per week. A photo app that accepts one a day teaches the wrong habit — a body does not change between Tuesday and Wednesday — so the empty state explains the rhythm rather than just inviting a tap.",
+      "tags": ["free"]
+    },
+    "photos": {
+      "code": "G4",
+      "title": "Progress photos",
+      "host": "pushed",
+      "in": "{{profile}} › Progress photos",
+      "out": "App bar back",
+      "next": "Open a pose, or add this week's",
+      "note": "Grey tiles are the browser, not the app.",
+      "doc": "Every pose, this week first. Imagery needs the emulator; this plate is here for the grid, the chrome and the week labels.",
+      "tags": ["free"]
+    },
+    "photo-source": {
+      "code": "G5",
+      "title": "Camera or gallery",
+      "host": "sheet",
+      "in": "{{photos}} › add",
+      "out": "Drag, scrim, or the grab bar",
+      "next": "Take a photo, or choose one",
+      "note": "One of the three sheets that shipped with no way out.",
+      "doc": "Asked every time rather than remembered: the gallery is how you backfill a photo you already took and the camera is how you do this week, and neither is the default. The 2026-08-08 exit sweep found this sheet shipping with no dismiss affordance at all.",
+      "tags": ["free"]
+    },
+    "photo-series": {
+      "code": "G6",
+      "title": "One pose, every week",
+      "host": "pushed",
+      "in": "{{photos}} › a pose",
+      "out": "App bar back",
+      "next": "Play the sequence",
+      "note": "Two missed weeks, left as gaps.",
+      "doc": "A grid rather than a list, because the comparison is the content. The missed fortnight is left as a gap rather than closed up: a sequence that hides its holes claims a consistency the lifter did not have.",
+      "tags": ["free"]
+    },
+    "photo-actions": {
+      "code": "G7",
+      "title": "Photo actions",
+      "host": "sheet",
+      "in": "{{photo-series}} › a photo",
+      "out": "Drag, scrim, or the grab bar",
+      "next": "Skip it, or delete it",
+      "note": "The grab bar is load-bearing here more than anywhere.",
+      "doc": "Skipping keeps the photo and takes it out of the sequence; the subtitle says so, because \"skip\" beside \"delete\" has to be unambiguous. The loudest control on this sheet deletes something that cannot be retaken, and it opens on a tap.",
+      "tags": ["free"]
+    },
+    "photo-delete-confirm": {
+      "code": "G8",
+      "title": "Delete this photo?",
+      "host": "dialog",
+      "in": "{{photo-actions}} › Delete photo",
+      "out": "Keep it",
+      "next": "Delete",
+      "note": "Blunt on purpose.",
+      "doc": "There is no copy anywhere else, and a photo of your own body from eight months ago cannot be retaken. \"Keep it\" against \"Delete\", which is the pairing every confirmation in both apps uses.",
+      "tags": ["free"]
+    },
+    "series-playback": {
+      "code": "G9",
+      "title": "The sequence, playing",
+      "host": "pushed",
+      "in": "{{photo-series}} › play",
+      "out": "App bar back; the timer is cancelled in dispose",
+      "next": "Play, or change the speed",
+      "note": "The only thing progress photos are actually for.",
+      "doc": "In-app playback, not a video export — the old app encoded an MP4 through a native module per OS so it could be shared, and this is the part that does the actual work of showing a lifter their own change, without any of that. Speed is adjustable because a two-photo series and a fifty-photo one want very different ones.",
+      "tags": ["free"],
+      "arch": {
+        "class": "SeriesPlaybackScreen",
+        "file": "lib/src/features/photos/presentation/series_playback_screen.dart",
+        "adrs": ["0004"],
+        "action": "Pressing play",
+        "path": [
+          {
+            "depth": 0,
+            "call": "_frames = series.sequence",
+            "symbol": "PoseSeries.sequence",
+            "note": "Excluded frames are already gone by the time this screen has the series. Filtering here would put the same rule in two places and let them disagree."
+          },
+          {
+            "depth": 0,
+            "call": "if (_index >= _frames.length - 1) _index = 0",
+            "symbol": "SeriesPlaybackScreen",
+            "note": "Pressing play on a finished sequence means \"again\", not \"nothing\"."
+          },
+          {
+            "depth": 0,
+            "call": "Timer.periodic(600ms / speed)",
+            "symbol": "ProgressPhoto",
+            "note": "Fast enough to read as change rather than a slideshow, slow enough to see each week. Adjustable because a two-photo series and a fifty-photo one want very different speeds."
+          },
+          {
+            "depth": 1,
+            "call": "on last frame → t.cancel(); _playing = false",
+            "symbol": "Pose",
+            "note": "It stops at the end rather than looping. A loop would make it ambient wallpaper; this is something you watch once and think about."
+          },
+          {
+            "depth": 0,
+            "call": "_scrub(value) → _timer?.cancel()",
+            "symbol": "PhotoThumb",
+            "note": "Touching the scrubber stops playback rather than fighting it. Two things moving the same index is the classic media-player bug."
+          },
+          {
+            "depth": 0,
+            "call": "dispose() → _timer?.cancel()",
+            "symbol": "SeriesPlaybackScreen",
+            "note": "The one line that makes back safe here. Without it the timer keeps calling setState on a disposed widget, which is the failure docs/navigation.md records this screen as clean on."
+          }
+        ]
+      }
+    },
+
+    "settings": {
+      "code": "A1",
+      "title": "Settings — signed out",
+      "host": "pushed",
+      "in": "{{profile}} › the gear",
+      "out": "App bar back",
+      "next": "Change units, or back up",
+      "next_note": "units apply as they change, not on close",
+      "note": "The account card first, then units as rows.",
+      "doc": "Signed out, the card says so and what is on this phone only, with Sign in. Units are rows with their values on the right (19); each opens a sheet that carries its explanation, so the page shows settings rather than paragraphs. The version is in the footer.",
+      "tags": ["free"]
+    },
+    "settings-signed-in": {
+      "code": "A2",
+      "title": "Settings — signed in",
+      "host": "pushed",
+      "in": "{{profile}} › the gear, with an account",
+      "out": "App bar back",
+      "next": "Sync, sign out, or open Coach",
+      "note": "Initial, address and plan, as Run's profile card.",
+      "doc": "The account first (19): initial, address and Subscribed or Free, then where backup stands. Tapping it opens the account screen, which holds the things done to an account; the index keeps what is checked. On a 375 by 667 phone the account and both units show without scrolling.",
+      "tags": ["free"]
+    },
+    "settings-account": {
+      "code": "A12",
+      "title": "Account",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › the account card",
+      "out": "Back arrow",
+      "next": "Restore, Sign out, or Delete account",
+      "note": "Backup, the plan and Restore, and the two ways out.",
+      "doc": "Sign out, Restore purchases and Delete account were rows on the page opened most. They are rare, and one of them is for good, so they are one screen in, beside where backup stands.",
+      "tags": ["free"]
+    },
+    "account-signed-out": {
+      "code": "A3",
+      "title": "Account — nine waiting",
+      "host": "pushed",
+      "in": "{{settings}} › with training in one place only",
+      "out": "App bar back",
+      "next": "Sign in",
+      "note": "The argument for an account, made with a number.",
+      "doc": "Nothing here blocks logging — the local database has everything and the rows stay pending. It reports rather than reassures, because discovering that your training is on one device only is worst after losing a phone.",
+      "tags": ["free"]
+    },
+    "account-synced": {
+      "code": "A4",
+      "title": "Account — up to date",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › after a sync",
+      "out": "App bar back",
+      "next": "Sync now",
+      "note": "A time rather than a status word.",
+      "doc": "\"Synced\" is only useful if you know when. This card read the wall clock until 2026-08-27, so on a pinned fixture it said a three-minute-old sync was 20 days ago — and got a day worse every day.",
+      "tags": ["free"],
+      "arch": {
+        "class": "AccountSection",
+        "file": "lib/src/features/sync/presentation/account_section.dart",
+        "adrs": ["0004", "0012"],
+        "action": "Tapping Sync now",
+        "path": [
+          {
+            "depth": 0,
+            "call": "LiftShell._syncNow()",
+            "symbol": "BackupService",
+            "note": "Owned by the shell rather than by Settings, so the result survives Settings being closed and Track sees the refreshed log."
+          },
+          {
+            "depth": 1,
+            "call": "if (_syncing) return",
+            "symbol": "SyncReport",
+            "note": "One at a time. Two overlapping runs would race on the same pending rows and report each other's outcome."
+          },
+          {
+            "depth": 1,
+            "call": "report = await sync.run()      // never throws",
+            "symbol": "SyncOutcome",
+            "note": "A failure comes back as a report with outcome unavailable, not an exception. The local database is the source of truth and nothing is lost by a sync that did not happen, so there is nothing here worth an error state."
+          },
+          {
+            "depth": 1,
+            "call": "→ push what is pending, pull what is missing",
+            "symbol": "SyncPending",
+            "note": "Restore only ever adds. A pull cannot delete local training, which is why signing in on a new phone is safe and signing out leaves everything alone."
+          },
+          {
+            "depth": 1,
+            "call": "await _refreshPending(); await _refreshLog()",
+            "symbol": "SyncPending.workouts",
+            "note": "The count is re-read rather than decremented from what the report claims — the server decides what actually landed."
+          },
+          {
+            "depth": 0,
+            "call": "_ago(lastSyncedAt, now)",
+            "symbol": "AccountSection",
+            "note": "Rough on purpose: \"3 min ago\" answers \"did that work\"; a timestamp to the second does not. Takes an injected clock so a pinned fixture reads correctly."
+          }
+        ]
+      }
+    },
+    "coach-memory": {
+      "code": "A5",
+      "title": "What the coach remembers",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › Coach",
+      "out": "App bar back",
+      "next": "Clear it",
+      "note": "Plain sentences, not fields.",
+      "doc": "Written as what the coach would say about you rather than as a table, which would imply a precision it does not have. Readable and clearable without an entitlement.",
+      "tags": ["paid"]
+    },
+    "coach-memory-empty": {
+      "code": "A6",
+      "title": "Memory — nothing formed yet",
+      "host": "pushed",
+      "in": "{{settings-signed-in}} › Coach, on a new account",
+      "out": "App bar back",
+      "next": "Nothing — it fills itself",
+      "note": "A real state, not an error.",
+      "doc": "Memory is formed from conversations, so a lifter who has not had one has nothing here and nothing to do about it.",
+      "tags": ["paid"]
+    },
+    "coach-memory-error": {
+      "code": "A7",
+      "title": "Memory — will not load",
+      "host": "pushed",
+      "in": "{{coach-memory}} › the server unreachable",
+      "out": "App bar back",
+      "next": "Try again later",
+      "note": "Distinguished from empty on purpose.",
+      "doc": "\"Nothing stored\" and \"could not read what is stored\" are different answers to \"what do you know about me\", and collapsing them would be the worse kind of wrong.",
+      "tags": ["paid"]
+    },
+    "credits": {
+      "code": "A8",
+      "title": "Credits",
+      "host": "pushed",
+      "in": "{{settings}} › Credits",
+      "out": "App bar back",
+      "next": "—",
+      "note": "The one plate here with nothing to do on it.",
+      "doc": "Licences and attribution for the exercise catalogue and its images. A dead end by design.",
+      "tags": ["free"]
+    },
+    "track-backup-failed": {
+      "code": "T6",
+      "title": "Track — backup failed",
+      "host": "shell",
+      "in": "Nav bar › Track, after a backup run that could not finish",
+      "out": "Nav bar",
+      "next": "Try again, or carry on training",
+      "note": "A pill only when something needs the lifter, never a status bar.",
+      "doc": "Backup runs at checkpoints (launch, return to the app, Finish, a changed workout), never while logging, and retries on its own. The pill appears only when a run has actually failed and says what to do; a healthy backup is silent on Track, because training is the point of this tab and syncing is not.",
+      "tags": ["free"]
+    },
+    "track-backup-refused": {
+      "code": "T7",
+      "title": "Track — a workout refused",
+      "host": "shell",
+      "in": "Nav bar › Track, after the server refused one workout",
+      "out": "Nav bar",
+      "next": "See why, in {{account-problems}}",
+      "note": "One refused workout never holds up the rest.",
+      "doc": "Each workout goes up on its own. One the server refuses is set aside with its reason and waits for an edit, while everything else carries on backing up, so a single bad row cannot block a lifter's whole history.",
+      "tags": ["free"]
+    },
+    "workout-editor": {
+      "code": "W17",
+      "title": "Editing a saved workout",
+      "host": "pushed",
+      "in": "{{workout-library}} › … › Edit",
+      "out": "App bar back, or Save",
+      "next": "Change sets and rep targets, reorder, remove",
+      "note": "Editing only: a workout comes from a session or a starter now.",
+      "doc": "Sets from 1 to 20 and reps up to 200; a workout holds the set count and the rep target, never a weight. The builder that shared this screen is gone (R5). It is also the way back from saying yes at Finish when the answer should have been no.",
+      "tags": ["free"]
+    },
+    "session-rest-over": {
+      "code": "W18",
+      "title": "Session — rest over",
+      "host": "pushed",
+      "in": "{{session-resting}}, when the time runs out",
+      "out": "Done, or tick the next set",
+      "next": "The next set",
+      "note": "Counts up past zero, in green: how long the rest actually was.",
+      "doc": "Added 2026-09-29 from the competitor research, which found a timer people cannot trust to be the commonest complaint about every app in the category. Past zero it keeps counting (+0:42) rather than freezing at 0:00. With the phone locked or the app in the background, the buzz comes as a system notification at the rest's fixed end, naming the next set; the app withdraws it on return, so there is never a second buzz. Each movement remembers its own rest length.",
+      "tags": ["free"]
+    },
+    "finish-sheet-save": {
+      "code": "W25",
+      "title": "Finish, asking about the workout",
+      "host": "sheet",
+      "in": "{{session}} › Finish, from a saved workout that changed",
+      "out": "Keep going, or drag",
+      "next": "Finish",
+      "note": "Save to Wednesday push for next time? − Cable Fly. On.",
+      "doc": "The one question about the workout, asked only when a movement was added or taken out, with the answer most people want already set (R3, R4). Yes changes only the movements; set counts, reps and order never ask and never change. Edited on another phone meanwhile, or deleted, the line says so and starts off. Done right: nothing about the workout is left to decide after this sheet.",
+      "tags": ["free"]
+    },
+    "finish-sheet-blank": {
+      "code": "W26",
+      "title": "Finish, from a blank session",
+      "host": "sheet",
+      "in": "{{session}} › Finish, started blank",
+      "out": "Keep going, or drag",
+      "next": "Finish, or Save as a workout",
+      "note": "Save as a workout, off; a name only when switched on.",
+      "doc": "A session started from nothing can be kept as a workout, in the same place the question is asked of any other. Off by default: most sessions are not programmes. It replaced two offers, one at the foot of the running list and one on the summary.",
+      "tags": ["free"]
+    },
+    "exercise-picker-replace": {
+      "code": "W19",
+      "title": "Swap a movement, by hand",
+      "host": "sheet",
+      "in": "{{session}} › the swap icon, without the coach",
+      "out": "Drag or scrim",
+      "next": "Tap one: it replaces the movement and closes",
+      "note": "The swap icon used to exist only for coached lifters.",
+      "doc": "The same picker as {{exercise-picker}}, in replace mode: titled for the movement being swapped, and one tap chooses and closes. The replacement takes the sets still to do, their target reps and the new movement's weight from last time. Logged sets stay where they are, under the old name, because they were lifted. A coached lifter gets {{swap-sheet}} instead.",
+      "tags": ["free", "new"]
+    },
+    "reorder-sheet": {
+      "code": "W20",
+      "title": "Reorder movements",
+      "host": "sheet",
+      "in": "{{session}} › Reorder movements, at the foot of the list",
+      "out": "Done, drag or scrim",
+      "next": "Drag by the handle, then Done",
+      "note": "The bench is taken, so incline goes first.",
+      "doc": "The recorder could always reorder; nothing on screen reached it until 2026-09-29. A sheet of one-line rows rather than drag handles on the cards, because the cards are tall and full of fields, the wrong surface to start a long-press drag on. Shown only once a session has two movements.",
+      "tags": ["free"]
+    },
+    "session-summary-offline": {
+      "code": "W22",
+      "title": "Summary — saved on this phone",
+      "host": "pushed",
+      "in": "{{session}} › Finish, with no signal",
+      "out": "Done, or the back arrow",
+      "next": "Nothing; it backs up on its own",
+      "note": "The pill at the top: it will back up when you are online.",
+      "doc": "Every set is on the phone the moment it is ticked, so the pill at the top says what backup is doing rather than reassuring. It retries at 30 seconds, 2 minutes, 10 minutes, then hourly.",
+      "tags": ["free"]
+    },
+    "session-summary-backed-up": {
+      "code": "W23",
+      "title": "Summary — backed up",
+      "host": "pushed",
+      "in": "{{session-summary-offline}}, a moment later",
+      "out": "Done, or the back arrow",
+      "next": "Done",
+      "note": "No pill: backed up, and nothing left to say.",
+      "doc": "Once a run has finished after this session did and the server has it, the pill goes. A line saying Backed up for as long as the screen is open was a line nobody needed.",
+      "tags": ["free"]
+    },
+    "history": {
+      "code": "G10",
+      "title": "Every session",
+      "host": "pushed",
+      "in": "{{profile}} › See all",
+      "out": "App bar back",
+      "next": "Open one, {{session-past}}",
+      "note": "Grouped by week, newest first.",
+      "doc": "Profile shows the last five and nothing led past them, so a session from last month counted in every total and could never be looked at, let alone fixed. This is the way in to all of them, with the not-backed-up mark on any row still waiting.",
+      "tags": ["free"]
+    },
+    "exercise-stats": {
+      "code": "G13",
+      "title": "One movement",
+      "host": "pushed",
+      "in": "A movement's name: in {{session}}, on {{session-summary}}, in {{session-past}}, or {{profile}} › Most trained",
+      "out": "App bar back",
+      "next": "Open a session it came from, {{session-past}}",
+      "note": "Its best, the estimate over time, the sessions behind it, how it is done.",
+      "doc": "Profile listed five bests and nothing behind them, and the question a best raises is \"since when?\" (R9). This answers it with a line: each session's best estimate, drawn by hand rather than with a chart library, with the set behind the best and the Epley caveat said where the number is. Its sessions open. The best is the one Profile showed, on the same rules: working sets only, nothing over 12 reps. Done right: a lifter can say whether the lift is moving, and trace the number to a session they remember.",
+      "tags": ["free", "new", "first"]
+    },
+    "exercise-stats-bodyweight": {
+      "code": "G14",
+      "title": "One movement, with no estimate",
+      "host": "pushed",
+      "in": "The same doors, for bodyweight work",
+      "out": "App bar back",
+      "next": "Its sessions",
+      "note": "No weight on the bar: no estimate, and it says why rather than going blank.",
+      "doc": "Pull-ups, dips and high-rep work are a full log with nothing for Epley to estimate from. The screen still lists every session and how it is done, and says in one line what would produce an estimate, so an empty tile reads as a rule rather than a bug.",
+      "tags": ["free", "new", "first"]
+    },
+    "session-past": {
+      "code": "G11",
+      "title": "A past session",
+      "host": "pushed",
+      "in": "{{history}} or {{profile}} › a session",
+      "out": "App bar back",
+      "next": "Edit session, or Delete session with Undo",
+      "note": "The summary's own layout, dated, with Edit and Delete.",
+      "doc": "Its bests are the ones it set at the time. Delete is soft with Undo, and the session leaves every total at once; the deletion also reaches other devices.",
+      "tags": ["free", "new"]
+    },
+    "session-editing": {
+      "code": "G12",
+      "title": "Fixing a past session",
+      "host": "pushed",
+      "in": "{{session-past}} › Edit session",
+      "out": "Done, or back (both save)",
+      "next": "Change sets, then Done",
+      "note": "The session screen itself, aimed at a session that already happened.",
+      "doc": "Same rows, same limits, same input rules, because it is the same screen with a recorder aimed at the old session. No clock and no rest; the date and length stay what they were, and unticked sets go at Done as they do at Finish.",
+      "tags": ["free"]
+    },
+    "account-problems": {
+      "code": "A11",
+      "title": "Account — what backup could not do",
+      "host": "pushed",
+      "in": "{{settings}}, when a run failed or a workout was refused",
+      "out": "App bar back",
+      "next": "Sync now, or edit the refused workout",
+      "note": "Every refusal listed with its reason.",
+      "doc": "Where {{track-backup-refused}} sends the lifter. A refused workout is named with the server's reason and waits for an edit; a failed run says when it will try again. Settings also gained a Workout section on 2026-09-29 with the rest-alert switch, shown on {{settings}} and {{settings-signed-in}}.",
+      "tags": ["free"]
+    }
+  },
+
+  "edges": [
+    { "from": "session", "to": "exercise-picker-replace", "label": "swap, without the coach" },
+    { "from": "session", "to": "reorder-sheet", "label": "Reorder movements" },
+    { "from": "session-resting", "to": "session-rest-over", "label": "rest runs out" },
+    { "from": "profile", "to": "history", "label": "See all" },
+    { "from": "history", "to": "session-past", "label": "a session" },
+    { "from": "session-past", "to": "session-editing", "label": "Edit session" },
+    { "from": "track-backup-refused", "to": "account-problems", "label": "See why" },
+    { "from": "settings", "to": "sign-in", "label": "Back up your training" },
+
+    { "from": "track", "to": "track-coach", "label": "coach has a note" },
+    { "from": "track", "to": "track-open", "label": "a session is open" },
+    { "from": "track", "to": "track-planned", "label": "a plan has today" },
+    { "from": "track-open", "to": "track-interrupted", "label": "left overnight" },
+    { "from": "track", "to": "session-empty", "label": "Start a session" },
+    { "from": "track-open", "to": "session", "label": "Resume session" },
+    { "from": "track-planned", "to": "session", "label": "Start upper" },
+    { "from": "track", "to": "coach-empty", "label": "the mark" },
+    { "from": "track-coach", "to": "coach", "label": "the mark" },
+    { "from": "track", "to": "plan", "label": "nav bar" },
+    { "from": "track", "to": "profile", "label": "nav bar" },
+
+    { "from": "session-empty", "to": "exercise-picker", "label": "Add exercise" },
+    { "from": "session-empty", "to": "workout-library", "label": "Your workouts" },
+    { "from": "workout-library", "to": "workout-library-empty", "label": "nothing saved" },
+    { "from": "workout-library", "to": "session", "label": "start one" },
+    { "from": "exercise-picker", "to": "session", "label": "a movement is added" },
+    { "from": "session", "to": "swap-sheet", "label": "swap icon" },
+    { "from": "session", "to": "session-resting", "label": "tick a set" },
+    { "from": "session", "to": "session-long", "label": "six movements" },
+    { "from": "session", "to": "session-summary", "label": "Finish, which replaces" },
+    { "from": "session-summary", "to": "session-summary-pb", "label": "beat something" },
+    { "from": "session-summary", "to": "session-summary-short", "label": "nothing to compare" },
+    { "from": "session-summary", "to": "coach", "label": "Talk it over" },
+    { "from": "session-summary", "to": "plan-review-after", "label": "after a planned day" },
+    { "from": "session-summary", "to": "track", "label": "Back to Track" },
+
+    { "from": "coach", "to": "coach-history", "label": "history" },
+    { "from": "coach-history", "to": "coach-past", "label": "a row" },
+
+    { "from": "plan", "to": "plan-entitled", "label": "entitlement reads true" },
+    { "from": "plan-entitled", "to": "intake-1-days", "label": "Build a plan" },
+    { "from": "plan-standing", "to": "plan-standing-rest", "label": "a rest day" },
+    { "from": "plan-standing", "to": "swap-sheet", "label": "Change the split" },
+    { "from": "plan-standing", "to": "track-planned", "label": "Track picks it up" },
+
+    { "from": "coach-empty", "to": "coach", "label": "an opening line" },
+    { "from": "coach", "to": "coach-resumed", "label": "reopened" },
+    { "from": "coach", "to": "coach-limit", "label": "out of turns" },
+    { "from": "coach", "to": "coach-eval-jump", "label": "eval scenario" },
+    { "from": "coach", "to": "coach-eval-joint-pain", "label": "eval scenario" },
+    { "from": "plan-review-after", "to": "plan-review-answered", "label": "pick how it felt" },
+
+    { "from": "intake-1-days", "to": "intake-2-equipment", "label": "" },
+    { "from": "intake-2-equipment", "to": "intake-3-injuries", "label": "" },
+    { "from": "intake-3-injuries", "to": "intake-4-goal", "label": "" },
+    { "from": "intake-4-goal", "to": "intake-11-ready", "label": "" },
+    { "from": "intake-11-ready", "to": "plan-standing", "label": "Build my plan" },
+    { "from": "intake-11-ready", "to": "intake-9-split", "label": "" },
+    { "from": "intake-9-split", "to": "intake-10-swap", "label": "" },
+
+    { "from": "profile", "to": "profile-empty", "label": "nothing logged" },
+    { "from": "profile", "to": "photos", "label": "Progress photos" },
+    { "from": "photos", "to": "photos-empty", "label": "none taken" },
+    { "from": "photos", "to": "photo-source", "label": "add" },
+    { "from": "photos", "to": "photo-series", "label": "a pose" },
+    { "from": "photo-series", "to": "photo-actions", "label": "a photo" },
+    { "from": "photo-actions", "to": "photo-delete-confirm", "label": "Delete photo" },
+    { "from": "photo-series", "to": "series-playback", "label": "play" },
+    { "from": "profile", "to": "settings", "label": "the gear" },
+    { "from": "profile-empty", "to": "track", "label": "Log a session" },
+
+    { "from": "settings", "to": "settings-signed-in", "label": "signed in" },
+    { "from": "settings", "to": "account-signed-out", "label": "rows pending" },
+    { "from": "settings-signed-in", "to": "account-synced", "label": "after a sync" },
+    { "from": "settings-signed-in", "to": "coach-memory", "label": "Coach" },
+    { "from": "coach-memory", "to": "coach-memory-empty", "label": "nothing formed" },
+    { "from": "coach-memory", "to": "coach-memory-error", "label": "will not load" },
+    { "from": "settings", "to": "credits", "label": "Credits" },
+
+    { "from": "settings", "to": "legal", "label": "Privacy & legal" },
+    { "from": "settings-coach", "to": "settings-coach-off", "label": "the switch" },
+    { "from": "settings-coach", "to": "ai-disclosure", "label": "beside the switch" },
+    { "from": "coach", "to": "ai-disclosure", "label": "the mark in the top bar" },
+    { "from": "legal", "to": "terms", "label": "Terms of use" },
+    { "from": "legal", "to": "privacy", "label": "Privacy policy" },
+    { "from": "legal", "to": "ai-disclosure", "label": "How your coach uses AI" },
+    { "from": "legal", "to": "delete-account", "label": "Delete account" },
+    { "from": "sign-in", "to": "sign-in-email", "label": "Continue with email" },
+    { "from": "workout-library", "to": "workout-library-open", "label": "tap a row" },
+    { "from": "workout-library", "to": "workout-editor", "label": "… › Edit" },
+    { "from": "session", "to": "finish-sheet-save", "label": "Finish" },
+    { "from": "finish-sheet-save", "to": "session-summary", "label": "Finish" },
+    { "from": "plan", "to": "sales", "label": "Start coaching" },
+    { "from": "sales-signed-out", "to": "sign-in", "label": "choose a tier" },
+    { "from": "settings-signed-in", "to": "settings-account", "label": "the account card" },
+    { "from": "profile", "to": "exercise-stats", "label": "a most-trained row" },
+    { "from": "session", "to": "exercise-stats", "label": "a movement's name" },
+    { "from": "session-summary", "to": "exercise-stats", "label": "a movement's name" },
+    { "from": "session-past", "to": "exercise-stats", "label": "a movement's name" },
+    { "from": "exercise-stats", "to": "session-past", "label": "a session it came from" }
+  ]
+}

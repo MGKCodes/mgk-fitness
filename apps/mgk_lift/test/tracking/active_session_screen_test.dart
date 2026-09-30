@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
 import 'package:mgk_lift/src/features/tracking/data/drift_session_recorder.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
+import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/active_session_screen.dart';
 // Prefixed: drift generates its own `SetRow` for the sets table, which collides
 // with the widget of the same name.
 import 'package:mgk_lift/src/features/tracking/presentation/exercise_card.dart'
     as card;
 import 'package:mgk_units/mgk_units.dart';
+import 'package:mgk_lift/src/features/tracking/presentation/finish_sheet.dart';
 
 void main() {
   navigationTests();
@@ -24,13 +26,17 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<Widget> screen({MassUnit unit = MassUnit.kilograms}) async {
+  Future<Widget> screen({
+    MassUnit unit = MassUnit.kilograms,
+    WorkoutLibrary? withLibrary,
+  }) async {
     final session = await recorder.current() ?? await recorder.start();
     return MaterialApp(
       home: ActiveSessionScreen(
         recorder: recorder,
         session: session,
         massUnit: unit,
+        library: withLibrary,
       ),
     );
   }
@@ -48,7 +54,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).first, '225');
-    await tester.pumpAndSettle();
+    // Saved on the way out of the field, not per keystroke.
+    await leaveField(tester);
 
     final stored = await db.select(db.exerciseSets).getSingle();
     expect(stored.weightKg, closeTo(102.058, 0.001));
@@ -170,32 +177,51 @@ void main() {
     expect(find.text('Your own movement'), findsOneWidget);
   });
 
-  testWidgets('an empty session offers a template before a blank card', (
+  testWidgets('an empty session offers the library before a blank card', (
     WidgetTester tester,
   ) async {
     // The first session is otherwise the hardest: a blank list asks someone to
     // remember what a push day is before they can log anything.
+    //
+    // **What the second action opens changed and the reason for having one did
+    // not.** It used to be `Use a template`, straight into the fifteen
+    // app-provided premades — the thing "Lift templates are the coach's
+    // grounding layer, not a user-facing library" rules out. It is now the
+    // lifter's own saved workouts, with the premades one step further in as
+    // something you add to that list. See workout_library_surface_test.dart.
     await recorder.start();
 
-    await tester.pumpWidget(await screen());
+    await tester.pumpWidget(
+      await screen(withLibrary: InMemoryWorkoutLibrary()),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Use a template'), findsOneWidget);
+    expect(find.text('Your workouts'), findsOneWidget);
+    expect(find.text('Use a template'), findsNothing);
     expect(find.text('Add exercise'), findsOneWidget);
   });
 
-  testWidgets('a template adds its movements and no numbers', (
+  testWidgets('a saved workout lays out its sets, and no weight of its own', (
     WidgetTester tester,
   ) async {
-    // A template says what to do, not what to lift. Pre-filling weights would
-    // be the app asserting something only the lifter knows.
+    // A saved workout says what to do — three sets of eight — and never what
+    // to lift (decision D4). With no history there is no weight to carry, so
+    // the rows open blank, and nothing is ticked on the lifter's behalf.
     await recorder.start();
-    await recorder.addExercise('Barbell Bench Press');
-    await recorder.addExercise('Dumbbell Shoulder Press');
+    await recorder.fillFromLibrary(
+      workoutId: 'saved-1',
+      name: 'Push',
+      movements: seedWorkout(const <TemplateMovement>[
+        TemplateMovement('Barbell Bench Press', repTarget: 8),
+        TemplateMovement('Dumbbell Shoulder Press', sets: 2),
+      ], const <Session>[]),
+    );
 
     final session = await recorder.current();
     expect(session!.exercises, hasLength(2));
-    expect(session.totalSets, 0);
+    expect(session.exercises.map((e) => e.sets.length), <int>[3, 2]);
+    expect(session.exercises.first.sets.map((s) => s.reps), <int>[8, 8, 8]);
+    expect(session.completedSets, 0);
     expect(session.volumeKg, 0);
   });
 
@@ -278,9 +304,9 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('Skip'));
-      await tester.pump();
+      await settleDock(tester);
 
       expect(find.text('RESTING'), findsNothing);
     });
@@ -291,7 +317,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('+30s'));
       await tester.pump();
 
@@ -308,7 +334,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.circle_outlined).first);
-      await tester.pump();
+      await settleDock(tester);
       await tester.tap(find.text('+30s'));
       await tester.pump();
 
@@ -333,7 +359,7 @@ void main() {
 
       expect(find.text('RESTING'), findsOneWidget);
       await tester.enterText(find.byType(TextField).first, '90');
-      await tester.pump();
+      await leaveField(tester);
 
       final stored = await (db.select(
         db.exerciseSets,
@@ -376,7 +402,7 @@ void main() {
       // Row one reads W rather than a set number.
       expect(find.text('W'), findsOneWidget);
       // Only the working set counts, and the header now says so out loud.
-      expect(find.text('510 kg'), findsOneWidget);
+      expect(find.textContaining('510 kg'), findsOneWidget);
     });
 
     testWidgets('tapping the set number marks a set as a warm-up', (
@@ -395,7 +421,7 @@ void main() {
 
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
-      expect(find.text('600 kg'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
 
       // Scoped to the row: the header's set count is also "1".
       await tester.tap(
@@ -412,9 +438,14 @@ void main() {
       expect(stored.isCompleted, isTrue);
     });
 
-    testWidgets('and tapping it again puts the set back', (
+    testWidgets('the marker cycles working, warm-up, drop set, failure', (
       WidgetTester tester,
     ) async {
+      // This test used to be "tapping it again puts the set back", from when
+      // there were two types. It kept passing after the other two were
+      // restored, which is why it is written out in full now: tapping W gives
+      // a drop set, a drop set counts toward volume, so both of its assertions
+      // still held while its name had become false.
       await recorder.start();
       await recorder.addExercise('Barbell Bench Press');
       await recorder.addSet('id-2');
@@ -430,11 +461,115 @@ void main() {
       await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('W'));
+      Future<void> tapMarker(String marker) async {
+        await tester.tap(
+          find.descendant(
+            of: find.byType(card.SetRow),
+            matching: find.text(marker),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await tapMarker('W');
+      expect(find.text('D'), findsOneWidget);
+      // A drop set is training that happened at a real load, so it counts.
+      expect(find.textContaining('600 kg'), findsOneWidget);
+
+      await tapMarker('D');
+      expect(find.text('F'), findsOneWidget);
+      expect(find.textContaining('600 kg'), findsOneWidget);
+
+      await tapMarker('F');
+      expect(find.text('W'), findsNothing);
+      expect(find.text('D'), findsNothing);
+      expect(find.text('F'), findsNothing);
+      expect(find.textContaining('600 kg'), findsOneWidget);
+    });
+
+    testWidgets('a drop set and a failure set survive a round trip', (
+      WidgetTester tester,
+    ) async {
+      // The reason this matters is not the UI. `SetType.fromStored` mapped
+      // every unrecognised value to `working`, so the `dropset` and `failure`
+      // rows the shipped app already wrote to the cloud were being read back
+      // as ordinary working sets. This pins the mapping in both directions.
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet('id-3', setType: SetType.dropSet);
+
+      final stored = await (db.select(
+        db.exerciseSets,
+      )..where((s) => s.id.equals('id-3'))).getSingle();
+      expect(stored.setType, 'dropset');
+
+      expect(SetType.fromStored('dropset'), SetType.dropSet);
+      expect(SetType.fromStored('failure'), SetType.failure);
+      expect(SetType.fromStored('warmup'), SetType.warmup);
+      expect(SetType.fromStored(null), SetType.working);
+      // Anything a future client invents reads as working rather than
+      // vanishing from the lifter's totals.
+      expect(SetType.fromStored('superset'), SetType.working);
+
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+      expect(find.text('D'), findsOneWidget);
+    });
+  });
+
+  group('removing a set', () {
+    testWidgets('swiping a set away removes it, and only it', (
+      WidgetTester tester,
+    ) async {
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet(
+        'id-3',
+        reps: 10,
+        weightKg: 60,
+        isCompleted: true,
+      );
+      await recorder.addSet('id-2');
+
+      await tester.pumpWidget(await screen());
+      await tester.pumpAndSettle();
+      expect(find.byType(card.SetRow), findsNWidgets(2));
+
+      // From the marker column, not the middle of the row. The two number
+      // fields are TextFields and win a horizontal drag in the gesture arena
+      // for text selection, so a drag started over them never reaches the
+      // Dismissible — which is also true under a real thumb.
+      await _swipeRowAway(tester, 0);
+
+      expect(find.byType(card.SetRow), findsOneWidget);
+      final left = await db.select(db.exerciseSets).get();
+      expect(left.length, 1);
+      expect(left.single.id, isNot('id-3'));
+    });
+
+    testWidgets('a swipe the other way does not remove anything', (
+      WidgetTester tester,
+    ) async {
+      // The gesture is end-to-start only. A row this dense sits inside a
+      // scrolling session, and one that fires both ways goes off by accident.
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+
+      await tester.pumpWidget(await screen());
       await tester.pumpAndSettle();
 
-      expect(find.text('W'), findsNothing);
-      expect(find.text('600 kg'), findsOneWidget);
+      final row = find.byType(card.SetRow).first;
+      await tester.dragFrom(
+        tester.getTopLeft(row) + const Offset(14, 18),
+        const Offset(500, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(card.SetRow), findsOneWidget);
+      expect((await db.select(db.exerciseSets).get()).length, 1);
     });
   });
 
@@ -580,12 +715,12 @@ void main() {
 
     await tester.pumpWidget(await screen());
     await tester.pumpAndSettle();
-    expect(find.text('500 kg'), findsOneWidget);
+    expect(find.textContaining('500 kg'), findsOneWidget);
 
     await tester.pumpWidget(await screen(unit: MassUnit.pounds));
     await tester.pumpAndSettle();
     // 500 kg is 1102.31 lb, snapped to the pound.
-    expect(find.text('1102 lb'), findsOneWidget);
+    expect(find.textContaining('1102 lb'), findsOneWidget);
   });
 }
 
@@ -611,4 +746,47 @@ void navigationTests() {
     // why a back affordance has to exist independently of it.
     expect(find.byIcon(Icons.arrow_back), findsOneWidget);
   });
+}
+
+/// Swipes the set row at [index] away, starting the drag over the marker
+/// column.
+///
+/// The row's middle two controls are `TextField`s, which claim a horizontal
+/// drag for text selection before the `Dismissible` ever sees it. The marker is
+/// 28px wide and sits at the left edge, so 14px in is over it.
+Future<void> _swipeRowAway(WidgetTester tester, int index) async {
+  final row = find.byType(card.SetRow).at(index);
+  await tester.dragFrom(
+    tester.getTopLeft(row) + const Offset(14, 18),
+    const Offset(-500, 0),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Finishes the session on screen: Finish in the header, then Finish on the
+/// sheet that now asks first.
+Future<void> finishSession(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(FilledButton, 'Finish').first);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.descendant(
+      of: find.byType(FinishSheet),
+      matching: find.widgetWithText(FilledButton, 'Finish'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Leaves the focused field, which is when its value is saved.
+Future<void> leaveField(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+}
+
+/// Lets the rest dock finish rising or sinking. It exists only while resting
+/// (9) and moves over [AppMotion.base]; a button inside it cannot be tapped
+/// mid-rise, and a leaving one is still in the tree until it has gone.
+Future<void> settleDock(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }

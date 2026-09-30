@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's charcoal (AppColors.bg). The launch window and the window
+         behind Flutter's first frame are this, never white: a white flash
+         before a charcoal app was F24. -->
+    <color name="charcoal">#1A1A1A</color>
+</resources>

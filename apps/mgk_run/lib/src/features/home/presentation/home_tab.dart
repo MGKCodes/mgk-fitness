@@ -8,7 +8,6 @@ import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
-import '../../coaching/presentation/coach_button.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../profile/domain/runner_stats.dart';
 import '../../recording/domain/run_summary.dart';

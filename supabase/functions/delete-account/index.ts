@@ -31,7 +31,7 @@
 // narrow what is deleted — a hostile value is rejected outright rather than
 // widening the blast radius.
 //
-// Environment (all injected by Supabase; no new secret):
+// Environment (the first three injected by Supabase, the Apple three set by hand):
 //
 //     SUPABASE_URL
 //     SUPABASE_ANON_KEY            used only to validate the caller's JWT

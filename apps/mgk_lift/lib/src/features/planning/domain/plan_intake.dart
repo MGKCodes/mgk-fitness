@@ -19,8 +19,24 @@ class PlanIntake {
   final String? equipment;
   final String? injuryNotes;
 
-  /// Everything still unanswered, by name, so the next intake turn can be told
-  /// what to ask for rather than working it out again.
+  /// Everything still unanswered, by name, **for the coach** — sent with every
+  /// intake turn so the model is told what to gather rather than working it
+  /// out from the transcript again.
+  ///
+  /// This is not the screen's gate, and the difference matters. `missing` is
+  /// what the coach should still try to extract, including `which weekdays`,
+  /// which has no question of its own because it falls out of prose — "Mon,
+  /// Wed, Fri" answers it and "3 days" does not. What the lifter is *asked*,
+  /// and when the app decides it has enough, is [IntakeProgress] in
+  /// intake_flow.dart.
+  ///
+  /// There used to be an `isComplete` here as well, reading `missing.isEmpty`,
+  /// and it was the screen's gate. It disagreed with the flow in both
+  /// directions: it demanded a goal the flow calls skippable, and it demanded
+  /// weekdays that the one caller of this whole model — `LiftShell._buildPlan`
+  /// — already defaults when they are absent. So a lifter could answer every
+  /// question the coach asked, watch the bar fill, and never see the button.
+  /// One notion of "enough", and it lives with the questions.
   List<String> get missing => <String>[
     if (goal == null || goal!.trim().isEmpty) 'goal',
     if (daysPerWeek == null) 'days per week',
@@ -28,13 +44,6 @@ class PlanIntake {
       'which weekdays',
     if (equipment == null || equipment!.trim().isEmpty) 'equipment',
   ];
-
-  /// Whether a block can be built from this.
-  ///
-  /// `weeks` and `injuryNotes` are deliberately not required: a lifter with no
-  /// view on block length is normal (it defaults), and "nothing hurts" is an
-  /// answer that leaves the field empty.
-  bool get isComplete => missing.isEmpty;
 
   /// The default block length. Eight weeks is long enough to build and deload
   /// twice and short enough that somebody will actually finish one.

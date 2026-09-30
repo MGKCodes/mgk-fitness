@@ -28,11 +28,27 @@ class DriftSessionHistory implements SessionHistory {
       ..orderBy([(w) => OrderingTerm.desc(w.startedAt)]);
     if (limit != null) query.limit(limit);
 
-    final rows = await query.get();
-    final sessions = <Session>[];
-    for (final row in rows) {
-      sessions.add(await hydrateWorkout(_db, row));
-    }
-    return sessions;
+    // Every session in three reads, not one per movement per session — this
+    // runs on every return to Track, and the old shape grew with the log.
+    return hydrateWorkouts(_db, await query.get());
   }
+
+  @override
+  Future<void> remove(String id) {
+    final now = DateTime.now();
+    return (_db.update(_db.workouts)
+          ..where((w) => w.id.equals(id) & w.endedAt.isNotNull()))
+        .write(WorkoutsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+  }
+
+  @override
+  Future<void> restore(String id) =>
+      (_db.update(
+        _db.workouts,
+      )..where((w) => w.id.equals(id) & w.endedAt.isNotNull())).write(
+        WorkoutsCompanion(
+          deletedAt: const Value(null),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 }

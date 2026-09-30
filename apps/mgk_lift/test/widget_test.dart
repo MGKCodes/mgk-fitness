@@ -5,9 +5,13 @@ import 'package:mgk_lift/src/features/tracking/presentation/track_surface.dart';
 import 'package:mgk_lift/main.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
+import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/coach_sheet.dart';
+import 'package:mgk_lift/src/features/entitlement/domain/entitlement.dart';
+import 'package:mgk_lift/src/features/purchases/domain/purchases.dart';
+import 'package:mgk_lift/src/features/purchases/presentation/sales_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 void main() {
@@ -19,7 +23,14 @@ void main() {
 
     // SectionLabel uppercases its text — the eyebrow is a decision made once in
     // mgk_ui, not something each screen restates.
-    expect(find.text('TODAY'), findsOneWidget);
+    // The eyebrow names the day, since the headline under it says what
+    // today is for.
+    expect(
+      find.textContaining(
+        RegExp(r'^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY) '),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Ready when you are'), findsOneWidget);
 
     // The font is the trap worth guarding: mgk_ui ships Inter as a package
@@ -63,11 +74,11 @@ void main() {
     // open anything is worse than no mark, so this is asserted rather than left
     // to reviewer memory.
     await tester.pumpWidget(const MaterialApp(home: LiftShell()));
-    expect(find.byType(CoachMark), findsNothing);
+    expect(find.byType(CoachButton), findsNothing);
 
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
-    expect(find.byType(CoachMark), findsOneWidget);
+    expect(find.byType(CoachButton), findsOneWidget);
   });
 
   testWidgets('the bar floats and shares its component with Run', (
@@ -98,7 +109,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.getRect(find.byType(CoachMark)).bottom,
+      tester.getRect(find.byType(CoachButton)).bottom,
       lessThanOrEqualTo(tester.getRect(find.byType(FloatingNavBar)).top),
     );
   });
@@ -111,13 +122,13 @@ void main() {
     // eye could not tell which one was the point of the screen. The coach is
     // permanently available; it is not what you came here to do.
     //
-    // Now a circle, which cannot compete on width — so the assertion is a
-    // quarter rather than a half, and it is the letter dropping the label that
-    // is really being pinned here.
+    // Now the shared mark from mgk_ui — a 44px rounded square, which cannot
+    // compete on width — so the assertion is a quarter rather than a half, and
+    // it is the letter dropping the label that is really being pinned here.
     await tester.pumpWidget(MaterialApp(home: LiftShell(coach: FakeCoach())));
     await tester.pumpAndSettle();
 
-    final markWidth = tester.getSize(find.byType(CoachMark)).width;
+    final markWidth = tester.getSize(find.byType(CoachButton)).width;
     final screenWidth = tester.getSize(find.byType(LiftShell)).width;
     expect(markWidth, lessThan(screenWidth / 4));
   });
@@ -135,7 +146,7 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
       expect(
-        find.byType(CoachMark),
+        find.byType(CoachButton),
         findsOneWidget,
         reason: 'the coach mark vanished on $tab',
       );
@@ -158,7 +169,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
     expect(find.byType(CoachSheet), findsOneWidget);
   });
@@ -176,12 +187,48 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
 
     expect(find.byType(CoachSheet), findsNothing);
-    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.byType(SignInScreen), findsOneWidget);
   });
+
+  for (final signedIn in <bool>[false, true]) {
+    testWidgets(
+      'unsubscribed and ${signedIn ? 'signed in' : 'signed out'}, the mark '
+      'opens the sales screen (R6)',
+      (WidgetTester tester) async {
+        // Nothing on the coach is free. The mark used to send the signed-out
+        // to sign in and everybody else to the Plan tab, behind whatever
+        // screen they were on; one screen sells now, from every door.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LiftShell(
+              coach: FakeCoach(),
+              auth: FakeAuth(
+                account: signedIn
+                    ? const Account(id: 'u', email: 'a@b.com')
+                    : null,
+              ),
+              entitlements: EntitlementGate(
+                source: FakeEntitlements(Entitlement.none),
+              ),
+              purchases: FakePurchases(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(CoachButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SalesScreen), findsOneWidget);
+        expect(find.byType(CoachSheet), findsNothing);
+        expect(find.byType(SignInScreen), findsNothing);
+      },
+    );
+  }
 
   testWidgets('on the free tier the mark goes to the offer, not a refusal', (
     WidgetTester tester,
@@ -198,7 +245,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(CoachMark));
+    await tester.tap(find.byType(CoachButton));
     await tester.pumpAndSettle();
 
     expect(find.byType(CoachSheet), findsNothing);
@@ -299,9 +346,12 @@ void trackContentTests() {
     // figures with a local widget that set its own label style; moving the row
     // onto StatBlock put it in the same treatment as Profile and the session
     // header, which is the point of the change rather than a side effect of it.
+    // One number (R12): this week's sessions. Streak and the rest are
+    // Profile's.
     expect(find.text('THIS WEEK'), findsOneWidget);
-    expect(find.text('WEEK STREAK'), findsOneWidget);
-    expect(find.text('LAST SESSION'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('sessions since Monday'), findsOneWidget);
+    expect(find.text('WEEK STREAK'), findsNothing);
   });
 
   testWidgets('an empty log shows no figures rather than zeroes', (

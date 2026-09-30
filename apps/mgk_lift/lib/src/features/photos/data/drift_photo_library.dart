@@ -113,13 +113,14 @@ class DriftPhotoLibrary implements PhotoLibrary {
     if (file.existsSync()) {
       await file.delete();
     }
-    await (_db.update(_db.progressPhotos)..where((t) => t.id.equals(row.id)))
-        .write(
-          ProgressPhotosCompanion(
-            deletedAt: Value(DateTime.now()),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+    await (_db.update(
+      _db.progressPhotos,
+    )..where((t) => t.id.equals(row.id))).write(
+      ProgressPhotosCompanion(
+        deletedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   ProgressPhoto _toDomain(PhotoRow r) => ProgressPhoto(

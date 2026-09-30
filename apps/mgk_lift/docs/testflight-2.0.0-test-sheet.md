@@ -1,4 +1,4 @@
-# Liftio 2.0.0 — TestFlight test sheet
+# MGKFitness: Lift 2.0.0 — TestFlight test sheet
 
 Fill this in on the phone, with the build in your hand. Tick what passes, write
 a line where it does not, and hand the whole thing back — a failed row with two
@@ -17,21 +17,25 @@ will test the free half of the app and conclude the paid half is broken. Run
 this once against production, with your own email:
 
 ```sql
-insert into core.entitlements (user_id, app, product, status, platform)
-select id, 'lift', 'paid', 'active', 'apple'
+insert into core.entitlements (user_id, app, product, status)
+select id, 'lift', 'paid', 'active'
 from auth.users where email = 'you@example.com'
 on conflict (user_id, app) do update
   set product = 'paid', status = 'active';
 ```
 
+**`platform` is left out on purpose, and this used to be wrong.** The line said
+`'manual'`, which `entitlements_platform_check` rejects outright — it allows
+only `apple` or `google`. So this block failed for anybody who ran it, and the
+grant it exists to make never happened. That was found on 2026-08-24 by running
+it: `core.entitlements` was **empty**, every Lift coach request in production
+had been refused since the app existed, and the paid half had never once run.
+The column is nullable, and null is the honest value for a hand grant that no
+store ever charged for.
+
+
 Only `status = 'active'` grants anything, and an unknown `product` falls back to
 the free tier rather than the dear one — so both fields have to be right.
-
-`platform` must be `'apple'` or `'google'`; the table has a check constraint and
-nothing else is accepted. **This block said `'manual'` until 2026-09-01**, which
-fails with a constraint violation rather than granting anything — so anybody who
-ran it got no entitlement and then tested the free half believing it was the
-paid one.
 
 **2. Know which install you are.** Two paths through this build, and they fail
 differently:
@@ -69,7 +73,7 @@ me nothing:
 | A1 | Install from TestFlight and open it | Opens without a crash | ☐ |
 | A2 | *(Upgrade only)* Open on a device that had 1.4.0 | Opens, and does not behave like a fresh install | ☐ |
 | A3 | *(Upgrade only)* Look for your old training history | **Unverified — this is the big one.** Whether 2.0.0 restores a 1.4.0 lifter's history on sign-in has never been proven either way. Write down exactly what you see. | ☐ |
-| A4 | Check the name under the home-screen icon | Reads as Liftio, not a placeholder | ☐ |
+| A4 | Check the name under the home-screen icon | Reads `Lift` — not `Mgk Lift`, and not the full `MGKFitness: Lift`, which iOS would truncate | ☐ |
 | A5 | Force-quit and reopen | Returns to where you were | ☐ |
 
 ## B. Account
@@ -159,8 +163,8 @@ movements rotate rather than the plan finishing.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| H1 | With Runio on the same account, compare the profile | Age, height and weight match — one person, two apps | ☐ |
-| H2 | Change your weight in Liftio, then open Runio | It follows across | ☐ |
+| H1 | With MGKFitness: Run on the same account, compare the profile | Age, height and weight match — one person, two apps | ☐ |
+| H2 | Change your weight here, then open MGKFitness: Run | It follows across | ☐ |
 
 ---
 

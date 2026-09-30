@@ -28,13 +28,21 @@ import '../domain/standing_plan.dart';
 /// here instead is what a lifter opens this screen for on the way to the gym:
 /// what am I doing today, what did I lift last time, and is anything going
 /// stale.
+///
+/// **And no Start (R8).** Today's session starts from Track, which is where
+/// every session starts; this screen said "Start today's workout" too, and the
+/// same session had two front doors that could disagree. Today links to Track.
+/// Any other day offers *Do it today*, which puts that session on Track for
+/// today, and leads with the calendar rather than a Today card above it.
 class StandingPlanSurface extends StatefulWidget {
   const StandingPlanSurface({
     super.key,
     required this.plan,
     required this.today,
     this.massUnit = MassUnit.kilograms,
-    this.onStartToday,
+    this.onGoToTrack,
+    this.onDoToday,
+    this.movedDay,
     this.onSwap,
     this.onChangeSplit,
   });
@@ -43,9 +51,15 @@ class StandingPlanSurface extends StatefulWidget {
   final DateTime today;
   final MassUnit massUnit;
 
-  /// Null on a rest day. Null rather than disabled, because there is genuinely
-  /// nothing to start rather than something withheld.
-  final VoidCallback? onStartToday;
+  /// Goes to Track, where today's session starts.
+  final VoidCallback? onGoToTrack;
+
+  /// Brings another day's session forward to today (R8, O4). A choice on this
+  /// phone for one day; the plan is not edited.
+  final ValueChanged<String>? onDoToday;
+
+  /// The day already brought forward to today, if one is.
+  final String? movedDay;
 
   /// "I have no cable machine." The same mechanism SwapSheet already runs for a
   /// live session, reached from the plan instead.
@@ -102,18 +116,7 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
               ),
             ),
 
-            // ---- Today, and the one action ------------------------------
-            const SizedBox(height: AppSpacing.xl),
-            _TodayCard(
-              day: todayName,
-              // **Not the movement list.** It used to repeat what the day card
-              // below already said. A count says the same useful thing in one
-              // line and does not go stale when a slot is swapped.
-              count: plan.movementsFor(widget.today).length,
-              onStart: widget.onStartToday,
-            ),
-
-            // ---- Overview -----------------------------------------------
+            // ---- The week, first: this screen is the calendar --------------
             const SizedBox(height: AppSpacing.xl),
             const SectionLabel('The week'),
             const SizedBox(height: AppSpacing.sm),
@@ -132,6 +135,11 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
               slots: openSlots,
               massUnit: widget.massUnit,
               onSwap: widget.onSwap,
+              isToday: _open == widget.today.weekday,
+              todayIs: widget.movedDay ?? todayName,
+              movedDay: widget.movedDay,
+              onGoToTrack: widget.onGoToTrack,
+              onDoToday: widget.onDoToday,
             ),
 
             // ---- Things to read about the plan ---------------------------
@@ -179,9 +187,9 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
 
             if (widget.onChangeSplit != null) ...<Widget>[
               const SizedBox(height: AppSpacing.lg),
-              OutlinedButton(
+              AppOutlinedButton(
+                label: 'Change the split',
                 onPressed: widget.onChangeSplit,
-                child: const Text('Change the split'),
               ),
             ],
           ],
@@ -204,51 +212,6 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
     'November',
     'December',
   ][d.month - 1];
-}
-
-/// What you came here to do.
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({
-    required this.day,
-    required this.count,
-    required this.onStart,
-  });
-
-  final String? day;
-  final int count;
-  final VoidCallback? onStart;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SectionLabel('Today'),
-          const SizedBox(height: 4),
-          Text(day ?? 'Rest', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text(
-            day == null
-                // A rest day is an answer. Nothing is owed and nothing is
-                // behind, which is the point of deriving the week rather than
-                // scheduling it.
-                ? 'Nothing scheduled, and nothing owed. Log something anyway if '
-                      'you feel like it.'
-                : '$count movements',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          if (day != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(label: "Start today's workout", onPressed: onStart),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 /// Seven days, rest included, in one row.
@@ -284,44 +247,49 @@ class _WeekStrip extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: InkWell(
-                onTap: () => onTap(d.weekday),
-                borderRadius: BorderRadius.circular(AppRadius.control),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    color: d.weekday == open
-                        ? AppColors.elevated
-                        : Colors.transparent,
-                    // Today is outlined even when another day is open, so
-                    // pointing at Friday never loses where you actually are.
-                    border: Border.all(
-                      color: d.weekday == today
-                          ? AppColors.textSecondary
-                          : Colors.transparent,
+              child: PressScale(
+                scale: 0.94,
+                child: InkWell(
+                  onTap: () => onTap(d.weekday),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
                     ),
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Text(
-                        _initials[d.weekday - 1],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                      color: d.weekday == open
+                          ? AppColors.elevated
+                          : Colors.transparent,
+                      // Today is outlined even when another day is open, so
+                      // pointing at Friday never loses where you actually are.
+                      border: Border.all(
+                        color: d.weekday == today
+                            ? AppColors.textSecondary
+                            : Colors.transparent,
                       ),
-                      const SizedBox(height: 6),
-                      // A dot for rest, an initial for a training day. The
-                      // shape of the week is readable without reading a word.
-                      Text(
-                        d.day == null ? '·' : d.day![0],
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: d.day == null
-                              ? AppColors.textTertiary
-                              : AppColors.textPrimary,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          _initials[d.weekday - 1],
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        // A dot for rest, an initial for a training day. The
+                        // shape of the week is readable without reading a word.
+                        Text(
+                          d.day == null ? '·' : d.day![0],
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: d.day == null
+                                ? AppColors.textTertiary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -340,6 +308,11 @@ class _DayDetail extends StatelessWidget {
     required this.slots,
     required this.massUnit,
     required this.onSwap,
+    required this.isToday,
+    required this.todayIs,
+    required this.movedDay,
+    required this.onGoToTrack,
+    required this.onDoToday,
   });
 
   final int weekday;
@@ -347,6 +320,16 @@ class _DayDetail extends StatelessWidget {
   final List<MovementSlot> slots;
   final MassUnit massUnit;
   final void Function(MovementSlot)? onSwap;
+
+  /// Whether this is today's column.
+  final bool isToday;
+
+  /// The session that is today's, by the calendar or brought forward.
+  final String? todayIs;
+
+  final String? movedDay;
+  final VoidCallback? onGoToTrack;
+  final ValueChanged<String>? onDoToday;
 
   static const List<String> _names = <String>[
     'Monday',
@@ -367,7 +350,10 @@ class _DayDetail extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Text(_names[weekday - 1], style: theme.textTheme.titleMedium),
+              Text(
+                isToday ? 'Today' : _names[weekday - 1],
+                style: theme.textTheme.titleMedium,
+              ),
               const Spacer(),
               Text(
                 day ?? 'Rest',
@@ -377,6 +363,7 @@ class _DayDetail extends StatelessWidget {
               ),
             ],
           ),
+          ..._action(context),
           if (day == null)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -415,13 +402,13 @@ class _DayDetail extends StatelessWidget {
                   // on the slot that has actually gone stale is a
                   // recommendation.
                   if (onSwap != null && s.hasStalled)
-                    TextButton(
+                    AppTextButton(
+                      label: 'Swap',
                       onPressed: () => onSwap!(s),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
                         visualDensity: VisualDensity.compact,
                       ),
-                      child: const Text('Swap'),
                     ),
                 ],
               ),
@@ -429,6 +416,73 @@ class _DayDetail extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// What this day offers, under its name: nothing starts here (R8).
+  List<Widget> _action(BuildContext context) {
+    final theme = Theme.of(context);
+    final quiet = theme.textTheme.bodySmall?.copyWith(
+      color: AppColors.textSecondary,
+    );
+    Widget link(String label, VoidCallback? onTap) => Align(
+      alignment: Alignment.centerLeft,
+      child: AppTextButton(
+        label: label,
+        icon: Icons.arrow_forward,
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+    );
+
+    if (isToday) {
+      final todays = todayIs;
+      if (todays == null) {
+        return <Widget>[
+          const SizedBox(height: AppSpacing.xs),
+          // A rest day is an answer: nothing is owed and nothing is behind.
+          Text(
+            'Nothing scheduled, and nothing owed. Log something anyway if you '
+            'feel like it.',
+            style: quiet,
+          ),
+        ];
+      }
+      return <Widget>[
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          movedDay != null && movedDay != day
+              ? '$todays is on Track today, brought forward.'
+              : '$todays is on Track, ready to start.',
+          style: quiet,
+        ),
+        if (onGoToTrack != null) link('Go to Track', onGoToTrack),
+      ];
+    }
+    final d = day;
+    if (d == null) return const <Widget>[];
+    if (d == movedDay) {
+      return <Widget>[
+        const SizedBox(height: AppSpacing.xs),
+        Text('On Track today.', style: quiet),
+        if (onGoToTrack != null) link('Go to Track', onGoToTrack),
+      ];
+    }
+    if (onDoToday == null) return const <Widget>[];
+    return <Widget>[
+      const SizedBox(height: AppSpacing.sm),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: AppOutlinedButton(
+          label: 'Do it today',
+          icon: Icons.today_outlined,
+          onPressed: () => onDoToday!(d),
+        ),
+      ),
+    ];
   }
 
   /// Last time's top set, or why there is not one. The role is only named when

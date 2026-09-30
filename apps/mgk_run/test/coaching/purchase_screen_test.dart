@@ -164,7 +164,7 @@ void main() {
       // stated rather than inherited from the test runner.
       for (final phrase in <String>[
         'renew every month until cancelled',
-        'auto-renew is switched off at least 24',
+        'auto-renew is turned off at least 24',
       ]) {
         expect(find.textContaining(phrase), findsOneWidget, reason: phrase);
       }

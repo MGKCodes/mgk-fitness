@@ -40,19 +40,12 @@ void main() {
     test('warm-ups are logged but excluded from volume', () {
       // Three empty-bar sets before a heavy single must not read as a bigger
       // session than the single.
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(
-            DateTime(2026, 8, 3),
-            sets: <SessionSet>[
-              warmup(20, 10),
-              warmup(60, 5),
-              working(140, 1),
-            ],
-          ),
-        ],
-        now: DateTime(2026, 8, 6),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(
+          DateTime(2026, 8, 3),
+          sets: <SessionSet>[warmup(20, 10), warmup(60, 5), working(140, 1)],
+        ),
+      ], now: DateTime(2026, 8, 6));
       expect(stats.totalVolume.kilograms, 140);
       expect(stats.totalSets, 1);
     });
@@ -66,10 +59,9 @@ void main() {
         DateTime(2026, 8, 3),
         sets: <SessionSet>[warmup(60, 10), working(80, 8), working(85, 6)],
       );
-      final stats = TrainingStats.from(
-        <Session>[session],
-        now: DateTime(2026, 8, 6),
-      );
+      final stats = TrainingStats.from(<Session>[
+        session,
+      ], now: DateTime(2026, 8, 6));
 
       expect(session.volumeKg, 1150);
       expect(stats.totalVolume.kilograms, session.volumeKg);
@@ -85,18 +77,15 @@ void main() {
     });
 
     test('an unticked set counts for nothing', () {
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(
-            DateTime(2026, 8, 3),
-            sets: <SessionSet>[
-              working(100, 5),
-              const SessionSet(id: 'x', setNumber: 2, weightKg: 100, reps: 5),
-            ],
-          ),
-        ],
-        now: DateTime(2026, 8, 6),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(
+          DateTime(2026, 8, 3),
+          sets: <SessionSet>[
+            working(100, 5),
+            const SessionSet(id: 'x', setNumber: 2, weightKg: 100, reps: 5),
+          ],
+        ),
+      ], now: DateTime(2026, 8, 6));
       expect(stats.totalVolume.kilograms, 500);
       expect(stats.totalSets, 1);
     });
@@ -115,10 +104,9 @@ void main() {
           ),
         ],
       );
-      final stats = TrainingStats.from(
-        <Session>[open],
-        now: DateTime(2026, 8, 6),
-      );
+      final stats = TrainingStats.from(<Session>[
+        open,
+      ], now: DateTime(2026, 8, 6));
       expect(stats.sessions, 0);
       expect(stats.totalVolume.kilograms, 0);
     });
@@ -144,17 +132,14 @@ void main() {
     });
 
     test('Monday and the following Sunday are ONE streak week, not two', () {
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
-          sessionOn(
-            DateTime(2026, 8, 9),
-            exercise: 'Squat',
-            sets: <SessionSet>[working(100, 5)],
-          ),
-        ],
-        now: DateTime(2026, 8, 9, 23),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
+        sessionOn(
+          DateTime(2026, 8, 9),
+          exercise: 'Squat',
+          sets: <SessionSet>[working(100, 5)],
+        ),
+      ], now: DateTime(2026, 8, 9, 23));
       expect(stats.currentWeekStreak, 1);
       expect(stats.longestWeekStreak, 1);
     });
@@ -162,31 +147,25 @@ void main() {
 
   group('streaks', () {
     test('consecutive weeks accumulate', () {
-      final stats = TrainingStats.from(
-        <Session>[
-          for (var w = 0; w < 4; w++)
-            sessionOn(
-              DateTime(2026, 7, 13).add(Duration(days: 7 * w)),
-              sets: <SessionSet>[working(100, 5)],
-            ),
-        ],
-        now: DateTime(2026, 8, 5),
-      );
+      final stats = TrainingStats.from(<Session>[
+        for (var w = 0; w < 4; w++)
+          sessionOn(
+            DateTime(2026, 7, 13).add(Duration(days: 7 * w)),
+            sets: <SessionSet>[working(100, 5)],
+          ),
+      ], now: DateTime(2026, 8, 5));
       expect(stats.currentWeekStreak, 4);
       expect(stats.longestWeekStreak, 4);
     });
 
     test('a missed week resets the current streak but not the record', () {
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(DateTime(2026, 6, 1), sets: <SessionSet>[working(100, 5)]),
-          sessionOn(DateTime(2026, 6, 8), sets: <SessionSet>[working(100, 5)]),
-          sessionOn(DateTime(2026, 6, 15), sets: <SessionSet>[working(100, 5)]),
-          // gap
-          sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
-        ],
-        now: DateTime(2026, 8, 5),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(DateTime(2026, 6, 1), sets: <SessionSet>[working(100, 5)]),
+        sessionOn(DateTime(2026, 6, 8), sets: <SessionSet>[working(100, 5)]),
+        sessionOn(DateTime(2026, 6, 15), sets: <SessionSet>[working(100, 5)]),
+        // gap
+        sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
+      ], now: DateTime(2026, 8, 5));
       expect(stats.currentWeekStreak, 1);
       expect(stats.longestWeekStreak, 3);
     });
@@ -204,12 +183,9 @@ void main() {
     });
 
     test('two empty weeks does break it', () {
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(DateTime(2026, 7, 20), sets: <SessionSet>[working(100, 5)]),
-        ],
-        now: DateTime(2026, 8, 4),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(DateTime(2026, 7, 20), sets: <SessionSet>[working(100, 5)]),
+      ], now: DateTime(2026, 8, 4));
       expect(stats.currentWeekStreak, 0);
     });
   });
@@ -290,17 +266,14 @@ void main() {
   group('sessions per week', () {
     test('a first week in progress is still a whole week', () {
       // Without the clamp, two sessions on day one reads as 14 a week.
-      final stats = TrainingStats.from(
-        <Session>[
-          sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
-          sessionOn(
-            DateTime(2026, 8, 3, 18),
-            exercise: 'Squat',
-            sets: <SessionSet>[working(100, 5)],
-          ),
-        ],
-        now: DateTime(2026, 8, 4),
-      );
+      final stats = TrainingStats.from(<Session>[
+        sessionOn(DateTime(2026, 8, 3), sets: <SessionSet>[working(100, 5)]),
+        sessionOn(
+          DateTime(2026, 8, 3, 18),
+          exercise: 'Squat',
+          sets: <SessionSet>[working(100, 5)],
+        ),
+      ], now: DateTime(2026, 8, 4));
       expect(stats.sessionsPerWeek, 2);
     });
   });

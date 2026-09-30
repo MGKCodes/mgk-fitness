@@ -13,7 +13,6 @@ import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_widgets.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';

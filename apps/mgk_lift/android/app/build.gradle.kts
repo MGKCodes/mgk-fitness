@@ -51,6 +51,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications (the rest-over alert) needs Java 8+ time
+        // APIs on Android versions that lack them, and says so as a build
+        // failure rather than a runtime one if this is missing.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -111,4 +115,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // The version flutter_local_notifications documents; see compileOptions.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

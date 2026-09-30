@@ -70,7 +70,7 @@ anyone who copies the directory out of the repository takes the terms with it.
 
 The reasoning behind all of this — what was weighed, what was rejected, and what
 is still outstanding outside this repository — is
-[ADR-0002](apps/mgk_lift/docs/decisions/0002-exercise-illustrations-are-cc-by-sa.md).
+[ADR-0003](apps/mgk_lift/docs/decisions/0003-exercise-illustrations-are-cc-by-sa.md).
 
 ### Why, in short
 

@@ -1,21 +1,71 @@
-<!--
-  The "Reset password" email. Supabase Dashboard › Authentication › Emails ›
-  Reset password: paste everything below this comment into the body, and set
-  the subject to "Choose a new password".
-
-  It links to the page with {{ .TokenHash }}, not to {{ .ConfirmationURL }}.
-  Both apps sign in with PKCE, so the confirmation URL would arrive at the page
-  carrying a code only the phone that asked can exchange. The page verifies the
-  hash itself, and only when the form is sent, so a mail scanner that opens
-  the link does not use it up. See web/app/reset-password/.
-
-  {{ .SiteURL }} is https://mgkfitness.mgkcodes.com in production. The link
-  names the page itself rather than {{ .RedirectTo }}, so a reset asked for
-  from a copy of Lift or Run that is already installed, which passes no
-  redirect, arrives at the same page.
--->
-<h2>Choose a new password</h2>
-<p>Somebody asked to reset the password for {{ .Email }}, the account you use in Lift and Run.</p>
-<p><a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery">Choose a new password</a></p>
-<p>The link works once. If you did not ask for this, ignore this email: your password has not changed.</p>
-<p>MGKCodes Ltd</p>
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Choose a new password</title>
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  body { margin: 0; padding: 0; }
+  @media (max-width: 520px) {
+    .card { padding: 32px 24px !important; }
+    .h1 { font-size: 24px !important; line-height: 30px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .page { background-color: #1A1A1A !important; }
+    .card { background-color: #2D2D2D !important; border-color: #404040 !important; }
+    .ink { color: #FFFFFF !important; }
+    .text { color: #9CA3AF !important; }
+    .faint { color: #9CA3AF !important; }
+    .btn-cell { background-color: #C0C0C0 !important; }
+    .btn { color: #1A1A1A !important; }
+    .rule { border-color: #404040 !important; }
+  }
+  [data-ogsc] .page { background-color: #1A1A1A !important; }
+  [data-ogsc] .card { background-color: #2D2D2D !important; border-color: #404040 !important; }
+  [data-ogsc] .ink { color: #FFFFFF !important; }
+  [data-ogsc] .text, [data-ogsc] .faint { color: #9CA3AF !important; }
+  [data-ogsc] .btn-cell { background-color: #C0C0C0 !important; }
+  [data-ogsc] .btn { color: #1A1A1A !important; }
+</style>
+</head>
+<body class="page" style="margin:0;padding:0;background-color:#F2F2F2;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F2F2F2;">Your link to choose a new password for Lift and Run. It works once.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" class="page" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2F2F2" style="background-color:#F2F2F2;">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+        <tr>
+          <td class="faint" style="padding:0 4px 20px 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:16px;font-weight:700;letter-spacing:3px;color:#6B7280;">MGKFITNESS</td>
+        </tr>
+        <tr>
+          <td class="card" bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #E2E2E2;border-radius:20px;padding:40px 36px;">
+            <h1 class="h1 ink" style="margin:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-0.4px;color:#1A1A1A;">Choose a new password</h1>
+            <p class="text" style="margin:0px 0 28px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:24px;color:#4B5563;">Somebody asked to reset the password for <a class="ink" href="mailto:{{ .Email }}" style="color:#1A1A1A;text-decoration:none;">{{ .Email }}</a>, the account you use in Lift and Run.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="btn-cell" bgcolor="#1A1A1A" style="background-color:#1A1A1A;border-radius:999px;">
+                  <a class="btn" href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:15px 30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">Choose a new password</a>
+                </td>
+              </tr>
+            </table>
+            <p class="text" style="margin:28px 0 0px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:22px;color:#4B5563;">The link works once. If you did not ask for this, ignore this email: your password has not changed.</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="rule" style="padding:28px 0 0 0;border-bottom:1px solid #E5E5E5;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+            <p class="text" style="margin:20px 0 0px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:20px;color:#4B5563;">Button not working? Copy this into your browser:<br><a class="ink" href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#1A1A1A;text-decoration:underline;word-break:break-all;">{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="faint" style="padding:24px 4px 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#6B7280;">Sent by MGKFitness, the account behind Lift and Run, because somebody asked for it with this address.<br>MGKCodes Ltd &middot; <a class="faint" href="https://mgkfitness.mgkcodes.com" style="color:#6B7280;text-decoration:underline;">mgkfitness.mgkcodes.com</a></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

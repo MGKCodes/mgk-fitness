@@ -34,8 +34,18 @@ dependencies:
   mgk_units:
     path: ../../packages/mgk_units
 
+  # Signing in, shared: Apple and Google into the suite's one account, and
+  # whose training is on the phone. Not UI; the buttons are mgk_ui's.
+  mgk_auth:
+    path: ../../packages/mgk_auth
+
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.16.0
+
+  # Already in the lockfile under supabase_flutter. Declared so backup can name
+  # `ClientException` — the dropped connection — and tell it apart from a
+  # server that refused a workout, which is handled the opposite way.
+  http: ^1.6.0
 
   # Explicit rather than leaning on Flutter's re-export, so `lib/src/features/
   # */domain/` stays pure Dart — no widget binding needed to test the rules.
@@ -59,6 +69,14 @@ dependencies:
   # database; "which unit do you read weights in" is one key, needs no migration
   # when it changes, and must be readable before the database has opened.
   shared_preferences: ^2.5.5
+
+  # The store, behind `Purchases` (features/purchases/domain). The same version
+  # Run pins, so the workspace resolves one copy of the SDK for both apps. It
+  # presents and pays; it never decides what anybody owns — that is
+  # `core.entitlements`, written by the `revenuecat` Edge Function.
+  purchases_flutter: ^10.10.1
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
 
 dev_dependencies:
   flutter_test:

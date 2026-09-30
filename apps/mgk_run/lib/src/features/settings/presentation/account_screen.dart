@@ -13,7 +13,6 @@ import '../../coaching/presentation/manage_subscription_link.dart';
 import '../../legal/domain/account_deleter.dart';
 import '../../legal/presentation/delete_account_screen.dart';
 import 'avatar.dart';
-import 'settings_row.dart';
 
 /// The account, as a profile: a face, a name, what it is paying for, and the
 /// two ways out of it.

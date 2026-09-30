@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 
 void main() {
   const note = CoachNote(

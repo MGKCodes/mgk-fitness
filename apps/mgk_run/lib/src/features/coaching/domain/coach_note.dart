@@ -1,3 +1,4 @@
+import 'package:mgk_ui/mgk_ui.dart' show CoachLine;
 import 'package:mgk_units/mgk_units.dart';
 import '../../recording/domain/run_summary.dart';
 import 'run_note.dart' show beatsDistanceRecord;
@@ -17,14 +18,11 @@ import 'run_note.dart' show beatsDistanceRecord;
 /// **Deliberately narrow.** It says nothing about volume or consistency — Home
 /// draws both, and a remark restating the chart under it is the app talking to
 /// itself (ADR-0017's cost function applies: a second voice for the same fact).
-class CoachNote {
-  const CoachNote({required this.headline, required this.detail, this.kind});
-
-  /// One line, in the coach's voice.
-  final String headline;
-
-  /// The evidence behind it, so the remark is checkable rather than flattering.
-  final String detail;
+///
+/// A [CoachLine], which is all `CoachReveal` needs of it: the reveal is shared
+/// with Lift, the reasoning about runs is not.
+class CoachNote extends CoachLine {
+  const CoachNote({required super.headline, required super.detail, this.kind});
 
   final CoachNoteKind? kind;
 

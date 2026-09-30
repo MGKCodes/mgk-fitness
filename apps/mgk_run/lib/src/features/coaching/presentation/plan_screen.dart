@@ -5,7 +5,6 @@ import 'package:mgk_units/mgk_units.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
-import 'coach_button.dart';
 import 'session_brief_sheet.dart';
 import 'session_labels.dart';
 import '../../recording/domain/run_summary.dart';

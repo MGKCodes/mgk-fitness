@@ -88,6 +88,13 @@ plan and an equipment framing.
 **`PlanIntake` is unchanged.** The questions were never the problem — see
 `intake_flow.dart`. It loses `weeks` and gains nothing.
 
+> Amended 2026-08-28: it also lost `isComplete`, which is not part of this
+> refactor. It gated the intake screen's button and disagreed with
+> `IntakeProgress` about what "enough" means, in both directions. `missing`
+> stays — it tells the coach what to extract, which is a different job. See the
+> punch list.
+
+
 **`session_from_plan.dart`** keeps doing exactly what it does, reading from
 slots rather than from a stored session row.
 

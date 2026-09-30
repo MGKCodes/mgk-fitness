@@ -1,14 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mgk_auth/mgk_auth.dart' show LocalDataGuard;
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
+import '../../entitlement/domain/entitlement.dart';
+import '../../purchases/domain/purchases.dart';
+import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
+import '../../legal/domain/account_deleter.dart';
+import '../../settings/domain/coach_preference.dart';
+import '../../planning/domain/intake_flow.dart';
+import '../../planning/domain/moved_day.dart';
 import '../../planning/domain/plan_intake.dart';
 import '../../planning/domain/plan_builder.dart';
 import '../../planning/domain/session_prescription.dart';
@@ -19,15 +27,29 @@ import '../../planning/domain/standing_plan_store.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
 import '../../profile/presentation/profile_surface.dart';
 import '../../settings/domain/unit_preferences.dart';
+import '../../photos/domain/photo_backup.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../sync/domain/sync_status.dart';
+import '../../sync/presentation/backup_messages.dart';
+import '../../sync/presentation/backup_scheduler.dart';
 import '../../stats/domain/session_history.dart';
+import '../../stats/presentation/exercise_stats_screen.dart';
+import '../../stats/presentation/history_screen.dart';
+import '../../tracking/domain/rest_alerts.dart';
+import '../../tracking/domain/rest_lengths.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
+import '../../tracking/data/starters.dart';
+import '../../tracking/domain/workout_library.dart';
+import '../../tracking/domain/workout_template.dart';
+import '../../tracking/presentation/active_session_screen.dart';
+import '../../tracking/presentation/session_summary_screen.dart';
 import '../../tracking/presentation/track_controller.dart';
 import '../../tracking/presentation/track_surface.dart';
+import '../../tracking/data/exercise_lookup.dart';
+import '../../tracking/presentation/workout_library_screen.dart';
 
 /// The authenticated app: Track / Plan / Profile, with the coach floating over
 /// all three.
@@ -52,26 +74,61 @@ class LiftShell extends StatefulWidget {
   const LiftShell({
     super.key,
     this.recorder,
+    this.editorFor,
+    this.library,
     this.units,
     this.history,
     this.coach,
     this.transcript,
     this.coachMemory,
+    this.coachPreference,
+    this.deleter,
     this.planner,
     this.plans,
+    this.movedDays,
     this.isEntitled = false,
+    this.entitlements,
+    this.purchases,
     this.hasCoachNote = false,
     this.photos,
     this.photoSource,
+    this.photoBackup,
     this.sync,
     this.auth,
+    this.localData,
+    this.restAlerts,
+    this.restLengths,
     this.initialTab = 0,
+    this.today,
   });
+
+  /// What the three surfaces should treat as today. Null is the wall clock,
+  /// which is what the app wants and what every caller but one passes.
+  ///
+  /// The exception is the preview harness, and it is not a small one: all three
+  /// surfaces already took a date for exactly this reason, and the shell was the
+  /// one link in the chain that did not pass it on. That made every shell
+  /// screenshot drift with the day it was taken — a plan that has something for
+  /// today on Thursday and nothing on Saturday — so the harness rendered the
+  /// surfaces bare to keep them still, and lost the nav bar and the coach mark
+  /// doing it. One parameter buys back both.
+  final DateTime? today;
 
   /// Owns a session while it is happening. **Null disables starting one**,
   /// which is the right behaviour for a build with no on-device database — the
   /// app still runs and the action reads as unavailable rather than erroring.
   final SessionRecorder? recorder;
+
+  /// A recorder aimed at one finished session, for fixing it afterwards.
+  /// **Null hides Edit** on a past session — a build with no database.
+  final SessionRecorder Function(String workoutId)? editorFor;
+
+  /// The lifter's saved workouts, which a session's empty state offers and a
+  /// finished session can be added to. **Null hides both**, which is the right
+  /// behaviour for a build with no on-device database — the same rule
+  /// [recorder] follows, and for the same reason: the two are stored in the
+  /// same three tables.
+  final WorkoutLibrary? library;
 
   /// Where the lifter's chosen units come from. Null keeps them for the session
   /// at the defaults, which is what tests and previews want.
@@ -96,6 +153,18 @@ class LiftShell extends StatefulWidget {
   /// stored about them and delete it.
   final CoachMemoryStore? coachMemory;
 
+  /// Whether the lifter wants the coach at all, and where that is kept.
+  ///
+  /// Null hides the switch and leaves the coach on, which is what a build
+  /// with no store wired up should do: the toggle is a consent control, and
+  /// one that cannot persist an answer is worse than none.
+  final CoachPreferenceStore? coachPreference;
+
+  /// Erases the account. Null hides the deletion row — a build with no
+  /// server cannot delete anything, and offering to would be a button that
+  /// fails at the moment somebody most needs it to work.
+  final AccountDeleter? deleter;
+
   /// Builds and adapts plans. Null hides the entry point rather than showing
   /// one that cannot work — the same rule every other optional dependency here
   /// follows.
@@ -112,6 +181,33 @@ class LiftShell extends StatefulWidget {
   /// so somebody who had just paid still saw the offer.
   final bool isEntitled;
 
+  /// Where the live answer comes from. **Null keeps [isEntitled] as given**,
+  /// which is what the preview and the widget tests rely on — they state the
+  /// tier they want to render rather than standing up a server to be told it.
+  ///
+  /// Non-null makes [isEntitled] the *starting* value and this the truth after
+  /// the first resolve. Production passes one; before 2026-09-02 nothing did,
+  /// which is why every account in production took the `false` default no
+  /// matter what `core.entitlements` said about them.
+  final EntitlementGate? entitlements;
+
+  /// The store. **Null hides every purchase affordance**, which is the honest
+  /// state for a build without one — both paywalls already say so out loud
+  /// rather than showing a button that does nothing.
+  ///
+  /// Paired with [entitlements] rather than used alone: a purchase that cannot
+  /// be reconciled against `core.entitlements` is a charge with nothing to show
+  /// for it, so one without the other buys nothing.
+  final Purchases? purchases;
+
+  /// The buzz for a rest that ends with the phone locked, handed to every
+  /// session screen. Null keeps the timer on screen only.
+  final RestAlerts? restAlerts;
+
+  /// Each movement's remembered rest length. Null starts every rest at the
+  /// session's length.
+  final RestLengths? restLengths;
+
   /// Whether the coach has an observation the lifter has not seen. Drives the
   /// unread dot only; the mark itself is always available when [onOpenCoach] is.
   final bool hasCoachNote;
@@ -125,6 +221,16 @@ class LiftShell extends StatefulWidget {
   /// honest state in a preview.
   final PhotoSource? photoSource;
 
+  /// Photos to the bucket and back. Null means this build cannot upload one,
+  /// which is the state with no server — and the state the screen describes
+  /// rather than hides.
+  ///
+  /// **Run separately from [sync], and only when entitled.** A photo is
+  /// megabytes over a storage API and a session is a few text rows; folding
+  /// them into one call would let a stalled image upload take the training
+  /// backup down with it, which is the wrong thing to sacrifice.
+  final PhotoBackup? photoBackup;
+
   /// Backup. **Null means this build has no server**, which Settings reports as
   /// "this device only" rather than hiding the section — somebody whose
   /// training exists in one place should be told so while the phone still
@@ -136,6 +242,22 @@ class LiftShell extends StatefulWidget {
   /// tracking works signed out and always will.
   final AuthService? auth;
 
+  /// Where *Do it today* is kept: another day's session brought forward to
+  /// today (R8, O4). Null keeps the choice in memory, which is what the
+  /// preview and the tests want.
+  final MovedDayStore? movedDays;
+
+  /// Whose training is on this phone, and the only way to hand it to another
+  /// account. **Null skips the question**, which is what the preview harness
+  /// and tests that are not about it want, and what a build with no server
+  /// has no need of.
+  ///
+  /// With it, an account that is not the phone's owner is asked to erase the
+  /// training here or sign out before anything backs up — the leak Run fixed
+  /// in `ab02080`, which Lift had in the same shape: backup pushes whatever is
+  /// unsent into whoever signs in, and pulls theirs down beside it.
+  final LocalDataGuard? localData;
+
   /// Which surface to open on. Exists so a preview can address a tab directly —
   /// tapping Flutter's canvas from an automation harness is unreliable.
   final int initialTab;
@@ -144,7 +266,7 @@ class LiftShell extends StatefulWidget {
   State<LiftShell> createState() => _LiftShellState();
 }
 
-class _LiftShellState extends State<LiftShell> {
+class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   late int _index = widget.initialTab;
 
   /// By name rather than by literal, so re-ordering the bar cannot silently send
@@ -157,9 +279,12 @@ class _LiftShellState extends State<LiftShell> {
   /// Vertical room the floating mark occupies, handed to the surfaces through
   /// MediaQuery so their SafeArea absorbs it. Only applied when there is a mark.
   ///
-  /// Its height plus the gap beneath it — a compact pill, since the mark stopped
-  /// being full-width.
-  static const double _coachMarkReserve = 64;
+  /// **Derived, not typed in.** It was 64 — the old 56px circle plus its gap —
+  /// and stayed 64 when the mark changed size, which is how a reserve and the
+  /// thing it reserves for drift apart. `kCoachMarkExtent` already includes the
+  /// overhang of the unread dot, so this is that plus the inset the mark is
+  /// positioned at, and it follows the mark from now on.
+  static const double _coachMarkReserve = kCoachMarkExtent + AppSpacing.lg;
 
   /// Everything floating at the foot: the nav pill, the gap above it, and the
   /// mark when there is one.
@@ -192,53 +317,325 @@ class _LiftShellState extends State<LiftShell> {
   /// finishing a session on Track changes it.
   List<Session> _log = const <Session>[];
 
-  /// What is waiting to upload, and how the last attempt went. Held here so
-  /// Settings opens with the count already known rather than flickering.
-  SyncPending? _pending;
-  SyncReport? _lastReport;
-  bool _syncing = false;
+  /// The same log, for screens pushed above the shell — the history list —
+  /// which a `setState` here does not reach.
+  final ValueNotifier<List<Session>> _logFeed = ValueNotifier<List<Session>>(
+    const <Session>[],
+  );
+
+  /// The lifter's saved workouts, for Track's row. Read at the shell so the
+  /// row and the library screen it opens cannot disagree about what exists.
+  List<SavedWorkout> _workouts = const <SavedWorkout>[];
+
+  /// When backup runs, and where it stands — read by Track's pill, the
+  /// summary, the library's rows and Settings, so no two can disagree. Null
+  /// is a build with no server.
+  BackupScheduler? _backup;
 
   /// Who is signed in. Kept in step with the service rather than read on demand,
   /// so a session restored at launch or expiring mid-use both reach the UI.
   Account? _account;
   StreamSubscription<Account?>? _authSub;
 
+  /// Whether [_account] may use the training on this phone: true to carry on,
+  /// false to ask, null while it is being worked out. Only meaningful with a
+  /// [LiftShell.localData] and somebody signed in.
+  bool? _mayUse;
+
+  /// Which account [_mayUse] answers for, so a slow answer about an account
+  /// that has since signed out cannot land on the next one.
+  String? _checkedFor;
+
+  /// Track's row follows the library, whichever screen changed it — the
+  /// summary teaching a workout included. See [WorkoutLibrary.changes].
+  StreamSubscription<void>? _librarySub;
+
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
   StandingPlan? _plan;
+
+  /// Another day's session, brought forward to today from Plan. Held here for
+  /// the same reason as [_plan]: Track shows it and Plan marks it.
+  String? _movedDay;
+  late final MovedDayStore _movedDays = widget.movedDays ?? InMemoryMovedDay();
   bool _buildingPlan = false;
+
+  /// Whether the coach is switched on. Held here rather than in Settings
+  /// because it governs the mark floating over every surface and whether
+  /// Plan can build anything — both of which outlive the screen that
+  /// flips it.
+  ///
+  /// Starts true and is corrected by the load. The window is a frame or two
+  /// on a device that has already opted out, and it costs nothing: the mark
+  /// being briefly present sends nothing, and every path that would send is
+  /// behind a tap that cannot happen that fast.
+  bool _useCoach = true;
+
+  /// What the paid surfaces are rendered against. Starts at whatever was passed
+  /// and is corrected by the first resolve, on the same reasoning [_useCoach]
+  /// gives for starting optimistic: the window is a frame or two, and nothing
+  /// behind the gate can be reached inside it.
+  late bool _entitled = widget.isEntitled;
+
+  /// What the store will sell, for the paywall to price itself from. Empty
+  /// until the store answers, which the tier block renders as "not known yet"
+  /// rather than as a guess.
+  List<PurchaseOffer> _offers = const <PurchaseOffer>[];
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadUnits());
+    unawaited(_loadCoachPreference());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
-    unawaited(_refreshPending());
+    unawaited(_refreshWorkouts());
+    _librarySub = widget.library?.changes.listen((_) {
+      unawaited(_refreshWorkouts());
+      // A saved workout changed — saved, edited, taught at Finish, deleted.
+      _backup?.checkpoint();
+    });
+    WidgetsBinding.instance.addObserver(this);
+    final sync = widget.sync;
+    if (sync != null) {
+      _backup = BackupScheduler(run: _runBackup, pending: sync.pending);
+      unawaited(_backup!.refresh());
+      // Launch is a checkpoint: whatever a killed app left unsent goes now.
+      // With somebody already signed in and a guard to ask, it waits for the
+      // answer instead — see [_check].
+      if (widget.localData == null || widget.auth?.current == null) {
+        _backup!.checkpoint();
+      }
+    }
     unawaited(_refreshPlan());
+    unawaited(_loadMovedDay());
+    unawaited(_refreshEntitlement());
+    unawaited(_loadOffers());
 
     final auth = widget.auth;
     if (auth != null) {
       _account = auth.current;
+      // A session restored at launch is an account the store has to know
+      // about before the first paywall, not after the first sign-in.
+      if (_account case final account?) {
+        unawaited(_identifyCustomer(account));
+        unawaited(_check(account));
+      }
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
-        setState(() => _account = account);
-        // Signing in is the moment there is somewhere to put the backlog.
-        if (account != null) unawaited(_syncNow());
+        setState(() {
+          _account = account;
+          if (account == null) {
+            _mayUse = null;
+            _checkedFor = null;
+          }
+        });
+        unawaited(_identifyCustomer(account));
+        // Signing in is the moment there is somewhere to put the backlog, and
+        // signing out the moment backup has to say it has stopped. **Not
+        // before the phone's training is known to be this account's**, which
+        // [_check] works out and then runs it.
+        if (account != null && widget.localData != null) {
+          unawaited(_check(account));
+        } else {
+          unawaited(_backup?.runNow());
+        }
         // ...and the moment the account's units become readable. The load in
         // initState runs before Supabase has restored a session, so without
         // this the shared choice is only ever picked up on the launch *after*
         // signing in. Runs on sign-out too: the device value is then the only
         // answer, and it should be the one on screen.
         unawaited(_loadUnits());
+        // Entitlements are per account, so both directions matter. Signing in
+        // is when the paid half can appear; signing out is when it must stop,
+        // and must stop for the *device* rather than only for this frame.
+        unawaited(_refreshEntitlement(signedOut: account == null));
       });
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_authSub?.cancel());
+    unawaited(_librarySub?.cancel());
+    _backup?.dispose();
+    _logFeed.dispose();
     super.dispose();
+  }
+
+  /// Back in the foreground is a checkpoint — and, with no connectivity
+  /// listener in the app, one of the two ways a returned connection is found.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _backup?.checkpoint();
+  }
+
+  /// Works out whether [account] may use the training on this phone, then lets
+  /// backup run for it — or, when the training is somebody else's, asks.
+  Future<void> _check(Account account) async {
+    final guard = widget.localData;
+    if (guard == null) return;
+    _checkedFor = account.id;
+    final ok = await guard.mayUse(account.id);
+    if (!mounted || _checkedFor != account.id) return;
+    setState(() => _mayUse = ok);
+    if (ok) {
+      unawaited(_backup?.runNow());
+      return;
+    }
+    // Whatever was pushed over the shell — the sign-in screen that has just
+    // closed itself, Settings, a sheet — would sit over the question holding
+    // the other account's training. Clear the way to it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    });
+  }
+
+  /// The first answer to "this phone has another account's training on it":
+  /// erase it, keep the account that just signed in, and start again from
+  /// what that account has backed up. Throws when the training could not be
+  /// erased, which the question reports.
+  Future<void> _eraseForAccount() async {
+    final guard = widget.localData;
+    final account = _account;
+    if (guard == null || account == null) return;
+    await guard.eraseFor(account.id);
+    if (!mounted) return;
+    setState(() => _mayUse = true);
+    // Everything held in memory was the erased training.
+    await Future.wait(<Future<void>>[
+      _refreshSession(),
+      _refreshLog(),
+      _refreshWorkouts(),
+    ]);
+    unawaited(_backup?.refresh());
+    // And the account's own training comes down.
+    unawaited(_backup?.runNow());
+  }
+
+  Future<void> _loadMovedDay() async {
+    final day = await _movedDays.read(widget.today ?? DateTime.now());
+    if (!mounted || day == _movedDay) return;
+    setState(() => _movedDay = day);
+  }
+
+  /// *Do it today*: [day]'s session becomes Track's for today, and Track is
+  /// where the lifter is taken, because that is where it starts.
+  Future<void> _doToday(String day) async {
+    await _movedDays.write(day, widget.today ?? DateTime.now());
+    if (!mounted) return;
+    setState(() => _movedDay = day);
+    _go(_trackTab);
+    unawaited(AppHaptics.selection());
+    _say('$day is on Track for today.');
+  }
+
+  /// Resolves what the paid surfaces should show.
+  ///
+  /// No gate means the caller stated the answer — the preview and the widget
+  /// tests — so this does nothing rather than overwriting them with a `false`
+  /// obtained from a server neither of them has.
+  Future<void> _refreshEntitlement({bool signedOut = false}) async {
+    final gate = widget.entitlements;
+    if (gate == null) return;
+    if (signedOut) await gate.forget();
+    final entitled = await gate.isEntitled();
+    if (!mounted || entitled == _entitled) return;
+    setState(() => _entitled = entitled);
+  }
+
+  /// Buying and restoring, or null when either half is missing.
+  PurchaseFlow? get _flow {
+    final store = widget.purchases;
+    final gate = widget.entitlements;
+    if (store == null || gate == null) return null;
+    return PurchaseFlow(purchases: store, gate: gate);
+  }
+
+  Future<void> _loadOffers() async {
+    final store = widget.purchases;
+    if (store == null) return;
+    final offers = await store.offers();
+    if (!mounted || offers.isEmpty) return;
+    setState(() => _offers = offers);
+  }
+
+  /// Opens the sales screen, the one door to paying (R6), and answers whether
+  /// this account is entitled once it closes — so the door it was opened from
+  /// can open onto what was just bought.
+  ///
+  /// Signed out is fine: the offer shows in full, and choosing a tier asks for
+  /// the account on the way to the store.
+  Future<bool> _startPurchase() async {
+    final flow = _flow;
+    if (flow == null) return _entitled;
+    final result = await SalesScreen.open(
+      context,
+      flow: flow,
+      offers: _offers,
+      auth: widget.auth,
+    );
+    if (result != null) await _report(result);
+    return _entitled;
+  }
+
+  /// Tells the store who is buying, so the webhook can say whose purchase it
+  /// was. Both directions: a sign-out detaches the customer, or the next
+  /// person to sign in on this phone buys on the previous account.
+  Future<void> _identifyCustomer(Account? account) async {
+    final store = widget.purchases;
+    if (store == null) return;
+    if (account == null) {
+      await store.forget();
+    } else {
+      await store.identify(account.id);
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    final flow = _flow;
+    if (flow == null) return;
+    await _report(await flow.restore(), restoring: true);
+  }
+
+  /// Says what happened, and makes the screen agree with it.
+  Future<void> _report(PurchaseResult result, {bool restoring = false}) async {
+    // Refreshed regardless of outcome: a restore that found nothing still
+    // settles the screen onto the truth, and the gate is cheap.
+    await _refreshEntitlement();
+    if (!mounted) return;
+
+    switch (result.status) {
+      case PurchaseStatus.entitled:
+        _say(restoring ? 'Your subscription is back.' : 'You are all set.');
+      case PurchaseStatus.pending:
+        // Charged, and the webhook has not landed. Neither "done" nor "failed"
+        // is true, and saying either would be the wrong kind of wrong.
+        _say(
+          'Payment went through. It can take a moment to appear — '
+          'reopen the app if it has not.',
+        );
+      case PurchaseStatus.nothingToRestore:
+        _say('There is no subscription on this account to restore.');
+      case PurchaseStatus.notSignedIn:
+        // Reached from Settings' Restore, which has no sheet to say it on.
+        _say(
+          'Sign in first. A subscription belongs to your account, so that is '
+          'where it is restored to.',
+        );
+      case PurchaseStatus.failed:
+        _say(result.message ?? 'That did not go through.');
+      case PurchaseStatus.cancelled:
+        // Deliberately silent. Backing out of a store sheet is not an event
+        // worth narrating, and a message would read as a failure.
+        break;
+    }
+  }
+
+  void _say(String message) {
+    if (!mounted) return;
+    AppToast.show(context, message);
   }
 
   Future<void> _openSignIn() async {
@@ -246,37 +643,86 @@ class _LiftShellState extends State<LiftShell> {
     if (auth == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<bool>(
-        builder: (_) =>
-            SignInScreen(auth: auth, pendingWorkouts: _pending?.workouts ?? 0),
+        builder: (_) => SignInScreen(
+          auth: auth,
+          pendingWorkouts: _backup?.status.value.pending.workouts ?? 0,
+        ),
       ),
     );
   }
 
-  Future<void> _refreshPending() async {
+  /// One backup run, as the scheduler calls it.
+  ///
+  /// Nothing about this blocks logging: it runs at checkpoints, it can fail,
+  /// and failing costs nothing — the local database still has everything and
+  /// the rows stay pending.
+  Future<SyncReport> _runBackup() async {
     final sync = widget.sync;
-    if (sync == null) return;
-    final pending = await sync.pending();
-    if (!mounted) return;
-    setState(() => _pending = pending);
+    if (sync == null) return const SyncReport.signedOut();
+    // Nothing moves for an account the phone's training may not belong to:
+    // not while that is being worked out, and not while it is being asked.
+    // Reported as signed out because, for backup, it is — and the question
+    // is on screen in place of anything that would show it.
+    //
+    // Asked of the service, not of [_account]: at launch Supabase can restore
+    // a session a moment after this shell has read "nobody", and a checkpoint
+    // in that moment would otherwise back up into an account nobody checked.
+    final signedIn = widget.auth?.current;
+    if (widget.localData != null &&
+        signedIn != null &&
+        !(_mayUse == true && _checkedFor == signedIn.id)) {
+      return const SyncReport.signedOut();
+    }
+    final report = await sync.run();
+
+    // Photos second, and only for an account that has them. The training log
+    // is the half that cannot be re-derived from anywhere, so it goes first
+    // and its result is the one reported — a photo upload that stalls must not
+    // make a successful log backup look like a failure.
+    final photos = widget.photoBackup;
+    if (photos != null && _entitled && !report.isFailure) {
+      await photos.run();
+    }
+
+    // What came down from another phone is written straight to the database,
+    // past the library's own signal, so both lists are read again.
+    if (report.pulled > 0 && mounted) {
+      await _refreshLog();
+      await _refreshWorkouts();
+    }
+    return report;
   }
 
-  /// Runs a sync and reports the outcome.
-  ///
-  /// Nothing about this blocks logging. It is started from Settings, it can
-  /// fail, and failing costs nothing — the local database still has everything
-  /// and the rows stay pending.
+  /// *Sync now*, pressed. The one failure that buzzes: somebody asked and is
+  /// looking. A background failure never does.
   Future<void> _syncNow() async {
-    final sync = widget.sync;
-    if (sync == null || _syncing) return;
-    setState(() => _syncing = true);
-    final report = await sync.run();
-    if (!mounted) return;
-    setState(() {
-      _syncing = false;
-      _lastReport = report;
-    });
-    await _refreshPending();
-    await _refreshLog();
+    final report = await _backup?.runNow();
+    if (report != null && report.isFailure) unawaited(AppHaptics.problem());
+  }
+
+  /// What a backup message's action does, wherever the message is.
+  void _onBackupAction(BackupAction action) {
+    switch (action) {
+      case BackupAction.retry:
+        unawaited(_syncNow());
+      case BackupAction.signIn:
+        unawaited(_openSignIn());
+      case BackupAction.review:
+        unawaited(_openSettings());
+      case BackupAction.none:
+        break;
+    }
+  }
+
+  /// For the session and summary screens, which sit on routes above this one.
+  BackupHooks? get _backupHooks {
+    final backup = _backup;
+    if (backup == null) return null;
+    return BackupHooks(
+      status: backup.status,
+      onRetry: () => unawaited(_syncNow()),
+      onSignIn: widget.auth == null ? null : () => unawaited(_openSignIn()),
+    );
   }
 
   Future<void> _loadUnits() async {
@@ -287,12 +733,21 @@ class _LiftShellState extends State<LiftShell> {
     setState(() => _units = loaded);
   }
 
+  Future<void> _refreshWorkouts() async {
+    final library = widget.library;
+    if (library == null) return;
+    final all = await library.all();
+    if (!mounted) return;
+    setState(() => _workouts = all);
+  }
+
   Future<void> _refreshLog() async {
     final source = widget.history;
     if (source == null) return;
     final loaded = await source.all();
     if (!mounted) return;
     setState(() => _log = loaded);
+    _logFeed.value = loaded;
   }
 
   Future<void> _refreshSession() async {
@@ -307,9 +762,37 @@ class _LiftShellState extends State<LiftShell> {
     setState(() => _openSessionDetail = session);
   }
 
+  Future<void> _loadCoachPreference() async {
+    final store = widget.coachPreference;
+    if (store == null) return;
+    final enabled = await store.load();
+    if (!mounted) return;
+    setState(() => _useCoach = enabled);
+  }
+
+  Future<void> _setUseCoach(bool enabled) async {
+    // Applied immediately, not after the write — the same call the units
+    // control makes, and more clearly right here: somebody turning the
+    // coach off wants the mark gone now, not once a plugin has answered.
+    setState(() => _useCoach = enabled);
+    await widget.coachPreference?.save(enabled: enabled);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final coach = widget.coach;
+    // Off means absent, not inert. main.dart already makes this call when
+    // there is no server — "the mark stays absent rather than inert" — and
+    // an inert mark is a promise the app then refuses to keep.
+    final coach = _useCoach ? widget.coach : null;
+    final account = _account;
+    if (account != null && _mayUse == false) {
+      return AnotherAccountScreen(
+        email: account.email,
+        whatIsHere: 'The sessions, workouts and photos',
+        onErase: _eraseForAccount,
+        onSignOut: _signOut,
+      );
+    }
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -326,25 +809,54 @@ class _LiftShellState extends State<LiftShell> {
             child: IndexedStack(
               index: _index,
               children: <Widget>[
-                TrackSurface(
-                  onOpenPlan: () => _go(_planTab),
-                  openSession: _openSessionDetail,
-                  log: _log,
-                  onStartSession: widget.recorder == null ? null : _openSession,
-                  plan: _plan,
-                  unit: _units.mass,
-                  onStartPlanned: widget.recorder == null
-                      ? null
-                      : _openPlannedSession,
+                _withBackup(
+                  (backup) => TrackSurface(
+                    backup: backup,
+                    onBackupAction: _onBackupAction,
+                    // Track's action pill shares the mark's row, so it has
+                    // to know whether the mark is there.
+                    coachBeside: coach != null,
+                    openSession: _openSessionDetail,
+                    log: _log,
+                    onStartSession: widget.recorder == null
+                        ? null
+                        : _openSession,
+                    plan: _plan,
+                    movedDay: _movedDay,
+                    today: widget.today,
+                    unit: _units.mass,
+                    onStartPlanned: widget.recorder == null
+                        ? null
+                        : _openPlannedSession,
+                    workouts: _workouts,
+                    onStartWorkout: widget.recorder == null
+                        ? null
+                        : _openWorkout,
+                    onDiscardAndStart: widget.recorder == null
+                        ? null
+                        : _discardAndStart,
+                    onOpenLibrary: widget.library == null ? null : _openLibrary,
+                    onOpenWorkout: widget.library == null
+                        ? null
+                        : (w) => _openLibrary(at: w),
+                    onAddStarter: widget.library == null ? null : _addStarter,
+                  ),
                 ),
                 PlanSurface(
-                  isEntitled: widget.isEntitled,
+                  isEntitled: _entitled,
+                  onSubscribe: _flow == null ? null : _startPurchase,
+                  onRestore: _flow == null ? null : _restorePurchases,
                   plan: _plan,
+                  today: widget.today,
                   unit: _units.mass,
                   onBuildPlan: _canPlan ? _buildPlan : null,
-                  onOpenSession: widget.recorder == null
-                      ? null
-                      : _openPlannedSession,
+                  // So the note under a disabled button names the real
+                  // reason. Only when a planner exists: with no server
+                  // the connection line is the true one.
+                  coachIsOff: !_useCoach && widget.planner != null,
+                  onGoToTrack: () => _go(_trackTab),
+                  onDoToday: _doToday,
+                  movedDay: _movedDay,
                   // Adapting a WEEK no longer has a subject: a standing plan
                   // has no weeks. What the feature was for is real and moves to
                   // the post-session review, where the coach reads what
@@ -353,9 +865,17 @@ class _LiftShellState extends State<LiftShell> {
                 ),
                 ProfileSurface(
                   log: _log,
+                  onOpenSession: _openPastSession,
+                  onOpenHistory: _openHistory,
+                  onOpenMovement: _openMovement,
+                  now: widget.today,
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,
+                  // Shown whether or not the account is entitled. A lapsed
+                  // lifter has to be able to reach photos they already took, and
+                  // somebody who has never had it should meet the offer rather than
+                  // a tab that is not there.
                   onOpenPhotos: widget.photos == null ? null : _openPhotos,
                 ),
               ],
@@ -405,12 +925,14 @@ class _LiftShellState extends State<LiftShell> {
           if (coach != null)
             Positioned(
               right: AppSpacing.lg,
+              // Above the nav pill (main's floating bar) rather than level with
+              // it: the pill spans the margins, so the mark rides one step over.
               bottom:
                   AppSpacing.lg +
                   MediaQuery.paddingOf(context).bottom +
                   kNavPillHeight +
                   AppSpacing.md,
-              child: CoachMark(
+              child: CoachButton(
                 hasUnread: widget.hasCoachNote,
                 onTap: _openCoach,
               ),
@@ -437,15 +959,25 @@ class _LiftShellState extends State<LiftShell> {
           initial: _units,
           store: widget.units,
           onChanged: (prefs) => setState(() => _units = prefs),
-          pending: _pending,
+          backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
-          isSyncing: _syncing,
-          lastReport: _lastReport,
-          onSyncNow: widget.sync == null ? null : _syncNow,
+          // On the account card. Only in a build that can sell: with no
+          // store there is no plan to have or not have.
+          planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
+          onSyncNow: _backup == null ? null : _syncNow,
           onSignIn: widget.auth == null ? null : _openSignIn,
           onSignOut: _account == null ? null : _signOut,
           coachMemory: widget.coachMemory,
+          auth: widget.auth,
+          deleter: widget.deleter,
+          onAccountGone: widget.localData?.release,
+          onRestorePurchases: _flow == null ? null : _restorePurchases,
+          restAlerts: widget.restAlerts,
+          useCoach: widget.coachPreference == null ? null : _useCoach,
+          onUseCoachChanged: widget.coachPreference == null
+              ? null
+              : _setUseCoach,
         ),
       ),
     );
@@ -460,13 +992,22 @@ class _LiftShellState extends State<LiftShell> {
   /// stops a round trip that cannot succeed.
   Future<void> _openCoach() async {
     final coach = widget.coach;
-    if (coach == null) return;
-    if (_account == null) {
-      await _openSignIn();
-      return;
-    }
-    if (!widget.isEntitled) {
-      _go(_planTab);
+    if (coach == null || !_useCoach) return;
+    // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
+    // included, the mark opens the sales screen, wherever it is tapped. It
+    // used to send the signed-out to sign in and the rest to the Plan tab —
+    // behind whatever screen they were on, from the session and the summary.
+    if (_account == null || !_entitled) {
+      if (_flow != null) {
+        await _startPurchase();
+        return;
+      }
+      // A build that cannot sell: the old routes, which at least explain.
+      if (_account == null) {
+        await _openSignIn();
+      } else {
+        _go(_planTab);
+      }
       return;
     }
     // A sheet over the surface you were on, not a fourth destination pushed on
@@ -478,7 +1019,6 @@ class _LiftShellState extends State<LiftShell> {
     // Local data is deliberately left alone. Signing out is "stop syncing",
     // not "erase my training" - and the rows are already backed up.
     await widget.auth?.signOut();
-    await _refreshPending();
   }
 
   Future<void> _openPhotos() async {
@@ -486,16 +1026,28 @@ class _LiftShellState extends State<LiftShell> {
     if (library == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            PhotosSurface(library: library, source: widget.photoSource),
+        builder: (_) => PhotosSurface(
+          library: library,
+          source: widget.photoSource,
+          isEntitled: _entitled,
+          onSubscribe: _flow == null ? null : _startPurchase,
+          onRestore: _flow == null ? null : _restorePurchases,
+        ),
       ),
     );
   }
 
   /// Whether a plan can be built at all: it takes a coach and somewhere to put
   /// the result, and both are optional in a preview or an offline build.
+  /// Building a plan is an AI request like any other, so the switch reaches
+  /// it too. Without this the coach could be off and Plan would still send
+  /// the intake answers — including the injury notes — to OpenRouter, which
+  /// is exactly what the switch promises it does not do.
   bool get _canPlan =>
-      widget.planner != null && widget.plans != null && !_buildingPlan;
+      _useCoach &&
+      widget.planner != null &&
+      widget.plans != null &&
+      !_buildingPlan;
 
   Future<void> _refreshPlan() async {
     final plans = widget.plans;
@@ -522,9 +1074,12 @@ class _LiftShellState extends State<LiftShell> {
       MaterialPageRoute<PlanIntake>(
         builder: (_) => PlanIntakeScreen(
           planner: planner,
-          opener:
-              'What are you training for, and which days can you get to the '
-              'gym?',
+          // The flow's own first question, rather than a second copy of it
+          // written here. The hardcoded opener this replaces asked two things
+          // at once and led with the goal — which is the field with the least
+          // leverage over the block, and the flow orders by leverage on
+          // purpose. See planning/domain/intake_flow.dart.
+          opener: IntakeField.days.question,
         ),
       ),
     );
@@ -573,9 +1128,7 @@ class _LiftShellState extends State<LiftShell> {
       });
     } on PlanException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.failure.message)));
+      AppToast.show(context, e.failure.message);
     } finally {
       if (mounted) setState(() => _buildingPlan = false);
     }
@@ -600,13 +1153,22 @@ class _LiftShellState extends State<LiftShell> {
     final slots = plan.slots[day] ?? const <MovementSlot>[];
     if (slots.isEmpty) return;
 
-    await TrackController(recorder).openPlanned(
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
+    ).openPlanned(
       context,
       day,
       SessionPrescription.forDay(slots),
       massUnit: _units.mass,
       planner: widget.planner,
       log: _log,
+      // The summary the session ends on offers the conversation; the shell
+      // still owns what opening the coach means, including both gates.
+      onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
         // Recording what the session did to each slot -- the top set and
         // whether it moved -- is the post-session review, and is the next
@@ -614,6 +1176,12 @@ class _LiftShellState extends State<LiftShell> {
         // which is a gap rather than a decision.
         unawaited(_refreshSession());
         unawaited(_refreshLog());
+        _afterSession();
+        // A day brought forward lasts until it is done (O4).
+        if (day == _movedDay) {
+          unawaited(_movedDays.clear());
+          if (mounted) setState(() => _movedDay = null);
+        }
       },
     );
     await _refreshSession();
@@ -623,19 +1191,291 @@ class _LiftShellState extends State<LiftShell> {
   Future<void> _openSession() async {
     final recorder = widget.recorder;
     if (recorder == null) return;
-    await TrackController(recorder).openSession(
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
+    ).openSession(
       context,
       massUnit: _units.mass,
       planner: widget.planner,
       log: _log,
+      onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
         unawaited(_refreshSession());
         unawaited(_refreshLog());
+        _afterSession();
       },
     );
     // Also on return, not only via onDone: backing out of the screen with the
-    // session still open must leave Track offering to resume it.
+    // session still open must leave Track offering to resume it. **The session
+    // only** — backing out changes no finished session, and the whole log was
+    // reloaded twice per visit, once here and once in onDone.
     await _refreshSession();
+  }
+
+  /// Starts a session from a saved workout, every set laid out.
+  Future<void> _openWorkout(SavedWorkout workout) async {
+    final recorder = widget.recorder;
+    if (recorder == null) return;
+    await TrackController(
+      recorder,
+      library: widget.library,
+      backup: _backupHooks,
+      restAlerts: widget.restAlerts,
+      restLengths: widget.restLengths,
+    ).openWorkout(
+      context,
+      workout,
+      massUnit: _units.mass,
+      planner: widget.planner,
+      log: _log,
+      onOpenCoach: widget.coach == null ? null : _openCoach,
+      onDone: () {
+        unawaited(_refreshSession());
+        unawaited(_refreshLog());
+        _afterSession();
+      },
+    );
+    // Not the workouts: this returns when Finish swaps the session for the
+    // summary, before the summary teaches the workout. The row follows the
+    // library's own `changes` instead.
+    await _refreshSession();
+  }
+
+  /// The second answer to "Push is still open": throw it away and start the
+  /// workout asked for. Only ever reached through that question — nothing
+  /// discards a session without somebody saying so.
+  Future<void> _discardAndStart(SavedWorkout workout) async {
+    final recorder = widget.recorder;
+    if (recorder == null) return;
+    await recorder.discard();
+    await _refreshSession();
+    if (!mounted) return;
+    await _openWorkout(workout);
+  }
+
+  /// One of the three starting points (R11), added from Track's empty row,
+  /// with an Undo that takes back exactly what was added.
+  Future<void> _addStarter(WorkoutSplit split) async {
+    final library = widget.library;
+    if (library == null) return;
+    final added = await addStarter(library, split);
+    await _refreshWorkouts();
+    if (!mounted) return;
+    // Not awaited: the message never waits on the motor.
+    unawaited(AppHaptics.selection());
+    AppToast.show(
+      context,
+      added.length == 1
+          ? '${added.single.name} added.'
+          : '${split.name} added: ${added.length} workouts.',
+      actionLabel: 'Undo',
+      onAction: () async {
+        for (final w in added) {
+          await library.remove(w.id);
+        }
+        await _refreshWorkouts();
+      },
+    );
+  }
+
+  /// The whole library, from Track's "See all" — or opened at one workout,
+  /// from its card.
+  Future<void> _openLibrary({SavedWorkout? at}) async {
+    final library = widget.library;
+    if (library == null) return;
+    final outcome = await WorkoutLibraryScreen.open(
+      context,
+      library: library,
+      lookup: ExerciseLookup(),
+      log: _log,
+      backup: _backup?.status,
+      openSessionName: _openSessionDetail?.name,
+      openAt: at?.id,
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case StartWorkout(:final workout, discardingOpen: true):
+        await _discardAndStart(workout);
+      case StartWorkout(:final workout):
+        await _openWorkout(workout);
+      case ResumeOpen():
+        await _openSession();
+      case null:
+        break;
+    }
+  }
+
+  /// Every session, grouped by week — following the log as it changes.
+  Future<void> _openHistory() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ValueListenableBuilder<List<Session>>(
+          valueListenable: _logFeed,
+          builder: (context, log, _) => HistoryScreen(
+            log: log,
+            massUnit: _units.mass,
+            now: widget.today,
+            backup: _backup?.status,
+            onOpen: _openPastSession,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One movement over the whole log (R9), following it as it changes: a
+  /// session opened from its list and deleted there leaves the list at once.
+  Future<void> _openMovement(String name) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ValueListenableBuilder<List<Session>>(
+          valueListenable: _logFeed,
+          builder: (context, log, _) => ExerciseStatsScreen(
+            name: name,
+            log: log,
+            catalogue: _catalogue.find(name),
+            massUnit: _units.mass,
+            now: widget.today,
+            onOpenSession: _openPastSession,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static final ExerciseLookup _catalogue = ExerciseLookup();
+
+  /// A session that happened, on the summary's layout, with Edit and Delete.
+  Future<void> _openPastSession(Session session) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionSummaryScreen(
+          session: session,
+          massUnit: _units.mass,
+          // What came before it, so its bests are the bests it set then.
+          log: <Session>[
+            for (final s in _log)
+              if (s.startedAt.isBefore(session.startedAt)) s,
+          ],
+          backup: _backupHooks,
+          onOpenMovement: _openMovement,
+          onEdit: widget.editorFor == null
+              ? null
+              : () => unawaited(_editPastSession(session)),
+          onDelete: widget.history == null
+              ? null
+              : () => unawaited(_deletePastSession(session)),
+        ),
+      ),
+    );
+  }
+
+  /// Fixes a past session with the session screen itself — the same rows,
+  /// limits and input rules — then shows its page again, as it now is.
+  Future<void> _editPastSession(Session session) async {
+    final make = widget.editorFor;
+    if (make == null) return;
+    final editor = make(session.id);
+    final current = await editor.current();
+    if (current == null || !mounted) return;
+    // In the page's place, so leaving the editor does not land on the page
+    // as it was before the edit.
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          recorder: editor,
+          session: current,
+          editing: true,
+          massUnit: _units.mass,
+          planner: widget.planner,
+          log: _log,
+          onFinished: () {
+            unawaited(_refreshLog());
+            _afterSession();
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
     await _refreshLog();
+    if (!mounted) return;
+    for (final s in _log) {
+      if (s.id == session.id) {
+        await _openPastSession(s);
+        return;
+      }
+    }
+  }
+
+  /// Deletes a past session, softly, with Undo. It leaves the log and every
+  /// total at once, and reaches the other devices as a tombstone.
+  Future<void> _deletePastSession(Session session) async {
+    final history = widget.history;
+    if (history == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Delete ${session.name}?'),
+        content: const Text(
+          'It comes out of your log and every total. You can undo it for a '
+          'few seconds.',
+        ),
+        actions: <Widget>[
+          AppTextButton(
+            label: 'Keep it',
+            onPressed: () => Navigator.of(dialog).pop(false),
+          ),
+          AppTextButton(
+            label: 'Delete',
+            onPressed: () => Navigator.of(dialog).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await history.remove(session.id);
+    if (!mounted) return;
+    // Off the session's page, which no longer has a session.
+    Navigator.of(context).pop();
+    await _refreshLog();
+    _afterSession();
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      '${session.name} deleted.',
+      actionLabel: 'Undo',
+      onAction: () async {
+        await history.restore(session.id);
+        await _refreshLog();
+        _afterSession();
+      },
+    );
+  }
+
+  /// A session finished or was thrown away. Finish is a checkpoint — backup
+  /// runs once the summary is up, never while the session is being logged.
+  void _afterSession() {
+    final backup = _backup;
+    if (backup == null) return;
+    // Read at once, so the summary starts from "saved on this phone" with
+    // this session counted as waiting rather than from a stale empty queue.
+    unawaited(backup.refresh());
+    backup.checkpoint();
+  }
+
+  /// Builds [child] with the live backup status, or with none.
+  Widget _withBackup(Widget Function(BackupStatus? status) child) {
+    final backup = _backup;
+    if (backup == null) return child(null);
+    return ValueListenableBuilder<BackupStatus>(
+      valueListenable: backup.status,
+      builder: (context, status, _) => child(status),
+    );
   }
 }

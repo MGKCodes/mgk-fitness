@@ -34,18 +34,30 @@ void main() {
       expect(find.text('Train with a coach'), findsOneWidget);
       expect(find.text('A block, not a list'), findsOneWidget);
       expect(find.text('Numbers from your numbers'), findsOneWidget);
-      expect(find.text('It answers back'), findsOneWidget);
     });
 
-    testWidgets('states every tier, not only the one being sold', (
+    testWidgets('promises nothing the app does not do', (
       WidgetTester tester,
     ) async {
+      // Nothing can move a planned session (a plan's days are derived, not
+      // stored), and the coach reads Lift's log and nothing of Run's. The
+      // offer said both.
       await pumpTall(tester, const PlanSurface());
 
-      expect(find.text('Free'), findsOneWidget);
-      expect(find.text('£1'), findsOneWidget);
-      expect(find.text('£3'), findsOneWidget);
-      expect(find.text('Start coaching — £1/mo'), findsOneWidget);
+      expect(find.textContaining('move Thursday'), findsNothing);
+      expect(find.textContaining('running'), findsNothing);
+    });
+
+    testWidgets('names no tier and no price: the sales screen does', (
+      WidgetTester tester,
+    ) async {
+      // One place sells (R6). A second price table here was a second chance
+      // to disagree with the store.
+      await pumpTall(tester, const PlanSurface());
+
+      expect(find.textContaining('£'), findsNothing);
+      expect(find.text('Premium Coach'), findsNothing);
+      expect(find.text('Start coaching'), findsOneWidget);
     });
 
     testWidgets('promises tracking stays free', (WidgetTester tester) async {
@@ -54,8 +66,7 @@ void main() {
       // the free tier is a row on the price block rather than a footnote.
       await pumpTall(tester, const PlanSurface());
 
-      expect(find.text('Everything you are using now'), findsOneWidget);
-      expect(find.textContaining('No limits and no ads'), findsOneWidget);
+      expect(find.textContaining('Tracking stays free'), findsOneWidget);
     });
 
     testWidgets('carries its content even with no billing wired up', (
@@ -90,16 +101,18 @@ void main() {
       expect(find.text('£1'), findsNothing);
     });
 
-    testWidgets('shows what asking the coach looks like', (
+    testWidgets('says what happens next, in three steps (16)', (
       WidgetTester tester,
     ) async {
       // "Build a plan" is otherwise an instruction with no picture attached.
-      await tester.pumpWidget(
-        wrap(PlanSurface(isEntitled: true, onBuildPlan: () {})),
-      );
-      await tester.pumpAndSettle();
+      await pumpTall(tester, PlanSurface(isEntitled: true, onBuildPlan: () {}));
 
-      expect(find.text('What are you training for?'), findsOneWidget);
+      expect(
+        find.text('Tell the coach your goal and your days'),
+        findsOneWidget,
+      );
+      expect(find.text('It builds the block'), findsOneWidget);
+      expect(find.text("Today's session appears on Track"), findsOneWidget);
     });
 
     testWidgets('says why the button is dead when the coach is unreachable', (

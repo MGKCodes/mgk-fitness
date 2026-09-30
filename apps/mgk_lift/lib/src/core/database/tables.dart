@@ -37,10 +37,49 @@ class Workouts extends Table {
   /// A saved routine rather than a session that happened. Templates carry no
   /// date remotely (`date = 0`), which is why they must never reach the
   /// activity feed.
+  ///
+  /// **A template is outside the started/ended axis entirely.** It keeps a
+  /// `startedAt` only because the column is not nullable — the value is when it
+  /// was saved and means nothing else — and its `endedAt` stays null forever,
+  /// which is the same shape as a session in progress. Anything asking "is
+  /// there a session open" therefore has to exclude templates as well as
+  /// finished rows; `DriftSessionRecorder.current()` does, and it is the one
+  /// query where getting this wrong would hand a lifter their own template as
+  /// a workout to resume.
   BoolColumn get isTemplate => boolean().withDefault(const Constant(false))();
 
-  /// The template this session was started from, if any.
+  /// The saved workout this session was started from, if any. Set on a
+  /// **session** row; null on a template.
   TextColumn get templateId => text().nullable()();
+
+  /// The app-provided premade this template was added from, if any. Set on a
+  /// **template** row; null on a session.
+  ///
+  /// **A second column rather than one field doing both jobs.** The two answer
+  /// different questions about different rows — "which of my saved workouts did
+  /// this session come from" and "which of the fifteen did this saved workout
+  /// come from" — and `isTemplate` would have been the only thing separating
+  /// them, so every reader would have had to check a flag before it could know
+  /// what the string it was holding meant.
+  ///
+  /// It costs nothing to have both: `lift.workouts.premade_id` has existed
+  /// remotely since the Liftio baseline, so this needs no Supabase migration
+  /// and never will. The local migration is one `addColumn` now; after the
+  /// write path ships it would be the same migration plus a backfill that has
+  /// to guess which of the two meanings each existing value carried.
+  TextColumn get premadeId => text().nullable()();
+
+  /// The saved workout a session started from, **as it stood at the start** —
+  /// encoded `TemplateMovement`s. Set on a session row, never on a template.
+  ///
+  /// It is what Finish compares the session against so the workout can learn
+  /// from it (`MovementChange`), and it has to be the workout *as it was*:
+  /// compared against the current one instead, an edit made on another device
+  /// mid-session would read as something this session did.
+  ///
+  /// **Local only.** The sync layer names the columns it uploads and this is
+  /// not one of them; it means nothing once the session has ended.
+  TextColumn get templateSnapshot => text().nullable()();
 
   /// Soft delete. Kept rather than hard-deleted so a delete syncs to other
   /// devices instead of the row simply reappearing from the backup.
@@ -57,6 +96,23 @@ class Workouts extends Table {
   /// way for a write to land without also marking the row for upload, because
   /// the same `updatedAt` bump does both.
   DateTimeColumn get syncedAt => dateTime().nullable()();
+
+  /// Why the server refused this row the last time it was sent — the raw
+  /// `code: message`, for the log; the screen maps the code to a sentence. Null
+  /// when the last attempt succeeded or none has been made.
+  ///
+  /// **A refused row waits for an edit, not for a retry.** Sending the same
+  /// row again gets the same answer, and in a loop it would sit at the front of
+  /// the queue forever; a row the lifter changes since
+  /// ([lastSyncAttemptAt] older than [updatedAt]) is tried again. Local only.
+  TextColumn get syncError => text().nullable()();
+
+  /// Uploads attempted since the last success. Local only.
+  IntColumn get syncAttempts => integer().withDefault(const Constant(0))();
+
+  /// When an upload of this row was last attempted, succeeded or not. Local
+  /// only.
+  DateTimeColumn get lastSyncAttemptAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -140,6 +196,14 @@ class ProgressPhotos extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// When this row last reached the bucket. Null means never.
+  ///
+  /// Same rule as `workouts.syncedAt`: dirty is `syncedAt is null or updatedAt
+  /// is later`, so there is no outbox to fall out of step with the rows it
+  /// describes. A tombstone is dirty too — that is what makes a delete
+  /// propagate rather than the photo coming back down on the next pull.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 
@@ -179,14 +243,22 @@ class ExerciseSets extends Table {
   /// when they tick it off.
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
 
-  /// `working` | `warmup`.
+  /// `working` | `warmup` | `dropset` | `failure`.
   ///
   /// Warm-ups are excluded from volume and from every personal best. Counting
   /// them inflates the one number people actually care about — three empty-bar
   /// sets before a heavy single would read as a bigger session than the single.
   /// Defaults to `working`, so a set is only ever discounted deliberately.
-  TextColumn get setType =>
-      text().withDefault(const Constant('working'))();
+  ///
+  /// **Drop sets and failure sets count**, which is what the shipped app did.
+  /// They are training that happened at a real load; the type records how it
+  /// was performed, not whether it was worth anything. Only the warm-up is
+  /// discounted, because only the warm-up was not the work.
+  ///
+  /// A plain text column rather than an enum, so a value written by a client
+  /// this one has never heard of round-trips instead of failing. [SetType]
+  /// reads anything unrecognised as `working`.
+  TextColumn get setType => text().withDefault(const Constant('working'))();
 
   /// For cardio movements only.
   IntColumn get durationS => integer().nullable()();

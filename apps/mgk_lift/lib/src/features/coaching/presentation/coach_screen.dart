@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../legal/domain/legal_copy.dart';
+import '../../legal/presentation/legal_document_screen.dart';
 import '../domain/coach.dart';
+import 'coach_history_sheet.dart';
 
 /// The conversation.
 ///
@@ -58,7 +61,7 @@ class CoachScreen extends StatefulWidget {
   State<CoachScreen> createState() => _CoachScreenState();
 }
 
-class _CoachScreenState extends State<CoachScreen> {
+class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
   final List<CoachTurn> _turns = <CoachTurn>[];
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
@@ -86,9 +89,16 @@ class _CoachScreenState extends State<CoachScreen> {
   /// talking to it for a month.
   bool _resuming = false;
 
+  /// The session every turn on screen belongs to.
+  ///
+  /// Null until something is said, which is what makes a boundary free: a
+  /// screen opened and closed without a word writes no conversation at all.
+  String? _conversationId;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final transcript = widget.transcript;
     if (transcript != null) {
       _resuming = true;
@@ -96,6 +106,22 @@ class _CoachScreenState extends State<CoachScreen> {
       return;
     }
     _addOpener();
+  }
+
+  /// The session boundary, applied on the way back in.
+  ///
+  /// **The gap decides, not the fact of having been away.** Ten seconds in the
+  /// notification centre is not a new conversation; a session in the gym is.
+  /// Nothing is torn down here — the turns stay on screen, because a
+  /// transcript vanishing while somebody looks at it is a worse surprise than
+  /// the coach starting fresh. What changes is where the next thing said goes.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final last = _turns.isEmpty ? null : _turns.last.at;
+    if (last == null) return;
+    if (DateTime.now().difference(last) <= coachSessionWindow) return;
+    _conversationId = null;
   }
 
   /// Draws the stored conversation, then scrolls to the end of it.
@@ -107,8 +133,16 @@ class _CoachScreenState extends State<CoachScreen> {
   /// history is unavailable would break the working half to report the broken
   /// one.
   Future<void> _resume(CoachTranscript transcript) async {
-    final stored = await transcript.read();
+    // Which conversation, before what is in it. A conversation whose last turn
+    // is outside the window is not restored at all — that is the whole of the
+    // session boundary on a cold start, and it is why this asks "what is open"
+    // rather than "what was last said in".
+    final open = await transcript.openConversationId();
+    final stored = open == null
+        ? const <CoachTurn>[]
+        : await transcript.read(open);
     if (!mounted) return;
+    _conversationId = open;
     setState(() {
       // **Inserted at the front, not appended.** The composer stays live while
       // this runs, so a lifter can ask something before the history arrives —
@@ -138,6 +172,7 @@ class _CoachScreenState extends State<CoachScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -150,9 +185,19 @@ class _CoachScreenState extends State<CoachScreen> {
   /// A chip passes the coach's exact wording rather than a paraphrase of it —
   /// the transcript is what the coach replays, so a chip that sends something
   /// other than what it displayed would put a sentence nobody saw into it.
-  Future<void> _sendText(String raw) async {
+  ///
+  /// [startsSession] is true for a question the lifter did not type. A
+  /// suggestion chip is a subject the *screen* raised, and it arrives with its
+  /// own topic: continuing into it is how a half-finished exchange about a sore
+  /// shoulder becomes the context for "how has my training been going". The
+  /// wheel under a question is not one of these — it is the answer to what was
+  /// just asked, and belongs to the conversation asking it.
+  Future<void> _sendText(String raw, {bool startsSession = false}) async {
     final text = raw.trim();
     if (text.isEmpty || _waiting) return;
+
+    if (startsSession) _conversationId = null;
+    final conversation = _conversationId ??= newCoachConversationId();
 
     setState(() {
       _turns.add(
@@ -170,7 +215,7 @@ class _CoachScreenState extends State<CoachScreen> {
     _toBottom();
 
     try {
-      final reply = await widget.coach.ask(text);
+      final reply = await widget.coach.ask(text, conversationId: conversation);
       if (!mounted) return;
       setState(() {
         _turns.add(
@@ -251,7 +296,10 @@ class _CoachScreenState extends State<CoachScreen> {
                 if (turn == _turns.last &&
                     !_waiting &&
                     turn.suggestions.isNotEmpty)
-                  OptionStack(options: turn.suggestions, onSelected: _sendText),
+                  OptionStack(
+                    options: turn.suggestions,
+                    onSelected: (String o) => _sendText(o, startsSession: true),
+                  ),
                 if (turn == _turns.last && !_waiting && turn.ask != null)
                   _AskField(
                     ask: turn.ask!,
@@ -320,6 +368,17 @@ class _CoachScreenState extends State<CoachScreen> {
                     right: 0,
                     child: _TopBar(
                       progress: _progress,
+                      // Only where there is somewhere to look. With no
+                      // transcript wired there are no past conversations, and
+                      // a control that opens an empty list is a promise the
+                      // app cannot keep.
+                      onHistory: widget.transcript == null
+                          ? null
+                          : () => PastConversationsSheet.show(
+                              context,
+                              transcript: widget.transcript!,
+                              liveConversationId: _conversationId,
+                            ),
                       onClose: () => Navigator.of(context).maybePop(),
                     ),
                   ),
@@ -557,9 +616,18 @@ class _Failure extends StatelessWidget {
 /// hard bottom edge is still an edge; letting it dissolve over the last few
 /// pixels is what stops the boundary being a line.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.progress, required this.onClose});
+  const _TopBar({
+    required this.progress,
+    required this.onHistory,
+    required this.onClose,
+  });
 
   final (int, int)? progress;
+
+  /// Opens the previous conversations, or null when there is no store to read
+  /// them from.
+  final VoidCallback? onHistory;
+
   final VoidCallback onClose;
 
   /// Mirrored into the list's top padding, so the first turn opens below the
@@ -601,10 +669,43 @@ class _TopBar extends StatelessWidget {
                     StepProgress(step: progress!.$1, total: progress!.$2),
                     const SizedBox(width: AppSpacing.md),
                   ],
-                  IconButton(
+                  // Hidden mid-questionnaire: the intake is a sequence with an
+                  // end, and offering a way into old conversations part-way
+                  // through it is an invitation to abandon one.
+                  if (onHistory != null && progress == null)
+                    AppIconButton(
+                      onPressed: onHistory,
+                      icon: Icons.history,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                      tooltip: 'Previous conversations',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  // The disclosure, at the point of use (Guideline 5.1.2(i)).
+                  // Settings carries it too, but this is the screen that does
+                  // the sending, and a disclosure somebody has to go looking
+                  // for in another tab is one they will not read.
+                  //
+                  // Shown mid-intake as well, unlike history: the questionnaire
+                  // is where the injury notes are typed, so it is the last
+                  // moment the answer is worth having.
+                  AppIconButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            const LegalDocumentScreen(document: aiDisclosure),
+                      ),
+                    ),
+                    icon: Icons.info_outline,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                    tooltip: aiDisclosure.title,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  AppIconButton(
                     onPressed: onClose,
-                    icon: const Icon(Icons.close),
-                    iconSize: 20,
+                    icon: Icons.close,
+                    size: 20,
                     color: AppColors.textSecondary,
                     tooltip: 'Close',
                     visualDensity: VisualDensity.compact,

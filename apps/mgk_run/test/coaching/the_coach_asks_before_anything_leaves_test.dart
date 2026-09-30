@@ -14,7 +14,6 @@ import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/ai_consent_sheet.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_gate_sheet.dart';
 import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.dart';

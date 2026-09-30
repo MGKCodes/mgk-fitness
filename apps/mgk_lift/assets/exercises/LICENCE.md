@@ -33,4 +33,4 @@ The full account, including the four files whose origin could not be traced, is
 in [`NOTICE.md`](../../../../NOTICE.md) at the repository root.
 
 The reasoning is
-[ADR-0002](../../docs/decisions/0002-exercise-illustrations-are-cc-by-sa.md).
+[ADR-0003](../../docs/decisions/0003-exercise-illustrations-are-cc-by-sa.md).

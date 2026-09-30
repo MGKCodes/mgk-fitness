@@ -27,28 +27,89 @@ void main() {
     test('a declined question counts as answered', () {
       // Otherwise the flow asks for ever, and asking twice is not accepting an
       // answer somebody already gave.
-      const p = IntakeProgress(declined: <IntakeField>{IntakeField.weight});
-      expect(p.has(IntakeField.weight), isTrue);
+      const p = IntakeProgress(declined: <IntakeField>{IntakeField.goal});
+      expect(p.has(IntakeField.goal), isTrue);
       expect(p.next, IntakeField.days);
     });
 
-    test('body questions come last', () {
+    test('declining the last one finishes the intake', () {
       const p = IntakeProgress(
         plan: PlanIntake(
           daysPerWeek: 4,
           equipment: 'A full gym',
           injuryNotes: 'none',
-          goal: 'Get stronger',
         ),
       );
-      expect(p.next, IntakeField.yearOfBirth);
+      expect(p.isComplete, isFalse);
+      expect(p.decline(IntakeField.goal).isComplete, isTrue);
     });
 
     test('progress counts answers, not position', () {
       const p = IntakeProgress(plan: PlanIntake(daysPerWeek: 4));
       expect(p.answered, 1);
-      expect(p.total, 7);
+      expect(p.total, 4);
       expect(p.isComplete, isFalse);
+    });
+
+    test('merging is a fold, so an earlier answer survives a later turn', () {
+      // Every intake turn returns every field, and a null means "not learned
+      // this turn". Replacing rather than merging would erase the days as soon
+      // as the next question was asked.
+      final p = const IntakeProgress(
+        plan: PlanIntake(daysPerWeek: 4),
+      ).merge(const PlanIntake(goal: 'Get stronger'));
+      expect(p.plan.daysPerWeek, 4);
+      expect(p.plan.goal, 'Get stronger');
+    });
+  });
+
+  group('the questions that are not asked', () {
+    test('no body facts, because core has nowhere to put them', () {
+      // docs/coach-profile.md puts height, weight and year of birth in `core`
+      // and opens by saying none of it is built. This flow asked for all three
+      // and the answers had no table to land in. If that schema arrives, this
+      // is the test that should fail.
+      expect(IntakeField.values, <IntakeField>[
+        IntakeField.days,
+        IntakeField.equipment,
+        IntakeField.injuries,
+        IntakeField.goal,
+      ]);
+    });
+
+    test('only days is required', () {
+      expect(IntakeField.values.where((f) => f.required), <IntakeField>[
+        IntakeField.days,
+      ]);
+    });
+  });
+
+  group('what is offered under a question', () {
+    test('days offers no way out, because a plan needs it', () {
+      expect(IntakeField.days.skip, isNull);
+      expect(IntakeField.days.offered, IntakeField.days.options);
+    });
+
+    test('a skippable field carries its way out last', () {
+      expect(IntakeField.goal.offered.last, 'Prefer not to say');
+      expect(
+        IntakeField.goal.offered.length,
+        IntakeField.goal.options.length + 1,
+      );
+    });
+
+    test('injuries decline by answering, and are not offered twice', () {
+      // "Nothing to work around" is a real reply rather than a refusal, so a
+      // "prefer not to say" underneath it would be two rows for one intention.
+      expect(IntakeField.injuries.skip, 'Nothing to work around');
+      expect(IntakeField.injuries.offered, IntakeField.injuries.options);
+    });
+
+    test('every field can be answered by tapping', () {
+      for (final f in IntakeField.values) {
+        expect(f.offered, isNotEmpty, reason: '${f.name} has no options');
+        expect(f.question, isNotEmpty, reason: '${f.name} has no question');
+      }
     });
   });
 

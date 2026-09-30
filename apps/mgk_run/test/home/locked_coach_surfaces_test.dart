@@ -5,7 +5,6 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_ui/mgk_ui.dart';

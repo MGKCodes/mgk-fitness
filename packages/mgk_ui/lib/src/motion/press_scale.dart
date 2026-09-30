@@ -76,10 +76,12 @@ class _PressScaleState extends State<PressScale> {
       child: GestureDetector(
         onTap: widget.enabled ? widget.onTap : null,
         behavior: HitTestBehavior.deferToChild,
+        // Down with the finger, quickly; back up on a spring, so the control
+        // lands rather than stops — the settle is what reads as physical.
         child: AnimatedScale(
           scale: _down && !reduceMotion ? widget.scale : 1,
-          duration: AppMotion.fast,
-          curve: AppMotion.standard,
+          duration: _down ? AppMotion.fast : AppMotion.base,
+          curve: _down ? AppMotion.standard : AppMotion.snappy,
           child: widget.child,
         ),
       ),

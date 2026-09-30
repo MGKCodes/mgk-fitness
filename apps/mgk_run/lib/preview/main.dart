@@ -50,7 +50,6 @@ import 'package:mgk_run/src/features/coaching/presentation/chat_controller.dart'
 import 'package:mgk_run/src/features/coaching/presentation/chat_entry.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/coaching/presentation/onboarding_controller.dart';
 import 'package:mgk_run/src/features/coaching/presentation/onboarding_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_block_screen.dart';

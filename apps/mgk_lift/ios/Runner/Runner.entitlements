@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sign in with Apple (R10). Lift's App ID is the primary of the group
+	     Run's joins, so one Apple ID is one account in both apps, and the
+	     Apple accounts Liftio 1.x made keep working: their user ids belong to
+	     this App ID. See docs/store-setup.md, step 7a.
+
+	     Lift's first entitlements file. The provisioning profile is a snapshot
+	     of the App ID's capabilities and was regenerated after this one was
+	     added (step 7b); a profile without it fails the signing step. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

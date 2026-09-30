@@ -13,7 +13,6 @@ import '../../coaching/domain/runner_profile.dart';
 import '../../coaching/domain/stored_plan.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/training_standing.dart';
-import '../../coaching/presentation/coach_button.dart';
 import 'year_grid.dart';
 import '../../history/presentation/route_thumbnail.dart';
 import '../../history/presentation/run_tile.dart';

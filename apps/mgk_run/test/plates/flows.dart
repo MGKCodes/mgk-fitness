@@ -40,7 +40,7 @@ import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/readiness.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_block_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_calendar_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.dart';

@@ -5,7 +5,6 @@ import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_reveal.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_note.dart';
 import 'package:mgk_run/src/features/coaching/domain/session_status.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_history.dart';

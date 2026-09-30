@@ -15,6 +15,12 @@ abstract final class AppTheme {
     onSurface: AppColors.textPrimary,
     error: AppColors.danger,
     onError: AppColors.textPrimary,
+    // **Without these every Material snackbar was a white bar** — the scheme
+    // left them to default, and the default for a dark scheme is near-white.
+    // Undo after removing a set lit up the bottom of a charcoal screen.
+    inverseSurface: AppColors.elevated,
+    onInverseSurface: AppColors.textPrimary,
+    inversePrimary: AppColors.primary,
   );
 
   /// The bundled typeface, declared in this package's pubspec.
@@ -128,13 +134,24 @@ abstract final class AppTheme {
       // "Withdrawn" confirmation is where a screen board caught it (T15); every
       // snackbar in both apps was the same. Surface and primary text, as the
       // dialogs that confirm things already are.
-      snackBarTheme: const SnackBarThemeData(
+      //
+      // Floating and rounded (Lift's redesign), so a message sits over the
+      // screen as a thing of its own rather than a strip welded to the bottom
+      // edge; the faint edge keeps it apart from a card in the same grey.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.surface,
-        contentTextStyle: TextStyle(
+        elevation: 0,
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        contentTextStyle: const TextStyle(
           fontFamily: fontFamily,
-          color: AppColors.textPrimary,
           fontSize: 14,
           height: 1.4,
+          color: AppColors.textPrimary,
         ),
         actionTextColor: AppColors.primary,
         closeIconColor: AppColors.textSecondary,

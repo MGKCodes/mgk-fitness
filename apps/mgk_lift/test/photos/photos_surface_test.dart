@@ -39,6 +39,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -58,6 +59,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -78,6 +80,7 @@ void main() {
             photo(Pose.back, 0),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -100,6 +103,7 @@ void main() {
             photo(Pose.front, 11),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -120,6 +124,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -155,6 +160,7 @@ void main() {
       PhotosSurface(
         library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
         source: FakePhotoSource('/tmp/x.jpg'),
+        isEntitled: true,
         now: now,
       ),
     );
@@ -177,6 +183,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -196,6 +203,7 @@ void main() {
             photo(Pose.back, 0),
           ]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -212,6 +220,7 @@ void main() {
         PhotosSurface(
           library: InMemoryPhotoLibrary(<ProgressPhoto>[photo(Pose.front, 0)]),
           source: FakePhotoSource('/tmp/x.jpg'),
+          isEntitled: true,
           now: now,
         ),
       ),
@@ -220,7 +229,14 @@ void main() {
 
     // Below the fold in a test viewport, and a lazy ListView does not build
     // what it cannot show.
-    final line = find.text('Photos stay on this device. Nothing is uploaded.');
+    //
+    // The line changed with the behaviour, not after it: photos reach the
+    // bucket now, so a screen still saying "nothing is uploaded" would be the
+    // exact failure the old comment on that string warned about.
+    final line = find.text(
+      'Stored on this phone and in your MGKFitness account. Never sent to the '
+      'coach or any AI provider.',
+    );
     await tester.scrollUntilVisible(
       line,
       200,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_conversation.dart';
 import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';

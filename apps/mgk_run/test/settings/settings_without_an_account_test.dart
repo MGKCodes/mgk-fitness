@@ -7,7 +7,6 @@ import 'package:mgk_run/src/features/settings/data/backup_eraser.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
-import 'package:mgk_run/src/features/settings/presentation/settings_row.dart';
 import 'package:mgk_run/src/features/settings/presentation/avatar.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';

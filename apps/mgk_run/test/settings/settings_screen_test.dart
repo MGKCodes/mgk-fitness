@@ -8,7 +8,6 @@ import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
-import 'package:mgk_run/src/features/settings/presentation/settings_row.dart';
 import 'package:mgk_run/src/features/settings/presentation/avatar.dart';
 
 /// Settings is where everything that is not itself training lives. The account

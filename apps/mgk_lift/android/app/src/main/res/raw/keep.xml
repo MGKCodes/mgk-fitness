@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resources R8 must not strip from a release build.
+
+     ic_stat_rest is only ever named as a string from Dart (the rest-over
+     alert's icon), so resource shrinking sees nothing referencing it. Stripped,
+     the alert fails silently when the system looks the icon up: scheduled, and
+     never shown. flutter_local_notifications documents exactly this. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_rest" />

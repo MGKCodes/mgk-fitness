@@ -1,7 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';

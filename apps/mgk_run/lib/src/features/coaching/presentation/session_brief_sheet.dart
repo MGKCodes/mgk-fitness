@@ -6,7 +6,6 @@ import '../domain/pace_model.dart';
 import '../domain/prescribed_distance.dart';
 import '../domain/session_effort.dart';
 import '../domain/training_plan.dart';
-import 'coach_button.dart' show CoachLetter;
 import 'session_labels.dart';
 
 /// The coach on one session: what it is, what it should feel like, what pace

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';

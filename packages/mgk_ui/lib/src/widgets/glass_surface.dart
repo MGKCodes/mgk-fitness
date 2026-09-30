@@ -25,6 +25,17 @@ import '../theme/app_radius.dart';
 /// 4. **A lit edge and sheen** — a uniform 1px border reads as a stroke around a
 ///    box; a *gradient* edge that catches light at the top-left and fades away
 ///    reads as a bevel. This is the cheapest detail and the one that sells it.
+///
+/// **And what is behind it goes grey.** The same colour pass that lifts the
+/// backdrop drains its saturation, so a green tick or a red badge scrolling
+/// under a bar reads as light moving under glass rather than as a coloured
+/// smudge — ADR-0009's greyscale, enforced by the material instead of by
+/// everyone remembering. [desaturate] turns it off for the rare pane whose
+/// colour is the point.
+///
+/// Three presets carry the rest: [GlassSurface.bar] for a bar pinned to an
+/// edge, [GlassSurface.dock] for controls floating over content, and
+/// [GlassSurface.sheet] for a sheet risen from the bottom.
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
     super.key,
@@ -35,8 +46,62 @@ class GlassSurface extends StatelessWidget {
     this.tintOpacity = 0.10,
     this.luminance = 1.16,
     this.sheen = true,
+    this.desaturate = true,
+    this.edge = true,
     this.onTap,
+    this.grouped = false,
   });
+
+  /// Pinned to an edge, content scrolling under it: square, a stronger frost
+  /// so text passing beneath cannot be read through it, and no sheen — a bar
+  /// is lit by the screen, not from above.
+  const GlassSurface.bar({
+    super.key,
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    this.onTap,
+  }) : borderRadius = BorderRadius.zero,
+       blurSigma = 30,
+       tintOpacity = 0.07,
+       luminance = 1.08,
+       sheen = false,
+       desaturate = true,
+       edge = false,
+       grouped = false;
+
+  /// Controls floating over content — the session's dock, the keyboard bar.
+  /// Rounded, lit from above, a little brighter than a bar so it reads as the
+  /// thing to touch.
+  const GlassSurface.dock({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(AppSpacing.sm),
+    this.onTap,
+  }) : borderRadius = const BorderRadius.all(Radius.circular(AppRadius.sheet)),
+       blurSigma = 28,
+       tintOpacity = 0.12,
+       luminance = 1.12,
+       sheen = true,
+       desaturate = true,
+       edge = true,
+       grouped = false;
+
+  /// A sheet risen from the bottom: rounded at the top only.
+  const GlassSurface.sheet({
+    super.key,
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    this.onTap,
+  }) : borderRadius = const BorderRadius.vertical(
+         top: Radius.circular(AppRadius.sheet),
+       ),
+       blurSigma = 36,
+       tintOpacity = 0.10,
+       luminance = 1.06,
+       sheen = true,
+       desaturate = true,
+       edge = true,
+       grouped = false;
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -60,22 +125,43 @@ class GlassSurface extends StatelessWidget {
   /// flush against another, where two adjacent sheens read as a seam.
   final bool sheen;
 
+  /// Drains the colour from what is behind the pane. See the class comment.
+  final bool desaturate;
+
+  /// The lit edge. Off for a bar spanning the screen, where the stroke down
+  /// both sides reads as a frame; the bar draws its own hairline.
+  final bool edge;
+
+  /// Shares one blur with its siblings under the nearest [BackdropGroup].
+  ///
+  /// **What makes glass affordable in a list.** Each pane is otherwise its own
+  /// backdrop pass, and a column of them was why the old rule said "no glass
+  /// inside a scrolling list" — a rule the design review then asked to break,
+  /// wanting glass rows and glass cards. Grouped, the engine blurs the
+  /// backdrop once and each pane reads its own region of it, identical to the
+  /// eye. **Only for panes that never overlap each other**: grouped panes
+  /// stacked over one another look as if one filter were applied. Without a
+  /// [BackdropGroup] above it, a grouped pane is an ordinary one.
+  final bool grouped;
+
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? AppRadius.cardAll;
 
     return ClipRRect(
       borderRadius: radius,
-      child: BackdropFilter(
+      child: _backdrop(
         // Blur and lift together in one filter: composing is a single pass, and
         // brightening *after* the blur lifts the whole pane evenly rather than
         // amplifying the brightest pixels behind it into blown-out blobs.
         filter: ui.ImageFilter.compose(
-          outer: ui.ColorFilter.matrix(_luminanceMatrix(luminance)),
+          outer: ui.ColorFilter.matrix(
+            toneMatrix(luminance, desaturate: desaturate),
+          ),
           inner: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
         ),
         child: CustomPaint(
-          foregroundPainter: _GlassEdge(radius: radius),
+          foregroundPainter: edge ? _GlassEdge(radius: radius) : null,
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: radius,
@@ -128,14 +214,31 @@ class GlassSurface extends StatelessWidget {
     );
   }
 
+  Widget _backdrop({required ui.ImageFilter filter, required Widget child}) =>
+      grouped
+      ? BackdropFilter.grouped(filter: filter, child: child)
+      : BackdropFilter(filter: filter, child: child);
+
   /// A 5x4 colour matrix that scales RGB about their midpoint, lifting the pane
-  /// without clipping highlights the way a plain multiply does.
-  static List<double> _luminanceMatrix(double amount) {
+  /// without clipping highlights the way a plain multiply does — and, when
+  /// [desaturate], reads each channel from the pixel's luma (Rec. 709) first,
+  /// so the lift and the grey are one pass rather than two.
+  @visibleForTesting
+  static List<double> toneMatrix(double amount, {bool desaturate = true}) {
     final t = (1 - amount) * 128;
+    if (!desaturate) {
+      return <double>[
+        amount, 0, 0, 0, t, //
+        0, amount, 0, 0, t, //
+        0, 0, amount, 0, t, //
+        0, 0, 0, 1, 0, //
+      ];
+    }
+    const r = 0.2126, g = 0.7152, b = 0.0722;
     return <double>[
-      amount, 0, 0, 0, t, //
-      0, amount, 0, 0, t, //
-      0, 0, amount, 0, t, //
+      r * amount, g * amount, b * amount, 0, t, //
+      r * amount, g * amount, b * amount, 0, t, //
+      r * amount, g * amount, b * amount, 0, t, //
       0, 0, 0, 1, 0, //
     ];
   }

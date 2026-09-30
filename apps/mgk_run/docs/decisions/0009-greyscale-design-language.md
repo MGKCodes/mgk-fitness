@@ -1,6 +1,8 @@
 # 0009 — Greyscale design language (unified with Liftio)
 
-**Status:** Accepted
+**Status:** Accepted. The signature treatment is amended by
+[ADR-0042](0042-a-screen-that-leads-with-its-photograph.md) for a screen that
+leads with its photograph.
 
 ## Context
 

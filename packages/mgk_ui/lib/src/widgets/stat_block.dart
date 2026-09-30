@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/count_up.dart';
 import '../theme/app_colors.dart';
 import 'section_label.dart';
 
@@ -23,10 +24,32 @@ class StatBlock extends StatelessWidget {
     this.valueColor,
     this.valueWeight,
     this.shrinkToFit = false,
-  });
+  }) : count = null,
+       format = null;
+
+  /// A stat whose number **counts up** to [count] when it first appears, and
+  /// tweens between values after — a total arriving rather than being printed.
+  /// [format] renders the running value, so units stay the caller's business.
+  StatBlock.counting({
+    super.key,
+    required this.label,
+    required double this.count,
+    required String Function(double value) this.format,
+    this.size = StatSize.standard,
+    this.align = CrossAxisAlignment.start,
+    this.valueColor,
+    this.valueWeight,
+    this.shrinkToFit = false,
+  }) : value = format(count);
 
   final String label;
+
+  /// What is shown — for [StatBlock.counting], what it settles on.
   final String value;
+
+  /// The number [StatBlock.counting] counts to; null for a fixed [value].
+  final double? count;
+  final String Function(double value)? format;
   final StatSize size;
   final CrossAxisAlignment align;
 
@@ -73,20 +96,36 @@ class StatBlock extends StatelessWidget {
   }
 
   Widget _value() {
-    final text = Text(
-      value,
-      maxLines: 1,
-      softWrap: false,
-      textAlign: align == CrossAxisAlignment.center ? TextAlign.center : null,
-      style: TextStyle(
-        color: valueColor ?? AppColors.textPrimary,
-        fontSize: size.valueSize,
-        fontWeight: valueWeight ?? size.valueWeight,
-        height: 1.1,
-        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-      ),
+    final style = TextStyle(
+      color: valueColor ?? AppColors.textPrimary,
+      fontSize: size.valueSize,
+      fontWeight: valueWeight ?? size.valueWeight,
+      height: 1.1,
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
     );
-    return _shrink(text);
+    final align = this.align == CrossAxisAlignment.center
+        ? TextAlign.center
+        : null;
+    final target = count;
+    final render = format;
+    if (target != null && render != null) {
+      return _shrink(
+        CountUp(
+          value: target,
+          format: render,
+          builder: (text, _) => Text(
+            text,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: align,
+            style: style,
+          ),
+        ),
+      );
+    }
+    return _shrink(
+      Text(value, maxLines: 1, softWrap: false, textAlign: align, style: style),
+    );
   }
 
   /// Scales a child down to fit rather than letting it overflow.

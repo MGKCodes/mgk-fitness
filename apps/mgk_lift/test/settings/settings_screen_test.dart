@@ -6,6 +6,8 @@ import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/credits_screen.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
 import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
+import 'package:mgk_lift/src/features/sync/presentation/backup_scheduler.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
 Widget wrap(Widget child) => MaterialApp(home: child);
@@ -42,10 +44,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Kilometres'), findsOneWidget);
-      expect(find.text('Miles'), findsOneWidget);
+      // Two rows, each showing what it is set to (19).
+      expect(find.widgetWithText(SettingsRow, 'Weight'), findsOneWidget);
+      expect(find.widgetWithText(SettingsRow, 'Distance'), findsOneWidget);
       expect(find.text('Kilograms'), findsOneWidget);
+      expect(find.text('Kilometres'), findsOneWidget);
+
+      // Each opens its own choice, with its explanation where it is made.
+      await tester.tap(find.text('Weight'));
+      await tester.pumpAndSettle();
       expect(find.text('Pounds'), findsOneWidget);
+      expect(find.textContaining('A separate choice from distance'), findsOne);
     });
 
     testWidgets('choosing miles leaves the weight unit alone', (
@@ -57,6 +66,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.tap(find.text('Distance'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Miles'));
       await tester.pumpAndSettle();
 
@@ -82,10 +93,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.tap(find.text('Weight'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Pounds'));
       await tester.pump();
 
       expect(reported?.mass, MassUnit.pounds);
+      // And the row says so at once.
+      await tester.pumpAndSettle();
+      expect(find.text('Pounds'), findsOneWidget);
     });
 
     testWidgets('with no store the controls are inert, not absent', (
@@ -96,13 +112,98 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Pounds'), findsOneWidget);
-      await tester.tap(find.text('Pounds'));
+      expect(find.text('Kilograms'), findsOneWidget);
+      await tester.tap(find.text('Weight'));
       await tester.pumpAndSettle();
 
-      // Nothing happened, and the screen says why rather than silently
+      // Nothing opened, and the screen says why rather than silently
       // swallowing the tap.
+      expect(find.text('Pounds'), findsNothing);
       expect(find.text('Sign in to change these.'), findsOneWidget);
+    });
+  });
+
+  group('the account (19)', () {
+    testWidgets('comes first, and opens its own screen', (
+      WidgetTester tester,
+    ) async {
+      var signedOut = 0;
+      var restored = 0;
+      await pumpTall(
+        tester,
+        SettingsScreen(
+          initial: const UnitPreferences(),
+          store: InMemoryUnitPreferences(),
+          isSignedIn: true,
+          email: 'lifter@example.com',
+          planLabel: 'Subscribed',
+          onSignOut: () => signedOut++,
+          onRestorePurchases: () async => restored++,
+        ),
+      );
+
+      // The profile card: initial, address, plan — above everything else.
+      expect(find.text('L'), findsOneWidget);
+      expect(find.text('Subscribed'), findsOneWidget);
+      final card = tester.getTopLeft(find.text('lifter@example.com')).dy;
+      expect(card, lessThan(tester.getTopLeft(find.text('Weight')).dy));
+      // Sign out and Restore are not rows on the index any more.
+      expect(find.text('Sign out'), findsNothing);
+
+      await tester.tap(find.text('lifter@example.com'));
+      await tester.pumpAndSettle();
+      expect(find.text('Account'), findsOneWidget);
+
+      await tester.tap(find.text('Restore purchases'));
+      await tester.pumpAndSettle();
+      expect(restored, 1);
+
+      await tester.tap(find.text('Sign out'));
+      await tester.pumpAndSettle();
+      expect(signedOut, 1);
+    });
+
+    testWidgets('signed out, the card offers to sign in and opens nothing', (
+      WidgetTester tester,
+    ) async {
+      var signIns = 0;
+      await pumpTall(
+        tester,
+        SettingsScreen(
+          initial: const UnitPreferences(),
+          store: InMemoryUnitPreferences(),
+          onSignIn: () => signIns++,
+        ),
+      );
+      await tester.tap(find.text('Not signed in'));
+      await tester.pumpAndSettle();
+      expect(find.text('Account'), findsNothing);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Sign in'));
+      expect(signIns, 1);
+    });
+
+    testWidgets('the account and the units fit a 375pt phone unscrolled', (
+      WidgetTester tester,
+    ) async {
+      tester.view
+        ..physicalSize = const Size(375 * 3, 667 * 3)
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        wrap(
+          SettingsScreen(
+            initial: const UnitPreferences(),
+            store: InMemoryUnitPreferences(),
+            isSignedIn: true,
+            email: 'lifter@example.com',
+            planLabel: 'Free',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.getBottomLeft(find.text('Distance')).dy, lessThan(667));
     });
   });
 
@@ -228,11 +329,43 @@ void backupSmoke() {
       SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
-        pending: const SyncPending(workouts: 9, lastSyncedAt: null),
+        backup: ValueNotifier<BackupStatus>(
+          const BackupStatus(
+            pending: SyncPending(workouts: 9, lastSyncedAt: null),
+          ),
+        ),
         onSignIn: () {},
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.text('This device only'), findsOneWidget);
+    expect(find.text('Not signed in'), findsOneWidget);
+    expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
+  });
+
+  testWidgets('the account card follows backup while the screen is open', (
+    WidgetTester tester,
+  ) async {
+    // A run started from here — or by a checkpoint behind it — is reported
+    // as it happens, not the next time the screen is opened.
+    final backup = ValueNotifier<BackupStatus>(
+      const BackupStatus(pending: SyncPending(workouts: 2, lastSyncedAt: null)),
+    );
+    await pumpTall(
+      tester,
+      SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        isSignedIn: true,
+        backup: backup,
+        onSyncNow: () {},
+      ),
+    );
+    expect(find.text('2 sessions waiting to upload.'), findsOneWidget);
+
+    backup.value = BackupStatus(
+      pending: SyncPending(workouts: 0, lastSyncedAt: DateTime.now()),
+    );
+    await tester.pump();
+    expect(find.textContaining('Everything is saved'), findsOneWidget);
   });
 }

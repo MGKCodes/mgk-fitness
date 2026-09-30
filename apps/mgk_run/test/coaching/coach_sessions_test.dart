@@ -6,7 +6,6 @@ import 'package:mgk_run/src/features/coaching/data/coach_memory_repository.dart'
 import 'package:mgk_run/src/features/coaching/data/coach_memory_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_memory.dart';
 import 'package:mgk_run/src/features/coaching/presentation/chat_controller.dart';
-import 'package:mgk_run/src/features/coaching/presentation/coach_button.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_conversation.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';

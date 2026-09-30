@@ -19,7 +19,6 @@ import '../domain/training_plan.dart';
 import '../domain/week_adaptation.dart';
 import '../../history/domain/run_draft.dart';
 import 'chat_entry.dart';
-import 'coach_button.dart' show CoachLetter;
 import 'session_labels.dart';
 
 /// One line of the conversation.
