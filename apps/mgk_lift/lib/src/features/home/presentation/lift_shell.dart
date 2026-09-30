@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mgk_auth/mgk_auth.dart' show LocalDataGuard;
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../auth/domain/account.dart';
@@ -91,6 +92,7 @@ class LiftShell extends StatefulWidget {
     this.photoBackup,
     this.sync,
     this.auth,
+    this.localData,
     this.restAlerts,
     this.restLengths,
     this.initialTab = 0,
@@ -237,6 +239,17 @@ class LiftShell extends StatefulWidget {
   /// tracking works signed out and always will.
   final AuthService? auth;
 
+  /// Whose training is on this phone, and the only way to hand it to another
+  /// account. **Null skips the question**, which is what the preview harness
+  /// and tests that are not about it want, and what a build with no server
+  /// has no need of.
+  ///
+  /// With it, an account that is not the phone's owner is asked to erase the
+  /// training here or sign out before anything backs up — the leak Run fixed
+  /// in `ab02080`, which Lift had in the same shape: backup pushes whatever is
+  /// unsent into whoever signs in, and pulls theirs down beside it.
+  final LocalDataGuard? localData;
+
   /// Which surface to open on. Exists so a preview can address a tab directly —
   /// tapping Flutter's canvas from an automation harness is unreliable.
   final int initialTab;
@@ -316,6 +329,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   Account? _account;
   StreamSubscription<Account?>? _authSub;
 
+  /// Whether [_account] may use the training on this phone: true to carry on,
+  /// false to ask, null while it is being worked out. Only meaningful with a
+  /// [LiftShell.localData] and somebody signed in.
+  bool? _mayUse;
+
+  /// Which account [_mayUse] answers for, so a slow answer about an account
+  /// that has since signed out cannot land on the next one.
+  String? _checkedFor;
+
   /// Track's row follows the library, whichever screen changed it — the
   /// summary teaching a workout included. See [WorkoutLibrary.changes].
   StreamSubscription<void>? _librarySub;
@@ -366,7 +388,11 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       _backup = BackupScheduler(run: _runBackup, pending: sync.pending);
       unawaited(_backup!.refresh());
       // Launch is a checkpoint: whatever a killed app left unsent goes now.
-      _backup!.checkpoint();
+      // With somebody already signed in and a guard to ask, it waits for the
+      // answer instead — see [_check].
+      if (widget.localData == null || widget.auth?.current == null) {
+        _backup!.checkpoint();
+      }
     }
     unawaited(_refreshPlan());
     unawaited(_refreshEntitlement());
@@ -377,14 +403,29 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       _account = auth.current;
       // A session restored at launch is an account the store has to know
       // about before the first paywall, not after the first sign-in.
-      if (_account != null) unawaited(_identifyCustomer(_account));
+      if (_account case final account?) {
+        unawaited(_identifyCustomer(account));
+        unawaited(_check(account));
+      }
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
-        setState(() => _account = account);
+        setState(() {
+          _account = account;
+          if (account == null) {
+            _mayUse = null;
+            _checkedFor = null;
+          }
+        });
         unawaited(_identifyCustomer(account));
         // Signing in is the moment there is somewhere to put the backlog, and
-        // signing out the moment backup has to say it has stopped.
-        unawaited(_backup?.runNow());
+        // signing out the moment backup has to say it has stopped. **Not
+        // before the phone's training is known to be this account's**, which
+        // [_check] works out and then runs it.
+        if (account != null && widget.localData != null) {
+          unawaited(_check(account));
+        } else {
+          unawaited(_backup?.runNow());
+        }
         // ...and the moment the account's units become readable. The load in
         // initState runs before Supabase has restored a session, so without
         // this the shared choice is only ever picked up on the launch *after*
@@ -414,6 +455,49 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _backup?.checkpoint();
+  }
+
+  /// Works out whether [account] may use the training on this phone, then lets
+  /// backup run for it — or, when the training is somebody else's, asks.
+  Future<void> _check(Account account) async {
+    final guard = widget.localData;
+    if (guard == null) return;
+    _checkedFor = account.id;
+    final ok = await guard.mayUse(account.id);
+    if (!mounted || _checkedFor != account.id) return;
+    setState(() => _mayUse = ok);
+    if (ok) {
+      unawaited(_backup?.runNow());
+      return;
+    }
+    // Whatever was pushed over the shell — the sign-in screen that has just
+    // closed itself, Settings, a sheet — would sit over the question holding
+    // the other account's training. Clear the way to it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    });
+  }
+
+  /// The first answer to "this phone has another account's training on it":
+  /// erase it, keep the account that just signed in, and start again from
+  /// what that account has backed up. Throws when the training could not be
+  /// erased, which the question reports.
+  Future<void> _eraseForAccount() async {
+    final guard = widget.localData;
+    final account = _account;
+    if (guard == null || account == null) return;
+    await guard.eraseFor(account.id);
+    if (!mounted) return;
+    setState(() => _mayUse = true);
+    // Everything held in memory was the erased training.
+    await Future.wait(<Future<void>>[
+      _refreshSession(),
+      _refreshLog(),
+      _refreshWorkouts(),
+    ]);
+    unawaited(_backup?.refresh());
+    // And the account's own training comes down.
+    unawaited(_backup?.runNow());
   }
 
   /// Resolves what the paid surfaces should show.
@@ -549,6 +633,20 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   Future<SyncReport> _runBackup() async {
     final sync = widget.sync;
     if (sync == null) return const SyncReport.signedOut();
+    // Nothing moves for an account the phone's training may not belong to:
+    // not while that is being worked out, and not while it is being asked.
+    // Reported as signed out because, for backup, it is — and the question
+    // is on screen in place of anything that would show it.
+    //
+    // Asked of the service, not of [_account]: at launch Supabase can restore
+    // a session a moment after this shell has read "nobody", and a checkpoint
+    // in that moment would otherwise back up into an account nobody checked.
+    final signedIn = widget.auth?.current;
+    if (widget.localData != null &&
+        signedIn != null &&
+        !(_mayUse == true && _checkedFor == signedIn.id)) {
+      return const SyncReport.signedOut();
+    }
     final report = await sync.run();
 
     // Photos second, and only for an account that has them. The training log
@@ -660,6 +758,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     // there is no server — "the mark stays absent rather than inert" — and
     // an inert mark is a promise the app then refuses to keep.
     final coach = _useCoach ? widget.coach : null;
+    final account = _account;
+    if (account != null && _mayUse == false) {
+      return AnotherAccountScreen(
+        email: account.email,
+        whatIsHere: 'The sessions, workouts and photos',
+        onErase: _eraseForAccount,
+        onSignOut: _signOut,
+      );
+    }
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -834,6 +941,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           coachMemory: widget.coachMemory,
           auth: widget.auth,
           deleter: widget.deleter,
+          onAccountGone: widget.localData?.release,
           onRestorePurchases: _flow == null ? null : _restorePurchases,
           restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,

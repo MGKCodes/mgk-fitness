@@ -257,6 +257,59 @@ void main() {
     });
   });
 
+  group("the phone's copy", () {
+    Future<List<String>> finish(
+      WidgetTester tester,
+      AccountDeletionResult result,
+    ) async {
+      final calls = <String>[];
+      final auth = FakeAuth(account: _signedIn);
+      addTearDown(auth.dispose);
+      await pumpTall(
+        tester,
+        DeleteAccountScreen(
+          auth: auth,
+          deleter: FakeAccountDeleter(result: result),
+          onSignedOut: () {},
+          onAccountGone: () async =>
+              // Recorded with whether the session was still there, because
+              // the order is the point: released first, then signed out.
+              calls.add(auth.current == null ? 'after' : 'before sign-out'),
+        ),
+      );
+      await arm(tester);
+      await tester.tap(find.byType(DestructiveButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+      await tester.pumpAndSettle();
+      return calls;
+    }
+
+    testWidgets('a deleted login leaves the phone to nobody', (
+      WidgetTester tester,
+    ) async {
+      // Otherwise the phone stays recorded as the deleted account's, and the
+      // same person making a new one is asked to erase their own sessions.
+      final calls = await finish(
+        tester,
+        const AccountDeletionResult(accountDeleted: true),
+      );
+      expect(calls, <String>['before sign-out']);
+    });
+
+    testWidgets('a kept login keeps the phone', (WidgetTester tester) async {
+      final calls = await finish(
+        tester,
+        const AccountDeletionResult(
+          accountDeleted: false,
+          retainedReason: 'other_app_data',
+          remainingApps: <String>['run'],
+        ),
+      );
+      expect(calls, isEmpty);
+    });
+  });
+
   group('reaching it', () {
     testWidgets('the legal hub offers deletion when there is an account', (
       WidgetTester tester,

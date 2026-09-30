@@ -23,6 +23,7 @@ class LegalScreen extends StatelessWidget {
     this.auth,
     this.deleter,
     this.onSignedOut,
+    this.onAccountGone,
   });
 
   /// Shown at the top when signed in, so it is obvious which account the
@@ -40,6 +41,9 @@ class LegalScreen extends StatelessWidget {
 
   /// Where to go once the account is gone and the session has ended.
   final VoidCallback? onSignedOut;
+
+  /// See [DeleteAccountScreen.onAccountGone].
+  final Future<void> Function()? onAccountGone;
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -129,6 +133,7 @@ class LegalScreen extends StatelessWidget {
                     auth: service,
                     deleter: deleter!,
                     onSignedOut: onSignedOut,
+                    onAccountGone: onAccountGone,
                   ),
                 ),
               ),

@@ -31,10 +31,19 @@ class DeleteAccountScreen extends StatefulWidget {
     required this.auth,
     required this.deleter,
     this.onSignedOut,
+    this.onAccountGone,
   });
 
   final AuthService auth;
   final AccountDeleter deleter;
+
+  /// The login is gone, and the training on this phone belongs to nobody now.
+  ///
+  /// Called before signing out, only when the server removed the login. Left
+  /// out, the phone would stay recorded as the deleted account's, and the
+  /// same person making a new one would be asked to erase their own sessions
+  /// to use it.
+  final Future<void> Function()? onAccountGone;
 
   /// Where to go once the session has ended. Defaults to unwinding to the app
   /// root, so what remains is an app with no account — which is a working app,
@@ -96,6 +105,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   }
 
   Future<void> _finish() async {
+    if (_result?.accountDeleted ?? false) await widget.onAccountGone?.call();
     await widget.auth.signOut();
     if (!mounted) return;
     final onSignedOut = widget.onSignedOut;

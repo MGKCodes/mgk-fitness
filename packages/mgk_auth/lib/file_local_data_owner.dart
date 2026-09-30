@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'package:mgk_auth/mgk_auth.dart';
+import 'src/local_data.dart';
 
 /// The real [LocalDataOwnerStore]: one user id in a file beside the backup
 /// answer.
@@ -18,8 +18,9 @@ import 'package:mgk_auth/mgk_auth.dart';
 /// treated as no owner, which is what every other store here does with a file
 /// it cannot read; the rename is what makes that case close to impossible.
 ///
-/// Imports `dart:io`, so it stays out of any web import graph; `main.dart`
-/// constructs it directly, as it does the database.
+/// Imports `dart:io`, so it is **its own library** rather than exported from
+/// `mgk_auth.dart`: each app's `main.dart` imports it directly, as it opens
+/// the database, and nothing in a web build's import graph reaches it.
 class FileLocalDataOwner implements LocalDataOwnerStore {
   FileLocalDataOwner({Future<Directory> Function()? directory})
     : _directory = directory ?? getApplicationSupportDirectory;

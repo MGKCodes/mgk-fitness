@@ -47,6 +47,7 @@ class SettingsScreen extends StatefulWidget {
     this.onUseCoachChanged,
     this.auth,
     this.deleter,
+    this.onAccountGone,
     this.onRestorePurchases,
     this.restAlerts,
     this.version = kAppVersion,
@@ -109,6 +110,9 @@ class SettingsScreen extends StatefulWidget {
   /// here only because Settings is the route to that screen.
   final AuthService? auth;
   final AccountDeleter? deleter;
+
+  /// See [DeleteAccountScreen.onAccountGone].
+  final Future<void> Function()? onAccountGone;
 
   /// Restore purchases. **Null hides the row**, on the same rule as every other
   /// optional here: a build with no store cannot restore anything.
@@ -411,6 +415,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     email: widget.email,
                     auth: widget.auth,
                     deleter: widget.deleter,
+                    onAccountGone: widget.onAccountGone,
                   ),
                 ),
               ),

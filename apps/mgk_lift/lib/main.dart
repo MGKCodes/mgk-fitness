@@ -1,10 +1,13 @@
 import 'src/core/brand.dart';
 import 'package:flutter/material.dart';
+import 'package:mgk_auth/file_local_data_owner.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/core/config/app_config.dart';
 import 'src/core/database/app_database.dart';
+import 'src/features/auth/data/phone_training_data.dart';
 import 'src/features/auth/data/supabase_auth.dart';
 import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/coaching/data/supabase_coach_memory.dart';
@@ -63,10 +66,19 @@ Future<void> main() async {
     }
   }
 
+  final database = AppDatabase.open();
   runApp(
     MgkLiftApp(
-      database: AppDatabase.open(),
+      database: database,
       client: client,
+      // Whose training is on this phone. Only with a server: without one
+      // nobody signs in, so there is nobody to ask.
+      localData: client == null
+          ? null
+          : LocalDataGuard(
+              owner: FileLocalDataOwner(),
+              data: PhoneTrainingData(database),
+            ),
       // Needs both halves, like every paid path: a purchase with no server to
       // write the entitlement is a charge with nothing to show for it. And a
       // build with no store key sells nothing rather than failing — the
@@ -79,7 +91,17 @@ Future<void> main() async {
 }
 
 class MgkLiftApp extends StatelessWidget {
-  const MgkLiftApp({super.key, this.database, this.client, this.purchases});
+  const MgkLiftApp({
+    super.key,
+    this.database,
+    this.client,
+    this.purchases,
+    this.localData,
+  });
+
+  /// Whose training is on this phone. Built once in `main`, like [purchases],
+  /// because it remembers the answer it gave for each account.
+  final LocalDataGuard? localData;
 
   /// The store. Built once in `main` rather than here, because it holds what
   /// it has been told — who is signed in, what it last offered — and a
@@ -135,6 +157,7 @@ class MgkLiftApp extends StatelessWidget {
             ? null
             : SupabasePhotoSync(db, supabase),
         auth: supabase == null ? null : SupabaseAuth(supabase),
+        localData: localData,
         // **The wire that was missing until 2026-09-02.** `isEntitled` defaulted
         // to false and nothing ever passed it, so the paid half was invisible to
         // everybody — including the account that actually holds one. The server
