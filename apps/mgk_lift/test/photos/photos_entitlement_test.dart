@@ -27,7 +27,7 @@ Future<void> pumpSurface(
   WidgetTester tester, {
   required bool isEntitled,
   List<ProgressPhoto> photos = const <ProgressPhoto>[],
-  VoidCallback? onSubscribe,
+  Future<bool> Function()? onSubscribe,
 }) => pumpTall(
   tester,
   PhotosSurface(
@@ -85,7 +85,14 @@ void main() {
       WidgetTester tester,
     ) async {
       var opened = 0;
-      await pumpSurface(tester, isEntitled: false, onSubscribe: () => opened++);
+      await pumpSurface(
+        tester,
+        isEntitled: false,
+        onSubscribe: () async {
+          opened++;
+          return false;
+        },
+      );
 
       await tester.tap(find.text('Unlock photos'));
       await tester.pumpAndSettle();
@@ -142,7 +149,7 @@ void main() {
         tester,
         isEntitled: false,
         photos: <ProgressPhoto>[photo(Pose.front, 0)],
-        onSubscribe: () {},
+        onSubscribe: () async => false,
       );
 
       expect(find.text('Resubscribe'), findsOneWidget);
@@ -200,5 +207,33 @@ void main() {
 
       expect(find.text('One stream per pose'), findsOneWidget);
     });
+  });
+
+  testWidgets('a purchase made from here opens the library', (
+    WidgetTester tester,
+  ) async {
+    // The route used to read its entitlement once, when pushed, so the offer
+    // stayed up over the library that had just been paid for.
+    await pumpSurface(tester, isEntitled: false, onSubscribe: () async => true);
+    expect(find.text('One stream per pose'), findsOneWidget);
+
+    await tester.tap(find.text('Unlock photos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('One stream per pose'), findsNothing);
+  });
+
+  testWidgets('closing the offer without buying leaves it up', (
+    WidgetTester tester,
+  ) async {
+    await pumpSurface(
+      tester,
+      isEntitled: false,
+      onSubscribe: () async => false,
+    );
+    await tester.tap(find.text('Unlock photos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('One stream per pose'), findsOneWidget);
   });
 }

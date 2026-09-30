@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../planning/data/cached_standing_plan_store.dart';
 
 /// Everything on this phone that belongs to one lifter, so it can be asked
 /// about and erased as one thing: the sessions and their sets, the saved
@@ -22,9 +23,14 @@ import '../../../core/database/app_database.dart';
 ///
 /// Imports `dart:io`, so only `main.dart` constructs it.
 class PhoneTrainingData implements LocalTrainingData {
-  PhoneTrainingData(this._db);
+  PhoneTrainingData(this._db, {PlanCache? plan}) : _plan = plan;
 
   final AppDatabase _db;
+
+  /// The phone's copy of the account's live plan. Not training — it is only
+  /// ever the server's last answer — but it is the account's, so it goes with
+  /// the rest.
+  final PlanCache? _plan;
 
   @override
   Future<bool> isEmpty() async {
@@ -59,6 +65,8 @@ class PhoneTrainingData implements LocalTrainingData {
         await _db.delete(table).go();
       }
     });
+
+    await _plan?.clear();
 
     // The photographs themselves. A file left behind is a photograph of
     // somebody's body on a phone now signed in as somebody else, reachable by

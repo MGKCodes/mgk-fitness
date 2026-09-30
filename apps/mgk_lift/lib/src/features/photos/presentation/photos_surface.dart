@@ -62,9 +62,14 @@ class PhotosSurface extends StatefulWidget {
   /// mistake worth making impossible.
   final bool isEntitled;
 
-  /// Opens the store. Null when there is none, which the offer says out loud
+  /// Opens the sales screen, and answers whether this account is entitled
+  /// afterwards. Null when there is no store, which the offer says out loud
   /// rather than showing a button that does nothing.
-  final VoidCallback? onSubscribe;
+  ///
+  /// **An answer, not a fire-and-forget.** [isEntitled] is fixed when this
+  /// route is pushed, so a purchase made from here used to leave the offer on
+  /// screen over the library that had just been paid for.
+  final Future<bool> Function()? onSubscribe;
 
   /// Restore purchases, required of any app selling a subscription
   /// (Guideline 3.1.1) and the only route back for somebody reinstalling.
@@ -84,6 +89,18 @@ class PhotosSurface extends StatefulWidget {
 
 class _PhotosSurfaceState extends State<PhotosSurface> {
   List<ProgressPhoto> _photos = const <ProgressPhoto>[];
+
+  /// Starts as the route was opened, and follows a purchase made from here.
+  late bool _entitled = widget.isEntitled;
+
+  Future<void> _subscribe() async {
+    final subscribe = widget.onSubscribe;
+    if (subscribe == null) return;
+    final entitled = await subscribe();
+    if (!mounted || !entitled) return;
+    setState(() => _entitled = true);
+  }
+
   bool _loading = true;
 
   /// Poses turned on beyond the starting two.
@@ -133,11 +150,11 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
   /// missing [PhotoSource] is a build without a camera plugin, which is a
   /// developer's problem, while a missing entitlement is a person's state and
   /// the screen has to explain it.
-  bool get _canAdd => widget.isEntitled && widget.source != null;
+  bool get _canAdd => _entitled && widget.source != null;
 
   Future<void> _add(Pose pose) async {
     final source = widget.source;
-    if (source == null || !widget.isEntitled) return;
+    if (source == null || !_entitled) return;
 
     final path = await _chooseSource(source);
     if (path == null) return;
@@ -233,10 +250,12 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                           // Why the camera went, for somebody who had it
                           // yesterday. Without this the screen simply loses a
                           // button and reads as broken rather than as lapsed.
-                          if (!widget.isEntitled) ...<Widget>[
+                          if (!_entitled) ...<Widget>[
                             const SizedBox(height: AppSpacing.lg),
                             _Lapsed(
-                              onSubscribe: widget.onSubscribe,
+                              onSubscribe: widget.onSubscribe == null
+                                  ? null
+                                  : _subscribe,
                               onRestore: widget.onRestore,
                             ),
                           ],
@@ -265,11 +284,13 @@ class _PhotosSurfaceState extends State<PhotosSurface> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        ] else if (!widget.isEntitled)
+                        ] else if (!_entitled)
                           // Nothing shot and nothing bought: the offer, not an
                           // empty state with a disabled button.
                           _Offer(
-                            onSubscribe: widget.onSubscribe,
+                            onSubscribe: widget.onSubscribe == null
+                                ? null
+                                : _subscribe,
                             onRestore: widget.onRestore,
                           )
                         else

@@ -20,6 +20,12 @@ import '../domain/plan_gate_copy.dart';
 /// the same link: a legal document should not live inside the paywall.
 export '../../legal/domain/legal_urls.dart' show kTermsOfUseUrl;
 
+/// The store's names and the renewal disclosure moved into mgk_ui, which both
+/// apps sell through; re-exported so everything that read them from here still
+/// does.
+export 'package:mgk_ui/mgk_ui.dart'
+    show storeName, storeAccountName, renewalWording;
+
 /// Where the coach is actually bought.
 ///
 /// **Guideline 3.1.2 decides most of this screen's contents**, and it is worth
@@ -499,62 +505,6 @@ class _NothingToSell extends StatelessWidget {
     );
   }
 }
-
-/// The auto-renew disclosure, in the words each store expects to see.
-///
-/// **It named the Apple ID on both platforms until 2026-09-11**, when the
-/// paywall was opened on Android for the first time and told a Play customer
-/// that their Apple ID would be charged and that they should cancel in their
-/// Apple ID settings. Both sentences were false, on the screen immediately
-/// before somebody parts with money — and a billing disclosure naming the wrong
-/// payment method is the kind of thing Google checks rather than the kind it
-/// overlooks.
-///
-/// The Apple wording is Apple's own required phrasing and is unchanged. The
-/// Play wording says the same things about the same subscription: that it
-/// renews, when it is charged, how much notice cancelling needs, and where to
-/// do it. Play does not prescribe the sentence the way Apple does; what it
-/// wants is that the terms are stated before purchase and that they are true.
-/// Apple's phrasing, kept verbatim because Apple prescribes the sentence.
-const String _appleRenewal =
-    'Subscriptions renew every month until cancelled. Payment is charged to '
-    'your Apple ID at confirmation of purchase, and renews within 24 hours '
-    'before the period ends unless auto-renew is switched off at least 24 '
-    'hours before then. Manage or cancel it in your Apple ID settings.';
-
-/// The same four facts, about the store actually taking the money. Play
-/// prescribes the facts rather than the wording.
-const String _googleRenewal =
-    'Subscriptions renew every month until cancelled. Payment is charged to '
-    'your Google Play account at confirmation of purchase, and renews within '
-    '24 hours before the period ends unless auto-renew is switched off at '
-    'least 24 hours before then. Manage or cancel it in the Play Store under '
-    'Payments and subscriptions.';
-
-/// Which disclosure [platform] needs.
-///
-/// Top-level and public so a test can read both without pumping a widget: the
-/// bug this exists to prevent was a `const` string nothing ever asserted on,
-/// correct for the only platform anybody had run.
-/// What the shop is called on this platform.
-///
-/// Top-level and platform-taking rather than a getter on the paywall, because
-/// settings needs the same two names to say where a subscription is managed,
-/// and a second copy of this is a second chance to name the wrong store — which
-/// is the defect `the_paywall_names_the_right_store_test.dart` exists for.
-String storeName(TargetPlatform platform) =>
-    platform == TargetPlatform.android ? 'Google Play' : 'the App Store';
-
-/// What the *person's* account with that shop is called.
-///
-/// Two names rather than one, because they are not interchangeable: a person
-/// has an Apple ID or a Google Play account, and the shop is the App Store or
-/// Google Play.
-String storeAccountName(TargetPlatform platform) =>
-    platform == TargetPlatform.android ? 'Google Play account' : 'Apple ID';
-
-String renewalWording(TargetPlatform platform) =>
-    platform == TargetPlatform.android ? _googleRenewal : _appleRenewal;
 
 class _Renewal extends StatelessWidget {
   const _Renewal();

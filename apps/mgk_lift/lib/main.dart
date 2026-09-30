@@ -11,6 +11,9 @@ import 'src/features/auth/data/phone_training_data.dart';
 import 'src/features/auth/data/supabase_auth.dart';
 import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/coaching/data/supabase_coach_memory.dart';
+import 'src/features/planning/data/cached_standing_plan_store.dart';
+import 'src/features/planning/data/file_plan_cache.dart';
+import 'src/features/planning/data/local_moved_day.dart';
 import 'src/features/planning/data/supabase_coach_planner.dart';
 import 'src/features/planning/data/supabase_standing_plan_store.dart';
 import 'src/features/legal/data/account_deletion_service.dart';
@@ -77,7 +80,7 @@ Future<void> main() async {
           ? null
           : LocalDataGuard(
               owner: FileLocalDataOwner(),
-              data: PhoneTrainingData(database),
+              data: PhoneTrainingData(database, plan: FilePlanCache()),
             ),
       // Needs both halves, like every paid path: a purchase with no server to
       // write the entitlement is a charge with nothing to show for it. And a
@@ -203,7 +206,17 @@ class MgkLiftApp extends StatelessWidget {
             ? null
             : AccountDeletionService(client: supabase),
         planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
-        plans: supabase == null ? null : SupabaseStandingPlanStore(supabase),
+        // With a copy on the phone, so today's planned session is on Track
+        // with no signal at the gym.
+        plans: supabase == null
+            ? null
+            : CachedStandingPlanStore(
+                remote: SupabaseStandingPlanStore(supabase),
+                cache: FilePlanCache(),
+              ),
+        // Device-local: bringing a day forward is a choice on this phone for
+        // one day, not a plan edit.
+        movedDays: LocalMovedDay(),
       ),
     );
   }

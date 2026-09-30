@@ -50,7 +50,7 @@ import '../src/features/sync/domain/sync_status.dart';
 import '../src/features/sync/presentation/backup_scheduler.dart';
 import '../src/features/entitlement/domain/entitlement.dart';
 import '../src/features/purchases/domain/purchases.dart';
-import '../src/features/purchases/presentation/purchase_sheet.dart';
+import '../src/features/purchases/presentation/sales_screen.dart';
 import '../src/features/tracking/domain/rest_alerts.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/reorder_sheet.dart';
@@ -206,20 +206,28 @@ class PreviewApp extends StatelessWidget {
           source: FakeEntitlements(Entitlement.none),
         ),
       ),
-      // Where money moves: both tiers, the store's prices, the renewal terms
-      // in Apple's words, the two links and Restore.
-      'purchase-sheet': (_) => _SheetHost(
-        open: (context) => showGlassSheet<PurchaseResult>(
-          context: context,
-          builder: (_) => PurchaseSheet(
-            flow: PurchaseFlow(
-              purchases: FakePurchases(offers: _storeOffers),
-              gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
-            ),
-            offers: _storeOffers,
-            platform: TargetPlatform.iOS,
-          ),
+      // Where money moves, from every door (R6): both tiers with what each
+      // adds, the store's prices, the renewal terms in Apple's words, the two
+      // links and Restore.
+      'sales': (_) => SalesScreen(
+        flow: PurchaseFlow(
+          purchases: FakePurchases(offers: _storeOffers),
+          gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
         ),
+        offers: _storeOffers,
+        auth: _signedInAuth(),
+        platform: TargetPlatform.iOS,
+      ),
+      // Signed out, the offer is the same; choosing a tier asks for the
+      // account on the way to the store.
+      'sales-signed-out': (_) => SalesScreen(
+        flow: PurchaseFlow(
+          purchases: FakePurchases(offers: _storeOffers),
+          gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
+        ),
+        offers: _storeOffers,
+        auth: FakeAuth(),
+        platform: TargetPlatform.iOS,
       ),
       'plan-entitled': (_) => LiftShell(
         recorder: FakeSessionRecorder(),

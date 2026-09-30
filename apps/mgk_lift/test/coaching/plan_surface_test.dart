@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_lift/src/features/entitlement/domain/entitlement.dart';
-import 'package:mgk_lift/src/features/purchases/domain/purchases.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/plan_surface.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -22,42 +20,6 @@ Future<void> pumpTall(WidgetTester tester, Widget child) async {
 }
 
 void main() {
-  group('the tiers', () {
-    testWidgets('name photos as paid, and Free as tracking only', (
-      WidgetTester tester,
-    ) async {
-      // Photos moved behind the entitlement on 2026-09-01 and the tier copy
-      // did not follow for one commit. This is what notices next time: a
-      // feature that changes side has to change this block too.
-      await pumpTall(tester, const PlanSurface());
-
-      expect(find.textContaining('and progress photos'), findsOneWidget);
-      expect(
-        find.text('Sessions, templates, history, stats. No limits and no ads.'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('say the two paid tiers differ only by how much you can talk', (
-      WidgetTester tester,
-    ) async {
-      // Premium Coach buys more messages and nothing else. Leaving a price
-      // difference unexplained invites somebody to infer a feature list from it,
-      // which is how a paywall starts lying without anybody writing a false
-      // sentence.
-      await pumpTall(tester, const PlanSurface());
-
-      expect(
-        find.textContaining('Everything in Coach, feature for feature'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Far more room to talk to the coach'),
-        findsOneWidget,
-      );
-    });
-  });
-
   group('the offer', () {
     // The first version was a headline, a paragraph and a disabled button with
     // nine hundred pixels of nothing between them — a third of the app's
@@ -72,73 +34,30 @@ void main() {
       expect(find.text('Train with a coach'), findsOneWidget);
       expect(find.text('A block, not a list'), findsOneWidget);
       expect(find.text('Numbers from your numbers'), findsOneWidget);
-      expect(find.text('It answers back'), findsOneWidget);
     });
 
-    testWidgets('states every tier, not only the one being sold', (
+    testWidgets('promises nothing the app does not do', (
       WidgetTester tester,
     ) async {
+      // Nothing can move a planned session (a plan's days are derived, not
+      // stored), and the coach reads Lift's log and nothing of Run's. The
+      // offer said both.
       await pumpTall(tester, const PlanSurface());
 
-      expect(find.text('Free'), findsOneWidget);
-      expect(find.text('Coach'), findsOneWidget);
-      expect(find.text('Premium Coach'), findsOneWidget);
+      expect(find.textContaining('move Thursday'), findsNothing);
+      expect(find.textContaining('running'), findsNothing);
     });
 
-    testWidgets('names the tiers and never prices them itself', (
+    testWidgets('names no tier and no price: the sales screen does', (
       WidgetTester tester,
     ) async {
-      // The rule, pinned. A tier is Coach or Premium Coach; what it costs is
-      // the store's answer and differs by territory. Hardcoding `£1` named the
-      // tier after a number that is wrong outside the UK and has to be hunted
-      // down the day it moves.
+      // One place sells (R6). A second price table here was a second chance
+      // to disagree with the store.
       await pumpTall(tester, const PlanSurface());
 
       expect(find.textContaining('£'), findsNothing);
-      expect(
-        find.text('Start coaching'),
-        findsOneWidget,
-        reason: 'with no store there is no price to name',
-      );
-      expect(
-        find.text('—'),
-        findsNWidgets(2),
-        reason: 'not knowing the price yet is true; inventing one is not',
-      );
-    });
-
-    testWidgets('prices come from the store, verbatim', (
-      WidgetTester tester,
-    ) async {
-      // Whatever the store hands over, including its currency and formatting.
-      // The app neither composes nor parses it.
-      await pumpTall(
-        tester,
-        const PlanSurface(
-          offers: <PurchaseOffer>[
-            PurchaseOffer(
-              id: 'x',
-              tier: EntitlementTier.paid,
-              price: r'$1.99',
-              period: 'month',
-            ),
-            PurchaseOffer(
-              id: 'y',
-              tier: EntitlementTier.premium,
-              price: r'$4.99',
-              period: 'month',
-            ),
-          ],
-        ),
-      );
-
-      expect(find.text(r'$1.99'), findsOneWidget);
-      expect(find.text(r'$4.99'), findsOneWidget);
-      // The button opens the purchase sheet, where both tiers are bought, so
-      // it names no single price — it used to name Coach's while the table
-      // above it offered Premium Coach too.
+      expect(find.text('Premium Coach'), findsNothing);
       expect(find.text('Start coaching'), findsOneWidget);
-      expect(find.textContaining(r'Start coaching — $'), findsNothing);
     });
 
     testWidgets('promises tracking stays free', (WidgetTester tester) async {
@@ -147,8 +66,7 @@ void main() {
       // the free tier is a row on the price block rather than a footnote.
       await pumpTall(tester, const PlanSurface());
 
-      expect(find.text('Everything you are using now'), findsOneWidget);
-      expect(find.textContaining('No limits and no ads'), findsOneWidget);
+      expect(find.textContaining('Tracking stays free'), findsOneWidget);
     });
 
     testWidgets('carries its content even with no billing wired up', (
@@ -183,16 +101,18 @@ void main() {
       expect(find.text('£1'), findsNothing);
     });
 
-    testWidgets('shows what asking the coach looks like', (
+    testWidgets('says what happens next, in three steps (16)', (
       WidgetTester tester,
     ) async {
       // "Build a plan" is otherwise an instruction with no picture attached.
-      await tester.pumpWidget(
-        wrap(PlanSurface(isEntitled: true, onBuildPlan: () {})),
-      );
-      await tester.pumpAndSettle();
+      await pumpTall(tester, PlanSurface(isEntitled: true, onBuildPlan: () {}));
 
-      expect(find.text('What are you training for?'), findsOneWidget);
+      expect(
+        find.text('Tell the coach your goal and your days'),
+        findsOneWidget,
+      );
+      expect(find.text('It builds the block'), findsOneWidget);
+      expect(find.text("Today's session appears on Track"), findsOneWidget);
     });
 
     testWidgets('says why the button is dead when the coach is unreachable', (

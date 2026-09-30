@@ -9,13 +9,14 @@ import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../entitlement/domain/entitlement.dart';
 import '../../purchases/domain/purchases.dart';
-import '../../purchases/presentation/purchase_sheet.dart';
+import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
+import '../../planning/domain/moved_day.dart';
 import '../../planning/domain/plan_intake.dart';
 import '../../planning/domain/plan_builder.dart';
 import '../../planning/domain/session_prescription.dart';
@@ -83,6 +84,7 @@ class LiftShell extends StatefulWidget {
     this.deleter,
     this.planner,
     this.plans,
+    this.movedDays,
     this.isEntitled = false,
     this.entitlements,
     this.purchases,
@@ -239,6 +241,11 @@ class LiftShell extends StatefulWidget {
   /// tracking works signed out and always will.
   final AuthService? auth;
 
+  /// Where *Do it today* is kept: another day's session brought forward to
+  /// today (R8, O4). Null keeps the choice in memory, which is what the
+  /// preview and the tests want.
+  final MovedDayStore? movedDays;
+
   /// Whose training is on this phone, and the only way to hand it to another
   /// account. **Null skips the question**, which is what the preview harness
   /// and tests that are not about it want, and what a build with no server
@@ -345,6 +352,11 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
   StandingPlan? _plan;
+
+  /// Another day's session, brought forward to today from Plan. Held here for
+  /// the same reason as [_plan]: Track shows it and Plan marks it.
+  String? _movedDay;
+  late final MovedDayStore _movedDays = widget.movedDays ?? InMemoryMovedDay();
   bool _buildingPlan = false;
 
   /// Whether the coach is switched on. Held here rather than in Settings
@@ -395,6 +407,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       }
     }
     unawaited(_refreshPlan());
+    unawaited(_loadMovedDay());
     unawaited(_refreshEntitlement());
     unawaited(_loadOffers());
 
@@ -500,6 +513,23 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_backup?.runNow());
   }
 
+  Future<void> _loadMovedDay() async {
+    final day = await _movedDays.read(widget.today ?? DateTime.now());
+    if (!mounted || day == _movedDay) return;
+    setState(() => _movedDay = day);
+  }
+
+  /// *Do it today*: [day]'s session becomes Track's for today, and Track is
+  /// where the lifter is taken, because that is where it starts.
+  Future<void> _doToday(String day) async {
+    await _movedDays.write(day, widget.today ?? DateTime.now());
+    if (!mounted) return;
+    setState(() => _movedDay = day);
+    _go(_trackTab);
+    unawaited(AppHaptics.selection());
+    _say('$day is on Track for today.');
+  }
+
   /// Resolves what the paid surfaces should show.
   ///
   /// No gate means the caller stated the answer — the preview and the widget
@@ -530,28 +560,23 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     setState(() => _offers = offers);
   }
 
-  /// Opens the purchase sheet: both tiers, each one buyable.
+  /// Opens the sales screen, the one door to paying (R6), and answers whether
+  /// this account is entitled once it closes — so the door it was opened from
+  /// can open onto what was just bought.
   ///
-  /// It used to buy **Coach** directly, whatever the paywall above it showed,
-  /// so Premium Coach was a tier the app displayed and could not sell. The
-  /// sheet is where somebody chooses, and where the disclosure and the links
-  /// Guideline 3.1.2 wants sit beside the button that charges.
-  Future<void> _startPurchase() async {
+  /// Signed out is fine: the offer shows in full, and choosing a tier asks for
+  /// the account on the way to the store.
+  Future<bool> _startPurchase() async {
     final flow = _flow;
-    if (flow == null) return;
-    final result = await PurchaseSheet.show(
+    if (flow == null) return _entitled;
+    final result = await SalesScreen.open(
       context,
       flow: flow,
       offers: _offers,
-      signedIn: widget.auth == null || _account != null,
-      onSignIn: widget.auth == null
-          ? null
-          : () {
-              Navigator.of(context).pop();
-              unawaited(_openSignIn());
-            },
+      auth: widget.auth,
     );
     if (result != null) await _report(result);
+    return _entitled;
   }
 
   /// Tells the store who is buying, so the webhook can say whose purchase it
@@ -796,6 +821,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                         ? null
                         : _openSession,
                     plan: _plan,
+                    movedDay: _movedDay,
                     today: widget.today,
                     unit: _units.mass,
                     onStartPlanned: widget.recorder == null
@@ -819,7 +845,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   isEntitled: _entitled,
                   onSubscribe: _flow == null ? null : _startPurchase,
                   onRestore: _flow == null ? null : _restorePurchases,
-                  offers: _offers,
                   plan: _plan,
                   today: widget.today,
                   unit: _units.mass,
@@ -828,9 +853,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   // reason. Only when a planner exists: with no server
                   // the connection line is the true one.
                   coachIsOff: !_useCoach && widget.planner != null,
-                  onOpenSession: widget.recorder == null
-                      ? null
-                      : _openPlannedSession,
+                  onGoToTrack: () => _go(_trackTab),
+                  onDoToday: _doToday,
+                  movedDay: _movedDay,
                   // Adapting a WEEK no longer has a subject: a standing plan
                   // has no weeks. What the feature was for is real and moves to
                   // the post-session review, where the coach reads what
@@ -963,12 +988,21 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   Future<void> _openCoach() async {
     final coach = widget.coach;
     if (coach == null || !_useCoach) return;
-    if (_account == null) {
-      await _openSignIn();
-      return;
-    }
-    if (!_entitled) {
-      _go(_planTab);
+    // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
+    // included, the mark opens the sales screen, wherever it is tapped. It
+    // used to send the signed-out to sign in and the rest to the Plan tab —
+    // behind whatever screen they were on, from the session and the summary.
+    if (_account == null || !_entitled) {
+      if (_flow != null) {
+        await _startPurchase();
+        return;
+      }
+      // A build that cannot sell: the old routes, which at least explain.
+      if (_account == null) {
+        await _openSignIn();
+      } else {
+        _go(_planTab);
+      }
       return;
     }
     // A sheet over the surface you were on, not a fourth destination pushed on
@@ -1138,6 +1172,11 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         unawaited(_refreshSession());
         unawaited(_refreshLog());
         _afterSession();
+        // A day brought forward lasts until it is done (O4).
+        if (day == _movedDay) {
+          unawaited(_movedDays.clear());
+          if (mounted) setState(() => _movedDay = null);
+        }
       },
     );
     await _refreshSession();

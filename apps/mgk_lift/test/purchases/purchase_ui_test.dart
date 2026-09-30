@@ -6,15 +6,15 @@ import 'package:mgk_lift/src/features/entitlement/domain/entitlement.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/legal/presentation/legal_document_screen.dart';
 import 'package:mgk_lift/src/features/purchases/domain/purchases.dart';
-import 'package:mgk_lift/src/features/purchases/presentation/purchase_sheet.dart';
+import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
+import 'package:mgk_lift/src/features/purchases/presentation/sales_screen.dart';
 
 /// The affordances, and the wire from a tap to what the screen then shows.
 ///
 /// `onSubscribe` existed on both paywalls and nothing ever passed one, so these
 /// cover the join rather than the widgets: a paywall that renders a button is
-/// not the same as a paywall that can sell anything. Since 2026-09-29 the
-/// button opens the purchase sheet, where either tier can be bought — the
-/// paywall had shown Premium Coach for a month with no way to buy it.
+/// not the same as a paywall that can sell anything. Every door now opens the
+/// sales screen (R6), where choosing a tier is the purchase.
 void main() {
   Future<void> openPlan(WidgetTester tester, Widget shell) async {
     tester.view
@@ -38,7 +38,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> openSheet(WidgetTester tester) =>
+  Future<void> openSales(WidgetTester tester) =>
       tapVisible(tester, find.text('Start coaching'));
 
   const signedIn = Account(id: 'user-1', email: 'lifter@mgkcodes.com');
@@ -75,7 +75,7 @@ void main() {
     expect(find.text('Restore purchases'), findsOneWidget);
   });
 
-  testWidgets('the sheet offers both tiers, priced by the store', (
+  testWidgets('the sales screen offers both tiers, priced by the store', (
     tester,
   ) async {
     await openPlan(
@@ -87,10 +87,12 @@ void main() {
         purchases: FakePurchases(),
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
 
-    final sheet = find.byType(PurchaseSheet);
+    final sheet = find.byType(SalesScreen);
     expect(sheet, findsOneWidget);
+    // What each adds, and that the second adds only room to talk.
+    expect(find.textContaining('feature for feature'), findsOneWidget);
     for (final text in <String>['£1.00 / month', '£3.00 / month']) {
       expect(
         find.descendant(of: sheet, matching: find.text(text)),
@@ -100,9 +102,7 @@ void main() {
     expect(find.text('Subscribe to Coach'), findsOneWidget);
   });
 
-  testWidgets('Coach is what the sheet opens on, and what it buys', (
-    tester,
-  ) async {
+  testWidgets('Subscribe to Coach buys Coach', (tester) async {
     final store = FakePurchases();
     await openPlan(
       tester,
@@ -111,7 +111,7 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
     await tapVisible(tester, find.text('Subscribe to Coach'));
 
     expect(store.bought.single.tier, EntitlementTier.paid);
@@ -128,21 +128,15 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
-
-    await tapVisible(
-      tester,
-      find.descendant(
-        of: find.byType(PurchaseSheet),
-        matching: find.text('£3.00 / month'),
-      ),
-    );
+    await openSales(tester);
+    // Choosing the tier is the purchase: no second button that might still
+    // be buying the first.
     await tapVisible(tester, find.text('Subscribe to Premium Coach'));
 
     expect(store.bought.single.tier, EntitlementTier.premium);
   });
 
-  testWidgets('a completed purchase closes the sheet and the paywall', (
+  testWidgets('a completed purchase closes the screen and the paywall', (
     tester,
   ) async {
     // The whole seam, end to end: tap, store, server, screen. Before this the
@@ -156,10 +150,10 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
     await tapVisible(tester, find.text('Subscribe to Coach'));
 
-    expect(find.byType(PurchaseSheet), findsNothing);
+    expect(find.byType(SalesScreen), findsNothing);
     expect(
       find.text('Start coaching'),
       findsNothing,
@@ -183,19 +177,17 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
     await tapVisible(tester, find.text('Subscribe to Coach'));
 
-    expect(find.byType(PurchaseSheet), findsOneWidget);
+    expect(find.byType(SalesScreen), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
     expect(find.textContaining('Nothing has been charged'), findsNothing);
   });
 
-  testWidgets('signed out, the sheet asks for an account rather than money', (
-    tester,
-  ) async {
-    // The webhook refuses an anonymous customer, so a purchase made signed out
-    // takes the money and unlocks nothing. Run shipped that once.
+  testWidgets('signed out, the offer shows in full', (tester) async {
+    // R6: the account is asked for when a tier is chosen, not before the
+    // offer is seen.
     final store = FakePurchases();
     await openPlan(
       tester,
@@ -207,11 +199,66 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
 
-    expect(find.text('Sign in to subscribe'), findsOneWidget);
-    expect(find.textContaining('Subscribe to'), findsNothing);
+    expect(find.text('Subscribe to Coach'), findsOneWidget);
+    expect(find.text('Subscribe to Premium Coach'), findsOneWidget);
+    expect(find.textContaining('sign in or make an account first'), findsOne);
     expect(store.bought, isEmpty);
+  });
+
+  testWidgets('signed out, choosing a tier asks for the account, then buys', (
+    tester,
+  ) async {
+    // The webhook refuses an anonymous customer, so a purchase made signed
+    // out takes the money and unlocks nothing. Run shipped that once.
+    final store = FakePurchases();
+    final auth = FakeAuth();
+    addTearDown(auth.dispose);
+    await openPlan(
+      tester,
+      LiftShell(
+        auth: auth,
+        entitlements: EntitlementGate(source: _EntitledOnce(store)),
+        purchases: store,
+      ),
+    );
+    await openSales(tester);
+    await tapVisible(tester, find.text('Subscribe to Coach'));
+
+    expect(find.byType(SignInScreen), findsOneWidget);
+    expect(store.bought, isEmpty, reason: 'nothing before the account');
+
+    await tapVisible(tester, find.text('Continue with Apple'));
+
+    // Attached before the store is asked, then bought.
+    expect(store.identified, 'fake-user');
+    expect(store.bought.single.tier, EntitlementTier.paid);
+    expect(find.byType(SalesScreen), findsNothing);
+  });
+
+  testWidgets('signed out, backing out of signing in buys nothing', (
+    tester,
+  ) async {
+    final store = FakePurchases();
+    await openPlan(
+      tester,
+      LiftShell(
+        auth: FakeAuth(),
+        entitlements: EntitlementGate(
+          source: FakeEntitlements(Entitlement.none),
+        ),
+        purchases: store,
+      ),
+    );
+    await openSales(tester);
+    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SalesScreen), findsOneWidget);
+    expect(store.bought, isEmpty);
+    expect(find.text('Subscribe to Coach'), findsOneWidget);
   });
 
   testWidgets('a store that refuses for want of an account says so, and that '
@@ -227,10 +274,10 @@ void main() {
         purchases: store,
       ),
     );
-    await openSheet(tester);
+    await openSales(tester);
     await tapVisible(tester, find.text('Subscribe to Coach'));
 
-    expect(find.byType(PurchaseSheet), findsOneWidget);
+    expect(find.byType(SalesScreen), findsOneWidget);
     expect(find.textContaining('Sign in first'), findsOneWidget);
     expect(find.textContaining('Nothing has been charged'), findsOneWidget);
   });
@@ -281,7 +328,7 @@ void main() {
     expect(find.textContaining('no subscription on this account'), findsOne);
   });
 
-  group('the sheet on its own', () {
+  group('the sales screen on its own', () {
     Future<void> pumpSheet(
       WidgetTester tester, {
       required TargetPlatform platform,
@@ -292,20 +339,20 @@ void main() {
       ],
     }) async {
       final purchases = store ?? FakePurchases(offers: offers);
+      tester.view
+        ..physicalSize = const Size(1179, 2556)
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: PurchaseSheet(
-              flow: PurchaseFlow(
-                purchases: purchases,
-                gate: EntitlementGate(
-                  source: FakeEntitlements(Entitlement.none),
-                ),
-                settleDelay: Duration.zero,
-              ),
-              offers: offers,
-              platform: platform,
+          home: SalesScreen(
+            flow: PurchaseFlow(
+              purchases: purchases,
+              gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
+              settleDelay: Duration.zero,
             ),
+            offers: offers,
+            platform: platform,
           ),
         ),
       );
@@ -368,6 +415,21 @@ void main() {
         expect(find.text('Restore purchases'), findsOneWidget);
       },
     );
+
+    testWidgets('each tier says what it adds, and only what ships', (
+      tester,
+    ) async {
+      await pumpSheet(tester, platform: TargetPlatform.iOS);
+      expect(find.textContaining('A training plan built from'), findsOneWidget);
+      expect(find.textContaining('reads your recent sessions'), findsOneWidget);
+      expect(find.textContaining('Progress photos'), findsOneWidget);
+      expect(find.textContaining('feature for feature'), findsOneWidget);
+      // Nothing moves a planned session, and the coach reads nothing of Run.
+      expect(find.textContaining('Thursday'), findsNothing);
+      expect(find.textContaining('running'), findsNothing);
+      // And tracking is never what is being sold.
+      expect(find.textContaining('Tracking stays free'), findsOneWidget);
+    });
 
     testWidgets('prices are the store\'s strings, printed as given', (
       tester,

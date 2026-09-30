@@ -9,6 +9,9 @@ import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/coaching/data/supabase_coach.dart';
 import 'package:mgk_lift/src/features/coaching/presentation/coach_sheet.dart';
+import 'package:mgk_lift/src/features/entitlement/domain/entitlement.dart';
+import 'package:mgk_lift/src/features/purchases/domain/purchases.dart';
+import 'package:mgk_lift/src/features/purchases/presentation/sales_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 void main() {
@@ -190,6 +193,42 @@ void main() {
     expect(find.byType(CoachSheet), findsNothing);
     expect(find.byType(SignInScreen), findsOneWidget);
   });
+
+  for (final signedIn in <bool>[false, true]) {
+    testWidgets(
+      'unsubscribed and ${signedIn ? 'signed in' : 'signed out'}, the mark '
+      'opens the sales screen (R6)',
+      (WidgetTester tester) async {
+        // Nothing on the coach is free. The mark used to send the signed-out
+        // to sign in and everybody else to the Plan tab, behind whatever
+        // screen they were on; one screen sells now, from every door.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LiftShell(
+              coach: FakeCoach(),
+              auth: FakeAuth(
+                account: signedIn
+                    ? const Account(id: 'u', email: 'a@b.com')
+                    : null,
+              ),
+              entitlements: EntitlementGate(
+                source: FakeEntitlements(Entitlement.none),
+              ),
+              purchases: FakePurchases(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(CoachButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SalesScreen), findsOneWidget);
+        expect(find.byType(CoachSheet), findsNothing);
+        expect(find.byType(SignInScreen), findsNothing);
+      },
+    );
+  }
 
   testWidgets('on the free tier the mark goes to the offer, not a refusal', (
     WidgetTester tester,
