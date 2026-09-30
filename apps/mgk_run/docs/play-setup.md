@@ -517,8 +517,7 @@ says. That is step 10.
       verified rendering as £0.99 / £2.99 in build 23 on 2026-09-11
 - [ ] **Each subscription's description and benefits set from
       [play-listing.md](play-listing.md) § Subscriptions** (added 2026-09-29).
-      Premium's says *"Three times the coaching each month."*, not a better
-      model ([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
+      Premium's says *"A better AI model and a bigger allowance."* ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
       Google calls the description internal, but the paywall prints it on
       Android through RevenueCat, so it is copy a runner reads.
 

@@ -699,9 +699,8 @@ the deployed webhook and its secrets; and the webhook registration.
       one.
 - [ ] **11. App Privacy: Purchases and the identifier** — Gate 2, and Play's
       Data safety form (play-setup.md §4).
-- [ ] **12. Premium's description** says *"Three times the coaching each
-      month."* in both stores
-      ([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
+- [ ] **12. Premium's description** says *"A better AI model and a bigger allowance."* in both stores
+      ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)). Premium's model is set (`COACH_CHAT_MODEL_SHARP`, 2026-09-30).
       The paywall prints the store's text, so this is in-app copy as well as a
       store field. store-setup.md §2, play-setup.md §5.
 

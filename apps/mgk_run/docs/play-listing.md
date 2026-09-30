@@ -136,8 +136,8 @@ battery than an app that is closed.
 SUBSCRIPTION
 
 The coach is an auto-renewing monthly subscription in two tiers: Coach, and
-Premium Coach, which is the same coach with three times the coaching each
-month. The price is shown in the app, in your own currency, before you buy
+Premium Coach, which answers with a better AI model and has a bigger monthly
+allowance. The price is shown in the app, in your own currency, before you buy
 anything.
 
 - Payment is charged to your Google Play account at confirmation of purchase.
@@ -183,16 +183,15 @@ benefit: Ask the coach about any run
 
 ```
 name: Premium Coach
-description: Three times the coaching each month.
+description: A better AI model and a bigger allowance.
 benefit: Everything in Coach
-benefit: Three times the coaching each month
+benefit: A better AI model for coach replies
+benefit: A bigger monthly allowance
 ```
 
-**Premium's text changed on 2026-09-29**
-([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)):
-Premium is the same coach with three times Coach's monthly allowance, not a
-better model. Change it in Play Console by hand; nothing in the build carries
-it.
+**Premium's text changed on 2026-09-30** ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)): a better AI model for
+replies and a bigger allowance, stated as intent, with no model or number named.
+Change it in Play Console by hand; nothing in the build carries it.
 
 ## Graphics
 

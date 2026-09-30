@@ -47,8 +47,10 @@ Written first, because a listing is where an aspiration quietly becomes a lie.
   keywords either; a competitor's name in a keyword field is a rejection.
 - **No watch app, and no watch import.** "Works with Apple Watch" would be read
   as a companion app, and nothing from a watch reaches the log.
-- **Premium is not a better model.** Same coach, three times the monthly
-  allowance ([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
+- **Premium's model is never named, and "better" has to stay true.** Premium
+  replies come from `COACH_CHAT_MODEL_SHARP`, which must be a stronger model
+  than Coach replies with; plans use one model for every tier, so nothing says
+  Premium's *plans* are better ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
 
 ---
 
@@ -187,8 +189,8 @@ battery than an app that is closed.
 SUBSCRIPTION
 
 The coach is an auto-renewing monthly subscription in two tiers: Coach, and
-Premium Coach, which is the same coach with three times the coaching each
-month. The price is shown in the app, in your own currency, before you buy
+Premium Coach, which answers with a better AI model and has a bigger monthly
+allowance. The price is shown in the app, in your own currency, before you buy
 anything.
 
 - Payment is charged to your Apple ID at confirmation of purchase.
@@ -236,20 +238,20 @@ both descriptions came in at 82 and 99. `check_listing.py` counts them now.
 | | Display name | Description |
 |---|---|---|
 | Coach | `Coach` (5) | `A training plan, adjusted every week.` (37) |
-| Premium Coach | `Premium Coach` (13) | `Three times the coaching each month.` (36) |
+| Premium Coach | `Premium Coach` (13) | `A better AI model and a bigger allowance.` (41) |
 
 They read as a pair on purpose: the first says what the product is, the second
 says only what is different about it. At 45 characters there is no room to say
 both twice.
 
-**Premium's description changed on 2026-09-29, and it has to be changed in App
+**Premium's description changed on 2026-09-30, and it has to be changed in App
 Store Connect by hand** (Subscriptions › Premium Coach › Localization). It said
-*"A better model behind every plan and answer."*, which production has never
-done: planning runs on one model for every tier by design, and no tier chat
-model is configured, so both tiers talk to the same one. What Premium does buy
-is three times Coach's monthly allowance, enforced by the coach function once
-it carries `c708e3e`
-([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
+*"A better model behind every plan and answer."* No tier model was configured
+then, and plans never use one. Since 2026-09-30 Premium's replies come from a
+better model (`COACH_CHAT_MODEL_SHARP`, verified by a live call), and its
+allowance is three times Coach's monthly spend. The description states that
+intent and names no model or number, so changing the model is configuration,
+not a store edit ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
 **The paywall prints this field verbatim** on both platforms — it comes from
 the store through RevenueCat, not from the app — so the old text would have
 made the claim inside the app as well.
@@ -279,14 +281,14 @@ accounts from [store-setup.md](store-setup.md) §9 and nothing else.
 
 ```
 WHAT THIS IS
-A free GPS running tracker (no account needed) with an optional AI running coach, sold as an auto-renewable subscription: Coach and Premium Coach, monthly, in one subscription group. Premium is the same coach with three times the monthly allowance.
+A free GPS running tracker (no account needed) with an optional AI running coach, sold as an auto-renewable subscription: Coach and Premium Coach, monthly, in one subscription group. Premium answers with a better AI model and has a bigger monthly allowance.
 
 DEMO ACCOUNTS
 On the first screen, tap "I already have an account".
 A - coach already unlocked. Please review the coach with this account, and please do not make a purchase on it:
-[DEMO_A_EMAIL] / [DEMO_A_PASSWORD]
+review.subscribed@mgkfitness.mgkcodes.com / [PASSWORD_A]
 B - no subscription. Please use this one to test the purchase with your sandbox Apple ID:
-[DEMO_B_EMAIL] / [DEMO_B_PASSWORD]
+review.free@mgkfitness.mgkcodes.com / [PASSWORD_B]
 If you test account deletion, please use B, so that A stays available.
 
 THE PAID HALF

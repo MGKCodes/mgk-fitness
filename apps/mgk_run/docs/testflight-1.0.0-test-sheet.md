@@ -422,7 +422,7 @@ anything.**
 | G3b | Tap that **Sign in** and sign in | Back on the paywall, able to buy | ☐ |
 | G4 | Your granted row is deleted | Otherwise a purchase and a grant look the same | ☐ |
 | G5 | Coach mark ▸ gate ▸ **See the plans** | `PurchaseScreen` opens | ☐ |
-| G6 | **Both tiers show a price, and Premium's line** | Premium reads *"Three times the coaching each month."* If it still says *"A better model…"*, App Store Connect has not been changed (store-setup.md §2). *"Not available to buy yet"* means the offering is not CURRENT | ☐ |
+| G6 | **Both tiers show a price, and Premium's line** | Premium reads *"A better AI model and a bigger allowance."* If it still says *"A better model…"*, App Store Connect has not been changed (store-setup.md §2). *"Not available to buy yet"* means the offering is not CURRENT | ☐ |
 | G7 | Premium Coach is the higher tier | Level 1 is the higher | ☐ |
 | G8 | The price is in **the storefront's** currency | Nothing compiles a figure in | ☐ |
 | G9 | Tap **Terms of use** | **Our terms**, `mgkfitness.mgkcodes.com/run/terms`, open and load | ☐ |
@@ -460,7 +460,7 @@ As **Test 2**, on a phone whose Play account is a licence tester. Runbook in
 | P1 | Play Console ▸ License testing lists this phone's Google account | Purchases are free and a month lasts minutes | ☐ |
 | P2 | The app came from the **internal testing link** | A sideloaded APK cannot buy | ☐ |
 | P3 | Sign in as Test 2 (no row) ▸ coach mark ▸ Agree ▸ disclaimer ▸ gate ▸ See the plans | The paywall | ☐ |
-| P4 | Read the paywall | £0.99 and £2.99 a month; Premium reads *"Three times the coaching each month."*; the disclosure names the **Google Play account**, not an Apple ID; **Terms of use** opens `/run/terms` | ☐ |
+| P4 | Read the paywall | £0.99 and £2.99 a month; Premium reads *"A better AI model and a bigger allowance."*; the disclosure names the **Google Play account**, not an Apple ID; **Terms of use** opens `/run/terms` | ☐ |
 | P5 | **Buy Premium Coach first** | The coach unlocks. `core.entitlements`: `premium` / `active` / `google`, with `expires_at` and `event_ms`. **No row?** Read `unmapped_product: <id>` in the function log, add that id (play-setup.md §10), buy again | ☐ |
 | P6 | Reinstall from the link, sign in, **Restore purchases** | The coach comes back | ☐ |
 | P7 | Account ▸ Coaching ▸ **Manage subscription** | Play's subscription page for Run | ☐ |

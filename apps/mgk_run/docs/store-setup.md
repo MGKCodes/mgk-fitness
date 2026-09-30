@@ -126,7 +126,7 @@ Then per product, **Localization ▸ English (U.K.)**:
 | | Coach | Premium Coach |
 |---|---|---|
 | Display name (30) | `Coach` | `Premium Coach` |
-| Description (45) | `A training plan, adjusted every week.` | `Three times the coaching each month.` |
+| Description (45) | `A training plan, adjusted every week.` | `A better AI model and a bigger allowance.` |
 
 **Those two limits are much tighter than they look** — 30 and 45 characters,
 against the 170 and 4000 of the listing's own fields. The first draft of both
@@ -135,7 +135,7 @@ descriptions ran to 82 and 99 and would have been refused in the form.
 - [ ] **Change Premium's description in App Store Connect.** It was entered as
       *"A better model behind every plan and answer."*, which production has
       never done
-      ([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
+      ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
       Subscriptions ▸ Premium Coach ▸ Localization ▸ English (U.K.) ▸
       Description. **The paywall prints this field verbatim**, through
       RevenueCat, so until it changes the app makes the claim too. The copy is
@@ -482,24 +482,28 @@ the purchase needs an account that has none.
 Play's reviewer uses A as well (play-setup.md §4, App access), which is why A's
 row names no store.
 
-- [ ] **Create both accounts.** Supabase ▸ Authentication ▸ Users ▸ Add user ▸
-      Create new user, with **Auto Confirm User** ticked. Use addresses on a
-      domain MGKCodes owns, and passwords you can paste.
+- [x] **Both accounts created, 2026-09-30**, through the ordinary sign-up
+      endpoint (email confirmation is off, so neither address needs a mailbox):
+      **A** `review.subscribed@mgkfitness.mgkcodes.com`, **B**
+      `review.free@mgkfitness.mgkcodes.com`. Passwords were handed to the owner
+      for App Store Connect and Play's App access form and are not in this
+      repository. Neither is a person's account.
 
       **Do not sign in as either on your own phone.** Its training is yours, so
       the app would show *"This phone has another account's training on it"*
       and offer only to erase it or sign out. Use a phone whose training you
       do not need: a spare, an emulator, or the Android test phone once the
       test sheet is done.
-- [ ] **Grant A**, in the SQL editor, with A's email in place of the
-      placeholder:
+- [x] **A granted, 2026-09-30** (`premium`, `active`, `expires_at` null,
+      `event_ms` 9999999999999, `source_txn_id` `manual:app-review-subscribed`).
+      To re-grant it, the SQL is:
 
       ```sql
       insert into core.entitlements
         (user_id, app, product, status, platform, expires_at, event_ms)
       select id, 'run', 'premium', 'active', null, null, 9999999999999
       from auth.users
-      where email = '<DEMO_A_EMAIL>'
+      where email = 'review.subscribed@mgkfitness.mgkcodes.com'
       on conflict (user_id, app) do update
         set product = 'premium', status = 'active', platform = null,
             expires_at = null, event_ms = 9999999999999, updated_at = now();
@@ -518,17 +522,19 @@ row names no store.
         to cancel in the App Store.
       - `premium`, so the reviewer meets the higher allowance and cannot hit a
         ceiling mid-review.
-- [ ] **Check B has no row**, and delete one if a test left it:
+- [x] **B has no row** (checked 2026-09-30). If a test ever leaves one:
 
       ```sql
       select u.email, e.product, e.status, e.platform, e.expires_at, e.event_ms
       from auth.users u
       left join core.entitlements e on e.user_id = u.id and e.app = 'run'
-      where u.email in ('<DEMO_A_EMAIL>', '<DEMO_B_EMAIL>');
+      where u.email in ('review.subscribed@mgkfitness.mgkcodes.com',
+                  'review.free@mgkfitness.mgkcodes.com');
 
       delete from core.entitlements
       where app = 'run'
-        and user_id = (select id from auth.users where email = '<DEMO_B_EMAIL>');
+        and user_id = (select id from auth.users
+                       where email = 'review.free@mgkfitness.mgkcodes.com');
       ```
 
 - [ ] **Check both on that phone, then withdraw the AI permission on both.**

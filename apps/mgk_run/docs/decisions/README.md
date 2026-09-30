@@ -49,6 +49,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0035](0035-the-phones-training-belongs-to-one-account.md) | The phone's training belongs to one account | Accepted |
 | [0036](0036-the-coach-asks-before-it-sends.md) | The coach asks before it sends | Accepted |
 | [0037](0037-the-sandbox-stays-open-in-production.md) | The sandbox stays open in production | Accepted |
-| [0038](0038-premium-buys-more-coaching-not-a-different-model.md) | Premium buys more coaching, not a different model | Accepted |
+| [0038](0038-premium-buys-more-coaching-not-a-different-model.md) | Premium buys more coaching, not a different model | Superseded by [0041](0041-premium-is-a-better-model-and-a-bigger-allowance.md) |
 | [0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md) | One commit, two stores, and the pubspec owns the build number | Accepted |
 | [0040](0040-our-terms-and-apples-eula.md) | Our terms are the terms of use; App Store Connect keeps Apple's EULA | Accepted |
+| [0041](0041-premium-is-a-better-model-and-a-bigger-allowance.md) | Premium is a better model and a bigger allowance; which model is configuration | Accepted |
