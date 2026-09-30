@@ -383,6 +383,8 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **Account's payment-failed line starts its sentence with a capital.** It
+  read "Your last payment did not go through. the App Store is retrying it".
 - **The days before a new plan starts say so.** A plan starts on the coming
   Monday, and until then Home set that weekday's session from next week as
   today's ("5 km today") and counted "0 of 7" against it, while the Plan tab

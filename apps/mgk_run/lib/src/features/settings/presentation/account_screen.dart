@@ -254,7 +254,7 @@ class _SubscriptionBlock extends StatelessWidget {
     // which is where the app is running: an App Store subscriber signed in on
     // Android was told to cancel in Google Play, where there is nothing to
     // cancel.
-    final store = billingStoreFor(subscription, defaultTargetPlatform).label;
+    final billing = billingStoreFor(subscription, defaultTargetPlatform);
     final dim = theme.textTheme.bodySmall?.copyWith(
       color: AppColors.textTertiary,
       height: 1.4,
@@ -299,7 +299,7 @@ class _SubscriptionBlock extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          child: Text(_explanation(store), style: dim),
+          child: Text(_explanation(billing), style: dim),
         ),
       ],
     );
@@ -307,7 +307,10 @@ class _SubscriptionBlock extends StatelessWidget {
 
   /// The sentence the index has no room for: what this state means, and what
   /// to do about it if anything.
-  String _explanation(String store) => switch (subscription.standing) {
+  ///
+  /// [billing] rather than its name, because the name is spelt two ways: the
+  /// payment-failed sentence opens with it.
+  String _explanation(BillingStore billing) => switch (subscription.standing) {
     // Says what the free app *is* rather than what it lacks: recording is the
     // product, not a trial of one (ADR-0030).
     SubscriptionStanding.none =>
@@ -315,15 +318,16 @@ class _SubscriptionBlock extends StatelessWidget {
           'will be. The coach — a plan, and its reading of your training — is '
           'the subscription.',
     SubscriptionStanding.active =>
-      'Renews monthly. Cancel or change it in $store; we cannot do either from '
-          'here, because $store takes the payment.',
+      'Renews monthly. Cancel or change it in ${billing.label}; we cannot do '
+          'either from here, because ${billing.label} takes the payment.',
     // The one worth explaining properly. The coach is locked and the runner
     // has cancelled nothing, so this has to carry both facts or it reads as
     // the app having lost their subscription.
     SubscriptionStanding.billingRetry =>
-      'Your last payment did not go through. $store is retrying it, and the '
-          'coach stays locked until it succeeds. Updating your payment method '
-          'in $store is the fix — there is nothing to do here.',
+      'Your last payment did not go through. ${billing.sentenceLabel} is '
+          'retrying it, and the coach stays locked until it succeeds. Updating '
+          'your payment method in ${billing.label} is the fix — there is '
+          'nothing to do here.',
     SubscriptionStanding.ended =>
       'Your subscription has ended and you are not being charged. Everything '
           'you recorded is still yours.',
