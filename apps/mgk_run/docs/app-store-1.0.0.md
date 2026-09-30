@@ -75,9 +75,10 @@ and run.
    - [x] **The missing backup columns**, `20260929114055_run_elevation_max_and_steps`,
          applied the same day and the file renamed to the ledger's version.
 
-   Deploy rule, unchanged: functions **by name**, and **never `delete-account`
-   or `daily-ai-summary` from `main`** — production's `delete-account` is
-   Lift's copy, with the progress-photo sweep. `supabase/config.toml` now
+   Deploy rule: functions **by name**, and **never `daily-ai-summary` from
+   `main`**. *`delete-account` was on this list until 2026-09-30*, when
+   production ran Lift's copy with the progress-photo sweep; `027e142` brought
+   that copy to `main`, so `main` now carries it. `supabase/config.toml` now
    declares `verify_jwt = false` for the three functions that need it.
 
    **Watch for:** both functions were two versions ahead of what this session
@@ -178,9 +179,43 @@ and run.
          `codemagic.yaml` change to `main`, which is where Run builds from.
          **Verify on build 27** that Codemagic's automatic signing chose the
          profile on the 2027-09-30 certificate: it holds Frunt's key too.
-   - [ ] **Supabase Auth: email confirmation is off. Decide** whether to turn
-         it on, with custom SMTP, before public launch. It changes the sign-up
-         flow, so it is a product decision, not a setting to flip.
+   - [ ] **Supabase Auth: email confirmation goes on before submission.**
+         *Decided 2026-09-30:* off only for development. It has to be on by
+         the time the reviewed build is live, because build 27 adds Google and
+         Apple sign-in, and Supabase links a provider sign-in to any existing
+         account with the same email: with confirmation off, a password
+         sign-up counts as confirmed on creation, so somebody could register a
+         runner's address first and keep a way into the account that runner
+         later signs into with Google (a pre-account takeover; Supabase's
+         identity-linking docs and production checklist). What it needs:
+         - **A mail service** (custom SMTP). The built-in one sends only to the
+           Supabase team, so with confirmation on and nothing else, every
+           sign-up would wait for a mail that never comes. Resend's free tier,
+           on MGKFitness's own account (never Frunt's), from
+           `noreply@mgkfitness.mgkcodes.com`.
+         - **The app already copes:** a sign-up without a session reads
+           *"Check your email to confirm your account."* Build 27 adds a
+           plainer message for signing in before confirming, and sends the
+           link to a page that says what just happened.
+         - **Flip it before submitting**, so App Review sees the flow that
+           launches. The review accounts are confirmed already.
+         **"Forgot password?" is built** (`2642003`, from the Lift branch's
+         `236d1cc`): Run asks for a recovery email, which lands on
+         `/reset-password` on the site. It works once the mail service is in,
+         `supabase/templates/recovery.html` is pasted into Supabase's *Reset
+         password* template, and Vercel has `NEXT_PUBLIC_SUPABASE_URL` and
+         `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; until then the page says it
+         is not working and gives the support address.
+   - [ ] **Sign in with Apple and Google** reach Run in build 27 (`a7cb8fe`,
+         from the Lift branch's `f7713a2`), with **Apple's tokens revoked on
+         deletion** (`027e142`, from `0189fe0`; TN3194) and the policy naming
+         both (`3a77908`, from `9a1e0b9`). The consoles were set up for the
+         suite on 2026-09-30 (Lift's `store-setup.md`, step 7). **Deploy
+         `delete-account` from `main`**, owner's approval: production is
+         version 17 (2 September), which is `main`'s function without the
+         revocation. It is backwards compatible, since a client that sends no
+         `apple` field gets exactly today's behaviour, so it can go before
+         build 27. Check the three `APPLE_*` secrets are set first.
    - [x] **`dev@runio.app` is now `dev@mgkfitness.mgkcodes.com`**, 2026-09-30:
          the seeded developer account from the Runio days (ten made-up July
          runs), used by the preview harness's quick sign-in and the live tests,
