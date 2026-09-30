@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_service.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_service.dart';
@@ -40,7 +41,14 @@ void main() {
 
   setUpAll(() async {
     client = await signedInClient();
-    planner = PlanService(client: CoachService(client: client));
+    // Running this file is the consent: a live test is a deliberate send.
+    // Granted in memory, never written to the dev account's metadata.
+    planner = PlanService(
+      client: CoachService(
+        client: client,
+        consent: InMemoryAiConsentStore.granted(),
+      ),
+    );
   });
 
   tearDownAll(() async => client.dispose());

@@ -4,6 +4,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_service.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'live_backend.dart';
@@ -38,7 +39,12 @@ void main() {
 
   setUpAll(() async {
     client = await signedInClient();
-    coach = CoachService(client: client);
+    // Running this file is the consent: a live test is a deliberate send.
+    // Granted in memory, never written to the dev account's metadata.
+    coach = CoachService(
+      client: client,
+      consent: InMemoryAiConsentStore.granted(),
+    );
   });
 
   tearDownAll(() async => client.dispose());
