@@ -24,6 +24,10 @@ import 'exercise_thumb.dart';
 ///   under the status bar with its handle and title behind it. Seen on the
 ///   emulator. The sheet now sits inside the safe area and sizes around the
 ///   keyboard when search is tapped.
+///
+/// And from the redesign (11): chips for muscle group and equipment, with
+/// search or without, because "something for triceps with a cable" is how a
+/// lifter standing at a free station actually thinks.
 class ExercisePickerSheet extends StatefulWidget {
   const ExercisePickerSheet({
     super.key,
@@ -86,6 +90,8 @@ class ExercisePickerSheet extends StatefulWidget {
 class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   final TextEditingController _query = TextEditingController();
   late List<Exercise> _results = widget.lookup.search('');
+  String? _muscleGroup;
+  String? _equipment;
 
   /// Chosen names, in the order they were tapped — the order they are added.
   final List<String> _chosen = <String>[];
@@ -96,9 +102,26 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
     super.dispose();
   }
 
-  void _onQueryChanged(String value) {
-    setState(() => _results = widget.lookup.search(value));
+  void _onQueryChanged(String value) => setState(_refresh);
+
+  void _refresh() {
+    _results = widget.lookup.search(
+      _query.text,
+      muscleGroup: _muscleGroup,
+      equipment: _equipment,
+    );
   }
+
+  /// The chip already on clears it: one tap in, one tap out.
+  void _pickMuscleGroup(String group) => setState(() {
+    _muscleGroup = _muscleGroup == group ? null : group;
+    _refresh();
+  });
+
+  void _pickEquipment(String kind) => setState(() {
+    _equipment = _equipment == kind ? null : kind;
+    _refresh();
+  });
 
   /// True when what they typed is not already a catalogue name — the only case
   /// where offering "add your own" is useful rather than noise.
@@ -134,7 +157,12 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final searching = _query.text.trim().isNotEmpty;
+    // Recent is for the open list. Once anything narrows it, what is shown is
+    // what was asked for.
+    final searching =
+        _query.text.trim().isNotEmpty ||
+        _muscleGroup != null ||
+        _equipment != null;
     // A recent movement may be one the lifter typed, with no catalogue entry
     // and so no image — the same first-class case the session card handles.
     final recent = <(String, Exercise?)>[
@@ -193,6 +221,19 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _ChipRow(
+                      label: 'Muscle group',
+                      options: ExerciseLookup.muscleGroups,
+                      selected: _muscleGroup,
+                      onTap: _pickMuscleGroup,
+                    ),
+                    _ChipRow(
+                      label: 'Equipment',
+                      options: ExerciseLookup.equipment,
+                      selected: _equipment,
+                      onTap: _pickEquipment,
+                    ),
                     if (_canAddCustom) ...<Widget>[
                       const SizedBox(height: AppSpacing.sm),
                       _CustomRow(
@@ -236,7 +277,10 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                           vertical: AppSpacing.xl,
                         ),
                         child: Text(
-                          'Nothing matches that.\nAdd it as your own movement.',
+                          _query.text.trim().isEmpty
+                              ? 'Nothing here with both of those.'
+                              : 'Nothing matches that.\nAdd it as your own '
+                                    'movement.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
@@ -395,6 +439,103 @@ class _CustomRow extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One filter's chips, in a row that scrolls sideways. At most one is on.
+class _ChipRow extends StatelessWidget {
+  const _ChipRow({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onTap,
+  });
+
+  /// For a screen reader: what the row filters by.
+  final String label;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: label,
+      child: SizedBox(
+        height: 44,
+        // Built whole rather than lazily: fifteen chips at most, and a lazy
+        // row leaves the ones past the edge out of the tree until scrolled.
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: <Widget>[
+              for (final (i, option) in options.indexed) ...<Widget>[
+                if (i > 0) const SizedBox(width: AppSpacing.sm),
+                _FilterChip(
+                  label: option,
+                  selected: option == selected,
+                  onTap: () => onTap(option),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: PressScale(
+        haptic: false,
+        onTap: onTap,
+        // 44 to tap around a 34 chip, the same rule as the small pill.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: AnimatedContainer(
+            duration: AppMotion.fast,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.bg,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: selected
+                      ? AppColors.onPrimary
+                      : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ),
       ),

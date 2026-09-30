@@ -590,15 +590,19 @@ scrolling, and Run's Settings looks the same after its rows move.
 
 ### Search (11)
 
-- [ ] **Words, not the whole query.** Today `search()` looks for the whole string
+- [x] **Words, not the whole query.** Today `search()` looks for the whole string
       inside a name, muscle group or equipment (`exercise_lookup.dart` 52–73).
       Each word matches on its own, in any order.
-- [ ] **Other names:** *one arm* and *single arm*, *db* and *dumbbell*, *bb* and
+      *Each word matches the start of a word in the name, muscle group or equipment, so a half-typed word still finds its movement. Best first: no typo, then a name that starts with the query, then a name holding the words itself rather than through its muscle group.*
+- [x] **Other names:** *one arm* and *single arm*, *db* and *dumbbell*, *bb* and
       *barbell*, *pulldown* and *pull down*, *tricep* and *triceps* — a small
       table, pinned by tests.
-- [ ] **One typo per word** over four letters.
-- [ ] **Filters:** muscle group (9) and equipment (12, the rare ones folded into
+      *Plus the compounds the catalogue itself spells both ways (pull up and pull-up, push up and pushup, chin up, sit up, push down) and rdl. A movement is matched on both its spellings, so typing "pull d" does not lose "Lat Pull Down" for a letter.*
+- [x] **One typo per word** over four letters.
+      *A swapped pair of letters counts as one. Always ranked below a clean match. `find`, which puts a picture on a card, still guesses nothing.*
+- [x] **Filters:** muscle group (9) and equipment (12, the rare ones folded into
       *Other*) as chips above the list, with search or without.
+      *Other holds Band, Bike, Treadmill, Stability Ball, EZ Bar, Balance Board and Wall Ball: 23 movements. Recent hides while anything narrows the list.*
 
 ### Exercise stats (R9)
 
