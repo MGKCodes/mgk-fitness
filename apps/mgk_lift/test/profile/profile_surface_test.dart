@@ -39,7 +39,7 @@ Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 void main() {
   // Profile is a tall scroller, and a `ListView` only builds what it has
   // scrolled to. The binding's default 800×600 surface used to hold the whole
-  // screen; the activity grid and the personal-bests section put everything
+  // screen; the activity grid and the sections under it put everything
   // below them off the bottom of it, where `find` cannot see them. A
   // phone-shaped width and a viewport tall enough for the whole surface tests
   // what a lifter scrolls through rather than only its first screen.
@@ -112,7 +112,6 @@ void main() {
         'PER WEEK',
         'STREAK',
         'LAST 52 WEEKS',
-        'PERSONAL BESTS',
         'MOST TRAINED',
       ]) {
         expect(find.text(label), findsWidgets, reason: '$label is missing');
@@ -435,20 +434,38 @@ void main() {
       previous,
       lessThan(tester.getTopLeft(find.text('LAST 52 WEEKS')).dy),
     );
-    expect(
-      previous,
-      lessThan(tester.getTopLeft(find.text('PERSONAL BESTS')).dy),
-    );
+    expect(previous, lessThan(tester.getTopLeft(find.text('MOST TRAINED')).dy));
   });
 
-  group('personal bests', () {
-    // The estimator existed and Profile showed no bests at all. Worth knowing
-    // before reading these: `estimateOneRepMax` is Epley capped at 12 reps and
-    // returns null above it — deliberately stricter than Liftio's 30, because
-    // a confidently wrong PB is worse than no PB. "No estimate" is therefore a
-    // real state this surface has to render, not an error.
+  group('a movement', () {
+    // Bests left this page when each movement got a screen of its own (R9).
+    // Their rules are pinned in test/stats/exercise_stats_screen_test.dart;
+    // what is pinned here is the way there.
 
-    testWidgets('an estimate carries the set it came from', (
+    testWidgets('opens from the most-trained list', (
+      WidgetTester tester,
+    ) async {
+      String? opened;
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
+            ],
+            onOpenMovement: (name) => opened = name,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Barbell Bench Press').last);
+      await tester.pumpAndSettle();
+
+      expect(opened, 'Barbell Bench Press');
+    });
+
+    testWidgets('its best is no longer listed here', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -463,108 +480,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('PERSONAL BESTS'), findsOneWidget);
-      expect(find.text('EST. 1RM'), findsOneWidget);
-      // Epley: 120 × (1 + 6/30).
-      expect(find.text('144 kg'), findsOneWidget);
-      // A number a lifter can trace back to a session they remember is a
-      // number they will believe.
-      expect(find.text('120 kg × 6 · 3 Aug'), findsOneWidget);
+      expect(find.text('PERSONAL BESTS'), findsNothing);
+      expect(find.text('144 kg'), findsNothing);
     });
 
-    testWidgets('the board is ranked by the estimate, not by frequency', (
+    testWidgets('with nowhere to open, the rows stay text', (
       WidgetTester tester,
     ) async {
-      // Two benches and one squat: bench leads "most trained", the heavier
-      // squat leads the bests. The two sections answer different questions,
-      // which is why the same names come out in a different order in each.
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 3)]),
-              session(DateTime(2026, 8, 4), sets: <SessionSet>[done(100, 3)]),
-              session(
-                DateTime(2026, 8, 5),
-                exercise: 'Barbell Back Squat',
-                sets: <SessionSet>[done(140, 3)],
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('154 kg'), findsOneWidget);
-      expect(find.text('110 kg'), findsOneWidget);
-
-      final squatBest = tester
-          .getTopLeft(find.text('Barbell Back Squat').first)
-          .dy;
-      final benchBest = tester
-          .getTopLeft(find.text('Barbell Bench Press').first)
-          .dy;
-      expect(squatBest, lessThan(benchBest));
-
-      final benchTrained = tester
-          .getTopLeft(find.text('Barbell Bench Press').last)
-          .dy;
-      final squatTrained = tester
-          .getTopLeft(find.text('Barbell Back Squat').last)
-          .dy;
-      expect(benchTrained, lessThan(squatTrained));
-    });
-
-    testWidgets('nothing under 12 reps says so rather than going blank', (
-      WidgetTester tester,
-    ) async {
-      // Twenty reps is past the cap, so there is no estimate anywhere in this
-      // log. A lifter doing bodyweight work and high-rep accessories reaches
-      // this with a full log, and an empty gap would read as a bug.
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(60, 20)]),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('PERSONAL BESTS'), findsOneWidget);
-      expect(find.textContaining('No estimate yet'), findsOneWidget);
-    });
-
-    testWidgets('an unloaded movement produces no estimate either', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(
-                DateTime(2026, 8, 3),
-                exercise: 'Pull Up',
-                sets: <SessionSet>[done(0, 8)],
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('No estimate yet'), findsOneWidget);
-    });
-
-    testWidgets('the 12-rep rule is stated, not left to be worked out', (
-      WidgetTester tester,
-    ) async {
-      // It is the reason a lift someone is proud of might not be on the list,
-      // so it is said whether or not anything is missing.
       await tester.pumpWidget(
         wrap(
           ProfileSurface(
@@ -577,45 +499,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Nothing over 12 reps counts'),
-        findsOneWidget,
+      final row = find.ancestor(
+        of: find.text('Barbell Bench Press').last,
+        matching: find.byType(PressScale),
       );
-      expect(find.textContaining('not a tested'), findsOneWidget);
-    });
-
-    testWidgets('a warm-up cannot set a personal best', (
-      WidgetTester tester,
-    ) async {
-      // The same `workingSets` rule volume follows. Three empty-bar sets
-      // before a heavy single are not the record.
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(
-                DateTime(2026, 8, 3),
-                sets: <SessionSet>[
-                  const SessionSet(
-                    id: 'warm',
-                    setNumber: 1,
-                    weightKg: 200,
-                    reps: 3,
-                    isCompleted: true,
-                    setType: SetType.warmup,
-                  ),
-                  done(100, 3),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('110 kg'), findsOneWidget);
-      expect(find.text('220 kg'), findsNothing);
+      expect(row, findsNothing);
     });
   });
 

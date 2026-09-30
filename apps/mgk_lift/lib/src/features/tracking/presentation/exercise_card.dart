@@ -60,6 +60,7 @@ class ExerciseCard extends StatelessWidget {
     this.previous,
     this.isCollapsed = false,
     this.onToggleCollapsed,
+    this.onOpenStats,
   });
 
   final SessionExercise exercise;
@@ -126,6 +127,10 @@ class ExerciseCard extends StatelessWidget {
   /// caller that has no state to remember the toggle in.
   final VoidCallback? onToggleCollapsed;
 
+  /// Opens the movement's stats (R9), from its picture and name. Only on the
+  /// open card: on a folded one, a tap unfolds it.
+  final VoidCallback? onOpenStats;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -155,43 +160,54 @@ class ExerciseCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                ExerciseThumb(asset: catalogue?.startImage),
-                const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text(
-                        exercise.name,
-                        style: theme.textTheme.titleMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        // The best line available: what it trains, or — for a
-                        // movement they typed — what they have done on it.
-                        catalogue?.subtitle ??
-                            (top == null
-                                ? 'Your own movement'
-                                : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      if (previous != null) ...<Widget>[
-                        const SizedBox(height: 2),
-                        Text(
-                          _previousLabel(previous!, massUnit),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
+                  child: _Opens(
+                    onTap: onOpenStats,
+                    label: exercise.name,
+                    child: Row(
+                      children: <Widget>[
+                        ExerciseThumb(asset: catalogue?.startImage),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                exercise.name,
+                                style: theme.textTheme.titleMedium,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                // The best line available: what it trains,
+                                // or — for a movement they typed — what they
+                                // have done on it.
+                                catalogue?.subtitle ??
+                                    (top == null
+                                        ? 'Your own movement'
+                                        : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                              if (previous != null) ...<Widget>[
+                                const SizedBox(height: 2),
+                                Text(
+                                  _previousLabel(previous!, massUnit),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 if (onToggleCollapsed != null && exercise.sets.isNotEmpty)
@@ -942,3 +958,29 @@ const List<String> _months = <String>[
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+
+/// The card's picture and name, as the way to the movement's stats. Plain
+/// when there is nowhere to go.
+class _Opens extends StatelessWidget {
+  const _Opens({required this.onTap, required this.label, required this.child});
+
+  final VoidCallback? onTap;
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tap = onTap;
+    if (tap == null) return child;
+    return Semantics(
+      button: true,
+      hint: 'Shows $label over time',
+      onTap: tap,
+      child: PressScale(
+        haptic: false,
+        onTap: tap,
+        child: ColoredBox(color: Colors.transparent, child: child),
+      ),
+    );
+  }
+}

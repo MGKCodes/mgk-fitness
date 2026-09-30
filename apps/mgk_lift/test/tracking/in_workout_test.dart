@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
+import 'package:mgk_lift/src/features/stats/presentation/exercise_stats_screen.dart';
 import 'package:mgk_lift/src/features/tracking/data/drift_session_recorder.dart';
 import 'package:mgk_lift/src/features/tracking/domain/rest_alerts.dart';
 import 'package:mgk_lift/src/features/tracking/domain/rest_lengths.dart';
@@ -319,5 +320,21 @@ void main() {
       await pump(tester);
       expect(find.text('Reorder movements'), findsNothing);
     });
+  });
+
+  testWidgets("a movement's name opens its stats, mid-session", (tester) async {
+    await seed(<String>['Barbell Bench Press']);
+    await pump(tester);
+
+    await tester.tap(find.text('Barbell Bench Press'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ExerciseStatsScreen), findsOneWidget);
+    // Nothing from this session counts until it is finished.
+    expect(find.textContaining('Nothing logged on this yet'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(ActiveSessionScreen), findsOneWidget);
   });
 }

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../stats/presentation/exercise_stats_screen.dart';
 import '../../sync/presentation/backup_messages.dart';
 import '../../sync/presentation/backup_scheduler.dart';
+import '../data/exercise_lookup.dart';
 import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import '../domain/session_summary.dart';
@@ -36,6 +38,7 @@ class SessionSummaryScreen extends StatefulWidget {
     this.onOpenCoach,
     this.onEdit,
     this.onDelete,
+    this.onOpenMovement,
   });
 
   /// Opened from the log rather than from Finish: the same layout, read, with
@@ -66,11 +69,30 @@ class SessionSummaryScreen extends StatefulWidget {
   /// showing one that leads nowhere — there is no coach in an offline build.
   final VoidCallback? onOpenCoach;
 
+  /// Opens a movement's stats (R9), from its name. Null opens them here, over
+  /// this session and [log]; the shell passes its own, over the whole log as
+  /// it changes, for a session opened from the history.
+  final ValueChanged<String>? onOpenMovement;
+
   @override
   State<SessionSummaryScreen> createState() => _SessionSummaryScreenState();
 }
 
 class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
+  static final ExerciseLookup _lookup = ExerciseLookup();
+
+  void _openMovement(String name) {
+    final open = widget.onOpenMovement;
+    if (open != null) return open(name);
+    ExerciseStatsScreen.open(
+      context,
+      name: name,
+      log: <Session>[widget.session, ...widget.log],
+      catalogue: _lookup.find(name),
+      massUnit: widget.massUnit,
+    );
+  }
+
   late final SessionSummary _summary = SessionSummary.of(
     widget.session,
     log: widget.log,
@@ -170,6 +192,7 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                             child: _MovementCard(
                               exercise: exercise,
                               massUnit: widget.massUnit,
+                              onOpenStats: () => _openMovement(exercise.name),
                               // Excludes this session, or "last time" would be
                               // the sets immediately above it on the same card.
                               previous: PreviousPerformance.of(
@@ -401,9 +424,13 @@ class _MovementCard extends StatelessWidget {
     required this.exercise,
     required this.massUnit,
     required this.previous,
+    required this.onOpenStats,
   });
 
   final SessionExercise exercise;
+
+  /// From the name: the movement over time.
+  final VoidCallback onOpenStats;
   final MassUnit massUnit;
 
   /// What they did on this movement last time, or null if they never have.
@@ -424,11 +451,31 @@ class _MovementCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              exercise.name,
-              style: theme.textTheme.titleMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Semantics(
+              button: true,
+              hint: 'Shows ${exercise.name} over time',
+              onTap: onOpenStats,
+              child: PressScale(
+                haptic: false,
+                onTap: onOpenStats,
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        exercise.name,
+                        style: theme.textTheme.titleMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: AppColors.textTertiary,
+                    ),
+                  ],
+                ),
+              ),
             ),
             if (last != null) ...<Widget>[
               const SizedBox(height: 2),

@@ -606,10 +606,12 @@ scrolling, and Run's Settings looks the same after its rows move.
 
 ### Exercise stats (R9)
 
-- [ ] A screen for one movement: the best set, estimated one-rep max over time,
+- [x] A screen for one movement: the best set, estimated one-rep max over time,
       recent sessions, and its illustrations. Reached by tapping a movement's
       name in a session, the summary, the history and Profile.
-- [ ] When it ships, bests leave Profile.
+      *`ExerciseStatsScreen`, over `MovementHistory` in the stats domain: three tiles (estimated 1RM, heaviest, sessions), the set behind the best, the estimate session by session as a hand-drawn line, the last eight sessions (each opens), and the two illustrations. In a session the door is the open card's picture and name, since a folded card's tap already unfolds it. The summary opens it over its own session and log; from the history and Profile the shell opens it over the whole log as it changes.*
+- [x] When it ships, bests leave Profile.
+      *Gone, with the tests that pinned their rules moved to the stats screen's. Profile's most-trained rows are the way to each movement now.*
 
 ---
 

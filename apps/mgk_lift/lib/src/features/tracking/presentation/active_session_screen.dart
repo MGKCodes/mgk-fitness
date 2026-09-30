@@ -18,6 +18,7 @@ import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
 import '../domain/workout_library.dart';
+import '../../stats/presentation/exercise_stats_screen.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'finish_sheet.dart';
@@ -794,6 +795,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
   // ---- movements ----------------------------------------------------------------------
 
+  /// A movement's stats, over the log this session was started with. The
+  /// session itself is not in it yet: nothing counts until it is finished.
+  Future<void> _openStats(String name) => ExerciseStatsScreen.open(
+    context,
+    name: name,
+    log: widget.log,
+    catalogue: _lookup.find(name),
+    massUnit: widget.massUnit,
+  );
+
   /// Removes a movement — asking first only when it would take logged work.
   ///
   /// With nothing ticked it goes at once, with Undo: an empty card is cheap to
@@ -1342,6 +1353,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               previous: _previousFor(exercise.name),
               isCollapsed: _isCollapsed(exercise),
               onToggleCollapsed: () => _toggleCollapsed(exercise),
+              onOpenStats: () => _openStats(exercise.name),
               onSwap: () => _swap(exercise),
               onAddSet: () => _addSet(exercise),
               onRemove: () => _removeExercise(exercise),

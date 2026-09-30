@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
+import 'package:mgk_lift/src/features/stats/presentation/exercise_stats_screen.dart';
 import 'package:mgk_lift/src/features/tracking/data/drift_session_recorder.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
@@ -381,6 +382,67 @@ void main() {
       expect(find.text('Save to your workouts'), findsNothing);
       expect(find.text('Name this workout'), findsNothing);
       expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
+    });
+  });
+
+  group("a movement's name", () {
+    testWidgets('opens its stats, with this session counted', (tester) async {
+      tester.view
+        ..physicalSize = const Size(1179, 5000)
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionSummaryScreen(
+            session: _finished(
+              exercises: <SessionExercise>[
+                SessionExercise(
+                  id: 'e1',
+                  name: 'Barbell Bench Press',
+                  orderIndex: 0,
+                  sets: <SessionSet>[_set('s1', 1, 120, 6)],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Barbell Bench Press'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ExerciseStatsScreen), findsOneWidget);
+      // 120 × (1 + 6/30): the session just finished is in it.
+      expect(find.text('144 kg'), findsWidgets);
+    });
+
+    testWidgets('goes where the caller says, when it says', (tester) async {
+      String? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionSummaryScreen(
+            session: _finished(
+              exercises: <SessionExercise>[
+                SessionExercise(
+                  id: 'e1',
+                  name: 'Barbell Bench Press',
+                  orderIndex: 0,
+                  sets: <SessionSet>[_set('s1', 1, 120, 6)],
+                ),
+              ],
+            ),
+            onOpenMovement: (name) => opened = name,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Barbell Bench Press'));
+      await tester.pumpAndSettle();
+
+      expect(opened, 'Barbell Bench Press');
+      expect(find.byType(ExerciseStatsScreen), findsNothing);
     });
   });
 }

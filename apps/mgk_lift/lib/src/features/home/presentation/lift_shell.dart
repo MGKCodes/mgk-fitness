@@ -35,6 +35,7 @@ import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_messages.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../stats/domain/session_history.dart';
+import '../../stats/presentation/exercise_stats_screen.dart';
 import '../../stats/presentation/history_screen.dart';
 import '../../tracking/domain/rest_alerts.dart';
 import '../../tracking/domain/rest_lengths.dart';
@@ -866,6 +867,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   log: _log,
                   onOpenSession: _openPastSession,
                   onOpenHistory: _openHistory,
+                  onOpenMovement: _openMovement,
                   now: widget.today,
                   massUnit: _units.mass,
                   onOpenTrack: () => _go(_trackTab),
@@ -1325,6 +1327,28 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     );
   }
 
+  /// One movement over the whole log (R9), following it as it changes: a
+  /// session opened from its list and deleted there leaves the list at once.
+  Future<void> _openMovement(String name) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ValueListenableBuilder<List<Session>>(
+          valueListenable: _logFeed,
+          builder: (context, log, _) => ExerciseStatsScreen(
+            name: name,
+            log: log,
+            catalogue: _catalogue.find(name),
+            massUnit: _units.mass,
+            now: widget.today,
+            onOpenSession: _openPastSession,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static final ExerciseLookup _catalogue = ExerciseLookup();
+
   /// A session that happened, on the summary's layout, with Edit and Delete.
   Future<void> _openPastSession(Session session) async {
     await Navigator.of(context).push(
@@ -1338,6 +1362,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
               if (s.startedAt.isBefore(session.startedAt)) s,
           ],
           backup: _backupHooks,
+          onOpenMovement: _openMovement,
           onEdit: widget.editorFor == null
               ? null
               : () => unawaited(_editPastSession(session)),

@@ -27,7 +27,7 @@ import 'year_activity_grid.dart';
 /// has not started — was the only one who could not see it. Now the real layout
 /// renders either way, with dashes standing in for figures that have no value
 /// yet, and one call to action at the top. The labels are the point: `VOLUME`,
-/// `STREAK`, `PERSONAL BESTS` and a year of empty squares say what this becomes
+/// `STREAK`, `MOST TRAINED` and a year of empty squares say what this becomes
 /// far better than a sentence promising it.
 class ProfileSurface extends StatelessWidget {
   const ProfileSurface({
@@ -41,7 +41,12 @@ class ProfileSurface extends StatelessWidget {
     this.onOpenPhotos,
     this.onOpenSession,
     this.onOpenHistory,
+    this.onOpenMovement,
   });
+
+  /// Opens a movement's stats (R9) from the most-trained list, which is where
+  /// its best now lives. Null leaves the rows as text.
+  final ValueChanged<String>? onOpenMovement;
 
   /// Opens a session from the recent list — to read it, edit it, delete it.
   final ValueChanged<Session>? onOpenSession;
@@ -89,7 +94,6 @@ class ProfileSurface extends StatelessWidget {
     final window = ActivityWindow.from(log, now: clock);
     final movements = TrainingStats.byFrequency(log);
     final frequent = movements.take(5).toList();
-    final bests = _bests(movements);
     final catalogue = lookup ?? ExerciseLookup();
 
     return PhotoBackdrop(
@@ -192,51 +196,6 @@ class ProfileSurface extends StatelessWidget {
             _Consistency(stats: stats, placeholder: empty),
             const SizedBox(height: AppSpacing.xl),
 
-            // Contained (R9): until the exercise stats screen ships, the bests
-            // are one card on this page rather than a list that runs into the
-            // next section.
-            _Contained(
-              label: 'Personal bests',
-              action: const SectionLabel(
-                'Est. 1RM',
-                emphasis: LabelEmphasis.stat,
-                color: AppColors.textTertiary,
-              ),
-              children: <Widget>[
-                if (empty)
-                  for (var i = 0; i < _ghostRows; i++)
-                    const _GhostRow(subtitle: true)
-                else if (bests.isEmpty)
-                  // A real state, not an error. `estimateOneRepMax` refuses
-                  // anything over 12 reps or without load, so a lifter doing
-                  // bodyweight work and high-rep accessories has a full log and
-                  // no estimate anywhere in it. Saying so beats an empty gap.
-                  Text(
-                    'No estimate yet. One comes from a working set of 12 reps '
-                    'or fewer with weight on the bar.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  )
-                else
-                  for (final best in bests)
-                    _BestRow(best: best, massUnit: massUnit),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  // Stated every time, not only when a movement is missing. It
-                  // is the reason a lift someone is proud of might not be on
-                  // this list, and a lifter should not have to work that out.
-                  'Estimated with Epley from your best working set — not a '
-                  'tested max. Nothing over 12 reps counts, because past that '
-                  'the formula is guessing.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
             Row(
               children: <Widget>[
                 const Expanded(child: SectionLabel('Most trained')),
@@ -260,6 +219,9 @@ class ProfileSurface extends StatelessWidget {
             else
               for (final row in frequent)
                 _FrequencyRow(
+                  onTap: onOpenMovement == null
+                      ? null
+                      : () => onOpenMovement!(row.name),
                   row: row,
                   catalogue: catalogue.find(row.name),
                   max: frequent.first.sessions,
@@ -316,45 +278,6 @@ class ProfileSurface extends StatelessWidget {
       ),
     );
   }
-
-  /// The best estimated one-rep max per movement, heaviest first, top five.
-  ///
-  /// **Ranked by the estimate, not by how often the movement is trained.** A
-  /// personal-best board is a ladder — the question it answers is "what are my
-  /// biggest lifts", and ordering it by frequency would put whichever accessory
-  /// a lifter does most at the top of a list of their heaviest work.
-  ///
-  /// Movements with no qualifying set simply do not appear. They are not
-  /// failures to report per row: an unloaded or high-rep movement has no
-  /// estimate to be missing, and a column of "no estimate" rows would bury the
-  /// lifts that do have one. When *nothing* qualifies the section says so in
-  /// one line instead — see the call site.
-  ///
-  /// One scan of the log per movement, which is [TrainingStats.bestOneRepMax]'s
-  /// shape rather than this one's choice. It runs on a tab switch and on a unit
-  /// change, not per frame, and folding it into a single pass would mean
-  /// changing the stats layer for a screen that does not otherwise need to.
-  List<_MovementBest> _bests(List<ExerciseCount> movements) {
-    final found = <_MovementBest>[];
-    for (final movement in movements) {
-      final best = TrainingStats.bestOneRepMax(log, movement.name);
-      if (best != null) {
-        found.add(_MovementBest(name: movement.name, best: best));
-      }
-    }
-    found.sort(
-      (a, b) => b.best.estimate.kilograms.compareTo(a.best.estimate.kilograms),
-    );
-    return found.take(5).toList();
-  }
-}
-
-/// A movement and its best estimated one-rep max.
-class _MovementBest {
-  const _MovementBest({required this.name, required this.best});
-
-  final String name;
-  final OneRepMax best;
 }
 
 class _HeadlineStats extends StatelessWidget {
@@ -519,65 +442,17 @@ class _Consistency extends StatelessWidget {
   }
 }
 
-class _BestRow extends StatelessWidget {
-  const _BestRow({required this.best, required this.massUnit});
-
-  final _MovementBest best;
-  final MassUnit massUnit;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final record = best.best;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  best.name,
-                  style: theme.textTheme.bodyMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                record.estimate.label(massUnit),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFeatures: const <FontFeature>[
-                    FontFeature.tabularFigures(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          // The set behind the estimate, not just the estimate. A lifter can
-          // check the arithmetic against a session they remember, and a number
-          // they can trace is a number they will believe.
-          Text(
-            '${record.weight.label(massUnit)} × ${record.reps} · '
-            '${_shortDate(record.on)}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FrequencyRow extends StatelessWidget {
   const _FrequencyRow({
     required this.row,
     required this.catalogue,
     required this.max,
     required this.showBars,
+    this.onTap,
   });
+
+  /// Opens the movement's stats. Null leaves the row as text.
+  final VoidCallback? onTap;
 
   final ExerciseCount row;
   final Exercise? catalogue;
@@ -590,7 +465,7 @@ class _FrequencyRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final fraction = max == 0 ? 0.0 : row.sessions / max;
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,6 +486,14 @@ class _FrequencyRow extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (onTap != null) ...<Widget>[
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: AppColors.textTertiary,
+                ),
+              ],
             ],
           ),
           if (showBars) ...<Widget>[
@@ -630,6 +513,18 @@ class _FrequencyRow extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+    final tap = onTap;
+    if (tap == null) return content;
+    return Semantics(
+      button: true,
+      hint: 'Shows ${row.name} over time',
+      onTap: tap,
+      child: PressScale(
+        haptic: false,
+        onTap: tap,
+        child: ColoredBox(color: Colors.transparent, child: content),
       ),
     );
   }
@@ -753,12 +648,7 @@ class _SessionRow extends StatelessWidget {
 /// screen used to do, and it hid the answer to "what does this app track" from
 /// the only person still asking.
 class _GhostRow extends StatelessWidget {
-  const _GhostRow({this.subtitle = false});
-
-  /// Whether the real row carries a second line under it, as a personal best
-  /// does. The placeholder matches the shape it is standing in for, or it
-  /// stops being a preview of the layout and becomes its own layout.
-  final bool subtitle;
+  const _GhostRow();
 
   @override
   Widget build(BuildContext context) {
@@ -777,15 +667,6 @@ class _GhostRow extends StatelessWidget {
               Text(_dash, style: line),
             ],
           ),
-          if (subtitle) ...<Widget>[
-            const SizedBox(height: 2),
-            Text(
-              _dash,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -813,7 +694,7 @@ class _StartHere extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Everything below fills in from your sessions — totals, streaks, '
-            'personal bests and a year of squares.',
+            'what you train most and a year of squares.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
             ),

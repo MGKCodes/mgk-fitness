@@ -55,6 +55,7 @@ import '../src/features/purchases/presentation/sales_screen.dart';
 import '../src/features/tracking/domain/rest_alerts.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/presentation/reorder_sheet.dart';
+import '../src/features/stats/presentation/exercise_stats_screen.dart';
 import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
@@ -369,6 +370,22 @@ class PreviewApp extends StatelessWidget {
         log: sampleLog(previewNow),
         now: previewNow,
         onOpen: (_) {},
+      ),
+      // Phase 7 (R9): one movement over time. Its own fixture, because the
+      // sample log has two sessions of anything and a line needs more.
+      'exercise-stats': (_) => ExerciseStatsScreen(
+        name: 'Barbell Bench Press',
+        log: _benchHistory(),
+        catalogue: ExerciseLookup().find('Barbell Bench Press'),
+        now: previewNow,
+        onOpenSession: (_) {},
+      ),
+      'exercise-stats-bodyweight': (_) => ExerciseStatsScreen(
+        name: 'Pull-up',
+        log: _pullUpHistory(),
+        catalogue: ExerciseLookup().find('Pull-up'),
+        now: previewNow,
+        onOpenSession: (_) {},
       ),
       'session-past': (_) => SessionSummaryScreen(
         session: _finishedSession(),
@@ -1361,6 +1378,71 @@ Session _openSession() => Session(
 /// [benchTopKg] is the one knob, and it is the whole difference between the
 /// two summary previews: at 85 the session beats nothing in `sampleLog`, at 95
 /// it takes the bench.
+/// Ten weeks of one movement, for its stats screen: a climb, a stall, a
+/// lighter week, and the climb again, the way a real line goes.
+List<Session> _benchHistory() {
+  const weeks = <(double, int)>[
+    (80, 5), (82.5, 5), (85, 5), (85, 4), (80, 6), //
+    (87.5, 5), (90, 4), (90, 5), (92.5, 3), (92.5, 5),
+  ];
+  final first = previewNow.subtract(const Duration(days: 7 * 10));
+  return <Session>[
+    for (final (i, (kg, reps)) in weeks.indexed)
+      _oneMovement(
+        'bench-$i',
+        i.isEven ? 'Push' : 'Upper',
+        first.add(Duration(days: 7 * i)),
+        'Barbell Bench Press',
+        <(double, int)>[(kg - 10, reps + 2), (kg, reps), (kg, reps)],
+      ),
+  ].reversed.toList();
+}
+
+/// Bodyweight only, so there is nothing for Epley to estimate from.
+List<Session> _pullUpHistory() {
+  final first = previewNow.subtract(const Duration(days: 7 * 4));
+  return <Session>[
+    for (var i = 0; i < 4; i++)
+      _oneMovement(
+        'pull-$i',
+        'Pull',
+        first.add(Duration(days: 7 * i)),
+        'Pull-up',
+        <(double, int)>[(0, 6 + i), (0, 5 + i), (0, 5 + i)],
+      ),
+  ].reversed.toList();
+}
+
+Session _oneMovement(
+  String id,
+  String name,
+  DateTime day,
+  String movement,
+  List<(double, int)> sets,
+) => Session(
+  id: id,
+  name: name,
+  startedAt: day,
+  endedAt: day.add(const Duration(minutes: 55)),
+  exercises: <SessionExercise>[
+    SessionExercise(
+      id: '$id-e',
+      name: movement,
+      orderIndex: 0,
+      sets: <SessionSet>[
+        for (final (n, (kg, reps)) in sets.indexed)
+          SessionSet(
+            id: '$id-s$n',
+            setNumber: n + 1,
+            weightKg: kg,
+            reps: reps,
+            isCompleted: true,
+          ),
+      ],
+    ),
+  ],
+);
+
 Session _finishedSession({double benchTopKg = 85}) {
   SessionSet done(String id, int n, double kg, int reps, {SetType? type}) =>
       SessionSet(
