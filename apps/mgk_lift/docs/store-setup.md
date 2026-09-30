@@ -196,35 +196,40 @@ test purchase logs `unmapped_product`, the log names the exact id; use that.
 
 ## 6. Supabase Auth: email that actually sends
 
-**Signing up is effectively broken until this is done.** Email confirmation is
-on, and with no custom SMTP Supabase's built-in mailer sends a handful of
-messages an hour for the whole project, Run included.
+**Done 30 September, and proved end to end** (below). Without custom SMTP,
+Supabase's own mailer sends only to members of the Supabase team, so no user
+got a confirmation or a reset.
 
-- [ ] Pick a sender. Resend's free tier, on **MGKFitness's own Resend
-      account, never Frunt's** (Run's `app-store-1.0.0.md` decided it on
-      30 September): add the domain `mgkfitness.mgkcodes.com`, add the DNS
-      records it shows in Cloudflare, verify, and create an API key with
-      sending access to that domain only.
-- [ ] Supabase › Authentication › Emails › SMTP settings: host
-      `smtp.resend.com`, port `465`, user `resend`, password = the API key,
-      sender `MGKFitness <noreply@mgkfitness.mgkcodes.com>`. **Until this is
-      on, Supabase's own mailer sends only to members of the Supabase team**,
-      so no user gets a confirmation or a reset.
-- [ ] Authentication › URL configuration › **Site URL**
-      `https://mgkfitness.mgkcodes.com`, so the confirmation link lands on a
-      real page rather than on `localhost`.
-- [ ] Then prove it: sign up from the app with a real address. Supabase rejects
-      `example.com` and `.invalid` outright.
-- [ ] Authentication › Emails › **Reset password**, **once
-      `/reset-password` is live on the site** (it is, since `c41f2bd`).
-      Subject `Choose a new password`, and as the body the whole of
-      `supabase/templates/recovery.html`. The confirmation and the
-      password-changed notice are beside it, with their subjects, in
-      `supabase/templates/README.md`. Its link goes to
-      `/reset-password` with a token hash; the default template's link cannot
-      finish a reset, because both apps sign in with PKCE.
-- [ ] Then prove that: *Forgot your password?* in either app, open the email
-      on a laptop, choose a new password, and sign in with it on the phone.
+- [x] **A sender: SMTP2GO's free plan** (1,000 a month, 200 a day), on its
+      **EU** region, account under `mgkcodes@gmail.com`. Resend is the
+      favoured provider, but a second Resend team is paid and Frunt's account
+      is never used; the move to Resend Pro comes when volume nears 1,000
+      emails a month, and is only a change of SMTP details here.
+      `mgkfitness.mgkcodes.com` is verified with two CNAMEs in Cloudflare
+      (`em1053897.mgkfitness` and `s1053897._domainkey.mgkfitness`, DNS only).
+      The `link.` tracking record is **deliberately absent**, and open and
+      click tracking are off: a rewritten reset link is not something this
+      mail should carry.
+- [x] Supabase › Authentication › Emails › SMTP settings: host
+      `mail-eu.smtp2go.com`, port `587`, user `mgkfitness-supabase`, sender
+      `MGKFitness <noreply@mgkfitness.mgkcodes.com>`, 60 seconds between
+      emails to one person.
+- [x] Authentication › URL configuration › **Site URL**
+      `https://mgkfitness.mgkcodes.com`.
+- [x] The templates, pasted whole from `supabase/templates/` (subjects in its
+      README): **Reset password**, **Confirm sign up**, and the **Password
+      changed** security notification, switched on.
+- [x] **Proved:** a throwaway account's reset email reached a Gmail inbox
+      (not spam) as "MGKFitness", with DKIM, SPF and DMARC passing and the
+      link unrewritten; the link opened `/reset-password`, the new password
+      was accepted, the old one then refused, and the "password was changed"
+      notice followed a minute later. The account was deleted through
+      `delete-account`, which answered `account_deleted: true`.
+- [ ] **Email confirmation is still off** (a sign-up is confirmed on
+      creation). Run's `app-store-1.0.0.md` turns it on before submission,
+      because Apple and Google sign-in link to any account with the same
+      email; it covers Lift 2.0.0 for the same reason. The mail it needs now
+      works, and `confirmation.html` is in.
 
 ## 7. Sign in with Apple and Google, both apps
 
