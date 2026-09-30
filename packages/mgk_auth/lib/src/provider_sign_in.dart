@@ -19,6 +19,7 @@ class ProviderIds {
     required this.googleServerClientId,
     required this.googleIosClientId,
     required this.redirect,
+    required this.appleClientId,
   });
 
   /// Google's *web* client, the one Supabase holds the secret for. Android
@@ -34,6 +35,10 @@ class ProviderIds {
   /// `<package>://login-callback`, which must be in Supabase's redirect list
   /// and in the app's intent filters.
   final String redirect;
+
+  /// Who Apple issues this app's native codes to: its bundle id. Sent with a
+  /// deletion so the server can exchange the code for the right client.
+  final String appleClientId;
 }
 
 /// How signing in with a provider ended.
@@ -73,6 +78,40 @@ class ProviderSignInException implements Exception {
   String toString() => 'ProviderSignInException($failure, $cause)';
 }
 
+/// What to send with a deletion so Apple's tokens are revoked with the account.
+///
+/// Apple requires it of an app offering Sign in with Apple (guideline
+/// 5.1.1(v)), and Supabase keeps no Apple token to revoke with, so the app asks
+/// Apple for a fresh code just before deleting. See `delete-account`'s README.
+sealed class AppleRevocation {
+  const AppleRevocation();
+}
+
+/// Apple confirmed: send [toJson] as the request's `apple` field.
+final class AppleCode extends AppleRevocation {
+  const AppleCode({required this.code, required this.clientId});
+
+  final String code;
+  final String clientId;
+
+  Map<String, String> toJson() => <String, String>{
+    'code': code,
+    'client_id': clientId,
+  };
+}
+
+/// Delete without a code: the account has no Apple identity, this phone has
+/// no Apple sheet to ask (Android), or the sheet failed. A failed revocation
+/// never costs somebody their deletion.
+final class NoAppleCode extends AppleRevocation {
+  const NoAppleCode();
+}
+
+/// They closed Apple's sheet. Do not delete: they backed out.
+final class AppleDeclined extends AppleRevocation {
+  const AppleDeclined();
+}
+
 /// The providers' own SDKs, behind a seam: the rules around them — the nonce,
 /// what counts as cancelling, which errors are whose — are worth testing, and
 /// the SDKs only run on a phone.
@@ -84,6 +123,10 @@ abstract interface class ProviderPlatform {
   /// Apple's identity token for a sign-in carrying [hashedNonce], or null if
   /// they cancelled.
   Future<String?> appleIdToken({required String hashedNonce});
+
+  /// A fresh authorisation code from Apple's sheet, asking for nothing, or null
+  /// if they cancelled. Only where [appleIsNative].
+  Future<String?> appleAuthorizationCode();
 
   /// Google's tokens, or null if they cancelled. The access token is null
   /// unless Google hands it over without asking the person again.
@@ -179,6 +222,22 @@ class ProviderSignIn {
     return ProviderOutcome.signedIn;
   }
 
+  /// Asks Apple to confirm, before [user]'s account is deleted, if it has an
+  /// Apple identity. Never throws.
+  Future<AppleRevocation> appleRevocation(User? user) async {
+    final hasApple =
+        user?.identities?.any((identity) => identity.provider == 'apple') ??
+        false;
+    if (!hasApple || !_platform.appleIsNative) return const NoAppleCode();
+    try {
+      final code = await _platform.appleAuthorizationCode();
+      if (code == null) return const AppleDeclined();
+      return AppleCode(code: code, clientId: ids.appleClientId);
+    } on Object {
+      return const NoAppleCode();
+    }
+  }
+
   /// Call on signing out, so "Continue with Google" asks which account next
   /// time instead of quietly using the one that just left. Never throws.
   Future<void> forget() async {
@@ -233,6 +292,19 @@ class PluginProviderPlatform implements ProviderPlatform {
       throw ProviderSignInException(ProviderFailure.refused, e);
     } on SignInWithAppleException catch (e) {
       throw ProviderSignInException(ProviderFailure.refused, e);
+    }
+  }
+
+  @override
+  Future<String?> appleAuthorizationCode() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const <AppleIDAuthorizationScopes>[],
+      );
+      return credential.authorizationCode;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return null;
+      rethrow;
     }
   }
 

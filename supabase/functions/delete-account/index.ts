@@ -18,10 +18,13 @@
 //
 // ## Contract
 //
-// POST, optional body `{ "app": "lift" | "run" }`.
+// POST, optional body `{ "app": "lift" | "run", "apple": { "code", "client_id" } }`.
 //
 //   app omitted   erase everything, everywhere, and the login
 //   app: "run"    erase run.*; keep the login if lift.* still holds data
+//   apple         a fresh authorisation code from Apple, sent by an app whose
+//                 account has an Apple identity; when the login is deleted,
+//                 Apple's tokens are revoked with it (see apple.ts)
 //
 // The user id ALWAYS comes from the verified token and never from the body.
 // `app` is the only thing the caller gets to decide, and it can only ever
@@ -33,9 +36,27 @@
 //     SUPABASE_URL
 //     SUPABASE_ANON_KEY            used only to validate the caller's JWT
 //     SUPABASE_SERVICE_ROLE_KEY    used only after that check passes
+//     APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY
+//                                  set by hand; without them a revocation is
+//                                  skipped and logged, never refused
 //
-// Dependency-free (raw fetch), matching `coach/index.ts`, so the wire shape is
-// explicit and the Deno edge build stays reproducible.
+// Raw fetch for everything the database and auth admin API can do, matching
+// `coach/index.ts`, so the wire shape is explicit and the edge build stays
+// reproducible. **One exception**, and it is deliberate: the storage sweep uses
+// `supabase-js`, because the list and delete body shapes are the two here that
+// are easy to hand-write subtly wrong — and a wrong one fails silently as
+// "nothing to delete", leaving photographs of somebody's body behind after they
+// asked to be erased. See `removeProgressPhotos`.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+import {
+  appleKeyFromEnv,
+  type AppleRequest,
+  appleUserIdOf,
+  readAppleRequest,
+  revokeAppleTokens,
+} from "./apple.ts";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -46,6 +67,64 @@ const CORS: Record<string, string> = {
 
 const KNOWN_APPS = ["lift", "run"] as const;
 type App = (typeof KNOWN_APPS)[number];
+
+/// Every object under `<user id>/` in the progress-photos bucket.
+///
+/// The prefix is the whole of the access control on that bucket
+/// (`(storage.foldername(name))[1] = auth.uid()`), which makes it exactly the
+/// set of one person's photographs — there is no ambiguity about what belongs
+/// to whom.
+///
+/// **Uses the client library rather than raw fetch, unlike the rest of this
+/// file.** Everything else here talks to documented, stable REST endpoints —
+/// `/auth/v1/user`, `/rest/v1/rpc/...`, the admin user delete. Storage list and
+/// delete are the two shapes worth not hand-writing: the request bodies are
+/// easy to get subtly wrong, a wrong one fails silently as "nothing to delete",
+/// and the failure mode is retained photographs of somebody's body. The library
+/// is the thing that knows the wire format.
+///
+/// Listed then removed, because there is no delete-by-prefix. `remove` caps at
+/// 1000 keys per call, and `list` defaults to 100 — the loop is what makes this
+/// correct for three years of weekly photos rather than only the first page.
+async function removeProgressPhotos(
+  supabaseUrl: string,
+  serviceKey: string,
+  userId: string,
+): Promise<void> {
+  try {
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const bucket = supabase.storage.from("progress-photos");
+
+    for (let page = 0; page < 200; page++) {
+      const { data, error } = await bucket.list(userId, { limit: 100 });
+      if (error) {
+        console.error("progress photo list failed", error.message);
+        return;
+      }
+      if (!data || data.length === 0) return;
+
+      const paths = data.map((o: { name: string }) => `${userId}/${o.name}`);
+      const { error: removeError } = await bucket.remove(paths);
+      if (removeError) {
+        console.error("progress photo delete failed", removeError.message);
+        return;
+      }
+
+      // The page just removed is gone, so the next hundred have moved up into
+      // its place — there is no offset to advance. A short page means the
+      // folder is now empty.
+      if (data.length < 100) return;
+    }
+    console.error("progress photo sweep hit its guard", userId.slice(0, 8));
+  } catch (e) {
+    // Never fails the deletion. The rows are gone either way, and asking
+    // somebody to retry something that has already mostly happened is worse
+    // than a log line that turns this into a support job.
+    console.error("progress photo sweep threw", String(e));
+  }
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -79,6 +158,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    safe-by-omission default: a client that forgets to say gets the full
   //    erasure it asked for in plain English, not a silent partial one.
   let app: App | null = null;
+  let apple: AppleRequest | null = null;
   const raw = await req.text();
   if (raw.trim() !== "") {
     let parsed: unknown;
@@ -97,6 +177,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
       app = candidate as App;
     }
+    // Read leniently, unlike `app`: a malformed field narrows nothing and
+    // widens nothing, and must not cost somebody their deletion.
+    apple = readAppleRequest((parsed as { apple?: unknown } | null)?.apple);
   }
 
   // 2. The caller must be a signed-in user, and the id we delete comes from the
@@ -142,7 +225,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "delete_failed" }, 500);
   }
 
-  // 4. The login itself, but only if the sweep said it is safe. Uses the
+  // 4. Progress photos are two stores, and SQL can only reach one of them.
+  //
+  //    `core.delete_account` removes the rows; the JPEGs live in the
+  //    `progress-photos` bucket and no amount of `delete from` touches them.
+  //    Left alone they are the worst possible residue: photographs of somebody's
+  //    body, retained after they asked to be erased, invisible to every query
+  //    anybody would think to run.
+  //
+  //    Keyed off the same flag the row sweep uses, so the two cannot drift.
+  //    `shared_deleted` is true exactly when step 4 of the routine ran, which is
+  //    when `core.progress_photos` was emptied — a partial deletion leaves both
+  //    the rows and the objects, which is right while the account still exists.
+  //
+  //    Failure here is logged and does not fail the request. The rows are gone
+  //    and the objects are unreachable without them; reporting a deletion as
+  //    failed would invite a retry of something that has already mostly
+  //    happened. The log is what turns it into a support job.
+  if (summary.shared_deleted === true) {
+    await removeProgressPhotos(supabaseUrl, serviceKey, userId);
+  }
+
+  // 5. The login itself, but only if the sweep said it is safe. Uses the
   //    supported admin endpoint rather than deleting from `auth.users`
   //    directly, so Supabase's own bookkeeping (sessions, identities) is
   //    handled — and so the cascade is never what does the erasing.
@@ -166,6 +270,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
+  // 6. Apple's tokens, once the login is gone and only then: a login kept for
+  //    the other app is one the person still signs in to with Apple.
+  //    Whatever happens here, the deletion stands and the answer is the same.
+  let appleRevocation: string | null = null;
+  const appleUserId = appleUserIdOf(user);
+  if (accountDeleted && apple && appleUserId) {
+    appleRevocation = await revokeAppleTokens({
+      request: apple,
+      appleUserId,
+      key: appleKeyFromEnv((name) => Deno.env.get(name)),
+    });
+    if (appleRevocation !== "revoked") {
+      console.error("apple revocation", appleRevocation);
+    }
+  } else if (accountDeleted && appleUserId) {
+    // An Apple account deleted without a code: Android, where the app cannot
+    // get one yet, or a phone whose Apple sheet failed.
+    appleRevocation = "no_code";
+  }
+
   const remaining = summary.remaining_apps ?? [];
 
   // Counts only — never a health value.
@@ -176,6 +300,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       account_deleted: accountDeleted,
       remaining_apps: remaining,
       rows: summary.deleted_rows ?? {},
+      apple: appleRevocation,
     }),
   );
 
