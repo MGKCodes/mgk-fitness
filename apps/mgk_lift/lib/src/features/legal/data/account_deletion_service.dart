@@ -1,5 +1,7 @@
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../auth/data/provider_ids.dart';
 import '../domain/account_deleter.dart';
 
 /// Calls the `delete-account` Edge Function.
@@ -15,10 +17,20 @@ import '../domain/account_deleter.dart';
 /// neutral default: the function reads an absent `app` as *everything, in every
 /// app, and the login*, which is why [DeletionScope.everything] says so by
 /// being chosen rather than by a field being forgotten.
+///
+/// **An account made with Apple asks Apple first.** Apple requires its tokens
+/// revoked when the account goes, and Supabase keeps none to revoke with, so a
+/// fresh code from Apple's sheet goes with the request (`delete-account`'s
+/// README). Closing that sheet stops the deletion; Apple failing does not.
 class AccountDeletionService implements AccountDeleter {
-  const AccountDeletionService({SupabaseClient? client}) : _injected = client;
+  const AccountDeletionService({
+    SupabaseClient? client,
+    Future<AppleRevocation> Function(User? user)? apple,
+  }) : _injected = client,
+       _apple = apple;
 
   final SupabaseClient? _injected;
+  final Future<AppleRevocation> Function(User? user)? _apple;
 
   /// Resolved lazily, per call, so constructing this does not require Supabase
   /// to be initialised — the same reason `SupabaseAuth` does it.
@@ -28,6 +40,9 @@ class AccountDeletionService implements AccountDeleter {
   Future<AccountDeletionResult> deleteAccount({
     required DeletionScope scope,
   }) async {
+    final apple = await _appleRevocation();
+    if (apple is AppleDeclined) throw const AccountDeletionException(_declined);
+
     final Object? data;
     try {
       final res = await _client.functions.invoke(
@@ -35,7 +50,10 @@ class AccountDeletionService implements AccountDeleter {
         // An explicit null rather than an omitted key, so the request says
         // "everything" in as many words. The function accepts both; a reader of
         // this file should not have to know that to know what happens.
-        body: <String, Object?>{'app': scope.app},
+        body: <String, Object?>{
+          'app': scope.app,
+          if (apple is AppleCode) 'apple': apple.toJson(),
+        },
       );
       data = res.data;
     } on FunctionException catch (e) {
@@ -56,6 +74,20 @@ class AccountDeletionService implements AccountDeleter {
     }
     return _resultFrom(data);
   }
+
+  Future<AppleRevocation> _appleRevocation() {
+    final ask =
+        _apple ??
+        ProviderSignIn(
+          ids: liftProviderIds,
+          auth: () => _client.auth,
+        ).appleRevocation;
+    return ask(_client.auth.currentUser);
+  }
+
+  static const _declined =
+      'Nothing was deleted. An account made with Apple asks Apple to confirm '
+      'before it goes.';
 
   static AccountDeletionResult _resultFrom(Map<String, dynamic> data) {
     final rows = data['deleted_rows'];

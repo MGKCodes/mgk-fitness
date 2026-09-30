@@ -1,5 +1,7 @@
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../auth/data/provider_ids.dart';
 import '../domain/account_deleter.dart';
 
 /// Calls the `delete-account` Edge Function.
@@ -13,15 +15,28 @@ import '../domain/account_deleter.dart';
 /// The Supabase client is resolved **lazily**, per call, so constructing this
 /// service does not require Supabase to be initialised — the same trick
 /// `AuthRepository` uses to stay widget-test friendly.
+///
+/// **An account made with Apple asks Apple first.** Apple requires its tokens
+/// revoked when the account goes, and Supabase keeps none to revoke with, so a
+/// fresh code from Apple's sheet goes with the request (`delete-account`'s
+/// README). Closing that sheet stops the deletion; Apple failing does not.
 class AccountDeletionService implements AccountDeleter {
-  const AccountDeletionService({SupabaseClient? client}) : _injected = client;
+  const AccountDeletionService({
+    SupabaseClient? client,
+    Future<AppleRevocation> Function(User? user)? apple,
+  }) : _injected = client,
+       _apple = apple;
 
   final SupabaseClient? _injected;
+  final Future<AppleRevocation> Function(User? user)? _apple;
 
   SupabaseClient get _client => _injected ?? Supabase.instance.client;
 
   @override
   Future<AccountDeletionResult> deleteAccount() async {
+    final apple = await _appleRevocation();
+    if (apple is AppleDeclined) throw const AccountDeletionException(_declined);
+
     final Object? data;
     try {
       // **`app` is not optional here, whatever the wire contract says.**
@@ -46,7 +61,10 @@ class AccountDeletionService implements AccountDeleter {
       // which never landed.
       final res = await _client.functions.invoke(
         'delete-account',
-        body: <String, String>{'app': 'run'},
+        body: <String, Object>{
+          'app': 'run',
+          if (apple is AppleCode) 'apple': apple.toJson(),
+        },
       );
       data = res.data;
     } on FunctionException catch (e) {
@@ -67,6 +85,20 @@ class AccountDeletionService implements AccountDeleter {
     }
     return _resultFrom(data);
   }
+
+  Future<AppleRevocation> _appleRevocation() {
+    final ask =
+        _apple ??
+        ProviderSignIn(
+          ids: runProviderIds,
+          auth: () => _client.auth,
+        ).appleRevocation;
+    return ask(_client.auth.currentUser);
+  }
+
+  static const _declined =
+      'Nothing was deleted. An account made with Apple asks Apple to confirm '
+      'before it goes.';
 
   static AccountDeletionResult _resultFrom(Map<String, dynamic> data) {
     final rows = data['deleted_rows'];

@@ -14,6 +14,7 @@ const _ids = ProviderIds(
   googleServerClientId: 'web.apps.googleusercontent.com',
   googleIosClientId: 'ios.apps.googleusercontent.com',
   redirect: 'com.example.app://login-callback',
+  appleClientId: 'com.example.app',
 );
 
 /// The providers' SDKs, answering however a test needs.
@@ -23,6 +24,7 @@ class _FakePlatform implements ProviderPlatform {
     this.appleToken = 'apple-id-token',
     this.googleTokens = (idToken: 'google-id-token', accessToken: null),
     this.throwing,
+    this.appleCode = 'apple-code',
   });
 
   @override
@@ -30,8 +32,10 @@ class _FakePlatform implements ProviderPlatform {
   final String? appleToken;
   final ({String idToken, String? accessToken})? googleTokens;
   final Object? throwing;
+  final String? appleCode;
 
   String? hashedNonceSeen;
+  var codesAsked = 0;
   var forgotten = 0;
 
   @override
@@ -39,6 +43,13 @@ class _FakePlatform implements ProviderPlatform {
     hashedNonceSeen = hashedNonce;
     if (throwing case final Object e) throw e;
     return appleToken;
+  }
+
+  @override
+  Future<String?> appleAuthorizationCode() async {
+    codesAsked++;
+    if (throwing case final Object e) throw e;
+    return appleCode;
   }
 
   @override
@@ -101,6 +112,25 @@ Map<String, Object?> _session() => <String, Object?>{
     'user_metadata': <String, Object?>{},
   },
 };
+
+/// An account signed in with the given providers.
+User _user(List<String> providers) => User.fromJson(<String, Object?>{
+  'id': 'user-1',
+  'aud': 'authenticated',
+  'email': 'you@example.com',
+  'created_at': '2026-09-30T00:00:00Z',
+  'app_metadata': <String, Object?>{},
+  'user_metadata': <String, Object?>{},
+  'identities': <Object?>[
+    for (final provider in providers)
+      <String, Object?>{
+        'id': '$provider-sub',
+        'user_id': 'user-1',
+        'provider': provider,
+        'identity_data': <String, Object?>{'sub': '$provider-sub'},
+      },
+  ],
+})!;
 
 void main() {
   late List<http.Request> sent;
@@ -279,6 +309,87 @@ void main() {
         );
       },
     );
+  });
+
+  group('Before deleting an account', () {
+    test(
+      "an Apple account asks Apple, and sends the app's own client",
+      () async {
+        final platform = _FakePlatform();
+        final providers = ProviderSignIn(
+          ids: _ids,
+          auth: client,
+          platform: platform,
+        );
+
+        final revocation = await providers.appleRevocation(
+          _user(<String>['email', 'apple']),
+        );
+
+        expect(revocation, isA<AppleCode>());
+        expect((revocation as AppleCode).toJson(), <String, String>{
+          'code': 'apple-code',
+          'client_id': 'com.example.app',
+        });
+      },
+    );
+
+    test('an account with no Apple identity is not asked', () async {
+      final platform = _FakePlatform();
+      final providers = ProviderSignIn(
+        ids: _ids,
+        auth: client,
+        platform: platform,
+      );
+
+      expect(
+        await providers.appleRevocation(_user(<String>['email', 'google'])),
+        isA<NoAppleCode>(),
+      );
+      expect(await providers.appleRevocation(null), isA<NoAppleCode>());
+      expect(platform.codesAsked, 0);
+    });
+
+    test('Android has no sheet to ask, so it deletes without a code', () async {
+      final platform = _FakePlatform(appleIsNative: false);
+      final providers = ProviderSignIn(
+        ids: _ids,
+        auth: client,
+        platform: platform,
+      );
+
+      expect(
+        await providers.appleRevocation(_user(<String>['apple'])),
+        isA<NoAppleCode>(),
+      );
+      expect(platform.codesAsked, 0);
+    });
+
+    test('closing the sheet declines, so nothing is deleted', () async {
+      final providers = ProviderSignIn(
+        ids: _ids,
+        auth: client,
+        platform: _FakePlatform(appleCode: null),
+      );
+
+      expect(
+        await providers.appleRevocation(_user(<String>['apple'])),
+        isA<AppleDeclined>(),
+      );
+    });
+
+    test('a failing sheet never stands in the way of the deletion', () async {
+      final providers = ProviderSignIn(
+        ids: _ids,
+        auth: client,
+        platform: _FakePlatform(throwing: StateError('no Apple ID')),
+      );
+
+      expect(
+        await providers.appleRevocation(_user(<String>['apple'])),
+        isA<NoAppleCode>(),
+      );
+    });
   });
 
   test('forgetting never throws, and forgets Google', () async {

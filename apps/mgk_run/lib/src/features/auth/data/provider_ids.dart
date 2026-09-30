@@ -19,4 +19,6 @@ const ProviderIds runProviderIds = ProviderIds(
   googleIosClientId:
       '365688330886-vmjfroatcea25al1ggm524bhcfkkqqht.apps.googleusercontent.com',
   redirect: 'com.mgkcodes.fitness.run://login-callback',
+  // The bundle id: who Apple issues this app's native codes to.
+  appleClientId: 'com.mgkcodes.fitness.run',
 );

@@ -18,4 +18,6 @@ const ProviderIds liftProviderIds = ProviderIds(
   googleIosClientId:
       '365688330886-ql9t29qtqbq15ove1nv3b0irh5dhr7vu.apps.googleusercontent.com',
   redirect: 'com.mgkcodes.liftio://login-callback',
+  // The bundle id: who Apple issues this app's native codes to.
+  appleClientId: 'com.mgkcodes.liftio',
 );

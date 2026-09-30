@@ -362,8 +362,8 @@ April and May 2026, several on hidden relay addresses; none with Google.*
 - [x] Edge Functions › Secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
       `APPLE_PRIVATE_KEY` (the `.p8` file's contents), so `delete-account` can
       revoke Apple's tokens when an account is deleted. The two ids' digests
-      were checked against their values; nothing reads them until the
-      redesign's Phase 1.
+      were checked against their values. Read by `delete-account/apple.ts`
+      once that function is deployed with it.
 
 *Found on the way:* the **Site URL** was still `http://localhost:3000` (step 6),
 so every emailed link — a sign-up confirmation, a password reset — led to a dead

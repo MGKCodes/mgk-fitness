@@ -342,14 +342,26 @@ chooses a tier — which is only as good as signing in is.
 
 ### Deleting an account
 
-- [ ] **Apple's tokens are revoked** when the login is actually deleted. For an
+- [x] **Apple's tokens are revoked** when the login is actually deleted. For an
       account with an Apple identity, the app asks the person to confirm with
       Apple before deleting and sends the fresh authorization code with the
       request; `delete-account` exchanges it and calls Apple's revoke endpoint
       only if it deletes the login (`auth_user_deletable`). A failed revoke never
       blocks the deletion, which Apple requires be fulfilled regardless. Deno
       tests against a fake Apple endpoint.
-      *Open: needs the app to fetch a fresh authorisation code before deleting, and the function to exchange it.*
+      *Built as written on iOS: `ProviderSignIn.appleRevocation` in `mgk_auth`,
+      sent by both apps' `AccountDeletionService`, and
+      `delete-account/apple.ts`, with 11 Deno tests against a fake Apple and a
+      key made in the test. Closing Apple's sheet stops the deletion ("Nothing
+      was deleted…"); Apple failing does not. The function also checks the
+      code's Apple user is the account's own, so an iPhone signed in to
+      somebody else's Apple ID cannot revoke theirs. **Android sends no code**:
+      getting one there needs Apple's web flow with a callback route and that
+      route on the Services ID, so an Android deletion is logged `no_code`
+      (the function's README). Not deployed: `supabase functions deploy
+      delete-account` is Matthew's, and either order is safe, since the old
+      function ignores the new field and the new one expects nothing of old
+      apps.*
 
 ### The policies
 

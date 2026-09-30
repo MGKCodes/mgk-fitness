@@ -18,10 +18,13 @@
 //
 // ## Contract
 //
-// POST, optional body `{ "app": "lift" | "run" }`.
+// POST, optional body `{ "app": "lift" | "run", "apple": { "code", "client_id" } }`.
 //
 //   app omitted   erase everything, everywhere, and the login
 //   app: "run"    erase run.*; keep the login if lift.* still holds data
+//   apple         a fresh authorisation code from Apple, sent by an app whose
+//                 account has an Apple identity; when the login is deleted,
+//                 Apple's tokens are revoked with it (see apple.ts)
 //
 // The user id ALWAYS comes from the verified token and never from the body.
 // `app` is the only thing the caller gets to decide, and it can only ever
@@ -33,6 +36,9 @@
 //     SUPABASE_URL
 //     SUPABASE_ANON_KEY            used only to validate the caller's JWT
 //     SUPABASE_SERVICE_ROLE_KEY    used only after that check passes
+//     APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY
+//                                  set by hand; without them a revocation is
+//                                  skipped and logged, never refused
 //
 // Raw fetch for everything the database and auth admin API can do, matching
 // `coach/index.ts`, so the wire shape is explicit and the edge build stays
@@ -43,6 +49,14 @@
 // asked to be erased. See `removeProgressPhotos`.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+import {
+  appleKeyFromEnv,
+  type AppleRequest,
+  appleUserIdOf,
+  readAppleRequest,
+  revokeAppleTokens,
+} from "./apple.ts";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -144,6 +158,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    safe-by-omission default: a client that forgets to say gets the full
   //    erasure it asked for in plain English, not a silent partial one.
   let app: App | null = null;
+  let apple: AppleRequest | null = null;
   const raw = await req.text();
   if (raw.trim() !== "") {
     let parsed: unknown;
@@ -162,6 +177,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
       app = candidate as App;
     }
+    // Read leniently, unlike `app`: a malformed field narrows nothing and
+    // widens nothing, and must not cost somebody their deletion.
+    apple = readAppleRequest((parsed as { apple?: unknown } | null)?.apple);
   }
 
   // 2. The caller must be a signed-in user, and the id we delete comes from the
@@ -252,6 +270,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
+  // 6. Apple's tokens, once the login is gone and only then: a login kept for
+  //    the other app is one the person still signs in to with Apple.
+  //    Whatever happens here, the deletion stands and the answer is the same.
+  let appleRevocation: string | null = null;
+  const appleUserId = appleUserIdOf(user);
+  if (accountDeleted && apple && appleUserId) {
+    appleRevocation = await revokeAppleTokens({
+      request: apple,
+      appleUserId,
+      key: appleKeyFromEnv((name) => Deno.env.get(name)),
+    });
+    if (appleRevocation !== "revoked") {
+      console.error("apple revocation", appleRevocation);
+    }
+  } else if (accountDeleted && appleUserId) {
+    // An Apple account deleted without a code: Android, where the app cannot
+    // get one yet, or a phone whose Apple sheet failed.
+    appleRevocation = "no_code";
+  }
+
   const remaining = summary.remaining_apps ?? [];
 
   // Counts only — never a health value.
@@ -262,6 +300,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       account_deleted: accountDeleted,
       remaining_apps: remaining,
       rows: summary.deleted_rows ?? {},
+      apple: appleRevocation,
     }),
   );
 
