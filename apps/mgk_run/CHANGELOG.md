@@ -383,6 +383,11 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A run that location stopped before it began offers only what applies.**
+  With location refused, off, approximate or failing at the start, the run
+  screen showed Resume and Finish over a run that had not started. It now
+  shows the problem's own fix (Continue or Open Settings, where one exists)
+  and Close, which leaves without asking about progress there is none of.
 - **The medical notice's "I understand" is full width**, like every other
   step's main action, and the panel behind it reaches the bottom of the
   screen instead of stopping short of it.
