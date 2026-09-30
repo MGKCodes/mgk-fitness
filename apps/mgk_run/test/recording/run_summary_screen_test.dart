@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_run/src/features/recording/data/run_recovery.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
@@ -55,6 +56,53 @@ void main() {
     // is dismissed with back, so the button had nothing to do and rendered
     // permanently disabled.
     expect(find.widgetWithText(FilledButton, 'Done'), findsNothing);
+  });
+
+  // Board F7, test sheet C21: a run the app finished itself after it was
+  // killed carries "Recovered automatically", and the summary showed no note
+  // at all. Only Edit had it.
+  testWidgets("a run's note is on its summary", (tester) async {
+    _useTallPhone(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: RunSummaryScreen(
+          summary: RunSummary(
+            startedAt: DateTime(2026, 9, 29, 7, 12),
+            duration: const Duration(minutes: 10),
+            distanceMeters: 1990,
+            notes: kRecoveredRunNote,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('NOTES'), findsOneWidget);
+    expect(find.text(kRecoveredRunNote), findsOneWidget);
+  });
+
+  testWidgets('and a run with nothing written has no notes heading', (
+    tester,
+  ) async {
+    _useTallPhone(tester);
+    for (final notes in <String?>[null, '', '   ']) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: RunSummaryScreen(
+            summary: RunSummary(
+              startedAt: DateTime(2026, 9, 29, 7, 12),
+              duration: const Duration(minutes: 10),
+              distanceMeters: 1990,
+              notes: notes,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('NOTES'), findsNothing, reason: '"$notes"');
+    }
   });
 
   testWidgets('shows Done only when there is somewhere for it to go', (

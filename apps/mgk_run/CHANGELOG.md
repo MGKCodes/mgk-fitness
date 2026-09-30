@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **A run's note shows on its summary.** The note was only in Edit, so a run
+  the app recovered after it was closed mid-run gave no sign of it where the
+  run is read. The summary now shows "Recovered automatically", or whatever
+  note the run carries, under the numbers.
 - **The backup screens no longer list heart rate.** The backup prompt and
   Back up my data named heart rate among what is backed up; the app records
   none. A heart rate typed into a run by hand still goes with that run, as the

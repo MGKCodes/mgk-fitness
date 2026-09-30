@@ -21,6 +21,7 @@ class RunSummary {
     this.maxHr,
     this.caloriesEst,
     this.steps,
+    this.notes,
     this.type = 'outdoor',
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
@@ -69,6 +70,10 @@ class RunSummary {
   /// A denied read is indistinguishable from no data (CLAUDE.md rule 6), so all
   /// of it renders as an absent tile — never a zero, never an error.
   final int? steps;
+
+  /// What is written on the run: the runner's own note, or the app's where it
+  /// finished the run itself (`kRecoveredRunNote`). Null or blank for most.
+  final String? notes;
 
   /// `outdoor` | `treadmill` | `manual`.
   final String type;
