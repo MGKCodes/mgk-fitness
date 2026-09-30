@@ -216,15 +216,19 @@ and run.
          identity-linking docs and production checklist). What it needs:
          - **A mail service** (custom SMTP). The built-in one sends only to the
            Supabase team, so with confirmation on and nothing else, every
-           sign-up would wait for a mail that never comes. **Brevo's free plan**
-           (300 a day, commercial use, SMTP on 587), on its own account, from
-           `noreply@mgkfitness.mgkcodes.com`. *Resend was the first choice and
-           lost:* the Resend team in use is Frunt's, and a second team is a
-           paid feature ($20/month). **Next step:** add the domain in Brevo and
-           check its DNS records against the email routing (the MX on
-           `mgkfitness` itself must stay Cloudflare's) before adding them; then
-           Supabase ▸ Authentication ▸ SMTP settings, the recovery template, and
-           Brevo named in the policy as the mail processor.
+           sign-up would wait for a mail that never comes. **Decided by the
+           owner, 2026-09-30: SMTP2GO's free plan now** (1,000 a month, 200 a
+           day), sender `MGKFitness <noreply@mgkfitness.mgkcodes.com>`, domain
+           verified in Cloudflare; **Resend Pro later**, once sign-up and reset
+           mail nears 1,000 a month, by swapping the SMTP settings (domain,
+           sender and template stay). Resend is the favoured provider, but the
+           Resend team in use is Frunt's and a second team costs $20/month.
+           **Next step:** check SMTP2GO's DNS records against the email routing
+           before adding them (the MX on `mgkfitness` itself must stay
+           Cloudflare's), then Supabase ▸ Authentication ▸ SMTP settings, the
+           recovery template, and SMTP2GO named in both apps' policies as the
+           mail processor (Run's legal tests pin the processor list). *This said
+           Resend, then Brevo, earlier the same day; neither was the decision.*
          - **The app already copes:** a sign-up without a session reads
            *"Check your email to confirm your account."* Build 27 adds a
            plainer message for signing in before confirming, and sends the
