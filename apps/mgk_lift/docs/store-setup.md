@@ -200,11 +200,16 @@ test purchase logs `unmapped_product`, the log names the exact id; use that.
 on, and with no custom SMTP Supabase's built-in mailer sends a handful of
 messages an hour for the whole project, Run included.
 
-- [ ] Pick a sender. Resend is the least work: resend.com › add domain
-      `mgkcodes.com` › add the DNS records it shows › create an API key.
+- [ ] Pick a sender. Resend's free tier, on **MGKFitness's own Resend
+      account, never Frunt's** (Run's `app-store-1.0.0.md` decided it on
+      30 September): add the domain `mgkfitness.mgkcodes.com`, add the DNS
+      records it shows in Cloudflare, verify, and create an API key with
+      sending access to that domain only.
 - [ ] Supabase › Authentication › Emails › SMTP settings: host
       `smtp.resend.com`, port `465`, user `resend`, password = the API key,
-      sender `MGKFitness <no-reply@mgkcodes.com>`.
+      sender `MGKFitness <noreply@mgkfitness.mgkcodes.com>`. **Until this is
+      on, Supabase's own mailer sends only to members of the Supabase team**,
+      so no user gets a confirmation or a reset.
 - [ ] Authentication › URL configuration › **Site URL**
       `https://mgkfitness.mgkcodes.com`, so the confirmation link lands on a
       real page rather than on `localhost`.

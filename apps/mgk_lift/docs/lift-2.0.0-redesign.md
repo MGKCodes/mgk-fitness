@@ -323,9 +323,9 @@ chooses a tier — which is only as good as signing in is.
       accepted without verifying twice, the same password, an expired link,
       and no link. Run had no "Forgot your password?" at all; it has now.
       The page carries the project's two public values itself, so Vercel needs
-      nothing. Waiting on Matthew: the template pasted into Supabase once the
-      page is live (store-setup.md step 6), since neither connection can
-      change auth settings.*
+      nothing; live on the site since 30 September (`c41f2bd` on main).
+      Waiting on Matthew: the template, and custom SMTP, without which
+      Supabase mails only its own team (store-setup.md step 6).*
 
 ### Lift
 
@@ -360,11 +360,8 @@ chooses a tier — which is only as good as signing in is.
       somebody else's Apple ID cannot revoke theirs. **Android sends no code**:
       getting one there needs Apple's web flow with a callback route and that
       route on the Services ID, so an Android deletion is logged `no_code`
-      (the function's README). Not deployed: the deploy through the Supabase
-      connection was refused in auto mode, so `supabase functions deploy
-      delete-account` is Matthew's. Either order is safe, since the old
-      function ignores the new field and the new one expects nothing of old
-      apps.*
+      (the function's README). Deployed 30 September by Matthew with the CLI,
+      as version 18; the Apple secrets were already in.*
 
 ### The policies
 
