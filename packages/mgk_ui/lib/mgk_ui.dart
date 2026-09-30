@@ -36,3 +36,4 @@ export 'src/widgets/stat_block.dart';
 export 'src/widgets/step_progress.dart';
 export 'src/widgets/option_stack.dart';
 export 'src/widgets/wheel_picker.dart';
+export 'src/widgets/scroll_edge_fade.dart';

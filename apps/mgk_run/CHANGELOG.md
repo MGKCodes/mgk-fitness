@@ -383,6 +383,10 @@ been on a store, so everything the app does is still listed here.
 
 ### Fixed
 
+- **The coach's consent sheet shows when there is more to read.** On a small
+  phone "Never sent" and how long things are kept were below the fold with
+  nothing to say so. The foot of the text now fades while there is more, and
+  stops once you reach the end.
 - **Confirmations at the foot of the screen are dark, like the rest of the
   app.** "Withdrawn. Your coach will ask before it sends anything." and every
   other one arrived as a white bar with dark text.
