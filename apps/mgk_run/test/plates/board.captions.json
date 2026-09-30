@@ -1,0 +1,2314 @@
+{
+  "_": [
+    "What each screen on the Run screen board is FOR, and what good looks like.",
+    "Kept apart from the generator (tool/build_screen_board.py) so a diff shows which",
+    "descriptions changed rather than which pixels did. Codes are pinned to screens:",
+    "never renumber one; a new screen gets a new code, a gone screen is retired.",
+    "",
+    "Per plate: file (the PNG under plates/), name, how (driven = tapped to; built =",
+    "opened directly), reach (the taps), job, done (stated so failure is visible),",
+    "files (the lib/ files that draw it; --stale reads these), and optionally",
+    "isnew (what build 26 or the weeks since 2 Sep changed about it), changed,",
+    "note, platform, size. board.previous lists the codes on the last board, so",
+    "a plate is flagged new exactly when its code was not on it.",
+    "",
+    "Re-read a plate's job and done whenever `python tool/build_screen_board.py --stale`",
+    "names it. No test checks this prose; that command is the only thing that will."
+  ],
+  "board": {
+    "title": "MGKFitness: Run, every screen at build 26",
+    "eyebrow": "apps/mgk_run · build 26 (1.0.0+26)",
+    "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
+    "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
+    "changed": [
+      "New for build 26: the coach's permission sheet and the notice before any price (C7, C8, C9), reporting a reply (C10 to C12), every paywall answer (Y2 to Y9), the account's subscription states and Manage subscription (T4 to T10), signing out with the erase switch (T11, T12), withdrawing the coach's permission (T13 to T15), every delete-account state (L1 to L7), another account's training on the phone (X1), Precise Location off (R28), finishing and leaving a run (R29, R30), a recovered run (F7, F8), a race too close to plan for (G6, G7) and the Health step (B9).",
+      "Also new since 2 Sep: the start screen and count-in (R24, R25), the recentre control and full-screen map (R26, R27), the locked coach line (C6), the week a plan is built (H6, P5), backup and permissions (T16, T17), the legal documents (T18, T19) and the backup prompt (K1, K2).",
+      "Every plate is drawn as an iPhone now. The September board was drawn as Android without saying so, and at the wrong screen height for anything that sizes itself to the screen, so sheets were shorter than on a phone.",
+      "Three September plates were the wrong picture: B1 was blank, S6 was a copy of S7, and C3/C4 now meet the permission sheet unless the runner has agreed. All three are retaken.",
+      "Settings is an index since 11 Sep, so T2 (Settings below the fold) no longer exists. Its code is retired, not reused."
+    ],
+    "previous": [
+      "H1",
+      "A2",
+      "A3",
+      "B1",
+      "B2",
+      "B3",
+      "B4",
+      "B5",
+      "B7",
+      "B8",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "G1",
+      "G2",
+      "G3",
+      "G4",
+      "G5",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "N3",
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "R10",
+      "R11",
+      "R12",
+      "R13",
+      "R14",
+      "R15",
+      "R16",
+      "R17",
+      "R18",
+      "R19",
+      "R20",
+      "R21",
+      "R22",
+      "R23",
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "N4",
+      "T1",
+      "T2",
+      "E1",
+      "E2",
+      "E3",
+      "E4",
+      "E5"
+    ],
+    "retired": {
+      "T2": "Settings below the fold. Settings fits one screen since 11 Sep; the account, sign-out and deletion moved to T4, T11 and L1."
+    },
+    "caveats": [
+      [
+        "No map tiles",
+        "A test answers every network image with an error, so maps show their route and position marker on a plain ground."
+      ],
+      [
+        "Debug-only rows",
+        "Settings shows a DEVELOPER block in test and debug builds. The store build ends at Privacy & legal."
+      ],
+      [
+        "Scripted coach",
+        "Every coach line comes from the offline preview coach. Judge the shape of a conversation, not its words."
+      ],
+      [
+        "Driven or built",
+        "Driven plates were reached by tapping through the real app, so the route is proven too. Built plates open the screen directly with the data the app would pass it; the taps are written beside them instead."
+      ],
+      [
+        "What is faked",
+        "Only what a phone or server would answer: the store's reply to a purchase, whether location is on, the deletion endpoint's answer, and where a report goes in C11."
+      ]
+    ]
+  },
+  "acts": [
+    {
+      "n": "00",
+      "title": "The app, whole",
+      "sub": "Three tabs, with their chrome, for a runner three weeks into a plan",
+      "lede": "The only plates a runner would recognise at a glance. Everything below is either a state of one of these or a room behind a tap.",
+      "bands": [
+        {
+          "title": "Home, Plan, Profile",
+          "plates": [
+            "H1",
+            "A2",
+            "A3"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "01",
+      "title": "Arriving",
+      "sub": "The first launch, walked tap by tap",
+      "lede": "The app opens on a working tracker and never asks who you are to get there. Every plate here was reached by tapping what a runner taps, so the sequence is proven to join up.",
+      "bands": [
+        {
+          "title": "The first launch",
+          "sequence": true,
+          "plates": [
+            "B1",
+            "B2",
+            "B3",
+            "B4",
+            "B5",
+            "B9",
+            "B7"
+          ]
+        },
+        {
+          "title": "The other door",
+          "plates": [
+            "B8"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "02",
+      "title": "Home",
+      "sub": "Every state of the screen the app opens on",
+      "lede": "The free app has to read as a whole app, not the paid one with holes in it. These are judged against each other.",
+      "bands": [
+        {
+          "title": "Without a plan, which is the whole free product",
+          "plates": [
+            "H2",
+            "H3"
+          ]
+        },
+        {
+          "title": "The last run, and where the paid line falls",
+          "plates": [
+            "H4",
+            "H5"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "03",
+      "title": "Asking for a plan",
+      "sub": "What happens after Build a plan",
+      "lede": "In build 26 a runner reaches this only after an account, the coach's permission, the medical notice and a subscription (act 07). The coach's lines are the offline script, so judge the shape, not the words.",
+      "bands": [
+        {
+          "title": "Building a plan",
+          "sequence": true,
+          "plates": [
+            "G1",
+            "G2",
+            "G3",
+            "G4",
+            "G5"
+          ]
+        },
+        {
+          "title": "A race too close for a block",
+          "sequence": true,
+          "plates": [
+            "G6",
+            "G7"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "04",
+      "title": "The plan",
+      "sub": "The week, a week opened, the block and the calendar",
+      "lede": "A plan starts on the coming Monday, so the week it is built in is its own state. The last band is that week.",
+      "bands": [
+        {
+          "title": "Three weeks in",
+          "plates": [
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "N3"
+          ]
+        },
+        {
+          "title": "The week a plan is built",
+          "plates": [
+            "H6",
+            "P5"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "05",
+      "title": "Recording a run",
+      "sub": "The screen a runner actually stares at",
+      "lede": "Every state of one screen, plus the start screen in front of it. The map has no tiles in a test; its route and position marker are real.",
+      "bands": [
+        {
+          "title": "Before the clock",
+          "sequence": true,
+          "plates": [
+            "R24",
+            "R25"
+          ]
+        },
+        {
+          "title": "Getting going",
+          "sequence": true,
+          "plates": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ]
+        },
+        {
+          "title": "The controls",
+          "plates": [
+            "R6",
+            "R7",
+            "R8",
+            "R26",
+            "R27"
+          ]
+        },
+        {
+          "title": "Leaving a run",
+          "plates": [
+            "R29",
+            "R30"
+          ]
+        },
+        {
+          "title": "The pace band",
+          "plates": [
+            "R9",
+            "R10",
+            "R11",
+            "R12"
+          ]
+        },
+        {
+          "title": "Without a plan",
+          "plates": [
+            "R13",
+            "R14"
+          ]
+        },
+        {
+          "title": "When it goes wrong",
+          "plates": [
+            "R15",
+            "R16",
+            "R17",
+            "R18",
+            "R28",
+            "R19"
+          ]
+        },
+        {
+          "title": "Other phones",
+          "plates": [
+            "R20",
+            "R21",
+            "R22",
+            "R23"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "06",
+      "title": "After the finish line",
+      "sub": "The run just recorded, and a run the phone lost",
+      "lede": "The summary is the payoff of the whole loop. Build 26 adds a second way to arrive at one: a run killed before Finish, recovered at the next launch.",
+      "bands": [
+        {
+          "title": "Arriving",
+          "plates": [
+            "F1",
+            "F2",
+            "F3"
+          ]
+        },
+        {
+          "title": "A run the phone killed",
+          "sequence": true,
+          "plates": [
+            "F7",
+            "F8"
+          ]
+        },
+        {
+          "title": "The route drawing itself",
+          "sequence": true,
+          "plates": [
+            "F4",
+            "F5",
+            "F6"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "07",
+      "title": "The coach",
+      "sub": "A mark on every screen, and what it takes to open it",
+      "lede": "Since build 26 every way into the coach goes account, then permission, then the medical notice, then the price. The first band after the mark is that order, walked.",
+      "bands": [
+        {
+          "title": "The mark",
+          "plates": [
+            "C1",
+            "C6",
+            "C2"
+          ]
+        },
+        {
+          "title": "The first time: permission, notice, price",
+          "sequence": true,
+          "plates": [
+            "C14",
+            "C7",
+            "C9",
+            "C5"
+          ]
+        },
+        {
+          "title": "The permission on a small phone",
+          "plates": [
+            "C8"
+          ]
+        },
+        {
+          "title": "The paid conversation",
+          "sequence": true,
+          "plates": [
+            "C3",
+            "C4"
+          ]
+        },
+        {
+          "title": "Reporting a reply",
+          "plates": [
+            "C10",
+            "C11",
+            "C12"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "08",
+      "title": "Paying for the coach",
+      "sub": "The paywall, and every answer it can give",
+      "lede": "The purchase has never been completed on a phone, so these are the only look at most of these states before App Review. The prices and tier lines are the stores' copy, supplied by the fixture.",
+      "bands": [
+        {
+          "title": "The paywall",
+          "plates": [
+            "Y1",
+            "Y2"
+          ]
+        },
+        {
+          "title": "What a purchase says back",
+          "plates": [
+            "Y3",
+            "Y4",
+            "Y5"
+          ]
+        },
+        {
+          "title": "Restoring",
+          "plates": [
+            "Y6",
+            "Y7"
+          ]
+        },
+        {
+          "title": "Signed out",
+          "plates": [
+            "Y8",
+            "Y9"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "09",
+      "title": "Profile",
+      "sub": "The page about a runner, not about a week",
+      "lede": "Lifetime totals, records and the year. A record is the fastest stretch found inside a recorded route, which is why a typed-in log has no records.",
+      "bands": [
+        {
+          "title": "The page",
+          "plates": [
+            "S1",
+            "S3",
+            "S2",
+            "N4"
+          ]
+        },
+        {
+          "title": "The log",
+          "plates": [
+            "S7",
+            "S6"
+          ]
+        },
+        {
+          "title": "The year",
+          "plates": [
+            "S4",
+            "S5"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "10",
+      "title": "Settings and your account",
+      "sub": "An index since 11 Sep, and everything behind it",
+      "lede": "Settings shows what everything is set to; the choices are made one tap in. The subscription states are drawn one by one, because the account is where a runner checks what they are paying for.",
+      "bands": [
+        {
+          "title": "The index",
+          "plates": [
+            "T1",
+            "T3"
+          ]
+        },
+        {
+          "title": "Behind the rows",
+          "plates": [
+            "T16",
+            "T17"
+          ]
+        },
+        {
+          "title": "The account, and where the subscription stands",
+          "plates": [
+            "T4",
+            "T5",
+            "T6",
+            "T7",
+            "T8",
+            "T9",
+            "T10"
+          ]
+        },
+        {
+          "title": "Signing out",
+          "sequence": true,
+          "plates": [
+            "T11",
+            "T12"
+          ]
+        },
+        {
+          "title": "Privacy & legal",
+          "sequence": true,
+          "plates": [
+            "T13",
+            "T14",
+            "T15"
+          ]
+        },
+        {
+          "title": "The documents",
+          "plates": [
+            "T18",
+            "T19"
+          ]
+        },
+        {
+          "title": "Backup, asked for once",
+          "sequence": true,
+          "plates": [
+            "K1",
+            "K2"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "11",
+      "title": "Leaving, and a second account",
+      "sub": "Deleting the account, and a phone that changes hands",
+      "lede": "Deleting now erases the phone's copy by default and warns that the subscription keeps renewing; the done screen says exactly what happened to the login.",
+      "bands": [
+        {
+          "title": "Deleting the account",
+          "sequence": true,
+          "plates": [
+            "L1",
+            "L2",
+            "L3"
+          ]
+        },
+        {
+          "title": "What it says afterwards",
+          "plates": [
+            "L4",
+            "L5",
+            "L6"
+          ]
+        },
+        {
+          "title": "With no account",
+          "plates": [
+            "L7"
+          ]
+        },
+        {
+          "title": "Another account on this phone",
+          "plates": [
+            "X1"
+          ]
+        }
+      ]
+    },
+    {
+      "n": "12",
+      "title": "The end of a plan",
+      "sub": "A block ends on race day, and race day is not a Tuesday",
+      "lede": "The same Home read five ways depending only on the date of the race.",
+      "bands": [
+        {
+          "title": "Race week to the finish",
+          "sequence": true,
+          "plates": [
+            "E1",
+            "E2",
+            "E4",
+            "E3",
+            "E5"
+          ]
+        }
+      ]
+    }
+  ],
+  "plates": {
+    "H1": {
+      "file": "home-with-plan",
+      "name": "Home",
+      "how": "driven",
+      "reach": "Launch › three weeks into a plan",
+      "job": "The screen the app opens on. It answers what to run today first, then how the week is going, the last run and the longer view.",
+      "done": "Today's session and Start are readable without scrolling; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart",
+        "lib/src/features/coaching/presentation/coach_reveal.dart",
+        "lib/src/features/coaching/presentation/coach_button.dart"
+      ]
+    },
+    "A2": {
+      "file": "shell-plan",
+      "name": "Plan",
+      "how": "driven",
+      "reach": "Nav bar › Plan",
+      "job": "The week the plan set, day by day, with how far away the race is and which week of the block this is.",
+      "done": "Today's row is the one that stands out; days already gone read as past, not as still to do; the line at the top says the race and the week number. A runner should never have to work out which week they are in.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/presentation/week_ribbon.dart"
+      ]
+    },
+    "A3": {
+      "file": "shell-profile",
+      "name": "Profile",
+      "how": "driven",
+      "reach": "Nav bar › Profile",
+      "job": "The runner's own record: lifetime totals, the coach's current reading of their training, records, typical times and the year.",
+      "done": "Totals are whole numbers a person would say (241 km, 16 h), the coach's line is about this runner rather than a sales line, and the settings gear is the only control in the header.",
+      "files": [
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "B1": {
+      "file": "arrive-welcome",
+      "name": "Welcome",
+      "how": "driven",
+      "reach": "Launch › first time, signed out",
+      "job": "The first screen anyone sees: what the app is, and the two ways in.",
+      "done": "Wordmark, promise and Get started are on one screen with nothing to scroll; 'I already have an account' is findable but clearly second. A blank or half-drawn frame here is the whole first impression.",
+      "files": [
+        "lib/src/features/onboarding/presentation/welcome_screen.dart"
+      ],
+      "changed": "The September board's B1 was a blank frame taken before the screen had drawn."
+    },
+    "B2": {
+      "file": "arrive-greeting",
+      "name": "The coach says who it is",
+      "how": "driven",
+      "reach": "B1 › Get started",
+      "job": "The coach introduces itself and says what the app does, before it asks for anything.",
+      "done": "Three short lines and one button: no form, no permission, no account. If this screen asks for something it has jumped ahead.",
+      "files": [
+        "lib/src/features/onboarding/presentation/intro_screen.dart",
+        "lib/src/features/onboarding/domain/intro_script.dart",
+        "lib/src/features/onboarding/domain/intro_permission.dart"
+      ]
+    },
+    "B3": {
+      "file": "arrive-name",
+      "name": "What to call you",
+      "how": "driven",
+      "reach": "B2 › Sounds good",
+      "job": "Asks what the coach should call the runner, in the coach's voice.",
+      "done": "Any name is accepted, and so is none; the field and the send arrow sit where a thumb is. It must not read as the start of a sign-up form.",
+      "files": [
+        "lib/src/features/onboarding/presentation/intro_screen.dart",
+        "lib/src/features/onboarding/domain/intro_script.dart",
+        "lib/src/features/onboarding/domain/intro_permission.dart"
+      ]
+    },
+    "B4": {
+      "file": "arrive-permission",
+      "name": "Location, with its reason",
+      "how": "driven",
+      "reach": "B3 › a name › send",
+      "job": "Asks for location, the one permission the tracker needs, with the reason in the same breath.",
+      "done": "The reason is in plain words before the phone's own dialog appears, and the button says Continue because the phone's dialog is where the choice is made. On iPhone that dialog offers no 'Always'.",
+      "files": [
+        "lib/src/features/onboarding/presentation/intro_screen.dart",
+        "lib/src/features/onboarding/domain/intro_script.dart",
+        "lib/src/features/onboarding/domain/intro_permission.dart"
+      ],
+      "isnew": "Continue replaced 'Allow location' in build 26."
+    },
+    "B5": {
+      "file": "arrive-permission-allowed",
+      "name": "The answer is acknowledged",
+      "how": "driven",
+      "reach": "B4 › Continue › Allow",
+      "job": "Answers the runner's choice before moving on.",
+      "done": "Allowed and Not now both get a sentence back; Not now is never a dead end and never a nag to try again.",
+      "files": [
+        "lib/src/features/onboarding/presentation/intro_screen.dart",
+        "lib/src/features/onboarding/domain/intro_script.dart",
+        "lib/src/features/onboarding/domain/intro_permission.dart"
+      ]
+    },
+    "B9": {
+      "file": "arrive-health",
+      "name": "Health, for steps only",
+      "how": "driven",
+      "reach": "B5 › Continue (iPhone only)",
+      "job": "Asks for Apple Health for one thing: step counts on runs recorded here, so each run shows steps and cadence.",
+      "done": "The sentence promises steps and cadence and nothing else: no workouts imported, no watch runs, nothing written to Health. On Android this step does not exist, and the intro goes straight from location to Home.",
+      "files": [
+        "lib/src/features/onboarding/presentation/intro_screen.dart",
+        "lib/src/features/onboarding/domain/intro_script.dart",
+        "lib/src/features/onboarding/domain/intro_permission.dart"
+      ],
+      "isnew": "New wording in build 26; it used to promise runs from a watch."
+    },
+    "B7": {
+      "file": "arrive-home",
+      "name": "Where it lets go",
+      "how": "driven",
+      "reach": "B9 › Continue",
+      "job": "The end of the intro: a working run tracker with nothing signed in.",
+      "done": "Dashes rather than zeros, a way to record straight away, the coach mark present, and no account or plan demanded. If this lands on a sign-in form, the free app has a wall again.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "B8": {
+      "file": "arrive-sign-in",
+      "name": "Signing back in",
+      "how": "driven",
+      "reach": "B1 › I already have an account",
+      "job": "Signing back into an existing account.",
+      "done": "Email, password, Sign in and a way to create an account instead, with a line saying the login is shared with Lift. Someone who has been here before is not walked through the intro again.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart"
+      ]
+    },
+    "H2": {
+      "file": "home-no-plan",
+      "name": "Home, no plan",
+      "how": "driven",
+      "reach": "Launch › runs recorded, no plan",
+      "job": "Home for a runner who just records: the week's runs and distance, answered from the log.",
+      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, and the coach mark is still there.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "H3": {
+      "file": "home-first-launch",
+      "name": "Before the first run",
+      "how": "driven",
+      "reach": "B7 › nothing recorded yet",
+      "job": "Home before anything has been recorded.",
+      "done": "Every figure is a dash, never 0.0 km, and the one action is Record a run.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "H4": {
+      "file": "last-run-subscribed",
+      "name": "The last run, with a coach",
+      "how": "driven",
+      "reach": "Home › scroll to Last run",
+      "job": "The last run, read against the session it was meant to answer.",
+      "done": "'Asked' sits above 'Ran' with distance and pace for each, so the verdict reads as an answer to the plan rather than a grade. The runner's own numbers are never hidden.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "H5": {
+      "file": "last-run-free",
+      "name": "The last run, without one",
+      "how": "driven",
+      "reach": "Home › scroll to Last run, not subscribed",
+      "job": "The same card for a runner whose plan outlived their subscription.",
+      "done": "Distance, pace and time stay visible; only the reading against the plan is held back, and 'See what a coach adds' opens the gate sheet. An offer with nothing to tap is the failure.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "G1": {
+      "file": "plan-disclaimer",
+      "name": "The notice",
+      "how": "built",
+      "reach": "Plan › Build a plan, if the notice was never seen",
+      "job": "The medical notice, as the plan flow shows it when a runner has not already accepted it.",
+      "done": "The notice is readable top to bottom, with 'I understand' and 'Not now' at the foot. Since build 26 the coach's door asks this first (C9), so most runners never see it here twice.",
+      "files": [
+        "lib/src/features/legal/presentation/medical_disclaimer_screen.dart",
+        "lib/src/features/legal/presentation/legal_document_view.dart",
+        "lib/src/features/legal/domain/legal_copy.dart",
+        "lib/src/features/coaching/presentation/coach_flow.dart",
+        "lib/src/features/coaching/presentation/onboarding_screen.dart"
+      ]
+    },
+    "G2": {
+      "file": "plan-shape",
+      "name": "What are you training for",
+      "how": "driven",
+      "reach": "Plan › Build a plan › (permission, notice, subscription)",
+      "job": "The first question of a plan: what shape of training the runner wants.",
+      "done": "Five choices, each with a one-line gloss, and nothing typed. A runner who only wants to record can say so here without being argued with.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_flow.dart",
+        "lib/src/features/coaching/presentation/onboarding_screen.dart",
+        "lib/src/features/coaching/presentation/shape_question_screen.dart"
+      ]
+    },
+    "G3": {
+      "file": "plan-intake",
+      "name": "The intake conversation",
+      "how": "driven",
+      "reach": "G2 › I have a race coming up › an answer",
+      "job": "The coach gathers what it needs one question at a time.",
+      "done": "One question per turn, each reflecting what it just heard. The replies are the offline coach's script, so judge the shape, not the words.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_flow.dart",
+        "lib/src/features/coaching/presentation/onboarding_screen.dart"
+      ]
+    },
+    "G4": {
+      "file": "plan-confirm",
+      "name": "What it heard",
+      "how": "driven",
+      "reach": "G3 › Review details",
+      "job": "Everything the coach heard, handed back to be corrected before anything is built.",
+      "done": "Every value is editable in place, the days chosen match what was said, and Build my plan only lights when the form is complete. Check the weekday chips: M and W are drawn with their right edge faded out.",
+      "files": [
+        "lib/src/features/coaching/presentation/profile_confirmation_screen.dart"
+      ]
+    },
+    "G5": {
+      "file": "plan-reveal",
+      "name": "The plan it built",
+      "how": "driven",
+      "reach": "G4 › Build my plan",
+      "job": "The plan arrives, with its shape in three numbers.",
+      "done": "Length, biggest week and longest run in whole numbers, the race and the countdown at the top, and one button to the week. The plan starts on the coming Monday.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_reveal_screen.dart"
+      ]
+    },
+    "G6": {
+      "file": "plan-near-race-confirm",
+      "name": "A race three weeks out",
+      "how": "driven",
+      "reach": "G3 with a race 21 days away › Review details",
+      "job": "The confirmation screen for a race too close to build a block for.",
+      "done": "The test sheet (D18) expects the runner to be told here, before anything is built: 'A plan needs at least 6 weeks before race day.' On this plate nothing warns, and Build my plan is lit.",
+      "files": [
+        "lib/src/features/coaching/presentation/profile_confirmation_screen.dart"
+      ],
+      "isnew": "The six-week rule is new in build 26."
+    },
+    "G7": {
+      "file": "plan-near-race",
+      "name": "And what building it does",
+      "how": "driven",
+      "reach": "G6 › Build my plan",
+      "job": "What the runner meets when the too-close race reaches the plan builder.",
+      "done": "It should say plainly that the race is too close and offer a later race or a plan without one. What it shows is 'That did not work, and it is on me rather than on you' above the validator's own error text, and a Try again that will fail the same way.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_reveal_screen.dart"
+      ]
+    },
+    "P1": {
+      "file": "plan-week",
+      "name": "This week",
+      "how": "built",
+      "reach": "Nav bar › Plan",
+      "job": "A week of a plan, sessions named as activities, with rest days as rest.",
+      "done": "Each row says what kind of run and how far in whole kilometres; no time of day is invented; rest days are visibly lighter. Built from a July fixture, so its dates are fixed.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/presentation/week_ribbon.dart"
+      ]
+    },
+    "P2": {
+      "file": "week-detail",
+      "name": "A week opened",
+      "how": "built",
+      "reach": "Plan › a session row",
+      "job": "One week in full, with the target pace for each session.",
+      "done": "The day the runner tapped stays highlighted; each session has a target pace; a provisional week says so at the top.",
+      "files": [
+        "lib/src/features/coaching/presentation/week_detail_screen.dart"
+      ]
+    },
+    "P3": {
+      "file": "plan-block",
+      "name": "The whole block",
+      "how": "built",
+      "reach": "Plan › the goal line",
+      "job": "The shape of the whole block: phases, volume week by week, and the taper.",
+      "done": "The curve peaks and then tapers into race day; phases are labelled; totals are whole numbers. It must read as one plan, not a second competing one.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_block_screen.dart",
+        "lib/src/features/coaching/presentation/block_arc.dart"
+      ]
+    },
+    "P4": {
+      "file": "plan-calendar",
+      "name": "Week by week",
+      "how": "built",
+      "reach": "Plan › Calendar",
+      "job": "The block as a calendar, opening on the current week.",
+      "done": "It opens on the week today falls in, with today highlighted; later weeks say they firm up closer to the time. Check the top: the current week's title ('This week', its dates) opens tucked under the header, so the first card starts mid-way.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_calendar_screen.dart",
+        "lib/src/features/coaching/presentation/week_calendar.dart"
+      ]
+    },
+    "N3": {
+      "file": "shell-plan-empty",
+      "name": "The tab with no plan",
+      "how": "driven",
+      "reach": "Nav bar › Plan, no plan",
+      "job": "Where a plan is offered to someone who has none.",
+      "done": "Says no plan is fine, offers Build a plan once, and explains how plans work below. Not hidden, not nagging.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/presentation/week_ribbon.dart"
+      ]
+    },
+    "H6": {
+      "file": "home-plan-not-started",
+      "name": "Home, the week a plan is built",
+      "how": "driven",
+      "reach": "Build a plan on a Wednesday › See my week › Home",
+      "job": "Home in the days between building a plan and the Monday it starts.",
+      "done": "Home and the Plan tab should agree on when training starts. Here Home prescribes '5 km today' and counts '0 of 7' for this week, while the plan's week 1 begins next Monday. Read it beside P5.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ],
+      "isnew": "Plans start on the coming Monday since build 25."
+    },
+    "P5": {
+      "file": "shell-plan-not-started",
+      "name": "Plan, the week a plan is built",
+      "how": "driven",
+      "reach": "Same day › Nav bar › Plan",
+      "job": "The Plan tab on the day a plan is built.",
+      "done": "The week labelled 'This week' should contain today. Here it is next week (5 to 11 Oct) and Wednesday 7 Oct is highlighted as today, so the tab is a week ahead of the calendar.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/presentation/week_ribbon.dart"
+      ]
+    },
+    "R24": {
+      "file": "run-start",
+      "name": "Before the clock",
+      "how": "driven",
+      "reach": "Home › Start",
+      "job": "The start screen: the map, today's session, and a Start that does not start the clock yet.",
+      "done": "Today's session is named above one big Start; the close control leaves without recording anything; nothing is being timed yet. Check the session line: '6.00 km · easy' here, where Home says '6 km'. (The map is blank: no tiles or position in a test.)",
+      "files": [
+        "lib/src/features/recording/presentation/run_start_screen.dart"
+      ],
+      "isnew": "New since the September board."
+    },
+    "R25": {
+      "file": "run-count",
+      "name": "The count-in",
+      "how": "driven",
+      "reach": "R24 › Start",
+      "job": "Three seconds to put the phone away before recording begins.",
+      "done": "A big count and a Stop that returns to the start screen with nothing recorded.",
+      "files": [
+        "lib/src/features/recording/presentation/run_start_screen.dart"
+      ],
+      "isnew": "New since the September board."
+    },
+    "R1": {
+      "file": "00-acquiring",
+      "name": "Acquiring",
+      "how": "built",
+      "reach": "R25 › the count ends",
+      "job": "The recording screen before the first GPS fix.",
+      "done": "Says it is acquiring GPS; figures sit at 0.00 and dashes, not guesses.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R2": {
+      "file": "01-early",
+      "name": "First few hundred metres",
+      "how": "built",
+      "reach": "R1 › a fix arrives",
+      "job": "The first moments of a planned run.",
+      "done": "Distance ticks up from the first fix; the session's brief is visible because the pace verdict is still held.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R3": {
+      "file": "02-warming",
+      "name": "Warming up",
+      "how": "built",
+      "reach": "a few minutes in",
+      "job": "Still finding the pace.",
+      "done": "No pace verdict yet (it says 'Finding your pace'), because a rolling pace off a standing start would read as 'you are slow'.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R4": {
+      "file": "03-warmed",
+      "name": "Warmed up",
+      "how": "built",
+      "reach": "about six minutes in",
+      "job": "The pace band starts speaking.",
+      "done": "A verdict (On target here) with the band's edge named; the panel shrinks to give the map back its height.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R5": {
+      "file": "04-deep",
+      "name": "Deep into it",
+      "how": "built",
+      "reach": "twenty minutes in",
+      "job": "A run well under way.",
+      "done": "The route has a shape worth the space; distance, time, pace and distance to go all readable at arm's length.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R6": {
+      "file": "05-paused",
+      "name": "Paused",
+      "how": "built",
+      "reach": "Recording › Pause",
+      "job": "Pausing, and the only place Finish appears.",
+      "done": "Resume and Finish replace Lap and Pause; the status says Paused. Finish is never one of three buttons side by side while running.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R7": {
+      "file": "06-lapped",
+      "name": "Lap taken",
+      "how": "built",
+      "reach": "Recording › Lap",
+      "job": "A manual lap during a run.",
+      "done": "Lap stays available while running and changes nothing destructive.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R8": {
+      "file": "07-sheet-open",
+      "name": "Panel raised",
+      "how": "built",
+      "reach": "Recording › drag the panel up",
+      "job": "The panel at its full height, with the session brief and splits.",
+      "done": "Splits and the brief are readable without clipping. At full height the panel covers the close control and the status line; check that is acceptable while running.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R26": {
+      "file": "23-panned",
+      "name": "Map moved by hand",
+      "how": "built",
+      "reach": "Recording › drag the map",
+      "job": "The runner has panned the map away from themselves.",
+      "done": "A recentre control appears, and only after the map has been moved; the panel does not move with the map.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New since the September board."
+    },
+    "R27": {
+      "file": "24-peek",
+      "name": "Map full screen",
+      "how": "built",
+      "reach": "Recording › drag the panel down",
+      "job": "The panel at its lowest: distance and time only, the map full screen.",
+      "done": "Two figures, a handle, nothing clipped; the content swaps rather than being cut off.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New since the September board."
+    },
+    "R29": {
+      "file": "26-finishing",
+      "name": "Finishing",
+      "how": "built",
+      "reach": "R6 › Finish",
+      "job": "The moment between tapping Finish and the summary opening.",
+      "done": "Both buttons show a spinner and ignore further taps, so a double tap makes one run. Check the spinner sits clear of the label; here it touches it, and on Resume it is dark on grey.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "R30": {
+      "file": "27-discard",
+      "name": "Leaving mid-run asks first",
+      "how": "built",
+      "reach": "Recording › close, Back, or the iPhone edge swipe",
+      "job": "Any way out of a live run asks whether to throw it away.",
+      "done": "'Discard this run?' with Keep running and a red Discard. Keep running carries on recording. Back must never leave a run recording out of sight.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "R9": {
+      "file": "19-easy-under",
+      "name": "Easy · slower than the band",
+      "how": "built",
+      "reach": "an easy session",
+      "job": "An easy session run gently.",
+      "done": "Easy caps effort rather than bounding it, so running slow is On target and the lower edge is not named.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R10": {
+      "file": "20-easy-over",
+      "name": "Easy · faster than the band",
+      "how": "built",
+      "reach": "an easy session",
+      "job": "An easy session run too fast.",
+      "done": "The verdict tells the runner to ease off, with the cap named.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R11": {
+      "file": "21-threshold-under",
+      "name": "Threshold · slower",
+      "how": "built",
+      "reach": "a threshold session",
+      "job": "A threshold session run too slow.",
+      "done": "Both edges of the band are named and the verdict says pick it up.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R12": {
+      "file": "22-threshold-over",
+      "name": "Threshold · faster",
+      "how": "built",
+      "reach": "a threshold session",
+      "job": "The same band, overshot.",
+      "done": "The verdict says ease off; the same band, read the other way.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R13": {
+      "file": "09-unplanned-early",
+      "name": "No plan · early",
+      "how": "built",
+      "reach": "Home › Record a run, no plan",
+      "job": "Recording with no session set.",
+      "done": "No brief, no band, no verdict, and no gap where they would be. It is a complete screen, not a degraded one.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R14": {
+      "file": "10-unplanned-running",
+      "name": "No plan · running",
+      "how": "built",
+      "reach": "a few minutes in",
+      "job": "An unplanned run under way.",
+      "done": "The numbers are the whole screen, and they read cleanly.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R15": {
+      "file": "08-signal-lost",
+      "name": "Signal lost",
+      "how": "built",
+      "reach": "mid-run, GPS drops",
+      "job": "The GPS has stopped arriving mid-run.",
+      "done": "The status says No signal, pace shows dashes rather than a stale figure, and the run keeps recording; what is already recorded is safe on the phone.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R16": {
+      "file": "11-permission-denied",
+      "name": "Location refused",
+      "how": "built",
+      "reach": "Start › Don't Allow",
+      "job": "Location was refused at the start.",
+      "done": "A plain sentence saying nothing is tracked until it is allowed, with Continue to ask again. Check the Resume and Finish buttons under it: this run never started.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R17": {
+      "file": "12-permission-forever",
+      "name": "Refused for good",
+      "how": "built",
+      "reach": "Start, location set to Never",
+      "job": "Location is off for the app in the phone's settings.",
+      "done": "Says where to change it and offers Open Settings; asking again would do nothing, so it does not offer that.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R18": {
+      "file": "13-services-off",
+      "name": "Location Services off",
+      "how": "built",
+      "reach": "Start, phone-wide location off",
+      "job": "The phone's own location switch is off.",
+      "done": "Gives the written path to the switch rather than an Open Settings button that cannot reach it.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R28": {
+      "file": "25-precise-off",
+      "name": "Approximate location only",
+      "how": "built",
+      "reach": "iPhone: Settings › Run › Location › Precise off › Start",
+      "job": "The iPhone has given the app only approximate location, which cannot measure a run.",
+      "done": "Says Run only has approximate location and to turn on Precise Location for Run in Settings, with Open Settings. It must not sit on 'Acquiring GPS' and save a 0 m run. iPhone only; Android cannot tell the app.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "R19": {
+      "file": "14-location-failed",
+      "name": "No fix",
+      "how": "built",
+      "reach": "mid-run, location stops",
+      "job": "Location stopped arriving.",
+      "done": "Says nothing is being added and that it usually clears outdoors; no false claim that the run has paused. Drawn here at the start of a run; on a phone it happens mid-run.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "R20": {
+      "file": "15-small-early",
+      "name": "320pt · early",
+      "how": "built",
+      "reach": "smallest supported iPhone",
+      "job": "The narrowest phone still supported.",
+      "done": "Controls stay on screen and nothing clips at 320pt.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "320×568"
+    },
+    "R21": {
+      "file": "16-small-warmed",
+      "name": "320pt · warmed",
+      "how": "built",
+      "reach": "smallest supported iPhone",
+      "job": "The band on the narrowest phone.",
+      "done": "The band, its label and the verdict fit without clipping.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "320×568"
+    },
+    "R22": {
+      "file": "17-max-early",
+      "name": "430pt · early",
+      "how": "built",
+      "reach": "largest iPhone",
+      "job": "The widest phone.",
+      "done": "The layout does not go slack: figures stay grouped and centred.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "430×932"
+    },
+    "R23": {
+      "file": "18-max-warmed",
+      "name": "430pt · warmed",
+      "how": "built",
+      "reach": "largest iPhone",
+      "job": "The warmed-up state on the widest phone.",
+      "done": "Same as R22 with the band showing.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "430×932"
+    },
+    "F1": {
+      "file": "run-complete",
+      "name": "Just finished",
+      "how": "built",
+      "reach": "R6 › Finish",
+      "job": "The payoff of the whole loop: the run just recorded, with its route, stats and the coach's line on it.",
+      "done": "Route, distance, time, pace, elevation, steps and cadence (when recorded) all present; the coach's observation is one sentence about this run; Done at the foot. Note the lower third of the route sits under the headline glass.",
+      "files": [
+        "lib/src/features/recording/presentation/run_summary_screen.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "F2": {
+      "file": "run-complete-record",
+      "name": "A record set",
+      "how": "built",
+      "reach": "R6 › Finish, a best effort",
+      "job": "The same screen when the run set a record.",
+      "done": "The record is named in plain words ('Fastest 5K and 10K yet') above the stats, not as confetti.",
+      "files": [
+        "lib/src/features/recording/presentation/run_summary_screen.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "F3": {
+      "file": "run-from-log",
+      "name": "The same run, from the log",
+      "how": "built",
+      "reach": "Profile › a run",
+      "job": "A past run looked up later.",
+      "done": "Same numbers as when it was finished; no celebration the second time; an Edit control in the header.",
+      "files": [
+        "lib/src/features/recording/presentation/run_summary_screen.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ]
+    },
+    "F7": {
+      "file": "run-recovered",
+      "name": "A run the phone killed",
+      "how": "driven",
+      "reach": "Record, swipe the app away, relaunch › Profile › the run",
+      "job": "A run interrupted before Finish, recovered at the next launch.",
+      "done": "It is in the log with its route, finished at the last fix, and never as a 0.00 km entry. The test sheet (C21) expects the note 'Recovered automatically…' on it; the summary shows no note anywhere. It only appears in Edit (F8).",
+      "files": [
+        "lib/src/features/recording/presentation/run_summary_screen.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "Recovery is new in build 26."
+    },
+    "F8": {
+      "file": "run-recovered-note",
+      "name": "Its note, in Edit",
+      "how": "driven",
+      "reach": "F7 › Edit",
+      "job": "The recovered run's note, where it actually appears.",
+      "done": "Reads 'Recovered automatically — recording stopped when the app closed, before you pressed Finish.' A runner will only see it if they open Edit.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "F4": {
+      "file": "route-draw-30",
+      "name": "Route drawing · 30%",
+      "how": "built",
+      "reach": "F1, as it opens",
+      "job": "The route drawing itself on arrival.",
+      "done": "The line leads, markers follow.",
+      "files": [
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "393×320"
+    },
+    "F5": {
+      "file": "route-draw-65",
+      "name": "Route drawing · 65%",
+      "how": "built",
+      "reach": "F1, as it opens",
+      "job": "Two thirds drawn.",
+      "done": "Split markers land as the line reaches them.",
+      "files": [
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "393×320"
+    },
+    "F6": {
+      "file": "route-draw-100",
+      "name": "Route drawing · done",
+      "how": "built",
+      "reach": "F1, as it opens",
+      "job": "The finished drawing.",
+      "done": "Every split marker and the finish flag in place; nothing overlapping illegibly.",
+      "files": [
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "size": "393×320"
+    },
+    "C1": {
+      "file": "coach-speaking",
+      "name": "Saying its piece",
+      "how": "built",
+      "reach": "any tab, once per new observation",
+      "job": "The coach mark delivering an observation, then retracting.",
+      "done": "One line and one sentence about the runner's training, readable in the second or two it is up. Caught mid-reveal on purpose.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_reveal.dart",
+        "lib/src/features/coaching/presentation/coach_button.dart"
+      ],
+      "size": "393×240"
+    },
+    "C6": {
+      "file": "coach-locked",
+      "name": "The locked line",
+      "how": "built",
+      "reach": "any tab, not subscribed",
+      "job": "What the mark says to a runner without the subscription.",
+      "done": "Reads as a sign ('Coaching is a subscription…') rather than as a broken observation, and plays once rather than every visit.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_reveal.dart",
+        "lib/src/features/coaching/presentation/coach_button.dart"
+      ],
+      "size": "393×240",
+      "isnew": "New since the September board."
+    },
+    "C2": {
+      "file": "coach-resting",
+      "name": "Back in its corner",
+      "how": "built",
+      "reach": "after the line has played",
+      "job": "The mark at rest.",
+      "done": "A small C in the corner, clear of content it could hide.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_reveal.dart",
+        "lib/src/features/coaching/presentation/coach_button.dart"
+      ],
+      "size": "393×240"
+    },
+    "C14": {
+      "file": "coach-signed-out",
+      "name": "Signed out: an account first",
+      "how": "driven",
+      "reach": "any tab, signed out › the mark",
+      "job": "Tapping the coach with no account.",
+      "done": "Asks for an account before anything else: never the permission sheet or a price without one. The name from the intro is already known.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "lib/src/features/coaching/presentation/coach_reveal.dart",
+        "lib/src/features/coaching/presentation/coach_button.dart"
+      ],
+      "isnew": "Order settled in build 26."
+    },
+    "C7": {
+      "file": "coach-consent",
+      "name": "Before your coach answers",
+      "how": "driven",
+      "reach": "the mark, never agreed",
+      "job": "Asks, before anything is sent, whether the runner's training may go to the AI provider.",
+      "done": "Says the coach is an AI model, names OpenRouter, lists what is sent and what never is, and says it can be taken back in Settings. Agree and Not now, neither chosen for you. It should read as a question, not a wall, and appear before any price.",
+      "files": [
+        "lib/src/features/coaching/presentation/ai_consent_sheet.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "C8": {
+      "file": "coach-consent-small",
+      "name": "The same question at 320pt",
+      "how": "driven",
+      "reach": "the mark, never agreed, smallest phone",
+      "job": "The consent sheet where it has to scroll.",
+      "done": "Agree and Not now stay pinned and visible; the question and the start of 'What is sent' are above the fold. 'Never sent' and the retention line are only reachable by scrolling, and nothing on screen says there is more.",
+      "files": [
+        "lib/src/features/coaching/presentation/ai_consent_sheet.dart"
+      ],
+      "size": "320×568",
+      "isnew": "New in build 26."
+    },
+    "C9": {
+      "file": "coach-disclaimer",
+      "name": "Then the notice",
+      "how": "driven",
+      "reach": "C7 › Agree",
+      "job": "The medical notice, asked once per phone, after the permission and before any price.",
+      "done": "Two separate answers, never one button for both. Check 'I understand': it is a small centred pill where every other step's main action is full width, and the panel behind the buttons stops short of the bottom edge.",
+      "files": [
+        "lib/src/features/legal/presentation/medical_disclaimer_screen.dart",
+        "lib/src/features/legal/presentation/legal_document_view.dart",
+        "lib/src/features/legal/domain/legal_copy.dart"
+      ],
+      "isnew": "The conversation shows it since build 26."
+    },
+    "C5": {
+      "file": "coach-gate-after-consent",
+      "name": "Then the price",
+      "how": "driven",
+      "reach": "C9 › I understand (not subscribed)",
+      "job": "What an unsubscribed runner meets once the permission and the notice are settled.",
+      "done": "Says what stays free before what costs, offers See the plans and Not now. Never 'the coach hit a problem'. The same sheet opens straight away for a runner who agreed on an earlier visit.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_gate_sheet.dart"
+      ]
+    },
+    "C3": {
+      "file": "coach-conversation",
+      "name": "The conversation",
+      "how": "driven",
+      "reach": "the mark, subscribed and agreed",
+      "job": "The paid coach, opened over whichever tab the runner was on.",
+      "done": "Opens to about two thirds of the screen with three suggested questions and a composer; the tab behind stays visible above it; history and close are in the header.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_conversation.dart",
+        "lib/src/features/coaching/presentation/chat_widgets.dart"
+      ]
+    },
+    "C4": {
+      "file": "coach-answering",
+      "name": "Answering",
+      "how": "driven",
+      "reach": "C3 › a suggestion",
+      "job": "A question asked and answered.",
+      "done": "The runner's question on the right, the coach's answer on the left with the mark, readable without the sheet resizing. The words are the offline coach's script.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_conversation.dart",
+        "lib/src/features/coaching/presentation/chat_widgets.dart"
+      ]
+    },
+    "C10": {
+      "file": "coach-report",
+      "name": "Report this reply",
+      "how": "driven",
+      "reach": "C4 › press and hold the reply",
+      "job": "Reporting a coach reply the runner thinks is wrong or unsafe.",
+      "done": "Four reasons, none chosen; Send report does nothing until one is; an optional note; Cancel. Holding your own message opens nothing.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_report_sheet.dart",
+        "lib/src/features/coaching/presentation/coach_conversation.dart",
+        "lib/src/features/coaching/presentation/chat_widgets.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "C11": {
+      "file": "coach-report-sent",
+      "name": "Reported",
+      "how": "driven",
+      "reach": "C10 › a reason › Send report",
+      "job": "What the runner is told once a report has gone.",
+      "done": "The sheet closes and the reply says 'Reported. Thanks, we'll take a look.' under it, quietly.",
+      "files": [
+        "lib/src/features/coaching/presentation/chat_widgets.dart"
+      ],
+      "isnew": "New in build 26.",
+      "note": "The only plate on the board with a seam the app lacks: the conversation is opened directly so the report can succeed without a server."
+    },
+    "C12": {
+      "file": "coach-report-failed",
+      "name": "A report that did not send",
+      "how": "driven",
+      "reach": "C10 › a reason and a note › Send report, offline",
+      "job": "A report that could not reach the server.",
+      "done": "Says it did not send and that what was written is still there; the reason and the note stay filled in. Nothing is lost by trying again.",
+      "files": [
+        "lib/src/features/coaching/presentation/coach_report_sheet.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "Y1": {
+      "file": "paywall",
+      "name": "The paywall",
+      "how": "driven",
+      "reach": "C5 › See the plans",
+      "job": "Where the coach is bought: both tiers, priced by the store, with everything Apple requires on the same screen.",
+      "done": "Both prices in the store's currency, Premium's line reading 'A better AI model and a bigger allowance.', Restore purchases reachable without buying, the renewal terms naming the Apple ID, and working Terms of use and Privacy policy links. Prices and descriptions here are the store's copy, filled in by the fixture.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ]
+    },
+    "Y2": {
+      "file": "paywall-android",
+      "name": "The paywall on Android",
+      "how": "driven",
+      "reach": "Android: C5 › See the plans",
+      "job": "The same screen for a Play customer.",
+      "done": "The renewal terms name the Google Play account and the Play Store, never an Apple ID. Everything else matches Y1.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "platform": "Android"
+    },
+    "Y3": {
+      "file": "paywall-pending",
+      "name": "Payment pending",
+      "how": "driven",
+      "reach": "Y1 › Subscribe, payment pending",
+      "job": "The store has taken the request but not the money yet.",
+      "done": "Says the payment is pending with the App Store and the coach unlocks when it completes; it does not claim nothing was charged. Check it is noticed: it is small grey text below both tiers.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "Y4": {
+      "file": "paywall-offline",
+      "name": "No connection",
+      "how": "driven",
+      "reach": "Y1 › Subscribe, offline",
+      "job": "A purchase attempted with no connection.",
+      "done": "'No connection — try again when you're online.' and no claim about money.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "Y5": {
+      "file": "paywall-already-owned",
+      "name": "Already subscribed",
+      "how": "driven",
+      "reach": "Y1 › Subscribe, already owned",
+      "job": "The Apple ID already has this subscription.",
+      "done": "Says so and points to Restore purchases. Never a second charge, never 'try again'.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "Y6": {
+      "file": "paywall-restore-none",
+      "name": "Nothing to restore",
+      "how": "driven",
+      "reach": "Y1 › Restore purchases",
+      "job": "Restore found no subscription.",
+      "done": "'No previous subscription found on this Apple ID.' Plain, not an error.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ]
+    },
+    "Y7": {
+      "file": "paywall-restored",
+      "name": "Restored, unlocking",
+      "how": "driven",
+      "reach": "Y1 › Restore purchases, found",
+      "job": "The store restored a subscription and the server has not caught up yet.",
+      "done": "After about eleven seconds of checking: 'Restored. The coach can take a minute to unlock.' It must not say 'Payment went through', because a restore moves no money.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "Y8": {
+      "file": "paywall-sign-in-first",
+      "name": "Subscribing signed out",
+      "how": "driven",
+      "reach": "signed out › Home › See what a coach adds › See the plans › Subscribe",
+      "job": "A purchase refused before the store, because there is no account to attach it to.",
+      "done": "Says sign in first and that nothing has been charged, with a Sign in button right under it that returns here.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ]
+    },
+    "Y9": {
+      "file": "paywall-restore-sign-in-first",
+      "name": "Restoring signed out",
+      "how": "driven",
+      "reach": "signed out › the paywall › Restore purchases",
+      "job": "A restore refused for the same reason.",
+      "done": "'Sign in first, then restore…' with Sign in under it.",
+      "files": [
+        "lib/src/features/coaching/presentation/purchase_screen.dart",
+        "lib/src/features/coaching/domain/plan_gate_copy.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "S1": {
+      "file": "profile-with-log",
+      "name": "With a log",
+      "how": "built",
+      "reach": "Nav bar › Profile",
+      "job": "A year of running summarised: lifetime totals, records, typical times, the year.",
+      "done": "Whole hours and whole kilometres; records and typical times line up in columns; the year grid shows the shape of the year at a glance.",
+      "files": [
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "S3": {
+      "file": "profile-records-by-hand",
+      "name": "Records off a typed log",
+      "how": "built",
+      "reach": "Profile, runs added by hand",
+      "job": "Records for a runner whose races were typed in rather than recorded.",
+      "done": "Typical times show dashes, and the line under them explains why: they come from recorded routes, so a typed run counts towards none. Someone should not conclude the app is broken.",
+      "files": [
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "S2": {
+      "file": "profile-empty",
+      "name": "Before the first run",
+      "how": "built",
+      "reach": "Profile, nothing recorded",
+      "job": "Profile before there is anything to show.",
+      "done": "Dashes throughout and one sentence saying what will build here.",
+      "files": [
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "N4": {
+      "file": "shell-profile-empty",
+      "name": "The tab with no log",
+      "how": "driven",
+      "reach": "Nav bar › Profile, nothing recorded",
+      "job": "The same empty state with the app around it.",
+      "done": "Empty state readable above the nav bar; the coach card offers the subscription without pressure.",
+      "files": [
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "S7": {
+      "file": "run-list",
+      "name": "Every run, told apart by its shape",
+      "how": "driven",
+      "reach": "Profile › scroll to the log",
+      "job": "The run log, each run shown by its own route.",
+      "done": "Each row's thumbnail is that run's shape, so two runs are told apart before a word is read; distance, date, time and pace on each row. A run typed in shows a plain glyph instead.",
+      "files": [
+        "lib/src/features/history/presentation/run_tile.dart",
+        "lib/src/features/history/presentation/route_thumbnail.dart",
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/profile/presentation/year_grid.dart",
+        "lib/src/features/profile/presentation/backup_card.dart"
+      ]
+    },
+    "S4": {
+      "file": "year-grid",
+      "name": "A year of running",
+      "how": "built",
+      "reach": "Profile › the year",
+      "job": "Every day of the year as run or rest.",
+      "done": "Thinning in winter, building through summer, readable at a glance.",
+      "files": [
+        "lib/src/features/profile/presentation/year_grid.dart"
+      ],
+      "size": "393×340"
+    },
+    "S5": {
+      "file": "year-grid-empty",
+      "name": "Before any of it",
+      "how": "built",
+      "reach": "Profile › the year, empty",
+      "job": "The year with nothing in it.",
+      "done": "An empty grid and one line saying runs will show up here.",
+      "files": [
+        "lib/src/features/profile/presentation/year_grid.dart"
+      ],
+      "size": "393×340"
+    },
+    "S6": {
+      "file": "add-run",
+      "name": "Adding one by hand",
+      "how": "driven",
+      "reach": "Profile › Add a run",
+      "job": "Logging a run the phone did not record: a treadmill, a race, a run elsewhere.",
+      "done": "Defaults to now; distance, time and kind are all that is required, and the button reads 'Fill in the details above' until they are. Check two things: the red prompts under Distance and Time show before anything has been typed, and Kind starts on Treadmill.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart"
+      ],
+      "changed": "The September board's S6 was a copy of S7: the tap never reached the button."
+    },
+    "T1": {
+      "file": "settings",
+      "name": "Settings",
+      "how": "built",
+      "reach": "Profile › ⚙",
+      "job": "An index of what everything is set to, with the runner's profile at the top.",
+      "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
+      "files": [
+        "lib/src/features/settings/presentation/settings_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "isnew": "Rebuilt as an index on 11 Sep."
+    },
+    "T3": {
+      "file": "settings-no-account",
+      "name": "Settings with no account",
+      "how": "driven",
+      "reach": "Profile › ⚙, signed out",
+      "job": "The same index for the runner who never made an account.",
+      "done": "The card shows the name and says everything is on this phone only; no Sign out or Delete account; backup reads 'Not set up'. Permissions reads 'Not set' only because a test cannot ask the phone. The DEVELOPER block is debug-only.",
+      "files": [
+        "lib/src/features/settings/presentation/settings_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ]
+    },
+    "T16": {
+      "file": "settings-backup",
+      "name": "Back up my data",
+      "how": "built",
+      "reach": "T1 › Back up my data",
+      "job": "The backup switch, with what it sends and what switching it off does.",
+      "done": "The switch is the first thing on the screen; the text says it is health information, off until asked for, and that switching off deletes what was stored; the coach is described as separate; last backed-up time at the foot. Check the first line: it lists heart rate, which the app does not record.",
+      "files": [
+        "lib/src/features/settings/presentation/backup_screen.dart"
+      ],
+      "isnew": "Copy changed in build 26."
+    },
+    "T17": {
+      "file": "settings-permissions",
+      "name": "Permissions",
+      "how": "built",
+      "reach": "T1 › Permissions",
+      "job": "What the app may read off the phone, and where to change it.",
+      "done": "Location says 'On while the app is open'; Apple Health says steps and cadence for runs recorded here and nothing more; the iOS paths to change each are spelled out.",
+      "files": [
+        "lib/src/features/settings/presentation/permissions_screen.dart",
+        "lib/src/features/settings/presentation/permissions_section.dart"
+      ],
+      "isnew": "Health copy changed in build 26."
+    },
+    "T4": {
+      "file": "account",
+      "name": "Account",
+      "how": "built",
+      "reach": "T1 › the profile card",
+      "job": "The person behind the profile: photo, name, email, since when, and the subscription.",
+      "done": "A large avatar with Add a photo, a line saying the photo never leaves the phone, Details, and Coaching with Plan, Status and Manage subscription.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "isnew": "Manage subscription is new in build 26."
+    },
+    "T5": {
+      "file": "account-google-play",
+      "name": "Account, billed by Google Play",
+      "how": "built",
+      "reach": "Android: T1 › the profile card",
+      "job": "The same account for a Play subscriber.",
+      "done": "The sentence under Coaching names Google Play as the place to cancel or change it, and Manage subscription opens Play's page for Run, because the store that bills is the one named.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "platform": "Android",
+      "isnew": "New in build 26."
+    },
+    "T6": {
+      "file": "account-free",
+      "name": "Account, not subscribed",
+      "how": "built",
+      "reach": "T1 › the profile card",
+      "job": "The account of a runner who has never subscribed.",
+      "done": "Plan Free, Status Not subscribed, no Manage subscription row, and a sentence saying recording is free and the coach is the subscription.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ]
+    },
+    "T7": {
+      "file": "account-premium",
+      "name": "Account, Premium Coach",
+      "how": "built",
+      "reach": "T1 › the profile card",
+      "job": "The higher tier.",
+      "done": "Plan reads Premium Coach, Status Active, Manage subscription present.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ]
+    },
+    "T8": {
+      "file": "account-payment-failed",
+      "name": "Account, payment failed",
+      "how": "built",
+      "reach": "T1 › the profile card, billing retry",
+      "job": "A subscription whose last payment failed and is being retried.",
+      "done": "Status in red; the sentence says the store is retrying, the coach is locked until it succeeds, and the fix is in the store. Check the capital: it begins a sentence with 'the App Store'.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ]
+    },
+    "T9": {
+      "file": "account-ended",
+      "name": "Account, ended",
+      "how": "built",
+      "reach": "T1 › the profile card, lapsed",
+      "job": "A subscription that has run out.",
+      "done": "Status Ended; says they are not being charged and everything recorded is still theirs; Manage subscription stays so they can resubscribe.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "isnew": "'Ended' a day after expiry is new in build 26."
+    },
+    "T10": {
+      "file": "account-signed-out",
+      "name": "The profile, no account",
+      "how": "built",
+      "reach": "T1 › the card, signed out",
+      "job": "The name and photo, which exist before any account does.",
+      "done": "Name and photo are editable; Coaching reads Free; a Create an account button with one line on what an account is for; no Sign out or Delete.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ]
+    },
+    "T11": {
+      "file": "sign-out",
+      "name": "Signing out",
+      "how": "built",
+      "reach": "T4 › Sign out",
+      "job": "Signing out, with the choice of taking the phone's copy too.",
+      "done": "'Sign out?' with 'Also remove my data from this phone' off by default and the sentence saying runs stay on this device. Stay signed in and Sign out.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart",
+        "lib/src/features/settings/presentation/settings_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "isnew": "The switch is new in build 26."
+    },
+    "T12": {
+      "file": "sign-out-erase",
+      "name": "Signing out and erasing",
+      "how": "built",
+      "reach": "T11 › switch on",
+      "job": "The same dialog with the erase switch on.",
+      "done": "The sentence changes to say runs, plan, conversations, name and photo are removed from this phone, and that anything not backed up is gone for good.",
+      "files": [
+        "lib/src/features/settings/presentation/account_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart",
+        "lib/src/features/settings/presentation/settings_screen.dart",
+        "lib/src/features/settings/presentation/settings_row.dart",
+        "lib/src/features/settings/presentation/avatar.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "T13": {
+      "file": "legal",
+      "name": "Privacy & legal",
+      "how": "built",
+      "reach": "T1 › Privacy & legal",
+      "job": "The legal documents, and the runner's data controls.",
+      "done": "Medical disclaimer, Privacy policy, Terms of use; then Your data with Coach and AI (its current state in words) and Delete account in red.",
+      "files": [
+        "lib/src/features/legal/presentation/legal_screen.dart",
+        "lib/src/features/settings/presentation/settings_tile.dart"
+      ],
+      "isnew": "Coach and AI is new in build 26."
+    },
+    "T14": {
+      "file": "legal-withdraw",
+      "name": "Taking the permission back",
+      "how": "built",
+      "reach": "T13 › Coach and AI",
+      "job": "Withdrawing the coach's permission to send training.",
+      "done": "'Stop the coach sending your training?' says nothing more goes, the coach will ask again, and the plan, runs and conversations stay. Keep it and Withdraw.",
+      "files": [
+        "lib/src/features/legal/presentation/legal_screen.dart",
+        "lib/src/features/settings/presentation/settings_tile.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "T15": {
+      "file": "legal-withdrawn",
+      "name": "Withdrawn",
+      "how": "built",
+      "reach": "T14 › Withdraw",
+      "job": "After withdrawing.",
+      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation says it is done. Note the confirmation bar is light on a dark app.",
+      "files": [
+        "lib/src/features/legal/presentation/legal_screen.dart",
+        "lib/src/features/settings/presentation/settings_tile.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "T18": {
+      "file": "legal-disclaimer",
+      "name": "Medical disclaimer",
+      "how": "built",
+      "reach": "T13 › Medical disclaimer",
+      "job": "The medical notice, to read at any time.",
+      "done": "The same words as C9, with a way back and no buttons to agree to.",
+      "files": [
+        "lib/src/features/legal/presentation/medical_disclaimer_screen.dart",
+        "lib/src/features/legal/presentation/legal_document_view.dart",
+        "lib/src/features/legal/domain/legal_copy.dart"
+      ]
+    },
+    "T19": {
+      "file": "legal-privacy",
+      "name": "Privacy policy",
+      "how": "built",
+      "reach": "T13 › Privacy policy",
+      "job": "The privacy policy inside the app.",
+      "done": "Matches the published policy; since build 26 it covers the name the app collects and the profile photo that never leaves the phone.",
+      "files": [
+        "lib/src/features/legal/presentation/privacy_policy_screen.dart",
+        "lib/src/features/legal/domain/legal_copy.dart"
+      ],
+      "isnew": "Caught up with the published policy in build 26."
+    },
+    "K1": {
+      "file": "keep-runs-safe",
+      "name": "Keep these safe?",
+      "how": "driven",
+      "reach": "record a second run, no account",
+      "job": "The one time the app asks to back up a runner's data: after the second run, when there is something worth keeping.",
+      "done": "Says how many runs are on this phone only and what losing the phone costs; Back them up and Keep them on this phone only; asked once. Check the list of what is backed up: it names heart rate.",
+      "files": [
+        "lib/src/features/settings/presentation/backup_consent_prompt.dart"
+      ]
+    },
+    "K2": {
+      "file": "account-gate",
+      "name": "The sign-up it raises",
+      "how": "driven",
+      "reach": "K1 › Back them up",
+      "job": "The account asked for at the moment it buys something.",
+      "done": "Create your account with what an account is for; the name from the intro is already known; backing out leaves nothing written.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart"
+      ]
+    },
+    "L1": {
+      "file": "delete-account",
+      "name": "Delete account",
+      "how": "built",
+      "reach": "T4 › Delete account, or T13 › Delete account",
+      "job": "Deleting the account, for a runner still paying through Google Play.",
+      "done": "'This cannot be undone' first; then About your subscription saying deleting does not cancel it, with Manage subscription; what is deleted; what happens to the login; 'Also erase this phone's copy' on by default.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "The billing box and the erase switch are new in build 26."
+    },
+    "L2": {
+      "file": "delete-account-armed",
+      "name": "Armed",
+      "how": "built",
+      "reach": "L1 › type DELETE",
+      "job": "The foot of the screen once DELETE has been typed.",
+      "done": "The erase switch on with its sentence, the signed-in address, DELETE in the field, Delete my data enabled (it stays disabled until DELETE is typed) and Keep my account under it.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ]
+    },
+    "L3": {
+      "file": "delete-account-keep-phone",
+      "name": "Keeping the phone copy",
+      "how": "built",
+      "reach": "L2 › switch off",
+      "job": "The same with the erase switch off.",
+      "done": "The sentence changes to say runs stay on the phone and nothing on it is backed up any more.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "L4": {
+      "file": "delete-done",
+      "name": "Done: everything gone",
+      "how": "built",
+      "reach": "L2 › Delete my data",
+      "job": "The deletion done, login and phone copy included.",
+      "done": "'Your data is deleted', the server sentence ending 'along with your login', and 'This phone's copy has been erased too.' Done returns to a fresh app.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "L5": {
+      "file": "delete-done-lift",
+      "name": "Done: login kept for Lift",
+      "how": "built",
+      "reach": "L2 › Delete my data, the login holds Lift data",
+      "job": "The deletion done where the same login still has Lift data.",
+      "done": "Says the login is still active because Lift is using it and how to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "L6": {
+      "file": "delete-done-login-stuck",
+      "name": "Done: login not removed, phone kept",
+      "how": "built",
+      "reach": "L3 › Delete my data, the login could not be removed",
+      "job": "The deletion done, but the login could not be removed and the phone copy was kept.",
+      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email to have the login removed, and that the runs are still on this phone with no backup.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "L7": {
+      "file": "delete-signed-out",
+      "name": "Deleting with no account",
+      "how": "built",
+      "reach": "signed out › T13 › Delete account › DELETE",
+      "job": "The delete row with nobody signed in.",
+      "done": "Refuses without claiming anything was deleted: 'Please sign in again, then retry the deletion.' (the server's answer, word for word).",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ]
+    },
+    "X1": {
+      "file": "another-account",
+      "name": "Another account's training",
+      "how": "driven",
+      "reach": "Android: sign out of Test 2, sign in as Test 3",
+      "job": "A second account signs in on a phone holding the first account's training.",
+      "done": "Says the training belongs to a different account; offers 'Erase this phone's training and continue as' the new address, and Sign out; explains erasing only touches this phone. The new account never silently receives the old one's runs.",
+      "files": [
+        "lib/src/features/auth/presentation/another_account_screen.dart",
+        "lib/src/features/auth/presentation/auth_gate.dart"
+      ],
+      "isnew": "New in build 26."
+    },
+    "E1": {
+      "file": "shell-race-run-up",
+      "name": "The taper, three days out",
+      "how": "driven",
+      "reach": "Launch › race in 3 days",
+      "job": "Home in race week.",
+      "done": "A race banner counts down in days and says the work is done; today's session is small; nothing chases missed sessions.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "E2": {
+      "file": "shell-race-day",
+      "name": "Race day",
+      "how": "driven",
+      "reach": "Launch › race today",
+      "job": "Home on race day.",
+      "done": "Race day is the event, not a training session: its distance and 'Start the race', nothing else prescribed.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "E3": {
+      "file": "shell-race-result-sheet",
+      "name": "The result, read off the log",
+      "how": "driven",
+      "reach": "E4 › Add your result",
+      "job": "Recording the race result.",
+      "done": "The phone's own time and distance offered first, a wheel to correct the chip time, and 'That was my time'. No retyping what the phone recorded.",
+      "files": [
+        "lib/src/features/coaching/presentation/race_result_sheet.dart"
+      ]
+    },
+    "E4": {
+      "file": "shell-race-after",
+      "name": "The morning after",
+      "how": "driven",
+      "reach": "Launch › race yesterday",
+      "job": "Home the day after the race.",
+      "done": "Asks how the race went, with Add your result first; no missed-session nagging about race week.",
+      "files": [
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_tiles.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart",
+        "lib/src/features/home/presentation/home_last_run.dart",
+        "lib/src/features/home/presentation/training_charts.dart"
+      ]
+    },
+    "E5": {
+      "file": "shell-plan-finish",
+      "name": "The end of the block",
+      "how": "driven",
+      "reach": "E3 › That was my time",
+      "job": "The plan closed out.",
+      "done": "The finish time large, the block summarised in weeks, runs and distance, one line from the coach, and Done. The Plan tab is clear afterwards.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_finish_screen.dart"
+      ]
+    }
+  }
+}
