@@ -9,6 +9,8 @@ import 'package:mgk_run/src/features/coaching/domain/coach_brief.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
+import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 
 /// The published privacy policy makes an unconditional promise:
 ///
@@ -61,6 +63,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Already agreed, and the disclaimer already read: what the coach
+          // asks before it sends anything is pinned in
+          // the_coach_asks_before_anything_leaves_test.dart.
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // Subscribed, because the coach is the paid half (ADR-0030) and an
           // unentitled runner never reaches a brief at all.
           access: CoachAccess.subscribed,

@@ -41,6 +41,20 @@ enum LocationUnavailableReason {
   /// Permission was refused permanently. Only Settings can change it.
   permissionDeniedForever,
 
+  /// Permission is granted, but only to approximate location (iOS "Precise
+  /// Location" off, or Android's "Approximate" grant) — fixes arrive with
+  /// horizontal accuracy on the order of a kilometre or more.
+  ///
+  /// Distinct from every other reason here: the platform is not refusing
+  /// anything, so [LocationSource.start] does not fail on its own account —
+  /// every fix simply lands worse than the recorder's own accuracy floor and
+  /// is discarded before it reaches it, silently, with no error on the
+  /// stream at all. This reason exists so a source that can *ask* the
+  /// authorisation status (geolocator's `getLocationAccuracy`) can say so
+  /// before a run spends its whole distance on "Acquiring GPS". Only
+  /// Settings can change it.
+  reducedAccuracy,
+
   /// The platform failed for some other reason — see [LocationUnavailable.cause].
   failed,
 }

@@ -67,6 +67,7 @@ import {
   type StoredTurn,
 } from "./coach_memory.ts";
 import { Knowledge } from "./knowledge.ts";
+import { conversationRequired, errorCode, parseBody } from "./request.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -86,7 +87,7 @@ const UPSTREAM_TIMEOUT_MS = 75_000;
  * which is why the unsettled suite name is not a blocker here.
  */
 const ATTRIBUTION: Record<App, { referer: string; title: string }> = {
-  run: { referer: "https://runio.app", title: "Runio" },
+  run: { referer: "https://mgkfitness.mgkcodes.com", title: "MGKFitness: Run" },
   lift: { referer: "https://mgkcodes.com", title: "MGK Lift" },
 };
 
@@ -215,10 +216,14 @@ async function callProvider(opts: {
     // place a provider might echo part of what we sent, and we do not put user
     // content in logs. It can also carry OUR billing details, which are not the
     // caller's business — which is why it is never forwarded to the client.
+    // The status and the provider's error code only. The body was logged capped
+    // at 300 characters, but a moderation refusal carries `flagged_input` --
+    // what the runner typed -- and 300 characters of it is still user content
+    // in a log.
     console.error(
       "openrouter error",
       res.status,
-      (await res.text()).slice(0, 300),
+      errorCode(await res.text().catch(() => "")),
     );
     return {
       ok: false,
@@ -255,7 +260,7 @@ async function callProvider(opts: {
   const usage = estimate(payload?.usage);
 
   if (payload.error) {
-    console.error("openrouter body error", JSON.stringify(payload.error));
+    console.error("openrouter body error", errorCode(payload.error));
     return {
       ok: false,
       status: 502,
@@ -344,12 +349,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "coach_not_configured" }, 503);
   }
 
-  let body: Body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "bad_request" }, 400);
-  }
+  // Bounded and shape-checked before anything reads it; see `parseBody`.
+  const parsed = parseBody(await req.text());
+  if ("error" in parsed) return json({ error: parsed.error }, parsed.status);
+  const body: Body = parsed.body;
 
   const surfaceName = body.surface;
   if (!isSurface(surfaceName)) {
@@ -380,8 +383,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    its tier could bill the Sharp model on a free account, and one that
   //    could name its app could spend a Run subscription on a Lift turn.
   //
-  //    `null` is "no coach at all", which Lift returns for an unentitled
-  //    lifter: coaching is the paid half of that app. Run never returns it.
+  //    `null` is "no coach at all", which both apps return for an unentitled
+  //    caller: coaching is the paid half of each (ADR-0030).
   const entitlements = new EntitlementStore(supabaseUrl, serviceKey);
   const tier = tierFor(
     surface.app,
@@ -472,7 +475,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // the verified JWT below, and RLS owns the rest — a client naming somebody
   // else's conversation writes nothing.
   const conversation = String(body.conversation ?? "").trim();
-  if (memoryStore && !conversation) {
+  // Only a chat turn needs a session. Lift's planning surfaces -- lift_intake,
+  // lift_plan, lift_swap -- never sent one, in any version of the client, so
+  // requiring it here answered all three with 400 from the day this shipped
+  // (2026-09-01) and a lifter could not build a plan. `lift_plan` reads the
+  // summary, which is keyed by user and app; an empty id reads no turns.
+  if (conversationRequired(surfaceName, memoryStore !== null, conversation)) {
     return json({ error: "conversation required" }, 400);
   }
   let memory: Memory = EMPTY_MEMORY;

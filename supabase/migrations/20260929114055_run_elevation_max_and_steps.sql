@@ -1,3 +1,10 @@
+-- RE-STAMPED 2026-09-29. This file was dated 20260901130000, which sorts
+-- BEHIND 20260901172935 (progress_photos_week_start, already applied), so
+-- `db push` skipped it and it never reached production: run.runs had no
+-- elevation_max_m or steps, and every Run backup upsert, which sends both,
+-- failed with PGRST204 from build 13 onward. Applied on 2026-09-29 and renamed
+-- to the version the ledger stamped, as 20260904100915 was before it.
+
 -- run.runs gains the two columns the device has had since schema version 8.
 --
 -- ## What was losing data

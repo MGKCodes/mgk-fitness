@@ -23,9 +23,10 @@ import {
   LIFT_PERSONA,
   liftChatMessages,
   liftIntakeMessages,
-  liftSummariseMessages,
   liftPlanMessages,
+  liftSummariseMessages,
   liftSwapMessages,
+  localDay,
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
@@ -1239,7 +1240,10 @@ Deno.test("lift_plan carries house guidance when there is some", () => {
   // From coach.knowledge, so changing how splits are chosen does not need a
   // function deploy.
   const system = systemOf(
-    liftPlanMessages({ ...PLAN_BODY, guidance: "Prefer upper/lower at five days." }),
+    liftPlanMessages({
+      ...PLAN_BODY,
+      guidance: "Prefer upper/lower at five days.",
+    }),
   );
   assertStringIncludes(system, "House guidance");
   assertStringIncludes(system, "Prefer upper/lower at five days.");
@@ -1266,10 +1270,58 @@ Deno.test("lift_plan is registered and produces a structure", () => {
   const spec = SURFACES.lift_plan;
   assertEquals(spec.app, "lift");
   assertEquals(
-    spec.valid!({ reply: "x", name: "Upper / Lower", days: [{ day: "Upper" }] }),
+    spec.valid!({
+      reply: "x",
+      name: "Upper / Lower",
+      days: [{ day: "Upper" }],
+    }),
     true,
   );
   // A reply with no days is not a plan.
   assertEquals(spec.valid!({ reply: "x", name: "y", days: [] }), false);
   assertEquals(spec.valid!({ reply: "x", days: [{ day: "Upper" }] }), false);
+});
+
+Deno.test("the coach's today is the runner's day, when the phone says so", () => {
+  const now = new Date(Date.UTC(2026, 8, 29, 3, 0)); // 03:00 UTC, Tuesday
+  // Monday evening in Los Angeles: a day behind UTC.
+  assertEquals(
+    localDay({ local_date: "2026-09-28" }, now).toISOString().slice(0, 10),
+    "2026-09-28",
+  );
+  // Wednesday morning in Sydney would be a day ahead: also believed.
+  assertEquals(
+    localDay({ local_date: "2026-09-30" }, now).toISOString().slice(0, 10),
+    "2026-09-30",
+  );
+});
+
+Deno.test("a local date that cannot be the runner's today falls back to UTC", () => {
+  const now = new Date(Date.UTC(2026, 8, 29, 3, 0));
+  for (
+    const local_date of [
+      undefined, // every build before 26
+      "2026-10-05", // a clock set a week out
+      "2026-09-26",
+      "29/09/2026",
+      "2026-02-31", // rolls over into March
+      42,
+    ]
+  ) {
+    assertEquals(
+      localDay({ local_date }, now).toISOString().slice(0, 10),
+      "2026-09-29",
+      String(local_date),
+    );
+  }
+});
+
+Deno.test("log_run is told the runner's date and weekday", () => {
+  const utcToday = new Date().toISOString().slice(0, 10);
+  const system = logRunMessages({
+    request: "I ran 5k",
+    local_date: utcToday,
+  })[0]
+    .content as string;
+  assertStringIncludes(system, `Today is ${utcToday} (`);
 });

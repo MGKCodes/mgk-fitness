@@ -74,7 +74,11 @@ const STATUS_BY_TYPE: Record<string, Status> = {
   // Auto-renew off, access intact until it lapses.
   CANCELLATION: "active",
   EXPIRATION: "expired",
-  SUBSCRIPTION_PAUSED: "expired",
+  // SUBSCRIPTION_PAUSED is deliberately absent, so it is ignored. RevenueCat
+  // sends it when a Play subscriber schedules a pause, and the pause starts
+  // when the paid period ends: mapping it to "expired" took away the rest of a
+  // month somebody had paid for. Access ends on the EXPIRATION that arrives at
+  // the period's end, with expiration_reason SUBSCRIPTION_PAUSED.
   // The store is chasing a payment. Access continues, and `grace` is why the
   // column has five values rather than a boolean — the Edge Function's
   // entitlement check treats anything but `active` as no entitlement, so a
@@ -195,10 +199,13 @@ export function productMap(raw: string | undefined): Map<string, ProductSale> {
  * The event, as a row to write or a reason not to.
  *
  * `acceptSandbox` exists because a sandbox purchase is a real event from a fake
- * payment. Accepting them in production would let anybody with a sandbox tester
- * account grant themselves a coach; refusing them in development would make the
- * whole thing untestable before release. So it is a decision the caller makes
- * from configuration, not a thing this file assumes.
+ * payment. The default is to refuse them -- a project that has not decided gets
+ * the safe answer -- but this one has decided: production sets it, because App
+ * Review buys in the sandbox against the production build, and refusing that
+ * purchase fails review (ADR-0037). The people who can make a sandbox purchase
+ * are the ones we invite -- licence testers, TestFlight testers, sandbox Apple
+ * IDs -- plus App Review. So it is a decision the caller makes from
+ * configuration, not a thing this file assumes.
  */
 export function decide(
   body: unknown,
@@ -261,9 +268,7 @@ export function decide(
       product: sale.product,
       status,
       platform: platformOf(e.store),
-      expires_at: expiresMs === null
-        ? null
-        : new Date(expiresMs).toISOString(),
+      expires_at: expiresMs === null ? null : new Date(expiresMs).toISOString(),
       source_txn_id: str(e.transaction_id) ?? str(e.original_transaction_id),
       event_ms: eventMs,
     },

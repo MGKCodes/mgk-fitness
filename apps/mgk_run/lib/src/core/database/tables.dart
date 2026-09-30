@@ -56,6 +56,22 @@ class Runs extends Table {
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// Seconds excluded from [durationS] so far because the runner pressed
+  /// Pause — the running total [RecordingRunRecorder] keeps in memory,
+  /// mirrored here so it survives a crash.
+  ///
+  /// Written in `pause()`/`resume()`, not just at `stop()`. A run recovered
+  /// after the process died mid-pause has no `stop()` call to compute this
+  /// from, so the figure has to already be on disk (see run-recording.md).
+  IntColumn get pausedTotalS => integer().withDefault(const Constant(0))();
+
+  /// When the run most recently stopped counting, or null while it is
+  /// counting. Paired with [pausedTotalS] the way the in-memory recorder
+  /// pairs `_pausedTotal` with `_notCountingSince`: the total only grows when
+  /// a pause *ends*, so a pause still open when the process dies is finished
+  /// by treating this moment as the run's last countable instant.
+  DateTimeColumn get notCountingSince => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

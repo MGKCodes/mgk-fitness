@@ -33,8 +33,16 @@ export default function RunDeleteAccountPage() {
 
       <h2>If you still have the app</h2>
       <p>
-        Open <strong>Profile</strong>, then <strong>Settings</strong>, then{" "}
-        <strong>Delete account</strong>. It happens immediately.
+        Open the <strong>Profile</strong> tab and tap the gear at the top right
+        for <strong>Settings</strong>. Then tap <strong>Privacy &amp; legal</strong>,
+        then <strong>Delete account</strong>, and type DELETE to confirm. It
+        happens immediately. The same button is on your account screen too: tap
+        the card at the top of Settings.
+      </p>
+      <p>
+        The app also erases the copy of your training on the phone, unless you
+        switch that off before you confirm. If you keep it, it stays on the
+        phone only, and nothing on it is backed up any more.
       </p>
 
       <h2>If you have uninstalled it</h2>
@@ -58,7 +66,8 @@ export default function RunDeleteAccountPage() {
 
       <h2>What gets deleted</h2>
       <p>
-        Everything Run holds about you, on our systems and on your phone:
+        Everything Run holds about you on our systems, and the copy on your
+        phone unless you chose to keep it:
       </p>
       <ul>
         <li>your runs, including routes, distances and paces</li>
@@ -67,6 +76,7 @@ export default function RunDeleteAccountPage() {
           your coach conversations, including the rolling summary written from
           them
         </li>
+        <li>any coach replies you reported</li>
         <li>your login, unless you also use another MGKFitness app</li>
       </ul>
       <p>
@@ -98,9 +108,10 @@ export default function RunDeleteAccountPage() {
         <li>
           <strong>Your subscription record.</strong> It is held by the App Store
           or Google Play, not by us. Deleting your account does not cancel a
-          subscription &mdash; cancel that in the store you bought it from,
-          before deleting, or you will keep being charged for a coach that is
-          gone.
+          subscription &mdash; cancel that in the store you bought it from, or
+          you will keep being charged for a coach that is gone. If you are still
+          subscribed, the app says so before you confirm, with a button to the
+          store&rsquo;s page.
         </li>
         <li>
           <strong>Anything we are required to keep</strong>, such as a record of

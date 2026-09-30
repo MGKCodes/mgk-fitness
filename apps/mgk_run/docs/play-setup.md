@@ -1,7 +1,10 @@
-# Play setup — keystore, listing, Play Billing, RevenueCat
+# Play setup — keystore, listing, Play Billing, RevenueCat, declarations
 
-The Google half of `store-setup.md`, which covers Apple and says at its end that
-Play is not covered. This is that gap.
+The Google half of [store-setup.md](store-setup.md), which covers Apple. Run
+1.0.0 ships on Play from the same commit and build number as the App Store
+([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
+The listing copy and graphics are in [play-listing.md](play-listing.md); the
+live status for both stores is in [app-store-1.0.0.md](app-store-1.0.0.md).
 
 **What is already true**, and is why this is shorter than the Apple one: the
 backend is store-agnostic and was built that way. `core.entitlements.platform`
@@ -20,22 +23,28 @@ and a second RevenueCat app.
   configures nothing. `storeKey` picks by platform at runtime.
 - `codemagic.yaml` `run-android-release` — declares `android_signing: mgkfitness_upload`,
   builds an **AAB** as well as an APK, emits `REVENUECAT_GOOGLE_KEY`, and
-  carries a commented `publishing:` block.
+  publishes to the internal track (the `publishing:` block was commented at
+  first and has been live since build 24; §8).
 
 ---
 
 ## Where this got to
 
-**Build 25 is on the internal track as of 2026-09-11**, published automatically
-from a commit — the whole chain in this document works. The first real purchase
-went through on 2026-09-11 after step 10's product-id mapping turned out to be
-the thing standing in the way, exactly as this document warned it would be.
+**Build 25 is on the internal track**, published automatically on 2026-09-11
+from `12d74d8`, and **build 26 is the release candidate** for both stores. The
+whole chain in this document works: the first real purchase went through on
+2026-09-11 after step 10's product-id mapping turned out to be the thing
+standing in the way, exactly as this document warned it would be.
 
 **What is left is in [app-store-1.0.0.md](app-store-1.0.0.md)**, which carries
 the live status for both stores rather than having it in two places. The short
-version: a premium purchase is still untested, the declarations in step 4 are
-still unanswered, the 512px tile still needs uploading by hand, and
-`REVENUECAT_ACCEPT_SANDBOX` still has to come off before anything is public.
+version, for Play: developer verification is **done** (§8b), and what is left is every
+declaration in §4, the listing and its graphics
+([play-listing.md](play-listing.md)), Premium's new description (§5), and a
+premium purchase on build 26 (§9).
+
+**`REVENUECAT_ACCEPT_SANDBOX` stays on.** This paragraph used to say it had to
+come off before anything was public; ADR-0037 reversed that, and §9 says why.
 
 ---
 
@@ -162,8 +171,8 @@ MGKCodes is an **organisation account and already verified** (frunt ships from
 it), so none of the personal-account closed-testing requirements apply — there
 is no 12-tester, 14-day clock. Production access is available immediately.
 
-- **App name:** as per `docs/app-store-listing.md`, kept identical to the Apple
-  listing so the two stores name one product one way.
+- **App name:** as per [play-listing.md](play-listing.md), kept identical to
+  the Apple listing so the two stores name one product one way.
 - **Default language:** English (United Kingdom), matching the Apple listing.
 - **App or game:** App.
 - **Free or paid:** **Free.** The app is free; the coach is an in-app
@@ -178,8 +187,8 @@ is no 12-tester, 14-day clock. Production access is available immediately.
 
 Codemagic can publish to a track. It **cannot create the listing**, and the Play
 Developer API refuses an app whose first bundle has never gone through the
-console. This is why the `publishing:` block in `codemagic.yaml` ships
-commented, with a note saying not to uncomment it yet.
+console. This is why the `publishing:` block in `codemagic.yaml` started out
+commented; it went live after this upload (§8).
 
 Either build locally once `key.properties` exists:
 
@@ -210,120 +219,186 @@ sends you looking in the wrong four places.
 
 - [x] First AAB uploaded manually — 1.0.0 (22), internal testing, 2026-09-10
 
-## 4. The declarations that gate every release
+## 4. App content — every declaration, with the answers
 
-These are not optional and they are the usual reason a first Play submission
-stalls. Several can be filled in now, before any of the billing work.
+Play Console ▸ Policy ▸ **App content**. Every item here must be complete
+before a release can go to production review, and they are the usual reason a
+first Play submission stalls. None of them depends on the billing work.
 
-- [ ] **Privacy policy URL** — `https://mgkfitness.mgkcodes.com/run/privacy`.
-      Already live and already CI-pinned; see the decision *The published legal
-      page is the artefact CI pins*.
-- [ ] **Data safety form.** Must agree with the privacy policy, which names the
-      sub-processors. The answers are worked out below.
-- [ ] **Account deletion URL** — `https://mgkfitness.mgkcodes.com/run/delete-account`.
-      Required for any app offering account creation, and the rule is specific:
-      somebody who has **uninstalled** the app must still be able to ask. Run's
-      in-app Delete account is better for anyone who still has the app and no
-      use at all to the person this rule protects, which is why the page exists
-      (added 2026-09-11; Apple has no equivalent requirement, which is why it
-      was missing).
-- [ ] **Content rating questionnaire.**
-- [ ] **Target audience and content.**
-- [ ] **Foreground service permission declaration.** Run declares
-      `FOREGROUND_SERVICE_LOCATION`, and Play requires a written justification
-      plus, usually, a demo video showing the in-run screen with the screen
-      locked. This is the one most likely to be queried — budget for it.
-      `ACCESS_BACKGROUND_LOCATION` is deliberately **not** requested (see the
-      note in `AndroidManifest.xml`), which keeps this much simpler than it
-      would otherwise be. Say so in the justification.
-- [ ] **Health apps declaration**, if prompted — the app reads HealthKit on iOS
-      but on Android reads no Health Connect data, so this should be a short
-      answer.
+**Rewritten 2026-09-29** from a compliance review of the build 26 code. Where a
+judgement was made rather than read off the code, it says so. The form and the
+privacy policy are compared, and a disagreement between them is a rejection, so
+do not change an answer here without changing the policy with it.
 
-### The Data safety answers, worked out
+- [ ] **Privacy policy** — `https://mgkfitness.mgkcodes.com/run/privacy`.
+      Already live and CI-pinned.
+- [ ] **App access — "All or some functionality is restricted".** Add one set
+      of instructions:
+      - Name: `Demo account A`
+      - User name and password: demo account A, from
+        [store-setup.md](store-setup.md) §9 (the same account App Review
+        gets; its row names no store, so the app reads right on Android)
+      - Any other information: *"On the first screen tap 'I already have an
+        account' and sign in. This account already has the coach
+        subscription, so please do not buy on it. Recording runs needs no
+        account; the coach, plans and backup need one. The first time you open
+        the coach it asks permission to send training data to the AI provider,
+        then shows a medical disclaimer."*
+- [ ] **Ads — No,** the app contains no ads. No ad SDK, no advertising id.
+- [ ] **Content rating** — the IARC questionnaire, answers below.
+- [ ] **Target audience and content** — **18 and over only**; appeals to
+      children **No**. Reasoning below.
+- [ ] **News apps — No.**
+- [ ] **Data safety** — answers below, including the deletion URL
+      `https://mgkfitness.mgkcodes.com/run/delete-account`. Play requires that
+      URL for any app offering account creation, because somebody who has
+      **uninstalled** the app must still be able to ask; the in-app Delete
+      account cannot help them (the page was added 2026-09-11).
+- [ ] **Government apps — No.**
+- [ ] **Financial features — none.** The app sells a subscription through Play
+      Billing, which is not a financial feature.
+- [ ] **Health apps — mandatory for every app, not "if prompted".** Tick
+      **Health and fitness ▸ Activity and fitness** and nothing else. The app
+      reads no Health Connect data and has no medical, disease or clinical
+      feature.
+- [ ] **Advertising ID — No.** Nothing in the app reads it, and the app's own
+      manifest does not declare `AD_ID`. If Play warns at upload that the
+      bundle declares it, a dependency added it: find which before answering
+      anything else.
+- [ ] **Foreground service permissions — location**, with a video. Below.
+      This is the one most likely to be queried.
 
-Filled in from the privacy policy rather than from memory, because the form and
-the policy are compared and a disagreement between them is a rejection. Where a
-judgement was made rather than read off, it says so.
+### Foreground service declaration
 
-**This describes the Android app.** Apple Health does not exist here — Run asks
-for no health permissions on Android at all — so nothing HealthKit-shaped
-belongs in these answers, even though the policy discusses it for iOS.
+Run declares `FOREGROUND_SERVICE_LOCATION` and deliberately **not**
+`ACCESS_BACKGROUND_LOCATION` (see the note in `AndroidManifest.xml`), which
+keeps this much simpler than it would otherwise be. Paste these exactly:
 
-Three top-level questions:
+| Field | Answer |
+|---|---|
+| Type | Location |
+| Describe the feature | When the user taps Start to record a run, the app starts a foreground service of type location with an ongoing "Recording your run" notification so it keeps receiving GPS fixes while the screen is locked or the phone is in a pocket. It computes the route, distance, pace and splits of that run. The service stops when the user taps Finish. The app does not request ACCESS_BACKGROUND_LOCATION. When no run is being recorded it reads location only while the app is open on screen, to centre the map before a run starts. |
+| Impact if the task is deferred | The start of the run would have no location, so route, distance and pace would be missing. |
+| Impact if the task is interrupted | Distance freezes while the timer runs; pace, splits and route become wrong and the run is lost. |
+| Video | A link to the video below (an unlisted YouTube video works) |
+
+**The video**, on a real Android phone running the Play build:
+
+1. **First turn notifications on for Run**: Settings ▸ Apps ▸ Run ▸
+   Notifications. The app never asks for the Android 13+ notification
+   permission (a known gap, in after-1.0.0.md), so without this the
+   notification that the video exists to show does not appear in the shade.
+2. Open Run ▸ Record a run ▸ **Start**.
+3. Lock the screen, wake it, and show the **"Recording your run"**
+   notification.
+4. Walk for a minute or two with the screen locked.
+5. Unlock and show that the **distance went up** while it was locked.
+6. Tap **Finish**, then show the notification has **gone**.
+
+Test sheet row V1 captures the same thing.
+
+**One sentence differs from the draft the compliance review supplied**, which
+said the app "never accesses location when no run is being recorded". The run
+start screen reads the phone's last known position, in the foreground, to draw
+its map (`run_start_screen.dart`), so the declaration says that instead. A
+declaration a reviewer can falsify by opening the app is worse than a longer
+one.
+
+### The Data safety answers
+
+Filled in from the privacy policy and the code rather than from memory.
+**This describes the Android app.** It reads no health permissions at all, so
+nothing HealthKit-shaped belongs here even though the policy discusses it for
+iOS.
+
+Top-level questions:
 
 | Question | Answer |
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** — HTTPS/TLS throughout |
-| Do you provide a way for users to request that their data is deleted? | **Yes** — in-app, and the URL above |
+| Which of the following methods of account creation does your app support? | **Username and password** (email and password, in the app) |
+| Delete account URL | `https://mgkfitness.mgkcodes.com/run/delete-account` |
+| Do you provide a way for users to request that some or all of their data is deleted, without requiring them to delete their account? | **Yes** — turning backup off erases the server copy of their training |
 
-Then, per type. Everything below is **collected and not shared**, for the reason
-given after the table:
+Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 
-| Category | Type | Optional? | Purpose | Where it comes from |
+| Category | Type | Collection | Purposes | What it is |
 |---|---|---|---|---|
-| Personal info | Name | Optional | App functionality, Account management | `AuthRepository.signUp` / `updateName`, auth metadata |
-| Personal info | Email address | Optional | Account management | Supabase auth; the app works signed out |
-| Personal info | User IDs | Required | Account management, App functionality | the Supabase user id, which is also the RevenueCat app user id |
-| Financial info | Purchase history | Optional | App functionality | `core.entitlements` — product and status |
-| Location | Approximate location | Required | App functionality | `ACCESS_COARSE_LOCATION` |
-| Location | Precise location | Required | App functionality | `ACCESS_FINE_LOCATION`, the route trace |
-| Health and fitness | Fitness info | Required | App functionality | runs, distance, pace, plans, sessions |
-| Health and fitness | Health info | Optional | App functionality | injury notes, RPE, a heart rate if typed in |
-| Messages | Other in-app messages | Optional | App functionality | coach conversations and their rolling summary |
-| Device or other IDs | Device or other IDs | Required | App functionality | RevenueCat's own device-scoped identifier |
+| Location | Approximate location | Optional | App functionality | MapTiler's tile requests for the map on screen |
+| Location | Precise location | Optional | App functionality | Route traces, sent only with backup on |
+| Personal info | Name | Optional | App functionality, Account management | The name the coach uses, if given |
+| Personal info | Email address | Optional | Account management | The account; the app works signed out |
+| Personal info | User IDs | Optional | Account management, App functionality | The Supabase user id, also RevenueCat's app user id |
+| Financial info | Purchase history | Optional | App functionality, Analytics | The subscription, via RevenueCat |
+| Health and fitness | Health info | Optional | App functionality | Injury notes and symptoms the runner types, a heart rate typed in by hand |
+| Health and fitness | Fitness info | Optional | App functionality | Runs, distance, pace, plans, effort ratings |
+| Messages | Other in-app messages | Optional | App functionality | Coach conversations, their summary, reported replies |
+| App activity | App interactions | Optional | App functionality, Fraud prevention, security and compliance | The coach usage ledger that enforces the spend limits |
+| Device or other IDs | Device or other IDs | Optional | App functionality | RevenueCat's own per-install id |
 
-**Everything else is "not collected"**, and the notable absences are worth
-knowing you can answer cleanly: no crash logs, no diagnostics, no advertising ID,
-no contacts, files, web history or installed apps.
+**Why everything is Optional.** Nothing leaves the phone for a runner who
+records with no account, no backup and no coach, apart from map tiles, and the
+app works with location refused (runs can be added by hand). The tile requests
+are the closest call; they happen whenever a map is shown, and refusing
+location is what opts out of them in practice.
+
+**Device or other IDs is a judgement to keep.** RevenueCat's own Data safety
+page says an app needs it only when it uses their advertising-id integrations,
+which this app does not. It stays declared because the privacy policy says the
+SDK collects "a device-scoped identifier", and the form and the policy should
+agree. Over-declaring costs nothing on this form; under-declaring against the
+policy is the rejection.
+
+**Not collected:** photos and videos, files and docs, audio, calendar,
+contacts, web browsing history, installed apps, crash logs, diagnostics, and
+advertising id. The app carries no analytics, no ad SDK and no crash reporter,
+which is a rare set of honest zeroes on this form.
 
 **Photos is the one that needs saying out loud**, because the app gained a
 profile photo on 2026-09-11 and the answer is still *not collected*. Play
 defines collection as data **transmitted off the device**; this photo is copied
-into the app's own storage and is deliberately excluded from the backup mirror,
-so nothing transmits it. The same reasoning keeps Apple's App Privacy on "Data
-Not Collected" and keeps it out of `PrivacyInfo.xcprivacy`. **If the photo is
-ever synced, all three of those answers become false at once** — that is the
-whole reason it is a rule in `ProfilePhotoStore` rather than an accident of
-where the file happens to live. The app carries no
-analytics, no ad SDK and no crash reporter, which is a rare set of honest zeroes
-on this form.
+into the app's own storage and never sent to us or to the coach. The same
+reasoning keeps it off Apple's App Privacy answers and out of
+`PrivacyInfo.xcprivacy`. **If the photo is ever synced, all three answers
+become false at once** — that is the whole reason it is a rule in
+`ProfilePhotoStore` rather than an accident of where the file lives.
 
 **Why nothing is marked "shared".** Play's definition of sharing excludes
 transfer to a service provider processing on the developer's behalf, and all
-four sub-processors are exactly that under Article 28 — Supabase, OpenRouter,
-RevenueCat, MapTiler. **This is the one judgement call on the form.** If it is
-ever wrong, it is wrong about OpenRouter, which receives training data and
-message text; the defence is that it processes on our instruction and does not
-use it for its own purposes, which is also what the policy tells the runner. Do
-not quietly change the answer without changing the policy with it.
+four sub-processors are exactly that — Supabase, OpenRouter, RevenueCat,
+MapTiler. **This is the one judgement call on the form.** If it is ever wrong,
+it is wrong about OpenRouter, which receives training data and message text;
+the defence is that it processes on our instruction and does not use it for its
+own purposes, which is also what the policy tells the runner.
 
-**Two answers that look like the opposite choice.** *Location marked Required*
-even though runs can be added by hand and the app technically functions without
-it — recording a run is the app, and "optional" would understate. *Device IDs
-marked collected* even though we neither read nor store one: RevenueCat's SDK
-collects it directly, and Play counts what an SDK collects as what the app
-collects.
+### Content rating (IARC questionnaire)
 
-### Content rating, and target audience
+| Question | Answer |
+|---|---|
+| Category | **Utility, Productivity, Communication, or Other** |
+| Violence, fear, sexuality, language, controlled substances, crude humour, gambling | **No** to all |
+| Can users interact or exchange content with other users? | **No** — the coach is a model, not a person, and no runner can see, message or find another |
+| Does the app share the user's current physical location with other users? | **No** |
+| Does the app allow users to purchase digital goods? | **Yes** — the subscription |
+| Unrestricted internet access, such as a web browser? | **No** |
+| AI-generated content or a chatbot, if asked | **Yes** — the coach's replies, which can be reported in the app |
 
-The one answer that changes everything on the rating questionnaire: **the app
-has no user-to-user interaction.** The coach is a model, not a person, and no
-runner can see, message, or find another. Saying yes there pulls in social
-features declarations and a much heavier rating for nothing.
+Saying yes to user interaction pulls in social-feature declarations and a
+heavier rating for nothing. Expect **PEGI 3 / Everyone**, with an in-app
+purchases notice.
 
-Otherwise: no violence, no sexual content, no profanity, no controlled
-substances, no gambling. It **does** sell digital goods (the subscription), and
-it **does** share the user's location with the app itself but never with other
-users. Expect PEGI 3 / Everyone.
+### Target audience
 
-**Target audience: 18 and over, only.** The terms set the floor at 16 and the
-policy says the app is not directed at under-16s, so 16–17 would be defensible —
-but selecting any bracket below 18 pulls the listing into the Families policy,
-which brings its own review, ad rules and content requirements for an app that
-has no business being marketed to children. Health data and a medical disclaimer
-argue the same way. Choose 18+ and the question stops costing anything.
+**18 and over, only.** The terms allow accounts from 16, so 16–17 would be
+permitted too; it is not chosen because nothing in the product is made for
+teenagers, and the app gives training advice, holds health information and
+sells a subscription. Appeals to children: **No**.
+
+**Corrected 2026-09-29:** this used to say that selecting any bracket under 18
+pulls the listing into the Families policy. That is wrong. The Families policy
+applies when the target audience includes children **under 13**. The answer
+stays 18+; the reason given for it was the error.
 
 ## 4b. A Google Payments merchant account — the real long pole
 
@@ -440,6 +515,11 @@ says. That is step 10.
 
 - [x] Two subscriptions created with base plans — active, entered ex-VAT, and
       verified rendering as £0.99 / £2.99 in build 23 on 2026-09-11
+- [ ] **Each subscription's description and benefits set from
+      [play-listing.md](play-listing.md) § Subscriptions** (added 2026-09-29).
+      Premium's says *"A better AI model and a bigger allowance."* ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
+      Google calls the description internal, but the paywall prints it on
+      Android through RevenueCat, so it is copy a runner reads.
 
 ## 6. RevenueCat — the Google app
 
@@ -478,9 +558,9 @@ not. An unset value only warns, because that is the correct state for the step-3
 upload.
 
 Also confirm the group holding `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS`. The
-workflow currently names **`mgk_play_publishing`**; if frunt's credentials live
-under a different group name, change the reference in `codemagic.yaml` to match.
-A name that does not exist fails the build immediately, which is loud and cheap.
+workflow names **`mgk_fitness_play`** (this said `mgk_play_publishing` until
+2026-09-29, a name `codemagic.yaml` does not use). A name that does not exist
+fails the build immediately, which is loud and cheap.
 
 - [x] `REVENUECAT_GOOGLE_KEY` set in `mgk_fitness_run_env` — and **proved** by
       build 24 rather than taken on trust: the config step rejects a key that
@@ -490,10 +570,12 @@ A name that does not exist fails the build immediately, which is loud and cheap.
 
 ## 8. Turn on publishing
 
-Uncomment the `publishing:` block at the end of `run-android-release` in
-`codemagic.yaml`. It publishes to the **internal** track with
-`submit_as_draft: true`, so a mistake is a draft to delete rather than a build
-someone has installed.
+**Done, and live since build 24.** The `publishing:` block at the end of
+`run-android-release` publishes to the **internal** track with
+**`submit_as_draft: false`**. It was `true` until 2026-09-11: the draft held
+build 24 behind build 23 for an hour, invisibly, and the internal track only
+reaches a tester list anyway. Keep it `true` for any track that reaches the
+public.
 
 Grant the Codemagic service account access to this app first (Play Console ▸
 Users and permissions) or the publish step 403s.
@@ -502,11 +584,11 @@ Users and permissions) or the publish step 403s.
       **build 24, 2026-09-11**, every step green including `Publishing`. First
       fully automated Play release from a commit.
 
-## 8b. Register for Android developer verification
+## 8b. Register for Android developer verification — due 2026-09-30
 
-New since this runbook was first written (Google notice, 2026-09-08): every app
-must be registered for **Android developer verification by 30 September 2026**
-or it stops being installable on certified devices in some countries.
+**The most urgent item in this document.** Play Console says every app must be
+registered for **Android developer verification by 30 September 2026**, and an
+app that is not faces removal from Google Play.
 
 The account banner saying *"All of your apps have been successfully
 registered"* refers to the apps that existed when it was shown — **frunt**. A
@@ -515,103 +597,115 @@ newly created listing is not covered by it.
 **Android developer verification** is its own item at the bottom of the Play
 Console account-level sidebar. It wants the package name and the signing
 certificate, which is why this sits after the first upload rather than before.
+The upload certificate's SHA-256 is recorded in §1; if the form asks for the
+app signing key instead, Play Console shows it under Test and release ▸ App
+integrity.
 
-- [ ] `com.mgkcodes.fitness.run` registered
+- [x] `com.mgkcodes.fitness.run` registered — **done 2026-09-10**. Checked in
+      Play Console on 2026-09-29: Package names shows it *Registered*, 3 keys,
+      beside frunt (*Registered*, 1 key, 2026-06-03). Nothing left to do here.
 
 ## 9. A real purchase, on a real device
 
-### Before you buy anything: the sandbox flag
+### The sandbox flag stays on
 
-**Google license-tester purchases arrive at the webhook as `environment:
-"SANDBOX"`, and the webhook ignores them by default.** See
-`entitlement_event.ts` — a sandbox purchase is a real event from a fake payment,
-and honouring those in production would let anyone with a tester account grant
-themselves a coach.
+**Google licence-tester purchases arrive at the webhook as `environment:
+"SANDBOX"`**, and the webhook honours them only while
+`REVENUECAT_ACCEPT_SANDBOX` is `true`. Without it the test *looks* like a total
+failure: the purchase succeeds, RevenueCat shows it, and `core.entitlements`
+stays empty, so the coach never unlocks. Every layer is working correctly and
+the symptom is indistinguishable from none of them working at all.
 
-So without this flag the test *looks* like a total failure: the purchase
-succeeds, RevenueCat shows it, and `core.entitlements` stays empty, so the coach
-never unlocks. Every layer is working correctly and the symptom is
-indistinguishable from none of them working at all.
+**It is `true`, has been since it was introduced, and stays `true` in
+production** ([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)).
+This section used to call switching it off a launch blocker, with an unticked
+box. That was reversed on 2026-09-29: App Review buys in the sandbox against the
+production build, so with the flag off a reviewer's purchase unlocks nothing and
+the paid half cannot be reviewed. A sandbox purchase can only come from people
+we chose — licence testers, TestFlight testers, sandbox Apple IDs and App
+Review — and sandbox subscriptions stop on their own.
 
-```bash
-supabase secrets set REVENUECAT_ACCEPT_SANDBOX=true
-```
+- [x] Flag on — and it stays on (ADR-0037)
+- The one rule it brings: **never publish a public TestFlight link**, the only
+  way a stranger gets a sandbox purchase.
 
-**It is already `true`, and has been since it was introduced** (confirmed
-2026-09-10). So nothing needs setting before a test purchase — but the
-consequence runs the other way and is worth stating plainly:
+### Buy through build 26
 
-> **Sandbox purchases have been granting real entitlements in production this
-> whole time.**
+Test on the release candidate. Builds 23 and 24 are history, and testing build
+25 was dropped: 26 carries everything 25 did plus the consent sheet, the
+account and purchase fixes and the recording fixes, so a purchase proved on 25
+would have to be proved again.
 
-The exposure today is close to nothing: there are no public users, and a
-sandbox purchase needs a tester account on a list we control. It stops being
-nothing the moment the app is public, because then anybody who can obtain a
-sandbox tester account can grant themselves a coach — which is precisely what
-`entitlement_event.ts` refuses by default and what this flag switches off.
+1. **Licence testing.** Your Google account under Play Console ▸ Setup ▸
+   License testing, so purchases are free and a month renews in minutes.
+2. **Install from the internal testing link**, signed into that Google account
+   on the phone — **not** a sideloaded APK, which cannot transact (§3).
+3. **Sign in to the app with an account that has no Run row** — not the one
+   you use on the iPhone, or a Play purchase and an Apple one land on the same
+   row and neither proves anything.
+4. **Buy Premium Coach first.** It is the product whose Play id was never read
+   off a real payload (§10). Then read the result, in order: RevenueCat ▸
+   Customer history (against your Supabase UUID, never an `RCAnonymousID:`),
+   the `revenuecat` function log, and `core.entitlements`, which should hold
+   one row: `premium`, `active`, `google`, an `expires_at` and `event_ms`.
+5. **Restore purchases** after reinstalling, and **Manage subscription**
+   (Profile ▸ Settings ▸ the account card at the top ▸ Coaching) opening
+   Play's subscription page for Run.
+6. **Cancel in Play** and watch the row stay `active` until the period ends,
+   then go `expired`. A licence-test month lasts minutes, so this is quick.
 
-So this is **not a step to remember**. It is a launch blocker:
-
-```bash
-supabase secrets unset REVENUECAT_ACCEPT_SANDBOX
-```
-
-- [x] Flag set for testing — was already on
-- [ ] **Flag removed before either store goes public** ← blocks production
-
-
-### Buy through build 24, not build 23
-
-Build 23 reached internal testing and is the build the price check above was
-made on, which is all it was needed for. **Do not make the purchase through
-it.** Two things landed after it was cut, both on the path a buyer walks:
-
-- The paywall told Android customers payment would be charged to their **Apple
-  ID** and to cancel it in Apple ID settings (`4ae7615`). That is the one
-  sentence on the screen Google actually reviews, and it was false.
-- The intro asked Android for Apple Health permission (`fe14c82`), a step that
-  cannot be granted on the platform being tested.
-
-Build 24 is the first build that is both purchase-capable and honest about which
-store is taking the money. Testing through 23 would produce a purchase that
-works and a screen that could not ship.
-
-Add your account under **Play Console ▸ Setup ▸ License testing** so purchases
-are free and renew fast. Install from the internal testing link — **not** a
-sideloaded APK, which cannot transact.
-
-Walk section G of `testflight-1.0.0-test-sheet.md`, which is written
-store-agnostically enough to reuse. The specific thing to prove, because it is
-the one that has already bitten this app once on iOS: the purchase must be made
-while RevenueCat is identified with a Supabase user id, never an
-`RCAnonymousID:`. `PurchaseScreen` refuses that case up front — confirm the
-refusal reads as *"sign in first"* and not as a failed payment.
+Section P of [the test sheet](testflight-1.0.0-test-sheet.md) is the same list
+with boxes. The specific thing to prove, because it has already bitten this app
+once on iOS: the purchase must be made while RevenueCat is identified with a
+Supabase user id. `PurchaseScreen` refuses the other case before the store —
+confirm it reads *"Sign in first"* with a Sign in button, not as a failed
+payment.
 
 - [x] Licence tester configured — 2026-09-10
-- [ ] Purchase completes and the coach unlocks
+- [x] A Coach purchase completed on Android — 2026-09-11, once §10's mapping
+      was fixed
+- [ ] **Premium purchase on build 26** writes `premium` / `active` / `google`
 
 ## 10. Map the Play product ids
 
-Read the webhook log from the step-9 purchase. If it logged `unmapped_product`,
-it named the id. Add those exact strings:
+**Coach is mapped and proved.** The webhook logged `run.coach.monthly:monthly`
+from the 2026-09-11 purchase — Play's `subscriptionId:basePlanId` form — and
+that key was added.
+
+**Premium is mapped and not proved.** `run.coach.premium.monthly:monthly` was
+added by inference from the Coach one, not read off a payload. If the §9
+purchase writes no row, the log line `unmapped_product: <id>` names the real
+id; add exactly that, keeping every existing key:
 
 ```bash
 supabase secrets set REVENUECAT_PRODUCTS='{
-  "run.coach.monthly":         {"app":"run", "product":"paid"},
-  "run.coach.premium.monthly": {"app":"run", "product":"premium"},
-  "<exactly what the log named>": {"app":"run", "product":"paid"},
-  "<exactly what the log named>": {"app":"run", "product":"premium"}
+  "run.coach.monthly":                 {"app":"run", "product":"paid"},
+  "run.coach.premium.monthly":         {"app":"run", "product":"premium"},
+  "run.coach.monthly:monthly":         {"app":"run", "product":"paid"},
+  "<exactly what the log named>":      {"app":"run", "product":"premium"}
 }'
 ```
 
-Then purchase again and confirm `core.entitlements` gains a row with
-`platform = 'google'` and `status = 'active'`.
+**Set it from Git Bash or the Supabase dashboard, not Windows PowerShell.**
+PowerShell 5.1 strips the double quotes out of a native command's argument, so
+this JSON arrives unparseable and **both stores stop mapping**. That happened
+for thirteen minutes on 2026-09-11. Read the secret back afterwards, and buy
+once more to confirm.
 
-- [ ] Play ids mapped, entitlement row written with `platform = 'google'`
+- [x] Coach's Play id mapped — `run.coach.monthly:monthly`, 2026-09-11
+- [ ] Premium's Play id proved by a real row with `platform = 'google'`
 
 ## 11. Production
 
-Promote the internal release. The declarations from step 4 must all be green.
+In this order, once §4, §5, §8b and the listing are done:
+
+1. **Managed publishing on** (Publishing overview). The Play equivalent of
+   App Store Connect's manual release: an approved release waits for you to
+   press Publish instead of going live at whatever hour review finishes.
+2. **Promote build 26** from internal testing to Production, as a new release
+   with release notes. It goes to review.
+3. **Publish** when both stores are approved, or when you decide Play goes
+   first.
 
 ---
 

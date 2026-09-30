@@ -17,12 +17,19 @@ import 'package:flutter/widgets.dart';
 /// Drift, and not in the sweep `delete-account` runs. It is a file, and
 /// [clear] is what removes it.
 ///
-/// ## A new phone gets no photo
+/// ## A new phone gets no photo from us
 ///
 /// The cost of the rule: sign in on a new phone and the avatar is the initials
 /// again. That is the right trade — a face is the most identifying thing the
 /// app could hold, and holding it on one device that its owner controls is
 /// worth more than the convenience of it following them.
+///
+/// **The phone's own backup is another matter, and nothing opts out of it.**
+/// The file sits in the documents directory, which iCloud and Android backup
+/// both carry, so a phone restored from a backup can arrive with the photo.
+/// That backup is the owner's rather than a collection, and the copy that
+/// promised "not included in backup" was corrected on 2026-09-29 rather than
+/// the file being excluded.
 abstract class ProfilePhotoStore {
   /// The stored photo, or null if there is none. The file is guaranteed to
   /// exist when non-null.

@@ -116,7 +116,10 @@ void main() {
         home: SettingsScreen(
           unit: UnitSystem.metric,
           settings: settings,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           onUnitChanged: (u) => announced = u,
         ),
       ),
@@ -145,7 +148,10 @@ void main() {
         home: SettingsScreen(
           unit: UnitSystem.metric,
           settings: InMemoryUnitSettings(),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );

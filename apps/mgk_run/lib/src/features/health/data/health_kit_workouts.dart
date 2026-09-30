@@ -37,6 +37,10 @@ class HealthKitWorkouts implements WorkoutSource {
   /// energy ride on the workout itself, so asking for those quantity types
   /// separately would be reading data twice.
   ///
+  /// **Not asked for any more** (see [kHealthReadTypes]). Nothing calls
+  /// [since]; an import that wants it has to add `WORKOUT` to that list first,
+  /// or this query returns nothing for the life of the install.
+  ///
   /// Deliberately not the same list as [kHealthReadTypes], which is what
   /// [requestAccess] asks *permission* for. The app now also reads steps, from
   /// `HealthKitRunMetrics` at the end of a run, and iOS grants read access once

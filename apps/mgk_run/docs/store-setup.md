@@ -1,12 +1,21 @@
 # Store setup — StoreKit, RevenueCat, App Store Connect
 
-The half of payments that is not code. [app-store-1.0.0.md](app-store-1.0.0.md)'s
-Gate 3 lists these as steps 1 to 5 and stops; this is what to actually do, in
-what order, and what breaks when a string does not match.
+The half of payments that is not code, and every App Store Connect form the
+submission needs. [app-store-1.0.0.md](app-store-1.0.0.md) says what is left
+and in what order; this is what to actually type, and what breaks when a string
+does not match. The Google side is [play-setup.md](play-setup.md).
 
-Written 2026-09-02 against `4d0bd27`, with the client side built: the SDK, the
-paywall, and the webhook that writes the row are all in the repo and tested. **No
-part of this has met a real store.**
+Written 2026-09-02 against `4d0bd27`. **Updated 2026-09-29 for build 26.** §1–7
+are configured against the real stores and have been since 2026-09-03:
+TestFlight builds have shipped through them since 2026-09-02, and the webhook
+has written real rows from sandbox events. What has never happened is a
+submission, which is what §9 and §10 are for.
+
+**Two things this file used to say are reversed**, and both would have cost
+the review: `REVENUECAT_ACCEPT_SANDBOX` stays `true` in production
+([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)), and
+Premium is sold as more coaching, not a better model
+([ADR-0038](decisions/0038-premium-buys-more-coaching-not-a-different-model.md)).
 
 ---
 
@@ -95,8 +104,8 @@ App Store Connect ▸ your app ▸ Subscriptions.
       renewal with no proration.
 
       Ranked the intuitive way round, a runner who pays £2.99 to move up is
-      charged and then **waits up to a month** for the better model, because
-      Apple treats it as a downgrade and defers it. RevenueCat only fires
+      charged and then **waits up to a month** for the larger allowance,
+      because Apple treats it as a downgrade and defers it. RevenueCat only fires
       `PRODUCT_CHANGE` when the change takes effect, so `core.entitlements`
       would not carry `premium` until then either. Nothing looks broken; it is
       simply wrong and slow. Unlike a product id, the rank can be changed at any
@@ -117,11 +126,20 @@ Then per product, **Localization ▸ English (U.K.)**:
 | | Coach | Premium Coach |
 |---|---|---|
 | Display name (30) | `Coach` | `Premium Coach` |
-| Description (45) | `A training plan, adjusted every week.` | `A better model behind every plan and answer.` |
+| Description (45) | `A training plan, adjusted every week.` | `A better AI model and a bigger allowance.` |
 
 **Those two limits are much tighter than they look** — 30 and 45 characters,
 against the 170 and 4000 of the listing's own fields. The first draft of both
 descriptions ran to 82 and 99 and would have been refused in the form.
+
+- [ ] **Change Premium's description in App Store Connect.** It was entered as
+      *"A better model behind every plan and answer."*, which production has
+      never done
+      ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)).
+      Subscriptions ▸ Premium Coach ▸ Localization ▸ English (U.K.) ▸
+      Description. **The paywall prints this field verbatim**, through
+      RevenueCat, so until it changes the app makes the claim too. The copy is
+      owned by [app-store-listing.md](app-store-listing.md).
 
 **The product IDs above are the placeholders already in the webhook README.**
 Keep them and there is nothing to change; use different ones and they must be
@@ -358,6 +376,11 @@ RevenueCat ▸ Integrations ▸ Webhooks.
 - [x] Leave the event set at everything. The function ignores what it does not
       handle and answers 200 anyway, because a webhook that 4xxs an event it
       chose not to handle gets retried until RevenueCat gives up and alerts.
+- [ ] **Check there is exactly one webhook** (added 2026-09-29, before
+      review). One integration, pointed at `…/functions/v1/revenuecat`, with
+      the Authorization value verbatim and no `Bearer`. A second, older one
+      left in the project would deliver every event twice, or to a URL that
+      answers something else.
 
 ## 6. Supabase — deploy and configure
 
@@ -391,11 +414,18 @@ it is present, so a 401 to an anonymous POST is proof the secret is set —
 without anybody having to read it. Worth repeating after any secret change; it
 is the cheapest confirmation available that the deploy and the dashboard agree.
 
-- [x] **For sandbox testing only**, and never in production:
-      `supabase secrets set REVENUECAT_ACCEPT_SANDBOX=true`. A sandbox event is
-      a real event from a fake payment, so accepting them in production lets
-      anybody with a tester account grant themselves a coach. **Unset it before
-      you submit.**
+- [x] **`REVENUECAT_ACCEPT_SANDBOX=true`, and it stays set in production**
+      ([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)).
+      **App Review buys in the sandbox**, against the production build: with
+      the flag off the reviewer pays, the webhook ignores the event as
+      `sandbox`, no row is written, and the coach stays locked behind a
+      purchase that "went through". That is a Guideline 2.1 rejection, and
+      this line used to say *"Unset it before you submit"*.
+
+      What it costs: a sandbox purchase can only come from people we chose
+      (TestFlight testers, sandbox Apple IDs, Play licence testers, App
+      Review), and sandbox subscriptions stop by themselves. The one rule it
+      brings: **never publish a public TestFlight link** while it is on.
 
 ## 7. Codemagic — the public key
 
@@ -414,20 +444,216 @@ buys and offers no button, and the build log says so in a banner.
       Testers. Do not sign into iCloud with it; iOS asks for it at purchase.
 - [ ] Sign out of the App Store on the device first (Settings ▸ App Store ▸
       Sandbox Account).
-- [ ] Install via TestFlight, sign in to the app so there is a Supabase user,
-      then open the coach gate ▸ **See the plans**.
+- [ ] Install via TestFlight and sign in to the app so there is a Supabase
+      user. Tap the coach mark: agree on **Before your coach answers**,
+      acknowledge the medical disclaimer, and the gate sheet opens ▸ **See the
+      plans**. (Since build 26 the consent sheet comes before the price, on
+      every way into the coach.)
 - [ ] Buy. Then watch, in order:
       1. RevenueCat ▸ Customer history — the purchase, against your **Supabase
          UUID** rather than an `RCAnonymousID:`.
       2. RevenueCat ▸ Webhooks — a 200.
-      3. `core.entitlements` — one row, `product` `paid`, `status` `active`.
+      3. `core.entitlements` — one row: `product` `paid`, `status` `active`,
+         `platform` `apple`, an `expires_at` in the future and `event_ms`
+         filled. The coach stops granting a day after `expires_at`, so a row
+         without one is a hand-written row, not a purchase.
       4. The app — the coach unlocks. The screen polls for about eleven seconds
          and then says the payment went through and the unlock is coming, which
          is the correct message rather than an error.
+
+These are the rows of section G of
+[the test sheet](testflight-1.0.0-test-sheet.md), which is the copy to tick.
 - [ ] **Restore purchases**, on a second install.
 - [ ] Cancel from Apple ID settings and confirm the row goes `expired` **when it
       lapses**, not immediately. `CANCELLATION` means auto-renew is off and the
       runner keeps what they paid for; `EXPIRATION` is what ends access.
+
+## 9. The two review accounts
+
+App Review gets two accounts, because it has two jobs and one account cannot do
+both: reviewing the coach needs a subscription that already works, and testing
+the purchase needs an account that has none.
+
+| | For | Row in `core.entitlements` |
+|---|---|---|
+| **A** | Reviewing the coach. Not for buying | `premium`, `active`, never lapses, and no store event can change it |
+| **B** | Buying with the reviewer's sandbox Apple ID | none |
+
+Play's reviewer uses A as well (play-setup.md §4, App access), which is why A's
+row names no store.
+
+- [x] **Both accounts created, 2026-09-30**, through the ordinary sign-up
+      endpoint (email confirmation is off, so neither address needs a mailbox):
+      **A** `review.subscribed@mgkfitness.mgkcodes.com`, **B**
+      `review.free@mgkfitness.mgkcodes.com`. Passwords were handed to the owner
+      for App Store Connect and Play's App access form and are not in this
+      repository. Neither is a person's account.
+
+      **Do not sign in as either on your own phone.** Its training is yours, so
+      the app would show *"This phone has another account's training on it"*
+      and offer only to erase it or sign out. Use a phone whose training you
+      do not need: a spare, an emulator, or the Android test phone once the
+      test sheet is done.
+- [x] **A granted, 2026-09-30** (`premium`, `active`, `expires_at` null,
+      `event_ms` 9999999999999, `source_txn_id` `manual:app-review-subscribed`).
+      To re-grant it, the SQL is:
+
+      ```sql
+      insert into core.entitlements
+        (user_id, app, product, status, platform, expires_at, event_ms)
+      select id, 'run', 'premium', 'active', null, null, 9999999999999
+      from auth.users
+      where email = 'review.subscribed@mgkfitness.mgkcodes.com'
+      on conflict (user_id, app) do update
+        set product = 'premium', status = 'active', platform = null,
+            expires_at = null, event_ms = 9999999999999, updated_at = now();
+      ```
+
+      Why each value:
+
+      - `expires_at` **null**: never lapses. The coach refuses an `active` row
+        a day after its `expires_at`, so a date here is a review account that
+        stops working on its own.
+      - `event_ms` **9999999999999** (the year 2286): the webhook only writes an
+        event strictly newer than the row it finds, so nothing a store sends
+        can change A, including a purchase a reviewer makes on it by mistake.
+      - `platform` **null**: the app then names the store of the phone it is
+        on. The draft of this said `'apple'`, which would tell Play's reviewer
+        to cancel in the App Store.
+      - `premium`, so the reviewer meets the higher allowance and cannot hit a
+        ceiling mid-review.
+- [x] **B has no row** (checked 2026-09-30). If a test ever leaves one:
+
+      ```sql
+      select u.email, e.product, e.status, e.platform, e.expires_at, e.event_ms
+      from auth.users u
+      left join core.entitlements e on e.user_id = u.id and e.app = 'run'
+      where u.email in ('review.subscribed@mgkfitness.mgkcodes.com',
+                  'review.free@mgkfitness.mgkcodes.com');
+
+      delete from core.entitlements
+      where app = 'run'
+        and user_id = (select id from auth.users
+                       where email = 'review.free@mgkfitness.mgkcodes.com');
+      ```
+
+- [ ] **Check both on that phone, then withdraw the AI permission on both.**
+      A: coach mark ▸ consent ▸ disclaimer ▸ the conversation, no paywall. B:
+      coach mark ▸ consent ▸ disclaimer ▸ gate ▸ **See the plans** with two
+      prices. **Do not buy on B.** Then, on each, Profile ▸ Settings ▸ Privacy &
+      legal ▸ **Coach and AI** ▸ Withdraw. The answer is kept on the account
+      ([ADR-0036](decisions/0036-the-coach-asks-before-it-sends.md)), so an
+      account you agreed on never shows the reviewer the sheet the review notes
+      describe. Between the two, sign out with **Also remove my data from
+      this phone** on, so B does not meet A's training.
+- [ ] **Paste them.** A goes in App Review Information ▸ Sign-in required
+      (user name and password); A and B both go in the notes, in place of the
+      four bracketed values ([app-store-listing.md](app-store-listing.md) §
+      Review notes).
+
+**Keep both after approval.** Every later submission needs them, and deleting A
+through the app's own Delete account takes its row with it.
+
+## 10. App Store Connect — the submission forms
+
+Field by field, in the order App Store Connect presents them. Where a value is
+copy, it is owned by [app-store-listing.md](app-store-listing.md) and not
+repeated here.
+
+### App Information (once per app)
+
+| Field | Answer |
+|---|---|
+| Name, subtitle, categories | [app-store-listing.md](app-store-listing.md) |
+| Content Rights | **Yes**, it contains third-party content, and **yes**, we have the rights: the basemap tiles are MapTiler's and OpenStreetMap's, and the map shows their attribution (the build fails if tiles are configured without one). Holding the rights depends on the MapTiler plan being a paid one, which is an open item in app-store-1.0.0.md |
+| Age Rating | The questionnaire below |
+| License Agreement | **Apple's Standard EULA.** The field takes plain text, not a URL; our terms are linked from the description and the app, and say Apple's EULA governs App Store purchases ([ADR-0040](decisions/0040-our-terms-and-apples-eula.md)) |
+
+**EU trader status (Digital Services Act)** is set once for the account, under
+Business: **trader, MGKCodes Ltd.** The address, phone and email given there are
+shown on the EU product page.
+
+### Age Rating — the 2025 questionnaire
+
+| Question | Answer |
+|---|---|
+| Parental Controls | No |
+| Age Assurance | No |
+| Unrestricted Web Access | No |
+| User-Generated Content | No |
+| Social Media | No |
+| Messaging and Chat | No |
+| Advertising | No |
+| Every violence, sexuality, nudity, profanity, horror, alcohol, tobacco and drug question | None |
+| Health or Wellness Topics | **Frequent** |
+| Medical or Treatment Information | **Infrequent** |
+| Gambling, simulated gambling, contests, loot boxes | None / No |
+| Made for Kids | No |
+
+Expect **13+**. Two answers are judgement rather than fact. *Medical or
+Treatment Information* is Infrequent because plans and the coach talk about
+injury and rest; None is defensible, since nothing gives medical advice.
+*Messaging and Chat* is No because the coach is a model, not a person, and no
+runner can reach another.
+
+### App Privacy
+
+- **Privacy Policy URL** `https://mgkfitness.mgkcodes.com/run/privacy`
+- **User Privacy Choices URL** (optional) `https://mgkfitness.mgkcodes.com/run/delete-account`
+- **Do you or your third-party partners collect data from this app?** **Yes.**
+- **Tracking: No, for every type.** Nothing is joined with other companies'
+  data and there is no advertising anywhere.
+
+Backup consent makes several of these conditional, and the form cannot say
+"only if the runner turns it on". **Declare what is collected with backup on.**
+
+| Data type | Linked to the user | Purposes | What it is |
+|---|---|---|---|
+| Email Address | Yes | App Functionality | The account |
+| Name | Yes | App Functionality | The name the coach uses, if given; kept in auth metadata and never sent to the model |
+| Health | Yes | App Functionality | HealthKit **step count** over a recorded run, stored with the run and sent to us only with backup on; injury notes and symptoms typed to the coach |
+| Fitness | Yes | App Functionality | Runs, pace, splits, plans and effort ratings, sent to the coach and, with backup on, stored |
+| Precise Location | Yes | App Functionality | Route traces, stored with backup on |
+| Coarse Location | **No** | App Functionality | MapTiler's tile requests show roughly where the map is. A judgement call: no account or id goes with them, and over-declaring costs nothing |
+| Other User Content | Yes | App Functionality | Messages to the coach, the rolling summary, and replies the runner reports |
+| User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id |
+| Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it |
+| Product Interaction | Yes | App Functionality | The coach usage ledger: one row per request, kept 31 days |
+
+**Not collected:** Photos (the profile photo never leaves the phone), Device
+ID, Crash Data, Performance Data, Other Diagnostic Data, Contacts, Browsing
+History, Search History, Payment Info, Sensitive Info, Audio Data, Gameplay
+Content, Customer Support, Advertising Data.
+
+`ios/Runner/PrivacyInfo.xcprivacy` declares the same list apart from Coarse
+Location, and `the_privacy_manifest_declares_what_is_sent_test.dart` pins it.
+
+### Pricing and availability
+
+Free, with the two subscriptions as in-app purchases. **Never Paid**: the app is
+free and the coach is the subscription.
+
+### The 1.0.0 version page
+
+| Field | Answer |
+|---|---|
+| Screenshots, promotional text, description, keywords | [app-store-listing.md](app-store-listing.md) |
+| Support URL | `https://mgkfitness.mgkcodes.com/run/support` |
+| Marketing URL | Optional. Leave blank |
+| Copyright | `2026 MGKCodes Ltd` |
+| Build | 1.0.0 (26) |
+| In-App Purchases and Subscriptions | **Add both**, Coach and Premium Coach. A first subscription is only ever reviewed with a version, so this is where they go up |
+| App icon | Nothing to upload: it comes from the build |
+| Sign-in required | **Yes**, demo account A (§9) |
+| Notes | The review notes in [app-store-listing.md](app-store-listing.md), with A and B filled in |
+| Contact information | Name, phone and email of whoever answers App Review |
+| Version release | **Manually release this version**, so approval does not publish it at whatever hour review finishes |
+
+**At submission**, two questions:
+
+- **Export compliance** does not appear: `ITSAppUsesNonExemptEncryption` is
+  `false` in `Info.plist`. If it does appear, something changed in the build.
+- **Advertising Identifier (IDFA): No.** Nothing in the app reads it.
 
 ---
 
@@ -441,7 +667,7 @@ before changing anything.
 |---|---|---|
 | `unknown_app_user_id` | The event's `app_user_id` is not a UUID. Almost always an `RCAnonymousID:` — a purchase made before `Purchases.logIn` ran. | Sign in to the app before buying. The app calls `identify` when a session exists. |
 | `unmapped_product` | The product id is not a key in `REVENUECAT_PRODUCTS`. **The log names it.** `test_product` is RevenueCat's own test event and is fine; anything beginning `run.` is a real mismatch. | Mirror the App Store Connect ids into the secret. Exactly, including case. |
-| `sandbox` | A sandbox purchase, and `REVENUECAT_ACCEPT_SANDBOX` is not `true`. | Set it for testing. **Unset it for production.** |
+| `sandbox` | A sandbox purchase, and `REVENUECAT_ACCEPT_SANDBOX` is not `true`. | Set it back to `true`. It stays on in production (ADR-0037), because App Review buys in the sandbox. |
 | `unhandled_type` | An event type the map does not carry. | Usually fine and deliberate. RevenueCat adds types; guessing at one is worse than ignoring it. |
 | `no_event_timestamp` | No `event_timestamp_ms`. | Malformed. Check you are pointed at the right URL. |
 | 401 on every event | The Authorization header does not match. | No `Bearer`. Compare the exact string, watch for a trailing newline from a paste. |
@@ -456,10 +682,10 @@ Two more that are not the webhook's fault:
 
 ## What this does not cover
 
-- **Google Play.** `core.entitlements.platform` allows `google` and the webhook
-  handles it, but nothing ships to Play for Run at 1.0.0
-  ([ADR-0021](decisions/0021-android-is-a-target.md)).
+- **Google Play.** Run 1.0.0 ships there too, from the same commit
+  ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
+  That runbook is [play-setup.md](play-setup.md). This line said nothing ships
+  to Play at 1.0.0 until 2026-09-29, citing ADR-0021 for the opposite of what
+  it says.
 - **A processor agreement with RevenueCat.** A separate obligation, tracked in
   Gate 3 alongside the OpenRouter one.
-- **App Privacy.** Purchases and the identifier both get declared; that is
-  Gate 2.

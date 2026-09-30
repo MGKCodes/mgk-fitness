@@ -16,6 +16,8 @@ import 'package:mgk_run/src/features/coaching/presentation/chat_widgets.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
+import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 
 /// A coach that always wants to change the week, and remembers the brief it was
 /// given. Standing in for the model, so the test is about what the app does
@@ -190,12 +192,20 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Already agreed, and the disclaimer already read: what the coach
+          // asks before it sends anything is pinned in
+          // the_coach_asks_before_anything_leaves_test.dart.
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // The coach is the paid half now (ADR-0030), so a test that
           // opens it has to say it bought one. Pinned rather than read:
           // these are tests about conversations, and where a tier comes
           // from belongs to entitlement_repository_test.dart.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => someRuns(),
           chatClient: chat,
           planClient: planClient,
@@ -349,12 +359,17 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // The coach is the paid half now (ADR-0030), so a test that
           // opens it has to say it bought one. Pinned rather than read:
           // these are tests about conversations, and where a tier comes
           // from belongs to entitlement_repository_test.dart.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => someRuns(),
           chatClient: chat,
           planClient: _AdaptRecorder(validRevision),

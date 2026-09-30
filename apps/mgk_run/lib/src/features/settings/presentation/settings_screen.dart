@@ -111,6 +111,7 @@ class SettingsScreen extends StatefulWidget {
     this.consentStore,
     this.backupHealthStore,
     this.eraser,
+    this.eraseThisPhone,
     this.onBackupGranted,
     this.health,
     this.introStore,
@@ -173,6 +174,16 @@ class SettingsScreen extends StatefulWidget {
   /// Removes what is already stored when consent is withdrawn. Null skips the
   /// erase, which is what the preview harness wants.
   final BackupErasure? eraser;
+
+  /// Removes everything of the runner's from **this phone** -- the training,
+  /// the photo, the name, the backup answer -- for "Also remove my data from
+  /// this phone" when signing out. Null hides the option, which is what the
+  /// preview harness and tests that are not about it want.
+  ///
+  /// The other half of [eraser], and deliberately a separate control: that one
+  /// empties the backup and keeps the phone, this one empties the phone and
+  /// leaves the backup alone.
+  final Future<void> Function()? eraseThisPhone;
 
   /// Pushes what this phone already holds, once consent has just been given.
   ///
@@ -679,24 +690,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _signOut() async {
+    final canErase = widget.eraseThisPhone != null;
+    // **Off by default, and that is the product rather than caution.** The
+    // phone is where a runner's training lives (CLAUDE.md rule 1); an account
+    // is a backup of it. Signing out of the backup is not a reason to lose the
+    // original, so removing it is something a runner asks for -- a phone being
+    // handed on, or sold -- rather than something that happens to them.
+    var alsoErase = false;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Sign out?'),
-        content: const Text(
-          'Your runs stay on this device. Sign back in to sync them.',
-        ),
-        actions: <Widget>[
-          AppTextButton(
-            label: 'Stay signed in',
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Sign out'),
-          ),
-        ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final theme = Theme.of(dialogContext);
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Sign out?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  alsoErase
+                      ? 'Your runs, plan, coach conversations, name and photo '
+                            'are removed from this phone. Anything you have '
+                            'not backed up is gone for good.'
+                      : 'Your runs stay on this device. Sign back in to sync '
+                            'them.',
+                ),
+                if (canErase) ...<Widget>[
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Also remove my data from this phone',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      Switch(
+                        value: alsoErase,
+                        onChanged: (on) => setDialogState(() => alsoErase = on),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+            actions: <Widget>[
+              AppTextButton(
+                label: 'Stay signed in',
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Sign out'),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -710,7 +761,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Captured before the await rather than read after it: the context may be
     // gone by then, and a navigator cannot be looked up from a dead one.
     final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     await widget.auth.signOut();
+    // After the sign-out, never before: erased while still signed in, the
+    // shell rebuilt for the empty phone would claim it for this account and
+    // ask about backing it up, a second before the account left.
+    if (alsoErase) {
+      try {
+        await widget.eraseThisPhone?.call();
+      } on Object {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Signed out, but this phone's data could not be removed.",
+            ),
+          ),
+        );
+      }
+    }
     if (!mounted) return;
     navigator.popUntil((route) => route.isFirst);
   }

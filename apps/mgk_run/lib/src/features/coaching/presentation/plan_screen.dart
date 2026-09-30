@@ -534,10 +534,13 @@ class _NewHere extends StatelessWidget {
               _HowRow(
                 icon: Icons.phone_iphone,
                 title: 'Recorded on this phone first',
+                // Not "none of it leaves the phone": the coach sends a
+                // summary of recent runs to the AI provider when it is used,
+                // backup or not. What is true is who decides each.
                 detail:
                     'Runs are written to the device as they happen, so a lost '
-                    'signal costs nothing. None of it leaves the phone unless '
-                    'you turn backup on.',
+                    'signal costs nothing. They are backed up only if you turn '
+                    'backup on, and the coach asks before it sends anything.',
               ),
             ],
           ),

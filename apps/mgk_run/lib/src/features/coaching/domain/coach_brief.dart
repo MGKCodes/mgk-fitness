@@ -539,11 +539,12 @@ class CoachBrief {
   }
 
   static String _relativeDay(DateTime at, DateTime today) {
-    final days = DateTime(
-      today.year,
-      today.month,
-      today.day,
-    ).difference(DateTime(at.year, at.month, at.day)).inDays;
+    // DST-safe: see chat_widgets.dart's dayLabel for why a plain
+    // `DateTime(...).difference(...).inDays` is wrong across a change, and
+    // this one feeds the model — a brief that told the coach a run was
+    // "today" when it was yesterday would have it respond as though the
+    // runner had already gone out again.
+    final days = daysBetweenDates(at, today);
     return switch (days) {
       <= 0 => 'today',
       1 => 'yesterday',

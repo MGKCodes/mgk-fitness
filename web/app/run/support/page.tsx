@@ -37,17 +37,24 @@ export default function RunSupportPage() {
       </p>
       <div className="card">
         <p>
-          <strong>Before you write in</strong>, check the app is allowed to use
-          your location all the time rather than only while you are looking at
-          it. Recording stops when the app is backgrounded on the weaker
-          setting.
+          <strong>Before you write in</strong>, check the location setting. Run
+          only ever asks to use your location while you are using the app, and
+          that is all it needs: a run you start keeps recording with the screen
+          locked and the phone in a pocket. It never asks for &ldquo;Always&rdquo;.
+          What it does need is your precise location, because an approximate
+          one is too coarse to draw a route.
         </p>
         <p>
-          <strong>iPhone:</strong> Settings, Run, Location &rarr; Always.<br />
+          <strong>iPhone:</strong> Settings, Run, Location &rarr; While Using
+          the App, with Precise Location on.
+          <br />
           <strong>Android:</strong> Settings, Apps, Run, Permissions, Location
-          &rarr; Allow all the time. Some phones also hold a separate battery
-          setting that stops background apps &mdash; if runs cut short, look for
-          Run under battery optimisation and set it to unrestricted.
+          &rarr; Allow only while using the app, with Use precise location on.
+          While a run is recording, Android shows a &ldquo;Recording your
+          run&rdquo; notification if notifications are allowed for Run. Some
+          phones also hold a separate battery
+          setting that stops apps in the background &mdash; if runs cut short,
+          look for Run under battery optimisation and set it to unrestricted.
         </p>
       </div>
 
@@ -57,12 +64,13 @@ export default function RunSupportPage() {
         backup on, which is off unless you chose it.
       </p>
       <p>
-        You can delete everything permanently from inside the app: Profile,
-        then Settings, then Delete account. That erases your runs, plans and
-        coach conversations from our systems as well as your phone. It cannot
-        be undone and we cannot reverse it for you afterwards, which is the
-        point of it. If you have already uninstalled the app, see{" "}
-        <a href="/run/delete-account">deleting your account</a>.
+        You can delete everything permanently from inside the app: open the
+        Profile tab, tap the gear at the top right for Settings, then Privacy
+        &amp; legal, then Delete account. That erases your runs, plans and coach
+        conversations from our systems, and from your phone unless you choose
+        to keep that copy. It cannot be undone and we cannot reverse it for you
+        afterwards, which is the point of it. If you have already uninstalled
+        the app, see <a href="/run/delete-account">deleting your account</a>.
       </p>
       <p>
         What is collected and who receives it is set out in the{" "}

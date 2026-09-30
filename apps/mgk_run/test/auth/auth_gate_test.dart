@@ -9,7 +9,11 @@ import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 
 void main() {
   const devAccounts = <DevAccount>[
-    DevAccount(label: 'Runner A', email: 'a@runio.app', password: 'password'),
+    DevAccount(
+      label: 'Runner A',
+      email: 'a@mgkfitness.mgkcodes.com',
+      password: 'password',
+    ),
   ];
 
   testWidgets('signed-out shows the welcome screen', (tester) async {
@@ -161,7 +165,10 @@ void main() {
       MaterialApp(
         home: AuthGate(
           introStore: InMemoryIntroStore(),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );
@@ -185,7 +192,10 @@ void main() {
       MaterialApp(
         home: AuthGate(
           introStore: InMemoryIntroStore(),
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );
@@ -197,12 +207,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
-    expect(find.text('dev@runio.app'), findsOneWidget);
+    expect(find.text('dev@mgkfitness.mgkcodes.com'), findsOneWidget);
 
     // On the account screen, one tap from the card at the top of Settings.
     // It was a ListTile below the fold until Settings was rewritten on
     // 2026-09-11, then briefly a button on the index.
-    await tester.tap(find.text('dev@runio.app'));
+    await tester.tap(find.text('dev@mgkfitness.mgkcodes.com'));
     await tester.pumpAndSettle();
     final signOutRow = find.widgetWithText(OutlinedButton, 'Sign out');
     await tester.tap(signOutRow);
@@ -213,7 +223,7 @@ void main() {
 
     expect(find.text('Get started'), findsOneWidget);
     expect(
-      find.text('dev@runio.app'),
+      find.text('dev@mgkfitness.mgkcodes.com'),
       findsNothing,
       reason: 'the signed-out runner must not still be looking at Settings',
     );

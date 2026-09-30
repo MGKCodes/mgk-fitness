@@ -83,7 +83,10 @@ void main() {
   }) => MaterialApp(
     theme: AppTheme.dark,
     home: HomeShell(
-      auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+      auth: FakeAuthRepository(
+        signedIn: true,
+        email: 'dev@mgkfitness.mgkcodes.com',
+      ),
       planStore: store,
       historySource: history,
       coach: withCoach ? FakeCoachService() : null,
@@ -227,7 +230,10 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
         ),
       ),
     );

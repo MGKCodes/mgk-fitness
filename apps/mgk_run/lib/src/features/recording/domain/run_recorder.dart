@@ -26,6 +26,13 @@ enum RecorderProblem {
   /// Permission refused permanently. Re-asking does nothing — Settings only.
   permissionDeniedForever,
 
+  /// Permission is granted to approximate location only (iOS "Precise
+  /// Location" off, or Android's "Approximate" grant). Every fix arrives
+  /// too imprecise to record, silently, with the run otherwise looking
+  /// exactly like one still finding its first signal — see
+  /// `LocationUnavailableReason.reducedAccuracy`. Settings only.
+  reducedAccuracy,
+
   /// The location source failed for some other reason.
   locationFailed,
 }

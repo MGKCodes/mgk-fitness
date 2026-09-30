@@ -24,7 +24,7 @@ class _CountingRecorder extends FakeRunRecorder {
   }
 }
 
-/// The four ways recording can fail, and what each one offers to do about it.
+/// The five ways recording can fail, and what each one offers to do about it.
 ///
 /// `RecorderProblem` distinguishes two refusals on purpose — one "can be asked
 /// for again", the other says "re-asking does nothing, Settings only" — and the
@@ -72,7 +72,7 @@ void main() {
       RecorderProblem.permissionDenied,
     );
 
-    expect(find.text('Allow location'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
     expect(
       find.text('Open Settings'),
       findsNothing,
@@ -80,7 +80,7 @@ void main() {
     );
 
     final int before = recorder.starts;
-    await tester.tap(find.text('Allow location'));
+    await tester.tap(find.text('Continue'));
     await tester.pump();
     expect(recorder.starts, before + 1);
 
@@ -95,10 +95,30 @@ void main() {
     );
 
     expect(find.text('Open Settings'), findsOneWidget);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
 
     await recorder.stop();
   });
+
+  testWidgets(
+    // EDGE-16: approximate location (iOS Precise Location off, or the
+    // Android equivalent) is granted permission, so there is no in-app
+    // prompt that could fix it — Settings is the only remedy, the same as
+    // a permanent permission refusal.
+    'reduced accuracy offers Settings too, and names Precise Location',
+    (WidgetTester tester) async {
+      final _CountingRecorder recorder = await pumpProblem(
+        tester,
+        RecorderProblem.reducedAccuracy,
+      );
+
+      expect(find.text('Open Settings'), findsOneWidget);
+      expect(find.text('Allow location'), findsNothing);
+      expect(find.textContaining('Precise Location'), findsOneWidget);
+
+      await recorder.stop();
+    },
+  );
 
   testWidgets('a device-wide switch offers no button at all, and says where '
       'to go', (WidgetTester tester) async {
@@ -110,7 +130,7 @@ void main() {
     // Neither button can reach it: openAppSettings lands on Run's own page,
     // which does not hold the device's Location Services switch.
     expect(find.text('Open Settings'), findsNothing);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
     expect(find.textContaining('Location Services are off'), findsOneWidget);
 
     await recorder.stop();
@@ -124,7 +144,7 @@ void main() {
     );
 
     expect(find.text('Open Settings'), findsNothing);
-    expect(find.text('Allow location'), findsNothing);
+    expect(find.text('Continue'), findsNothing);
     expect(find.textContaining('clears on its own'), findsOneWidget);
 
     await recorder.stop();

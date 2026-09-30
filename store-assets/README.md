@@ -56,8 +56,9 @@ that an icon has square corners.
 plates are *not* usable for them: plates are 393x852 logical renders and the
 test framework answers every network image with a 400, so there are no basemap
 tiles, and the map is half of what makes the in-run shot worth showing. Take
-them off a device on TestFlight, drop them in `captured/` named `listing-*.png`,
-and the script will check the dimensions.
+them off an iPhone running the TestFlight build, drop them in `captured/` named
+`listing-*.png`, and the script will check the dimensions (it accepts 1320x2868
+and 1290x2796; App Store Connect also takes 1260x2736).
 
 ### There are stand-ins, and they are not submittable
 
@@ -90,9 +91,18 @@ exactly the file somebody drags into App Store Connect by mistake. `derived/`
 is gitignored, so nothing here is committed either.
 
 The six worth shooting are named in
-[app-store-listing.md](../apps/mgk_run/docs/app-store-listing.md), chosen off
+[app-store-listing.md](../apps/mgk_run/docs/app-store-listing.md) § Screenshots,
+which is the only copy of the list, chosen off
 [the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190).
 
-**The 1024 marketing icon.** Name it `captured/icon-1024.png` and the script
-will check it is exactly 1024x1024 with no alpha, which is the most common
-trivial rejection there is.
+**No marketing icon to upload.** App Store Connect takes the 1024 icon from the
+build's asset catalogue, so there is nothing to put here for it.
+**`captured/icon-1024.png` is the old loop mark**, committed on 2026-09-10,
+before both apps got their current icons on 2026-09-11. Do not upload it
+anywhere; it can be deleted. The script still checks any `icon-*` file it finds
+for 1024x1024 and no alpha.
+
+**Google Play's images are not checked here.** Its 512 icon, feature graphic and
+phone screenshots have different rules (a 32-bit icon, a 1024x500 graphic,
+screenshots no longer than twice their width), listed in
+[play-listing.md](../apps/mgk_run/docs/play-listing.md).

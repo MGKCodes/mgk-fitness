@@ -11,24 +11,33 @@
 // deliberate, so neither belongs in a handler where it would be read as
 // plumbing.
 //
-// PRIVACY: an entitlement row carries a tier, a store status and a transaction
-// id. This module reads two columns of it and keeps neither.
+// PRIVACY: an entitlement row carries a tier, a store status, an expiry and a
+// transaction id. This module reads three columns of it and keeps none of them.
 
 import type { App, Tier } from "./surfaces.ts";
 
-/** The two columns of `core.entitlements` that decide anything. */
+/** The three columns of `core.entitlements` that decide anything. */
 export interface Entitlement {
   product: string;
   status: string;
+  /**
+   * When the period the store was paid for ends, as PostgREST returned it, or
+   * `null` for a row with no end — which is what a hand-granted row carries.
+   * Named after the column, like the other two, so a parsed row and a raw one
+   * read the same. Required rather than optional, so nothing can build an
+   * `Entitlement` without saying when it ends: a gate that never asked is the
+   * defect this field closes.
+   */
+  expires_at: string | null;
 }
 
 /**
  * What the coach may do for this caller: a tier, or a refusal.
  *
- * `null` is "no coach at all", which is not the same as the free tier. Lift
- * sells coaching as the paid half of the app, so a Lift user with nothing
- * bought gets `null` and a 402. Run gives everyone a coach on the cheapest
- * model, so an unbought Run user gets `"free"`.
+ * `null` is "no coach at all", which is not the same as the free tier. The
+ * coach is the paid half of both apps, so a user with nothing bought gets
+ * `null` and a 402 on either. Run got `"free"` here until ADR-0030 — see the
+ * note inside `tierFor`.
  */
 export type Access = Tier | null;
 
@@ -45,9 +54,23 @@ const PRODUCT_TIERS: Record<string, Tier> = {
 };
 
 /**
+ * How long past `expires_at` an `active` row keeps granting: a day.
+ *
+ * A margin, because the expiry and the event that moves it do not arrive
+ * together. RevenueCat retries a failed delivery with backoff over a few hours,
+ * and a renewal can reach the webhook just after the period it extends has
+ * ended — until it lands, the row still carries the old expiry. With no margin,
+ * a subscriber who has paid for next month is locked out while their renewal
+ * is in flight, which reads as the app taking their money and giving nothing.
+ * With this one, the cost is at most a day of coach after a real lapse: cheap
+ * next to the defect it closes, and bounded, which that was not.
+ */
+const LAPSE_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Whether the coach may serve this caller, and on which tier.
  *
- * Three properties, each written against a specific way this goes wrong:
+ * Four properties, each written against a specific way this goes wrong:
  *
  * 1. **Only `active` grants anything.** `core.entitlements.status` has five
  *    values and the column comment says to treat every other one as no
@@ -57,15 +80,35 @@ const PRODUCT_TIERS: Record<string, Tier> = {
  *    new SKU, or a row written by a future version of the receipt validator
  *    must not be able to bill at the Sharp model's rate. Same fallback
  *    direction as `tierFrom`.
- * 3. **A missing row is `null` for Lift and `free` for Run.** That is the
- *    existing behaviour of both apps, preserved exactly: Lift refused an
- *    unentitled caller before this function was unified, and Run has never had
- *    an entitlement row to read. It also means a failed entitlement READ (which
- *    arrives here as `null`) fails closed on the app that charges for the
- *    coach and changes nothing on the app that does not.
+ * 3. **A missing row is `null` on both apps.** A failed entitlement READ
+ *    arrives here as `null` too, so the failure mode is "no coach" rather than
+ *    "a free one" — the safe direction now that the coach costs money on both
+ *    sides. Run got `free` here until ADR-0030; the note in the body says why
+ *    that was never a decision.
+ * 4. **An `active` row stops granting a day after `expires_at`.** The webhook
+ *    is the only writer, and it never ends a subscription by the calendar:
+ *    `CANCELLATION` leaves the row `active`, because the runner keeps what they
+ *    paid for, and only a later `EXPIRATION` ends it. If that event is never
+ *    delivered, or loses the `event_ms` watermark to a later `CANCELLATION`,
+ *    nothing ever will — the row says `active` for good and the coach keeps
+ *    spending on a subscription nobody is paying for. Not hypothetical: a
+ *    Google test subscription was found on 2026-09-28 still `active`, with an
+ *    `expires_at` of 2026-09-11 15:39 UTC and no write since a minute after
+ *    it — seventeen days of paid coach after the subscription ended. A `null`
+ *    expiry still grants, because a hand-granted row (the App Review demo
+ *    account, the TestFlight sheet's grant) has none. And this only ever takes
+ *    away: an expiry cannot make any other status grant, `grace` included.
+ *
+ * `now` is a parameter only so the lapse is testable; the handler leaves it to
+ * the clock.
  */
-export function tierFor(app: App, entitlement: Entitlement | null): Access {
-  const active = entitlement?.status === "active";
+export function tierFor(
+  app: App,
+  entitlement: Entitlement | null,
+  now: number = Date.now(),
+): Access {
+  const active = entitlement?.status === "active" &&
+    stillCurrent(entitlement.expires_at, now);
   const tier = active ? PRODUCT_TIERS[entitlement.product] ?? "free" : "free";
 
   // **Both apps refuse an unentitled caller.** The coach is the paid half of
@@ -84,12 +127,24 @@ export function tierFor(app: App, entitlement: Entitlement | null): Access {
 }
 
 /**
+ * The expiry half of property 4: no end date, or one less than a day gone.
+ *
+ * Written as the condition that grants rather than the one that refuses, so an
+ * expiry `Date.parse` cannot read — `NaN` — fails the comparison and refuses.
+ * `parseEntitlement` already drops such a row; this gives the same answer for
+ * an `Entitlement` built anywhere else.
+ */
+function stillCurrent(expiresAt: string | null, now: number): boolean {
+  return expiresAt === null || Date.parse(expiresAt) + LAPSE_GRACE_MS > now;
+}
+
+/**
  * Reads a user's entitlement for one app.
  *
  * Under `service_role`, not as the caller. The row is client-READABLE, so the
  * caller's own JWT would work — but the read would then be subject to a session
  * the client controls, and this is the money gate. Service role reads exactly
- * one row of exactly two columns.
+ * one row of exactly three columns.
  */
 export class EntitlementStore {
   constructor(
@@ -110,7 +165,8 @@ export class EntitlementStore {
   async read(userId: string, app: App): Promise<Entitlement | null> {
     try {
       const url = `${this.baseUrl}/rest/v1/entitlements` +
-        `?select=product,status&user_id=eq.${encodeURIComponent(userId)}` +
+        `?select=product,status,expires_at` +
+        `&user_id=eq.${encodeURIComponent(userId)}` +
         `&app=eq.${encodeURIComponent(app)}&limit=1`;
       const res = await this.fetchFn(url, {
         headers: {
@@ -140,6 +196,13 @@ const READ_TIMEOUT_MS = 3000;
  * Reads the one row PostgREST returns, dropping anything malformed rather than
  * trusting it into the decision. A row missing either column is not an
  * entitlement — treating it as one would grant on a shape, not on a purchase.
+ *
+ * The expiry is held to the same standard, with one difference. Absent or
+ * `null` is an answer — no end date, which is what a hand-granted row carries —
+ * so it passes through as `null`. Anything else must be a timestamp
+ * `Date.parse` can read, or the whole row is dropped: an expiry the gate cannot
+ * read is one it cannot enforce, and reading it as "no end date" would grant on
+ * a shape again.
  */
 export function parseEntitlement(payload: unknown): Entitlement | null {
   const row = Array.isArray(payload) ? payload[0] : payload;
@@ -148,5 +211,8 @@ export function parseEntitlement(payload: unknown): Entitlement | null {
   if (typeof r.product !== "string" || typeof r.status !== "string") {
     return null;
   }
-  return { product: r.product, status: r.status };
+  const expires = r.expires_at ?? null;
+  if (expires !== null && typeof expires !== "string") return null;
+  if (expires !== null && Number.isNaN(Date.parse(expires))) return null;
+  return { product: r.product, status: r.status, expires_at: expires };
 }

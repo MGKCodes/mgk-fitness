@@ -44,7 +44,10 @@ class _SiblingRetainedDeleter implements AccountDeleter {
 final Map<String, WidgetBuilder> legalPreviewScreens = <String, WidgetBuilder>{
   // The settings/legal surface: disclaimer, privacy policy, delete account.
   'legal': (_) => LegalScreen(
-    auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+    auth: FakeAuthRepository(
+      signedIn: true,
+      email: 'dev@mgkfitness.mgkcodes.com',
+    ),
     deleter: _SiblingRetainedDeleter(),
   ),
   // The disclaimer as the onboarding gate — accept / decline.
@@ -60,7 +63,10 @@ final Map<String, WidgetBuilder> legalPreviewScreens = <String, WidgetBuilder>{
   'disclaimer': (_) => const MedicalDisclaimerScreen(),
   // The destructive confirmation on its own. Type DELETE to arm the button.
   'delete': (_) => DeleteAccountScreen(
-    auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+    auth: FakeAuthRepository(
+      signedIn: true,
+      email: 'dev@mgkfitness.mgkcodes.com',
+    ),
     deleter: _SiblingRetainedDeleter(),
   ),
 };

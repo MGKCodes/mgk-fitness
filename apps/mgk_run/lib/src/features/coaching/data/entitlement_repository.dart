@@ -59,13 +59,31 @@ class SupabaseEntitlements implements EntitlementRepository {
   const SupabaseEntitlements({
     SupabaseClient? client,
     this.timeout = const Duration(seconds: 5),
-  }) : _explicitClient = client;
+    DateTime Function() now = DateTime.now,
+  }) : _explicitClient = client,
+       _now = now;
 
   final SupabaseClient? _explicitClient;
 
   /// Bounds the read. Nothing here is worth blocking the first paint of a
   /// tracker that works offline.
   final Duration timeout;
+
+  /// The clock an expiry is judged against, injectable like every other `now`
+  /// in the app. A function rather than an instant, so a shared `const`
+  /// instance reads the time at each call rather than once, at construction.
+  final DateTime Function() _now;
+
+  /// Every column [CoachSubscription.fromRow] reads, and no others.
+  ///
+  /// Named so a test can pin it. A column dropped from this string does not
+  /// fail the query — the key is simply absent, which reads as null — and a
+  /// null `expires_at` means "no end date", so losing it here would quietly
+  /// undo the lapse rule rather than break anything.
+  ///
+  /// `platform` is which store bills them, so Settings names that store and
+  /// links to it rather than to whichever one this phone happens to run.
+  static const String columns = 'product, status, expires_at, platform';
 
   /// Resolved per call so constructing this does not require Supabase to be
   /// initialised, the same reason `AuthRepository` and `SupabaseUnitSettings`
@@ -87,7 +105,7 @@ class SupabaseEntitlements implements EntitlementRepository {
   @override
   Future<CoachSubscription> subscription() async {
     final row = await _row();
-    return CoachSubscription.fromRow(row);
+    return CoachSubscription.fromRow(row, now: _now());
   }
 
   /// The one read both answers come from.
@@ -102,7 +120,7 @@ class SupabaseEntitlements implements EntitlementRepository {
       return await client
           .schema('core')
           .from('entitlements')
-          .select('product, status')
+          .select(columns)
           .eq('user_id', userId)
           .eq('app', 'run')
           .maybeSingle()
@@ -115,19 +133,24 @@ class SupabaseEntitlements implements EntitlementRepository {
     }
   }
 
-  /// The same two rules the Edge Function applies, in the same directions.
+  /// The same three rules the Edge Function applies, in the same directions.
   ///
   /// Only `active` grants anything — `grace` is the tempting mistake, since it
-  /// reads like "still fine" and means "the store has not been paid". And an
+  /// reads like "still fine" and means "the store has not been paid". An
   /// unrecognised product grants nothing rather than the dearest thing, so a
-  /// typo or a future SKU cannot unlock a screen it did not buy.
+  /// typo or a future SKU cannot unlock a screen it did not buy. And an
+  /// `active` row stops granting a day after `expires_at`, the lapse `tierFor`
+  /// refuses, so the coach is drawn locked for exactly the rows the server
+  /// will turn away.
   ///
   /// **Delegates to [CoachSubscription.fromRow]** rather than restating those
   /// rules. They were written twice for a while — here, and in the type that
   /// prints the same row — and two copies of a money rule is one copy and a
   /// future disagreement.
-  static CoachAccess accessFrom(Map<String, dynamic>? row) =>
-      CoachSubscription.fromRow(row).isSubscribed
+  static CoachAccess accessFrom(
+    Map<String, dynamic>? row, {
+    required DateTime now,
+  }) => CoachSubscription.fromRow(row, now: now).isSubscribed
       ? CoachAccess.subscribed
       : CoachAccess.free;
 }

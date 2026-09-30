@@ -4,4 +4,7 @@ on one laptop is a liability rather than an asset.
 
 Name them so the checker knows what they are:
   listing-*.png   6.9in listing screenshots, 1320x2868 or 1290x2796
-  icon-1024.png   the marketing icon, exactly 1024x1024, no alpha
+
+No marketing icon belongs here: App Store Connect takes it from the build.
+icon-1024.png in this folder is the OLD mark, from before 2026-09-11. Do not
+upload it.

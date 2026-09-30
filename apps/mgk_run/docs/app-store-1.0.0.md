@@ -1,4 +1,4 @@
-# App Store 1.0.0 — everything between a green build and a live listing
+# Run 1.0.0 — everything between a green build and a live listing, on both stores
 
 [release-1.0.0.md](history/release-1.0.0.md) took the app from "records a run" to
 "somebody can hold it". This document picks up where it stops, because the two
@@ -9,7 +9,11 @@ finished and unsubmittable, and most of what follows is not code.
 Written 2026-09-01 against `478eef5`. **Rewritten 2026-09-02 against
 `31b7ce3`**, which is where the first version had already gone stale — the
 payment half landed, the price was settled, and the listing material had never
-been written down at all.
+been written down at all. **Brought up to date on 2026-09-29 for build 26 and
+both stores.** The file name says App Store because that was the only store
+when it was written; Google Play has been a target since ADR-0021 and ships in
+1.0.0 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)),
+and the name stays because a dozen documents link to it.
 
 Tick items as they land. Where something is settled differently from how it is
 written here, change the item and say why — same rule as the release plan, for
@@ -19,66 +23,215 @@ the same reason.
 
 ## Where we actually are
 
-**Updated 2026-09-12 at `628c3a3`.** The section below this one was written for
-build 13 and is kept for its reasoning; the numbers in it are stale and this
-block supersedes them.
-
-### Build 25 is on both stores' test tracks and needs one sitting
+**Updated 2026-09-29, for build 26 and both stores.** Written from a full
+pre-release review that day. Everything below this section is the reasoning
+and the record; **this section carries the state**, and the list in it is the
+order to work in.
 
 | | |
 |---|---|
-| **TestFlight** | 1.0.0 (25), published 2026-09-11 |
-| **Play internal** | 1.0.0 (25), published 2026-09-11, straight to testers |
-| **Release candidate** | **build 26** — see the blocker below |
-| Suites at `628c3a3` | Run 1,543 · Lift 293 · Deno 216 · mgk_ui 49, analyzer clean |
+| **TestFlight** | **1.0.0 (26)**, from `431db9c` (Codemagic `6abc0515…4bc49`), 2026-09-29. 25 before it, from `12d74d8` |
+| **Play internal** | **1.0.0 (26)**, from `54e7487` (Codemagic `6abc0a58…4ad63`), 2026-09-29. 25 before it, from `12d74d8` |
+| **Release candidate** | **1.0.0 (26), cut**, tagged `run/build-26`. Two commits, one app: `54e7487` changes only two test files from `431db9c` (the first Android build failed CI on them); `lib/`, `ios/`, `android/`, `pubspec.yaml` and `packages/` are identical |
+| **Backend under it** | coach v28, revenuecat v7, migrations through `20260929183008` (item 2) |
+| **Testing** | One sitting, on build 26, on both phones: [the test sheet](testflight-1.0.0-test-sheet.md). Testing build 25 was dropped |
+| **Tag `run/build-25`** | On `12d74d8`, the commit that shipped (moved from `a6eb6e1` on 2026-09-29) |
 
-**Build 25 cannot be promoted**, and the reason is worth reading rather than
-skipping: its in-app privacy policy was two disclosures behind the published
-one. It omitted the name the app collects and the profile photo it now holds,
-both of which `/run/privacy` declared. An in-app policy that under-discloses
-against the published page is precisely the comparison a reviewer makes, and
-with `NSPhotoLibraryUsageDescription` now in the binary it is the comparison
-they are most likely to make.
+Run 1.0.0 ships on **both** stores, from one commit with one build number
+([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
+This document is the checklist for both; the runbooks are
+[store-setup.md](store-setup.md) (Apple) and [play-setup.md](play-setup.md)
+(Google), and the copy is in [app-store-listing.md](app-store-listing.md) and
+[play-listing.md](play-listing.md).
 
-Fixed in `628c3a3`, which is build 26. **Nothing else differs between 25 and
-26** — the payment path, settings, icons and photo picker are identical — so
-everything learned testing 25 carries, and 26 is cut once with the policy fix
-plus whatever that sitting finds.
+### What is left, in order
 
-### What still has to happen on build 25
+Most urgent first. Items 2, 4 and 5 touch production or rewrite a published
+tag, which Claude Code's auto mode refuses to do, so they are yours to approve
+and run.
 
-The tracks are live; the testing is not done. In order of what would hurt most:
+1. - [x] **Android developer verification — done.** `com.mgkcodes.fitness.run`
+      was registered on 2026-09-10 (3 keys), confirmed in Play Console on
+      2026-09-29. The 2026-09-30 deadline is met; nothing to do.
+2. **The backend changes — done 2026-09-29**, approved by the owner and each
+   verified after it ran.
+   - [x] **`coach` redeployed** (version 28, `cc876f7`): main plus Lift's
+         `b6fb99b` (sessions), the expiry fix, the `lift_chat`-only
+         conversation check, a 256 KiB request cap, errors logged by code only,
+         the runner's local date, and Run's attribution and persona. Every
+         deployed file compared byte-for-byte with the branch; an unsigned
+         call answers 401. Run's coach is paid server-side from here (ADR-0030
+         is live), Premium's allowance is real (ADR-0038), and Lift's planning
+         surfaces stop answering 400.
+   - [x] **`revenuecat` redeployed** (version 7): the refund fix (`20c46e5`,
+         cherry-picked from `13fb60e`) and a scheduled pause that no longer
+         ends paid-for time (`431db9c`). Compared with the branch; an unsigned
+         call answers 401.
+   - [x] **The migration**, `20260929183008_release_hardening`: the usage
+         functions revoked from `public`, `anon` and `authenticated`;
+         `core.user_settings` timestamps defaulted; `coach.reports` created,
+         insert-only under RLS; `core.touch_updated_at`'s search path pinned.
+         Checked in the catalog afterwards, privilege by privilege.
+   - [x] **The missing backup columns**, `20260929114055_run_elevation_max_and_steps`,
+         applied the same day and the file renamed to the ledger's version.
 
-- [ ] **A premium purchase on Android.** `run.coach.premium.monthly:monthly` is
-      the one key in `REVENUECAT_PRODUCTS` that was inferred rather than read
-      off a real webhook payload. If it is wrong the £2.99 tier takes money and
-      grants nothing — the exact failure the standard tier had on 2026-09-11,
-      found by walking into it.
-- [ ] **A sandbox purchase on iOS.** Section G of the test sheet, which has now
-      failed to run across four builds. The Apple path has been renewing in
-      sandbox correctly for over a week and maps to a real entitlement, so the
-      risk is lower than Android's was — but "never actually completed" is
-      still true.
-- [ ] **The new Settings on a device**, both platforms: the profile header, the
-      photo picker (iOS prompts, Android does not), the account screen.
-- [ ] **The icon**, which is new on both platforms and new to Lift entirely.
+   Deploy rule, unchanged: functions **by name**, and **never `delete-account`
+   or `daily-ai-summary` from `main`** — production's `delete-account` is
+   Lift's copy, with the progress-photo sweep. `supabase/config.toml` now
+   declares `verify_jwt = false` for the three functions that need it.
 
-### What blocks production, regardless of how that sitting goes
+   **Watch for:** both functions were two versions ahead of what this session
+   deployed, so something else deployed them today too. A later deploy of
+   `coach` from `lift/release-2.0.0` would drop the expiry fix and the request
+   guards (that branch merged main before them).
+3. - [ ] **OpenRouter: turn on account-wide Zero Data Retention, and set a hard
+      credit limit on the API key.** Five minutes. The first makes the
+      policy's "providers that do not keep or train on what we send" a setting
+      rather than a per-request hope, and settles publication blocker 3 in
+      Gate 2. The second caps what a leaked key or a runaway surface can
+      spend.
+4. **Ship `main` and cut build 26.**
+   - [x] `run/release-26` pushed to `main` as `431db9c` (fast-forward, 53
+         commits), 2026-09-29. Vercel deploys `web/` from it.
+   - [x] Fired from `main`: `run-ios-release` (`6abc05155fdcbdf7b604bc49`,
+         from `431db9c`) **succeeded** and published to TestFlight.
+         `run-android-release` from `431db9c` **failed its Test step** on two
+         tests that only passed on a UK-timezone Windows machine (a migration
+         read by its old version; a DST guard on the zone *name*); fixed in
+         `54e7487`, re-fired (`6abc0a58690944ca0c34ad63`), **succeeded** and
+         published to the Play internal track.
+   - [x] Tagged `run/build-26` on `54e7487`, both build records in its
+         message, and the test sheet stamped.
+5. - [x] **`run/build-25` moved to `12d74d8`**, the commit both stores' build
+      25 came from, 2026-09-29 (annotated, with the build records in the
+      message).
 
-- [ ] **`REVENUECAT_ACCEPT_SANDBOX` comes off.** Still `true`. Today a sandbox
-      purchase grants a real entitlement, which is harmless while access is a
-      tester list and an open door the moment it is not. It is a Supabase
-      secret rather than something in the binary, so it is a rollout step, not
-      a build step.
-- [ ] **The Play declarations** — Data safety, content rating, target audience,
-      the foreground-service justification. The answers are worked out in
-      [play-setup.md](play-setup.md); the form-filling is not done.
-- [ ] **The 512px Play listing tile** — `design/store/play-listing-icon-512.png`,
-      uploaded by hand. It is not in the bundle, so no build carries it.
-- [ ] **Android developer verification** for `com.mgkcodes.fitness.run`.
-- [ ] **Promotion is manual on both stores.** `submit_to_app_store` is
-      commented out in `codemagic.yaml` and Play publishes to `track: internal`.
-      A green build reaches testers and stops, deliberately.
+6. **Console settings and decisions.**
+   - [ ] **Maps: MapTiler's Free plan is non-commercial, and a paid plan is not in
+         the launch budget (owner, 2026-09-30).** Proposed: **Mapbox raster
+         tiles**, free for commercial use up to 200,000 tiles a month. The tile
+         URL and attribution are build config (`MAP_TILE_URL_TEMPLATE`,
+         `MAP_ATTRIBUTION`); the code change is Mapbox's wordmark on the map and
+         the privacy policy naming Mapbox instead of MapTiler, so it rides in
+         build 27. Needs the owner's go-ahead and a Mapbox account and token.
+         (Google's mobile Maps SDK is also free, but is a rewrite of the map
+         layer, not a launch job.) Until then the App Store's Content Rights
+         answer (store-setup.md §10) is not true of the tiles.
+   - [ ] **RevenueCat: exactly one webhook**, at `…/functions/v1/revenuecat`,
+         Authorization value verbatim with no `Bearer` (store-setup.md §5).
+   - [ ] **OpenRouter:** see item 3.
+   - [ ] **Support address `run@mgkfitness.mgkcodes.com`** (the owner's choice,
+         2026-09-30) cannot receive mail yet: `mgkfitness.mgkcodes.com` is a
+         CNAME to Vercel, and a name with a CNAME can have no MX records. Owner:
+         replace the CNAME with Vercel's A record (DNS only), add the subdomain
+         in Cloudflare Email Routing, route `run@` to the studio inbox, send a
+         test. Then every `hello@mgkcodes.com` in the app, the legal pages and
+         the web pages moves to it (in-app copy in build 27).
+   - [ ] **Supabase Auth: email confirmation is off. Decide** whether to turn
+         it on, with custom SMTP, before public launch. It changes the sign-up
+         flow, so it is a product decision, not a setting to flip.
+   - [ ] **`dev@runio.app`** is a seeded developer account from the Runio days
+         (ten made-up July runs, all uploaded on 2026-07-25), used by the preview
+         harness's quick sign-in, on a domain MGKCodes does not own. Change its
+         email to `dev@mgkfitness.mgkcodes.com` in Supabase ▸ Authentication, or
+         delete it. The repo's fixtures moved off runio.app on 2026-09-30.
+7. **The store forms.** No build needed; start now.
+   - [ ] App Store Connect: Premium's description (store-setup.md §2), the two
+         review accounts (§9), and every submission form (§10).
+   - [ ] Play Console: every App content declaration (play-setup.md §4), the
+         subscriptions' descriptions and benefits (§5), and the listing
+         ([play-listing.md](play-listing.md)).
+8. **The graphics.**
+   - [ ] App Store: 6.9" screenshots, from a phone
+         ([app-store-listing.md](app-store-listing.md) § Screenshots).
+   - [ ] Play: the **feature graphic** (1024 × 500, missing and mandatory),
+         **phone screenshots** at 2:1 or narrower (missing), and the 512 icon
+         re-saved with alpha if Play refuses it
+         ([play-listing.md](play-listing.md) § Graphics).
+9. - [ ] **The build 26 sitting**, on both phones: [the test
+      sheet](testflight-1.0.0-test-sheet.md), including the Android
+      foreground-service video (section V) and the screenshots (section H).
+10. **Submit.**
+    - [ ] App Store: build 26 with **both subscriptions attached**, demo
+          account A in Sign-in, the review notes, **manual release**.
+    - [ ] Play: build 26 promoted from internal to production, **managed
+          publishing on** (play-setup.md §11).
+    - [ ] Release both when both are approved.
+
+**Not on this list, on purpose:** `REVENUECAT_ACCEPT_SANDBOX` **stays on**.
+Every earlier version of this document said to unset it before submitting,
+which would have failed review: App Review buys in the sandbox
+([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)).
+
+### What build 26 adds over 25
+
+Build 25 is `12d74d8`. This list replaces the sentence that stood here until
+2026-09-29, *"Nothing else differs between 25 and 26"*, which stopped being true
+the same day. The test sheet's rows marked **NEW** cover everything here that a
+phone can show.
+
+- **The in-app privacy policy caught up** with the published one (`628c3a3`):
+  it omitted the name the app collects and the profile photo. That was why 25
+  could not be promoted.
+- **The coach asks before it sends** ([ADR-0036](decisions/0036-the-coach-asks-before-it-sends.md)):
+  a sheet naming OpenRouter, what is sent and what never is, before any price
+  and on every way into the coach; withdrawable in Settings ▸ Privacy & legal ▸
+  Coach and AI. The conversation shows the medical disclaimer now too.
+- **A coach reply can be reported** with a long press, into `coach.reports`.
+- **The phone's training belongs to one account**
+  ([ADR-0035](decisions/0035-the-phones-training-belongs-to-one-account.md)):
+  a second account signing in is asked to erase the phone's training or sign
+  out, and no longer receives the first one's.
+- **Leaving is safer**: signing out can remove the phone's data (off by
+  default) and detaches RevenueCat; deleting the account erases the phone's
+  copy (on by default), resets backup consent, says the subscription keeps
+  renewing, and says when the login was kept for Lift.
+- **Manage subscription** opens the store that bills the subscription, and
+  **the paywall** says what actually happened: pending, no connection, already
+  owned, restored, or sign in first.
+- **A subscription past its expiry stops granting** a day later, server and
+  app, and reads as *Ended*.
+- **Health is asked for steps only.** `WORKOUT` came off the read list; the
+  purpose strings, the intro and the policy say so.
+- **Truer copy** on the photo (never sent to us), the backup switch (the coach
+  is separate), and the privacy manifest (declares what the app sends).
+- **Coach memory** prune and restore stay inside Run's rows, and every coach
+  request carries the runner's local date.
+- **The recording lane** (seven commits, merged at `f8edac2`): a run
+  interrupted by a kill or a crash is recovered at launch, with a note saying
+  so; a killed schema upgrade is safe to retry (the local database goes from
+  schema 10 to 11); Back and the iOS edge swipe mid-run ask instead of hiding a
+  live recording; a double tap on Finish makes one run; re-allowing location
+  mid-run resumes the same run; race day stays clear on every plan path; day
+  counts survive a clock change; a race under six weeks away is refused; and on
+  iPhone, approximate location says *Turn on Precise Location for Run in
+  Settings* instead of recording nothing.
+
+### Production, as found on 2026-09-29
+
+What the review found running, so nobody assumes the repository is what is
+deployed:
+
+- **`run.runs` was missing `elevation_max_m` and `steps`**, so every Run backup
+  upload failed. The migration was applied on 2026-09-29; the ledger stamped
+  its own version, and the repo file keeps the old one until item 2's rename.
+- **The `coach` function is the Lift branch's copy**, deployed 2026-09-01.
+  What that means is under item 2.
+- **The `revenuecat` function lacks the refund fix**, so a refunded subscriber
+  keeps the coach until the period runs out.
+- **Any signed-in user can call `coach.record_usage`**, and so fill another
+  user's spend window.
+- **`core.user_settings` has no defaults** on its timestamps, so Run's unit
+  sync fails.
+- **`coach.reports` does not exist**, so every report fails to send.
+- **`REVENUECAT_ACCEPT_SANDBOX` is `true`**, which is correct and stays.
+
+---
+
+## Build 25, as recorded on 2026-09-12
+
+Kept for what landed and why; its checklists are superseded by the list above.
+Build 25 went to both test tracks on 2026-09-11 and its sitting never happened.
 
 ### What landed on 2026-09-10 to 09-12
 
@@ -109,11 +262,10 @@ The Play half of the product, and a design pass that was overdue:
   provider, account deletion reaching into Lift's data, and backup-off erasing
   Lift's coach conversations.
 
----
-
 ## Where we were, build 13 (kept for the reasoning)
 
-
+Written 2026-09-08. The counts and build numbers here are history; the section
+above is the state. One claim in it was wrong and is corrected in place.
 
 Green, and worth stating so the list below is read as short rather than long:
 
@@ -163,8 +315,15 @@ Green, and worth stating so the list below is read as short rather than long:
   2026-09-02**, every step green including Publishing — the first build carrying
   the RevenueCat SDK, the paywall, the wired `onUpgrade`, the gate sheet's
   surface and the `appl_` key. Triggered through Codemagic's REST API rather
-  than the UI. Build numbers come from `$PROJECT_BUILD_NUMBER`, so `1.0.0+1` in
-  the pubspec never needs bumping.
+  than the UI.
+
+  ~~Build numbers come from `$PROJECT_BUILD_NUMBER`, so `1.0.0+1` in the
+  pubspec never needs bumping.~~ **Wrong, and reversed on 2026-09-09**
+  (`0c36ec0`, `5e4a7ce`): Codemagic's counter is project-wide and drifted from
+  the TestFlight number, so "build 12" here was binary 19. The build number is
+  the `+N` in `apps/mgk_run/pubspec.yaml`, bumped by a commit before a build is
+  fired, and both stores read it from there
+  ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 - **An App Store Connect record exists** for `com.mgkcodes.fitness.run` —
   proven rather than assumed: the upload step fails after a successful build
   when no listing exists, and it did not.
@@ -216,45 +375,46 @@ Build 11 settled four unknowns: `TARGETED_DEVICE_FAMILY = "1"` compiles, code
 signing resolves for the bundle id, the artefact globs match, and an App Store
 Connect record exists.
 
-**Build 12 is in TestFlight and carries everything below.** Every item in this
-gate is now answerable in one sitting, and none of them has been answered:
-nothing from 1 Sep onwards has been on a phone, the payment arc included.
+**Every open item here is a row on the build 26 test sheet**, on both phones,
+and that sitting is item 9 of the list at the top. Until then none of them has
+been answered on hardware for the payment arc or anything after it.
 
 - [x] **A backgrounded run survives with the screen locked.** Confirmed on a
       live TestFlight build. iOS carries `UIBackgroundModes: location` with
       `allowBackgroundLocationUpdates: true` and
-      `pauseLocationUpdatesAutomatically: false`.
+      `pauseLocationUpdatesAutomatically: false`. Android keeps it going with a
+      foreground service (ADR-0021); test sheet C6 checks both.
 - [x] **The test sheet is written** —
-      [testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md).
-- [ ] **The 23 Aug run is recoverable.** The last open item in
-      [release-1.0.0.md](history/release-1.0.0.md)'s Phase 0. With the log reading
-      Drift, the run should simply appear. If it does not, it never finalized,
-      and that is a new bug rather than the one already fixed.
-- [ ] **Widening the Health request does not re-prompt badly.** The app now asks
-      for steps as well as workouts. Whether an existing install re-prompts is
-      untested, and it sits awkwardly beside the onboarding doc's claim that
-      neither permission can be asked twice.
-- [ ] **The permission dialogs read correctly.** Rewritten in `1fdaf6f` and
-      never seen on a device. Check the wording against Settings › Run ›
-      Location afterwards, because the copy sends people there.
-- [ ] **A run records end to end on real hardware** — acquire, splits, pause,
-      lap, finish, and the run appears in the log and on the profile.
-- [ ] **The coach gate opens, and the coach opens behind it.** New since build
-      11 and proven nowhere but a widget test: an unentitled runner tapping the
-      mark should meet the sheet, an entitled one the conversation. Grant
-      yourself a row with the SQL in the test sheet.
-- [ ] **Sandbox purchase.** Both products are Ready to Submit, the offering is
-      CURRENT, and `REVENUECAT_ACCEPT_SANDBOX=true` is already set on the
-      deploy — so the only missing piece is a sandbox Apple ID and a device.
-      Section G of [the test sheet](testflight-1.0.0-test-sheet.md) walks the
-      whole chain. Belongs to Gate 3 but lands here, because it cannot be proven
-      from Windows. **Unset the flag before submitting.**
+      [testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md),
+      rewritten for build 26 on 2026-09-29.
+- [ ] **The 23 Aug run is recoverable** — test sheet A3. The last open item in
+      [release-1.0.0.md](history/release-1.0.0.md)'s Phase 0. With the log
+      reading Drift, the run should simply appear. If it does not, it never
+      finalized, and that is a new bug rather than the one already fixed.
+- [x] ~~**Widening the Health request does not re-prompt badly.**~~ **Moot
+      since `b3ac0a4`** (2026-09-29): the app asks Health for step count only,
+      so nothing widens. `WORKOUT` came off the read list because nothing ever
+      imported a workout. Test sheet B2 checks what a fresh install is asked.
+- [ ] **The permission dialogs read correctly** — B1, B3, B4. Location is asked
+      **While Using** only, on both platforms; the app never asks for Always.
+- [ ] **A run records end to end on real hardware** — section C, including the
+      recording lane's new rows (C21 to C26).
+- [ ] **The coach gate opens, and the coach opens behind it** — sections I and
+      D. Since build 26 the order is account, then the AI consent sheet, then
+      the price.
+- [ ] **A purchase on each store** — section G on the iPhone, section P on
+      Android. Both products are Ready to Submit, the offering is CURRENT, and
+      `REVENUECAT_ACCEPT_SANDBOX=true` is set, and **stays set**
+      ([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)):
+      App Review buys in the sandbox too. This item said to unset it before
+      submitting until 2026-09-29.
 
 ---
 
 ## Gate 2 — Submission blockers
 
-App Store Connect will not accept a submission without these. None are code.
+App Store Connect will not accept a submission without these, and Play Console
+has its own equivalents in [play-setup.md](play-setup.md) §4. None are code.
 
 - [x] **A published privacy policy URL** — **`https://mgkfitness.mgkcodes.com/run/privacy`**,
       live 2026-09-03.
@@ -270,11 +430,14 @@ App Store Connect will not accept a submission without these. None are code.
       reviewer checks between the page and the app is enforced by CI rather than
       by discipline. That is the whole reason `web/` lives in this repository.
 
-      Still to paste into App Store Connect's required field. `web/` is a Next.js app serving
-      `mgkfitness.mgkcodes.com/run/privacy`, `/run/medical-disclaimer` and
-      `/run/support`, verified locally end to end. What remains is a Vercel
-      project (root directory `web`), a CNAME, and pasting the URL into the
-      required field.
+      **The site is live**, a Vercel project with root directory `web` on
+      `mgkfitness.mgkcodes.com`, serving `/run/privacy`, `/run/terms`,
+      `/run/medical-disclaimer`, `/run/support` and `/run/delete-account`. It
+      deploys from `main`, so anything merged since the last push is not live
+      until `main` is pushed (item 4 at the top). This paragraph said a Vercel
+      project and a CNAME were still to do until 2026-09-29. What remains is
+      pasting the URL into each store's field
+      ([store-setup.md](store-setup.md) §10, [play-setup.md](play-setup.md) §4).
 
       **Where it goes is settled: `mgkfitness.mgkcodes.com/run`.** A suite
       subdomain with a path per app, which is the shape the naming already
@@ -322,42 +485,34 @@ App Store Connect will not accept a submission without these. None are code.
       page — and hand-maintaining the third is how they drift. Verified at
       generation: 58 of 58 source blocks appear verbatim.
 - [x] **The medical disclaimer page**, generated the same way.
-- [ ] **A Terms of Use (EULA).** *New, and a hard blocker rather than a nicety.*
+- [x] **Terms of Use — ours, at `https://mgkfitness.mgkcodes.com/run/terms`**
+      ([ADR-0040](decisions/0040-our-terms-and-apples-eula.md)).
+
       Guideline 3.1.2 requires an auto-renewable subscription's purchase surface
       to carry **functional links to both the Terms of Use and the privacy
-      policy**, and App Store Connect wants a EULA URL. There is no terms
-      document anywhere in this repo — `legal_screen.dart` offers three rows and
-      none of them is one. Two ways to satisfy it:
+      policy**. On 2026-09-02 this item settled on Apple's standard EULA and
+      said there was "no terms document anywhere in this repo". Both stopped
+      being true on 2026-09-10, when `8ac1181` wrote terms of our own
+      (`docs/terms-of-use.md`): the app gives training advice, which Apple's
+      document does not cover, and Google Play has no Apple EULA to fall back
+      on. The paywall and Settings › Privacy & legal link `/run/terms`,
+      pinned by `purchase_screen_test.dart` and `legal_screen_test.dart`.
 
-      1. **Apple's standard EULA** — nothing to write, a link Apple hosts. This
-         is what Signal does, and
-         [ADR-0005](decisions/0005-license-agpl.md) already establishes why AGPL
-         is compatible: the App Store problem is a multi-copyright-holder
-         problem, and MGKCodes is the sole holder.
-      2. **A custom EULA**, generated into `legal-site/` alongside the other two
-         and surfaced as a fourth row in `legal_screen.dart`.
-
-      **Settled 2026-09-02: Apple's standard EULA.**
-      `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` goes in
-      the listing's terms field and in App Store Connect's EULA field.
-
-      **The in-app half is finished, 2026-09-03.** The paywall links to it
-      (`purchase_screen_test.dart`), and `legal_screen.dart` now carries a
-      fourth row pointing at the same URL, so it is reachable from Settings by
-      somebody who is not mid-purchase — a reviewer working through Settings,
-      or a runner reading what they agreed to afterwards. `kTermsOfUseUrl` moved
-      to `legal/domain/legal_urls.dart` so that neither screen owns it and
-      `legal/` does not import `coaching/` to show a legal document.
-      `legal_screen_test.dart` pins the row and the destination.
-
-      **What is left is both App Store Connect fields**, which is form-filling
-      in Gate 2's sitting rather than code.
+      **Two fields, two answers.** The listings' descriptions link our terms
+      ([app-store-listing.md](app-store-listing.md),
+      [play-listing.md](play-listing.md)). App Store Connect's **License
+      Agreement** stays **Apple's Standard EULA**: that field takes plain text,
+      not a URL, and our terms say Apple's EULA governs App Store purchases and
+      wins where the two conflict.
 - [x] **A support URL** — **`https://mgkfitness.mgkcodes.com/run/support`**,
       live 2026-09-03 and verified alongside the policy. It answers the three things a
       runner actually writes in about, and says plainly which two we cannot fix:
-      Apple takes the payment, so Apple cancels and Apple refunds.
-- [ ] **Clear the remaining publication blocker.** The policy's own banner and
-      the generator's `BLOCKERS` list carry four; two are closed:
+      the store takes the payment, so the store cancels and the store refunds.
+      It names both stores since 2026-09-11.
+- [ ] **Clear the remaining publication blocker.** The generator's
+      `BLOCKERS` list is **empty**, so nothing stops the pages being generated
+      and served; of the four blockers it once carried, three are closed and
+      one is a setting (item 3 at the top):
       1. ~~**Legal review.**~~ **Dropped 2026-09-01** — out of reach for now,
          recorded as an accepted risk rather than a forgotten step. What protects
          it is that the data flows were read off the running system; what is
@@ -375,41 +530,55 @@ App Store Connect will not accept a submission without these. None are code.
          is unconfirmed is what it guarantees contractually. **The only item that
          can still change what the policy has to say** — and less than it could
          have, since the wording no longer implies providers never retain.
-      4. **The publication date** — replace the `PUBLICATION_DATE` token.
-- [ ] **App Privacy ("nutrition labels").** Must match the sub-processor table in
-      [compliance.md](compliance.md): Supabase, OpenRouter, RevenueCat, MapTiler.
-      Declare, with linkage to identity:
+         **Turning on OpenRouter's account-wide Zero Data Retention closes most
+         of it**: it makes the policy's "providers that do not keep or train on
+         what we send" an account setting rather than a per-request flag.
+      4. ~~**The publication date**~~ — cleared. The policy has carried a real
+         date since 2026-09-10 (29 September 2026 since tonight's revision), so
+         there was no token left to replace; the generator's banner saying so
+         came off on 2026-09-29.
+- [ ] **App Privacy ("nutrition labels").** The answers, type by type, are in
+      [store-setup.md](store-setup.md) §10, checked against build 26's code on
+      2026-09-29, and they live only there. In short: data is collected;
+      **no tracking** for any type; Email, Name, **Health (HealthKit step count
+      only)**, Fitness, Precise Location, Other User Content, User ID, Purchase
+      History and Product Interaction are linked to the user; Coarse Location
+      (MapTiler's tile requests) is not. They must match the sub-processor
+      table in [compliance.md](compliance.md): Supabase, OpenRouter,
+      RevenueCat, MapTiler.
 
-      | Type | What | Linked |
-      |---|---|---|
-      | Health & Fitness | Workouts and steps read from HealthKit; runs, traces, plans | Yes |
-      | Location | Precise, in use **and** in background | Yes |
-      | Identifiers | The Supabase `user_id`, which RevenueCat holds as a pseudonymous app user id | Yes |
-      | Purchases | Subscription state | Yes |
-      | User Content | The runner's own messages to the coach, which reach OpenRouter | Yes |
-      | Contact Info | Email, for the account | Yes |
+      This item used to carry its own table, which said location was collected
+      "in use **and** in background" (the app asks While Using only) and left
+      Coarse Location out. One table, in the runbook, is the fix.
 
-      Backup consent makes several of these conditional and the form has no way
-      to express that. **Declare what is collected when consent is on**, which
-      is the honest reading of a form that cannot say "sometimes".
-- [ ] **Age rating questionnaire.** Nothing objectionable. The one to think about
-      is whether the coach counts as user-generated content: it does not — there
-      is no sharing and no second user anywhere in the product.
-- [ ] **App Review notes**, which [compliance.md](compliance.md) already says are
-      needed and are easy to forget:
-      - a written justification for always-on location ("recording a run with the
-        screen off" is accepted),
-      - exactly what health data is read, written, and shared, and with whom —
-        answered from the deployed `COACH_MODEL`, not from the repo,
-      - how to reach the paid half, since a reviewer's account has no entitlement.
-- [ ] **A demo account.** The app opens on a working tracker with no account
-      ([ADR-0019](decisions/0019-onboarding-is-two-moments.md)), which is a good
-      answer for the free half — but the coach and plans sit behind an account
-      *and now behind an entitlement*
-      ([ADR-0030](decisions/0030-the-coach-is-the-paid-half.md)). A reviewer who
-      cannot reach them may reject for incomplete functionality. **Give them
-      credentials, and grant that user a `core.entitlements` row**, or the demo
-      account meets exactly the gate they are trying to get past.
+      `ios/Runner/PrivacyInfo.xcprivacy` declares the same types apart from
+      Coarse Location, and `the_privacy_manifest_declares_what_is_sent_test.dart`
+      pins the list. Backup consent makes several of them conditional and the
+      form has no way to say so: **declare what is collected with backup on.**
+- [ ] **Age rating questionnaire** — Apple's 2025 version, answered in
+      [store-setup.md](store-setup.md) §10. Expect **13+**. The two judgement
+      calls: Health or Wellness Topics is **Frequent**, and Medical or
+      Treatment Information **Infrequent** (None is defensible). The coach is
+      not user-generated content and not messaging: it is a model, and no
+      runner can reach another. The reasoning that stood here predated the
+      2025 questionnaire, which asks about health topics directly.
+- [ ] **App Review notes** — final, in
+      [app-store-listing.md](app-store-listing.md) § Review notes, counted
+      against the 4,000-character field by `tool/check_listing.py`. They cover
+      the two demo accounts, where the AI consent is asked, reporting a reply,
+      background location (**While Using only**), HealthKit (**step count
+      only**, never written), the medical disclaimer and the deletion path.
+      Paste them with the four credentials filled in.
+- [ ] **Two demo accounts**, set up by [store-setup.md](store-setup.md) §9.
+      The app opens on a working tracker with no account
+      ([ADR-0019](decisions/0019-onboarding-is-two-moments.md)), which answers
+      for the free half — but the coach and plans sit behind an account and an
+      entitlement ([ADR-0030](decisions/0030-the-coach-is-the-paid-half.md)).
+      **A** has a `premium` row that never lapses and that no store event can
+      overwrite, for reviewing the coach; **B** has none, for the sandbox
+      purchase. One account cannot do both jobs: a reviewer who buys on an
+      entitled account proves nothing, and one who cannot reach the coach
+      rejects for incomplete functionality. Play's reviewer gets A as well.
 
 ---
 
@@ -489,7 +658,7 @@ the deployed webhook and its secrets; and the webhook registration.
       The runbook is finer-grained and is read with a dashboard open, so it
       keeps the boxes. This stays the plan.
 
-#### Steps 6–11: code in this repository
+#### Steps 6–12: code in this repository, and what proves it
 
 - [x] **6. The SDK in the client.** `purchases_flutter ^10.10.1`, behind a
       `PurchaseClient` interface with a `RevenueCatPurchases` implementation and
@@ -518,9 +687,10 @@ the deployed webhook and its secrets; and the webhook registration.
       **harness plate id**. They are not the same namespace. Prices come from
       `Offerings`; `purchase_screen_test.dart` prices a fixture in dollars and
       asserts the pounds ADR-0029 settled appear nowhere. It carries both tiers,
-      **Restore purchases**, functional links to the **Terms of Use** (Apple's
-      EULA) and the **privacy policy**, and the auto-renew disclosure — four
-      Guideline 3.1.2 requirements, each with a test named after it.
+      **Restore purchases**, functional links to the **Terms of Use** (ours,
+      at `/run/terms`, since 2026-09-10; Apple's EULA before that) and the
+      **privacy policy**, and the auto-renew disclosure — four Guideline 3.1.2
+      requirements, each with a test named after it.
 
       Two things the tests caught rather than review: the legal links were a
       `Row` that **overflowed a 430pt phone by 29 pixels**, which on the
@@ -539,21 +709,32 @@ the deployed webhook and its secrets; and the webhook registration.
       and inviting a second purchase is the one outcome worse than waiting. The
       single place the SDK's own view is read is `restore`, and it decides which
       sentence to show rather than what anybody owns.
-- [ ] **9. Sandbox purchase on a device** — Gate 1.
+- [ ] **9. A purchase on a device, on each store** — Gate 1, test sheet
+      sections G and P. The Android Coach purchase went through on 2026-09-11;
+      Premium on Android and anything on iOS never has.
 - [ ] **10. A processor agreement with RevenueCat**, alongside the OpenRouter
       one.
-- [ ] **11. App Privacy: Purchases and the identifier** — Gate 2.
+- [ ] **11. App Privacy: Purchases and the identifier** — Gate 2, and Play's
+      Data safety form (play-setup.md §4).
+- [ ] **12. Premium's description** says *"A better AI model and a bigger allowance."* in both stores
+      ([ADR-0041](decisions/0041-premium-is-a-better-model-and-a-bigger-allowance.md)). Premium's model is set (`COACH_CHAT_MODEL_SHARP`, 2026-09-30).
+      The paywall prints the store's text, so this is in-app copy as well as a
+      store field. store-setup.md §2, play-setup.md §5.
 
 ---
 
 ## Gate 4 — The listing itself
 
-**The copy is drafted, in
-[app-store-listing.md](app-store-listing.md)** — one document, so this stays a
-checklist and the writing lives somewhere it can be edited as writing. Every
-character count there is verified by `tool/check_listing.py`, which also refuses
-a description claiming something the code does not do. What is left here is the
-art, and the choices only you can make.
+**The copy is written, in
+[app-store-listing.md](app-store-listing.md) and
+[play-listing.md](play-listing.md)** — so this stays a checklist and the writing
+lives somewhere it can be edited as writing. Every character count there is
+verified by `tool/check_listing.py`, which also refuses a description claiming
+something the code does not do, and anything Apple-only in the Play copy. The
+field-by-field answers for App Store Connect are in
+[store-setup.md](store-setup.md) §10, and Play's in
+[play-setup.md](play-setup.md) §4. What is left here is the art, and the
+choices only you can make.
 
 ### App information — set once, not per version
 
@@ -577,12 +758,14 @@ art, and the choices only you can make.
       reading the two pages side by side rather than by anything going wrong.
       The listing document owns the copy; this page ticks the box.
 - [x] **Primary category** Health & Fitness, **secondary** Sports.
-- [ ] **Content rights.** Run does not ship third-party content the way Lift does
-      (Lift's exercise illustrations are CC BY-SA), but the **MapTiler basemap**
-      is third-party and attribution obligations apply. Confirm the in-app map
-      attribution is present and answer the question accordingly.
-- [ ] **Licence agreement** — Apple's standard EULA, or the custom one from
-      Gate 2.
+- [ ] **Content rights** — **yes**, it contains third-party content: the
+      MapTiler / OpenStreetMap basemap. The in-app map shows the attribution
+      (`MAP_ATTRIBUTION`; `codemagic.yaml` fails a build that sets tiles
+      without it). Holding the rights needs MapTiler's paid plan, not the Free
+      one, which is non-commercial only — item 6 at the top.
+- [ ] **License Agreement** — **Apple's Standard EULA**, per
+      [ADR-0040](decisions/0040-our-terms-and-apples-eula.md). The field takes
+      plain text, not a URL; our terms are linked from the description.
 - [ ] **Age rating** — Gate 2.
 
 ### Version information — 1.0.0
@@ -590,8 +773,9 @@ art, and the choices only you can make.
 - [x] **Promotional text** (170) — drafted at 158, which leaves room for a
       launch line. Changeable without review, so it is the right place for
       anything that will move.
-- [x] **Description** (4000) — drafted at 3,182, so there is room for a
-      paragraph somebody wants to add. What it had to do, and does:
+- [x] **Description** (4000) — at 3,693 since the 2026-09-29 revision
+      (the Health sentence, the AI coach and reporting, the consent, the
+      health disclaimer Play requires). What it had to do, and does:
       - lead with the free half, because it is most of the app and because the
         gate copy already makes that promise — a listing that leads with the
         subscription and a gate that leads with what is free are two different
@@ -610,48 +794,29 @@ art, and the choices only you can make.
 - [ ] **Marketing URL** — optional; `mgkcodes.com` if there is a page worth
       landing on.
 - [x] **Copyright** — `2026 MGKCodes Ltd`.
-- [ ] **Screenshots.** **Read the exact required set off App Store Connect
-      rather than trusting a number written here** — at time of writing it wants
-      a 6.9" set (1320×2868 or 1290×2796) and derives the smaller sizes.
-      Between three and ten; the first two are what shows in search, so they
-      carry the argument on their own.
+- [ ] **Screenshots** — **owned by
+      [app-store-listing.md](app-store-listing.md) § Screenshots**: which six,
+      the board codes and plate ids they map to, and the sizes for both
+      stores. Take them from a real phone, not the plate harness, which draws
+      no basemap tiles.
 
-      **The board's plates are not usable as store assets** — they are 393×852
-      logical renders at 2–3× for design review, and the store wants device-sized
-      art with a caption band. What the board *is* good for is choosing which
-      screens to shoot: the strongest six are `H1` (a plan and today's session),
-      `R4` or `R5` (a run in progress), `F1` (a finished run), `P2` (a week
-      opened), **`C4`** (the coach answering), `S4` (a year of running). Take
-      them from a real device on TestFlight, not from the plate harness — the
-      basemap tiles are absent in the harness, and the map is half of what makes
-      `R4` worth showing.
-
-      **This said `C3` until 2026-09-03, which named one plate and described
-      another.** On the board `C3` is the conversation merely opened and `C4` is
-      the coach answering a suggestion — and the answering one is the picture
-      that argues for a coach. Read off the board rather than inferred.
-
-      Those are **board codes, and they exist only inside the published contact
-      sheet** — not in `test/plates/`, so they cannot be resolved from this
-      repository. The mapping onto the semantic plate ids in `board.state.json`
-      lives in section H of
-      [the test sheet](testflight-1.0.0-test-sheet.md), once: do not copy it
-      here.
-
-      ⚠ **The list of which six to shoot is in three places** — here, section H
-      of the test sheet, and `app-store-listing.md`, which
-      `store-assets/README.md` names as its home. Three copies of one list is
-      the failure this page has already recorded twice, and it has not been
-      resolved: it is written down here so the next person to touch it picks an
-      owner rather than adding a fourth.
+      This item used to carry its own copy of the list, and recorded that the
+      list lived in three places without choosing an owner. It chose one on
+      2026-09-29: the listing document, because the screenshots are listing
+      copy. This page ticks the box and the test sheet's section H points
+      there.
 - [ ] **App preview video** — optional, and genuinely optional. Skip for 1.0.0.
-- [ ] **App icon.** Already in the binary; confirm the 1024×1024 marketing icon
-      is set in App Store Connect and has **no alpha channel and no rounded
-      corners** — the most common trivial rejection there is.
+- [x] **App icon — nothing to upload.** App Store Connect takes the
+      1024×1024 icon from the build's asset catalogue (the new mark since
+      2026-09-11; RGB, no alpha). `store-assets/captured/icon-1024.png` is the
+      **old** loop mark and must not be uploaded anywhere. Play's 512 icon is
+      a separate upload ([play-listing.md](play-listing.md) § Graphics).
 - [ ] **"What's New"** — not required for a first version.
-- [ ] **Sign-in required?** Answer **no**, and say why in the review notes: the
-      app opens on a working tracker with no account. Then give the demo account
-      anyway, for the coach.
+- [ ] **Sign-in required?** **Yes**, with demo account A. The app opens on a
+      working tracker with no account, but the coach — the half being sold —
+      needs one, and the field is where App Review looks for credentials. The
+      review notes add account B for the purchase. This said "no" until
+      2026-09-29.
 - [ ] **Contact information** for review — name, phone, email.
 
 ### Before hitting Submit
@@ -660,8 +825,11 @@ art, and the choices only you can make.
       not appear. If it does, something changed.
 - [ ] **Advertising identifier (IDFA)** — **no**. Nothing in the app advertises
       or attributes.
+- [ ] **Both subscriptions attached to the version.** A first subscription is
+      only ever reviewed with an app version.
 - [ ] **Version release option** — manual release, for a first version. Automatic
       means it goes live the moment review passes, at whatever hour that is.
+      Play's equivalent is managed publishing (play-setup.md §11).
 - [ ] **Phased release** — irrelevant for 1.0.0 (it only applies to updates).
 
 ---
@@ -682,38 +850,54 @@ art, and the choices only you can make.
       alongside `Distance`, `Pace` and `Mass`, following the **distance** system
       rather than having a unit of its own — kilometres with pounds is an
       ordinary combination, miles with metres of climb is not.
-- [x] **`NSHealthUpdateUsageDescription` described a write that never happens.**
-      Dropped 2026-09-08 at `6f71c3c`. `health_read_types.dart` requests
-      `HealthDataAccess.READ` for `WORKOUT` and `STEPS`, and `HealthDataAccess`
-      appears nowhere else in `lib/` — so this was a purpose string for a
-      permission the binary never exercises: at best noise a reviewer reads and
-      cannot verify, at worst Guideline 5.1.1. The comment beside it admitted
-      the position, describing what the app was "built toward". The read key
-      stays; a comment marks where the write key was, so the next person adds it
-      back in the same commit as the write. **This also settles test-sheet row
-      B6**, which existed to find out whether iOS ever asked for write access.
+- [x] **`NSHealthUpdateUsageDescription` is in the binary, and says the app
+      writes nothing.** The history matters, because the obvious fix is the
+      wrong one:
+
+      1. **Dropped 2026-09-08 at `6f71c3c`**, on the reasoning that the app only
+         ever requests `HealthDataAccess.READ`, so a purpose string for writing
+         was noise at best and Guideline 5.1.1 at worst.
+      2. **Restored 2026-09-09 at `a54e77d`**, because App Store Connect refused
+         the upload of 1.0.0 (21) with error 90683. The trigger is the HealthKit
+         entitlement and the `health` plugin's linked write methods, not our
+         Dart: *"While your app might not use these APIs, a purpose string is
+         still required."* No test can catch this; only a real upload does.
+      3. **Reworded 2026-09-29** to say what is true: *"Run does not save
+         anything to Health. This is listed only because the Health library it
+         uses can write, which Run never asks to do."* It is never shown,
+         because the prompt only appears for a write request and there is none.
+
+      The read side narrowed the same day: `health_read_types.dart` requests
+      `STEPS` alone (`WORKOUT` came off, `b3ac0a4`), and the share string says
+      step count for runs recorded in Run. **Do not remove the update key**
+      without a real release build proving the upload still passes; the
+      comment in `Info.plist` says the same.
 
 
-- [x] **Elevation at launch: the tiles stay, and stay empty.** Decided
-      2026-09-08. They are built end to end and read "not recorded" on every
-      device, because there is no barometric source at all — not on the
-      emulator, and not on an iPhone either
-      ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)). The
-      hardware barometer is not the blocker; no code reads it.
+- [x] **Elevation at launch: none.** Decided 2026-09-08. There is no
+      barometric source at all — not on the emulator, and not on an iPhone
+      either ([ADR-0024](decisions/0024-elevation-is-barometric-or-absent.md)).
+      The hardware barometer is not the blocker; no code reads it. Building
+      `CMAltimeter` was declined for 1.0.0: iOS-only, so unverifiable from
+      Windows, and it would have reached a device untested.
 
-      **Three options were on the table and the middle one was taken.** Hiding
-      the tiles when there is no source was drafted and reversed on the call
-      that they should always show. Building `CMAltimeter` was declined for
-      1.0.0: iOS-only, so unverifiable from Windows, and it would have reached a
-      device untested. So the tiles ship visible and unfilled.
+      **Corrected 2026-09-29: the tiles do not "stay, and stay empty".** This
+      item recorded a decision that the elevation tiles would always show and
+      read "not recorded". The code does not do that: the finished-run grid
+      adds a tile only when the run has a value (`run_summary_screen.dart`:
+      absent, "never a zero"), so a real run shows no elevation tile at all,
+      and the string "not recorded" appears nowhere on screen. The question this
+      page kept open for the phone — does an empty tile read as deliberate or
+      broken — therefore has nothing to look at, and is closed. If a tile that
+      explains its absence is wanted, it is a 1.0.1 change.
 
-      **The listing shot fills them, and that is a deliberate choice rather than
-      an oversight** — recorded here because the release plan is where a choice
-      like this has to be findable. `_demoSummary()` supplies elevation, and
-      also heart rate and calories, which a recorded run fills for none of the
-      three. `store-assets/README.md` states it against the stand-ins, and the
-      Health read is specified for 1.0.1 in
-      [after-1.0.0.md](after-1.0.0.md).
+      **The stand-in shots fill them, and must not be submitted** — recorded
+      here because the release plan is where a choice like this has to be
+      findable. `_demoSummary()` supplies elevation, and also heart rate and
+      calories, which a recorded run fills for none of the three.
+      `store-assets/README.md` states it against the stand-ins; the listing
+      screenshots come off a real phone. The Health read is specified for
+      1.0.1 in [after-1.0.0.md](after-1.0.0.md).
 
 
 ---
@@ -780,86 +964,66 @@ Recorded so nobody re-opens them under deadline:
 - **Heart rate, cadence, active energy.** Stopped on purpose, with reasons, in
   [release-1.0.0.md](history/release-1.0.0.md)'s "Deliberately not built".
 - **In-run audio** — [ADR-0006](decisions/0006-in-run-audio-deferred.md).
-- **The Android release pipeline.** The APK workflow is a verification harness,
-  not a product ([ADR-0021](decisions/0021-android-is-a-target.md)); nothing
-  ships to Play for Run at 1.0.0.
+- ~~**The Android release pipeline.**~~ **Wrong, and removed from this list on
+  2026-09-29.** It said nothing ships to Play for Run at 1.0.0, citing
+  ADR-0021, which says the opposite. Run 1.0.0 ships on Google Play from the
+  same commit as the App Store
+  ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)),
+  and `run-android-release` has published to the internal track by itself
+  since build 24.
 - **Going open source.** `roadmap.md` lists a git-history secret scrub as part of
   "v1 shippable". It is a prerequisite for making the repo *public*, not for
   shipping the app, and conflating them adds a hard job to the critical path for
   no store benefit.
-- **Bests, and the coach's memory surface.** Named on the board as missing
-  screens. Neither is a submission blocker.
+- ~~**Bests, and the coach's memory surface.**~~ Named on the board as missing
+  screens, and both are built: bests are Profile's *Records* section, and
+  past conversations are readable from the history button in the
+  conversation. The board predates them.
+- **What 2026-09-29's review deferred** — each with a date to revisit, in
+  [after-1.0.0.md](after-1.0.0.md). None of them is a submission blocker; all
+  of them are real.
 
 ---
 
 ## The order
 
-**Five of the nine steps below are done, and a sixth is sent and waiting on
-somebody else.** What is left is one sitting on a phone, one form-filling
-session in App Store Connect, and one decision.
+**Superseded on 2026-09-29 by *What is left, in order* at the top of this
+page**, which is now the only ordered list here. Two ordered lists on one page
+would be the failure this repository keeps recording, so this one is kept only
+as the record of how the release got here.
 
-⚠ **Step 7 has now failed to close twice, on builds 12 and 13.** Build 13 went
-to a phone on 2026-09-07 and stopped at section G's *setup* — so the purchase
-chain (G, 23 rows) and the listing screenshots (H, 6 rows) have never run on any
-build, and they are the two things that decide whether 1.0.0 can be submitted at
-all.
-
-It was not wasted either time. Build 13 returned five defects and seven UI
-requests, all closed at `6f71c3c`. Three of the five defects were **one**
-defect: an auth stream that said something happened rather than who, and state
-resolved once at launch
-([ADR-0032](decisions/0032-identity-is-an-event-and-the-tier-is-re-read.md)).
-D14's door was never broken — the tier it checked was stale, which is also what
-a cancelled subscription looks like to anyone who leaves the app open.
-
-**Step 7 is therefore still open, against a build 14 that is not yet cut.**
-Unset `REVENUECAT_ACCEPT_SANDBOX` when it is over.
-
-~~A new open item, from the same afternoon: **plans anchor week 1 to
-`mondayOf(now)`**.~~ **Closed 2026-09-08**: a plan starts on the coming Monday
-([ADR-0034](decisions/0034-a-plan-starts-on-the-coming-monday.md)). Counting the
-block backwards from race day remains the better fix and the larger one; it is
-recorded in that ADR as the answer if this one reads as a delay on a phone.
-
-*Said "six" until 2026-09-03, while only five were struck through. Step 2 is
-sent, not finished — counting a posted email as done is how the one item with
-somebody else's clock on it stops being chased.*
-
-Struck through is finished — kept rather than deleted, because the sequence is
-the useful part and a list that only shows what remains loses it.
+Struck through is finished.
 
 1. ~~**Apple's paid-applications agreement, tax and banking.**~~ Active, and
    held by the team rather than the app.
 2. **The OpenRouter reply** — sent 2026-09-01, tracked in
    [openrouter-processor-agreement.md](openrouter-processor-agreement.md).
-   **Still outstanding, and the only thing waiting on somebody else.** Blocker 3
-   depends on it, and only for a sentence.
-3. ~~**Stand up `mgkfitness.mgkcodes.com`, settle the EULA and the support
-   URL.**~~ Live 2026-09-03; both URLs verified against the running site, and
-   the served page still carries the banner `legal_copy_test.dart` asserts on.
+   **Still outstanding, and the only thing waiting on somebody else.** Not a
+   submission blocker: naming a processor is an Article 13 duty (Gate 2).
+3. ~~**Stand up `mgkfitness.mgkcodes.com`, settle the terms and the support
+   URL.**~~ Live 2026-09-03. The terms were settled on Apple's EULA that day
+   and on our own on 2026-09-10 (ADR-0040).
 4. ~~**Run a TestFlight build.**~~ Build 12, 2026-09-02, every step green.
 5. ~~**Gate 3, the wiring**~~ — the two dashboards, the webhook, the SDK, the
-   purchase screen. Everything except the sandbox purchase itself.
-6. ~~**Write Gate 4's copy.**~~ Description, keywords, promotional text and the
-   subtitle, drafted and machine-checked by `tool/check_listing.py`. Struck
-   through in full on 2026-09-07: the subtitle was settled on 2026-09-02 and
-   only this page still called it open.
+   purchase screen. Everything except a purchase on a device.
+6. ~~**Write Gate 4's copy.**~~ Both listings, machine-checked by
+   `tool/check_listing.py`; brought up to build 26 on 2026-09-29.
+7. **One sitting on the phone.** Attempted on build 12 (2026-09-04, stopped at
+   section F) and build 13 (2026-09-07, stopped at section G's setup), and
+   never on 14 or 25. Each attempt found real defects, all fixed since — the
+   purchase chain granting nothing, six ungated doors into the coach, sync
+   doing nothing, plans training on race day, a backup switch that promised
+   erasure and performed none, and an auth stream that said something
+   happened rather than who
+   ([ADR-0032](decisions/0032-identity-is-an-event-and-the-tier-is-re-read.md)).
+   **Now item 9 at the top, on build 26, on both phones.**
+8. **Fill in the forms** — now item 7 at the top, answered field by field in
+   the two runbooks.
+9. ~~**Decide Gate 5's elevation question.**~~ Closed: a real run shows no
+   elevation tile, so there is no empty tile to judge (Gate 5).
 
-Then what is actually left:
-
-7. **One sitting on the phone**, working
-   [the test sheet](testflight-1.0.0-test-sheet.md) end to end. **Attempted on
-   build 12, 2026-09-04, and it did not finish** — it stopped at section F, so
-   G and H are still unproven. It was not wasted: it found the purchase chain
-   granting nothing, the coach reachable through six ungated doors, sync doing
-   nothing in either direction, plans training on race day, an account created
-   silently offline, and a backup switch that promised erasure and performed
-   none. All fixed; none verified on hardware. **Cut build 13 and work the whole
-   sheet, G and H included.** Unset `REVENUECAT_ACCEPT_SANDBOX` when it is over.
-8. **Fill in Gate 2's forms** in App Store Connect — App Privacy, the age
-   rating, the review notes, and a demo account with an `active` entitlement
-   row. Nothing blocks this beyond wanting the phone's answers first.
-9. **Decide Gate 5's elevation question** last. It is the only item that could
-   reasonably change what 1.0.0 contains, and the only one the phone can
-   actually inform: a plate cannot tell you whether "not recorded" reads as
-   deliberate or as broken.
+~~A new open item, from the 2026-09-07 sitting: **plans anchor week 1 to
+`mondayOf(now)`**.~~ **Closed 2026-09-08**: a plan starts on the coming Monday
+([ADR-0034](decisions/0034-a-plan-starts-on-the-coming-monday.md)). Counting the
+block backwards from race day remains the better fix and the larger one; it is
+recorded in that ADR as the answer if this one reads as a delay on a phone.

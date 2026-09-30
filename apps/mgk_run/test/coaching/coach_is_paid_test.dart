@@ -3,6 +3,10 @@ import 'package:mgk_run/src/features/coaching/data/coach_errors.dart';
 import 'package:mgk_run/src/features/coaching/data/entitlement_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 
+/// Fixed, so nothing here reads the wall clock. None of these rows carries an
+/// expiry, so the instant only has to exist.
+final DateTime _now = DateTime.utc(2026, 9, 28, 12);
+
 /// The coach is the paid half, and the app has to say so rather than fail.
 ///
 /// See [ADR-0030](../../docs/decisions/0030-the-coach-is-the-paid-half.md). The
@@ -18,7 +22,7 @@ void main() {
           SupabaseEntitlements.accessFrom(<String, dynamic>{
             'product': product,
             'status': 'active',
-          }),
+          }, now: _now),
           CoachAccess.subscribed,
           reason: '$product should unlock',
         );
@@ -38,7 +42,7 @@ void main() {
           SupabaseEntitlements.accessFrom(<String, dynamic>{
             'product': 'premium',
             'status': status,
-          }),
+          }, now: _now),
           CoachAccess.free,
           reason: '$status must not unlock',
         );
@@ -46,13 +50,16 @@ void main() {
     });
 
     test('no row, and an unknown product, are free', () {
-      expect(SupabaseEntitlements.accessFrom(null), CoachAccess.free);
+      expect(
+        SupabaseEntitlements.accessFrom(null, now: _now),
+        CoachAccess.free,
+      );
       for (final product in <String>['', 'pro', 'PAID', 'lifetime', 'paid ']) {
         expect(
           SupabaseEntitlements.accessFrom(<String, dynamic>{
             'product': product,
             'status': 'active',
-          }),
+          }, now: _now),
           CoachAccess.free,
           reason: '${product.isEmpty ? '<empty>' : product} must not unlock',
         );

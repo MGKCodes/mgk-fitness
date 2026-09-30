@@ -218,6 +218,34 @@ class AuthRepository {
 
   Future<void> signOut() => _client.auth.signOut();
 
+  /// This app's own keys on the shared profile.
+  ///
+  /// `run_ai_consent` is the runner's answer about the coach's use of their
+  /// data, and `run_intro_seen` is [hasMetCoach]. The name is not here: it is
+  /// the profile's, and Lift reads it.
+  static const List<String> _runKeys = <String>['run_ai_consent', _metCoachKey];
+
+  /// Removes [_runKeys] from the profile, when this app's data has been
+  /// deleted and the login kept for Lift.
+  ///
+  /// **The server's sweep does not reach auth metadata.** It erases the `run`
+  /// schema and leaves the login alone, so without this a runner who deleted
+  /// their account and later came back through the same login would find an
+  /// answer about the coach still on file, and would skip the introduction --
+  /// and its permission asks -- as though their account had never gone.
+  ///
+  /// Needs the session, so it runs before signing out. Bounded like every
+  /// other call on the auth path.
+  Future<void> clearRunMetadata() async {
+    await _client.auth
+        .updateUser(
+          UserAttributes(
+            data: <String, dynamic>{for (final key in _runKeys) key: null},
+          ),
+        )
+        .timeout(timeout);
+  }
+
   /// Ensures a row in the shared `public.profiles` table for the signed-in
   /// user — the shared identity across the MGKCodes fitness apps.
   Future<void> ensureProfile() async {

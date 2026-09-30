@@ -85,7 +85,7 @@ void main() {
       ),
       findsOneWidget,
     ); // 5.23 + 10 km
-    expect(find.text('dev@runio.app'), findsNothing);
+    expect(find.text('dev@mgkfitness.mgkcodes.com'), findsNothing);
     expect(find.textContaining('since'), findsNothing);
 
     // The log itself, headed by its count and its order.

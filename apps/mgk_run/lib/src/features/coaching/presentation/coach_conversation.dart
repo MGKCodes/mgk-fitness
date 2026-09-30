@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import '../data/supabase_coach_reports.dart';
+import '../domain/coach_report.dart';
 import 'chat_controller.dart';
+import 'chat_entry.dart';
 import 'chat_widgets.dart';
 import 'coach_history_sheet.dart';
+import 'coach_report_sheet.dart';
 
 /// The conversation with the coach, as a sheet.
 ///
@@ -24,11 +28,28 @@ class CoachConversationSheet extends StatefulWidget {
     required this.controller,
     this.suggestions = const <String>[],
     this.unit = UnitSystem.metric,
+    this.beforeSend,
+    this.reporter = const SupabaseCoachReports(),
   });
 
   final ChatController? controller;
   final List<String> suggestions;
   final UnitSystem unit;
+
+  /// Asked before anything typed or tapped here is sent, and nothing is sent
+  /// unless it answers true.
+  ///
+  /// The sheet only opens once the runner has agreed to the coach sending
+  /// their training, so this is normally a quick yes. It is here so the rule
+  /// belongs to the place things are sent from, rather than to however the
+  /// sheet happened to be opened: a suggestion chip sends on one tap, and a
+  /// tap should not be able to outrun a withdrawn permission. Null asks
+  /// nothing, which is what a test of the sheet on its own wants.
+  final Future<bool> Function()? beforeSend;
+
+  /// Where a reply the runner reports goes. A long press on any of the
+  /// coach's replies opens the report sheet.
+  final CoachReporter reporter;
 
   /// Opens the conversation.
   ///
@@ -41,6 +62,7 @@ class CoachConversationSheet extends StatefulWidget {
     List<String> suggestions = const <String>[],
     UnitSystem unit = UnitSystem.metric,
     String? opener,
+    Future<bool> Function()? beforeSend,
   }) {
     if (opener != null && controller != null) {
       unawaited(controller.openWithNote(opener));
@@ -55,6 +77,7 @@ class CoachConversationSheet extends StatefulWidget {
         controller: controller,
         suggestions: suggestions,
         unit: unit,
+        beforeSend: beforeSend,
       ),
       // Dismissing the sheet folds what was said into the rolling summary. The
       // dock did this from its collapse handler; a sheet has several ways out —
@@ -77,6 +100,9 @@ class CoachConversationSheet extends StatefulWidget {
 class _CoachConversationSheetState extends State<CoachConversationSheet> {
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
+
+  /// Replies reported from this sheet, so each says so under it.
+  final Set<ChatEntry> _reported = <ChatEntry>{};
 
   ChatController? get _c => widget.controller;
 
@@ -107,21 +133,39 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     });
   }
 
-  void _send([String? text]) {
+  Future<void> _send([String? text]) async {
     final controller = _c;
     if (controller == null) return;
     final message = (text ?? _input.text).trim();
     if (message.isEmpty || !controller.canSend) return;
+    // Cleared only once it is going, so a runner who says "Not now" keeps what
+    // they typed.
+    if (!await _mayAsk() || !mounted) return;
     _input.clear();
     unawaited(controller.send(message));
   }
 
   /// A question the runner picked rather than typed. See the chip below for why
   /// this is not [_send].
-  void _ask(String text) {
+  Future<void> _ask(String text) async {
     final controller = _c;
     if (controller == null || !controller.canSend) return;
+    if (!await _mayAsk() || !mounted) return;
     unawaited(controller.ask(text));
+  }
+
+  Future<bool> _mayAsk() async {
+    final gate = widget.beforeSend;
+    return gate == null || await gate();
+  }
+
+  Future<void> _report(ChatEntry entry) async {
+    final sent = await reportCoachReply(
+      context,
+      reply: entry.text,
+      reporter: widget.reporter,
+    );
+    if (sent && mounted) setState(() => _reported.add(entry));
   }
 
   @override
@@ -311,6 +355,10 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
                     unit: widget.unit,
                     onApply: () => unawaited(controller.applyProposal(entry)),
                     onDecline: () => controller.declineProposal(entry),
+                    onReport: entry.isUser
+                        ? null
+                        : () => unawaited(_report(entry)),
+                    reported: _reported.contains(entry),
                   ),
                 ],
               );

@@ -240,6 +240,38 @@ void main() {
       expect(doc, contains('do not use the coach'));
     });
 
+    test('says the coach asks first, and where that is taken back', () {
+      // App Store 5.1.2(i) and the Art. 9 basis this policy names: permission
+      // before anything reaches a third-party AI, and a way to withdraw it
+      // that is not deleting the account.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('asks your permission'));
+        expect(text, contains('Settings › Privacy & legal'));
+        expect(text, contains('explicit consent'));
+      }
+    });
+
+    test('names the older messages the coach recalls, not only the last '
+        'twenty', () {
+      // `recollectionsFrom` adds up to four of the runner's own past turns to
+      // the brief when they match what is being asked. "Up to your last
+      // twenty messages" alone understated what a conversation sends.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('up to four older messages'));
+      }
+    });
+
+    test('says the coach sends whether or not backup is on, in both', () {
+      // The doc said so and the app did not. In the app the backup section
+      // ended on "Nothing about your training leaves your phone for our
+      // servers unless you turn on Back up my data", which reads as covering
+      // the coach too; its requests go through our server either way.
+      for (final text in <String>[doc, app]) {
+        expect(text, contains('happen either way'));
+        expect(text, contains('whether or not backup is on'));
+      }
+    });
+
     test('promises the deletion path the app actually implements', () {
       expect(app, contains('delete'));
       expect(app, contains('Lift'));
@@ -291,6 +323,8 @@ void main() {
       'the runs themselves': 'route points',
       'the training plan': 'generated plans',
       'the coach conversation': 'what you say to your coach',
+      'a reported coach reply': 'if you report one of the coach',
+      'the note written on a run': 'any note you write on a run',
       'the usage meter': 'how many tokens',
     };
 
@@ -459,6 +493,32 @@ void main() {
         isNot(contains('structured training context')),
         reason: 'the understated claim is back on the live page',
       );
+    });
+
+    test('no page says not to publish it while it is published', () {
+      // The generator printed "DO NOT PUBLISH until: the publication date"
+      // into every page for three weeks after the policy was dated, because
+      // the blocker outlived the token it named. It prints nothing now unless
+      // something is on the list.
+      for (final name in <String>[
+        'privacy-policy.html',
+        'medical-disclaimer.html',
+        'terms-of-use.html',
+      ]) {
+        final raw = File('../../web/public/run/$name').readAsStringSync();
+        expect(raw, isNot(contains('DO NOT PUBLISH')), reason: name);
+      }
+    });
+
+    test('and the page makes the claims tonight added', () {
+      final page = readPublished('privacy-policy.html');
+      for (final phrase in <String>[
+        'asks your permission',
+        'up to four older messages',
+        'if you report one of the coach',
+      ]) {
+        expect(page, contains(phrase), reason: 'the page lacks: $phrase');
+      }
     });
 
     test('neither page has been edited by hand', () {

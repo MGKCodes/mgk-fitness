@@ -43,9 +43,17 @@ rather than code so that adding a SKU, or changing a price, does not need a
 deploy. An unmapped product id writes nothing and says so in the log, which is
 the safe direction: the alternative is a default that grants something.
 
-`REVENUECAT_ACCEPT_SANDBOX=true` honours sandbox purchases. **Development
-only.** A sandbox event is a real event from a fake payment, so accepting them
-in production lets anybody with a tester account grant themselves a coach.
+`REVENUECAT_ACCEPT_SANDBOX=true` honours sandbox purchases. **The code
+defaults to `false`, and production sets it to `true` on purpose**
+([ADR-0037](../../../apps/mgk_run/docs/decisions/0037-the-sandbox-stays-open-in-production.md)).
+App Review buys in the sandbox, against the production build: with the flag
+off, the reviewer's purchase is ignored as `sandbox`, no row is written, and
+the coach stays locked behind a purchase that went through. The cost is that
+the people who can make a sandbox purchase — TestFlight testers, sandbox Apple
+IDs, Play licence testers, App Review — get a coach without paying, for as long
+as a sandbox subscription lasts. That is a list we write, as long as there is
+never a public TestFlight link. A project that has not decided gets the safe
+default. This paragraph said "development only" until 2026-09-29.
 
 ## Wiring the webhook
 
@@ -101,6 +109,11 @@ an incoming event must be strictly newer to win.
 - A late `EXPIRATION` cannot revert a live `RENEWAL` that arrived first.
 - A row with `event_ms IS NULL` — inserted by hand, as the TestFlight sheet
   does — loses to the first real event rather than blocking it forever.
+- An `EXPIRATION` that never arrives, or that a later `CANCELLATION` outranks
+  on `event_ms`, leaves the row `active` after the period has ended. This
+  function does not correct for that — it writes only what the store said —
+  but the coach's gate does: `tierFor` stops granting an `active` row a day
+  after its `expires_at`.
 
 ## Testing
 

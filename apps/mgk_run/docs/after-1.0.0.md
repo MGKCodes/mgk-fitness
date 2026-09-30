@@ -8,10 +8,10 @@ they are still only subjects, and a checklist row nobody can finish is a row
 that never goes green.
 
 **Everything else from that field test is 1.0.0 scope**, and it is tracked in
-`app-store-1.0.0.md`, which is the only checklist carrying state. The defects
-are recorded against their rows in
-[testflight-1.0.0-test-sheet.md](testflight-1.0.0-test-sheet.md). Nothing on
-this page is a defect and nothing on it blocks submission.
+`app-store-1.0.0.md`, which is the only checklist carrying state. Its defects
+were fixed, and [the test sheet](testflight-1.0.0-test-sheet.md) re-tests
+them. Nothing in sections 1 to 3 is a defect, and **nothing on this page blocks
+submission**.
 
 **This document exists so these are not mistaken for either done or
 forgotten** — which is the only fate available to an unspecified item that lives
@@ -24,9 +24,18 @@ is written down, and the filing rule below applies to it in one direction only:
 it needs no specification, so it is ready to become work whenever the release
 after this one has room.
 
-It is a work document, so it has an end date: it ends when both entries have
-either a specification or a written decision not to build them, and it is
-archived then rather than maintained. See [the filing rule](README.md).
+**A fourth section was added on 2026-09-29, and it is the long one.** The
+pre-release review that day found real problems that do not block submission,
+and each was either fixed for build 26 or written down in section 4 with a date
+to look at it again. They are specified, so they are work, not subjects; they
+are here rather than on [app-store-1.0.0.md](app-store-1.0.0.md) because that
+page is the list of what stands between build 26 and the stores, and none of
+these does.
+
+It is a work document, so it has an end date: it ends when the first two
+entries have a specification or a written decision not to build them, and every
+row of section 4 is built or decided against. It is archived then rather than
+maintained. See [the filing rule](README.md).
 
 ---
 
@@ -103,7 +112,76 @@ and shows an unavailable state on a phone that has neither.
 
 ---
 
-## What has to happen before either becomes work
+## 4. Deferred by the 2026-09-29 review
+
+One line each. **Revisit** is the date to pick it up or decide against it, not
+a promise to ship by then.
+
+### Payments and the webhook
+
+| Item | Revisit |
+|---|---|
+| **Grace periods, before the first renewal cycle.** A `BILLING_ISSUE` writes `grace`, which grants nothing, so a runner whose card fails loses the coach at once while the store is still retrying. Either grant during the store's grace window (`grace_period_expiration_at_ms`), or turn grace off in Play Console so the two stores behave alike | 2026-11-01 |
+| **`TRANSFER` events are ignored.** They carry no `app_user_id`, so the webhook refuses them; handling one needs a RevenueCat secret key to fetch the new owner's entitlements | 2026-11-01 |
+| **The webhook's read-then-write watermark can race.** Two events for one user can both read the old `event_ms` and both write. Make it one atomic SQL upsert with the `event_ms` condition inside it | 2026-11-01 |
+| **`PRODUCT_CHANGE` writes the old product**, so a move between tiers is recorded as the tier being left | 2026-11-01 |
+| **Sandbox grants look like paid ones** in `core.entitlements`. An `environment` column makes them countable (ADR-0037) | 2026-11-01 |
+
+### The coach and its spend
+
+| Item | Revisit |
+|---|---|
+| **Per-field clamps on coach requests, and a reserve-before-spend limiter.** The request size is capped as a whole, and a request is counted after it has spent, so requests arriving together can pass a ceiling together | 2026-10-15 |
+| **`daily-ai-summary`** is a legacy Liftio function that is still deployed, and any signed-in user can make it spend. Recommended: undeploy it. Never redeploy it from `main` | 2026-10-06 |
+| **The coach does not check the AI consent itself.** The app refuses to send without it; the Edge Function should refuse too (ADR-0036) | 2026-10-31 |
+| **Premium's sharper model**, chosen by bake-off, if Premium subscribers cancel at the first renewal without nearing Coach's ceiling (ADR-0038) | 2026-11-15 |
+
+### Data, deletion and retention
+
+| Item | Revisit |
+|---|---|
+| **`core.delete_account` can take too much or too little across apps.** The per-app sweep has to be right before a second app's users start deleting | Before Lift 2.0.0 is submitted |
+| **Retention is not enforced on a schedule.** The usage prune only runs when somebody makes a request, so a runner who stops using the coach keeps records past the 31 days the policy promises. Schedule it, or reword the policy | 2026-10-31 |
+| **Foreign keys that bind each row to its owner, and index housekeeping**, across `run` and `coach` | 2026-11-15 |
+| **Backup off, then on, never re-uploads the plan or the coach's memory**, only runs | 2026-10-31 |
+| **Turning backup off with no connection has no retry.** The server copy stays until the runner switches it on and off again online | 2026-10-31 |
+| **A same-account OS restore carries the backup answer across** (ADR-0035). Excluding it from iCloud and Google backup is native configuration | 2026-11-15 |
+
+### Plans, recording and the app
+
+| Item | Revisit |
+|---|---|
+| **Plan dates shift a day when the phone moves west** across time zones | 2026-11-15 |
+| **The server half of local dates.** The app sends `local_date` and `utc_offset_minutes` with every coach request; the server still reasons in UTC | 2026-10-31 |
+| **Adjusting a week from the Plan tab's week view** (`WeekAdjustSheet`) is not given the race-day calendar; Home's *Adjust this week* is | 2026-10-31 |
+| **Manual laps are discarded at Finish** | 2026-10-31 |
+| **A beginner at 0 km a week cannot build a plan** | 2026-10-31 |
+| **Android never asks for the notification permission** (Android 13+), so the "Recording your run" notification is hidden unless the runner turns notifications on | 2026-10-15 |
+| **Approximate location on Android is not detected.** The iPhone warns (`663f574`); Android's plugin reports "unknown", so a coarse-only run still records nothing | 2026-10-31 |
+
+### Accounts
+
+| Item | Revisit |
+|---|---|
+| **Email confirmation is off in Supabase Auth.** Turning it on needs custom SMTP and changes sign-up, so it is a product decision. The release plan asks for it before launch; this is the date if it is deferred | 2026-10-15 |
+
+### Before the repository goes public
+
+None of these matters while the repository is private, and all of them matter
+the day it is not.
+
+| Item | Revisit |
+|---|---|
+| **Pull requests from forks can reach Codemagic secrets.** Drop the `pull_request` trigger, or move the checks to GitHub Actions | Before going public |
+| **The `checks` workflow has never run**, and cannot pass as configured on `mac_mini_m2` | Before going public |
+| **`.gitignore` gaps** for keystores and credential files | Before going public |
+| **`scripts/codemagic-build.sh` does not validate its branch argument**, and the release workflows build from any branch | Before going public |
+| **No Content-Security-Policy header** on `web/` | Before going public |
+| **A demo JWT literal in `supabase/knowledge/sync.ts`** trips secret scanners | Before going public |
+
+---
+
+## What has to happen before 1 or 2 becomes work
 
 A specification, and it needs three things in this order:
 

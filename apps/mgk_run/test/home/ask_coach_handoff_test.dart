@@ -8,6 +8,8 @@ import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_gate_sheet.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
+import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 
 /// A chat backend that records what it was asked, so the hand-off can be
 /// asserted on the question rather than on the reply.
@@ -54,13 +56,21 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          // Already agreed, and the disclaimer already read: what the coach
+          // asks before it sends anything is pinned in
+          // the_coach_asks_before_anything_leaves_test.dart.
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // Pinned, because this drives a coach hand-off and the coach is
           // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
           // until 2026-09-04, when the gate moved into `_askCoach`: five
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -93,13 +103,18 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // Pinned, because this drives a coach hand-off and the coach is
           // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
           // until 2026-09-04, when the gate moved into `_askCoach`: five
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -131,13 +146,18 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           // Pinned, because this drives a coach hand-off and the coach is
           // the paid half (ADR-0030). It ran unpinned -- therefore `free` --
           // until 2026-09-04, when the gate moved into `_askCoach`: five
           // tests were exercising six ungated doors into the paid product,
           // which is how the hole survived review.
           access: CoachAccess.subscribed,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           initialTab: 2,
         ),
@@ -173,8 +193,13 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           access: CoachAccess.free,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,
@@ -223,8 +248,13 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: HomeShell(
+          aiConsent: InMemoryAiConsentStore.granted(),
+          disclaimer: InMemoryDisclaimerStore(acknowledged: true),
           access: CoachAccess.free,
-          auth: FakeAuthRepository(signedIn: true, email: 'dev@runio.app'),
+          auth: FakeAuthRepository(
+            signedIn: true,
+            email: 'dev@mgkfitness.mgkcodes.com',
+          ),
           historySource: () async => runs(),
           coach: FakeCoachService(),
           chatClient: chat,

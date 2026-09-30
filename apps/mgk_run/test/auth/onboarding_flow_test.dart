@@ -143,7 +143,9 @@ void main() {
       await tester.enterText(find.byType(TextField), 'Sam');
       await tester.tap(find.byTooltip('Continue'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Allow location'));
+      await tester.tap(
+        find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
+      );
       await tester.pumpAndSettle();
     }
 
@@ -325,7 +327,11 @@ void main() {
           historySource: () async => const [],
           requestPermission: (_) async => true,
           devAccounts: const <DevAccount>[
-            DevAccount(label: 'Dev', email: 'dev@runio.app', password: 'x'),
+            DevAccount(
+              label: 'Dev',
+              email: 'dev@mgkfitness.mgkcodes.com',
+              password: 'x',
+            ),
           ],
         ),
       ),

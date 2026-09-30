@@ -47,12 +47,28 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
-    onUpgrade: (m, from, to) async {
+    // **The whole upgrade runs as one transaction.** Drift's own
+    // `beforeOpen` does not wrap `onUpgrade` in one (nor does it bump
+    // `PRAGMA user_version` until this callback returns), so a process killed
+    // between two of the steps below used to leave the database with one
+    // statement applied, the schema version still at the old number, and
+    // every future launch re-running the same step against a column or table
+    // that already exists — "duplicate column name" forever, from a database
+    // no launch can open again.
+    //
+    // SQLite's DDL is fully transactional (unlike most SQL databases), so
+    // wrapping every step from `addColumn` to `createTable` to the
+    // best-efforts backfill in one `transaction()` costs nothing and buys the
+    // only thing that makes a multi-step migration safe to interrupt: either
+    // every step this launch needed lands, or none of them do, and a killed
+    // launch's retry starts from the exact version it was always at rather
+    // than from whatever the kill happened to catch mid-flight.
+    onUpgrade: (m, from, to) => transaction(() async {
       if (from < 2) {
         await m.addColumn(runs, runs.endedAt);
       }
@@ -149,7 +165,19 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(plans, plans.finishedAt);
         await m.addColumn(plans, plans.raceTimeS);
       }
-    },
+      if (from < 11) {
+        // A paused-total and a paused-since on the run row, so an interrupted
+        // run can be recovered with a duration that excludes its pauses (see
+        // `recoverInterruptedRun`). Additive and defaulted: every run already
+        // on disk was never paused as far as this column knows, which for a
+        // finished run is moot — [finalizeRun] already stored its true
+        // duration — and for the one still in progress when this migration
+        // runs is exactly the state recovery should find it in if the
+        // recorder never got a chance to write a real pause.
+        await m.addColumn(runs, runs.pausedTotalS);
+        await m.addColumn(runs, runs.notCountingSince);
+      }
+    }),
   );
 
   // --- Runs ------------------------------------------------------------------
@@ -239,6 +267,12 @@ class AppDatabase extends _$AppDatabase {
   /// state rather than a gap — `climbMeters` and `maxElevationMeters` answer
   /// null on a trace with no barometric altitude, and a null here renders as an
   /// absent tile rather than as `0 m`.
+  ///
+  /// [notes] is absent by default, so [stop]'s own call — which has nothing
+  /// to say — leaves whatever the runner already wrote untouched. Recovery
+  /// (`recoverInterruptedRun`) is the one caller that passes it: the honest,
+  /// visible marker that this summary was written by a launch finding the
+  /// run rather than by the runner pressing Finish.
   Future<void> finalizeRun({
     required String runId,
     required DateTime endedAt,
@@ -247,6 +281,7 @@ class AppDatabase extends _$AppDatabase {
     double? avgPaceSPerKm,
     double? elevationGainM,
     double? elevationMaxM,
+    String? notes,
   }) => (update(runs)..where((r) => r.id.equals(runId))).write(
     RunsCompanion(
       endedAt: Value(endedAt),
@@ -255,6 +290,25 @@ class AppDatabase extends _$AppDatabase {
       avgPaceSPerKm: Value(avgPaceSPerKm),
       elevationGainM: Value(elevationGainM),
       elevationMaxM: Value(elevationMaxM),
+      notes: notes == null ? const Value.absent() : Value(notes),
+    ),
+  );
+
+  /// Mirrors the recorder's pause bookkeeping onto the run row, so a process
+  /// death mid-run leaves a duration recovery can trust.
+  ///
+  /// Written from `pause()` and `resume()` rather than only at `stop()`: the
+  /// in-memory `_pausedTotal`/`_notCountingSince` pair is exactly this
+  /// column pair, and the whole point is that it has to already be on disk
+  /// before the kill, not computed afterward from data that no longer exists.
+  Future<void> updateRunPauseState({
+    required String runId,
+    required int pausedTotalS,
+    DateTime? notCountingSince,
+  }) => (update(runs)..where((r) => r.id.equals(runId))).write(
+    RunsCompanion(
+      pausedTotalS: Value(pausedTotalS),
+      notCountingSince: Value(notCountingSince),
     ),
   );
 

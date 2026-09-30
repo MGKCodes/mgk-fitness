@@ -89,9 +89,20 @@ class BackupScreen extends StatelessWidget {
               style: bodyDim,
             ),
             const SizedBox(height: AppSpacing.md),
+            // "Off, everything stays on this phone" was false twice over:
+            // the coach sends training to the AI provider whatever this
+            // switch says, and the phone's own backup can hold a copy. What
+            // the switch decides is our servers.
             Text(
-              'Off, everything stays on this phone — which means a lost phone '
-              'loses it. On, you can pick up on a new one.',
+              'Off, none of it is kept on our servers, so a lost phone loses '
+              "it unless the phone's own backup has it. On, you can pick up on "
+              'a new one.',
+              style: bodyDim,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Using the coach is separate: it sends what it needs to answer '
+              'when you use it, whether this is on or off, and it asks first.',
               style: bodyDim,
             ),
 
