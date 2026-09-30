@@ -5,6 +5,11 @@ file is the **whole** template: open it, copy everything, and paste it into
 Supabase › Authentication › Emails › Templates, with the subject below.
 `config.toml` points the local stack at the same files.
 
+**A saved template takes a minute or two to reach the mail.** Supabase restarts
+its auth server to apply it, and an email sent in between still uses the old
+one; the first test of the light-first design went out that way on
+30 September. Wait a couple of minutes after saving before testing.
+
 | File | Dashboard template | Subject | Sent when |
 |---|---|---|---|
 | `recovery.html` | Reset password | `Choose a new password` | "Forgot your password?" in either app |
