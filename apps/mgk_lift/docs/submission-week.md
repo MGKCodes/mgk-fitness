@@ -23,7 +23,7 @@ written here, change the item and say why.
 |---|---|---|
 | The app | The redesign is finished: 68 of 68 items in [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), merged into `develop` beside Run | `flutter analyze` clean and 860 tests passing, run 1 October |
 | The screens | 86 plates on the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1), version 16 | Rendered from `develop` at `db88a4f`. Every plate matches version 15's, so the merge changed nothing on screen |
-| Edge Functions | `coach` v31, `revenuecat` v10, `delete-account` v18 | Listed from production, 1 October |
+| Edge Functions | `coach` v31, `revenuecat` v10, `delete-account` v19 | Listed from production, 1 October |
 | Database | `20260929120000_lift_save_workout.sql` is **not applied**. The ledger ends at `release_hardening` | Listed from production, 1 October. The app falls back to four requests per workout, so nothing is broken |
 | The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October |
 | Email and sign-in | SMTP2GO, email confirmation on, Apple and Google configured | Recorded done on 30 September in [store-setup.md](store-setup.md) steps 6 and 7. Not checked again today |
@@ -31,11 +31,13 @@ written here, change the item and say why.
 | The stores | No Lift product is recorded as created in App Store Connect, Play or RevenueCat, nor the Codemagic group `mgk_fitness_lift_env` | No dashboard box in store-setup.md steps 0, 1, 3, 4 or 5 is ticked, and the group is commented out in both Lift workflows. Not checked in the dashboards themselves |
 
 **Built on 1 October, on the branch `docs/lift-release-checklist`, and not yet
-merged, deployed or live:** "Delete my Lift data" taking the progress photos
-(the function, a migration, the app's wording, the policy and the web page),
-and the support address `lift@mgkfitness.mgkcodes.com` everywhere Lift names
-one. Analyzer clean, 860 Lift tests and 16 function tests passing. The database
-test for the migration is written and has not run: this machine has no Docker.
+merged into `develop`:** "Delete my Lift data" taking the progress photos (the
+function, a migration, the app's wording, the policy and the web page), and
+the support address `lift@mgkfitness.mgkcodes.com` everywhere Lift names one.
+The function is deployed; the migration is not applied and the web pages are
+not live (step 1 below). Analyzer clean, 860 Lift tests and 16 function tests
+passing. The database test for the migration is written and has not run: this
+machine has no Docker.
 
 Two things follow from that table.
 
@@ -106,10 +108,17 @@ recorded as ticked items.
 - [ ] **Roll out photo deletion, in this order.** The order matters: rows
       deleted before the function knows to sweep would leave picture files
       with nothing pointing at them.
-      1. Deploy `delete-account` *(Claude, on Matthew's go)*. Harmless on its
-         own.
-      2. Apply `20261001120000_lift_deletion_takes_progress_photos.sql`
-         *(Matthew)*, then rename it to the version the ledger records.
+      1. ~~Deploy `delete-account`.~~ **Done 1 October: version 19**, from
+         `96c4f4c`. Production's version 18 and its `core.delete_account` were
+         checked first and were byte for byte what the repository holds, so
+         the deploy changed only what the commit changed. It answers, and
+         behaves as before until step 2.
+      2. Apply `20261001120000_lift_deletion_takes_progress_photos.sql`, then
+         rename it to the version the ledger records. **Waiting on Matthew:**
+         he said to go ahead, and Claude Code's auto mode refused the
+         migration all the same. Either allow `mcp__supabase__apply_migration`
+         in `.claude/settings.local.json`, or paste the file into the Supabase
+         SQL editor.
       3. Prove it on a throwaway account that has a run and a photo: a
          Lift-only deletion removes the photo row and the file, and leaves the
          login *(both)*.
