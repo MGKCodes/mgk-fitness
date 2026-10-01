@@ -29,8 +29,8 @@
      editing the policy.
 -->
 
-**Last updated:** 30 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
-hello@mgkcodes.com
+**Last updated:** 1 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+lift@mgkfitness.mgkcodes.com
 
 ## Summary
 
@@ -137,8 +137,9 @@ the photos and the coach are kept apart in the first place.
 
 Deleting a photo removes it from both, immediately. If your subscription ends
 the photos you already have stay, and you can still look at them and delete
-them; only taking new ones stops. Delete account removes them from our servers
-along with everything else, the picture files included.
+them; only taking new ones stops. Delete account removes them from our servers,
+the picture files included, whether you delete only this app's data or your
+whole account.
 
 ## Where data is stored
 
@@ -162,13 +163,14 @@ the address Apple gives us is not one any other account uses.
 
 Under UK GDPR you can access, correct, export, or delete your data, and withdraw
 consent. Delete account removes every record we hold for you — your sessions,
-exercises and sets, your plans, your coach conversations and your usage records.
-Your phone keeps its own copy until you uninstall.
+exercises and sets, your plans, your progress photos, your coach conversations
+and your usage records. Your phone keeps its own copy until you uninstall.
 
 **Deletion asks how much**, because your login is your MGKFitness account and it
 is shared with MGKFitness: Run. Delete this app only, and we erase everything
-this app holds; your account survives so Run keeps working. Delete your whole
-account, and everything Run holds goes too, along with the login itself.
+this app holds, your progress photos included; your account survives so Run
+keeps working. Delete your whole account, and everything Run holds goes too,
+along with the login itself.
 
 One thing the narrow choice cannot promise: if Run holds no data, there is
 nothing left for the account to be for, so it is removed as well. We tell you
@@ -190,6 +192,6 @@ their data.
 
 ## Contact
 
-MGKCodes Ltd — hello@mgkcodes.com.
+MGKCodes Ltd — lift@mgkfitness.mgkcodes.com.
 
 Controller: MGKCodes Ltd. We note the date this policy changes.

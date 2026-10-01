@@ -12,7 +12,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(20);
 
 -- ---------------------------------------------------------------------------
 -- Two accounts. The first uses both apps, which is the case every interesting
@@ -53,11 +53,18 @@ begin
          (p_user, 'run',  'Runs on Tuesdays.', 1);
 
   perform coach.record_usage(p_user, 'lift_chat', 10, 10, 20, 0.001, false, 'ok');
+
+  -- One progress photo. Filed in `core`, and Lift's: nothing else reads it.
+  -- Epoch millis, as Liftio wrote them.
+  insert into core.progress_photos
+    (id, user_id, date, pose_type, storage_path, created_at, updated_at)
+  values (p_user || ':p', p_user, 0, 'front', p_user || '/front.jpg', 0, 0);
 end;
 $$;
 
 select pg_temp.seed('aaaaaaaa-0000-0000-0000-000000000001', 'both@example.com');
 select pg_temp.seed('bbbbbbbb-0000-0000-0000-000000000002', 'bystander@example.com');
+select pg_temp.seed('cccccccc-0000-0000-0000-000000000003', 'leaves-lift@example.com');
 
 
 -- ---------------------------------------------------------------------------
@@ -120,6 +127,13 @@ select isnt_empty(
   'coach.usage survives: it holds no content, and erasing it would reset the cap'
 );
 
+-- The photos are Lift's, so Run leaving does not touch them.
+select isnt_empty(
+  $$select 1 from core.progress_photos
+     where user_id = 'aaaaaaaa-0000-0000-0000-000000000001'$$,
+  'Run leaving keeps the progress photos, which are Lift''s'
+);
+
 -- 10: the login stays, because an app still holds data.
 select is(
   (select (core.delete_account('aaaaaaaa-0000-0000-0000-000000000001', 'run')
@@ -130,8 +144,48 @@ select is(
 
 
 -- ---------------------------------------------------------------------------
+-- The other partial deletion: Lift leaves, Run stays. The photos go with Lift
+-- although the account survives — they sat in `core` and used to be kept until
+-- the last app left, which kept photographs of somebody's body for an app they
+-- had deleted.
+-- ---------------------------------------------------------------------------
+
+select is(
+  (select (core.delete_account('cccccccc-0000-0000-0000-000000000003', 'lift')
+           ->> 'photos_deleted')::boolean),
+  true,
+  'Lift leaving reports its photos deleted, which is what sweeps the bucket'
+);
+
+select is_empty(
+  $$select 1 from core.progress_photos
+     where user_id = 'cccccccc-0000-0000-0000-000000000003'$$,
+  'Lift leaving takes the progress photo rows, with Run still on the account'
+);
+
+select isnt_empty(
+  $$select 1 from run.runs where user_id = 'cccccccc-0000-0000-0000-000000000003'$$,
+  'and Run keeps its training data'
+);
+
+select is(
+  (select (core.delete_account('cccccccc-0000-0000-0000-000000000003', 'lift')
+           ->> 'auth_user_deletable')::boolean),
+  false,
+  'the login stays while Run still holds data'
+);
+
+
+-- ---------------------------------------------------------------------------
 -- The bystander is untouched throughout.
 -- ---------------------------------------------------------------------------
+
+select isnt_empty(
+  $$select 1 from core.progress_photos
+     where user_id = 'bbbbbbbb-0000-0000-0000-000000000002'$$,
+  'another account keeps its progress photos'
+);
+
 
 select is(
   (select count(*)::int from coach.summaries

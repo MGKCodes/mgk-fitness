@@ -131,8 +131,9 @@ const LegalDocument privacyPolicy = LegalDocument(
         'Deleting a photo removes it from both, immediately. If your '
             'subscription ends the photos you already have stay, and you can '
             'still look at them and delete them; only taking new ones stops. '
-            'Delete account removes them from our servers along with '
-            'everything else, the picture files included.',
+            'Delete account removes them from our servers, the picture files '
+            "included, whether you delete only this app's data or your whole "
+            'account.',
       ],
     ),
     LegalSection(
@@ -164,13 +165,14 @@ const LegalDocument privacyPolicy = LegalDocument(
         'Under UK GDPR you can access, correct, export, or delete your data, '
             'and withdraw consent. Delete account removes every record we hold '
             'for you — your sessions, exercises and sets, your plans, your '
-            'coach conversations and your usage records. Your phone keeps its '
-            'own copy until you uninstall.',
+            'progress photos, your coach conversations and your usage '
+            'records. Your phone keeps its own copy until you uninstall.',
         'Deletion asks how much, because your login is your $kPlatformName '
             'account and it is shared with $kPlatformName: Run. Delete this '
-            'app only, and we erase everything this app holds; your account '
-            'survives so Run keeps working. Delete your whole account, and '
-            'everything Run holds goes too, along with the login itself.',
+            'app only, and we erase everything this app holds, your progress '
+            'photos included; your account survives so Run keeps working. '
+            'Delete your whole account, and everything Run holds goes too, '
+            'along with the login itself.',
         'One thing the narrow choice cannot promise: if Run holds no data, '
             'there is nothing left for the account to be for, so it is removed '
             'as well. We tell you which happened rather than leaving you to '
@@ -199,7 +201,7 @@ const LegalDocument privacyPolicy = LegalDocument(
     ),
     LegalSection(
       heading: 'Contact',
-      paragraphs: <String>['MGKCodes Ltd — hello@mgkcodes.com.'],
+      paragraphs: <String>['MGKCodes Ltd — $kSupportEmail.'],
     ),
   ],
   footnote: 'Controller: MGKCodes Ltd. We note the date this policy changes.',
@@ -258,7 +260,7 @@ const LegalDocument termsOfUse = LegalDocument(
       paragraphs: <String>[
         'You do not need an account to track your training. If you make one, '
             'you are responsible for keeping your password secret and for what '
-            'happens under your account. Tell us at hello@mgkcodes.com if you '
+            'happens under your account. Tell us at $kSupportEmail if you '
             'think someone else has access to it. You must be 16 or over to '
             'create an account.',
       ],
@@ -312,7 +314,7 @@ const LegalDocument termsOfUse = LegalDocument(
         "Refunds are the store's decision, not ours. Apple and Google each run "
             'their own refund process and their own rules, and we cannot '
             'issue, refuse or speed up a refund. If something we did caused '
-            'the problem, email hello@mgkcodes.com and we will help you make '
+            'the problem, email $kSupportEmail and we will help you make '
             'the case.',
         'If a subscription lapses, your training stays on your device and in '
             'your account, and so do the progress photos you already took. '
@@ -370,7 +372,7 @@ const LegalDocument termsOfUse = LegalDocument(
     ),
     LegalSection(
       heading: 'Contact',
-      paragraphs: <String>['MGKCodes Ltd — hello@mgkcodes.com.'],
+      paragraphs: <String>['MGKCodes Ltd — $kSupportEmail.'],
     ),
   ],
   footnote: 'Provider: MGKCodes Ltd. We note the date these terms change.',
@@ -450,7 +452,7 @@ const LegalDocument aiDisclosure = LegalDocument(
     ),
     LegalSection(
       heading: 'Contact',
-      paragraphs: <String>['MGKCodes Ltd — hello@mgkcodes.com.'],
+      paragraphs: <String>['MGKCodes Ltd — $kSupportEmail.'],
     ),
   ],
 );

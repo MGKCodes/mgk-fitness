@@ -22,6 +22,8 @@
 //
 //   app omitted   erase everything, everywhere, and the login
 //   app: "run"    erase run.*; keep the login if lift.* still holds data
+//   app: "lift"   erase lift.* and the progress photos, rows and picture
+//                 files; keep the login if run.* still holds data
 //   apple         a fresh authorisation code from Apple, sent by an app whose
 //                 account has an Apple identity; when the login is deleted,
 //                 Apple's tokens are revoked with it (see apple.ts)
@@ -57,6 +59,7 @@ import {
   readAppleRequest,
   revokeAppleTokens,
 } from "./apple.ts";
+import { type DeletionSummary, sweepsProgressPhotos } from "./summary.ts";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -131,13 +134,6 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { ...CORS, "content-type": "application/json" },
   });
-}
-
-interface DeletionSummary {
-  deleted_rows?: Record<string, number>;
-  remaining_apps?: string[];
-  shared_deleted?: boolean;
-  auth_user_deletable?: boolean;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -233,16 +229,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //    body, retained after they asked to be erased, invisible to every query
   //    anybody would think to run.
   //
-  //    Keyed off the same flag the row sweep uses, so the two cannot drift.
-  //    `shared_deleted` is true exactly when step 4 of the routine ran, which is
-  //    when `core.progress_photos` was emptied — a partial deletion leaves both
-  //    the rows and the objects, which is right while the account still exists.
+  //    Keyed off what the row sweep reports, so the two cannot drift. The rows
+  //    go when Lift leaves, with or without the account, and whenever the last
+  //    app does; a Run-only deletion leaves both the rows and the objects,
+  //    which is right while Lift still holds them. See `sweepsProgressPhotos`.
   //
   //    Failure here is logged and does not fail the request. The rows are gone
   //    and the objects are unreachable without them; reporting a deletion as
   //    failed would invite a retry of something that has already mostly
   //    happened. The log is what turns it into a support job.
-  if (summary.shared_deleted === true) {
+  if (sweepsProgressPhotos(summary)) {
     await removeProgressPhotos(supabaseUrl, serviceKey, userId);
   }
 

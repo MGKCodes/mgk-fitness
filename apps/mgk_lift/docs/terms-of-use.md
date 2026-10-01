@@ -15,8 +15,8 @@
      mgkfitness.mgkcodes.com/lift, which is where this file is published.
 -->
 
-**Last updated:** 29 September 2026 · **Provider:** MGKCodes Ltd · **Contact:**
-hello@mgkcodes.com
+**Last updated:** 1 October 2026 · **Provider:** MGKCodes Ltd · **Contact:**
+lift@mgkfitness.mgkcodes.com
 
 <!-- The in-app copy of these terms lives in
      lib/src/features/legal/domain/legal_copy.dart. CHANGE BOTH TOGETHER — the
@@ -61,7 +61,7 @@ the [privacy policy](privacy-policy.md).
 
 You do not need an account to track your training. If you make one, you are
 responsible for keeping your password secret and for what happens under your
-account. Tell us at hello@mgkcodes.com if you think someone else has access to
+account. Tell us at lift@mgkfitness.mgkcodes.com if you think someone else has access to
 it. You must be 16 or over to create an account.
 
 ## Acceptable use
@@ -102,7 +102,7 @@ use. Premium Coach holds the same features as Coach, with far more room to talk.
 
 **Refunds are the store's decision, not ours.** Apple and Google each run their
 own refund process and their own rules, and we cannot issue, refuse or speed up
-a refund. If something we did caused the problem, email hello@mgkcodes.com and
+a refund. If something we did caused the problem, email lift@mgkfitness.mgkcodes.com and
 we will help you make the case.
 
 If a subscription lapses, your training stays on your device and in your
@@ -149,4 +149,4 @@ not take away rights you have under the law of the country you live in.
 
 ## Contact
 
-MGKCodes Ltd — hello@mgkcodes.com.
+MGKCodes Ltd — lift@mgkfitness.mgkcodes.com.

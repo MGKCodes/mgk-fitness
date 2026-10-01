@@ -124,8 +124,11 @@ void main() {
         'Progress photos are part of the paid tier.',
         'copied to a private storage bucket in our Supabase project',
         'They are never sent to the coach or to any AI provider.',
-        'Delete account removes them from our servers along with everything '
-            'else, the picture files included.',
+        // Both scopes, since 1 October 2026: a Lift-only deletion used to keep
+        // them, because they are filed with the account.
+        'Delete account removes them from our servers, the picture files '
+            "included, whether you delete only this app's data or your whole "
+            'account.',
       ]);
     });
 

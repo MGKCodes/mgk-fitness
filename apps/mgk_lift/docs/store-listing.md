@@ -162,8 +162,7 @@ account), **not used for tracking**, purpose **App Functionality** only.
 
 One check before submitting: open the RevenueCat SDK's privacy manifest
 (`PrivacyInfo.xcprivacy` in the built app, or RevenueCat's docs page on Apple
-privacy labels). If it declares a type not in this table, add it. Run's
-privacy-policy note 3 records the same open item.
+privacy labels). If it declares a type not in this table, add it.
 
 ### Age rating
 
@@ -191,7 +190,7 @@ review notes.
 | Short description | `Log a set in one tap. Rest timer that buzzes when locked. An optional AI coach.` [79] |
 | Full description | The App Store description above, with the last renewal line changed to: "Subscriptions renew monthly until cancelled, and can be managed in the Play Store under Payments and subscriptions." |
 | App category | Health & Fitness |
-| Contact email | `hello@mgkcodes.com` |
+| Contact email | `lift@mgkfitness.mgkcodes.com` |
 | Website | `https://mgkfitness.mgkcodes.com` |
 | Privacy policy | `https://mgkfitness.mgkcodes.com/lift/privacy` |
 

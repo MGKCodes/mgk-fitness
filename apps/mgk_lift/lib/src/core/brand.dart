@@ -33,3 +33,10 @@ const String kAppName = 'Lift';
 /// the same phrase meaning different things. The full name and "the app" both
 /// dodge it.
 const String kProductName = '$kPlatformName: $kAppName';
+
+/// Where a lifter writes to us: support, and anything the policy says to email.
+///
+/// One address for this app, on the suite's own domain. `docs/` and the pages
+/// under `web/` name it too, and `legal_copy_test.dart` holds the three
+/// together.
+const String kSupportEmail = 'lift@mgkfitness.mgkcodes.com';

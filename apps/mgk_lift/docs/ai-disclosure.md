@@ -73,4 +73,4 @@ message content — are pruned after 31 days.
 
 ## Contact
 
-MGKCodes Ltd — hello@mgkcodes.com.
+MGKCodes Ltd — lift@mgkfitness.mgkcodes.com.

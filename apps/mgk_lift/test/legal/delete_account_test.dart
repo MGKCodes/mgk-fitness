@@ -223,7 +223,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
-      expect(find.textContaining('hello@mgkcodes.com'), findsOneWidget);
+      expect(
+        find.textContaining('lift@mgkfitness.mgkcodes.com'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a failure leaves the session alone and says what went wrong', (

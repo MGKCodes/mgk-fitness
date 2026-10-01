@@ -181,9 +181,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           onChanged: (s) => setState(() => _scope = s),
           title: 'Delete my $kAppName data',
           body:
-              'Your sessions, exercises and sets, your plans, and your coach '
-              'conversations. Your $kPlatformName account stays, so '
-              '$kPlatformName: Run keeps working.',
+              'Your sessions, exercises and sets, your plans, your progress '
+              'photos and your coach conversations. Your $kPlatformName '
+              'account stays, so $kPlatformName: Run keeps working.',
         ),
         _ScopeChoice(
           key: const ValueKey<DeletionScope>(DeletionScope.everything),
@@ -332,12 +332,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   /// What actually happened, which is not always what was asked for.
   String _outcome(AccountDeletionResult result) {
     const String gone =
-        'Your sessions, exercises and sets, your plans and your coach '
-        'conversations have been removed from our servers.';
+        'Your sessions, exercises and sets, your plans, your progress photos '
+        'and your coach conversations have been removed from our servers.';
 
     if (result.loginCouldNotBeRemoved) {
       return '$gone Your login could not be removed, though — email '
-          'hello@mgkcodes.com and we will finish it by hand.';
+          '$kSupportEmail and we will finish it by hand.';
     }
     if (result.loginRetainedForOtherApp) {
       return '$gone Your $kPlatformName account is still active because '

@@ -42,10 +42,15 @@ until you know who is asking. Now the caller says.
 |---|---|
 | omitted | everything, everywhere, and the login |
 | `{"app":"run"}` | `run.*`; the login survives if `lift.*` still holds data |
-| `{"app":"lift"}` | `lift.*`; the login survives if `run.*` still holds data |
+| `{"app":"lift"}` | `lift.*` and the progress photos, rows and picture files; the login survives if `run.*` still holds data |
 
 When the last app goes, the coach data and the shared `core` rows go with it and
 the login is deleted.
+
+**Progress photos are Lift's**, though the table is `core.progress_photos`. They
+go whenever Lift does. The routine deletes the rows and reports
+`photos_deleted`; the function then empties `<user id>/` in the
+`progress-photos` bucket, which no SQL reaches ([`summary.ts`](summary.ts)).
 
 An app whose account has an Apple identity also sends
 `"apple": { "code": "<fresh authorisation code>", "client_id": "<its bundle id>" }`;
@@ -92,6 +97,12 @@ is logged as `not_configured`.
 `core` must be in the dashboard's **Exposed schemas** list, or the RPC 404s and
 every deletion returns `500 delete_failed`.
 
+**One change goes the other way round.**
+`20261001120000_lift_deletion_takes_progress_photos.sql` makes a Lift-only
+deletion remove the photo rows. Deploy the function **before** applying it: the
+old function would not sweep the bucket for that deletion, and the picture
+files would be left with no row pointing at them.
+
 ## Two things worth knowing before changing this
 
 **The sweep enumerates tables by their `user_id` column**, not a hard-coded
@@ -133,6 +144,7 @@ enforced on the App Store build, which does send one.
 
 ```sh
 deno test          # apple_test.ts: a fake Apple, and a key made in the test
+                   # summary_test.ts: when the picture files are swept
 ```
 
 ## Try it

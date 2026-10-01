@@ -1,6 +1,7 @@
 import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/data/provider_ids.dart';
 import '../domain/account_deleter.dart';
 
@@ -122,7 +123,7 @@ class AccountDeletionService implements AccountDeleter {
           'Nothing was removed. Please update the app and try again.',
     'not_configured' =>
       'Deletion is not set up on the server yet. '
-          'Email hello@mgkcodes.com and we will remove your data.',
+          'Email $kSupportEmail and we will remove your data.',
     'delete_failed' =>
       'The server could not complete the deletion. '
           'Nothing was removed. Please try again.',
