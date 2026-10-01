@@ -36,10 +36,12 @@ library;
 import 'package:mgk_units/mgk_units.dart';
 
 import '../../recording/domain/run_summary.dart';
+import 'pace_model.dart';
 import 'plan_shape.dart';
 import 'prescribed_distance.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
+import 'training_plan.dart';
 
 /// How close race day has to be before the app starts saying so.
 ///
@@ -477,4 +479,102 @@ String raceChatOpener({
   }
   return 'I ran my $name in ${result.time.hoursMinutesSeconds}. What do you '
       'make of it, and what should I do next?';
+}
+
+/// The weekday of [slot]'s week the race falls on, or null when it is not in
+/// that week, or when the plan is not aimed at a date at all.
+///
+/// **The one place weekdays meet the race's date**, for the builder and for
+/// every screen that draws a week. The plan model carries no dates by design,
+/// so this is asked of the plan rather than stored on the week.
+int? raceWeekdayIn(StoredPlan plan, SkeletonWeek slot) {
+  final DateTime? event = plan.profile.eventDate;
+  if (event == null || shapeOf(plan.profile) != PlanShape.block) return null;
+  final DateTime race = DateTime(event.year, event.month, event.day);
+  for (var weekday = 1; weekday <= 7; weekday++) {
+    final DateTime on = plan.dateFor(weekIndex: slot.index, weekday: weekday);
+    if (DateTime(on.year, on.month, on.day).isAtSameMomentAs(race)) {
+      return weekday;
+    }
+  }
+  return null;
+}
+
+/// Race day as the plan's own screens draw it.
+///
+/// **The Plan tab had no race day.** Home has announced it since ADR-0027; the
+/// week list, the calendar and the week's own screen drew whatever the stored
+/// week held for that date, which was a rest day at best and a training run at
+/// worst. A runner looking at the week of their race saw seven ordinary rows
+/// and no race.
+///
+/// Derived from the profile at read time and never stored, so a plan built by
+/// any earlier build is covered the moment it is opened.
+class RaceDayEntry {
+  const RaceDayEntry({
+    required this.weekday,
+    required this.distanceMeters,
+    this.raceName,
+    this.expected,
+  });
+
+  /// 1 = Monday.
+  final int weekday;
+
+  final double distanceMeters;
+
+  /// "Marathon", "10K". Null for a distance nobody has a word for.
+  final String? raceName;
+
+  /// What the runner's own time trial predicts, or null when they have none.
+  final Duration? expected;
+
+  /// "42.2 km", "10 km": the distance entered, exact where it is not whole.
+  String distanceLabel(UnitSystem unit) {
+    final Distance d = Distance.meters(distanceMeters);
+    final double shown = unit.isMetric ? d.kilometers : d.miles;
+    final bool whole = (shown - shown.roundToDouble()).abs() < 0.05;
+    return d.format(unit, fractionDigits: whole ? 0 : 1);
+  }
+
+  /// The line under "Race day": the race's name and the time to expect.
+  ///
+  /// "About", and on a time trial, because that is all it is: one result run
+  /// through Riegel's formula. Rounded to the minute for the same reason.
+  String detail() => <String>[
+    ?raceName,
+    if (expected != null) 'about ${aboutRaceTime(expected!)}',
+  ].join(' · ');
+}
+
+/// [slot]'s race day, or null when the race is not in that week.
+RaceDayEntry? raceDayIn(StoredPlan plan, SkeletonWeek slot) {
+  final int? weekday = raceWeekdayIn(plan, slot);
+  if (weekday == null) return null;
+  final double meters = plan.profile.goalDistanceMeters!;
+  return RaceDayEntry(
+    weekday: weekday,
+    distanceMeters: meters,
+    raceName: raceName(meters),
+    expected: expectedRaceTime(plan.profile),
+  );
+}
+
+/// What [profile]'s time trial predicts for their race, or null without one.
+Duration? expectedRaceTime(RunnerProfile profile) {
+  final double? goal = profile.goalDistanceMeters;
+  final double? trial = profile.timeTrialDistanceMeters;
+  final Duration? time = profile.timeTrialDuration;
+  if (goal == null || trial == null || time == null) return null;
+  if (goal <= 0 || trial <= 0 || time <= Duration.zero) return null;
+  return riegelPredict(Distance.meters(trial), time, Distance.meters(goal));
+}
+
+/// A predicted race time, as loosely as it is known: "3 h 27 min", "48 min".
+String aboutRaceTime(Duration time) {
+  final int minutes = (time.inSeconds / 60).round();
+  if (minutes < 60) return '$minutes min';
+  final int h = minutes ~/ 60;
+  final int m = minutes % 60;
+  return m == 0 ? '$h h' : '$h h $m min';
 }

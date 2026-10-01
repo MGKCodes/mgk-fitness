@@ -63,6 +63,13 @@ class SkeletonWeek {
   final double volumeMeters;
   final double longRunMeters;
   final bool isDeload;
+
+  /// What this week asks for outside its long run.
+  ///
+  /// The running a race week holds ahead of the race: the race takes the long
+  /// run's place, so the week is judged against what is left (ADR-0044).
+  double get beforeRaceMeters =>
+      volumeMeters > longRunMeters ? volumeMeters - longRunMeters : 0;
 }
 
 /// The full skeleton — the sequence of weeks.

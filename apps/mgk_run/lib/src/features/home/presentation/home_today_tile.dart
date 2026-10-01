@@ -61,7 +61,7 @@ class HomeTodayTile extends StatelessWidget {
     this.lastRun,
     this.outcomes = const <int, DayOutcome>{},
     this.onOpenCoach,
-    this.onAdjustWeek,
+    this.onAddTreadmillRun,
     this.onCloseRace,
   });
 
@@ -94,14 +94,17 @@ class HomeTodayTile extends StatelessWidget {
 
   final Map<int, DayOutcome> outcomes;
   final VoidCallback? onOpenCoach;
-  final VoidCallback? onAdjustWeek;
+
+  /// Opens the add-a-run form on Treadmill, for the run the phone cannot
+  /// record. Null hides it.
+  final VoidCallback? onAddTreadmillRun;
 
   /// Opens the flow that records what they ran and ends the plan.
   ///
   /// One callback for both answers — "here is my time" and "I did not race" —
   /// because they are the same question and the sheet behind this asks it once.
   /// Null hides the offer rather than showing a control that does nothing,
-  /// which is the same rule [onAdjustWeek] follows.
+  /// which is the same rule [onAddTreadmillRun] follows.
   final VoidCallback? onCloseRace;
 
   /// Whether a run is already on record for today.
@@ -211,35 +214,28 @@ class HomeTodayTile extends StatelessWidget {
           // already on screen is a line spent sending somebody somewhere they
           // can see from where they are standing.
 
-          // Under everything and quiet, but on Home rather than three taps into
-          // the Plan tab. A plan that will not bend is this category's loudest
-          // complaint, and the runner who needs to bend it is ill, sore or
-          // already behind — not in the mood to compose a paragraph at a chat
-          // box, which was the only way in.
+          // **The run this screen cannot record.** Every way out of this card
+          // started the GPS recorder, and a treadmill has no GPS: the only way
+          // to log one was the "Add a run" at the top of the log, two tabs
+          // away from the button a runner presses to go running. Under
+          // everything and quiet, because outdoors is still what Start means.
           //
-          // On a rest day too: "I'm ill" is not a thing that waits for a
-          // session to be scheduled before it is true.
+          // Not on race day or after it. Those two states are about one run,
+          // and it was not on a treadmill.
           //
-          // Not on race day and not afterwards. There is nothing left to bend:
-          // the week the runner would be adjusting is the one they have
-          // already run, and the coach cannot move a session that has been the
-          // point of the whole block since January.
-          //
-          // Nor before the plan starts: "this week" is not a plan week yet, and
-          // the coach is one tap away for anything about the first one.
-          if (onAdjustWeek != null &&
-              !racing &&
-              session?.startsOn == null) ...<Widget>[
+          // "Adjust this week" stood here until build 28. It is on the Plan
+          // tab now, under the week it adjusts.
+          if (onAddTreadmillRun != null && !racing) ...<Widget>[
             const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,
               // A bordered control rather than a dimmed line. It does
-              // something — it opens the flow that rewrites the week — and a
-              // thing that does something should look like it can be pressed
-              // rather than like a sentence that happens to be tappable.
+              // something, and a thing that does something should look like
+              // it can be pressed rather than like a sentence that happens to
+              // be tappable.
               child: _SecondaryAction(
-                label: 'Adjust this week',
-                onPressed: onAdjustWeek,
+                label: 'Add a treadmill run',
+                onPressed: onAddTreadmillRun,
               ),
             ),
           ],

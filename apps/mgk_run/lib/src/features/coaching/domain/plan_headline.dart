@@ -3,6 +3,7 @@ import '../../recording/domain/run_summary.dart';
 import '../presentation/session_labels.dart';
 import 'plan_shape.dart';
 import 'prescribed_distance.dart';
+import 'race_day.dart';
 import 'readiness.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
@@ -283,12 +284,22 @@ String weekSubtitle(
   // sessions rounded to whole miles add to 24 where 40 km converts to 25. A
   // runner who adds up seven rows and gets a different number has found a bug,
   // whatever the tolerance says.
+  final bool raceWeek = raceWeekdayIn(plan, slot) != null;
   final volume = week == null
-      ? Distance.meters(slot.volumeMeters).format(unit, fractionDigits: 0)
+      ? Distance.meters(
+          raceWeek ? slot.beforeRaceMeters : slot.volumeMeters,
+        ).format(unit, fractionDigits: 0)
       : formatPrescribedTotal(week.runs.map((s) => s.distanceMeters), unit);
 
   if (!shapeOf(plan.profile).progresses) {
     return provisional ? '$volume · firms up closer' : '$volume planned';
+  }
+
+  // The week of the race says so. "Taper · 24 km planned" over it was true of
+  // the arithmetic and silent about the only thing in the week that matters.
+  if (raceWeek) {
+    final ordinal = showWeekNumber ? ' · week ${slot.index}' : '';
+    return 'Race week · $volume before the race$ordinal';
   }
 
   final phase = slot.isDeload ? 'Deload' : phaseLabel(slot.phase);

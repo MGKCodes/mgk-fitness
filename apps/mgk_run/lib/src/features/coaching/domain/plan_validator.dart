@@ -404,6 +404,10 @@ ValidationResult validateWeek(
   // model deliberately carries no dates at all -- a [PlannedSession] knows only
   // its weekday, and dates are reattached by [StoredPlan] at read time. The
   // caller that has the calendar passes it; the many that do not are unchanged.
+  // Whether this is the week the race is in. Known only to a caller with a
+  // calendar, like the date rules below, and it changes what the week is
+  // measured against (ADR-0044).
+  var raceWeek = false;
   if (weekStart != null) {
     final DateTime start = DateTime(
       weekStart.year,
@@ -420,6 +424,28 @@ ValidationResult validateWeek(
             profile.eventDate!.month,
             profile.eventDate!.day,
           );
+
+    raceWeek =
+        race != null &&
+        !race.isBefore(start) &&
+        daysBetweenDates(start, race) < 7;
+
+    // **The race is the long run in race week.** A second one, the day before
+    // or any other day, is the one thing a week cannot ask for and still be
+    // the week of a race. One already run is a matter of record and stands.
+    if (raceWeek) {
+      final settled = soFar?.settledWeekdays ?? const <int>{};
+      if (week.sessions.any(
+        (s) => s.kind == SessionKind.long && !settled.contains(s.weekday),
+      )) {
+        v.add(
+          const Violation(
+            'long_run_in_race_week',
+            'a long run is scheduled in the week of the race',
+          ),
+        );
+      }
+    }
 
     for (final s in week.sessions) {
       if (s.kind == SessionKind.rest) continue;
@@ -584,7 +610,10 @@ ValidationResult validateWeek(
       ? week.longRunMeters
       : _longRunAhead(week, soFar);
   final judgedVolume = week.volumeMeters + (soFar?.unplannedMeters ?? 0);
-  if (judgedLongRun > judgedVolume * rules.longRunMaxFraction + 1) {
+  // Not asked of race week. It has no long run, and with two or three short
+  // runs the longest of them is half the week by arithmetic alone.
+  if (!raceWeek &&
+      judgedLongRun > judgedVolume * rules.longRunMaxFraction + 1) {
     v.add(
       Violation(
         'long_run_fraction',
@@ -602,16 +631,20 @@ ValidationResult validateWeek(
     );
   }
 
-  // Weekly volume tracks the skeleton slot it was generated for.
-  if (slot.volumeMeters > 0 &&
-      (week.volumeMeters - slot.volumeMeters).abs() >
-          slot.volumeMeters * rules.weekVolumeTolerance) {
+  // Weekly volume tracks the skeleton slot it was generated for. In race week
+  // that is the slot less its long run, which the race replaces.
+  final double slotVolume = raceWeek
+      ? slot.beforeRaceMeters
+      : slot.volumeMeters;
+  if (slotVolume > 0 &&
+      (week.volumeMeters - slotVolume).abs() >
+          slotVolume * rules.weekVolumeTolerance) {
     v.add(
       Violation(
         'week_volume',
         'week volume (${week.volumeMeters.round()} m) is not within '
             '${(rules.weekVolumeTolerance * 100).round()}% of the slot '
-            '(${slot.volumeMeters.round()} m)',
+            '(${slotVolume.round()} m)',
       ),
     );
   }
@@ -630,7 +663,8 @@ ValidationResult validateWeek(
     slot.longRunMeters * rules.longRunTolerance,
     prescribedGridSlackMeters,
   );
-  if (slot.longRunMeters > 0 &&
+  if (!raceWeek &&
+      slot.longRunMeters > 0 &&
       (week.longRunMeters - slot.longRunMeters).abs() > longRunBand) {
     v.add(
       Violation(

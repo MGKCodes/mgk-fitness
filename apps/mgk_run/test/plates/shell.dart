@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
+import 'package:mgk_run/preview/fake_plan_client.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
+import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
@@ -59,6 +61,9 @@ void main() {
         planStore: store,
         historySource: () async => runs,
         coach: FakeCoachService(),
+        // Somewhere to write a run, as the shipping app has: without it the
+        // today card has no "Add a treadmill run".
+        runEditor: RunEditor(db: db),
         // A runner with a plan is a subscriber: the plan is the coach's.
         access: CoachAccess.subscribed,
       ),
@@ -76,6 +81,7 @@ void main() {
       tester,
       'shell-profile',
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
@@ -97,10 +103,43 @@ void main() {
       tester,
       'shell-plan',
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
         coach: FakeCoachService(),
+        // A coach that can bend a week, as the shipping app has: without it
+        // there is no "Adjust this week" under the week.
+        planClient: FakePlanClient(),
+        initialTab: 1,
+        access: CoachAccess.subscribed,
+      ),
+      pixelRatio: 2,
+      drive: rest,
+    );
+  });
+
+  /// **The week of the race, on the screen that shows weeks** (ADR-0044).
+  ///
+  /// Until build 28 this was an ordinary week with a run on race day. The
+  /// plate is the argument: a row that says "Race day", the distance and a
+  /// time to expect, and above it a week of short easy runs with the day
+  /// before left empty.
+  testWidgets('the plan tab in race week', (tester) async {
+    final store = DriftPlanStore(db);
+    await seedPlan(store, racingIn: daysToSunday(), weeksIn: 10);
+    final runs = plateLog();
+
+    await plate(
+      tester,
+      'plan-race-week',
+      HomeShell(
+        runEditor: RunEditor(db: db),
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        planClient: FakePlanClient(),
         initialTab: 1,
         access: CoachAccess.subscribed,
       ),
@@ -126,6 +165,7 @@ void main() {
       tester,
       'home-plan-not-started',
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
@@ -146,6 +186,7 @@ void main() {
       tester,
       'shell-plan-not-started',
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
@@ -182,6 +223,7 @@ void main() {
       tester,
       name,
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
@@ -245,6 +287,7 @@ void main() {
       tester,
       name,
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,
@@ -320,6 +363,7 @@ void main() {
       tester,
       name,
       HomeShell(
+        runEditor: RunEditor(db: db),
         auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
         planStore: store,
         historySource: () async => runs,

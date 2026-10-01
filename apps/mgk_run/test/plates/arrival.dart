@@ -43,6 +43,7 @@ import 'package:mgk_run/src/features/coaching/domain/intake_slots.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/presentation/coach_flow.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_reveal_screen.dart';
+import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
@@ -72,6 +73,9 @@ void main() {
     coach: FakeCoachService(),
     consentStore: InMemoryBackupConsent(),
     historySource: () async => const [],
+    // Somewhere to write a run, as the app has: Home's today card offers a
+    // treadmill run only when there is.
+    runEditor: RunEditor(db: db),
     requestPermission: (_) async => true,
   );
 
@@ -446,6 +450,7 @@ void main() {
           points: plateRoute(i),
         ),
     ],
+    runEditor: RunEditor(db: db),
     requestPermission: (_) async => true,
   );
 

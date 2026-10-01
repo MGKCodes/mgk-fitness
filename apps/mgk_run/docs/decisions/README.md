@@ -55,3 +55,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0041](0041-premium-is-a-better-model-and-a-bigger-allowance.md) | Premium is a better model and a bigger allowance; which model is configuration | Accepted |
 | [0042](0042-a-screen-that-leads-with-its-photograph.md) | A screen that leads with its photograph may carry it at strength | Accepted |
 | [0043](0043-the-map-keeps-what-it-has-shown.md) | The map keeps what it has shown, and does not download what it has not | Accepted |
+| [0044](0044-race-week-is-a-week-of-its-own.md) | Race week is a week of its own, and race day is on the plan | Accepted |

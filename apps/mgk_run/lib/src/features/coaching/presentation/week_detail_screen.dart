@@ -5,6 +5,7 @@ import 'package:mgk_units/mgk_units.dart';
 import '../data/adaptation_service.dart';
 import '../domain/pace_model.dart';
 import '../domain/prescribed_distance.dart';
+import '../domain/race_day.dart';
 import '../domain/runner_profile.dart';
 import '../domain/training_plan.dart';
 import 'session_labels.dart';
@@ -25,11 +26,15 @@ class WeekDetailScreen extends StatefulWidget {
     this.onRevised,
     this.unit = UnitSystem.metric,
     this.beforeAdjust,
+    this.raceDay,
   });
 
   final TrainingWeek week;
   final SkeletonWeek slot;
   final TrainingPaces paces;
+
+  /// The race, when it falls in this week.
+  final RaceDayEntry? raceDay;
 
   /// The day the runner arrived on (1=Mon..7=Sun), when they opened the week by
   /// tapping one. That day is scrolled into view and its row sits raised.
@@ -157,7 +162,8 @@ class _WeekDetailScreenState extends State<WeekDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Week ${widget.slot.index} · ${phaseLabel(widget.slot.phase)}',
+          'Week ${widget.slot.index} · '
+          '${widget.raceDay != null ? 'Race week' : phaseLabel(widget.slot.phase)}',
         ),
         actions: _canAdjust
             ? <Widget>[
@@ -189,17 +195,96 @@ class _WeekDetailScreenState extends State<WeekDetailScreen> {
               for (var day = 1; day <= 7; day++)
                 Entrance(
                   index: day - 1,
-                  child: _DayRow(
-                    key: day == focused ? _focusedKey : null,
-                    name: weekdayName(day),
-                    session: _week.runOn(day),
-                    paces: widget.paces,
-                    unit: widget.unit,
-                    focused: day == focused,
-                  ),
+                  child: widget.raceDay?.weekday == day
+                      ? _RaceDayRow(
+                          key: day == focused ? _focusedKey : null,
+                          name: weekdayName(day),
+                          race: widget.raceDay!,
+                          unit: widget.unit,
+                        )
+                      : _DayRow(
+                          key: day == focused ? _focusedKey : null,
+                          name: weekdayName(day),
+                          session: _week.runOn(day),
+                          paces: widget.paces,
+                          unit: widget.unit,
+                          focused: day == focused,
+                        ),
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Race day, in the week's own list: the one row that is not a prescription.
+class _RaceDayRow extends StatelessWidget {
+  const _RaceDayRow({
+    super.key,
+    required this.name,
+    required this.race,
+    required this.unit,
+  });
+
+  final String name;
+  final RaceDayEntry race;
+  final UnitSystem unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final String detail = race.detail();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        color: AppColors.elevated,
+        child: Row(
+          children: <Widget>[
+            SizedBox(
+              width: 40,
+              child: Text(
+                name,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text(
+                    'Race day',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (detail.isNotEmpty)
+                    Text(
+                      race.expected == null
+                          ? detail
+                          : '$detail, on your time trial',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Text(
+              race.distanceLabel(unit),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );

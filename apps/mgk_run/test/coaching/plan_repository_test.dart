@@ -595,9 +595,12 @@ void main() {
       final plan = await repo(generator: generator).create(aProfile());
 
       final before = client.calls;
+      // Not the last week: that one holds the race, and race week is built by
+      // rule whoever is asking (ADR-0044).
+      final weeks = plan.skeleton.weeks;
       await repo(
         generator: generator,
-      ).weekFor(plan, plan.skeleton.weeks.last, allowModel: true);
+      ).weekFor(plan, weeks[weeks.length - 2], allowModel: true);
 
       expect(client.calls, greaterThan(before));
     });

@@ -74,7 +74,7 @@ class HomeTab extends StatelessWidget {
     this.hasRuns = false,
     this.missed,
     this.onAskCoach,
-    this.onAdjustWeek,
+    this.onAddTreadmillRun,
     this.onCloseRace,
     this.onOpenRun,
     this.unit = UnitSystem.metric,
@@ -164,9 +164,9 @@ class HomeTab extends StatelessWidget {
   /// itself.
   final void Function(String opener)? onAskCoach;
 
-  /// Opens the way to bend this week — ill, sore, behind, out of time. Null
-  /// when there is no plan to bend or no coach to bend it.
-  final VoidCallback? onAdjustWeek;
+  /// Opens the add-a-run form, already set to Treadmill. Null when there is
+  /// nowhere to write a run.
+  final VoidCallback? onAddTreadmillRun;
 
   /// Opens the flow that records what they ran on race day and ends the plan.
   /// Null when the plan is not aimed at a date, or the race is not in view.
@@ -246,7 +246,7 @@ class HomeTab extends StatelessWidget {
                   onStartSession: onStartSession ?? onRecord,
                   onOpenPlan: onOpenPlan,
                   onOpenCoach: onOpenCoach,
-                  onAdjustWeek: onAdjustWeek,
+                  onAddTreadmillRun: onAddTreadmillRun,
                   onCloseRace: onCloseRace,
                 ),
               ),

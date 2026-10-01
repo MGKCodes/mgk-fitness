@@ -734,6 +734,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return ChatProposal(week: proposal.week, changes: proposal.changes);
   }
 
+  /// The way to bend this week, or null when there is nothing to bend.
+  ///
+  /// Only with a plan under way and a coach to bend it. Not before the plan
+  /// starts, because "this week" is not a plan week yet. Not on race day or
+  /// after it: the week the runner would be adjusting is the one they have
+  /// already run.
+  VoidCallback? get _adjustWeek {
+    final view = _todayView;
+    if (widget.planClient == null || view == null) return null;
+    if (view.startsOn != null) return null;
+    final phase = view.race?.phase;
+    if (phase == RacePhase.today || phase == RacePhase.awaiting) return null;
+    return () => unawaited(_adjustThisWeek());
+  }
+
   /// Bends this week from a situation the runner **picked** rather than typed.
   ///
   /// Plans that will not move are the loudest complaint in this category, and
@@ -1900,7 +1915,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           // progress or from seeded demo data is not a row yet.
           onEdit: widget.runEditor == null || full.id == null
               ? null
-              : () => _editRun(full),
+              : () => _editRun(full, summary: routeContext),
           onAskCoach: _chat == null
               ? null
               : () => _askAboutRun(full, justFinished: justFinished),
@@ -1959,12 +1974,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   /// A run the runner did somewhere this app was not: a treadmill session, a
   /// race, anything the phone did not see.
-  Future<void> _addRun() async {
+  ///
+  /// [treadmill] opens the form already saying so, which is Home's way in. The
+  /// log's own "Add a run" leaves it on Outdoor, where most added runs are.
+  Future<void> _addRun({bool treadmill = false}) async {
     final editor = widget.runEditor;
     if (editor == null) return;
     final saved = await Navigator.of(context).push<String>(
       MaterialPageRoute<String>(
-        builder: (_) => RunFormScreen(editor: editor, unit: _unit),
+        builder: (_) => RunFormScreen(
+          editor: editor,
+          unit: _unit,
+          initial: treadmill ? const RunDraft(type: kTypeTreadmill) : null,
+        ),
       ),
     );
     // Only reload on a real save. Backing out of the form should not cost a
@@ -1972,7 +1994,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (saved != null) await _refreshHome();
   }
 
-  Future<void> _editRun(RunSummary run) async {
+  /// [summary] is the run's own screen, when the edit was opened from it. A
+  /// run that has just been deleted must not be left on screen behind the
+  /// form, so that screen closes with it.
+  Future<void> _editRun(RunSummary run, {BuildContext? summary}) async {
     final editor = widget.runEditor;
     final id = run.id;
     if (editor == null || id == null) return;
@@ -1988,7 +2013,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       ),
     );
-    if (saved != null) await _refreshHome();
+    if (saved == null) return;
+    if (saved == RunFormScreen.deleted && summary != null && summary.mounted) {
+      Navigator.of(summary).pop();
+    }
+    await _refreshHome();
   }
 
   /// Signs the runner in, or up, when something actually needs an account.
@@ -2098,7 +2127,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           // the whole difference between the three screenshots.
           //
           // Verified by reading, not on a device: nobody here has an iPhone.
-          IndexedStack(
+          //
+          // A `TabStack`, which is an `IndexedStack` that moves: every tab is
+          // still built and kept, and a change of tab slides and fades rather
+          // than cutting.
+          TabStack(
             index: _index,
             children: <Widget>[
               HomeTab(
@@ -2143,10 +2176,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 missed: _missed,
                 onOpenRun: _openRun,
                 onAskCoach: _chat == null ? null : _askCoach,
-                // Only with a plan to bend and a coach to bend it.
-                onAdjustWeek: widget.planClient == null || _todayView == null
+                // Only with somewhere to write it.
+                onAddTreadmillRun: widget.runEditor == null
                     ? null
-                    : _adjustThisWeek,
+                    : () => unawaited(_addRun(treadmill: true)),
                 // Only when there is a race in view at all; the card decides
                 // which of its states actually offers the door, since the run
                 // up to a race has nothing to close out yet. Needs no coach
@@ -2167,6 +2200,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 unit: _unit,
                 onPlanChanged: _refreshHome,
                 onAskCoach: _askCoach,
+                onAdjustWeek: _adjustWeek,
                 runnerName: _runnerName,
                 ensureAccount: _ensureCoachAccess,
                 disclaimer: _disclaimer,
@@ -2327,10 +2361,15 @@ class _PlanTab extends StatefulWidget {
     this.memory,
     this.summariser,
     this.onAskCoach,
+    this.onAdjustWeek,
     this.runnerName,
     this.ensureAccount,
     this.disclaimer,
   });
+
+  /// Opens the way to bend this week. Owned by the shell, which holds the
+  /// conversation it leads into. Null when there is nothing to bend.
+  final VoidCallback? onAdjustWeek;
 
   /// Where the shell's gate records the medical disclaimer, handed to the plan
   /// flow so it does not ask again what the gate has just asked.
@@ -2613,6 +2652,7 @@ class _PlanTabState extends State<_PlanTab> {
           paces: paces,
           focusedWeekday: weekday,
           profile: plan.profile,
+          raceDay: raceDayIn(plan, slot),
           // **Without `soFar`, unlike the chat path, and knowingly so.** This
           // reaches `WeekAdjustSheet`, which holds a week, a slot and a
           // profile — no runs and no dates — so carrying what has already
@@ -2669,6 +2709,7 @@ class _PlanTabState extends State<_PlanTab> {
       plan: plan,
       paces: paces,
       onAskAboutSession: widget.onAskCoach,
+      onAdjustWeek: widget.onAdjustWeek,
       // Every run, not a cached handful: a rhythm counts how many times the
       // runner has turned up since the plan began, and a short list would
       // undercount it.

@@ -267,4 +267,7 @@ class _CountingWriter implements RunWriter {
 
   @override
   Future<void> edit(String runId, RunDraft draft) async {}
+
+  @override
+  Future<void> delete(String runId) async {}
 }

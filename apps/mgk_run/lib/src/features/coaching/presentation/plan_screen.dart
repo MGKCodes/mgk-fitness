@@ -10,6 +10,7 @@ import 'session_labels.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/pace_model.dart';
 import '../domain/plan_headline.dart';
+import '../domain/race_day.dart';
 import '../domain/readiness.dart';
 import 'week_list.dart';
 
@@ -44,6 +45,7 @@ class PlanScreen extends StatelessWidget {
     this.onOpenCalendar,
     this.paces,
     this.onAskAboutSession,
+    this.onAdjustWeek,
     this.runs = const <RunSummary>[],
     this.unit = UnitSystem.metric,
   });
@@ -97,6 +99,10 @@ class PlanScreen extends StatelessWidget {
   /// a session brief to the coach, which is where anything needing judgement
   /// goes.
   final void Function(String opener)? onAskAboutSession;
+
+  /// Opens the way to bend this week: ill, sore, behind, out of time. Null
+  /// when there is no coach to bend it, or nothing left of the week to bend.
+  final VoidCallback? onAdjustWeek;
   final UnitSystem unit;
 
   @override
@@ -210,6 +216,9 @@ class PlanScreen extends StatelessWidget {
           unit: unit,
           paces: paces,
           onOpenCalendar: onOpenCalendar,
+          // Only once the plan is under way: before it starts, the week on
+          // screen is not one anybody is in.
+          onAdjustWeek: started ? onAdjustWeek : null,
           // A tapped day opens the coach on that session, not the week screen.
           // The runner tapped one row; answering with seven is answering a
           // question they did not ask.
@@ -245,10 +254,12 @@ class _WeekBlock extends StatelessWidget {
     this.statusFor,
     this.onOpenCalendar,
     this.onOpenDay,
+    this.onAdjustWeek,
   });
 
   final StoredPlan plan;
   final SkeletonWeek slot;
+  final VoidCallback? onAdjustWeek;
 
   /// The day the week is read from: today once the plan has started, its
   /// first day before then.
@@ -359,7 +370,40 @@ class _WeekBlock extends StatelessWidget {
             statusFor: statusFor,
             unit: unit,
             onTapDay: onOpenDay,
+            raceDay: raceDayIn(plan, slot),
           ),
+          // **Under the week it changes.** This was on Home's today card, on
+          // the argument that a runner who is ill should not have to go looking
+          // for it. But Home shows one day, and the thing being adjusted is
+          // seven: the button asked a question about a week that was on another
+          // tab. Here the answer lands where it was asked.
+          if (onAdjustWeek != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              child: OutlinedButton(
+                onPressed: onAdjustWeek,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.elevated),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.cardAll,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Text(
+                  'Adjust this week',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
