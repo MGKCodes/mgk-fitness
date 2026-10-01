@@ -203,7 +203,17 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _message = _messageFor(error));
+        setState(() {
+          // Signing in before following the link is the next step, not a
+          // failure, and with confirmation on it is what a new runner does
+          // first. The server's own words are "Email not confirmed", in the
+          // error colour, which read as the account not having been made.
+          if (_awaitingConfirmation(error)) {
+            _notice = 'Check your email and follow the link, then sign in.';
+          } else {
+            _message = _messageFor(error);
+          }
+        });
       }
     } finally {
       if (mounted) {
@@ -543,6 +553,14 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+
+/// Whether the server refused a sign-in because the address is unconfirmed.
+///
+/// Matched on the message as Lift does: gotrue's code for it has changed
+/// between versions, and the words have not.
+bool _awaitingConfirmation(Object error) =>
+    error is AuthException &&
+    error.message.toLowerCase().contains('not confirmed');
 
 /// What to print when authenticating fails.
 ///

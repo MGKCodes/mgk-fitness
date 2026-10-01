@@ -5,6 +5,7 @@ import 'package:mgk_run/src/core/config/app_config.dart';
 import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../plates/plate.dart' show loadInter;
 
@@ -325,6 +326,42 @@ void main() {
       expect(find.text('Use at least 8 characters.'), findsNothing);
       expect(auth.lastPassword, 'six666');
     });
+  });
+
+  testWidgets('signing in before confirming is the next step, not an error', (
+    tester,
+  ) async {
+    // Confirmation is on since 30 September, so this is what a new runner
+    // does first: signs up, then signs in without opening the email. The
+    // server says "Email not confirmed", which in the error colour read as
+    // the account not having been made. Lift's words, in the quiet colour.
+    final auth = FakeAuthRepository()
+      ..failure = const AuthException('Email not confirmed', statusCode: '400');
+    await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
+    await openEmail(tester);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'sam@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'hunter2222',
+    );
+    final submit = find.widgetWithText(PrimaryButton, 'Sign in');
+    await tester.ensureVisible(submit);
+    await tester.pump();
+    await tester.tap(submit);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Email not confirmed'), findsNothing);
+    final notice = tester.widget<Text>(
+      find.text('Check your email and follow the link, then sign in.'),
+    );
+    final error = Theme.of(
+      tester.element(find.byType(SignInScreen)),
+    ).colorScheme.error;
+    expect(notice.style?.color, isNot(error));
   });
 
   group('Forgot your password?', () {
