@@ -49,7 +49,7 @@
 >    and an OS version for itself. Check their privacy manifest before filing
 >    the App Store's privacy labels.
 
-**Last updated:** 30 September 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 1 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 run@mgkfitness.mgkcodes.com
 
 ## Summary
@@ -170,7 +170,7 @@ On Android the app requests no health permissions at all.
   runs, no training data, and nothing you said to your coach. Like any purchase
   SDK it also collects technical information of its own about the install, such
   as a device-scoped identifier, your store country and your app version.
-- **MapTiler** — serves the basemap tiles behind your route while you run;
+- **Esri** — serves the basemap tiles behind your route while you run;
   receives the map coordinates being displayed and, like any web request, your
   IP address. This happens whether or not you have an account. Configured per
   build; a build with no tile provider draws routes with no basemap and contacts

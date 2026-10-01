@@ -64,12 +64,12 @@ void main() {
         RouteMap(
           points: <RunPoint>[_p(51.5, -0.12), _p(51.501, -0.121)],
           tileUrlTemplate: 'https://tiles.example/{z}/{x}/{y}.png',
-          attribution: '© MapTiler © OpenStreetMap contributors',
+          attribution: '© Example Maps © OpenStreetMap contributors',
         ),
       );
 
       expect(
-        find.text('© MapTiler © OpenStreetMap contributors'),
+        find.text('© Example Maps © OpenStreetMap contributors'),
         findsOneWidget,
       );
     });
@@ -80,12 +80,12 @@ void main() {
         RouteMap(
           points: <RunPoint>[_p(51.5, -0.12), _p(51.501, -0.121)],
           tileUrlTemplate: '',
-          attribution: '© MapTiler © OpenStreetMap contributors',
+          attribution: '© Example Maps © OpenStreetMap contributors',
         ),
       );
 
       expect(
-        find.text('© MapTiler © OpenStreetMap contributors'),
+        find.text('© Example Maps © OpenStreetMap contributors'),
         findsNothing,
       );
     });

@@ -103,7 +103,7 @@ void main() {
     // spell out what actually goes to the model, at which point the Supabase
     // bullet above it had left the viewport and the assertion failed on lazy
     // rendering rather than on anything being wrong.
-    for (final processor in <String>['Supabase', 'OpenRouter', 'MapTiler']) {
+    for (final processor in <String>['Supabase', 'OpenRouter', 'Esri']) {
       await tester.scrollUntilVisible(
         find.textContaining(processor),
         300,

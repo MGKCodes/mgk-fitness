@@ -174,6 +174,11 @@ class _RunStartScreenState extends State<RunStartScreen> {
             emptyLabel: 'Finding you',
             tileUrlTemplate: AppConfig.current.mapTileUrlTemplate,
             attribution: AppConfig.current.mapAttribution,
+            // The map runs under the home indicator; the credit does not.
+            creditInsets: EdgeInsets.only(
+              right: 6,
+              bottom: MediaQuery.paddingOf(context).bottom + 4,
+            ),
           ),
 
           // Dimmed under the count, so the numeral is legible over whatever the

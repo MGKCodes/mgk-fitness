@@ -76,7 +76,7 @@ Three reasons they cannot be submitted:
    are Material's, not UIKit's.
 2. **There are no basemap tiles.** Same absence the plates have, for a different
    reason — the preview harness points at a keyless dev basemap and the emulator
-   has no MapTiler key. The in-run and finished-run shots draw the route on the
+   has no tile key. The in-run and finished-run shots draw the route on the
    charcoal ground.
 3. **The fixtures show what the app does not.** `_demoSummary()` fills
    `avgHr`, `caloriesEst` and elevation; a recorded run fills none of the three

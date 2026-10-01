@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' show Geolocator;
@@ -8,6 +9,7 @@ import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../coaching/domain/pace_model.dart';
 import '../../coaching/domain/prescribed_distance.dart';
 import '../../coaching/domain/session_effort.dart';
@@ -231,7 +233,15 @@ class RecordingScreen extends StatefulWidget {
     this.onCancel,
     this.plannedSession,
     this.paces,
+    this.tileUrlTemplate,
+    this.attribution,
   });
+
+  /// The basemap and its credit. Null takes [AppConfig.current], which is what
+  /// the app does; a test passes its own, because a compile-time config cannot
+  /// be set from one and the credit's place on this screen is worth pinning.
+  final String? tileUrlTemplate;
+  final String? attribution;
 
   final RunRecorder recorder;
   final UnitSystem unit;
@@ -773,6 +783,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
         body: LayoutBuilder(
           builder: (context, constraints) {
             final height = constraints.maxHeight;
+            final String tiles =
+                widget.tileUrlTemplate ?? AppConfig.current.mapTileUrlTemplate;
+            final String credit =
+                widget.attribution ?? AppConfig.current.mapAttribution;
             // The brief rides above the fold only while the verdict is held.
             // It is the answer to "what am I doing", which is the question of
             // the first few minutes — and once the band starts speaking, the
@@ -842,6 +856,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
                     // looking for you underneath it is a second, contradictory
                     // answer to the same question.
                     emptyLabel: _problem == null ? 'Finding you' : null,
+                    tileUrlTemplate: tiles,
+                    attribution: credit,
+                    // Drawn below instead, above the panel: this map's own
+                    // bottom edge is behind it.
+                    showCredit: false,
                   ),
                   builder: (context, extent, child) {
                     final double at = extent == 0 ? collapsed : extent;
@@ -879,6 +898,32 @@ class _RecordingScreenState extends State<RecordingScreen> {
                     ),
                   ),
                 ),
+
+                // The provider's credit, riding on the panel's top edge so it
+                // is on the part of the map that can be seen. Before the first
+                // fix there are no tiles, and nothing to credit.
+                if (tiles.isNotEmpty &&
+                    credit.isNotEmpty &&
+                    (_points.isNotEmpty || _focus != null))
+                  ValueListenableBuilder<double>(
+                    valueListenable: _sheetExtent,
+                    builder: (context, extent, child) => Positioned(
+                      // Beside the recentre control while it is showing,
+                      // rather than under it.
+                      right: _following
+                          ? 6
+                          : AppSpacing.lg + 56 + AppSpacing.sm,
+                      // Never up into the status strip: with the panel fully
+                      // raised there is no map left below the strip to credit,
+                      // and the panel covers this instead.
+                      bottom: math.min(
+                        (extent == 0 ? collapsed : extent) * height + 4,
+                        height - MediaQuery.paddingOf(context).top - 84,
+                      ),
+                      child: child!,
+                    ),
+                    child: MapCredit(text: credit),
+                  ),
 
                 // **Only while the map is parked.** A recentre button on a map
                 // that is already centred is furniture, and on this screen every

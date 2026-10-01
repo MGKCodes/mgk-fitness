@@ -156,7 +156,7 @@ const LegalDocument privacyPolicy = LegalDocument(
             'your coach. Like any purchase SDK it also collects technical '
             'information of its own about the install, such as a device-scoped '
             'identifier, your store country and your app version.',
-        'MapTiler — serves the basemap tiles behind your route while you run; '
+        'Esri — serves the basemap tiles behind your route while you run; '
             'receives the map coordinates being displayed and, like any web '
             'request, your IP address. This happens whether or not you have an '
             'account.',

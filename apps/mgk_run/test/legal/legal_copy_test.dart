@@ -97,7 +97,7 @@ void main() {
         expect(text, contains('Supabase'));
         expect(text, contains('OpenRouter'));
         expect(text, contains('RevenueCat'));
-        expect(text, contains('MapTiler'));
+        expect(text, contains('Esri'));
         // The mail service (30 September 2026): it receives every address that
         // is confirmed or reset.
         expect(text, contains('SMTP2GO'));
@@ -479,7 +479,7 @@ void main() {
         'Supabase',
         'OpenRouter',
         'RevenueCat',
-        'MapTiler',
+        'Esri',
         'SMTP2GO',
       ]) {
         expect(page, contains(processor));
