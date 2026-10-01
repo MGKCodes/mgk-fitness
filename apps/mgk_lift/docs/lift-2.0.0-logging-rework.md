@@ -1,13 +1,18 @@
 # Lift 2.0.0 — the logging rework
 
+> **Closed, 1 October 2026.** Built, then partly replaced by
+> [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md) (see *Reopened* below). Kept
+> as the record of decisions D1 to D6, which the code cites. Its two unticked
+> items, larger text and a profile build on an iPhone, are carried in
+> [submission-week.md](submission-week.md) under *On a phone*.
+
 The plan that follows the 2026-09-28 audit of logging a workout: sets,
-templates, saving, sync, and the glass-and-motion design pass. It is the next
-phase of [lift-2.0.0-punch-list.md](lift-2.0.0-punch-list.md), written as its
+templates, saving, sync, and the glass-and-motion design pass. It followed the
+August [punch list](history/lift-2.0.0-punch-list.md), and was written as its
 own file because it reaches past UI into the data layer and the server.
 
-Same discipline as the punch list: tick items as they land, and when something
-is settled differently from how it is written here, **change the item and say
-why**.
+Tick items as they land, and when something is settled differently from how it
+is written here, **change the item and say why**.
 
 > **Reopened 2026-09-30.** Matthew's design review,
 > [design-review-2026-09-30.md](design-review-2026-09-30.md), reopens parts of
@@ -783,7 +788,8 @@ Three builds, each your go because each is outward-facing:
 
 ## Not in this plan
 
-- Payments, compliance, store assets — [submission-week.md](submission-week.md).
+- Payments, compliance, store assets — [submission-week.md](submission-week.md)
+  and [store-setup.md](store-setup.md).
 - Cardio movements (time and distance): the columns exist, no screen uses them.
 - Server-side limits: after the existing rows are checked against them.
 - Background upload while the app is closed (iOS background tasks).

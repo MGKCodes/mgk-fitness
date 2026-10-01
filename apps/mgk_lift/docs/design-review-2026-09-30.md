@@ -1,12 +1,14 @@
 # Design review, 30 September 2026
 
-> **The plan that answers this review:** [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), with the thirteen decisions settled the same day.
+> **Closed.** The plan that answered this review is
+> [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), with thirteen decisions
+> settled the same day, and all of it is built. This file is kept because the
+> code and the screen board cite its findings by number.
 
 Matthew's pass over the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1)
 (version 11, built from `8a0014a` on 2026-09-29, 84 plates). These are his
-findings, recorded screen by screen with the code each one touches. **This is not
-a plan.** Nothing here is designed or scheduled yet; the next step is to discuss
-these and turn them into one.
+findings, recorded screen by screen with the code each one touched. The board
+has moved on since: plates named here are version 11's.
 
 Codes are the board's (`W6`, `P7`, …): the letter is the act, the number is the
 plate. Open the board to see any screen named here.
@@ -288,8 +290,8 @@ Code: `lib/src/features/settings/presentation/settings_screen.dart`; Run's
 
 ## Out of scope for this review
 
-Everything outside design: the migration, the merge to `main`, the store
-dashboards and the store screenshots. Those are tracked in
-[submission-week.md](submission-week.md) and [store-setup.md](store-setup.md).
-**Store screenshots wait for this redesign**, by Matthew's decision on
-2026-09-29.
+Everything outside design: the migration, the store dashboards and the store
+screenshots. Those are tracked in [submission-week.md](submission-week.md) and
+[store-setup.md](store-setup.md). The store screenshots waited for this
+redesign, by Matthew's decision on 2026-09-29; it is finished, so they no
+longer wait.

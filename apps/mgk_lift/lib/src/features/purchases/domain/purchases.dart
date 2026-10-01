@@ -7,7 +7,7 @@ import '../../entitlement/domain/entitlement.dart';
 /// A seam rather than a direct RevenueCat call, for the reason every other
 /// `data`/`domain` split here exists: the paywall and the restore flow are
 /// testable without a store, and the SDK stays in one file that can be replaced
-/// without touching a screen. `docs/release-2.0.0.md` already names the exit —
+/// without touching a screen. `docs/submission-week.md` names the exit —
 /// if RevenueCat becomes the constraint, the webhook is swapped for two
 /// validators and nothing client-side moves.
 

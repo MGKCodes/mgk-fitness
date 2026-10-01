@@ -26,8 +26,19 @@ import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// Where the board was rendered from, asked of git rather than written down.
+//
+// The masthead named `lift/release-2.0.0` as a literal, and went on naming it
+// after that branch was merged and deleted. A board that says where it came
+// from has to be told by the thing that knows.
+const git = (...args) =>
+  execFileSync('git', args, { cwd: here, encoding: 'utf8' }).trim();
+const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
+const commit = git('rev-parse', '--short', 'HEAD');
 
 // Same resolution trick, and the same reason, as capture_screens_web.mjs: this
 // is a Flutter workspace with no package.json, so the image encoder is resolved
@@ -721,7 +732,7 @@ dialog::backdrop{background:rgba(12,14,16,.72)}
 <div class="wrap">
 
 <header class="top">
-  <p class="eyebrow">apps/mgk_lift &middot; lift/release-2.0.0</p>
+  <p class="eyebrow">apps/mgk_lift &middot; ${esc(branch)} @ ${esc(commit)}</p>
   <h1>Every screen in Lift, in the order you reach it</h1>
   <p class="lede">All ${counts.all} of them, rendered from the preview harness rather than a device, with the
     chrome they really have. <strong>${counts.first} are new since the last board</strong>
@@ -730,6 +741,7 @@ dialog::backdrop{background:rgba(12,14,16,.72)}
     about.</p>
   <div class="meta">
     <div><span class="k">Rendered</span><span class="v">${date}</span></div>
+    <div><span class="k">From</span><span class="v">${esc(branch)} @ ${esc(commit)}</span></div>
     <div><span class="k">Plates</span><span class="v">${counts.all}</span></div>
     <div><span class="k">New since last board</span><span class="v">${counts.first}</span></div>
     <div><span class="k">Behind the gate</span><span class="v">${counts.paid}</span></div>
@@ -781,8 +793,8 @@ ${acts}
     <li><span class="fn">02</span><p><b>The shell took no clock</b>, which is <em>why</em> they were mounted bare: through
       the shell, a screenshot's content changed with the day it was taken. All three surfaces already accepted a date;
       the shell was the one link that did not pass it on.</p></li>
-    <li><span class="fn">03</span><p><b>${counts.first} screens the harness could not address at all</b>, marked
-      <em>first photographed</em> above. Between them: the primary control on a running session, the only thing progress
+    <li><span class="fn">03</span><p><b>Six screens the harness could not address at all</b> until that
+      board. Between them: the primary control on a running session, the only thing progress
       photos are for, and two of the three sheets the exit sweep caught shipping with no dismiss affordance.</p></li>
     <li><span class="fn">04</span><p><b>Two plates were one screen, twice.</b> <code>coach-mark</code> was
       character-for-character <code>track-coach</code>; <code>plan-active</code> turned out to be {{plan-standing}} on a

@@ -11,8 +11,8 @@ import '../domain/entitlement.dart';
 /// **Scoped to `app = 'lift'`, and that is load-bearing.** The table is keyed
 /// `(user_id, app)` because pricing is per app and never cross-app: a Run
 /// subscription must not unlock the coach here. This was nearly got wrong once
-/// already — `docs/release-2.0.0.md` claimed a suite-wide grant until the column
-/// was actually looked at on 2026-09-01.
+/// already — the release plan claimed a suite-wide grant until the column was
+/// actually looked at on 2026-09-01.
 class SupabaseEntitlements implements EntitlementSource {
   SupabaseEntitlements({
     SupabaseClient? client,

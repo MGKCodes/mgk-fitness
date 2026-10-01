@@ -1,13 +1,18 @@
 # Store setup for Lift: what to do in each dashboard
 
 Everything Lift 2.0.0 needs that lives in a dashboard rather than in this
-repository, in the order it has to happen. The code side is done: the purchase
-sheet, RevenueCat behind the `Purchases` seam, the renewal disclosure, and the
-`revenuecat` webhook (deployed 2026-09-29, v6).
+repository, in the order it has to happen. The code side is done: the sales
+screen, RevenueCat behind the `Purchases` seam, the renewal disclosure, and the
+`revenuecat` webhook, which Run shares and which is deployed.
 
-Written 2026-09-29. Run went through the same chain first, and
-[its runbook](../../mgk_run/docs/store-setup.md) records every trap it hit. The
-steps here reuse Run's accounts wherever one serves both apps.
+Written 2026-09-29. This file stands on its own: every trap that matters to
+these steps is written into the step. Some accounts and secrets serve the whole
+suite, and each step says which values are shared and which are Lift's own.
+
+**Where this stands, 1 October 2026.** Steps 6 (email) and 7 (Apple and Google
+sign-in) are done and kept for the values they record. Steps 0 to 5 are open,
+except the Play app and its first upload in step 2. What else stands between
+Lift and the stores is in [submission-week.md](submission-week.md).
 
 **The chain, and the values that must match exactly:**
 
@@ -53,14 +58,13 @@ the existing subscription group (the one holding `liftio_monthly`).
 | Reference name | Lift Coach Monthly | Lift Coach Premium Monthly |
 | Product ID | `lift.coach.monthly` | `lift.coach.premium.monthly` |
 | Duration | 1 month | 1 month |
-| Price | **£0.99** (recommended) | **£2.99** (recommended) |
+| Price | **£0.99** (decided 1 October) | **£2.99** (decided 1 October) |
 | Display name (30 chars) | `Coach` | `Premium Coach` |
 | Description (45 chars) | `A training plan, adjusted every week.` | `Far more room to talk to your coach.` |
 
 - [ ] **Levels: Premium Coach level 1, Coach level 2, and both legacy products
       level 2.** Level 1 is the *highest*. Ranked the other way round, moving
-      up to Premium is treated as a downgrade and waits up to a month (Run's
-      runbook, step 2).
+      up to Premium is treated as a downgrade and waits up to a month.
 - [ ] **Why those prices.** The coach's usage limits are set per tier, not per
       app, and they were sized against Run's £0.99 / £2.99 at the Small
       Business Program's 15% rate (Run's ADR-0029). Pricing Lift's Coach higher
@@ -68,8 +72,9 @@ the existing subscription group (the one holding `liftio_monthly`).
       earns. Liftio's £1.99 is not a constraint: its subscribers keep their
       product.
 - [ ] **A review screenshot per product** (1290 × 2796, no transparency). The
-      purchase sheet is what it should show. I will render it once the web
-      pages land; say if you want it sooner.
+      sales screen is what it should show: plate P8 on the screen board. It is
+      rendered with the store screenshots, at that size, from the release
+      candidate.
 - [ ] **Review notes per product:** "The coach, training plans and progress
       photos are the paid half. Tracking, saved workouts, history and stats are
       free with no account."
@@ -110,8 +115,8 @@ production access (frunt is live on it), so no 14-day closed test is needed.
       safety, ads = none, app access = the demo account). The answers are
       drafted in `store-listing.md`; the form-filling is yours.
 - [ ] **Account deletion URL** (Play requires one):
-      `https://mgkfitness.mgkcodes.com/lift/delete-account`, live once the web
-      pages are deployed.
+      `https://mgkfitness.mgkcodes.com/lift/delete-account`, live (it answered
+      200 on 1 October).
 
 ## 3. RevenueCat: add Lift to the `mgk-fitness` project
 
@@ -162,9 +167,9 @@ secret, and `core.entitlements.app` keeps Run and Lift apart.
 ## 5. Supabase: map Lift's products
 
 The webhook maps a product id to an app and a tier through one secret shared
-with Run. **Setting it replaces the whole value**, so it carries Run's ids too.
-Run's four are as recorded in `apps/mgk_run/docs/app-store-1.0.0.md`; if you
-added anything else to it, keep that as well.
+with Run. **Setting it replaces the whole value**, so the command below carries
+the four `run.*` ids as well as Lift's. They are not Lift's to change: they go
+back exactly as they are, and if the secret holds anything else, keep that too.
 
 From **Git Bash, not PowerShell**. PowerShell strips the quotes and unmaps both
 apps, which is exactly what happened to Run for thirteen minutes on
@@ -188,11 +193,11 @@ npx supabase secrets set --project-ref cwpwzxjjhxbkwhrgnasn REVENUECAT_PRODUCTS=
 The Play keys (`…:monthly`) are what Play reports as `product:basePlan`. If a
 test purchase logs `unmapped_product`, the log names the exact id; use that.
 
-- [ ] **Decide the sandbox setting before submitting.**
-      `REVENUECAT_ACCEPT_SANDBOX` is `true` today. App Review purchases in the
-      sandbox, so with it off a reviewer's purchase unlocks nothing. With it on,
-      a TestFlight tester can unlock the coach without paying, but only people
-      you invited. Leave it on through review.
+- [x] **The sandbox setting stays on.** `REVENUECAT_ACCEPT_SANDBOX` is `true`
+      and is one secret for both apps. App Review purchases in the sandbox, so
+      with it off a reviewer's purchase unlocks nothing. With it on, a
+      TestFlight tester can unlock the coach without paying, but only people
+      you invited. Decided for the whole suite (ADR-0037).
 
 ## 6. Supabase Auth: email that actually sends
 
@@ -294,9 +299,8 @@ Frunt's**, so both apps now have their own, and `codemagic.yaml` points at them.
       certificate › Save. Codemagic keeps its own copy of Run's profile too:
       delete the old `mgk_fitness_run_appstore_profile` › **Fetch profiles**
       with `mgkfitness_asc` › reference name `Run MGKFitness App Store`.
-- [ ] Run's workflow change (`app_store_connect: mgkfitness_asc`) reaches Run's
-      builds through `main`. Until then Run publishes through `frunt_asc`, which
-      still works; its signing is already MGKFitness's.
+- [x] Run's workflow names `mgkfitness_asc` too, on `main` and on `develop`
+      (checked 1 October), so neither app publishes through `frunt_asc`.
 
 ### 7c. Google Cloud: one project, and a client per platform
 
@@ -309,8 +313,10 @@ new one.*
       Google account's own addresses). **No logo**: a logo sends the app to
       Google for verification, which takes days. Home, privacy and terms links
       are Run's pages (`https://mgkfitness.mgkcodes.com`, `/run/privacy`,
-      `/run/terms`), the only live ones; **move them to pages that cover both
-      apps once Lift's are live.** Authorized domains `mgkcodes.com` and
+      `/run/terms`), the only live ones at the time. **Still to do: Lift's
+      pages are live now, and somebody signing into Lift with Google is shown
+      Run's policy. Point these at pages that cover both apps** (tracked in
+      submission-week.md). Authorized domains `mgkcodes.com` and
       `cwpwzxjjhxbkwhrgnasn.supabase.co`: `supabase.co` itself is refused,
       because it is on the public suffix list.
 - [x] **Audience**: External › *Publish app*, now *In production*. The scopes
@@ -371,15 +377,15 @@ April and May 2026, several on hidden relay addresses; none with Google.*
 - [x] Edge Functions › Secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
       `APPLE_PRIVATE_KEY` (the `.p8` file's contents), so `delete-account` can
       revoke Apple's tokens when an account is deleted. The two ids' digests
-      were checked against their values. Read by `delete-account/apple.ts`
-      once that function is deployed with it.
+      were checked against their values. Read by `delete-account/apple.ts`,
+      deployed as version 18.
 
 *Found on the way:* the **Site URL** was still `http://localhost:3000` (step 6),
 so every emailed link — a sign-up confirmation, a password reset — led to a dead
 page. It is `https://mgkfitness.mgkcodes.com` now. And a password reset could
 not finish: no page on the site let somebody choose a new password. The
-redesign's Phase 1 added one (`web/app/reset-password`); it works once it is
-deployed and step 6's template is in.
+redesign's Phase 1 added one (`web/app/reset-password`), which is live and was
+proved with step 6's template.
 
 *Later, with step 6:* Apple's hidden addresses only accept mail from senders
 registered with Apple (Services › Sign in with Apple for Email Communication).
@@ -387,17 +393,17 @@ Nothing the app sends needs it yet.
 
 ## 8. When each of these lands
 
-| Done | Unblocks |
-|---|---|
-| 0 | legacy subscribers (I grant, same day) |
-| 1 + 3 + 4 | a TestFlight build that can sell; a sandbox purchase |
-| 2 | the first Android internal build |
-| 5 | purchases reaching `core.entitlements` |
-| 6 | new people being able to sign up at all |
-| 7 | the sign-in build for both apps (the redesign's Phase 1) |
-| web pages deployed (mine) | privacy URL, support URL, deletion URL in both stores |
+| Step | State | Unblocks |
+|---|---|---|
+| 0 | open | legacy subscribers (I grant, same day) |
+| 1 + 3 + 4 | open | a TestFlight build that can sell; a sandbox purchase |
+| 2 | app and first upload done; products and declarations open | an Android build that can sell |
+| 5 | open | purchases reaching `core.entitlements` |
+| 6 | done | new people being able to sign up at all |
+| 7 | done | the sign-in build for both apps |
+| web pages | live | privacy URL, support URL, deletion URL in both stores |
 
-The sandbox pass after that follows Run's runbook, step 8: buy, watch
+The sandbox pass after that: buy, watch
 RevenueCat's customer history show your Supabase id, the webhook answer 200,
 `core.entitlements` gain one row, and the app unlock. Then restore on a second
 install, and cancel.

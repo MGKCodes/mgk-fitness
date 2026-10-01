@@ -1,5 +1,13 @@
 # Lift 2.0.0 — the redesign
 
+> **Closed, 1 October 2026.** All 68 items landed and are merged into `develop`
+> (`369c508`). Kept as the record of decisions R1 to R13, which the code and
+> the screen board cite. Three things ticked below are narrower than written,
+> and each says so on its own line: the summary's coach does not open on the
+> session, Plan's week shows the plan's own counts, and an Android deletion
+> does not revoke Apple's tokens. What is left before the stores is in
+> [submission-week.md](submission-week.md).
+
 The plan that follows Matthew's design review of 30 September 2026,
 [design-review-2026-09-30.md](design-review-2026-09-30.md): nineteen findings
 over the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1)
@@ -12,7 +20,7 @@ is written here, **change the item and say why**. The order of the phases is the
 order of work — with one change, made on 30 September at Matthew's request to
 see the new screens first: the screens of Phases 2 to 6 were built before
 Phase 1's server and web work (Apple's token revocation, the password-reset
-page, the policies), which is still open.
+page, the policies), which landed last.
 
 > **What this replaces in the logging rework.** D1 (a saved workout learns at
 > Finish automatically, with Undo) and Phase 3's "The template learns"; the
@@ -24,27 +32,15 @@ page, the policies), which is still open.
 
 ## Read this first
 
-**`main` moved.** `origin/main` gained 57 commits of Run's build-26 work after
-the review (`8db4ee5`, 2026-09-30), and three parts of this plan build on that
-work rather than on the branch's copy of it: Run's sign-in and account safety,
-Run's Settings, and Run's purchase screen. So Phase 0 starts with the merge the
-[handover](handover-2026-09-30.md) describes. `main` touches nothing under
-`apps/mgk_lift` or `packages/`, so Lift's line numbers below (from `b239035`)
-hold after it.
-
-**Two things need Matthew outside the code, and both take calendar time.** The
-Apple, Google Cloud and Supabase configuration for signing in, with a new
-provisioning profile for each app; and a working Replicate connection for the new
-photographs (it failed to connect in the planning session). Phase 0 starts both,
-so they are ready when the code is.
+Written on `lift/release-2.0.0`, which no longer exists: the work is on
+`develop`, and line numbers below are from `b239035`.
 
 **Run has to ship too.** Signing in is shared by both apps (R10), so a Run build
-carrying it must reach the store no later than Lift 2.0.0. Run's releases come
-from `main`, which puts the merge of this branch back into `main` — waiting on
-Matthew — on the way to submission.
+carrying it must reach the store no later than Lift 2.0.0.
 
-**TestFlight build 32 predates all of this**, and the store screenshots wait for
-it ([submission-week.md](submission-week.md), workstream F).
+**No build was cut during this plan.** The three under *Builds* collapsed into
+one release candidate, which is still to be built: TestFlight build 32
+predates all of this.
 
 Codes (`W6`, `P7`, …) are the board's: the letter is the act, the number the
 plate.
@@ -207,8 +203,8 @@ The plan is written against these; change the item if the answer differs.
 components come before the screens that use them; and the two things that need
 Matthew take calendar time.
 
-- [x] **Merge `main` into the branch**, as the handover's *Merging with `main`*
-      says: `main`'s side in `supabase/functions` and its migration names, both
+- [x] **Merge `main` into the branch**, as the
+      [handover](history/handover-2026-09-30.md) said: `main`'s side in `supabase/functions` and its migration names, both
       sides in `web/`. Then Lift's, Run's and `mgk_ui`'s suites, both Deno
       suites, `npm run legal` and `next build`. *Done 2026-09-30 (`4816570`):
       two conflicts, both `main`'s side, and one seam the merge could not show
@@ -324,8 +320,8 @@ chooses a tier — which is only as good as signing in is.
       and no link. Run had no "Forgot your password?" at all; it has now.
       The page carries the project's two public values itself, so Vercel needs
       nothing; live on the site since 30 September (`c41f2bd` on main).
-      Waiting on Matthew: the template, and custom SMTP, without which
-      Supabase mails only its own team (store-setup.md step 6).*
+      The template and custom SMTP followed the same day, and a reset was
+      proved end to end (store-setup.md step 6).*
 
 ### Lift
 
@@ -703,4 +699,4 @@ signing in, the photographs and the glass all behave differently on each.
   shared pieces and the ADR amendment allow it.
 - Everything in [submission-week.md](submission-week.md) and
   [store-setup.md](store-setup.md) that is not design: the `lift.save_workout`
-  migration, the merge back to `main`, the store dashboards, SMTP, the listing.
+  migration, the store dashboards, the listing.

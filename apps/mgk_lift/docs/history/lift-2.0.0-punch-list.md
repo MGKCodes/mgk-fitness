@@ -1,7 +1,14 @@
 # MGKFitness: Lift 2.0.0 — the punch list from the first TestFlight build
 
+> **A record, not a plan.** The punch list from the first TestFlight build,
+> August 2026, frozen on 1 October as it was at `db88a4f`. Nothing below is
+> maintained. Most of the screens it describes were rebuilt twice since, by
+> the logging rework and the redesign. Its one live item, exercising the
+> resumable coach transcript on a phone, is carried in
+> [`../submission-week.md`](../submission-week.md).
+
 What the first build on a real phone turned up, and the work it implies. The
-source is a session of [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md)
+source is a session of [testflight-2.0.0-test-sheet.md](../testflight-2.0.0-test-sheet.md)
 run on 2026-08-24, plus the reading of the code that followed it.
 
 Same discipline as [release-2.0.0.md](release-2.0.0.md): tick items as they
@@ -359,7 +366,7 @@ The largest phase, and the one with an existing design to work from.
       The block was a choice, not a dependency: **wait and copy the run app's
       model** rather than design it twice. That model landed as mgk_run's
       ADR-0025, so the wait is over. Copied here as
-      [ADR-0002](decisions/0002-a-coach-conversation-is-a-session.md).
+      [ADR-0002](../decisions/0002-a-coach-conversation-is-a-session.md).
 
       **The bug it fixes was live in lift.** Run found it in a field test: the
       coach said *"You ran 10 km in 60 minutes yesterday"* over an empty log —
@@ -406,7 +413,7 @@ Added 2026-09-28, from an audit of the branch rather than of the build: sets,
 templates that learn from the session, saving and backup with real error
 messages, and the glass-and-motion pass. It reaches past UI into the recorder,
 the sync layer and a new server function, so it is its own file —
-[lift-2.0.0-logging-rework.md](lift-2.0.0-logging-rework.md) — and starts by
+[lift-2.0.0-logging-rework.md](../lift-2.0.0-logging-rework.md) — and starts by
 bringing main into this branch.
 
 ---
@@ -505,7 +512,7 @@ artefact; these are what building it turned up.
       so this was wiring, not a new control.
 
       *The three that were cut.* Year of birth, height and weight are body facts,
-      and [coach-profile.md](../../../docs/coach-profile.md) puts them in `core` so that Runio
+      and [coach-profile.md](../../../../docs/coach-profile.md) puts them in `core` so that Runio
       gets them free. **`core` has nowhere to put them.** There is no
       `core.body_metrics`, no `height_cm` and no `year_of_birth` in any
       migration; that document opens by saying *"Nothing here is built."* So

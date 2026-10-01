@@ -18,8 +18,7 @@ emphasis differently from the other's. This imports
 repo notes in `<!-- -->` blocks (the draft banners moved there on 2026-09-02).
 They do not render in markdown, but Run's renderer reads a line at a time and
 would print them as paragraphs, and a page reading "NOT FOR PUBLICATION" is not
-a privacy policy. `docs/submission-week.md`, workstream H, asked for exactly
-this transform.
+a privacy policy.
 """
 
 from __future__ import annotations
