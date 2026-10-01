@@ -30,18 +30,18 @@ and a second RevenueCat app.
 
 ## Where this got to
 
-**Build 25 is on the internal track**, published automatically on 2026-09-11
-from `12d74d8`, and **build 26 is the release candidate** for both stores. The
-whole chain in this document works: the first real purchase went through on
-2026-09-11 after step 10's product-id mapping turned out to be the thing
-standing in the way, exactly as this document warned it would be.
+**The whole chain in this document works.** `run-android-release` has published
+to the internal track by itself since build 24, and the first real purchase
+went through on 2026-09-11 after step 10's product-id mapping turned out to be
+the thing standing in the way, exactly as this document warned it would be.
 
-**What is left is in [app-store-1.0.0.md](app-store-1.0.0.md)**, which carries
-the live status for both stores rather than having it in two places. The short
-version, for Play: developer verification is **done** (§8b), and what is left is every
-declaration in §4, the listing and its graphics
-([play-listing.md](play-listing.md)), Premium's new description (§5), and a
-premium purchase on build 26 (§9).
+**Which build is on the track, and what is left, is in
+[app-store-1.0.0.md](app-store-1.0.0.md)**, which carries the live status for
+both stores rather than having it in two places. The short version, for Play:
+developer verification is **done** (§8b), and what is left is every declaration
+in §4, the listing and its graphics ([play-listing.md](play-listing.md)),
+Premium's new description (§5), and a Premium purchase on the release
+candidate (§9, written when that was build 26).
 
 **`REVENUECAT_ACCEPT_SANDBOX` stays on.** This paragraph used to say it had to
 come off before anything was public; ADR-0037 reversed that, and §9 says why.
@@ -325,7 +325,7 @@ Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 
 | Category | Type | Collection | Purposes | What it is |
 |---|---|---|---|---|
-| Location | Approximate location | Optional | App functionality | MapTiler's tile requests for the map on screen |
+| Location | Approximate location | Optional | App functionality | Esri's tile requests for the map on screen |
 | Location | Precise location | Optional | App functionality | Route traces, sent only with backup on |
 | Personal info | Name | Optional | App functionality, Account management | The name the coach uses, if given |
 | Personal info | Email address | Optional | Account management | The account, typed in or passed on by Google or Apple at sign-in; the app works signed out |
@@ -366,8 +366,8 @@ become false at once** — that is the whole reason it is a rule in
 
 **Why nothing is marked "shared".** Play's definition of sharing excludes
 transfer to a service provider processing on the developer's behalf, and all
-four sub-processors are exactly that — Supabase, OpenRouter, RevenueCat,
-MapTiler. **This is the one judgement call on the form.** If it is ever wrong,
+five sub-processors are exactly that: Supabase, OpenRouter, RevenueCat,
+Esri and SMTP2GO. **This is the one judgement call on the form.** If it is ever wrong,
 it is wrong about OpenRouter, which receives training data and message text;
 the defence is that it processes on our instruction and does not use it for its
 own purposes, which is also what the policy tells the runner.

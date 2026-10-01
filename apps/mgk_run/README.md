@@ -10,11 +10,11 @@ goal, and have a coach that adapts when life gets in the way. Part of the
 
 ## Status
 
-**On TestFlight and Google Play internal testing, not yet submitted.** Build 25
-is on both test tracks; build 26 is the release candidate for the App Store and
-Google Play together. Tracking, plan generation and the coach all run, and the
-coach is sold as a subscription through both stores. What is left is in
-[`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md).
+**On TestFlight and Google Play internal testing, not yet submitted.** Tracking,
+plan generation and the coach all run, and the coach is sold as a subscription
+through both stores. Which build is where, and what is left, is in
+[`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md), and only there: a build
+number written here was two builds behind within a week.
 
 The test count lives in
 [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) and only there. It read

@@ -29,8 +29,8 @@ pre-release review that day found real problems that do not block submission,
 and each was either fixed for build 26 or written down in section 4 with a date
 to look at it again. They are specified, so they are work, not subjects; they
 are here rather than on [app-store-1.0.0.md](app-store-1.0.0.md) because that
-page is the list of what stands between build 26 and the stores, and none of
-these does.
+page is the list of what stands between the release candidate and the stores,
+and none of these does.
 
 It is a work document, so it has an end date: it ends when the first two
 entries have a specification or a written decision not to build them, and every
@@ -165,7 +165,7 @@ a promise to ship by then.
 
 | Item | Revisit |
 |---|---|
-| **Email confirmation is off in Supabase Auth.** Turning it on needs custom SMTP and changes sign-up, so it is a product decision. The release plan asks for it before launch; this is the date if it is deferred | 2026-10-15 |
+| ~~**Email confirmation is off in Supabase Auth.**~~ **Done, not deferred.** On since 2026-09-30, with mail through SMTP2GO and the templates in `supabase/templates/`, proved end to end the same week | Closed |
 
 ### Before the repository goes public
 

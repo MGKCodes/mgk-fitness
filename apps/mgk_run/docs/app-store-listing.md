@@ -1,15 +1,15 @@
 # App Store listing — 1.0.0
 
-The copy that goes in the boxes. [app-store-1.0.0.md](app-store-1.0.0.md)'s
-Gate 4 says which boxes exist and what their limits are; this is what goes in
-them, so the checklist stays a checklist and the writing lives somewhere it can
-be edited as writing. The Google Play copy is in
+The copy that goes in the boxes. [store-setup.md](store-setup.md) §10 says
+which boxes exist, field by field; this is what goes in them, so the runbook
+stays a runbook and the writing lives somewhere it can be edited as writing. The Google Play copy is in
 [play-listing.md](play-listing.md), checked by the same script.
 
 Written 2026-09-02 against `f5599c3`. **Updated 2026-09-29 for build 26**: the
 description stopped promising watch runs from Apple Health (the app reads step
 count only), the terms link is our own terms (ADR-0040), Premium's description
-says what Premium actually buys (ADR-0038), the Play health disclaimer is in
+says what Premium actually buys (ADR-0038, then ADR-0041 the next day), the
+Play health disclaimer is in
 here too, and the review notes are final apart from the demo credentials.
 
 **Nothing here has been reviewed by anybody but its author.** Every character

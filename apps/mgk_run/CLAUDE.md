@@ -6,12 +6,12 @@ specific to the running app.
 
 ## Current state
 
-**On both stores' test tracks, not yet submitted.** Build 25 is on TestFlight
-and Play internal testing; build 26 (`1.0.0+26`, not cut yet) is the release
-candidate for the App Store and Google Play together, adding the coach's
-consent sheet, reported replies, account and purchase safety, and the
-recording fixes. What is left, in order, is at the top of
-`docs/app-store-1.0.0.md`.
+**On both stores' test tracks, not yet submitted.** Which build is on a phone,
+which is the release candidate and what is left, in order, is in
+`docs/app-store-1.0.0.md`. **The build number is deliberately not written
+here**, for the same reason as the test count below: this paragraph still said
+build 26 was "not cut yet" after it had shipped to both test tracks. Builds come
+from `develop` (CONTRIBUTING.md, Branching).
 
 Three tests are skipped by design (`@Tags(['live'])` — they hit the real
 backend). **The test count is deliberately not written here.** It sat at 1186 in

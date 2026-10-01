@@ -197,7 +197,7 @@ Submission saying *"Unable to Submit for Review"* with two reasons: the
 subscription must be submitted with its group, and there is no app version for
 the platform. **Both are correct and neither is a fault.** Subscriptions are
 reviewed alongside an app version on the first submission and never on their
-own, so the item sits in the draft until the rest of Gate 2 and Gate 4 are
+own, so the item sits in the draft until the submission forms (§10) are
 filled in and goes up with the build.
 
 Ready to Submit is also the bar that matters for everything downstream:
@@ -565,7 +565,7 @@ repeated here.
 | Field | Answer |
 |---|---|
 | Name, subtitle, categories | [app-store-listing.md](app-store-listing.md) |
-| Content Rights | **Yes**, it contains third-party content, and **yes**, we have the rights: the basemap tiles are MapTiler's and OpenStreetMap's, and the map shows their attribution (the build fails if tiles are configured without one). Holding the rights depends on the MapTiler plan being a paid one, which is an open item in app-store-1.0.0.md |
+| Content Rights | **Yes**, it contains third-party content, and **yes**, we have the rights: the basemap tiles are Esri's (ArcGIS Location Platform, whose free tier allows commercial apps) and carry data from OpenStreetMap and the other sources Esri names. The map shows *Powered by Esri* and opens the sources on a tap, and the build fails if tiles are configured without a credit. True of build 27 on, once Codemagic's `MAP_TILE_URL_TEMPLATE` is Esri's; it was MapTiler's non-commercial plan before |
 | Age Rating | The questionnaire below |
 | License Agreement | **Apple's Standard EULA.** The field takes plain text, not a URL; our terms are linked from the description and the app, and say Apple's EULA governs App Store purchases ([ADR-0040](decisions/0040-our-terms-and-apples-eula.md)) |
 
@@ -614,7 +614,7 @@ Backup consent makes several of these conditional, and the form cannot say
 | Health | Yes | App Functionality | HealthKit **step count** over a recorded run, stored with the run and sent to us only with backup on; injury notes and symptoms typed to the coach |
 | Fitness | Yes | App Functionality | Runs, pace, splits, plans and effort ratings, sent to the coach and, with backup on, stored |
 | Precise Location | Yes | App Functionality | Route traces, stored with backup on |
-| Coarse Location | **No** | App Functionality | MapTiler's tile requests show roughly where the map is. A judgement call: no account or id goes with them, and over-declaring costs nothing |
+| Coarse Location | **No** | App Functionality | Esri's tile requests show roughly where the map is. A judgement call: no account or id goes with them, and over-declaring costs nothing |
 | Other User Content | Yes | App Functionality | Messages to the coach, the rolling summary, and replies the runner reports |
 | User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id; and Apple's or Google's identifier for the runner, when they sign in with one |
 | Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it |
@@ -644,7 +644,7 @@ free and the coach is the subscription.
 | Support URL | `https://mgkfitness.mgkcodes.com/run/support` |
 | Marketing URL | Optional. Leave blank |
 | Copyright | `2026 MGKCodes Ltd` |
-| Build | 1.0.0 (26) |
+| Build | The release candidate named in [app-store-1.0.0.md](app-store-1.0.0.md) (this row said 26 after 27 replaced it) |
 | In-App Purchases and Subscriptions | **Add both**, Coach and Premium Coach. A first subscription is only ever reviewed with a version, so this is where they go up |
 | App icon | Nothing to upload: it comes from the build |
 | Sign-in required | **Yes**, demo account A (§9) |
@@ -663,10 +663,10 @@ free and the coach is the subscription.
 ## 11. Sign in with Apple and Google — Run's half
 
 Added 2026-09-30. Both apps sign into one account, so the providers were set
-up **once, for the suite**, in the Lift session, and the full runbook is Lift's
-`docs/store-setup.md`, step 7, which reaches `main` when `lift/release-2.0.0`
-merges. Until then this is Run's record. **Recorded from that runbook, not
-re-checked from this lane:** the first build 27 on a phone is what proves it.
+up **once, for the suite**, in the Lift session, and the full runbook is
+[Lift's `docs/store-setup.md`](../../mgk_lift/docs/store-setup.md), step 7.
+This is Run's half of it. **Recorded from that runbook, not re-checked from
+Run's side:** the first build 27 on a phone is what proves it.
 
 | Where | Run's part |
 |---|---|
@@ -718,4 +718,4 @@ Two more that are not the webhook's fault:
   to Play at 1.0.0 until 2026-09-29, citing ADR-0021 for the opposite of what
   it says.
 - **A processor agreement with RevenueCat.** A separate obligation, tracked in
-  Gate 3 alongside the OpenRouter one.
+  [app-store-1.0.0.md](app-store-1.0.0.md) alongside the OpenRouter one.

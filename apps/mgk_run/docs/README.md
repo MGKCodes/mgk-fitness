@@ -29,8 +29,11 @@ Six documents, for two stores. They are six because they are read in different
 places, not because the subject is large.
 
 - **[app-store-1.0.0.md](app-store-1.0.0.md)** — **the plan, for both
-  stores.** What is left, in order, and the gates behind it. Read at a desk.
-  **This is the checklist and it carries the state.**
+  stores.** One table saying where things stand and one checklist of what is
+  left, in order. **It carries the state and nothing else**: the gates and the
+  reasoning behind them were moved to
+  [history/app-store-1.0.0-record.md](history/app-store-1.0.0-record.md) on
+  2026-10-01, when the page had grown to 1,168 lines around fifteen live items.
 - **[store-setup.md](store-setup.md)** — **the Apple runbook.** Every field in
   App Store Connect and RevenueCat, including the submission forms and the
   review accounts, the five strings that must match exactly, and a table
@@ -90,7 +93,8 @@ root, which is what `mgkfitness.mgkcodes.com/run` serves.
 
 ## Decisions — the why
 
-**[decisions/](decisions/)** — forty ADRs, 0001 to 0040, one file each.
+**[decisions/](decisions/)** — one ADR per file, numbered from 0001. The count
+is not written here: it said forty when there were forty-two.
 
 Superseded rather than edited, so a superseded ADR is still worth reading: it
 records what was believed at the time and what the alternative was. Start with
@@ -121,8 +125,9 @@ everywhere else: a warning that depends on somebody reading a paragraph holds
 until the next person. `docs/history/product-spec.md` cannot be mistaken for
 current in a way `docs/product-spec.md` could.
 
-Three documents, none maintained, none describing how the app behaves now:
-`release-1.0.0.md`, `product-spec.md` and `design-system.md`.
+Four documents, none maintained, none describing how the app behaves now:
+`app-store-1.0.0-record.md`, `release-1.0.0.md`, `product-spec.md` and
+`design-system.md`.
 [`history/README.md`](history/README.md) says what each one is for and why it
 was kept rather than deleted.
 
@@ -140,9 +145,8 @@ them as live:
 
 - **[../../../docs/](../../../docs/)** — the suite: `architecture.md`,
   `database.md`, `design.md`, `naming.md`, `navigation.md`, `plan-model.md`,
-  `coach-profile.md`. Lift's release documents are also there, at the root
-  rather than under `apps/mgk_lift/docs/`, which is an inconsistency rather
-  than a rule.
+  `coach-profile.md`. Lift's release documents are under
+  `apps/mgk_lift/docs/`, as Run's are here.
 - **[../../../CONTRIBUTING.md](../../../CONTRIBUTING.md)** — suite-wide
   conventions.
 - **[../CLAUDE.md](../CLAUDE.md)** — the load-bearing rules for changing code

@@ -95,7 +95,9 @@ CLAIMS = [
     # for (health_read_types.dart): Health is read for step count only.
     (r'\bwatch(es)?\b', 'nothing from a watch reaches the log'),
     (r'\bworkouts?\b', 'workouts are not read from Health'),
-    (r'better model', 'Premium is the same model with more allowance (ADR-0038)'),
+    # "better model" was refused here under ADR-0038, when Premium was the same
+    # model with a bigger allowance. ADR-0041 reversed that the next day, and
+    # both listings now say "a better AI model", so the rule came out.
 ]
 
 
