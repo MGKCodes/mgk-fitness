@@ -98,6 +98,18 @@ None of this waits on anything else.
         permissions, which the Android workflow's `publishing:` needs;
       - the odd combined row seen in the App Store subscription group's list
         is gone after a refresh.
+- [ ] **Decide whether Liftio's two paying subscribers are owed anything.**
+      Their subscriptions end rather than carry over (decision 4). RevenueCat's
+      old Liftio project showed four active customers on 1 October, two paying
+      monthly and two who never paid. An older plan says Liftio 1.4.0 has not
+      worked since 7 August, when its tables moved; that was not checked. If
+      it is true, those two have been paying for an app that does not run. A
+      refund, or nothing, is Matthew's call, and Apple issues it either way.
+- [ ] **Confirm Play will let this account publish to production.** Google
+      asks developer accounts registered as personal after November 2023 to
+      run a closed test with 12 testers for 14 days first. If MGKCodes'
+      account is one of those, Android's date moves by at least two weeks, so
+      find out now. Not checked: it needs the Console.
 - [ ] **Apply `lift_save_workout`.** Claude Code's auto mode refuses production
       migrations even with a go-ahead, so run the file in the Supabase SQL
       editor. Then rename the file to the version the ledger records. Until
@@ -121,6 +133,14 @@ None of this waits on anything else.
       permissions are confirmed (step 1).
 - [ ] **RevenueCat's check on Play purchases** ("package name was not found")
       clears once that build is on internal testing. Look again then.
+- [ ] **Tag what is built.** The suite's rule is that what shipped is a tag,
+      and only Run has any (`run/build-6` to `run/build-26`). Build 41 was
+      made from `e2a20d5`, which is on `develop`; `lift/build-41` belongs
+      there if it becomes the release candidate, and every Lift build after
+      it gets its own.
+- [ ] **Run the pgTAP cases for photo deletion** (`supabase/tests/delete_account.sql`,
+      20 cases). Written on 1 October and never run, because that machine has
+      no Docker. The routine itself was proved against production by hand.
 
 A "Publishing failed" from Codemagic can be a successful upload: Apple answered
 500 mid-upload on build 31 and the IPA arrived anyway. Read the step log before
@@ -305,6 +325,16 @@ notes where a reviewer could meet it.
 
 For 2.0.x: a coach that offers a workout from chat, and joining an Apple
 account to an email account in Settings.
+
+Tidying that can wait until after the stores, carried here from
+[lift-2.0.0-track.md](lift-2.0.0-track.md) so it is not lost in a closed file:
+
+- The three split photographs in `assets/images/splits/` are no longer drawn
+  anywhere and still ship in the bundle.
+- `ActionPill` and `HeroStatTile` in `mgk_ui` are used by neither app now.
+  Removing them is a change to the shared package, so it needs both lanes.
+- Lift's start button and its launch curtain are copies of Run's. If both
+  apps keep them, they belong in `mgk_ui`.
 
 ## Not Lift's, and able to hurt it
 
