@@ -242,6 +242,9 @@ void main() {
 
     await tester.tap(find.text('I already have an account'));
     await tester.pumpAndSettle();
+    // The form is the second step since build 27.
+    await tester.tap(find.text('Continue with email'));
+    await tester.pumpAndSettle();
 
     expect(find.text('First name (optional)'), findsNothing);
     expect(find.byType(TextFormField), findsNWidgets(2));

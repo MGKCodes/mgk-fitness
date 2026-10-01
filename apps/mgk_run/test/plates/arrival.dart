@@ -480,6 +480,23 @@ void main() {
       },
     );
   });
+
+  testWidgets('and the email form behind its third button', (tester) async {
+    await plate(
+      tester,
+      'account-gate-email',
+      settledIn(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await settle(tester);
+        await tester.tap(find.text('Back them up'));
+        await settle(tester);
+        await tester.tap(find.text('Continue with email'));
+        await settle(tester);
+      },
+    );
+  });
 }
 
 /// The preview's scripted coach, hearing a race three weeks away rather than

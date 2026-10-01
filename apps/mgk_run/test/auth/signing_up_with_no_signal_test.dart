@@ -29,6 +29,15 @@ void main() {
   /// — a submitting `PrimaryButton` draws an indeterminate spinner, and settle
   /// never returns on a screen showing one.
   Future<void> submit(WidgetTester tester, {required String label}) async {
+    // The form is the second step since build 27. A test that submits twice
+    // is already on it the second time.
+    final Finder email = find.text('Continue with email');
+    if (email.evaluate().isNotEmpty) {
+      await tester.ensureVisible(email);
+      await tester.pump();
+      await tester.tap(email);
+      await tester.pump();
+    }
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Email'),
       'sam@example.com',
