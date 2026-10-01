@@ -43,15 +43,15 @@ app no longer counts them as Lift's.
       the monthly product and set to renew; nobody holds the annual one. The
       other two are active with nothing ever spent and set to cancel, which
       looks like access granted by hand.*
-- [ ] **Take `liftio_monthly` and `liftio_annual` off sale** in App Store
-      Connect: each product's page › Availability › *Remove from Sale*. Nobody
-      can buy them afterwards. Read what Apple's confirmation says about
-      existing subscribers before confirming: the expectation is that the two
-      who pay are not renewed and keep what they paid for until the period
-      ends, and it has not been checked.
-- [ ] **Take the two legacy products back out of the `mgk-fitness` RevenueCat
-      project.** They were added on 1 October under the earlier plan (step 3):
-      detach each from `paid`, then delete it from *Lift (App Store)*.
+- [x] **`liftio_monthly` and `liftio_annual` are off sale** in App Store
+      Connect: both read *Developer Removed from Sale* since 1 October, and
+      nobody can buy them. The expectation is that the two who pay are not
+      renewed and keep what they paid for until the period ends. That is what
+      Apple is understood to do, and it has not been watched happening.
+- [x] **The two legacy products are out of the `mgk-fitness` RevenueCat
+      project again.** They were added on 1 October under the earlier plan
+      (step 3) and removed the same day: *Lift (App Store)* lists Coach and
+      Premium Coach only.
 - [x] No grants. `core.grant_entitlement()` is not run for any Liftio customer.
 
 ## 1. App Store Connect: two new products
@@ -200,6 +200,10 @@ apps, which is exactly what happened to Run for thirteen minutes on
 2026-09-11. **Matthew runs it:** Claude Code's auto mode refuses to write a
 secret even with a go-ahead (1 October). The legacy ids are not in it, by the
 decision in step 0.
+
+**Set on 1 October 2026 at 16:10 UTC**, and checked: the digest Supabase lists
+for the secret is the SHA-256 of exactly the eight entries below, written on
+one line with no spaces.
 
 ```bash
 npx supabase secrets set --project-ref cwpwzxjjhxbkwhrgnasn REVENUECAT_PRODUCTS='{
@@ -419,10 +423,10 @@ Nothing the app sends needs it yet.
 
 | Step | State | Unblocks |
 |---|---|---|
-| 0 | decided 1 October: ended, not carried over. Two dashboard actions open | nothing waits on it |
+| 0 | done 1 October: ended, not carried over | nothing waits on it |
 | 1 + 3 + 4 | done 1 October | a TestFlight build that can sell; a sandbox purchase |
 | 2 | products done; declarations open | an Android build that can sell |
-| 5 | open | purchases reaching `core.entitlements` |
+| 5 | done 1 October | purchases reaching `core.entitlements` |
 | 6 | done | new people being able to sign up at all |
 | 7 | done | the sign-in build for both apps |
 | web pages | live | privacy URL, support URL, deletion URL in both stores |

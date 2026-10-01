@@ -28,7 +28,7 @@ written here, change the item and say why.
 | The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October |
 | Email and sign-in | SMTP2GO, email confirmation on, Apple and Google configured | Recorded done on 30 September in [store-setup.md](store-setup.md) steps 6 and 7. Not checked again today |
 | Builds | The last Lift builds are from 29 September, commit `4d12c46`: iOS 2.0.0 (32) on TestFlight, and an `.aab` uploaded to Play's internal testing as a draft | Codemagic's build list, 1 October |
-| The stores | Lift's two subscriptions exist on both stores, RevenueCat has both Lift apps with their products in the current offering, and Codemagic holds Lift's keys. `REVENUECAT_PRODUCTS` does not map Lift's ids yet | Walked through with Matthew on 1 October, from his screenshots of each dashboard. [store-setup.md](store-setup.md) says what is still open |
+| The stores | Lift's two subscriptions exist on both stores, RevenueCat has both Lift apps with their products in the current offering, and Codemagic holds Lift's keys. `REVENUECAT_PRODUCTS` maps Lift's four ids. Liftio's two legacy products are off sale | Walked through with Matthew on 1 October, from his screenshots of each dashboard. [store-setup.md](store-setup.md) says what is still open |
 
 **Built on 1 October, on the branch `docs/lift-release-checklist`, and not yet
 merged into `develop`:** "Delete my Lift data" taking the progress photos (the
@@ -46,10 +46,8 @@ Two things follow from that table.
 whole redesign and Sign in with Apple and Google. The first build of the
 finished app is the release candidate.
 
-**A build can sell once this branch is in `develop` and the product mapping is
-set.** The keys are in Codemagic and both Lift workflows name their group, on
-this branch. Until `REVENUECAT_PRODUCTS` maps Lift's ids, a purchase is taken
-by the store and unlocks nothing.
+**A build can sell once this branch is in `develop`.** The keys are in Codemagic and both Lift workflows name their group, on
+this branch, and the product mapping has been set since 1 October.
 
 **After a fresh checkout, run `dart run build_runner build
 --delete-conflicting-outputs` in `apps/mgk_lift` before the tests.** The
@@ -95,16 +93,14 @@ None of this waits on anything else, and the release candidate waits on most
 of it. The three decisions that sat here were made on 1 October and are
 recorded as ticked items.
 
-- [x] **[store-setup.md](store-setup.md) steps 1 to 4**, done with Matthew on 1
-      October: the two App Store products and their levels, Play's two
+- [x] **[store-setup.md](store-setup.md) steps 0 to 5**, done with Matthew on 1
+      October. Liftio's two products are off sale and its subscriptions end
+      rather than carry over (step 0), and `REVENUECAT_PRODUCTS` maps Lift's
+      four ids beside Run's four, checked by digest (step 5). Steps 1 to 4: the two App Store products and their levels, Play's two
       subscriptions and the service account's access, RevenueCat's two Lift
       apps, products, entitlements and offering, Apple's server notifications,
       and the Codemagic group.
 - [ ] **What the sweep left open:**
-      - taking Liftio's two products off sale and out of RevenueCat (step 0):
-        its subscriptions end rather than carry over, decided 1 October;
-      - `REVENUECAT_PRODUCTS` (step 5), which Matthew runs because auto mode
-        refuses to write a secret;
       - confirmation that neither new App Store product still shows the red
         banner, that each Play base plan is `monthly` at £0.99 and £2.99, and
         that the service account holds release permissions;
