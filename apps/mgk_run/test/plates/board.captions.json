@@ -16,11 +16,16 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 26",
-    "eyebrow": "apps/mgk_run · build 26 (1.0.0+26), with the UI fixes for build 27",
+    "title": "MGKFitness: Run, every screen going into build 27",
+    "eyebrow": "apps/mgk_run · the build 27 candidate, drawn from develop before the build is cut",
+    "build": "27 candidate · pubspec still 1.0.0+26",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
+      "Signing in is two steps. Apple, Google and 'Continue with email' come first (B8, C14, K2), and the email form is behind the third (K3, new). On one screen the form's Password and Sign up were below the bottom of a 393pt phone.",
+      "The privacy policy says what Apple and Google pass on and names Esri as the map provider (T19), and the deletion messages give run@mgkfitness.mgkcodes.com in place of the studio's address (L5, L6).",
+      "A confirmation floats as a rounded card above the bottom edge instead of a bar across it (T15). The paywall's renewal terms say 'turned off' where they said 'switched off' (Y1 to Y9). The Plan tab before a plan starts has the same lit ground as the tab in week three (P5).",
       "Re-drawn on 30 Sep with the UI fixes for build 27, every plate at one commit. Fixed, with the \"done right\" line now describing the fixed screen and the old defect kept beside it: G4, G6, G7, H6, P5, T8, K1, T16, F7, S6, C9, G1, R16, R17, R18, R19, R28, R29, R24, T15, C8, P4.",
       "New for build 26: the coach's permission sheet and the notice before any price (C7, C8, C9), reporting a reply (C10 to C12), every paywall answer (Y2 to Y9), the account's subscription states and Manage subscription (T4 to T10), signing out with the erase switch (T11, T12), withdrawing the coach's permission (T13 to T15), every delete-account state (L1 to L7), another account's training on the phone (X1), Precise Location off (R28), finishing and leaving a run (R29, R30), a recovered run (F7, F8), a race too close to plan for (G6, G7) and the Health step (B9).",
       "Also new since 2 Sep: the start screen and count-in (R24, R25), the recentre control and full-screen map (R26, R27), the locked coach line (C6), the week a plan is built (H6, P5), backup and permissions (T16, T17), the legal documents (T18, T19) and the backup prompt (K1, K2).",
@@ -109,7 +114,7 @@
     "caveats": [
       [
         "No map tiles",
-        "A test answers every network image with an error, so maps show their route and position marker on a plain ground."
+        "A test answers every network image with an error, so maps show their route and position marker on a plain ground. The map provider's credit shows only with tiles, so it is not in any plate: on a phone it reads 'Powered by Esri', sits above the in-run panel, and opens the data sources on a tap."
       ],
       [
         "Debug-only rows",
@@ -537,7 +542,8 @@
           "sequence": true,
           "plates": [
             "K1",
-            "K2"
+            "K2",
+            "K3"
           ]
         }
       ]
@@ -614,7 +620,8 @@
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
-      ]
+      ],
+      "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it."
     },
     "A2": {
       "file": "shell-plan",
@@ -743,10 +750,11 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Email, password, Sign in and a way to create an account instead, with a line saying the login is shared with Lift. Someone who has been here before is not walked through the intro again.",
+      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button. Someone who has been here before is not walked through the intro again.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
     },
     "H2": {
       "file": "home-no-plan",
@@ -1535,11 +1543,12 @@
       "how": "driven",
       "reach": "any tab, signed out › the mark",
       "job": "Tapping the coach with no account.",
-      "done": "Asks for an account before anything else: never the permission sheet or a price without one. The name from the intro is already known.",
+      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Says what an account is for, then the three ways to make one, all on the screen with nothing to scroll for.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "isnew": "Order settled in build 26."
+      "isnew": "Order settled in build 26.",
+      "changed": "Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
     },
     "C7": {
       "file": "coach-consent",
@@ -2075,13 +2084,13 @@
       "how": "built",
       "reach": "T14 › Withdraw",
       "job": "After withdrawing.",
-      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation on the app's dark surface says it is done.",
+      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation on the app's dark surface, floating as a rounded card above the bottom edge, says it is done.",
       "files": [
         "lib/src/features/legal/presentation/legal_screen.dart",
         "lib/src/features/settings/presentation/settings_tile.dart"
       ],
       "isnew": "New in build 26.",
-      "changed": "Build 27: the confirmation bar was light on a dark app. Every snackbar in both apps takes the suite surface now."
+      "changed": "Build 27: the confirmation bar was light on a dark app. Every snackbar in both apps takes the suite surface now. Since 1 Oct it is a floating card, not a bar across the bottom."
     },
     "T18": {
       "file": "legal-disclaimer",
@@ -2102,12 +2111,13 @@
       "how": "built",
       "reach": "T13 › Privacy policy",
       "job": "The privacy policy inside the app.",
-      "done": "Matches the published policy; since build 26 it covers the name the app collects and the profile photo that never leaves the phone.",
+      "done": "Matches the published policy. It covers the name the app collects, the profile photo that never leaves the phone, what Apple and Google pass on when a runner signs in with either (an email address and an identifier, nothing else), and names Esri as the map provider.",
       "files": [
         "lib/src/features/legal/presentation/privacy_policy_screen.dart",
         "lib/src/features/legal/domain/legal_copy.dart"
       ],
-      "isnew": "Caught up with the published policy in build 26."
+      "isnew": "Caught up with the published policy in build 26.",
+      "changed": "Build 27: signing in with Apple or Google, the service that sends account email, and Esri in place of MapTiler."
     },
     "K1": {
       "file": "keep-runs-safe",
@@ -2127,10 +2137,11 @@
       "how": "driven",
       "reach": "K1 › Back them up",
       "job": "The account asked for at the moment it buys something.",
-      "done": "Create your account with what an account is for; the name from the intro is already known; backing out leaves nothing written.",
+      "done": "Create your account with what an account is for, then Apple, Google and Continue with email. Backing out leaves nothing written.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: Apple and Google lead, and the email form is the next step (K3)."
     },
     "L1": {
       "file": "delete-account",
@@ -2185,7 +2196,7 @@
       "how": "built",
       "reach": "L2 › Delete my data, the login holds Lift data",
       "job": "The deletion done where the same login still has Lift data.",
-      "done": "Says the login is still active because Lift is using it and how to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
+      "done": "Says the login is still active because Lift is using it and gives run@mgkfitness.mgkcodes.com to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
@@ -2197,7 +2208,7 @@
       "how": "built",
       "reach": "L3 › Delete my data, the login could not be removed",
       "job": "The deletion done, but the login could not be removed and the phone copy was kept.",
-      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email to have the login removed, and that the runs are still on this phone with no backup.",
+      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email run@mgkfitness.mgkcodes.com to have the login removed, and that the runs are still on this phone with no backup.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
@@ -2295,6 +2306,18 @@
       "files": [
         "lib/src/features/coaching/presentation/plan_finish_screen.dart"
       ]
+    },
+    "K3": {
+      "file": "account-gate-email",
+      "name": "The email form",
+      "how": "driven",
+      "reach": "K2 › Continue with email",
+      "job": "Making the account with an email address, for a runner who has neither Apple nor Google on the phone or would rather not use them.",
+      "done": "Email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart"
+      ],
+      "isnew": "New in build 27."
     }
   }
 }
