@@ -156,7 +156,6 @@ a promise to ship by then.
 | **Adjusting a week from a week opened in the calendar** (`WeekAdjustSheet`) is not given the race-day calendar or what has already been run. *Adjust this week* on the Plan tab is, since build 28 | 2026-10-31 |
 | **Manual laps are discarded at Finish** | 2026-10-31 |
 | **A beginner at 0 km a week cannot build a plan** | 2026-10-31 |
-| **Android never asks for the notification permission** (Android 13+), so the "Recording your run" notification is hidden unless the runner turns notifications on | 2026-10-15 |
 | **Approximate location on Android is not detected.** The iPhone warns (`663f574`); Android's plugin reports "unknown", so a coarse-only run still records nothing | 2026-10-31 |
 | **The Esri map key is built into the app and expires 2027-09-29.** Serve the tile URL from the backend, read at launch and cached, so rotating the key needs no store release. Until then, the second key ships in an update by the end of August 2027 | 2027-03-01 |
 | **A real offline map**, for the first run somewhere new with no signal. The phone keeps the tiles it has been shown and loads the ones around the runner when the app opens ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md)), and Esri's terms forbid downloading an area. It needs a provider whose terms allow it, or tiles we host | 2026-12-01 |

@@ -154,6 +154,11 @@ class RouteMap extends StatefulWidget {
 
   /// Marks the newest fix with a live position dot. On for the in-run map, off
   /// for a finished trace, where "latest" is just the end.
+  ///
+  /// **Before there is a route, the dot is at [focus].** It used to need a
+  /// route to stand on, so the start screen, which has none by definition,
+  /// drew the streets around the runner and nothing to say where in them they
+  /// were. Reported from build 28: the map "needs to show the user's location".
   final bool showPosition;
 
   /// Whether the map draws the provider's credit itself.
@@ -217,15 +222,23 @@ class _RouteMapState extends State<RouteMap> {
   @override
   void didUpdateWidget(RouteMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.follow || oldWidget.follow) return;
+    if (!widget.follow) return;
     final List<LatLng> all = <LatLng>[
       for (final segment in _segments) ...segment,
     ];
-    if (all.isEmpty) return;
+    // Before there is a route the runner is at [RouteMap.focus], and the
+    // camera keeps to it as it moves: the start screen takes a fix every few
+    // seconds, and a dot that walked off the edge of a still map would be a
+    // worse answer than no dot.
+    final LatLng? target = all.isNotEmpty ? all.last : widget.focus;
+    if (target == null) return;
+    final bool resumed = !oldWidget.follow;
+    final bool moved = all.isEmpty && oldWidget.focus != widget.focus;
+    if (!resumed && !moved) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
-        _controller.move(all.last, _controller.camera.zoom);
+        _controller.move(target, _controller.camera.zoom);
       } catch (_) {
         // Map not ready. The next fix follows anyway, now that it may.
       }
@@ -431,7 +444,10 @@ class _RouteMapState extends State<RouteMap> {
                       filled: true,
                     ),
                 ],
-              ),
+              )
+            else if (widget.showPosition && widget.focus != null)
+              // No route yet, but somewhere the runner is.
+              MarkerLayer(markers: <Marker>[_position(widget.focus!)]),
           ],
         ),
         // Required by every provider's terms, and read from the same config as

@@ -246,7 +246,6 @@ class HomeTab extends StatelessWidget {
                   onStartSession: onStartSession ?? onRecord,
                   onOpenPlan: onOpenPlan,
                   onOpenCoach: onOpenCoach,
-                  onAddTreadmillRun: onAddTreadmillRun,
                   onCloseRace: onCloseRace,
                 ),
               ),
@@ -274,6 +273,7 @@ class HomeTab extends StatelessWidget {
                   standing: standing,
                   runDays: thisWeeksDays,
                   onOpenPlan: onOpenPlan,
+                  onAddTreadmillRun: onAddTreadmillRun,
                 ),
               ),
 

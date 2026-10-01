@@ -43,8 +43,36 @@ class LaunchCurtain extends StatefulWidget {
   /// they have no launch to dress.
   final bool enabled;
 
+  /// Whether the launch is over, as seen from under it: true once the curtain
+  /// is gone and the app has come to rest, and true anywhere there is no
+  /// curtain at all.
+  ///
+  /// **For anything that plays once and wants to be seen.** Home's coach says
+  /// its line when the shell loads, and the shell loads behind the curtain: on
+  /// build 28 the line opened, was typed and was most of the way through being
+  /// held before anybody could see the screen it was on. What was left was a
+  /// bar closing, which is how it was reported: "it kind of just happens and
+  /// you can't really tell what it is".
+  ///
+  /// Depends on the launch, so a widget that reads this is rebuilt when it
+  /// ends.
+  static bool settledOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_LaunchScope>()?.settled ??
+      true;
+
   @override
   State<LaunchCurtain> createState() => _LaunchCurtainState();
+}
+
+/// Carries whether the launch is over to everything under it.
+class _LaunchScope extends InheritedWidget {
+  const _LaunchScope({required this.settled, required super.child});
+
+  final bool settled;
+
+  @override
+  bool updateShouldNotify(_LaunchScope oldWidget) =>
+      oldWidget.settled != settled;
 }
 
 class _LaunchCurtainState extends State<LaunchCurtain>
@@ -66,6 +94,9 @@ class _LaunchCurtainState extends State<LaunchCurtain>
 
   bool _started = false;
 
+  /// Over, or never played. See [LaunchCurtain.settledOf].
+  bool _settled = true;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -73,7 +104,10 @@ class _LaunchCurtainState extends State<LaunchCurtain>
     _started = true;
     final bool still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (!widget.enabled || still) return;
-    _play.forward(from: 0);
+    _settled = false;
+    _play.forward(from: 0).whenComplete(() {
+      if (mounted) setState(() => _settled = true);
+    });
   }
 
   @override
@@ -90,7 +124,7 @@ class _LaunchCurtainState extends State<LaunchCurtain>
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _play,
     // Handed through, so the app is not rebuilt on every frame of this.
-    child: widget.child,
+    child: _LaunchScope(settled: _settled, child: widget.child),
     builder: (context, app) {
       final double t = LaunchTimeline.seconds(_play.value);
       return Stack(

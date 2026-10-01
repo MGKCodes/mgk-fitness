@@ -284,10 +284,10 @@ keeps this much simpler than it would otherwise be. Paste these exactly:
 
 **The video**, on a real Android phone running the Play build:
 
-1. **First turn notifications on for Run**: Settings ▸ Apps ▸ Run ▸
-   Notifications. The app never asks for the Android 13+ notification
-   permission (a known gap, in after-1.0.0.md), so without this the
-   notification that the video exists to show does not appear in the shade.
+1. **Allow notifications when Run asks**, which it does the first time the
+   start screen opens (since build 29). If it was refused: Settings ▸ Apps ▸
+   Run ▸ Notifications. Without it the notification that the video exists to
+   show does not appear in the shade.
 2. Open Run ▸ Record a run ▸ **Start**.
 3. Lock the screen, wake it, and show the **"Recording your run"**
    notification.

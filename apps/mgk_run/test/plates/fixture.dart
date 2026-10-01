@@ -35,6 +35,7 @@ import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
 import 'package:mgk_run/src/features/recording/domain/run_recorder.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_run/src/features/recording/presentation/run_start_screen.dart';
 
 /// A runner training for a marathon, available every day so today always has a
 /// session — the plate would otherwise show a rest day about half the time it
@@ -105,7 +106,9 @@ Future<void> settle(WidgetTester tester) async {
 /// plates of its own (`C1`, `C6`); everywhere else waits for it to finish.
 Future<void> rest(WidgetTester tester) async {
   await settle(tester);
-  for (var i = 0; i < 40; i++) {
+  // Past [kCoachLineDuration], which is 6.8 seconds since build 29: the line
+  // is held long enough to read, so a plate has longer to wait for it.
+  for (var i = 0; i < 62; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
@@ -187,6 +190,17 @@ HomeShell plateApp(
   RunRecorder Function()? recorderFactory,
   Future<List<RunSummary>> Function()? historySource,
 }) => HomeShell(
+  // Where the start screen finds the runner. A test has no phone to ask, and
+  // without an answer the screen draws its "Finding you" state, which is a
+  // real state and not the one a runner usually meets.
+  startLocator: () async => StartFix.at(
+    RunPoint(
+      latitude: 53.8008,
+      longitude: -1.5491,
+      accuracyMeters: 6,
+      timestamp: DateTime.now(),
+    ),
+  ),
   // With a name on it: the fake defaults to none, and Settings then correctly
   // draws "Nothing in particular" against the row that holds what the coach
   // was told — an empty state reported as the design.

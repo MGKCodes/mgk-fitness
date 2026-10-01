@@ -12,6 +12,7 @@ import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_finish_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/race_result_sheet.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
+import 'package:mgk_run/src/features/home/presentation/home_today_tile.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 
 /// Race day as the runner meets it, through the shell that assembles it.
@@ -138,8 +139,14 @@ void main() {
       expect(find.text('Race day'), findsOneWidget);
       expect(find.textContaining('Marathon · '), findsOneWidget);
       expect(find.text('Start the race'), findsOneWidget);
-      // One run matters today, and it is not on a treadmill.
-      expect(find.text('Add a treadmill run'), findsNothing);
+      // The card is about the race and nothing else.
+      expect(
+        find.descendant(
+          of: find.byType(HomeTodayTile),
+          matching: find.byType(OutlinedButton),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('the morning after asks how it went', (tester) async {

@@ -37,6 +37,7 @@ import 'src/core/launch/launch_curtain.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
 import 'src/features/recording/data/basemap_cache.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
+import 'src/features/recording/data/platform_live_readout.dart';
 import 'src/features/recording/data/recording_run_recorder.dart';
 import 'src/features/recording/data/run_recovery.dart';
 
@@ -297,6 +298,9 @@ class _AppRootState extends State<_AppRoot> {
         // shared project.
         backup: runBackup,
       ),
+      // The run's distance, time and pace on the lock screen: a Live Activity
+      // on the iPhone, a notification on Android.
+      liveReadout: const PlatformLiveReadout(),
       // **The log is read from the phone** (ADR-0023). This was Supabase, which
       // meant a recorded run appeared only if it had been mirrored — so
       // declining backup, or losing a push, made a runner's own runs invisible

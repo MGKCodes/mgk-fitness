@@ -21,6 +21,7 @@ import '../../onboarding/data/intro_store_factory.dart';
 import '../../onboarding/domain/intro_store.dart';
 import '../../onboarding/domain/intro_permission.dart';
 import '../../onboarding/presentation/welcome_screen.dart';
+import '../../recording/domain/live_readout.dart';
 import '../../recording/domain/run_recorder.dart';
 import '../../recording/domain/run_summary.dart';
 import '../data/auth_repository.dart';
@@ -37,6 +38,7 @@ class AuthGate extends StatefulWidget {
     this.auth = const AuthRepository(),
     this.devAccounts,
     this.recorderFactory,
+    this.liveReadout,
     this.historySource,
     this.runEditor,
     this.restore,
@@ -72,6 +74,9 @@ class AuthGate extends StatefulWidget {
   /// Forwarded to [HomeShell] — the real app supplies the device-backed
   /// recorder / history data and the coach; the preview supplies fakes.
   final RunRecorder Function()? recorderFactory;
+
+  /// The run's figures on the lock screen. See [HomeShell.liveReadout].
+  final LiveRunReadout? liveReadout;
   final Future<List<RunSummary>> Function()? historySource;
 
   /// Adds and corrects runs. Forwarded straight to the shell.
@@ -424,6 +429,7 @@ class _AuthGateState extends State<AuthGate> {
     // already open, and two stores over one marker file is a race.
     introStore: _intro,
     recorderFactory: widget.recorderFactory,
+    liveReadout: widget.liveReadout,
     historySource: widget.historySource,
     runEditor: widget.runEditor,
     restore: widget.restore,

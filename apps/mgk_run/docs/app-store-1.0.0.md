@@ -33,13 +33,13 @@ Updated 2026-10-01.
 
 | | |
 |---|---|
-| **On testers' phones** | 1.0.0 (27): TestFlight from `b0384be`, Play internal from `080d760`, which differs from it in `codemagic.yaml` only. Not tagged yet. The iOS build was signed with `mgkfitness_distribution`, the first on MGKFitness's own certificate |
-| **Release candidate** | **Build 28.** The pubspec reads `1.0.0+28` (`4813494`). iOS is built first; Android follows from the same commit once 28 has been seen on TestFlight |
+| **On testers' phones** | iPhone: 1.0.0 (28) on TestFlight, from `7f84f2a`, looked at by the owner on 1 October. Android: 1.0.0 (27) on Play internal, from `080d760`. Neither tagged |
+| **Release candidate** | **Build 29, not cut.** Its code is written; the pubspec still reads `1.0.0+28`. 28 was never built for Android |
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,920 tests pass and the analyzer is clean at `4813494`, with the three `live` tests excluded. Lift's 860 and the shared package's 90 pass against the changed nav bar. This is the only place the count is written |
-| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 26, every plate drawn at `4813494`. 138 plates, seven of them new in 28 |
+| **Suite** | 1,948 tests pass and the analyzer is clean with build 29's code, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
+| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 26, is build 28's. Build 29's plates are published once its code is committed |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -48,42 +48,58 @@ Updated 2026-10-01.
 
 ### 1. Before the cut
 
-Build 27 was built, reached both stores, and was opened. Six things came out of
-that first look, and they are build 28: a launch animation (the icon's mark
-dashes across and leaves the name behind it), tabs that slide and fade instead
-of cutting, deleting a run,
-a treadmill run from Home, *Adjust this week* moved to the Plan tab, and race
-week as a week of its own with race day drawn on the plan
-([ADR-0044](decisions/0044-race-week-is-a-week-of-its-own.md)). The code is
-written and tested. What is left here is not code.
+Build 28 went to TestFlight and the owner looked at it that evening. Four
+things came back, and they are build 29:
 
-- [ ] **Lift gets the nav bar's moving selection too.** It is in the shared
-      package, so Lift's next build has it and Lift's board is stale on every
-      plate that shows the bar. Lift's suite passes against it. Say so in
-      Lift's lane before its next cut.
+- **The coach's line could not be read.** It played behind the launch
+  animation, so only its last second was seen. It waits for the launch now,
+  opens out of the mark, is held about five seconds and closes back.
+- ***Add a treadmill run* was a lone button under Start.** It is a full-width
+  row at the foot of the *This week* tile.
+- **The start screen said too little and did not show where you are.** It has
+  a dot at your position that follows you, a GPS line, and a panel with the
+  session's pace, about how long, effort and how it should feel.
+- **The map was soft.** Esri's tiles are drawn at two pixels a point; their
+  street names are half the size
+  ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md), amended).
+
+And one more, asked for with them and built the same evening: **a run's
+distance, time and pace on the lock screen** while it records. A Live Activity
+on the iPhone and a notification on Android
+([ADR-0045](decisions/0045-the-runs-figures-on-the-lock-screen.md)). The
+Android half was run on an emulator. The iPhone half is a second target in the
+Xcode project, written without a Mac: Codemagic is the first thing to compile
+it.
+
+- [ ] **The Live Activity extension's App ID and profile**, owner's step, and
+      **the iPhone build cannot be signed without it**
+      ([store-setup.md](store-setup.md) §11). Android does not wait for it.
+- [ ] **Lift gets two shared changes.** The nav bar's moving selection (build
+      28) and the coach's line opening out of its mark (build 29) are in the
+      shared package. Lift's suite passes against both and its board is stale
+      where either shows. Say so in Lift's lane before its next cut.
 - [ ] **The published policy goes live with the build, not before.** The pages
       under `web/public/run/` name Esri now. They reach the site when `web/`
       next goes to `main`.
 
-### 2. Cut build 28
+### 2. Cut build 29
 
-- [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+28` (`4813494`).
-- [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 28, with
-      rows for the launch (A7 to A11), the treadmill run (C27), race week (D4,
-      D19, D20) and deleting a run (E18 to E20). Its header still says "not cut
-      yet": write the two commits in when the builds exist.
+- [ ] `apps/mgk_run/pubspec.yaml` to `1.0.0+29`, in a commit of its own.
+- [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 29, with
+      rows for the coach's line (A12), the start screen (C13, C28, C29), the
+      treadmill row (C27) and the map's sharpness (M1). Its header still says
+      "not cut yet": write the two commits in when the builds exist.
 - [ ] **iOS first:** `scripts/codemagic-build.sh run-ios-release develop`.
       The owner looks at it on TestFlight before anything else is built.
 - [ ] **Then Android, from the commit iOS was built from:**
       `scripts/codemagic-build.sh run-android-release develop`. If `develop`
-      has moved on in anything but docs by then, both are cut again as 29.
-- [ ] Tag `run/build-27` on `080d760` and `run/build-28` on the commit
-      Codemagic checks out, each with both build records in the message. 27 is
-      tagged although nobody sat down with it: it is what testers hold today.
+      has moved on in anything but docs by then, both are cut again as 30.
+- [ ] Tag `run/build-27` on `080d760`, and `run/build-29` on the commit
+      Codemagic checks out, each with its build records in the message.
 
 ### 3. The sitting
 
-- [ ] **One sitting on build 28, on both phones**, from the test sheet. It has
+- [ ] **One sitting on build 29, on both phones**, from the test sheet. It has
       to include the purchase on each store (sections G and P), the Android
       foreground-service video (V) and the listing screenshots (H).
 - [ ] Judged on the phone while there: Esri's label size and sharpness (the
@@ -114,7 +130,7 @@ No build needed, so these can run alongside 1 to 3.
 
 ### 5. The graphics
 
-Taken from build 28 on a real phone. The plates draw no map tiles, and the
+Taken from build 29 on a real phone. The plates draw no map tiles, and the
 stand-ins in `store-assets/` show heart rate, calories and elevation that a
 recorded run never has, so neither may be submitted.
 
@@ -126,9 +142,9 @@ recorded run never has, so neither may be submitted.
 
 ### 6. Submit
 
-- [ ] **App Store:** build 28 with both subscriptions attached, demo account A
+- [ ] **App Store:** build 29 with both subscriptions attached, demo account A
       in Sign-in, the review notes, and manual release.
-- [ ] **Play:** build 28 promoted from internal to production, with managed
+- [ ] **Play:** build 29 promoted from internal to production, with managed
       publishing on ([play-setup.md](play-setup.md) §11).
 - [ ] Release both when both are approved, then promote `develop` to `main` as
       [CONTRIBUTING.md](../../../CONTRIBUTING.md) describes.

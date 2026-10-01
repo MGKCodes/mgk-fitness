@@ -687,6 +687,28 @@ Run's side:** the first build 27 on a phone is what proves it.
 A profile is a snapshot of its App ID's capabilities: change one, and
 regenerate the profile on the MGKFitness certificate, never Frunt's.
 
+### The Live Activity extension has a profile of its own
+
+Added 2026-10-01, for build 29. The run's figures on the lock screen are drawn
+by a widget extension that ships inside the app
+([ADR-0045](decisions/0045-the-runs-figures-on-the-lock-screen.md)). An
+extension is signed separately, so the iPhone build **cannot be signed** until
+these exist. Once, by the owner:
+
+1. **Apple ▸ Identifiers ▸ +** ▸ App IDs ▸ App. Bundle ID, explicit:
+   `com.mgkcodes.fitness.run.RunLiveActivity`. **No capabilities.** It uses no
+   App Group and no entitlement.
+2. **Apple ▸ Profiles ▸ +** ▸ Distribution ▸ App Store Connect. That App ID,
+   the `mgkfitness_distribution` certificate (never Frunt's). Name it
+   *Run Live Activity App Store*.
+3. **Codemagic ▸ Team settings ▸ codemagic.yaml settings ▸ Code signing
+   identities ▸ iOS provisioning profiles**: fetch or upload that profile.
+
+Nothing changes in `codemagic.yaml`. Its `bundle_identifier:
+com.mgkcodes.fitness.run` matches that id and every id under it, so the
+extension's profile is picked up with the app's. It expires with the
+certificate, on **2027-09-30**.
+
 ## When nothing happens
 
 The webhook never throws and never guesses. Every event either writes a row or

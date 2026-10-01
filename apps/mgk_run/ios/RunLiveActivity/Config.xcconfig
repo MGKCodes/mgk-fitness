@@ -1,0 +1,10 @@
+// Flutter's generated settings, and nothing else.
+//
+// For FLUTTER_BUILD_NAME and FLUTTER_BUILD_NUMBER, so the extension carries
+// the same version and build as the app it ships inside: App Store Connect
+// warns when they differ.
+//
+// Deliberately not Flutter/Release.xcconfig. On a build machine that file
+// also pulls in the CocoaPods settings for Runner, and an extension that
+// inherited those would be linked against every plugin the app uses.
+#include "../Flutter/Generated.xcconfig"

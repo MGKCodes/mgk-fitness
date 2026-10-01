@@ -243,10 +243,10 @@ void main() {
       expect(cache.saved, hasLength(asked.length));
       expect(
         asked.map((u) => u.path),
-        contains(endsWith('/static/tile/15/10551/16242')),
+        contains(endsWith('/static/tile/16/21103/32485')),
         reason:
-            'the tile under the runner, at the level the map draws: one '
-            'behind the zoom, row before column',
+            'the tile under the runner, at the level the map draws: its own '
+            'zoom, row before column',
       );
       expect(
         asked.every((u) => u.queryParameters['token'] == 'first-key'),
@@ -260,13 +260,14 @@ void main() {
       // for what the start screen draws and nothing further out.
       await warmUp().run();
 
-      expect(asked.length, lessThanOrEqualTo(20));
+      // Twenty-four on the largest phone, at two pixels a point.
+      expect(asked.length, lessThanOrEqualTo(30));
       final rows = asked.map(
         (u) => int.parse(u.pathSegments.reversed.elementAt(1)),
       );
       final columns = asked.map((u) => int.parse(u.pathSegments.last));
-      expect(rows.every((r) => (r - 10551).abs() <= 2), isTrue);
-      expect(columns.every((c) => (c - 16242).abs() <= 2), isTrue);
+      expect(rows.every((r) => (r - 21103).abs() <= 3), isTrue);
+      expect(columns.every((c) => (c - 32485).abs() <= 3), isTrue);
       expect(asked.toSet(), hasLength(asked.length), reason: 'no tile twice');
     });
 
@@ -351,7 +352,7 @@ void main() {
     // The join the tests above cannot see: the client's answer has to survive
     // the loader that asked for it, which reads the headers, writes the cache
     // and decodes the bytes. A real PNG, a real loader, and no network.
-    const TileCoordinates tile = TileCoordinates(16242, 10551, 16);
+    const TileCoordinates tile = TileCoordinates(32485, 21103, 16);
 
     /// Resolved inside `runAsync`, start to finish: the loader's futures are
     /// real ones (a cache read, an image decode), and made in the test's fake
@@ -400,7 +401,7 @@ void main() {
     ) async {
       final cache = _MemoryCache();
       await cache.hold(
-        _tile(15, 10551, 16242).toString(),
+        _tile(16, 21103, 32485).toString(),
         TileProvider.transparentImage,
       );
 

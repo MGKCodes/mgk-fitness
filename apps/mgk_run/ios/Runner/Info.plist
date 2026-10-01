@@ -153,6 +153,11 @@
 	     the strings finds a feature that does not exist. -->
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Run does not save anything to Health. This is listed only because the Health library it uses can write, which Run never asks to do.</string>
+	<!-- The run's distance, time and pace on the lock screen while it records.
+	     Drawn by the RunLiveActivity extension. Without this key the request
+	     to start one is refused. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

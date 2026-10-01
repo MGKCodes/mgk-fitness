@@ -28,6 +28,7 @@ import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_shape.dart';
 import '../../coaching/domain/race_day.dart';
+import '../../../core/launch/launch_curtain.dart';
 import '../../coaching/domain/readiness.dart';
 import '../../coaching/domain/training_history.dart';
 import '../../coaching/domain/week_progress.dart';
@@ -58,6 +59,8 @@ import '../../coaching/presentation/plan_calendar_screen.dart';
 import '../../coaching/presentation/week_detail_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../recording/domain/run_recorder.dart';
+import '../../recording/data/live_readout_recorder.dart';
+import '../../recording/domain/live_readout.dart';
 import '../../recording/domain/run_summary.dart';
 import '../../recording/presentation/recording_screen.dart';
 import '../../history/domain/run_writer.dart';
@@ -74,6 +77,15 @@ import '../../settings/data/backup_eraser.dart';
 import '../../recording/presentation/run_start_screen.dart';
 import '../../recording/presentation/run_summary_screen.dart';
 
+/// How long Home's coach takes to say its line, start to finish.
+///
+/// About five seconds of it is the line held still. It is a heading and up to
+/// two lines under it, some twenty-five words at the longest, and it is the
+/// first thing on a screen the runner has only just been shown. At the shared
+/// default it was held for under two seconds, which is long enough to see
+/// that something was said and not long enough to read it.
+const Duration kCoachLineDuration = Duration(milliseconds: 6800);
+
 /// The authenticated app: Home / Coach / Profile tabs.
 ///
 /// The recorder, history data, coach and plan storage are **injected** so the
@@ -86,6 +98,8 @@ class HomeShell extends StatefulWidget {
     super.key,
     this.auth = const AuthRepository(),
     this.recorderFactory,
+    this.startLocator,
+    this.liveReadout,
     this.historySource,
     this.coach,
     this.chatClient,
@@ -116,6 +130,15 @@ class HomeShell extends StatefulWidget {
 
   /// Creates a fresh recorder for a new run.
   final RunRecorder Function()? recorderFactory;
+
+  /// Where the runner is, as the start screen asks it. Null uses the phone's
+  /// own answer; a plate or a test passes a fixed one, having no phone.
+  final StartLocator? startLocator;
+
+  /// Where a run's distance, time and pace are shown while the phone is
+  /// locked. Null shows them nowhere but the in-run screen, which is what a
+  /// test and the preview want.
+  final LiveRunReadout? liveReadout;
 
   /// Loads the runs shown in History.
   final Future<List<RunSummary>> Function()? historySource;
@@ -1762,6 +1785,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final PlannedSession? session = withSession
         ? _thisWeek?.runOn(DateTime.now().weekday)
         : null;
+    final profile = _planProfile;
+    // Asked here, while the runner is looking at the screen, rather than when
+    // recording starts and the phone is on its way into a pocket.
+    final LiveRunReadout? readout = widget.liveReadout;
+    if (readout != null) unawaited(readout.prepare());
     Navigator.of(context)
         .push<bool>(
           MaterialPageRoute<bool>(
@@ -1774,6 +1802,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             builder: (routeContext) => RunStartScreen(
               unit: _unit,
               plannedSession: session,
+              // The same paces the in-run band is judged against, so the
+              // target on this screen is the one the run will be held to.
+              paces: profile == null ? null : pacesFor(profile),
+              locate: widget.startLocator,
               onCancel: () => Navigator.of(routeContext).pop(false),
               // **Pushed and forwarded, not replaced.** `pushReplacement`
               // completes the *replaced* route's future the moment it happens,
@@ -1787,8 +1819,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                         // The recorder is built here rather than above, so it
                         // starts when the count-in ends rather than when the
                         // screen opened.
-                        builder: (recordContext) =>
-                            _recordingScreen(recordContext, session, factory()),
+                        builder: (recordContext) => _recordingScreen(
+                          recordContext,
+                          session,
+                          // The same recorder, also telling the lock screen
+                          // how the run is going.
+                          readout == null
+                              ? factory()
+                              : LiveReadoutRecorder(
+                                  factory(),
+                                  readout,
+                                  unit: _unit,
+                                ),
+                        ),
                       ),
                     );
                 if (!routeContext.mounted) return;
@@ -2329,6 +2372,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 // not get the locked sign and then the observation.
                 locked: !_access.isSubscribed && !_noteDelivered,
                 hasUnread: _access.isSubscribed && _note != null && !_coachSeen,
+                // Not while the launch animation is over the screen: a line
+                // said behind it was a line nobody read.
+                ready: LaunchCurtain.settledOf(context),
+                // Two sentences, on a screen the runner has only just been
+                // shown. The default is sized for a remark in passing.
+                duration: kCoachLineDuration,
                 onTap: _openCoach,
                 onFinished: () {
                   if (mounted) setState(() => _noteDelivered = true);

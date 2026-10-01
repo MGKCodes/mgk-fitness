@@ -1,9 +1,9 @@
-# MGKFitness: Run 1.0.0 — test sheet, build 28
+# MGKFitness: Run 1.0.0 — test sheet, build 29
 
-**Build 28, both stores: TestFlight on the iPhone, Play internal testing on
+**Build 29, both stores: TestFlight on the iPhone, Play internal testing on
 Android.** The file name is older than Android; the sheet covers both.
 
-**Tests `1.0.0+28`, to be tagged `run/build-28`.** Not cut yet. The commits
+**Tests `1.0.0+29`, to be tagged `run/build-29`.** Not cut yet. The commits
 both stores were built from are written here when it is, read off the Codemagic
 build records
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
@@ -16,7 +16,11 @@ below. A failed row with two words of context is worth more than a green sheet.
 **Only what you actually saw counts.** An untested row is useful; an assumed
 pass is not. Silence on a row is read as untested, never as passed.
 
-**Rewritten 2026-10-01 for build 27, and carried to build 28 the same day.**
+**Rewritten 2026-10-01 for build 27, and carried to builds 28 and 29 the same
+day.** Build 28 went to TestFlight only (`7f84f2a`) and was looked at on the
+iPhone that evening: four things came back, and they are build 29. Android
+never had 28.
+
 Build 27 reached both stores (TestFlight from `b0384be`, Play internal from
 `080d760`) and was opened, not sat down with: six changes came out of opening
 it, and they are build 28. Build 26's sitting never happened either, so this is
@@ -25,7 +29,7 @@ this one: build 12's is at `02a9214`, build 13's at `0930105`, the build 14
 sheet, last touched for build 25, at `f46f3f1`, build 26's at `c0375bb` and
 build 27's at `9d0a96a`, if the raw record is ever wanted.
 
-## What build 28 is
+## What build 29 is
 
 Everything build 26 had, which no phone has been sat down with either. Plus
 build 27's: signing in with Apple and Google, the email form as a second step,
@@ -34,11 +38,16 @@ confirmation email, Apple's tokens revoked with the account, Esri's map with
 its credit, and a map that keeps what it has been shown. Plus six things from
 the first look at 27: a launch animation, tabs that slide instead of cutting,
 deleting a run, a treadmill run from Home, *Adjust this week* on the Plan tab,
-and a race week that is one, with race day on the plan. The list is in
-[app-store-1.0.0.md](app-store-1.0.0.md).
+and a race week that is one, with race day on the plan. Plus four from the
+look at 28: the coach's line waits for the launch and is held long enough to
+read, *Add a treadmill run* is a row on the week tile, the start screen shows
+where you are and what today's session asks for, and the map is drawn sharp.
+And one more asked for with them: a run's distance, time and pace on the lock
+screen while it records.
+The list is in [app-store-1.0.0.md](app-store-1.0.0.md).
 
 Rows marked **NEW** were new in 26 and have still never been walked. Rows
-marked **NEW in 27** and **NEW in 28** are those builds'.
+marked **NEW in 27**, **NEW in 28** and **NEW in 29** are those builds'.
 
 **Five facts shape this sheet.**
 
@@ -70,14 +79,14 @@ needs an address you can open, or it exists and cannot sign in.
 ## How to capture what you find
 
 **Do not tick this file on the phone.** Dictate into one note per phone, called
-`run build 28 iphone` and `run build 28 android`, holding the **microphone key
+`run build 29 iphone` and `run build 29 android`, holding the **microphone key
 on the keyboard** — not Voice Memos, which gives an audio file somebody has to
 transcribe.
 
 **Or use the scribe.** From `apps/mgk_run`:
 
 ```
-python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 28
+python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 29
 ```
 
 That produces this sheet with a brief telling a Claude Desktop session how to
@@ -100,6 +109,8 @@ safe direction and the reason this works.
 |---|---|
 | A3 | Whether the 23 Aug run is in the log **after signing in** |
 | A7 | Whether the launch animation reads as the app opening or as a wait |
+| A12 | Whether you could read the coach's whole line before it closed |
+| C30 | What the lock screen shows during a run, and how far behind the app it is |
 | D19 | What the Race day row says, word for word |
 | B2 | Exactly what the Health sheet lists |
 | C12 | How many haptics per kilometre, and whether signal loss buzzed once or repeatedly |
@@ -123,7 +134,7 @@ safe direction and the reason this works.
 | S10 | The confirmation email: who it says it is from, inbox or spam, and what the page says after the link |
 | S11 | The same for the reset email, and what the page says once the password is changed |
 | S12 | Whether Apple asked you to confirm, and whether Run is gone from your Apple ID's *Sign in with Apple* list afterwards |
-| M1 | Whether the street names are readable at arm's length, and whether the map looks soft |
+| M1 | Whether the map is sharp now, and whether the street names are too small to read |
 | M5 | Whether the route is still the loudest thing on the map |
 | M6, M7, M8 | What the map showed with no signal: streets, or a plain ground |
 
@@ -224,9 +235,12 @@ moving, and V needs the Android phone.
   around you when the app opens; it does not download an area
   ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md)).
 - **iPhone only on iOS.** It runs on an iPad in compatibility mode.
-- **Android never asks for the notification permission** (Android 13+), so the
-  "Recording your run" notification only appears if notifications are on for
-  Run in the phone's settings. Recording works either way.
+- **The lock screen's figures need iOS 16.2 or later**, and Live Activities
+  left on for Run. On an older iPhone, or with them off, the run records and
+  the lock screen shows nothing.
+- **Android shows two notifications while a run records**: the figures, and the
+  location service's own "Recording your run". The second is the one Android
+  requires.
 - **Android with approximate location only** still sits on "Acquiring GPS" and
   records nothing: Android does not tell the app, so C26's warning is iPhone
   only.
@@ -242,20 +256,20 @@ moving, and V needs the Android phone.
 - **The time on the Race day row is a prediction from the time trial**, by
   formula. It knows nothing of the course or of the training since.
 
-The six from Android's notification permission to the adjust button are in
+The five from approximate location on Android to the adjust button are in
 [after-1.0.0.md](after-1.0.0.md), each with a date to revisit.
 
 ---
 
 ## The running order
 
-1. **iPhone, fresh install: A1, A2, A5 to A7, A9 to A11, then B's iPhone rows.** Delete the
+1. **iPhone, fresh install: A1, A2, A5 to A7, A9 to A12, then B's iPhone rows.** Delete the
    app first. If the phone holds runs that are not backed up, turn backup on
    under the build you have before you delete it; A3 is about getting them
    back. **Do B once and pay attention**: permission dialogs do not come back
    without a reinstall.
 2. **Android, fresh install from the internal testing link: A1, A2, A5 to
-   A11, then B's Android rows.** Not a sideloaded APK: it cannot buy anything (P2).
+   A12, then B's Android rows.** Not a sideloaded APK: it cannot buy anything (P2).
 3. **E1 to E4, E7 and E7a** on the iPhone, still no account. Then **S1, S2 and
    S7**, which need no account either.
 4. **S3, S13 and S12 on the iPhone**, in that order, on the hidden Apple
@@ -319,6 +333,7 @@ The six from Android's notification permission to the adjust button are in
 | A9 | **Open it from the background** (not force-quit) | **NEW in 28.** No animation: it only plays on a cold start | ☐ |
 | A10 | **Tap between Home, Plan and Profile** | **NEW in 28.** The screen slides a short way and fades into the next; a soft plate slides along the nav bar to the tab you tapped. **Nothing snaps.** Scroll Profile down, leave and come back: it is where you left it | ☐ |
 | A11 | **With Reduce Motion on** (iPhone: Accessibility ▸ Motion; Android: Remove animations), force-quit and open, then change tab | **NEW in 28.** No launch animation, and tabs change at once | ☐ |
+| A12 | **Force-quit, open, and watch the coach's C above the nav bar** | **NEW in 29.** Nothing happens to it while the launch animation is up. Then the C **opens out into a bar** with a line on it, the line **stays about five seconds**, and the bar **closes back into the C**. **Say whether you could read the whole line** | ☐ |
 
 ## B. Permissions — a fresh install on each phone
 
@@ -359,7 +374,13 @@ in [store-setup.md](store-setup.md) §11.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| C13 | Tap **Record a run** | A start screen, not a running clock. Today's session named, and the map **pans** | ☐ |
+| C13 | Tap **Record a run** (or **Start** on a session) | **CHANGED in 29.** A start screen, not a running clock. A **dot where you are**, in the middle of the map, and the map **pans**. Under it: *GPS ready* with *within N m* (or *Finding GPS* for the first seconds), today's session with **pace, about how long, effort** and a line on how it should feel, and **Start** | ☐ |
+| C28 | **Walk twenty metres with the start screen open** | **NEW in 29.** The dot moves with you, and the map follows. Pan the map away: a recentre button appears top right, and puts it back | ☐ |
+| C29 | **Home ▸ Record a run on a rest day, or with no plan** | **NEW in 29.** The panel says *Free run*, *Run as you like*, and that nothing is counted down. No pace, no session | ☐ |
+| C30 | **iPhone: start a run, then lock the phone** | **NEW in 29.** On the lock screen: **RUN**, and under it **distance, time and pace**. The time counts every second; the distance and pace catch up every few seconds as you move. On a phone with a Dynamic Island, the distance and the clock are in it while the app is in the background. **Say what it shows, and how far behind the app it is** | ☐ |
+| C31 | **iPhone, still locked: pause from the app, lock again; then resume; then Finish** | **NEW in 29.** Paused: it says **RUN · PAUSED** and the clock stands still. Resumed: it counts again. Finished or discarded: it is **gone** from the lock screen | ☐ |
+| C32 | **Android: tap Record a run for the first time** | **NEW in 29.** Android asks whether Run may send notifications, **once**, as the start screen opens. Allow it | ☐ |
+| C33 | **Android: start a run, then lock the phone** | **NEW in 29.** A notification with **distance · pace** as its title and a clock counting up. No sound and no buzz when it updates. Paused, it says *Paused at …*. After Finish it is gone | ☐ |
 | C14 | Tap **Start** | A three-second count, then recording. Say how it feels | ☐ |
 | C15 | Start the count, then tap **Stop** | Back to Start; nothing recorded | ☐ |
 | C1 | Start a run, wait for a fix | Acquiring resolves; the route draws | ☐ |
@@ -384,7 +405,7 @@ in [store-setup.md](store-setup.md) §11.
 | C24 | **Double-tap Finish, fast** | **NEW.** One summary, one run in the log. Finish and Resume show a small spinner while it settles | ☐ |
 | C25 | **iPhone: mid-run, set Settings ▸ Run ▸ Location to Never**, come back, pause, set it back to While Using, then tap **Allow location** (it may read **Continue**) | **NEW.** The **same** run carries on. After Finish there is **one** run in the log, with both halves of the distance | ☐ |
 | C26 | **iPhone: Settings ▸ Run ▸ Location ▸ Precise Location off**, then start a run | **NEW.** A problem panel saying Run only has approximate location, with *Turn on Precise Location for Run in Settings* and a way to Settings — not a run stuck on "Acquiring GPS" that saves as 0 m. Turn Precise back on afterwards | ☐ |
-| C27 | **Home ▸ Add a treadmill run**, under Start | **NEW in 28.** *Add a run* opens with **Treadmill** already chosen. Fill in distance and time, **Add run**: back on Home, and the run is in the log on Profile as a treadmill run | ☐ |
+| C27 | **Home ▸ This week ▸ Add a treadmill run**, the row at the foot of the tile | **CHANGED in 29.** A full-width row with a plus, **not** a button under Start. *Add a run* opens with **Treadmill** already chosen. Fill in distance and time, **Add run**: back on Home, and the run is in the log on Profile as a treadmill run | ☐ |
 
 ## M. The map — NEW in 27
 
@@ -396,7 +417,7 @@ No test can see any of this: tiles need a network and a screen.
 |---|---|---|---|
 | M6 | **Indoors, with a signal and location already allowed: open the app, wait ten seconds on Home, switch to aeroplane mode, then tap Record a run** | **NEW in 27.** The map around you is **already drawn**, streets and names. It was loaded when the app opened | ☐ |
 | M2 | The start screen's bottom-right corner | **NEW in 27.** *Powered by Esri*, clear of the home indicator and of **Start**. Tap it: the data sources open above it. Tap again: they close | ☐ |
-| M1 | **Outside: read the map on the start screen and mid-run** | **NEW in 27.** A dark grey map with street names. Say whether the names are readable at arm's length, and whether it looks soft next to the rest of the screen | ☐ |
+| M1 | **Outside: read the map on the start screen and mid-run** | **CHANGED in 29.** A dark grey map, **sharp**: street edges are crisp, not smeared. The street names are **small** (half the size they were in 28). **Say whether they are too small to be any use, and whether the map now looks as sharp as the rest of the screen** | ☐ |
 | M3 | Mid-run: find the credit, raise and lower the panel, then pan the map | **NEW in 27.** *Powered by Esri* sits **just above the panel** and rides with it. With the recentre control showing it sits **beside** the control, not under it | ☐ |
 | M4 | The finished run's map | **NEW in 27.** The credit in its bottom-right corner | ☐ |
 | M5 | The map against the route | **NEW in 27.** The route is the loudest thing on it. Say if the map is too bright or too faint | ☐ |
@@ -576,7 +597,7 @@ Play's foreground-service declaration needs this video (play-setup.md §4).
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| V0 | Settings ▸ Apps ▸ Run ▸ **Notifications on** | The app never asks for it, and the notification is what the video shows | ☐ |
+| V0 | Allow notifications when Run asks (C32), or Settings ▸ Apps ▸ Run ▸ **Notifications on** | **CHANGED in 29:** the app asks. The notification is what the video shows | ☐ |
 | V1 | **Record the screen**: Start a run ▸ lock ▸ wake and show **"Recording your run"** ▸ walk a minute or two ▸ unlock and show the **distance went up** ▸ Finish ▸ the notification **is gone** | One continuous video, uploaded unlisted and linked in the declaration | ☐ |
 
 ## H. The listing screenshots
@@ -603,7 +624,7 @@ listed once, above.
 What each note needs beyond those:
 
 1. **Which build** each phone has. TestFlight and Play's app page show the
-   build number; the app's own Settings shows only 1.0.0. It must be 28.
+   build number; the app's own Settings shows only 1.0.0. It must be 29.
 2. **Which accounts** you used, and for A3 which address.
 3. **How far you got.** Stopping is a fine outcome; a sheet that claims G ran
    when it did not is the failure that made rewrites necessary.
@@ -611,4 +632,4 @@ What each note needs beyond those:
 5. **Anything that felt wrong but still passed.** The only findings this sheet
    has no row for, by definition.
 
-Then paste them in and say they are the build 28 notes.
+Then paste them in and say they are the build 29 notes.

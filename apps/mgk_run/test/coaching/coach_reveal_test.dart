@@ -50,10 +50,10 @@ void main() {
   testWidgets('it says the line, then retracts into the mark', (tester) async {
     await pump(tester);
 
-    // Typing is done by here, and what it typed is the whole observation —
-    // heading and detail. A heading alone is a trailer for a sentence the
-    // runner then has to go and find.
-    await tester.pump(const Duration(milliseconds: 1200));
+    // Typing is done by here (the bar opens, then the line is typed), and
+    // what it typed is the whole observation — heading and detail. A heading
+    // alone is a trailer for a sentence the runner then has to go and find.
+    await tester.pump(const Duration(milliseconds: 1400));
     expect(find.text('Longest one yet.'), findsOneWidget);
     expect(
       find.text('You went further than you ever have.'),

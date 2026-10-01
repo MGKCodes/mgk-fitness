@@ -12,9 +12,8 @@ import 'package:latlong2/latlong.dart';
 ///
 /// **Read off the template, not configured beside it.** The grid is a fact
 /// about the service the template names, so a second setting could only ever
-/// agree with the first or be wrong, and wrong is quiet: Esri's tiles drawn on
-/// the standard grid still load, with every label at half size and four times
-/// as many tiles fetched against a monthly allowance.
+/// agree with the first or be wrong, and wrong is quiet: the tiles still load,
+/// at half or twice the size they were meant to be.
 class TileGrid {
   const TileGrid({required this.dimension, required this.zoomOffset});
 
@@ -29,10 +28,23 @@ class TileGrid {
   /// sharper, not a larger one.
   static const TileGrid standard = TileGrid(dimension: 256, zoomOffset: 0);
 
-  /// ArcGIS Static Basemap Tiles: 512-pixel tiles on a grid whose level 0 is
-  /// one tile for the whole world, which is one level behind the 256 grid.
+  /// ArcGIS Static Basemap Tiles: 512-pixel images, drawn at 256 points, on
+  /// the map's own levels. Two pixels to the point.
   /// (The same service is why the template reads `{z}/{y}/{x}`, row first.)
-  static const TileGrid esriStatic = TileGrid(dimension: 512, zoomOffset: -1);
+  ///
+  /// **Sharp, with small labels.** Builds 27 and 28 drew each image at 512
+  /// points from the level below, which is the size Esri labels them for. On
+  /// a phone that is one image pixel stretched over three of the screen's, and
+  /// it was seen at once: "a little more blurry than the MapTiler one", which
+  /// had been served at two pixels a point. There is no `@2x` on this service,
+  /// so the choice is between the two halves of that sentence. Drawn this way
+  /// the streets are crisp and their names are half the size: small, and
+  /// legible because they are sharp.
+  ///
+  /// What it costs: about twice as many tiles for the same map (smaller ones,
+  /// so about a fifth more data), against a free allowance of two million a
+  /// month. To go back, this is `dimension: 512, zoomOffset: -1`.
+  static const TileGrid esriStatic = TileGrid(dimension: 256, zoomOffset: 0);
 
   static TileGrid of(String urlTemplate) =>
       urlTemplate.contains('static-basemap-tiles-service')
@@ -173,7 +185,7 @@ class OfflineTileClient extends http.BaseClient {
 ///
 /// **Only what the start screen is about to draw**: the screen at the run's
 /// own zoom, and the one ring of tiles flutter_map loads around any map it
-/// shows. At most twenty tiles, asked for once per place, and only the ones
+/// shows. A few dozen tiles, asked for once per place, and only the ones
 /// not already saved. If the runner starts somewhere else the warm-up simply
 /// did not help, and the map loads as it always did.
 ///

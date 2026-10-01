@@ -134,6 +134,63 @@ void main() {
     expect(scale(), 1);
   });
 
+  // Home's coach says its line when the shell loads, which is behind the
+  // curtain. On build 28 the line was most of the way through before anybody
+  // could see the screen it was on.
+  group('what is under it can tell when it is over', () {
+    Widget probe(List<bool> seen, {bool enabled = true}) => MaterialApp(
+      builder: (context, child) =>
+          LaunchCurtain(enabled: enabled, child: child!),
+      home: Builder(
+        builder: (context) {
+          seen.add(LaunchCurtain.settledOf(context));
+          return const SizedBox.expand();
+        },
+      ),
+    );
+
+    testWidgets('not while the curtain is up, nor while the app settles', (
+      tester,
+    ) async {
+      final seen = <bool>[];
+      await tester.pumpWidget(probe(seen));
+      expect(seen.last, isFalse);
+
+      await tester.pump(kLaunchCurtainUp + const Duration(milliseconds: 50));
+      expect(seen.last, isFalse, reason: 'the app is still coming to rest');
+
+      await tester.pumpAndSettle();
+      expect(seen.last, isTrue);
+      expect(
+        seen.where((s) => s).length,
+        1,
+        reason: 'told once, when it changed, not on every frame',
+      );
+    });
+
+    testWidgets('and at once where there is no launch to wait for', (
+      tester,
+    ) async {
+      final seen = <bool>[];
+      await tester.pumpWidget(probe(seen, enabled: false));
+      expect(seen, <bool>[true]);
+
+      // No curtain above it at all, which is every screen in every test.
+      final bare = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              bare.add(LaunchCurtain.settledOf(context));
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      );
+      expect(bare.last, isTrue);
+    });
+  });
+
   testWidgets('with Reduce Motion on, it is not shown at all', (tester) async {
     final log = await pump(tester, reduceMotion: true);
 

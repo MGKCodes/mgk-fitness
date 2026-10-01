@@ -39,6 +39,7 @@ class HomeWeekTile extends StatelessWidget {
     this.standing,
     this.runDays = const <RunDay>[],
     this.onOpenPlan,
+    this.onAddTreadmillRun,
   });
 
   final DateTime now;
@@ -62,6 +63,16 @@ class HomeWeekTile extends StatelessWidget {
   /// a runner who has not bought one to the tab that sells it, from a tile
   /// about their own week, would be an advert wearing a fact's clothes.
   final VoidCallback? onOpenPlan;
+
+  /// Opens the add-a-run form, already set to Treadmill. Null hides the row:
+  /// a build with nowhere to write a run has nothing to offer here.
+  ///
+  /// **On this tile because this tile is where the run will show up.** A
+  /// treadmill run is a run the phone did not see, added to the week by hand,
+  /// and the week is what changes when it is: a dot on its day and its
+  /// distance in the total. It was a lone button on the today card for one
+  /// build, which is the card about the run the phone *can* record.
+  final VoidCallback? onAddTreadmillRun;
 
   @override
   Widget build(BuildContext context) {
@@ -140,12 +151,71 @@ class HomeWeekTile extends StatelessWidget {
               ),
             ),
           ],
+          if (onAddTreadmillRun != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            _AddRunRow(onTap: onAddTreadmillRun!),
+          ],
         ],
       ),
     );
   }
 
   int get _ranDays => runDays.where((d) => d == RunDay.ran).length;
+}
+
+/// The foot of the tile: a rule, and one full-width row that adds a run.
+///
+/// A row rather than a button, so it fills the tile's width and has no empty
+/// space beside it. The whole row is the target.
+class _AddRunRow extends StatelessWidget {
+  const _AddRunRow({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Container(height: 1, color: AppColors.elevated.withValues(alpha: 0.7)),
+        InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.chipAll,
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.md),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Add a treadmill run',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'For a run the phone could not track',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                const Icon(Icons.add, size: 22, color: AppColors.textSecondary),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Monday to Sunday, marked where a run happened.

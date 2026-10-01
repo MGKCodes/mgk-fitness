@@ -62,10 +62,13 @@ Future<void> _pumpMap(
 
 void main() {
   group('the tile grid is read off the template', () {
-    test('Esri static tiles are 512 points, one level behind', () {
+    // 512-pixel images at 256 points: two pixels a point. Builds 27 and 28
+    // drew them at 512 points from the level below, and on a phone that was
+    // each pixel stretched over three.
+    test('Esri static tiles are drawn at two pixels a point', () {
       final TileGrid grid = TileGrid.of(_esri);
-      expect(grid.dimension, 512);
-      expect(grid.zoomOffset, -1);
+      expect(grid.dimension, 256);
+      expect(grid.zoomOffset, 0);
     });
 
     test('everybody else is on the standard grid, retina or not', () {
@@ -83,8 +86,8 @@ void main() {
       await _pumpMap(tester, tiles: _esri, credit: _credit);
 
       final TileLayer layer = tester.widget<TileLayer>(find.byType(TileLayer));
-      expect(layer.tileDimension, 512);
-      expect(layer.zoomOffset, -1);
+      expect(layer.tileDimension, 256);
+      expect(layer.zoomOffset, 0);
       // Row before column, as the service asks for it.
       expect(layer.urlTemplate, contains('{z}/{y}/{x}'));
     });
@@ -205,11 +208,12 @@ void main() {
     });
   });
 
-  testWidgets('on the start screen it clears the home indicator', (
-    tester,
-  ) async {
+  testWidgets('on the start screen it sits above the panel', (tester) async {
     // The start screen reads the compiled-in config, which a test cannot set,
-    // so this pins the inset the screen asks for rather than the pixels.
+    // so this pins where the map ends and the inset the screen asks for
+    // rather than the pixels. The map stops at the panel, so the credit is
+    // over streets and clear of the panel's rounded shoulders, not under the
+    // Start button or the home indicator.
     await tester.binding.setSurfaceSize(const Size(393, 852));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -229,8 +233,17 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump();
 
     final RouteMap map = tester.widget<RouteMap>(find.byType(RouteMap));
-    expect(map.creditInsets.bottom, 38);
+    expect(map.creditInsets.bottom, 34);
+    final Rect mapRect = tester.getRect(find.byType(RouteMap));
+    final Rect start = tester.getRect(find.text('Start'));
+    expect(
+      mapRect.bottom - map.creditInsets.bottom,
+      lessThan(start.top),
+      reason: 'the credit is above the panel, not behind its button',
+    );
+    expect(mapRect.bottom, lessThan(852 - 34));
   });
 }

@@ -4,6 +4,8 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
 import 'package:mgk_run/src/features/history/domain/run_writer.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
+import 'package:mgk_run/src/features/home/presentation/home_today_tile.dart';
+import 'package:mgk_run/src/features/home/presentation/home_week_tile.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 class _Writer implements RunWriter {
@@ -32,6 +34,10 @@ class _Writer implements RunWriter {
 /// today card opened the GPS recorder, and a treadmill has no GPS: the only
 /// way to log one was "Add a run" at the top of the log, two tabs from the
 /// button a runner presses to go running.
+///
+/// It lives on the week tile, as a full-width row at its foot. For one build
+/// it was a button under Start on the today card, alone on the left with
+/// nothing beside it.
 void main() {
   Future<_Writer?> pumpHome(WidgetTester tester, {bool editor = true}) async {
     final writer = editor ? _Writer() : null;
@@ -54,6 +60,28 @@ void main() {
     }
     return writer;
   }
+
+  testWidgets('it is a row on the week tile, not a button on the today card', (
+    tester,
+  ) async {
+    await pumpHome(tester);
+    final row = find.text('Add a treadmill run');
+
+    expect(
+      find.descendant(of: find.byType(HomeWeekTile), matching: row),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: find.byType(HomeTodayTile), matching: row),
+      findsNothing,
+    );
+    // The row runs the width of the tile: its plus sits at the far side.
+    final tile = tester.getRect(find.byType(HomeWeekTile));
+    expect(
+      tester.getRect(find.byIcon(Icons.add)).right,
+      greaterThan(tile.right - 40),
+    );
+  });
 
   testWidgets('Home offers it, and the form opens already on Treadmill', (
     tester,

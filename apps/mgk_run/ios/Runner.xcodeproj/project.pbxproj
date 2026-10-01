@@ -16,6 +16,12 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		5AF17E0A2C9B41D3A0E11002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5AF17E0A2C9B41D3A0E11001 /* PrivacyInfo.xcprivacy */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		52AA00112ED0000100AA0001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AA00012ED0000100AA0001 /* RunActivityAttributes.swift */; };
+		52AA00122ED0000100AA0001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AA00012ED0000100AA0001 /* RunActivityAttributes.swift */; };
+		52AA00132ED0000100AA0001 /* RunLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AA00022ED0000100AA0001 /* RunLiveActivityBundle.swift */; };
+		52AA00142ED0000100AA0001 /* RunLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AA00032ED0000100AA0001 /* RunLiveActivityWidget.swift */; };
+		52AA00152ED0000100AA0001 /* LiveRunChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AA00072ED0000100AA0001 /* LiveRunChannel.swift */; };
+		52AA00162ED0000100AA0001 /* RunLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 52AA00062ED0000100AA0001 /* RunLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +31,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		52AA00412ED0000100AA0001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52AA00312ED0000100AA0001;
+			remoteInfo = RunLiveActivity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -37,6 +50,17 @@
 			files = (
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52AA00352ED0000100AA0001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				52AA00162ED0000100AA0001 /* RunLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -59,10 +83,24 @@
 		5AF17E0A2C9B41D3A0E11001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		52AA00012ED0000100AA0001 /* RunActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityAttributes.swift; sourceTree = "<group>"; };
+		52AA00022ED0000100AA0001 /* RunLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLiveActivityBundle.swift; sourceTree = "<group>"; };
+		52AA00032ED0000100AA0001 /* RunLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLiveActivityWidget.swift; sourceTree = "<group>"; };
+		52AA00042ED0000100AA0001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		52AA00052ED0000100AA0001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		52AA00062ED0000100AA0001 /* RunLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		52AA00072ED0000100AA0001 /* LiveRunChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRunChannel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52AA00332ED0000100AA0001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -78,6 +116,18 @@
 				331C807B294A618700263BE5 /* RunnerTests.swift */,
 			);
 			path = RunnerTests;
+			sourceTree = "<group>";
+		};
+		52AA00212ED0000100AA0001 /* RunLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				52AA00012ED0000100AA0001 /* RunActivityAttributes.swift */,
+				52AA00022ED0000100AA0001 /* RunLiveActivityBundle.swift */,
+				52AA00032ED0000100AA0001 /* RunLiveActivityWidget.swift */,
+				52AA00042ED0000100AA0001 /* Info.plist */,
+				52AA00052ED0000100AA0001 /* Config.xcconfig */,
+			);
+			path = RunLiveActivity;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -96,6 +146,7 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
+				52AA00212ED0000100AA0001 /* RunLiveActivity */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 			);
@@ -106,6 +157,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				52AA00062ED0000100AA0001 /* RunLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -122,6 +174,7 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
+				52AA00072ED0000100AA0001 /* LiveRunChannel.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -147,6 +200,23 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		52AA00312ED0000100AA0001 /* RunLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52AA00542ED0000100AA0001 /* Build configuration list for PBXNativeTarget "RunLiveActivity" */;
+			buildPhases = (
+				52AA00322ED0000100AA0001 /* Sources */,
+				52AA00332ED0000100AA0001 /* Frameworks */,
+				52AA00342ED0000100AA0001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RunLiveActivity;
+			productName = RunLiveActivity;
+			productReference = 52AA00062ED0000100AA0001 /* RunLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -155,12 +225,14 @@
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
+				52AA00352ED0000100AA0001 /* Embed Foundation Extensions */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				52AA00422ED0000100AA0001 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -185,6 +257,9 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					52AA00312ED0000100AA0001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -202,6 +277,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				52AA00312ED0000100AA0001 /* RunLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +299,13 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				5AF17E0A2C9B41D3A0E11002 /* PrivacyInfo.xcprivacy in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52AA00342ED0000100AA0001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +361,18 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
+				52AA00152ED0000100AA0001 /* LiveRunChannel.swift in Sources */,
+				52AA00122ED0000100AA0001 /* RunActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52AA00322ED0000100AA0001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52AA00112ED0000100AA0001 /* RunActivityAttributes.swift in Sources */,
+				52AA00132ED0000100AA0001 /* RunLiveActivityBundle.swift in Sources */,
+				52AA00142ED0000100AA0001 /* RunLiveActivityWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +383,11 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		52AA00422ED0000100AA0001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 52AA00312ED0000100AA0001 /* RunLiveActivity */;
+			targetProxy = 52AA00412ED0000100AA0001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -588,6 +688,83 @@
 			};
 			name = Release;
 		};
+		52AA00512ED0000100AA0001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 52AA00052ED0000100AA0001 /* Config.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mgkcodes.fitness.run.RunLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		52AA00522ED0000100AA0001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 52AA00052ED0000100AA0001 /* Config.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mgkcodes.fitness.run.RunLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+		52AA00532ED0000100AA0001 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 52AA00052ED0000100AA0001 /* Config.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mgkcodes.fitness.run.RunLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -617,6 +794,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		52AA00542ED0000100AA0001 /* Build configuration list for PBXNativeTarget "RunLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52AA00512ED0000100AA0001 /* Debug */,
+				52AA00522ED0000100AA0001 /* Release */,
+				52AA00532ED0000100AA0001 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

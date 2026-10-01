@@ -61,7 +61,6 @@ class HomeTodayTile extends StatelessWidget {
     this.lastRun,
     this.outcomes = const <int, DayOutcome>{},
     this.onOpenCoach,
-    this.onAddTreadmillRun,
     this.onCloseRace,
   });
 
@@ -95,16 +94,12 @@ class HomeTodayTile extends StatelessWidget {
   final Map<int, DayOutcome> outcomes;
   final VoidCallback? onOpenCoach;
 
-  /// Opens the add-a-run form on Treadmill, for the run the phone cannot
-  /// record. Null hides it.
-  final VoidCallback? onAddTreadmillRun;
-
   /// Opens the flow that records what they ran and ends the plan.
   ///
   /// One callback for both answers — "here is my time" and "I did not race" —
   /// because they are the same question and the sheet behind this asks it once.
   /// Null hides the offer rather than showing a control that does nothing,
-  /// which is the same rule [onAddTreadmillRun] follows.
+  /// which is the rule every optional control on Home follows.
   final VoidCallback? onCloseRace;
 
   /// Whether a run is already on record for today.
@@ -214,31 +209,12 @@ class HomeTodayTile extends StatelessWidget {
           // already on screen is a line spent sending somebody somewhere they
           // can see from where they are standing.
 
-          // **The run this screen cannot record.** Every way out of this card
-          // started the GPS recorder, and a treadmill has no GPS: the only way
-          // to log one was the "Add a run" at the top of the log, two tabs
-          // away from the button a runner presses to go running. Under
-          // everything and quiet, because outdoors is still what Start means.
-          //
-          // Not on race day or after it. Those two states are about one run,
-          // and it was not on a treadmill.
-          //
-          // "Adjust this week" stood here until build 28. It is on the Plan
-          // tab now, under the week it adjusts.
-          if (onAddTreadmillRun != null && !racing) ...<Widget>[
-            const SizedBox(height: AppSpacing.xs),
-            Align(
-              alignment: Alignment.centerLeft,
-              // A bordered control rather than a dimmed line. It does
-              // something, and a thing that does something should look like
-              // it can be pressed rather than like a sentence that happens to
-              // be tappable.
-              child: _SecondaryAction(
-                label: 'Add a treadmill run',
-                onPressed: onAddTreadmillRun,
-              ),
-            ),
-          ],
+          // **One job: today, and the button that starts it.** "Adjust this
+          // week" stood under the session until build 28 and went to the Plan
+          // tab, under the week it adjusts. "Add a treadmill run" took its
+          // place for one build and read as what it was: a button on the left
+          // with nothing beside it, on the one card that should be about a
+          // single decision. It is on the week tile now, as a row of its own.
         ],
       ),
     );

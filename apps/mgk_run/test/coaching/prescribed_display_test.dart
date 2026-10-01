@@ -130,7 +130,8 @@ void main() {
         await tester.pump();
         expectNoDecimals(tester, 'The start screen');
         if (unit.isMetric) {
-          expect(find.text('6 km · easy run'), findsOneWidget);
+          expect(find.text('6 km'), findsOneWidget);
+          expect(find.text('Easy run'), findsOneWidget);
         }
       });
 

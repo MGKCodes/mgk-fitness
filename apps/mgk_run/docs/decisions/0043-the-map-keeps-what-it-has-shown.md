@@ -31,7 +31,7 @@ the runner at first login. It was not built, for a reason outside the code.
 - **The tiles around the runner are loaded when the app opens.**
   `BasemapWarmUp` reads the phone's last known position and fetches what the
   start screen is about to draw: one screen at the run's zoom and the one ring
-  of tiles flutter_map loads around any map. Sixteen tiles and about 2.4 MB at
+  of tiles flutter_map loads around any map. Twenty-four tiles and about 2 MB at
   the largest phone, measured against the real service, once per place. A
   runner who starts somewhere else gets no benefit and no harm.
 - **It never asks for location and never takes a fix.** No permission, or no
@@ -63,11 +63,26 @@ first bullet stands on its own.
 - **A policy sentence.** The warm-up sends the phone's rough position to Esri
   when the app opens, not only when a map is on screen. The policy says so, in
   all three renderings, and so do the store forms' location rows.
-- **Up to 2.4 MB of mobile data** the first time the app is opened in a new
+- **About 2 MB of mobile data** the first time the app is opened in a new
   place, which the start screen would have spent a tap later.
 - **A map that can be a day or a year out of date** where there is no signal.
   A stale street is better than a blank one, and it is replaced within five
   minutes of the signal returning.
+
+## Amended 2026-10-01: two pixels to the point
+
+Builds 27 and 28 drew each of Esri's 512-pixel tiles at 512 points, from the
+level below the map's. That is the size Esri labels them for, and on a phone it
+is one image pixel over three of the screen's. It was reported at the first
+look: "a little more blurry than the MapTiler one", which had been served at
+two pixels a point. The service has no `@2x`.
+
+From build 29 each tile is drawn at 256 points from the map's own level. The
+streets are crisp and their names are half the size. The warm-up's numbers
+above are for this grid: more tiles than before (twenty-four against sixteen)
+and smaller ones, so slightly less data. It is one constant,
+`TileGrid.esriStatic`, and the sitting says whether the names are now too
+small.
 
 ## What it does not do
 
