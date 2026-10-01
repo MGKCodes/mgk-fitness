@@ -34,12 +34,12 @@ Updated 2026-10-01.
 | | |
 |---|---|
 | **On testers' phones** | 1.0.0 (27): TestFlight from `b0384be`, Play internal from `080d760`, which differs from it in `codemagic.yaml` only. Not tagged yet. The iOS build was signed with `mgkfitness_distribution`, the first on MGKFitness's own certificate |
-| **Release candidate** | **Build 28, not cut.** Its code is written and the pubspec still reads `1.0.0+27` |
+| **Release candidate** | **Build 28.** The pubspec reads `1.0.0+28` (`4813494`). iOS is built first; Android follows from the same commit once 28 has been seen on TestFlight |
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,920 tests pass and the analyzer is clean with build 28's code, with the three `live` tests excluded. Lift's 860 and the shared package's 90 pass against the changed nav bar. This is the only place the count is written |
-| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 25, is build 27's. Build 28's plates are drawn and captioned (138, seven of them new) and are published once its code is committed, because a plate is stamped with the commit it was drawn at |
+| **Suite** | 1,920 tests pass and the analyzer is clean at `4813494`, with the three `live` tests excluded. Lift's 860 and the shared package's 90 pass against the changed nav bar. This is the only place the count is written |
+| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 26, every plate drawn at `4813494`. 138 plates, seven of them new in 28 |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -67,14 +67,16 @@ written and tested. What is left here is not code.
 
 ### 2. Cut build 28
 
-- [ ] `apps/mgk_run/pubspec.yaml` to `1.0.0+28`, in a commit of its own.
+- [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+28` (`4813494`).
 - [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 28, with
       rows for the launch (A7 to A11), the treadmill run (C27), race week (D4,
       D19, D20) and deleting a run (E18 to E20). Its header still says "not cut
       yet": write the two commits in when the builds exist.
-- [ ] Both workflows fired from the same commit on `develop`:
-      `scripts/codemagic-build.sh run-ios-release develop` and
-      `scripts/codemagic-build.sh run-android-release develop`.
+- [ ] **iOS first:** `scripts/codemagic-build.sh run-ios-release develop`.
+      The owner looks at it on TestFlight before anything else is built.
+- [ ] **Then Android, from the commit iOS was built from:**
+      `scripts/codemagic-build.sh run-android-release develop`. If `develop`
+      has moved on in anything but docs by then, both are cut again as 29.
 - [ ] Tag `run/build-27` on `080d760` and `run/build-28` on the commit
       Codemagic checks out, each with both build records in the message. 27 is
       tagged although nobody sat down with it: it is what testers hold today.

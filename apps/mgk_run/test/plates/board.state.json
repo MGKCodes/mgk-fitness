@@ -34,337 +34,337 @@
   "plates": {
     "00-acquiring": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "01-early": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "02-warming": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "03-warmed": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "04-deep": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "05-paused": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "06-lapped": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "07-sheet-open": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "08-signal-lost": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "09-unplanned-early": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "10-unplanned-running": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "11-permission-denied": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "12-permission-forever": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "13-services-off": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "14-location-failed": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "15-small-early": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "16-small-warmed": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "17-max-early": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "18-max-warmed": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "19-easy-under": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "20-easy-over": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "21-threshold-under": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "22-threshold-over": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "23-panned": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "24-peek": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "25-precise-off": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "26-finishing": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "27-discard": {
       "source": "test/plates/board.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-ended": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-free": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-google-play": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-payment-failed": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-premium": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "add-run": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "another-account": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-greeting": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-health": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-home": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-name": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-permission": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-permission-allowed": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-answering": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-consent": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-consent-small": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-conversation": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-disclaimer": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-gate": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-gate-after-consent": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-locked": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-report": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-report-failed": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-report-sent": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-resting": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-signed-out": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "coach-speaking": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-account": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-account-armed": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-account-keep-phone": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-done": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-done-lift": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-done-login-stuck": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "delete-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "hero_weights": {
@@ -374,332 +374,367 @@
     },
     "home-first-launch": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "home-no-plan": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "home-plan-not-started": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "home-with-plan": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "keep-runs-safe": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "last-run-free": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "last-run-subscribed": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "legal": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "legal-disclaimer": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "legal-privacy": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "legal-withdraw": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "legal-withdrawn": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-already-owned": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-android": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-offline": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-pending": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-restore-none": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-restore-sign-in-first": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-restored": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-sign-in-first": {
       "source": "test/plates/coach.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "paywall-store": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-block": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-calendar": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-disclaimer": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-intake": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-near-race": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-near-race-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-reveal": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-shape": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "plan-week": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "profile-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "profile-records-by-hand": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "profile-with-log": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "route-draw-100": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "route-draw-30": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "route-draw-65": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-complete": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-complete-record": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-count": {
       "source": "test/plates/journeys.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-from-log": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-list": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-recovered": {
       "source": "test/plates/journeys.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-recovered-note": {
       "source": "test/plates/journeys.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "run-start": {
       "source": "test/plates/journeys.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "settings": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "settings-backup": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "settings-no-account": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "settings-permissions": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-plan": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-plan-empty": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-plan-finish": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-plan-not-started": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-profile": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-profile-empty": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-race-after": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-race-day": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-race-result-sheet": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "shell-race-run-up": {
       "source": "test/plates/shell.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "sign-out": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "sign-out-erase": {
       "source": "test/plates/account.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "week-detail": {
       "source": "test/plates/flows.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "year-grid": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "year-grid-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     },
     "account-gate-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "3ead35d62eb90663c29fef6dbe695e8c8ea8315b",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "launch-mark": {
+      "source": "test/plates/launch.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "launch-word": {
+      "source": "test/plates/launch.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "plan-race-week": {
+      "source": "test/plates/shell.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "week-race-week": {
+      "source": "test/plates/flows.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "run-edit": {
+      "source": "test/plates/flows.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "run-delete": {
+      "source": "test/plates/flows.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
+      "captured": "2026-10-01"
+    },
+    "launch-dash": {
+      "source": "test/plates/launch.dart",
+      "sha": "48134941ea0770d30bba01764b2ac568d6aae9f3",
       "captured": "2026-10-01"
     }
   }

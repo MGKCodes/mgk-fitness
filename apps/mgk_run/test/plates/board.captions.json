@@ -16,12 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 27",
-    "eyebrow": "apps/mgk_run · build 27 (1.0.0+27), drawn from develop before the build is cut",
-    "build": "27 · 1.0.0+27, not built yet",
+    "title": "MGKFitness: Run, every screen at build 28",
+    "eyebrow": "apps/mgk_run · build 28 (1.0.0+28), drawn from develop before the build is cut",
+    "build": "28 · 1.0.0+28, not built yet",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "Build 28, from the first look at build 27 on a phone. The app opens on the icon's mark dashing across and leaving the name RUN behind it (B10 to B12, new). Race week is a week of its own and race day is on the plan (E6, E7, new): until now the Plan tab drew a training run on race day. 'Adjust this week' moved from Home's today card to the Plan tab, under the week (A2, E6). Home's today card offers 'Add a treadmill run' in its place (H1, H2, H3). A run can be deleted, from the bin on Edit run (S8, S9, new). The nav bar's selection is a soft plate behind the tab, which slides when the tab changes: it is on every plate that shows the bar.",
       "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
       "Signing in is two steps. Apple, Google and 'Continue with email' come first (B8, C14, K2), and the email form is behind the third (K3, new). On one screen the form's Password and Sign up were below the bottom of a 393pt phone.",
       "The privacy policy says what Apple and Google pass on, names Esri as the map provider, and says map tiles are kept on the phone (T19). The deletion messages give run@mgkfitness.mgkcodes.com in place of the studio's address (L5, L6).",
@@ -157,6 +158,15 @@
       "sub": "The first launch, walked tap by tap",
       "lede": "The app opens on a working tracker and never asks who you are to get there. Every plate here was reached by tapping what a runner taps, so the sequence is proven to join up.",
       "bands": [
+        {
+          "title": "The launch",
+          "sequence": true,
+          "plates": [
+            "B10",
+            "B11",
+            "B12"
+          ]
+        },
         {
           "title": "The first launch",
           "sequence": true,
@@ -469,7 +479,9 @@
           "title": "The log",
           "plates": [
             "S7",
-            "S6"
+            "S6",
+            "S8",
+            "S9"
           ]
         },
         {
@@ -589,7 +601,7 @@
       "n": "12",
       "title": "The end of a plan",
       "sub": "A block ends on race day, and race day is not a Tuesday",
-      "lede": "The same Home read five ways depending only on the date of the race.",
+      "lede": "The same Home read five ways depending only on the date of the race, and the week of the race as the Plan tab draws it.",
       "bands": [
         {
           "title": "Race week to the finish",
@@ -600,6 +612,13 @@
             "E4",
             "E3",
             "E5"
+          ]
+        },
+        {
+          "title": "Race week on the plan",
+          "plates": [
+            "E6",
+            "E7"
           ]
         }
       ]
@@ -612,7 +631,7 @@
       "how": "driven",
       "reach": "Launch › three weeks into a plan",
       "job": "The screen the app opens on. It answers what to run today first, then how the week is going, the last run and the longer view.",
-      "done": "Today's session and Start are readable without scrolling; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
+      "done": "Today's session and Start are readable without scrolling; 'Add a treadmill run' sits under Start, quieter than it; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -621,7 +640,8 @@
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
       ],
-      "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it."
+      "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it.",
+      "changed": "Build 28: 'Adjust this week' stood where 'Add a treadmill run' is. It moved to the Plan tab (A2). The plates before build 28 never showed it, because their fixture had no coach to bend a week."
     },
     "A2": {
       "file": "shell-plan",
@@ -629,12 +649,13 @@
       "how": "driven",
       "reach": "Nav bar › Plan",
       "job": "The week the plan set, day by day, with how far away the race is and which week of the block this is.",
-      "done": "Today's row is the one that stands out; days already gone read as past, not as still to do; the line at the top says the race and the week number. A runner should never have to work out which week they are in.",
+      "done": "Today's row is the one that stands out; days already gone read as past, not as still to do; the line at the top says the race and the week number; 'Adjust this week' is under the seven days it changes. A runner should never have to work out which week they are in.",
       "files": [
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
-      ]
+      ],
+      "changed": "Build 28: 'Adjust this week' is here. It was on Home's today card."
     },
     "A3": {
       "file": "shell-profile",
@@ -762,7 +783,7 @@
       "how": "driven",
       "reach": "Launch › runs recorded, no plan",
       "job": "Home for a runner who just records: the week's runs and distance, answered from the log.",
-      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, and the coach mark is still there.",
+      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, 'Add a treadmill run' is under 'Record a run', and the coach mark is still there.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -2318,6 +2339,100 @@
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
       "isnew": "New in build 27."
+    },
+    "B10": {
+      "file": "launch-mark",
+      "name": "The launch, first frame",
+      "how": "built",
+      "reach": "Open the app from cold",
+      "job": "The first thing drawn: the mark from the home-screen icon, on the app's own ground.",
+      "done": "It is the icon without its tile: two chevrons, the leading one white, centred. Nothing else on the screen. The launch screen before it is the same colour, so there is no flash between the two.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28.",
+      "note": "A stopped frame of an animation that runs for under two seconds. launch-sheet.png beside the plates has nine frames in order, and launch.gif is the whole thing moving."
+    },
+    "B11": {
+      "file": "launch-dash",
+      "name": "The dash",
+      "how": "built",
+      "reach": "B10 › 0.7 seconds in",
+      "job": "The mark has wound back to the left and gone. The app's name is uncovered behind it as it crosses, and the air streaks past.",
+      "done": "The name is the wordmark the welcome screen and Home carry, set in the app's type, not drawn. It appears only behind the mark, never ahead of it. The mark is the icon's shape, with a faint trail while it is moving fast.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "B12": {
+      "file": "launch-word",
+      "name": "At rest: RUN »",
+      "how": "built",
+      "reach": "B11 › 1.5 seconds in",
+      "job": "The mark comes to rest as the last character of its own name, with the studio's name under it. It is held for a moment, then lifts off the app, which has been loading underneath.",
+      "done": "RUN and the mark sit on one line, the mark at the height of the capitals, the pair centred. MGKFITNESS is small and quiet under them. If it reads as a wait rather than as the app opening, it is too long.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28.",
+      "note": "With Reduce Motion on, none of this is shown. It plays on a cold start only. The design was chosen from four drawn in Remotion; the source is in design/launch-films."
+    },
+    "E6": {
+      "file": "plan-race-week",
+      "name": "Race week, on the Plan tab",
+      "how": "driven",
+      "reach": "Nav bar › Plan, in the week of the race",
+      "job": "The week of the race as the plan sets it: short easy runs, a day off, and the race.",
+      "done": "The race's day reads 'Race day' with its distance and a time to expect, and is the heaviest row after today's. The day before is Rest. Every run before it is easy and shorter than the one before. The week's line says 'Race week' and how far is run before the race. 'Adjust this week' is under the seven days. A training run on race day, or a long run the day before, means it has failed.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/domain/race_day.dart",
+        "lib/src/features/coaching/domain/plan_builder.dart",
+        "lib/src/features/home/presentation/home_shell.dart"
+      ],
+      "isnew": "New in build 28.",
+      "changed": "Until build 28 the Plan tab drew race week as an ordinary week: a quality session, the long run on the last free day, and on plans built by earlier builds a training run on race day itself.",
+      "note": "The time is the runner's time trial carried to the race distance by a formula, so it says 'about'. With no time trial there is no time."
+    },
+    "E7": {
+      "file": "week-race-week",
+      "name": "Race week, opened",
+      "how": "built",
+      "reach": "Plan › Calendar › the last week",
+      "job": "The same week on its own screen, with each run's target pace.",
+      "done": "Titled 'Race week', not 'Taper'. Race day is a row of its own, lighter than the rest, saying the race, the distance and 'about' a time 'on your time trial'. The day before reads Rest.",
+      "files": [
+        "lib/src/features/coaching/presentation/week_detail_screen.dart",
+        "lib/src/features/coaching/domain/race_day.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "S8": {
+      "file": "run-edit",
+      "name": "Correcting a run",
+      "how": "built",
+      "reach": "Profile › a run › Edit",
+      "job": "Fixing the numbers on a run already in the log, and the way to delete it.",
+      "done": "Every field opens holding what was stored. The line at the top says the route does not change. The bin is in the top bar, on screen without scrolling: it was first put under Notes, below the fold, where nobody would have found it.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "S9": {
+      "file": "run-delete",
+      "name": "Deleting a run",
+      "how": "driven",
+      "reach": "S8 › the bin",
+      "job": "The question asked before a run is deleted.",
+      "done": "It says what goes (the run and its route, from the phone and the backup) and that it cannot be undone. 'Keep it' is the quiet answer and Delete is red. With no signal and a backup, it refuses and says to check the connection, because a run deleted only on the phone would come back from the backup.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart",
+        "lib/src/features/history/data/run_editor.dart"
+      ],
+      "isnew": "New in build 28."
     }
   }
 }
