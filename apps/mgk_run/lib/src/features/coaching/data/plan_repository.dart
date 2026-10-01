@@ -168,61 +168,90 @@ class PlanRepository {
     bool allowModel = false,
   }) async {
     final stored = await _store.loadWeek(plan, slot.index);
-    if (stored != null) return stored;
+    final int? raceWeekday = raceWeekdayIn(plan, slot);
+    if (stored != null) {
+      if (raceWeekday == null ||
+          isRaceWeekShaped(stored, raceWeekday: raceWeekday)) {
+        return stored;
+      }
+      // **A race week written before race week had a shape** (ADR-0044). A
+      // stored week is never regenerated, so a plan built on an earlier build
+      // went on showing a run on race day itself, or a long run the day
+      // before, until the race had been and gone. Found on a phone, ten days
+      // out.
+      final repaired = _repairedRaceWeek(plan, slot, stored, raceWeekday);
+      // A week already under way keeps the days behind it, which may be all
+      // that was wrong with it. Nothing to write, and writing it would repeat
+      // on every read until Sunday.
+      if (_sameSessions(stored, repaired)) return stored;
+      await _store.saveWeek(plan, repaired);
+      await _pushWeek(plan, repaired);
+      return repaired;
+    }
 
     final generator = _generator;
-    final unusable = _unusableWeekdays(plan, slot);
-    final week = (allowModel && generator != null)
+    final week = raceWeekday != null
+        ? buildRaceWeek(slot, plan.profile, raceWeekday: raceWeekday)
+        : (allowModel && generator != null)
         ? (await generator.generateWeek(
             slot,
             plan.profile,
-            // At most one day, and only in the week that holds the race.
-            raceWeekday: unusable.isEmpty ? null : unusable.first,
-            // So the validator's date rules — session_in_the_past,
-            // session_on_race_day — actually run. Without a calendar they
-            // are opt-in no-ops (see plan_validator.dart), and this was the
-            // one call in the model path that never gave them one.
+            // So the validator's date rules actually run. Without a calendar
+            // they are opt-in no-ops (see plan_validator.dart), and this was
+            // the one call in the model path that never gave them one.
             weekStart: plan.dateFor(
               weekIndex: slot.index,
               weekday: 1,
               on: _now(),
             ),
           )).plan
-        : buildFallbackWeek(slot, plan.profile, unusableWeekdays: unusable);
+        : buildFallbackWeek(slot, plan.profile);
     await _store.saveWeek(plan, week);
     await _pushWeek(plan, week);
     return week;
   }
 
-  /// Days this week has that cannot carry a session, whatever the runner said.
-  ///
-  /// **The only place in the plan stack where weekdays meet dates.**
-  ///
-  /// Race day, and for now only race day. It is the event (ADR-0027), the whole
-  /// block is built to arrive at it, and the deterministic builder puts the
-  /// long run on the latest available weekday -- which in the final week is
-  /// usually the Sunday the race is on. Found on a phone, as row D4.
-  ///
-  /// **The sibling defect is fixed at the anchor, not here** (ADR-0034).
-  /// A plan built on a Friday used to open with Monday to Thursday behind it,
-  /// because the grid was anchored to `mondayOf(now)`. Excluding those days the
-  /// way race day is excluded was tried and reverted: it leaves week 1 with
-  /// three usable days carrying a whole week's prescribed volume, which trades
-  /// a week nobody can complete for a week nobody should. Plans start on the
-  /// coming Monday instead, so week 1 has no past days to exclude.
-  Set<int> _unusableWeekdays(StoredPlan plan, SkeletonWeek slot) {
-    final DateTime? event = plan.profile.eventDate;
-    final DateTime? race = event == null
-        ? null
-        : DateTime(event.year, event.month, event.day);
+  static bool _sameSessions(TrainingWeek a, TrainingWeek b) {
+    if (a.sessions.length != b.sessions.length) return false;
+    String key(PlannedSession s) =>
+        '${s.weekday}|${s.kind.name}|${s.distanceMeters.round()}';
+    final Set<String> left = <String>{for (final s in a.sessions) key(s)};
+    return b.sessions.every((s) => left.contains(key(s)));
+  }
 
-    final out = <int>{};
-    for (var weekday = 1; weekday <= 7; weekday++) {
-      final DateTime on = plan.dateFor(weekIndex: slot.index, weekday: weekday);
-      final DateTime day = DateTime(on.year, on.month, on.day);
-      if (race != null && day.isAtSameMomentAs(race)) out.add(weekday);
-    }
-    return out;
+  /// [stored] made fit for the week of the race.
+  ///
+  /// **The days already gone are left exactly as they were.** They happened,
+  /// and what was asked on them is a matter of record. From today on the week
+  /// is the one [buildRaceWeek] gives, which for a week that has not started
+  /// is the whole of it.
+  TrainingWeek _repairedRaceWeek(
+    StoredPlan plan,
+    SkeletonWeek slot,
+    TrainingWeek stored,
+    int raceWeekday,
+  ) {
+    final rebuilt = buildRaceWeek(slot, plan.profile, raceWeekday: raceWeekday);
+    final DateTime now = _now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime monday = plan.dateFor(weekIndex: slot.index, weekday: 1);
+    final DateTime start = DateTime(monday.year, monday.month, monday.day);
+    if (today.isBefore(start)) return rebuilt;
+
+    final int gone = daysBetweenDates(
+      start,
+      today,
+    ); // weekdays 1..gone are past
+    return TrainingWeek(
+      skeletonIndex: slot.index,
+      provisional: stored.provisional,
+      sessions: <PlannedSession>[
+        for (final s in stored.sessions)
+          if (s.weekday <= gone) s,
+        for (final s in rebuilt.sessions)
+          if (s.weekday > gone) s,
+      ],
+    );
   }
 
   /// Fills the coming week's sessions from the model, if they are not there yet.
@@ -253,17 +282,15 @@ class PlanRepository {
     final slot = next.first;
     try {
       if (await _store.loadWeek(plan, slot.index) != null) return false;
-      // The same two things weekFor gives the model: which weekday (if any)
-      // is race day, and a calendar to check sessions against. Without
-      // these this was the path EDGE-17 named — a week written a week
-      // ahead of time, by the only caller with no session waiting on it,
-      // with the validator's date rules never engaged at all. A race that
-      // fell inside this week could be scheduled straight through it.
-      final unusable = _unusableWeekdays(plan, slot);
+      // Which weekday (if any) is race day, and a calendar to check sessions
+      // against. Without these this was the path EDGE-17 named: a week
+      // written a week ahead of time, by the only caller with no session
+      // waiting on it, with nothing to say a race fell inside it.
       final result = await generator.generateWeek(
         slot,
         plan.profile,
-        raceWeekday: unusable.isEmpty ? null : unusable.first,
+        // Race week comes back built by rule, not proposed, and is kept.
+        raceWeekday: raceWeekdayIn(plan, slot),
         weekStart: plan.dateFor(weekIndex: slot.index, weekday: 1, on: now),
       );
       if (result.isFallback) return false;

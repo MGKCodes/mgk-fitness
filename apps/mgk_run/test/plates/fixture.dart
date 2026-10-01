@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
+import 'package:mgk_run/preview/fake_plan_client.dart';
 import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
@@ -200,6 +201,9 @@ HomeShell plateApp(
   historySource: historySource ?? () async => runs,
   recorderFactory: recorderFactory,
   coach: FakeCoachService(),
+  // Without one the Plan tab has no "Adjust this week", which is the control
+  // the shipping app has there.
+  planClient: FakePlanClient(),
   runEditor: RunEditor(db: db),
   unitSettings: InMemoryUnitSettings(),
   initialTab: initialTab,
@@ -213,6 +217,11 @@ HomeShell plateApp(
 );
 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Days from today to this week's Sunday, so a plan racing then is in its
+/// race week whatever day the plates are drawn on. Zero on a Sunday, which is
+/// race day itself.
+int daysToSunday() => DateTime.sunday - DateTime.now().weekday;
 
 /// **A different route for every run, because that is the feature.**
 ///

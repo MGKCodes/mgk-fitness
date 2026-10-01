@@ -140,7 +140,7 @@ const List<DevAccount> _sampleDevAccounts = <DevAccount>[
 const String _fakeEmail = 'dev@mgkfitness.mgkcodes.com';
 
 /// A keyless basemap for the harness **only**, so map surfaces can be designed
-/// and screenshotted without a MapTiler key on every dev machine. The app never
+/// and screenshotted without a tile key on every dev machine. The app never
 /// uses this: it reads `AppConfig.mapTileUrlTemplate`, which is the provider the
 /// privacy policy names. This file is a dev tool and is never shipped.
 const String _devTiles =

@@ -27,6 +27,23 @@ abstract interface class RunWriter {
 
   /// Sends every local run the backup does not already hold.
   Future<int> backfill();
+
+  /// Removes a run for good: from the backup, then from this phone.
+  ///
+  /// Throws [RunDeleteFailed] and removes **nothing** when the backup's copy
+  /// could not be removed.
+  Future<void> delete(String runId);
+}
+
+/// The backup could not be reached, so the run was left where it is.
+///
+/// Its own type because it has its own remedy. "Could not delete" on its own
+/// invites trying again at once; this one wants a connection first.
+class RunDeleteFailed implements Exception {
+  const RunDeleteFailed();
+
+  @override
+  String toString() => 'RunDeleteFailed: the backup copy could not be removed';
 }
 
 /// Reading **one** run in full, as the screens see it.

@@ -1,6 +1,8 @@
 import 'src/core/brand.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/core/config/app_config.dart';
@@ -31,7 +33,9 @@ import 'src/features/history/data/drift_run_repository.dart';
 import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
 import 'src/features/history/data/supabase_restore.dart';
+import 'src/core/launch/launch_curtain.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
+import 'src/features/recording/data/basemap_cache.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
 import 'src/features/recording/data/recording_run_recorder.dart';
 import 'src/features/recording/data/run_recovery.dart';
@@ -60,8 +64,37 @@ Future<void> main() async {
       isConfigured: configured,
       database: db,
       phone: db == null ? null : _phoneServices(db),
+      // Here and nowhere else: this is the one place a process starts.
+      playLaunch: true,
     ),
   );
+
+  // The map around the runner, loaded before they ask for one. After the first
+  // frame is on its way, and never awaited: it is a convenience, and a launch
+  // must not wait on a tile server.
+  if (configured && AppConfig.current.hasBasemap && !kIsWeb) {
+    BasemapWarmUp(
+      urlTemplate: AppConfig.current.mapTileUrlTemplate,
+      cache: basemapCache(),
+      position: _lastKnownPosition,
+    ).start();
+  }
+}
+
+/// Where the phone last knew it was, without asking for anything.
+///
+/// **Never a prompt, and never a fix.** A runner who has not allowed location
+/// is not asked here, on a screen that has not said why; and the last known
+/// position is read rather than a new one taken, so opening the app switches
+/// no GPS on. Null on either count, and the warm-up then does nothing.
+Future<LatLng?> _lastKnownPosition() async {
+  final LocationPermission permission = await Geolocator.checkPermission();
+  if (permission != LocationPermission.whileInUse &&
+      permission != LocationPermission.always) {
+    return null;
+  }
+  final Position? last = await Geolocator.getLastKnownPosition();
+  return last == null ? null : LatLng(last.latitude, last.longitude);
 }
 
 /// The phone's own stores, made once for the life of the app.
@@ -101,7 +134,12 @@ class RunioApp extends StatelessWidget {
     required this.isConfigured,
     this.database,
     this.phone,
+    this.playLaunch = false,
   });
+
+  /// Whether to open with the launch animation. Off unless [main] says so, so
+  /// a test that pumps this widget meets the app and not a curtain over it.
+  final bool playLaunch;
 
   /// Whether Supabase config was supplied at build time. When false the app
   /// shows [ConfigMissingScreen] instead of trying to reach a backend.
@@ -122,14 +160,15 @@ class RunioApp extends StatelessWidget {
       title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      // Above the navigator, so a route pushed from anywhere -- deleting the
-      // account from Privacy & legal, say -- reaches the same stores.
-      builder: phone == null
-          ? null
-          : (context, child) => PhoneScope(
-              phone: phone,
-              child: child ?? const SizedBox.shrink(),
-            ),
+      builder: (context, child) {
+        Widget app = child ?? const SizedBox.shrink();
+        // Above the navigator, so a route pushed from anywhere -- deleting the
+        // account from Privacy & legal, say -- reaches the same stores.
+        if (phone != null) app = PhoneScope(phone: phone, child: app);
+        // Over everything, the navigator included: the app loads underneath
+        // while the mark becomes the word.
+        return LaunchCurtain(enabled: playLaunch, child: app);
+      },
       home: isConfigured && db != null && phone != null
           ? _AppRoot(db: db, phone: phone)
           : const ConfigMissingScreen(),

@@ -135,6 +135,10 @@ void main() {
       await tester.tap(find.text('Back them up'));
       await tester.pumpAndSettle();
 
+      // The form is the second step since build 27.
+      await tester.tap(find.text('Continue with email'));
+      await tester.pumpAndSettle();
+
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Email'),
         'sam@example.com',

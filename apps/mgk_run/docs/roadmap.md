@@ -4,7 +4,8 @@ The build order is deliberate. **Steps 1–6 are a working run tracker. Steps
 7–10 are the coach. Do not interleave them** — a half-built coach on top of a
 shaky recorder is worse than a solid recorder alone.
 
-Each step should land behind tests and leave `main` shippable.
+Each step should land behind tests and leave `develop` shippable (it said
+`main` until the branches changed on 2026-10-01; see CONTRIBUTING.md).
 
 ## Phase A — A working run tracker (v1 foundation)
 

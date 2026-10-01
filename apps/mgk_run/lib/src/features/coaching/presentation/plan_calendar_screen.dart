@@ -5,6 +5,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/plan_builder.dart';
 import '../domain/plan_headline.dart';
+import '../domain/race_day.dart';
 import '../domain/session_status.dart';
 import '../domain/stored_plan.dart';
 import '../domain/training_plan.dart';
@@ -154,8 +155,10 @@ class _PlanCalendarScreenState extends State<PlanCalendarScreen> {
                       // Not yet materialised: draw the deterministic fill so a
                       // future week is a shape rather than a blank pane. It is
                       // marked provisional above, which is what makes showing
-                      // it honest.
-                      buildFallbackWeek(slot, widget.plan.profile),
+                      // it honest. Race week as race week, which the
+                      // plain fill does not know it is.
+                      draftWeekFor(widget.plan, slot),
+                  raceWeekday: raceWeekdayIn(widget.plan, slot),
                   weekStart: widget.plan.dateFor(
                     weekIndex: slot.index,
                     weekday: 1,

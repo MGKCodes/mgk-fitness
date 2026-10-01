@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'plan_shape.dart';
 import 'prescribed_distance.dart';
+import 'race_day.dart';
 import 'runner_profile.dart';
 import 'stored_plan.dart';
 import 'training_plan.dart';
@@ -168,6 +169,109 @@ TrainingWeek buildFallbackWeek(
     sessions: sessions,
     provisional: true,
   );
+}
+
+/// The week the race is in, for a plan aimed at a date.
+///
+/// **A rule, not a proposal.** Every other week is a shape the model may
+/// improve on. This one has a right answer that does not depend on the runner,
+/// so it is written here and the model is never asked (ADR-0044).
+///
+/// It was not a week of its own before. Race day was only a day the builder
+/// was told to avoid, so the week kept everything else an ordinary one has:
+/// the quality session on its first day, and its long run on the last day left
+/// free, which for a Sunday race is the Saturday. A runner three days out was
+/// being asked for a threshold run and a long run, and then to race.
+///
+/// What race week is instead:
+///
+/// - **Race day is the race**, and carries no session. The screens draw it
+///   from the profile.
+/// - **The day before is rest.**
+/// - **No long run and nothing hard.** Easy running only: nothing done this
+///   week makes the runner fitter by Sunday, and plenty can make them tired.
+/// - **Each run is shorter than the one before**, so the week arrives at the
+///   race rather than stopping short of it.
+/// - **One fewer running day than usual**, because the race is one of them.
+///
+/// The distance comes from the slot: what the taper week held outside its long
+/// run. The plan arc's number for the week is therefore still the week's
+/// running before the race, less the long run the race replaces.
+///
+/// A race on a Monday or a Tuesday leaves nothing ahead of it in its own week,
+/// and the week is then empty, which is right.
+TrainingWeek buildRaceWeek(
+  SkeletonWeek slot,
+  RunnerProfile profile, {
+  required int raceWeekday,
+}) {
+  final int eve = raceWeekday - 1;
+  final before = <int>[
+    for (final d in profile.availableWeekdays)
+      if (d < eve) d,
+  ]..sort();
+  final n = math.min(profile.daysPerWeek - 1, before.length);
+  if (n <= 0) {
+    return TrainingWeek(skeletonIndex: slot.index, sessions: const []);
+  }
+  final days = _spread(before, n);
+
+  final double budget = slot.beforeRaceMeters;
+  // n, n-1, ... 1: the first run of the week is the longest it will get.
+  final int weights = n * (n + 1) ~/ 2;
+  final double cap = roundPrescribed(slot.longRunMeters);
+  final shares = <double>[
+    for (final m in prescribeAcross(<double>[
+      for (var k = 0; k < n; k++) budget * (n - k) / weights,
+    ]))
+      cap > 0 ? math.min(m, cap) : m,
+  ];
+
+  return TrainingWeek(
+    skeletonIndex: slot.index,
+    sessions: <PlannedSession>[
+      for (var k = 0; k < n; k++)
+        PlannedSession(
+          weekday: days[k],
+          kind: SessionKind.easy,
+          distanceMeters: shares[k],
+        ),
+    ],
+  );
+}
+
+/// [slot] as Dart would fill it, for a week nothing has been stored for yet.
+///
+/// What the calendar draws beyond the planning horizon. It asked
+/// [buildFallbackWeek] directly, which knows no dates, so the last pane of
+/// every calendar showed the long run on race day until that week was
+/// materialised, sixteen weeks later.
+TrainingWeek draftWeekFor(StoredPlan plan, SkeletonWeek slot) {
+  final int? raceWeekday = raceWeekdayIn(plan, slot);
+  return raceWeekday == null
+      ? buildFallbackWeek(slot, plan.profile)
+      : buildRaceWeek(slot, plan.profile, raceWeekday: raceWeekday);
+}
+
+/// Whether [week] can stand as the week of a race on [raceWeekday]: nothing
+/// on the day itself, and no long run anywhere in it.
+///
+/// What a week stored before race week had a shape fails, and what
+/// [PlanRepository] rebuilds when it does.
+///
+/// **Deliberately the same two things `validateWeek` refuses of an adjustment
+/// in race week, and no more.** [buildRaceWeek] is stricter than this: it also
+/// rests the day before and keeps everything easy. But a runner who asks the
+/// coach for a short run the day before their race has asked for something
+/// reasonable, and a test stricter than the validator would quietly undo it
+/// the next time the week was read.
+bool isRaceWeekShaped(TrainingWeek week, {required int raceWeekday}) {
+  for (final s in week.sessions) {
+    if (s.kind == SessionKind.rest) continue;
+    if (s.weekday == raceWeekday) return false;
+    if (s.kind == SessionKind.long) return false;
+  }
+  return true;
 }
 
 /// Shares [total] metres over [days], making the last of them the long run when

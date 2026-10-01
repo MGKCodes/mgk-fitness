@@ -34,6 +34,12 @@ for current in a way `docs/product-spec.md` could.
   work and everything after it is missing. It misleads about *history* rather
   than about how the system behaves, which is why it is the least dangerous of
   the three.
+- **[app-store-1.0.0-record.md](app-store-1.0.0-record.md)** — the release
+  plan as it stood on 1 October 2026, at 1,168 lines: the six gates and their
+  reasoning, what builds 13, 25 and 26 each added, and the production audit of
+  29 September. Frozen when the live plan was cut down to one table and one
+  checklist. Its tick boxes carry no state, and its own header lists what was
+  already wrong on the day.
 - **[product-spec.md](product-spec.md)** — **the most misleading document this
   repository has ever had.** Read it for how the product was conceived, never
   for what it does.

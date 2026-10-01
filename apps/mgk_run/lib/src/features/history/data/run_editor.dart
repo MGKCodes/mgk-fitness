@@ -108,6 +108,39 @@ class RunEditor implements RunWriter, RunDetailSource {
     await _push(runId);
   }
 
+  /// Removes a run and everything belonging to it: its route, its splits and
+  /// its best efforts.
+  ///
+  /// **The backup first, and nothing at all if that fails.** Every other write
+  /// here commits locally and treats the mirror as best effort, because a run
+  /// that is on the phone and not yet in the backup repairs itself on the next
+  /// push. A deletion has no such repair. The log is restored from the backup
+  /// every time the app opens, so a run removed only here would be back the
+  /// next morning, and the runner would have no way to tell why. Refusing
+  /// while there is no signal is the smaller wrong: nothing about deleting a
+  /// run is urgent.
+  ///
+  /// A runner who is signed out, or has never had a backup, has nothing to
+  /// remove there: the backup answers at once and the phone's copy goes.
+  ///
+  /// Not gated on consent, for the reason `ConsentedRunBackup.deleteRun` gives.
+  @override
+  Future<void> delete(String runId) async {
+    final backup = _backup;
+    if (backup != null) {
+      try {
+        await backup.deleteRun(runId).timeout(_deleteTimeout);
+      } catch (_) {
+        throw const RunDeleteFailed();
+      }
+    }
+    await _db.deleteRun(runId);
+  }
+
+  /// Long enough for a slow connection, short enough that a phone with none
+  /// says so while the runner is still looking at the button.
+  static const Duration _deleteTimeout = Duration(seconds: 15);
+
   /// Mirrors a run, swallowing any failure. A dropped push shows up as a run
   /// that is on the phone and not yet in the backup, which the next push of
   /// that run repairs — the upsert is keyed on the run's id.

@@ -165,6 +165,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SignInScreen), findsOneWidget);
 
+      // The form is the second step since build 27.
+      await tester.tap(find.text('Continue with email'));
+      await tester.pumpAndSettle();
+
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Email'),
         'a@example.com',

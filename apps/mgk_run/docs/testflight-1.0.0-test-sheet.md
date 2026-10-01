@@ -1,12 +1,11 @@
-# MGKFitness: Run 1.0.0 — test sheet, build 26
+# MGKFitness: Run 1.0.0 — test sheet, build 28
 
-**Build 26, both stores: TestFlight on the iPhone, Play internal testing on
+**Build 28, both stores: TestFlight on the iPhone, Play internal testing on
 Android.** The file name is older than Android; the sheet covers both.
 
-**Tests `1.0.0+26`, tagged `run/build-26`.** iOS was built from `431db9c`
-and Android from `54e7487`, read off the Codemagic build records: the first
-Android build failed CI on two test files, and `54e7487` changes those and
-nothing else, so both stores carry the same app
+**Tests `1.0.0+28`, to be tagged `run/build-28`.** Not cut yet. The commits
+both stores were built from are written here when it is, read off the Codemagic
+build records
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 A tester holding a different build is testing something else.
 
@@ -17,28 +16,39 @@ below. A failed row with two words of context is worth more than a green sheet.
 **Only what you actually saw counts.** An untested row is useful; an assumed
 pass is not. Silence on a row is read as untested, never as passed.
 
-**Rewritten 2026-09-29 for build 26.** This is the one sitting before
-submission; testing build 25 was dropped. The earlier sheets are not kept
-beside this one: build 12's is at `02a9214`, build 13's at `0930105`, and the
-build 14 sheet, last touched for build 25, at `f46f3f1`, if the raw record is
-ever wanted.
+**Rewritten 2026-10-01 for build 27, and carried to build 28 the same day.**
+Build 27 reached both stores (TestFlight from `b0384be`, Play internal from
+`080d760`) and was opened, not sat down with: six changes came out of opening
+it, and they are build 28. Build 26's sitting never happened either, so this is
+still the one sitting before submission. The earlier sheets are not kept beside
+this one: build 12's is at `02a9214`, build 13's at `0930105`, the build 14
+sheet, last touched for build 25, at `f46f3f1`, build 26's at `c0375bb` and
+build 27's at `9d0a96a`, if the raw record is ever wanted.
 
-## What build 26 is
+## What build 28 is
 
-Everything build 25 had, plus three lanes of fixes (the coach's consent and
-compliance copy, account and purchase safety, and recording robustness) and
-the consent the privacy policy has promised since 2026-09-01. The list of what
-26 adds is in [app-store-1.0.0.md](app-store-1.0.0.md); everything on it that a
-phone can show has a row here marked **NEW**.
+Everything build 26 had, which no phone has been sat down with either. Plus
+build 27's: signing in with Apple and Google, the email form as a second step,
+a password reset that finishes on the web, a sign-up that waits for its
+confirmation email, Apple's tokens revoked with the account, Esri's map with
+its credit, and a map that keeps what it has been shown. Plus six things from
+the first look at 27: a launch animation, tabs that slide instead of cutting,
+deleting a run, a treadmill run from Home, *Adjust this week* on the Plan tab,
+and a race week that is one, with race day on the plan. The list is in
+[app-store-1.0.0.md](app-store-1.0.0.md).
 
-**Three facts shape this sheet.**
+Rows marked **NEW** were new in 26 and have still never been walked. Rows
+marked **NEW in 27** and **NEW in 28** are those builds'.
+
+**Five facts shape this sheet.**
 
 **First, the purchase has never been walked end to end on either platform.**
 Section G (iPhone) failed to run on four builds, and Premium on Android (section
-P) has never been bought. They are the two things a submission needs that
-nothing else can prove.
+P) has never been bought. One purchase has gone through on each store since
+(Coach on Android on 11 September, one on TestFlight on 30 September), which
+proves the chain exists and not that either section passes.
 
-**Second, the new flows were only ever seen in widget tests**: the consent
+**Second, the flows new in 26 were only ever seen in widget tests**: the consent
 sheet, reporting a reply, the another-account screen, the erase switches, the
 billing warning on Delete account, the recovered run. A test cannot tell you
 whether the sheet reads as a question or as a wall, or whether "Erase" sounds as
@@ -47,19 +57,27 @@ permanent as it is.
 **Third, deleting now erases the phone by default.** Do the deletion rows on a
 throwaway account, never the one with your real runs.
 
+**Fourth, signing in with Apple and Google has never been on a phone in Run.**
+It was built in Lift's lane and the consoles were set up once, for the suite;
+Run's half is recorded from that runbook and was not re-checked. Section S is
+where it is proved or not.
+
+**Fifth, email confirmation is on.** Every account made with an email address
+needs an address you can open, or it exists and cannot sign in.
+
 ---
 
 ## How to capture what you find
 
 **Do not tick this file on the phone.** Dictate into one note per phone, called
-`run build 26 iphone` and `run build 26 android`, holding the **microphone key
+`run build 28 iphone` and `run build 28 android`, holding the **microphone key
 on the keyboard** — not Voice Memos, which gives an audio file somebody has to
 transcribe.
 
 **Or use the scribe.** From `apps/mgk_run`:
 
 ```
-python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 26
+python tool/field_sheet.py docs/testflight-1.0.0-test-sheet.md <out.md> 28
 ```
 
 That produces this sheet with a brief telling a Claude Desktop session how to
@@ -81,6 +99,8 @@ safe direction and the reason this works.
 | Row | Say |
 |---|---|
 | A3 | Whether the 23 Aug run is in the log **after signing in** |
+| A7 | Whether the launch animation reads as the app opening or as a wait |
+| D19 | What the Race day row says, word for word |
 | B2 | Exactly what the Health sheet lists |
 | C12 | How many haptics per kilometre, and whether signal loss buzzed once or repeatedly |
 | C14 | Whether three seconds feels right |
@@ -98,21 +118,28 @@ safe direction and the reason this works.
 | G18, P5 | The row: `product`, `status`, `platform`, `expires_at`, `event_ms` |
 | G's or P's failure | **The ignore-reason from the `revenuecat` function log**, not a description of the screen |
 | H | Whether there is enough history for shot 6 (a year of running) |
+| S3, S6 | What Apple's sheet or page asked for, and where you landed afterwards |
+| S4 | Which account Google put you in: your own, with your runs, or an empty one |
+| S10 | The confirmation email: who it says it is from, inbox or spam, and what the page says after the link |
+| S11 | The same for the reset email, and what the page says once the password is changed |
+| S12 | Whether Apple asked you to confirm, and whether Run is gone from your Apple ID's *Sign in with Apple* list afterwards |
+| M1 | Whether the street names are readable at arm's length, and whether the map looks soft |
+| M5 | Whether the route is still the loudest thing on the map |
+| M6, M7, M8 | What the map showed with no signal: streets, or a plain ground |
 
 ---
 
 ## Before you start
 
-**1. Three backend items change what this sitting can prove.** They are on the
-owner list in [app-store-1.0.0.md](app-store-1.0.0.md):
+**1. Nothing on the backend is waiting.** Read off the project on 1 October:
+`coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token
+revocation), migrations through `20260929183008`. If R2, S12 or a purchase
+fails, read the function log and say what it says; do not put it down to a
+missing deploy.
 
-| If this is not done yet | What it does to this sitting |
-|---|---|
-| The migration creating `coach.reports` | R2 and R3 cannot pass: every report fails to send |
-| The migration's `core.user_settings` defaults | The distance unit never reaches the account; it stays on the phone |
-| The coach function redeployed from `main` | The server does not enforce the subscription for Run (the app's own gate still shows), Premium's allowance is Coach's, and three Run fixes from 4 September are missing. Note anything odd in D rather than chasing it |
-
-Run the sitting anyway if one is missing, and say which rows it blocked.
+**1a. The build must have been cut after Codemagic's map settings moved to
+Esri.** M2 is the check: no *Powered by Esri* on the map means it was not, and
+section M is then testing the wrong provider. Say so and skip M.
 
 **2. `REVENUECAT_ACCEPT_SANDBOX` is `true`, and stays `true`**
 ([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)). Sections
@@ -124,9 +151,13 @@ unless somebody switched it off.
 | Account | Phone | Used for | Never |
 |---|---|---|---|
 | **Yours** — the one with your real runs | iPhone | A3, E5, E11, E12, I, D, R, G | deleted, or backup switched off |
-| **Test 2** — new, no Run row | Android | P (the Play purchase), the first half of E15 | used on the iPhone |
+| **Test 2** — new, no Run row | Android | S9, S10 and S11 while making it, then P (the Play purchase) and the first half of E15 | used on the iPhone |
 | **Test 3** — throwaway | Android | E15 onwards: E10, E14, E16, E17, E13, E8 | holding anything you want |
+| **Apple, hidden** — *Continue with Apple*, choosing **Hide My Email** | iPhone | S3, S13, S12. A separate account from yours by design, so it holds nothing and is safe to delete | made with *Share My Email*, which signs into your real account |
 | **Demo A and B** | neither | App Review only | used here: the reviewer has to meet the consent sheet on them |
+
+**Confirmation is on.** Test 2 and Test 3 need addresses you can open. A
+plus-address on your own mailbox works (`you+run2@…`, `you+run3@…`).
 
 `run.runs` holds the 23 August runs under `mattkay02@gmail.com`, one character
 from the other address on this project. Sign into that one for A3 and say which
@@ -188,6 +219,10 @@ moving, and V needs the Android phone.
   run has. Heart rate and calories from Health are specified for 1.0.1 in
   [after-1.0.0.md](after-1.0.0.md).
 - **No in-run audio** ([ADR-0006](decisions/0006-in-run-audio-deferred.md)).
+- **A place the map has never shown, with no signal, is a plain ground** under
+  the route. The phone keeps the tiles it has been shown and loads the ones
+  around you when the app opens; it does not download an area
+  ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md)).
 - **iPhone only on iOS.** It runs on an iPad in compatibility mode.
 - **Android never asks for the notification permission** (Android 13+), so the
   "Recording your run" notification only appears if notifications are on for
@@ -199,44 +234,57 @@ moving, and V needs the Android phone.
 - **A runner at 0 km a week cannot build a plan.**
 - **Plan dates shift a day if the phone moves west across time zones.** Do not
   test on a plane.
-- **Adjusting a week from inside the Plan tab's week view** is not yet covered
-  by the race-day rule. Use Home ▸ Adjust this week for D17.
+- **Adjusting a week from a week opened in the calendar** (Plan ▸ Calendar ▸
+  a week ▸ the adjust button) is not yet covered by the race-day rule. Use
+  Plan ▸ Adjust this week, under the week, for D17.
+- **A race on a Monday or a Tuesday leaves race week empty** before it: there
+  is no day in that week ahead of the day before the race.
+- **The time on the Race day row is a prediction from the time trial**, by
+  formula. It knows nothing of the course or of the training since.
 
-The last six are in [after-1.0.0.md](after-1.0.0.md), each with a date to
-revisit.
+The six from Android's notification permission to the adjust button are in
+[after-1.0.0.md](after-1.0.0.md), each with a date to revisit.
 
 ---
 
 ## The running order
 
-1. **iPhone, fresh install: A1, A2, A5, A6, then B's iPhone rows.** Delete the
+1. **iPhone, fresh install: A1, A2, A5 to A7, A9 to A11, then B's iPhone rows.** Delete the
    app first. If the phone holds runs that are not backed up, turn backup on
-   under build 25 before you delete it; A3 is about getting them back. **Do B
-   once and pay attention**: permission dialogs do not come back without a
-   reinstall.
-2. **Android, fresh install from the internal testing link: A1, A2, A5, A6,
-   then B's Android rows.** Not a sideloaded APK: it cannot buy anything (P2).
-3. **E1 to E4, E7 and E7a** on the iPhone, still no account.
-4. **E9, then E5, A3 and A4** — the offline check first, then your own account,
-   for real, on the iPhone. **Leave E8, E13 and E16's erase alone.**
-5. **I, with no row and no agreement yet.** The consent sheet has to come
+   under the build you have before you delete it; A3 is about getting them
+   back. **Do B once and pay attention**: permission dialogs do not come back
+   without a reinstall.
+2. **Android, fresh install from the internal testing link: A1, A2, A5 to
+   A11, then B's Android rows.** Not a sideloaded APK: it cannot buy anything (P2).
+3. **E1 to E4, E7 and E7a** on the iPhone, still no account. Then **S1, S2 and
+   S7**, which need no account either.
+4. **S3, S13 and S12 on the iPhone**, in that order, on the hidden Apple
+   account: sign in, back out of a deletion, then delete it. It holds nothing.
+5. **E9, then E5, A3 and A4** — the offline check first, then your own account,
+   for real, on the iPhone. **S4** here if your own address is a Google one.
+   **Leave E8, E13 and E16's erase alone.**
+6. **I, with no row and no agreement yet.** The consent sheet has to come
    before any price, so this is the one time the order of a section matters.
-6. **Grant your row** (SQL above), then **D1 to D4, D16 to D18, D6 to D8, D12,
-   D13**, and **R**.
-7. **Delete the row**, then **D9 to D11, D14, D15** and **C11**.
-8. **G on the iPhone** — the purchase, indoors, row still deleted. Sign into
+7. **Grant your row** (SQL above), then **D19 first, on the plan you already
+   have**, then **D1 to D4, D20, D16 to D18, D6 to D8, D12, D13**, and **R**.
+8. **Delete the row**, then **D9 to D11, D14, D15** and **C11**.
+9. **G on the iPhone** — the purchase, indoors, row still deleted. Sign into
    the app *first*, sign out of the sandbox account *first*, and read the
    function log rather than the screen.
-9. **P on Android**, as Test 2.
-10. **Outside: C** (C21 to C26 included), **F**, then **V** on Android.
-11. **H** — the screenshots, both phones. They need the data the earlier steps
+10. **Android: make Test 2 with an email address, which is S9 and S10.** Then
+    **S5, S6 and S8**, signing out between them, and **S11** on Test 2.
+11. **P on Android**, as Test 2.
+12. **M6 on both phones before you leave the house**, then **outside: C** (C21
+    to C26 included), **M1 to M5**, **F**, then **V** on Android. **M7 and M8**
+    on the way back, in aeroplane mode.
+13. **H** — the screenshots, both phones. They need the data the earlier steps
     made.
-12. **E11 and E12** on the iPhone, as yourself.
-13. **On Android, as Test 2 then Test 3: E15, E10 with E14, E16, E17, E13, and
+14. **E11, E12, then E18 to E20** on the iPhone, as yourself, and **C27**.
+15. **On Android, as Test 2 then Test 3: E15, E10 with E14, E16, E17, E13, and
     E8 last.** E15 leaves Test 3 on the phone, and everything after it is
     Test 3's.
 
-**Six ways to waste the afternoon:**
+**Seven ways to waste the afternoon:**
 
 - **Deleting your own account.** Deleting now erases the phone's copy by
   default, so E8 or E13 on your account takes the runs on the phone as well as
@@ -251,6 +299,8 @@ revisit.
   on the account, and the reviewer would never see the sheet the review notes
   describe.
 - **Answering B's dialogs before you are paying attention.**
+- **Making a test account on an address you cannot open.** Confirmation is on:
+  the account exists and cannot sign in.
 
 ---
 
@@ -264,6 +314,11 @@ revisit.
 | A4 | Watch what it says when it arrives | A message naming what was restored | ☐ |
 | A5 | Portrait, nothing clipped | Notch, home indicator and Android gesture bar respected | ☐ |
 | A6 | **The nav bar, on all three tabs** | A floating pill. Scroll each tab to its very bottom: **nothing may sit under it** | ☐ |
+| A7 | **Force-quit, then open the app** | **NEW in 28.** The two chevrons from the icon draw back to the left, then dash to the right. **RUN** is uncovered behind them and thin lines streak past. It rests as **RUN »** with *MGKFITNESS* under it, then lifts to show the app, already loaded. About two seconds, and smooth: **say if it stutters, and whether it reads as the app opening or as a wait** | ☐ |
+| A8 | **Android, phone in light mode: force-quit and open** | **NEW in 28.** Dark from the first instant. **No white flash** before the animation. On Android 12 or later the icon shows first, on the same dark ground | ☐ |
+| A9 | **Open it from the background** (not force-quit) | **NEW in 28.** No animation: it only plays on a cold start | ☐ |
+| A10 | **Tap between Home, Plan and Profile** | **NEW in 28.** The screen slides a short way and fades into the next; a soft plate slides along the nav bar to the tab you tapped. **Nothing snaps.** Scroll Profile down, leave and come back: it is where you left it | ☐ |
+| A11 | **With Reduce Motion on** (iPhone: Accessibility ▸ Motion; Android: Remove animations), force-quit and open, then change tab | **NEW in 28.** No launch animation, and tabs change at once | ☐ |
 
 ## B. Permissions — a fresh install on each phone
 
@@ -275,6 +330,30 @@ revisit.
 | B4 | Android: location prompt | While using the app / Only this time / Don't allow, with a precise toggle. **No "Allow all the time"** | ☐ |
 | B5 | Android: the intro | **No Health step at all** | ☐ |
 | B6 | Deny location, then read the banner | Names **that phone's** settings path | ☐ |
+
+## S. Signing in — NEW in 27
+
+Never on a phone in Run before this build. The console settings behind it are
+in [store-setup.md](store-setup.md) §11.
+
+| # | Step | Expected | ✓ |
+|---|---|---|---|
+| S1 | **Welcome ▸ I already have an account**, on each phone | **NEW in 27.** *Continue with Apple*, *Continue with Google* and *Continue with email*, the same width, with *Choosing Hide My Email with Apple starts a separate account.* under them. **Nothing to scroll for**, and no email field yet | ☐ |
+| S2 | Tap **Continue with email** | **NEW in 27.** Email, Password, **Sign in**, *Forgot your password?* and *Other ways to sign in*, all on the screen with the keyboard down. *Other ways to sign in* goes back to the three buttons | ☐ |
+| S7 | Tap **Continue with Apple**, then close Apple's sheet. The same with Google | **NEW in 27.** Back on the screen with **no message**. Closing a sheet is not an error | ☐ |
+| S3 | **iPhone: Continue with Apple, choosing Hide My Email** | **NEW in 27.** Apple's own sheet, asking for an email address and nothing else. Then the app, signed in, **as a new and empty account**: Settings shows a `privaterelay.appleid.com` address. Say what the sheet asked for | ☐ |
+| S13 | **On that account: Delete account, type DELETE, confirm, then close Apple's sheet** | **NEW in 27.** *"Nothing was deleted. An account made with Apple asks Apple to confirm before it goes."* The account is still there | ☐ |
+| S12 | **Delete it again and confirm with Apple** | **NEW in 27.** Apple asks to confirm, then the done screen. Afterwards, iPhone Settings ▸ your name ▸ Sign in with Apple **no longer lists Run**. The `delete-account` log line reads `"apple":"revoked"` | ☐ |
+| S4 | **iPhone: Continue with Google** | **NEW in 27.** Google's sheet, then the app. If the Google address is your account's own, you are **in your account, with your runs**: one address is one account. Say which you landed in | ☐ |
+| S9 | **Android: Create an account ▸ Continue with email, with a 7-character password** | **NEW in 27.** *"Use at least 8 characters."* and nothing is sent. Signing **in** with an older, shorter password still works | ☐ |
+| S10 | **Make Test 2 with 8 or more** | **NEW in 27.** *"Check your email to confirm your account."* in grey, **not red**. The email is from **MGKFitness** `<noreply@mgkfitness.mgkcodes.com>`, in the inbox. Sign in **before** following the link: *"Check your email and follow the link, then sign in."*, also grey. Follow the link, then sign in: it works. Say what the page after the link says | ☐ |
+| S5 | **Android: sign out, Continue with Google** | **NEW in 27.** Android's own account chooser, then the app, signed in | ☐ |
+| S8 | **Sign out, Continue with Google again** | **NEW in 27.** It **asks which account**, and does not walk straight back into the last one | ☐ |
+| S6 | **Android: sign out, Continue with Apple** | **NEW in 27.** The **browser** opens on Apple's page, and the app says *"Finish signing in with Apple in your browser."* Sign in there and the browser hands back to **Run, signed in**. Say where you landed | ☐ |
+| S11 | **As Test 2, signed out: Continue with email ▸ Forgot your password?** | **NEW in 27.** With no address typed: *"Enter your email first."* With one: *"If that address has an account, a reset link is on its way."* The email's link opens `mgkfitness.mgkcodes.com/reset-password`. Fewer than 8 characters is refused there; a good one says **Your password is changed**. Sign in with it. Open the same link again: *"This link has expired or has already been used."* | ☐ |
+
+**S12's log line** is in the Supabase dashboard ▸ Edge Functions ▸
+`delete-account` ▸ Logs, on the line beginning `account deleted`.
 
 ## C. Recording
 
@@ -305,6 +384,24 @@ revisit.
 | C24 | **Double-tap Finish, fast** | **NEW.** One summary, one run in the log. Finish and Resume show a small spinner while it settles | ☐ |
 | C25 | **iPhone: mid-run, set Settings ▸ Run ▸ Location to Never**, come back, pause, set it back to While Using, then tap **Allow location** (it may read **Continue**) | **NEW.** The **same** run carries on. After Finish there is **one** run in the log, with both halves of the distance | ☐ |
 | C26 | **iPhone: Settings ▸ Run ▸ Location ▸ Precise Location off**, then start a run | **NEW.** A problem panel saying Run only has approximate location, with *Turn on Precise Location for Run in Settings* and a way to Settings — not a run stuck on "Acquiring GPS" that saves as 0 m. Turn Precise back on afterwards | ☐ |
+| C27 | **Home ▸ Add a treadmill run**, under Start | **NEW in 28.** *Add a run* opens with **Treadmill** already chosen. Fill in distance and time, **Add run**: back on Home, and the run is in the log on Profile as a treadmill run | ☐ |
+
+## M. The map — NEW in 27
+
+The map's tiles are Esri's from this build, and the phone keeps the ones it has
+been shown ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md)).
+No test can see any of this: tiles need a network and a screen.
+
+| # | Step | Expected | ✓ |
+|---|---|---|---|
+| M6 | **Indoors, with a signal and location already allowed: open the app, wait ten seconds on Home, switch to aeroplane mode, then tap Record a run** | **NEW in 27.** The map around you is **already drawn**, streets and names. It was loaded when the app opened | ☐ |
+| M2 | The start screen's bottom-right corner | **NEW in 27.** *Powered by Esri*, clear of the home indicator and of **Start**. Tap it: the data sources open above it. Tap again: they close | ☐ |
+| M1 | **Outside: read the map on the start screen and mid-run** | **NEW in 27.** A dark grey map with street names. Say whether the names are readable at arm's length, and whether it looks soft next to the rest of the screen | ☐ |
+| M3 | Mid-run: find the credit, raise and lower the panel, then pan the map | **NEW in 27.** *Powered by Esri* sits **just above the panel** and rides with it. With the recentre control showing it sits **beside** the control, not under it | ☐ |
+| M4 | The finished run's map | **NEW in 27.** The credit in its bottom-right corner | ☐ |
+| M5 | The map against the route | **NEW in 27.** The route is the loudest thing on it. Say if the map is too bright or too faint | ☐ |
+| M7 | **Aeroplane mode, then open the run you just finished from the log** | **NEW in 27.** Its map draws, from the phone's copy | ☐ |
+| M8 | **Still in aeroplane mode, pan the map somewhere it has never shown** | **NEW in 27.** A plain dark ground, no broken-image marks, the route still drawn. That is right (known gap) | ☐ |
 
 ## D. The coach and the plan
 
@@ -316,9 +413,11 @@ row **deleted**.
 | D1 | Ask for a plan (Plan ▸ Build a plan) | The intake opens — consent and disclaimer were settled in I | ☐ |
 | D2 | Work through the intake | **One question per turn**, and it reflects back what it heard | ☐ |
 | D3 | Read the generated plan | Whole numbers — never `4.1 km` | ☐ |
-| D4 | **Check race week** | Race day carries **no training session**. It is the event | ☐ |
+| D4 | **Check race week** (Plan ▸ Calendar, the last week; tap into it) | **CHANGED in 28.** The day reads **Race day**, with the race, its distance and *about* a time (only if you gave a time trial). The **day before is empty**, there is **no long run**, the runs before it are easy and **each shorter than the last**, and the week's line says *Race week*. In the calendar the day's cell says **Race** | ☐ |
+| D19 | **Your own plan, built before this build, with a run on race day** | **NEW in 28.** Open Plan ▸ Calendar ▸ the last week. The run on race day is **gone** and the week is as D4 describes, without rebuilding the plan. **Say what the Race day row says, word for word** | ☐ |
+| D20 | **Plan tab, under this week's seven days** | **NEW in 28.** **Adjust this week** is here, and **not on Home**. Tap it: the same reasons as before, and the answer arrives in the conversation | ☐ |
 | D16 | Build it on a day that is not Monday | Week 1 starts on the **coming** Monday (ADR-0034). Say whether that reads as sensible or as a delay | ☐ |
-| D17 | **In race week, Home ▸ Adjust this week**, pick a reason, accept | **NEW.** The revised week still leaves race day empty | ☐ |
+| D17 | **In race week, Plan ▸ Adjust this week**, pick a reason, accept | **NEW.** The revised week still leaves race day empty | ☐ |
 | D18 | **Build a plan for a race less than six weeks after the coming Monday** | **NEW.** Refused before anything is built: *"A plan needs at least 6 weeks before race day. Pick a later race, or build a plan without one."* | ☐ |
 | D6 | Ask the coach about your last run | Read against the session you were set | ☐ |
 | D7 | Ask about a run over a week ago | Gets the **date right** | ☐ |
@@ -328,7 +427,7 @@ row **deleted**.
 | D9 | **Delete the row, relaunch** | The coach locks again | ☐ |
 | D10 | With the row deleted, ask for a plan | The gate sheet with a way to the prices, never *"the coach hit a problem"* | ☐ |
 | D11 | With the row deleted, tap the coach mark | The **gate sheet**; its button reaches the paywall | ☐ |
-| D14 | **With the row deleted, try every other way in** | *Ask about this* on Profile and on a finished run, the missed-session card, Adjust this week, the Plan tab. **All of them meet the gate**, never an error | ☐ |
+| D14 | **With the row deleted, try every other way in** | *Ask about this* on Profile and on a finished run, the missed-session card, Plan ▸ Adjust this week, the Plan tab. **All of them meet the gate**, never an error | ☐ |
 | D15 | With the row deleted, look at Home's coach mark | The mark is there, **with no observation**. That reading is the paid product | ☐ |
 
 ## I. The coach asks first — NEW
@@ -342,7 +441,7 @@ earlier build, withdraw first (I4).
 | I2 | Tap **Not now** | Back where you were. The coach does not open and nothing is sent | ☐ |
 | I3 | Tap the mark again, **Agree** | The medical disclaimer (if this phone has not seen it), **then** the gate sheet. Consent, then the price | ☐ |
 | I4 | Settings ▸ Privacy & legal ▸ **Coach and AI** | Reads *"You agreed…Tap to withdraw."* Tap ▸ *"Stop the coach sending your training?"* ▸ Withdraw ▸ *"Withdrawn. Your coach will ask before it sends anything."* The row then reads *"Not agreed…"* | ☐ |
-| I5 | **With permission withdrawn, try each way in**: the mark, Plan ▸ Build a plan, *Ask about this* on Profile and on a finished run, the missed-session card, Home ▸ Adjust this week | Every one shows the consent sheet first. **Not now** on each; nothing opens. Agree on the last one | ☐ |
+| I5 | **With permission withdrawn, try each way in**: the mark, Plan ▸ Build a plan, *Ask about this* on Profile and on a finished run, the missed-session card, Plan ▸ Adjust this week | Every one shows the consent sheet first. **Not now** on each; nothing opens. Agree on the last one | ☐ |
 | I6 | **Signed out**, tap the coach mark | An account is asked for first — never the consent sheet or a price without one | ☐ |
 
 ## R. Reporting a reply — NEW
@@ -368,14 +467,17 @@ from coach.reports order by created_at desc limit 3;
 |---|---|---|---|
 | E1 | Record two runs with no account | The backup prompt appears once, after the second | ☐ |
 | E2 | Decline it | Nothing stored; not asked again | ☐ |
-| E3 | Turn on backup with no account | Raises sign-up | ☐ |
+| E3 | Turn on backup with no account | Raises the account screen: Apple, Google and *Continue with email*, with what an account is for above them | ☐ |
 | E4 | Abandon that sign-up | Nothing written | ☐ |
-| E9 | **In airplane mode, try to create an account** | Fails within about 20 s naming the connection | ☐ |
+| E9 | **In airplane mode, try to create an account** (Continue with email) | Fails within about 20 s naming the connection | ☐ |
 | E5 | Create or sign into your account online, turn backup on | Existing runs upload **then**. Check `run.runs` | ☐ |
 | E7 | **Settings with no account** (Profile ▸ gear) | The card at the top: your name or *Create an account*, and *"Everything is on this phone only. An account backs up your training and lets you ask for a plan."* Behind it, **Create an account** and no Sign out or Delete account | ☐ |
 | E7a | Still signed out: Settings ▸ Privacy & legal ▸ Delete account, type DELETE, confirm | The row is listed even with no account. It must refuse without claiming anything was deleted — expect *"Please sign in again, then retry the deletion."* Say what it actually says | ☐ |
 | E11 | **Read Settings as a whole**, signed in | **CHANGED.** A profile card (face, name, address, plan), then **Preferences** (Distance), **Your data** (Back up my data, Permissions), **About** (Support, Privacy & legal), the version at the foot. Say whether backup is easy to find | ☐ |
 | E12 | **Profile, signed in with backup on** | A line saying where the training is: "Backing up…", a last-backed-up time, or a failure that says the phone still has it | ☐ |
+| E18 | **Profile ▸ a run ▸ Edit ▸ the bin, top right**. Then **Keep it** | **NEW in 28.** *"Delete this run?"*, saying it goes from the phone and the backup and cannot be undone. Keep it: nothing changes | ☐ |
+| E19 | **Delete it for real**, signed in with backup on. Use a run you do not want | **NEW in 28.** Back on Profile, **not** on the deleted run's screen. It is gone from the log and from the totals. Check `run.runs`: the row is gone. **Force-quit and reopen: it has not come back** | ☐ |
+| E20 | **Aeroplane mode, signed in: delete another** | **NEW in 28.** *"Couldn't delete that run. Check your connection and try again."*, as a toast. The run is **still there**. Signed out, the same step simply deletes it | ☐ |
 | E15 | **Android: Test 2 signed in with a run on the phone. Sign out (switch off), sign in as Test 3** | **NEW.** *"This phone has another account's training on it"*, with **Erase this phone's training and continue as** Test 3's address, and **Sign out**. Sign out leaves Test 2's run. Sign in as Test 3 again ▸ Erase: the app opens empty, as Test 3 | ☐ |
 | E10 | **Test 3: add a run (by hand is fine), turn backup on, then off** | It says what was deleted, **and the rows go** — check `run.runs` for Test 3 | ☐ |
 | E14 | In the same switch-off, the `e14-seed` Lift conversation | That row **is still there**: `select id, app from coach.conversations where id = 'e14-seed';` | ☐ |
@@ -410,7 +512,9 @@ handed one runner's training to another account.
 
 ## G. The purchase on the iPhone — the whole chain
 
-**Never completed, on any build.** Runbook detail and every ignore-reason is in
+**Never completed, on any build.** One TestFlight purchase wrote its row on
+30 September; the section has not been walked. Runbook detail and every
+ignore-reason is in
 [store-setup.md](store-setup.md) §8. **Read the function log before changing
 anything.**
 
@@ -499,7 +603,7 @@ listed once, above.
 What each note needs beyond those:
 
 1. **Which build** each phone has. TestFlight and Play's app page show the
-   build number; the app's own Settings shows only 1.0.0. It must be 26.
+   build number; the app's own Settings shows only 1.0.0. It must be 28.
 2. **Which accounts** you used, and for A3 which address.
 3. **How far you got.** Stopping is a fine outcome; a sheet that claims G ran
    when it did not is the failure that made rewrites necessary.
@@ -507,4 +611,4 @@ What each note needs beyond those:
 5. **Anything that felt wrong but still passed.** The only findings this sheet
    has no row for, by definition.
 
-Then paste them in and say they are the build 26 notes.
+Then paste them in and say they are the build 28 notes.

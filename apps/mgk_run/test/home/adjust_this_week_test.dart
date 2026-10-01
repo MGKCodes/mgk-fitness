@@ -98,8 +98,12 @@ DateTime _underWay() => DateTime.now().subtract(const Duration(days: 21));
 
 /// The category's loudest complaint is a plan that will not bend. Runio could
 /// always bend one — but only for a runner willing to type a paragraph at the
-/// coach. These cover the door onto that engine: it is on Home, it is one tap,
-/// and it changes nothing without the runner's word.
+/// coach. These cover the door onto that engine: it is one tap, and it changes
+/// nothing without the runner's word.
+///
+/// **It is on the Plan tab, under the week it changes.** It was on Home's
+/// today card until build 28. Home shows one day and this adjusts seven, so
+/// the button asked about a week that was on another tab.
 void main() {
   late AppDatabase db;
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
@@ -116,17 +120,28 @@ void main() {
 
   final adjust = find.text('Adjust this week');
 
+  /// To the Plan tab, by the nav bar, as a runner gets there.
+  Future<void> openPlan(WidgetTester tester) async {
+    await tester.tap(find.text('Plan').last);
+    await tester.pumpAndSettle();
+  }
+
   Future<_RecordingChat> pumpHome(
     WidgetTester tester, {
     bool withPlan = true,
     TrainingWeek? Function(TrainingWeek)? revision,
+    RunnerProfile? profile,
+    DateTime Function()? builtAt,
   }) async {
     await tester.binding.setSurfaceSize(const Size(420, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final store = DriftPlanStore(db);
     if (withPlan) {
-      await PlanRepository(store: store, now: _underWay).create(aProfile());
+      await PlanRepository(
+        store: store,
+        now: builtAt ?? _underWay,
+      ).create(profile ?? aProfile());
     }
     final chat = _RecordingChat();
 
@@ -160,17 +175,27 @@ void main() {
     return chat;
   }
 
-  testWidgets('Home offers a way to bend the week when there is a plan', (
+  testWidgets('the Plan tab offers a way to bend the week, under the week', (
     tester,
   ) async {
     await pumpHome(tester);
+    expect(adjust, findsNothing, reason: 'not on Home any more');
+
+    await openPlan(tester);
+
     expect(adjust, findsOneWidget);
+    expect(
+      tester.getTopLeft(adjust).dy,
+      greaterThan(tester.getBottomLeft(find.text('Sun')).dy),
+      reason: 'below the last day of the week it adjusts',
+    );
   });
 
   testWidgets('and offers nothing to bend when there is no plan', (
     tester,
   ) async {
     await pumpHome(tester, withPlan: false);
+    await openPlan(tester);
     expect(
       adjust,
       findsNothing,
@@ -178,8 +203,37 @@ void main() {
     );
   });
 
+  testWidgets('nor before the plan has started', (tester) async {
+    // Built today, so it starts on the coming Monday (ADR-0034): the week on
+    // the Plan tab is not one anybody is in yet.
+    await pumpHome(tester, builtAt: DateTime.now);
+    await openPlan(tester);
+    expect(adjust, findsNothing);
+  });
+
+  testWidgets('nor on race day, when the week is already run', (tester) async {
+    final today = DateTime.now();
+    await pumpHome(
+      tester,
+      profile: RunnerProfile(
+        goalDistanceMeters: 42195,
+        eventDate: DateTime(today.year, today.month, today.day),
+        currentWeeklyMeters: 40000,
+        longestRecentMeters: 22000,
+        daysPerWeek: 5,
+        availableWeekdays: const <int>{1, 2, 3, 4, 5, 6, 7},
+      ),
+      builtAt: () => DateTime.now().subtract(const Duration(days: 70)),
+    );
+    await openPlan(tester);
+
+    expect(find.text('Race day'), findsOneWidget, reason: 'the week is shown');
+    expect(adjust, findsNothing);
+  });
+
   testWidgets('the reasons are situations, not a text box', (tester) async {
     await pumpHome(tester);
+    await openPlan(tester);
 
     await tester.tap(adjust);
     await tester.pumpAndSettle();
@@ -200,6 +254,7 @@ void main() {
     tester,
   ) async {
     final chat = await pumpHome(tester);
+    await openPlan(tester);
     final pause = AdjustReasonsSheet.reasons.firstWhere(
       (r) => r.label == 'Pause the rest of this week',
     );
@@ -220,6 +275,7 @@ void main() {
 
   testWidgets('"Never mind" says nothing to the coach at all', (tester) async {
     final chat = await pumpHome(tester);
+    await openPlan(tester);
 
     await tester.tap(adjust);
     await tester.pumpAndSettle();

@@ -97,4 +97,71 @@ void main() {
     await tester.tap(find.text('Plan'));
     expect(tapped, 1);
   });
+
+  // The selection used to be a property of each tab, so a change was one tab
+  // going bright and another going dim in the same frame. It is a plate now,
+  // and it travels.
+  group('the selection moves', () {
+    // The plate is the only AnimatedAlign in the bar.
+    double plateCentre(WidgetTester tester) => tester
+        .getCenter(
+          find.descendant(
+            of: find.byType(AnimatedAlign),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .dx;
+
+    testWidgets('it sits behind the selected tab', (tester) async {
+      await pump(tester, destinations: runTabs, selected: 1);
+      expect(
+        plateCentre(tester),
+        closeTo(tester.getCenter(find.text('Plan')).dx, 0.5),
+      );
+    });
+
+    testWidgets('and travels to the next one rather than jumping', (
+      tester,
+    ) async {
+      await pump(tester, destinations: runTabs);
+      final double home = tester.getCenter(find.text('Home')).dx;
+      final double plan = tester.getCenter(find.text('Plan')).dx;
+      expect(plateCentre(tester), closeTo(home, 0.5));
+
+      await pump(tester, destinations: runTabs, selected: 1);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        plateCentre(tester),
+        allOf(greaterThan(home), lessThan(plan)),
+        reason: 'part way between the two, part way through',
+      );
+
+      await tester.pumpAndSettle();
+      expect(plateCentre(tester), closeTo(plan, 0.5));
+    });
+
+    testWidgets('at once, with Reduce Motion on', (tester) async {
+      Widget bar(int selected) => MaterialApp(
+        theme: AppTheme.dark,
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: Scaffold(
+            body: FloatingNavBar(
+              selectedIndex: selected,
+              onSelected: (_) {},
+              destinations: runTabs,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(bar(0));
+      await tester.pumpWidget(bar(1));
+      await tester.pump();
+
+      expect(
+        plateCentre(tester),
+        closeTo(tester.getCenter(find.text('Plan')).dx, 0.5),
+      );
+    });
+  });
 }

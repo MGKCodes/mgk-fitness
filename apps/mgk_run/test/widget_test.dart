@@ -19,6 +19,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: SignInScreen()));
+    // Apple, Google and email are offered first; the form is the second step.
+    await tester.tap(find.text('Continue with email'));
+    await tester.pumpAndSettle();
 
     expect(find.byType(TextFormField), findsNWidgets(2));
     expect(find.text('Email'), findsOneWidget);

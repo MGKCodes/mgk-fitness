@@ -62,6 +62,12 @@ class AdaptationRefused implements Exception {
         "or add elsewhere and I'll take another look.",
     'long_run_ceiling':
         "That long run is further than I'll write for you at this stage.",
+    'session_on_race_day':
+        "That would put a run on race day. Race day is the race, so I've left "
+        'the week as it was.',
+    'long_run_in_race_week':
+        "That would put a long run in race week. The race is this week's long "
+        "run, so I've left it as it was.",
     // Last, because the order is by what the runner can do something about and
     // this one is not their doing at all — it is the model trying to rewrite a
     // day they have already run. It still has to be here rather than falling

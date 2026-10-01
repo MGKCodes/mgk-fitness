@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppColors.bg. The window behind the app while it starts.
+
+         It was the template's white on a phone in light mode, so a dark app
+         opened with a white flash. One colour for both modes: the app has one
+         appearance and its launch should not have two. -->
+    <color name="launch_ground">#1A1A1A</color>
+</resources>

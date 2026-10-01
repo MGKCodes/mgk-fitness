@@ -1,0 +1,17 @@
+{
+  "name": "run-launch-film",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@remotion/cli": "^4.0.532",
+    "@remotion/fonts": "^4.0.532",
+    "@remotion/layout-utils": "^4.0.532",
+    "@remotion/paths": "^4.0.532",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.532",
+    "typescript": "^7.0.2"
+  }
+}

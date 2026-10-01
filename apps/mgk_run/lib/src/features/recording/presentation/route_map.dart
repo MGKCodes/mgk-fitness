@@ -3,11 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_config.dart';
+import '../data/basemap_cache.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/split_marker.dart';
+
+export '../data/basemap_cache.dart' show TileGrid;
 
 /// How much of the basemap shows through, over the app's charcoal base.
 ///
@@ -18,11 +21,12 @@ import '../domain/split_marker.dart';
 /// contrast, which is the reason a stock style can be used rather than a
 /// bespoke one.
 ///
-/// Set by eye against real MapTiler `backdrop-dark` tiles at zoom 14–16, which
-/// is where a run is actually read. Backdrop is already a recessive style — it
-/// is MapTiler's canvas, built to be drawn on — so it needs less taking away
-/// than a fuller one would: `dataviz-v4-dark` wants nearer 0.72 for the same
-/// result. Anything below about 0.6 stops being recessive and starts being fog.
+/// Set by eye against MapTiler's `backdrop-dark` tiles at zoom 14–16, which is
+/// where a run is actually read, and **not yet looked at against Esri's
+/// `dark-gray`**, which replaced them for build 27. Both are recessive styles
+/// built to be drawn on, so the figure is a fair starting point rather than a
+/// judged one: a fuller style wants nearer 0.72 for the same result, and
+/// anything below about 0.6 stops being recessive and starts being fog.
 const double kBasemapOpacity = 0.85;
 
 /// Draws a run's route as a silver polyline over a dark basemap — used both for
@@ -34,9 +38,7 @@ const double kBasemapOpacity = 0.85;
 /// one.
 ///
 /// The basemap comes from [AppConfig.mapTileUrlTemplate] — the provider named in
-/// the privacy policy, with a restricted key supplied at build time. (MapTiler
-/// restricts on a User-Agent substring rather than a bundle id, and the one it
-/// matches is [TileLayer.userAgentPackageName] below.) A
+/// the privacy policy, with a restricted key supplied at build time. A
 /// build with none configured draws the route on the charcoal base alone, which
 /// is deliberate: shipping a hard-coded provider would mean calling a host the
 /// policy doesn't declare. Tiles load over the network, so widget tests and
@@ -72,6 +74,8 @@ class RouteMap extends StatefulWidget {
     this.focus,
     this.showPosition = false,
     this.emptyLabel = 'Finding you',
+    this.showCredit = true,
+    this.creditInsets = const EdgeInsets.only(right: 6, bottom: 4),
     String? tileUrlTemplate,
     String? attribution,
   }) : _tileUrlTemplate = tileUrlTemplate,
@@ -152,6 +156,19 @@ class RouteMap extends StatefulWidget {
   /// for a finished trace, where "latest" is just the end.
   final bool showPosition;
 
+  /// Whether the map draws the provider's credit itself.
+  ///
+  /// **False only where something covers the map's own corner**, and then the
+  /// caller owes a [MapCredit] somewhere it can be seen. The in-run screen is
+  /// the case: its map is a full screen tall with the panel over the bottom of
+  /// it, so a credit drawn here sat behind the panel for as long as the run
+  /// lasted, which is the provider's tiles on screen with no credit.
+  final bool showCredit;
+
+  /// How far the credit sits from the map's bottom-right corner. A screen whose
+  /// map runs under the home indicator adds the safe area here.
+  final EdgeInsets creditInsets;
+
   /// Overrides the configured basemap. Exists for the preview harness, which is
   /// a dev tool and may point at a keyless dev basemap; the app leaves it null
   /// and gets [AppConfig.current].
@@ -185,6 +202,10 @@ class RouteMap extends StatefulWidget {
 class _RouteMapState extends State<RouteMap> {
   final MapController _controller = MapController();
   int? _lastLength;
+
+  /// Tiles through the phone's own cache, with the saved copy used when the
+  /// network cannot be. One per map, over a client the whole app shares.
+  late final NetworkTileProvider _tiles = basemapTileProvider();
 
   /// Snaps back to the runner when following is switched back on.
   ///
@@ -352,10 +373,11 @@ class _RouteMapState extends State<RouteMap> {
                 opacity: widget.basemapOpacity,
                 child: TileLayer(
                   urlTemplate: widget.tileUrlTemplate,
-                  // Also the value MapTiler's key restriction matches on:
-                  // flutter_map sends `User-Agent: flutter_map (<this>)`, and a
-                  // reverse-DNS bundle id is a distinctive enough substring that
-                  // no other app will satisfy it by accident.
+                  tileDimension: TileGrid.of(widget.tileUrlTemplate).dimension,
+                  zoomOffset: TileGrid.of(widget.tileUrlTemplate).zoomOffset,
+                  tileProvider: _tiles,
+                  // flutter_map sends `User-Agent: flutter_map (<this>)`, so
+                  // the provider's logs say which app asked.
                   userAgentPackageName: 'com.mgkcodes.fitness.run',
                   // A tile that will not load leaves the charcoal base showing,
                   // which is the same picture as a build with no basemap. Better
@@ -414,11 +436,13 @@ class _RouteMapState extends State<RouteMap> {
         ),
         // Required by every provider's terms, and read from the same config as
         // the tiles so the two can never disagree about who is being credited.
-        if (widget.tileUrlTemplate.isNotEmpty && widget.attribution.isNotEmpty)
+        if (widget.showCredit &&
+            widget.tileUrlTemplate.isNotEmpty &&
+            widget.attribution.isNotEmpty)
           Positioned(
-            right: 6,
-            bottom: 4,
-            child: _Attribution(text: widget.attribution),
+            right: widget.creditInsets.right,
+            bottom: widget.creditInsets.bottom,
+            child: MapCredit(text: widget.attribution),
           ),
       ],
     );
@@ -558,23 +582,74 @@ class _AcquiringMap extends StatelessWidget {
 }
 
 /// The provider credit. Small, but never absent while tiles are on screen.
-class _Attribution extends StatelessWidget {
-  const _Attribution({required this.text});
+///
+/// **One line, with the rest a tap away.** Esri asks for two things: its own
+/// name where it can always be seen, and the names of everybody whose data is
+/// in the tiles, which may sit behind "an expandable UI ... when they can not
+/// be displayed on small screens". The whole string is a hundred and twenty
+/// characters, which at this size is three lines across the one part of the
+/// in-run screen that is meant to show a route. So the text is split at its
+/// first ` | `: what comes before is always shown, and a tap opens the rest.
+/// A credit with no ` | ` in it is short enough to show whole, and is.
+///
+/// Public because the in-run screen places one itself, above its panel; see
+/// [RouteMap.showCredit].
+class MapCredit extends StatefulWidget {
+  const MapCredit({super.key, required this.text});
 
   final String text;
 
   @override
+  State<MapCredit> createState() => _MapCreditState();
+}
+
+class _MapCreditState extends State<MapCredit> {
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final int cut = widget.text.indexOf(' | ');
+    final bool opens = cut > 0;
+    final String always = opens ? widget.text.substring(0, cut) : widget.text;
+    final String rest = opens ? widget.text.substring(cut + 3) : '';
+
+    final Widget chip = DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.bg.withValues(alpha: 0.55),
+        // More opaque while open: three lines of small type have to be read
+        // over whatever the basemap is showing.
+        color: AppColors.bg.withValues(alpha: _open ? 0.86 : 0.55),
         borderRadius: BorderRadius.circular(AppRadius.chip),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 9, color: AppColors.textTertiary),
+        child: ConstrainedBox(
+          // The sources in three lines, and narrower than the narrowest phone.
+          constraints: const BoxConstraints(maxWidth: 260),
+          child: Text(
+            _open ? '$always\n$rest' : always,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 9,
+              height: 1.3,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!opens) return chip;
+
+    return Semantics(
+      button: true,
+      hint: _open ? null : 'Shows the map data sources',
+      child: GestureDetector(
+        // The padding is the tap target, not decoration: the chip alone is
+        // thirteen points tall.
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _open = !_open),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, top: 16),
+          child: chip,
         ),
       ),
     );

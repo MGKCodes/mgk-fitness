@@ -16,11 +16,17 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 26",
-    "eyebrow": "apps/mgk_run · build 26 (1.0.0+26), with the UI fixes for build 27",
+    "title": "MGKFitness: Run, every screen at build 28",
+    "eyebrow": "apps/mgk_run · build 28 (1.0.0+28), drawn from develop before the build is cut",
+    "build": "28 · 1.0.0+28, not built yet",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "Build 28, from the first look at build 27 on a phone. The app opens on the icon's mark dashing across and leaving the name RUN behind it (B10 to B12, new). Race week is a week of its own and race day is on the plan (E6, E7, new): until now the Plan tab drew a training run on race day. 'Adjust this week' moved from Home's today card to the Plan tab, under the week (A2, E6). Home's today card offers 'Add a treadmill run' in its place (H1, H2, H3). A run can be deleted, from the bin on Edit run (S8, S9, new). The nav bar's selection is a soft plate behind the tab, which slides when the tab changes: it is on every plate that shows the bar.",
+      "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
+      "Signing in is two steps. Apple, Google and 'Continue with email' come first (B8, C14, K2), and the email form is behind the third (K3, new). On one screen the form's Password and Sign up were below the bottom of a 393pt phone.",
+      "The privacy policy says what Apple and Google pass on, names Esri as the map provider, and says map tiles are kept on the phone (T19). The deletion messages give run@mgkfitness.mgkcodes.com in place of the studio's address (L5, L6).",
+      "A confirmation floats as a rounded card above the bottom edge instead of a bar across it (T15). The paywall's renewal terms say 'turned off' where they said 'switched off' (Y1 to Y9). The Plan tab before a plan starts has the same lit ground as the tab in week three (P5).",
       "Re-drawn on 30 Sep with the UI fixes for build 27, every plate at one commit. Fixed, with the \"done right\" line now describing the fixed screen and the old defect kept beside it: G4, G6, G7, H6, P5, T8, K1, T16, F7, S6, C9, G1, R16, R17, R18, R19, R28, R29, R24, T15, C8, P4.",
       "New for build 26: the coach's permission sheet and the notice before any price (C7, C8, C9), reporting a reply (C10 to C12), every paywall answer (Y2 to Y9), the account's subscription states and Manage subscription (T4 to T10), signing out with the erase switch (T11, T12), withdrawing the coach's permission (T13 to T15), every delete-account state (L1 to L7), another account's training on the phone (X1), Precise Location off (R28), finishing and leaving a run (R29, R30), a recovered run (F7, F8), a race too close to plan for (G6, G7) and the Health step (B9).",
       "Also new since 2 Sep: the start screen and count-in (R24, R25), the recentre control and full-screen map (R26, R27), the locked coach line (C6), the week a plan is built (H6, P5), backup and permissions (T16, T17), the legal documents (T18, T19) and the backup prompt (K1, K2).",
@@ -109,7 +115,7 @@
     "caveats": [
       [
         "No map tiles",
-        "A test answers every network image with an error, so maps show their route and position marker on a plain ground."
+        "A test answers every network image with an error, so maps show their route and position marker on a plain ground. The map provider's credit shows only with tiles, so it is not in any plate: on a phone it reads 'Powered by Esri', sits above the in-run panel, and opens the data sources on a tap."
       ],
       [
         "Debug-only rows",
@@ -152,6 +158,15 @@
       "sub": "The first launch, walked tap by tap",
       "lede": "The app opens on a working tracker and never asks who you are to get there. Every plate here was reached by tapping what a runner taps, so the sequence is proven to join up.",
       "bands": [
+        {
+          "title": "The launch",
+          "sequence": true,
+          "plates": [
+            "B10",
+            "B11",
+            "B12"
+          ]
+        },
         {
           "title": "The first launch",
           "sequence": true,
@@ -464,7 +479,9 @@
           "title": "The log",
           "plates": [
             "S7",
-            "S6"
+            "S6",
+            "S8",
+            "S9"
           ]
         },
         {
@@ -537,7 +554,8 @@
           "sequence": true,
           "plates": [
             "K1",
-            "K2"
+            "K2",
+            "K3"
           ]
         }
       ]
@@ -583,7 +601,7 @@
       "n": "12",
       "title": "The end of a plan",
       "sub": "A block ends on race day, and race day is not a Tuesday",
-      "lede": "The same Home read five ways depending only on the date of the race.",
+      "lede": "The same Home read five ways depending only on the date of the race, and the week of the race as the Plan tab draws it.",
       "bands": [
         {
           "title": "Race week to the finish",
@@ -594,6 +612,13 @@
             "E4",
             "E3",
             "E5"
+          ]
+        },
+        {
+          "title": "Race week on the plan",
+          "plates": [
+            "E6",
+            "E7"
           ]
         }
       ]
@@ -606,7 +631,7 @@
       "how": "driven",
       "reach": "Launch › three weeks into a plan",
       "job": "The screen the app opens on. It answers what to run today first, then how the week is going, the last run and the longer view.",
-      "done": "Today's session and Start are readable without scrolling; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
+      "done": "Today's session and Start are readable without scrolling; 'Add a treadmill run' sits under Start, quieter than it; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -614,7 +639,9 @@
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
-      ]
+      ],
+      "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it.",
+      "changed": "Build 28: 'Adjust this week' stood where 'Add a treadmill run' is. It moved to the Plan tab (A2). The plates before build 28 never showed it, because their fixture had no coach to bend a week."
     },
     "A2": {
       "file": "shell-plan",
@@ -622,12 +649,13 @@
       "how": "driven",
       "reach": "Nav bar › Plan",
       "job": "The week the plan set, day by day, with how far away the race is and which week of the block this is.",
-      "done": "Today's row is the one that stands out; days already gone read as past, not as still to do; the line at the top says the race and the week number. A runner should never have to work out which week they are in.",
+      "done": "Today's row is the one that stands out; days already gone read as past, not as still to do; the line at the top says the race and the week number; 'Adjust this week' is under the seven days it changes. A runner should never have to work out which week they are in.",
       "files": [
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
-      ]
+      ],
+      "changed": "Build 28: 'Adjust this week' is here. It was on Home's today card."
     },
     "A3": {
       "file": "shell-profile",
@@ -743,10 +771,11 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Email, password, Sign in and a way to create an account instead, with a line saying the login is shared with Lift. Someone who has been here before is not walked through the intro again.",
+      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button, and signing in before the confirmation email is opened says to check it, in grey. Someone who has been here before is not walked through the intro again.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
     },
     "H2": {
       "file": "home-no-plan",
@@ -754,7 +783,7 @@
       "how": "driven",
       "reach": "Launch › runs recorded, no plan",
       "job": "Home for a runner who just records: the week's runs and distance, answered from the log.",
-      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, and the coach mark is still there.",
+      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, 'Add a treadmill run' is under 'Record a run', and the coach mark is still there.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -1535,11 +1564,12 @@
       "how": "driven",
       "reach": "any tab, signed out › the mark",
       "job": "Tapping the coach with no account.",
-      "done": "Asks for an account before anything else: never the permission sheet or a price without one. The name from the intro is already known.",
+      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Says what an account is for, then the three ways to make one, all on the screen with nothing to scroll for.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "isnew": "Order settled in build 26."
+      "isnew": "Order settled in build 26.",
+      "changed": "Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
     },
     "C7": {
       "file": "coach-consent",
@@ -2075,13 +2105,13 @@
       "how": "built",
       "reach": "T14 › Withdraw",
       "job": "After withdrawing.",
-      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation on the app's dark surface says it is done.",
+      "done": "The row reads 'Not agreed. Your coach asks before it sends anything.' and a confirmation on the app's dark surface, floating as a rounded card above the bottom edge, says it is done.",
       "files": [
         "lib/src/features/legal/presentation/legal_screen.dart",
         "lib/src/features/settings/presentation/settings_tile.dart"
       ],
       "isnew": "New in build 26.",
-      "changed": "Build 27: the confirmation bar was light on a dark app. Every snackbar in both apps takes the suite surface now."
+      "changed": "Build 27: the confirmation bar was light on a dark app. Every snackbar in both apps takes the suite surface now. Since 1 Oct it is a floating card, not a bar across the bottom."
     },
     "T18": {
       "file": "legal-disclaimer",
@@ -2102,12 +2132,13 @@
       "how": "built",
       "reach": "T13 › Privacy policy",
       "job": "The privacy policy inside the app.",
-      "done": "Matches the published policy; since build 26 it covers the name the app collects and the profile photo that never leaves the phone.",
+      "done": "Matches the published policy. It covers the name the app collects, the profile photo that never leaves the phone, what Apple and Google pass on when a runner signs in with either (an email address and an identifier, nothing else), Esri as the map provider, and that map tiles are kept on the phone and nowhere else.",
       "files": [
         "lib/src/features/legal/presentation/privacy_policy_screen.dart",
         "lib/src/features/legal/domain/legal_copy.dart"
       ],
-      "isnew": "Caught up with the published policy in build 26."
+      "isnew": "Caught up with the published policy in build 26.",
+      "changed": "Build 27: signing in with Apple or Google, the service that sends account email, Esri in place of MapTiler, and the map tiles the phone keeps."
     },
     "K1": {
       "file": "keep-runs-safe",
@@ -2127,10 +2158,11 @@
       "how": "driven",
       "reach": "K1 › Back them up",
       "job": "The account asked for at the moment it buys something.",
-      "done": "Create your account with what an account is for; the name from the intro is already known; backing out leaves nothing written.",
+      "done": "Create your account with what an account is for, then Apple, Google and Continue with email. Backing out leaves nothing written.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
-      ]
+      ],
+      "changed": "Build 27: Apple and Google lead, and the email form is the next step (K3)."
     },
     "L1": {
       "file": "delete-account",
@@ -2185,7 +2217,7 @@
       "how": "built",
       "reach": "L2 › Delete my data, the login holds Lift data",
       "job": "The deletion done where the same login still has Lift data.",
-      "done": "Says the login is still active because Lift is using it and how to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
+      "done": "Says the login is still active because Lift is using it and gives run@mgkfitness.mgkcodes.com to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
@@ -2197,7 +2229,7 @@
       "how": "built",
       "reach": "L3 › Delete my data, the login could not be removed",
       "job": "The deletion done, but the login could not be removed and the phone copy was kept.",
-      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email to have the login removed, and that the runs are still on this phone with no backup.",
+      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email run@mgkfitness.mgkcodes.com to have the login removed, and that the runs are still on this phone with no backup.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
@@ -2295,6 +2327,112 @@
       "files": [
         "lib/src/features/coaching/presentation/plan_finish_screen.dart"
       ]
+    },
+    "K3": {
+      "file": "account-gate-email",
+      "name": "The email form",
+      "how": "driven",
+      "reach": "K2 › Continue with email",
+      "job": "Making the account with an email address, for a runner who has neither Apple nor Google on the phone or would rather not use them.",
+      "done": "Email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart"
+      ],
+      "isnew": "New in build 27."
+    },
+    "B10": {
+      "file": "launch-mark",
+      "name": "The launch, first frame",
+      "how": "built",
+      "reach": "Open the app from cold",
+      "job": "The first thing drawn: the mark from the home-screen icon, on the app's own ground.",
+      "done": "It is the icon without its tile: two chevrons, the leading one white, centred. Nothing else on the screen. The launch screen before it is the same colour, so there is no flash between the two.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28.",
+      "note": "A stopped frame of an animation that runs for under two seconds. launch-sheet.png beside the plates has nine frames in order, and launch.gif is the whole thing moving."
+    },
+    "B11": {
+      "file": "launch-dash",
+      "name": "The dash",
+      "how": "built",
+      "reach": "B10 › 0.7 seconds in",
+      "job": "The mark has wound back to the left and gone. The app's name is uncovered behind it as it crosses, and the air streaks past.",
+      "done": "The name is the wordmark the welcome screen and Home carry, set in the app's type, not drawn. It appears only behind the mark, never ahead of it. The mark is the icon's shape, with a faint trail while it is moving fast.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "B12": {
+      "file": "launch-word",
+      "name": "At rest: RUN »",
+      "how": "built",
+      "reach": "B11 › 1.5 seconds in",
+      "job": "The mark comes to rest as the last character of its own name, with the studio's name under it. It is held for a moment, then lifts off the app, which has been loading underneath.",
+      "done": "RUN and the mark sit on one line, the mark at the height of the capitals, the pair centred. MGKFITNESS is small and quiet under them. If it reads as a wait rather than as the app opening, it is too long.",
+      "files": [
+        "lib/src/core/launch/launch_curtain.dart"
+      ],
+      "isnew": "New in build 28.",
+      "note": "With Reduce Motion on, none of this is shown. It plays on a cold start only. The design was chosen from four drawn in Remotion; the source is in design/launch-films."
+    },
+    "E6": {
+      "file": "plan-race-week",
+      "name": "Race week, on the Plan tab",
+      "how": "driven",
+      "reach": "Nav bar › Plan, in the week of the race",
+      "job": "The week of the race as the plan sets it: short easy runs, a day off, and the race.",
+      "done": "The race's day reads 'Race day' with its distance and a time to expect, and is the heaviest row after today's. The day before is Rest. Every run before it is easy and shorter than the one before. The week's line says 'Race week' and how far is run before the race. 'Adjust this week' is under the seven days. A training run on race day, or a long run the day before, means it has failed.",
+      "files": [
+        "lib/src/features/coaching/presentation/plan_screen.dart",
+        "lib/src/features/coaching/presentation/week_list.dart",
+        "lib/src/features/coaching/domain/race_day.dart",
+        "lib/src/features/coaching/domain/plan_builder.dart",
+        "lib/src/features/home/presentation/home_shell.dart"
+      ],
+      "isnew": "New in build 28.",
+      "changed": "Until build 28 the Plan tab drew race week as an ordinary week: a quality session, the long run on the last free day, and on plans built by earlier builds a training run on race day itself.",
+      "note": "The time is the runner's time trial carried to the race distance by a formula, so it says 'about'. With no time trial there is no time."
+    },
+    "E7": {
+      "file": "week-race-week",
+      "name": "Race week, opened",
+      "how": "built",
+      "reach": "Plan › Calendar › the last week",
+      "job": "The same week on its own screen, with each run's target pace.",
+      "done": "Titled 'Race week', not 'Taper'. Race day is a row of its own, lighter than the rest, saying the race, the distance and 'about' a time 'on your time trial'. The day before reads Rest.",
+      "files": [
+        "lib/src/features/coaching/presentation/week_detail_screen.dart",
+        "lib/src/features/coaching/domain/race_day.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "S8": {
+      "file": "run-edit",
+      "name": "Correcting a run",
+      "how": "built",
+      "reach": "Profile › a run › Edit",
+      "job": "Fixing the numbers on a run already in the log, and the way to delete it.",
+      "done": "Every field opens holding what was stored. The line at the top says the route does not change. The bin is in the top bar, on screen without scrolling: it was first put under Notes, below the fold, where nobody would have found it.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart"
+      ],
+      "isnew": "New in build 28."
+    },
+    "S9": {
+      "file": "run-delete",
+      "name": "Deleting a run",
+      "how": "driven",
+      "reach": "S8 › the bin",
+      "job": "The question asked before a run is deleted.",
+      "done": "It says what goes (the run and its route, from the phone and the backup) and that it cannot be undone. 'Keep it' is the quiet answer and Delete is red. With no signal and a backup, it refuses and says to check the connection, because a run deleted only on the phone would come back from the backup.",
+      "files": [
+        "lib/src/features/history/presentation/run_form_screen.dart",
+        "lib/src/features/history/data/run_editor.dart"
+      ],
+      "isnew": "New in build 28."
     }
   }
 }

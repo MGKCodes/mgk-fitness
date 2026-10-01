@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ shows its own splash screen before the app's first frame:
+         the launcher icon, centred, on this colour. Left unset it takes a
+         light or dark colour from the system theme, which is the white flash
+         again. The icon it shows is the mark the launch animation starts
+         from. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_ground</item>
+    </style>
+</resources>

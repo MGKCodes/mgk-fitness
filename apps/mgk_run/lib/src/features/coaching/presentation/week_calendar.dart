@@ -46,7 +46,12 @@ class WeekCalendar extends StatelessWidget {
     this.subtitle,
     this.dimmed = false,
     this.unit = UnitSystem.metric,
+    this.raceWeekday,
   });
+
+  /// The weekday the race falls on, when it is in this week. Its cell says so
+  /// instead of drawing whatever the week holds for the day.
+  final int? raceWeekday;
 
   final TrainingWeek week;
 
@@ -174,7 +179,10 @@ class WeekCalendar extends StatelessWidget {
                           weekStart.month,
                           weekStart.day + (weekday - 1),
                         ),
-                        session: week.sessionOn(weekday),
+                        session: weekday == raceWeekday
+                            ? null
+                            : week.sessionOn(weekday),
+                        isRace: weekday == raceWeekday,
                         peak: _peak,
                         status: statusFor?.call(weekday),
                         isToday: today != null && today!.weekday == weekday,
@@ -202,11 +210,15 @@ class _Day extends StatelessWidget {
     required this.status,
     required this.isToday,
     required this.unit,
+    this.isRace = false,
     this.onTap,
   });
 
   final DateTime date;
   final PlannedSession? session;
+
+  /// Race day: the fullest cell of its week, and a word instead of a distance.
+  final bool isRace;
   final double peak;
   final SessionStatus? status;
   final bool isToday;
@@ -216,7 +228,7 @@ class _Day extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final run = session;
-    final isRest = run == null;
+    final isRest = run == null && !isRace;
     final isSupport = run != null && run.kind.isSupport;
     final skipped = status == SessionStatus.skipped;
 
@@ -227,7 +239,9 @@ class _Day extends StatelessWidget {
     // opaque, because today is the one thing that should feel solid.
     // How big this session is, against the week's longest. This is what the
     // fill encodes.
-    final fraction = isRest || peak <= 0 ? 0.0 : run.distanceMeters / peak;
+    final fraction = isRace
+        ? 1.0
+        : (run == null || peak <= 0 ? 0.0 : run.distanceMeters / peak);
     final background = isToday
         ? AppColors.primary
         : (isRest
@@ -285,7 +299,16 @@ class _Day extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
 
-                if (isSupport)
+                if (isRace)
+                  Text(
+                    'Race',
+                    style: TextStyle(
+                      color: ink,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                else if (isSupport)
                   // A word, like rest gets. The dumbbell glyph is drawn on a
                   // diagonal, so at 13px it read as a double-headed arrow — and
                   // a rest day showing a word while a strength day showed a
@@ -312,7 +335,7 @@ class _Day extends StatelessWidget {
                   Text(
                     // With the unit, because "7" under "20" is two numbers and
                     // no information.
-                    formatPrescribed(run.distanceMeters, unit),
+                    formatPrescribed(run!.distanceMeters, unit),
                     style: TextStyle(
                       color: skipped ? quiet : ink,
                       fontSize: 11,
@@ -361,7 +384,9 @@ class _Day extends StatelessWidget {
   String _semanticLabel() {
     final parts = <String>[
       '${date.day}',
-      if (session == null)
+      if (isRace)
+        'race day'
+      else if (session == null)
         'rest day'
       else ...<String>[
         sessionName(session!),

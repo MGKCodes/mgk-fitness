@@ -138,9 +138,8 @@ void main() {
       expect(find.text('Race day'), findsOneWidget);
       expect(find.textContaining('Marathon · '), findsOneWidget);
       expect(find.text('Start the race'), findsOneWidget);
-      // Nothing left to bend. The week being adjusted would be the one they
-      // have already run.
-      expect(find.text('Adjust this week'), findsNothing);
+      // One run matters today, and it is not on a treadmill.
+      expect(find.text('Add a treadmill run'), findsNothing);
     });
 
     testWidgets('the morning after asks how it went', (tester) async {

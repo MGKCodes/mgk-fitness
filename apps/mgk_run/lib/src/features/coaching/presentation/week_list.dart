@@ -4,6 +4,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/pace_model.dart';
 import '../domain/prescribed_distance.dart';
+import '../domain/race_day.dart';
 import '../domain/session_effort.dart';
 import '../domain/session_status.dart';
 import '../domain/training_plan.dart';
@@ -33,9 +34,14 @@ class WeekList extends StatelessWidget {
     this.statusFor,
     this.onTapDay,
     this.unit = UnitSystem.metric,
+    this.raceDay,
   });
 
   final TrainingWeek week;
+
+  /// The race, when it falls in this week. Its row is the race, whatever the
+  /// week holds for that day.
+  final RaceDayEntry? raceDay;
 
   /// The Monday this week begins on, so the dates are real.
   final DateTime weekStart;
@@ -63,12 +69,16 @@ class WeekList extends StatelessWidget {
               weekStart.day + (weekday - 1),
             ),
             session: week.sessionOn(weekday),
+            race: raceDay?.weekday == weekday ? raceDay : null,
             paces: paces,
             status: statusFor?.call(weekday),
             isToday: today != null && today!.weekday == weekday,
             isPast: today != null && weekday < today!.weekday,
             unit: unit,
-            onTap: onTapDay == null ? null : () => onTapDay!(weekday),
+            // The race has no session brief: there is nothing to prescribe.
+            onTap: onTapDay == null || raceDay?.weekday == weekday
+                ? null
+                : () => onTapDay!(weekday),
           ),
       ],
     );
@@ -85,11 +95,13 @@ class _DayRow extends StatelessWidget {
     required this.isToday,
     required this.isPast,
     required this.unit,
+    this.race,
     this.onTap,
   });
 
   final int weekday;
   final DateTime date;
+  final RaceDayEntry? race;
   final PlannedSession? session;
   final TrainingPaces? paces;
   final SessionStatus? status;
@@ -100,8 +112,11 @@ class _DayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final run = session;
-    final isRest = run == null;
+    final race = this.race;
+    // On race day the row is the race. A session the week still holds for the
+    // day, from a plan written before race day was kept clear, is not drawn.
+    final run = race == null ? session : null;
+    final isRest = run == null && race == null;
     // Strength occupies the day but adds no distance and has no pace, so the
     // row carries the word and nothing else — which is the whole point of the
     // kind. See [SessionKind.strength].
@@ -178,7 +193,28 @@ class _DayRow extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
 
                 Expanded(
-                  child: isRest
+                  child: race != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Race day',
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (race.detail().isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 1),
+                              Text(
+                                race.detail(),
+                                style: TextStyle(color: quiet, fontSize: 11),
+                              ),
+                            ],
+                          ],
+                        )
+                      : isRest
                       ? Text(
                           'Rest',
                           style: TextStyle(color: quiet, fontSize: 14),
@@ -187,7 +223,7 @@ class _DayRow extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              sessionName(run),
+                              sessionName(run!),
                               style: TextStyle(
                                 color: ink,
                                 fontSize: 14,
@@ -216,7 +252,16 @@ class _DayRow extends StatelessWidget {
                         ),
                 ),
 
-                if (!isRest && !isSupport) ...<Widget>[
+                if (race != null)
+                  Text(
+                    race.distanceLabel(unit),
+                    style: TextStyle(
+                      color: ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                if (run != null && !isSupport) ...<Widget>[
                   // Done and skipped both get a mark. The strikethrough alone
                   // is easy to miss at 14px, and a skipped session is exactly
                   // the thing a runner scans the week for.

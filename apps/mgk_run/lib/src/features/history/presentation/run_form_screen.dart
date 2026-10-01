@@ -43,6 +43,12 @@ class RunFormScreen extends StatefulWidget {
 
   final DateTime Function() now;
 
+  /// What the route pops with when the run was deleted rather than saved.
+  ///
+  /// A save pops with the run's id. Not an id any run can have, so a caller
+  /// holding a screen about this run knows to close it.
+  static const String deleted = 'run-deleted';
+
   bool get isEdit => runId != null;
 
   @override
@@ -59,6 +65,7 @@ class _RunFormScreenState extends State<RunFormScreen> {
   late String _type;
   int? _rpe;
   bool _saving = false;
+  bool _deleting = false;
   String? _failure;
 
   /// The fields whose problems are shown.
@@ -160,6 +167,71 @@ class _RunFormScreenState extends State<RunFormScreen> {
     }
   }
 
+  /// Deletes the run, once the runner has said so twice.
+  ///
+  /// **There was no way to remove a run at all.** A recording started by
+  /// accident, a run saved twice, a watch import that doubled up: each stayed
+  /// in the log and in every total drawn from it. The engine has existed since
+  /// a discarded recording first needed it; nothing a runner could reach
+  /// called it.
+  ///
+  /// On the edit screen rather than on the run itself, where the only other
+  /// destructive thing a runner can do to a run already is. Asked twice
+  /// because it cannot be taken back: the route goes with it.
+  ///
+  /// **In the bar, not at the foot of the form.** It was drawn first as a red
+  /// line under Notes, and on a phone that put it below the fold: a runner
+  /// who opened Edit to delete a run saw seven fields and a Save button. A
+  /// failure is a toast for the same reason. The form's own failure line is
+  /// under Notes too.
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete this run?'),
+        content: const Text(
+          'It is removed from this phone and from your backup, along with '
+          'its route. This cannot be undone.',
+        ),
+        actions: <Widget>[
+          AppTextButton(
+            label: 'Keep it',
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.textPrimary,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    String? failure;
+    try {
+      await widget.editor.delete(widget.runId!);
+      if (!mounted) return;
+      Navigator.of(context).pop(RunFormScreen.deleted);
+      return;
+    } on RunDeleteFailed {
+      failure =
+          "Couldn't delete that run. Check your connection and try again.";
+    } catch (_) {
+      failure = 'Could not delete that run.';
+    }
+    if (!mounted) return;
+    setState(() => _deleting = false);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(failure)));
+  }
+
   Future<String> _editExisting() async {
     final id = widget.runId!;
     await widget.editor.edit(id, _draft);
@@ -198,7 +270,17 @@ class _RunFormScreenState extends State<RunFormScreen> {
     final unitLabel = widget.unit == UnitSystem.metric ? 'km' : 'mi';
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEdit ? 'Edit run' : 'Add a run')),
+      appBar: AppBar(
+        title: Text(widget.isEdit ? 'Edit run' : 'Add a run'),
+        actions: <Widget>[
+          if (widget.isEdit)
+            AppIconButton(
+              icon: Icons.delete_outline,
+              tooltip: 'Delete this run',
+              onPressed: _saving || _deleting ? null : _confirmDelete,
+            ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -272,7 +354,7 @@ class _RunFormScreenState extends State<RunFormScreen> {
                     : (valid
                           ? (widget.isEdit ? 'Save changes' : 'Add run')
                           : 'Fill in the details above'),
-                onPressed: valid && !_saving ? _save : null,
+                onPressed: valid && !_saving && !_deleting ? _save : null,
               ),
             ),
           ],

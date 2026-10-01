@@ -133,7 +133,6 @@ void main() {
                 onFreeRun: () {},
                 onStartSession: () {},
                 onOpenPlan: () {},
-                onAdjustWeek: () {},
               ),
             ),
           ),
@@ -179,8 +178,6 @@ void main() {
       expect(find.text('Start'), findsNothing);
       expect(find.text('5 km'), findsNothing);
       expect(find.text('Rest day'), findsNothing);
-      // "This week" is not a plan week yet.
-      expect(find.text('Adjust this week'), findsNothing);
     });
   });
 

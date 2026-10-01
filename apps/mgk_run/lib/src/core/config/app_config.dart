@@ -36,8 +36,9 @@ class AppConfig {
   final String supabaseUrl;
   final String supabasePublishableKey;
 
-  /// The basemap tile template, e.g.
-  /// `https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=…`.
+  /// The basemap tile template: Esri's static basemap tiles since build 27,
+  /// `…/static-basemap-tiles-service/v1/arcgis/dark-gray/static/tile/{z}/{y}/{x}?token=…`
+  /// (row before column). `TileGrid.of` reads the tile size off it.
   ///
   /// Configured rather than hard-coded so the shipped app only ever calls the
   /// provider named in the privacy policy, and so a restricted key stays

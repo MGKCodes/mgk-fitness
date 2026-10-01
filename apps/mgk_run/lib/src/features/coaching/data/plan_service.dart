@@ -13,6 +13,10 @@ enum PlanSource {
 
   /// The model failed twice; built deterministically from the skeleton.
   fallback,
+
+  /// Decided by a rule in Dart, and the model was never asked: race week. Not
+  /// a second choice, so unlike [fallback] it is kept.
+  rule,
 }
 
 /// A generated plan artefact plus how it was produced.
@@ -113,12 +117,17 @@ class PlanService {
     int? raceWeekday,
     DateTime? weekStart,
   }) async {
-    // The one day `buildFallbackWeek`'s own spread has to be told to avoid;
-    // every other exclusion it enforces by construction. Applied to *every*
-    // fallback below, not just the final one — a rate limit or a spend cap
-    // hits before a single validation, so skipping it there would still
-    // hand back a fallback able to land a session on the race.
-    final unusable = raceWeekday == null ? const <int>{} : {raceWeekday};
+    // **Race week is not proposed.** It has one right shape whoever the
+    // runner is (see [buildRaceWeek]), and a model asked for it had to satisfy
+    // a slot that still carried a long run, which it could only do by putting
+    // one the day before the race.
+    if (raceWeekday != null) {
+      return PlanResult(
+        buildRaceWeek(slot, profile, raceWeekday: raceWeekday),
+        PlanSource.rule,
+        modelAttempts: 0,
+      );
+    }
     var violations = const <String>[];
     var attempts = 0;
     for (var attempt = 1; attempt <= maxModelAttempts; attempt++) {
@@ -130,12 +139,11 @@ class PlanService {
             slot: slot,
             profile: profile,
             violations: violations,
-            raceWeekday: raceWeekday,
           ),
         );
       } on CoachLimitException catch (e) {
         return PlanResult(
-          buildFallbackWeek(slot, profile, unusableWeekdays: unusable),
+          buildFallbackWeek(slot, profile),
           PlanSource.fallback,
           modelAttempts: attempt - 1,
           limit: e,
@@ -149,10 +157,9 @@ class PlanService {
           rules: rules ?? PlanRules.forShape(shapeOf(profile)),
           // Opt-in on `validateWeek`'s side (see its doc): a caller with no
           // calendar leaves this null and nothing changes. A caller that has
-          // one is what turns on `session_on_race_day` and
-          // `session_in_the_past` — the model proposing a run on race day or
-          // on a day already gone, previously invisible to every caller
-          // outside the test suite (EDGE-17).
+          // one is what turns on `session_in_the_past`, the model proposing a
+          // run on a day already gone (EDGE-17). Race week never reaches this
+          // far.
           weekStart: weekStart,
           now: _now(),
         );
@@ -165,7 +172,7 @@ class PlanService {
       }
     }
     return PlanResult(
-      buildFallbackWeek(slot, profile, unusableWeekdays: unusable),
+      buildFallbackWeek(slot, profile),
       PlanSource.fallback,
       modelAttempts: attempts,
     );

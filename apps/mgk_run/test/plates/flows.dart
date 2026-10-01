@@ -37,6 +37,7 @@ import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/coaching/domain/pace_model.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
+import 'package:mgk_run/src/features/coaching/domain/race_day.dart';
 import 'package:mgk_run/src/features/coaching/domain/readiness.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/domain/training_plan.dart';
@@ -45,6 +46,8 @@ import 'package:mgk_run/src/features/coaching/presentation/plan_block_screen.dar
 import 'package:mgk_run/src/features/coaching/presentation/plan_calendar_screen.dart';
 import 'package:mgk_run/src/features/coaching/presentation/week_detail_screen.dart';
 import 'package:mgk_run/src/features/history/data/run_editor.dart';
+import 'package:mgk_run/src/features/history/domain/run_draft.dart';
+import 'package:mgk_run/src/features/history/presentation/run_form_screen.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/profile/presentation/profile_screen.dart';
@@ -398,6 +401,81 @@ void main() {
       pixelRatio: 2,
       // Past the push: the screen slides in over the page it was opened from.
       drive: settle,
+    );
+  });
+
+  /// **Race week opened** (ADR-0044): titled for what it is, with race day as
+  /// the race and the runs before it short and easy.
+  testWidgets('race week opened, with race day as the race', (tester) async {
+    final store = DriftPlanStore(db);
+    await seedPlan(store, racingIn: daysToSunday(), weeksIn: 10);
+    final repo = PlanRepository(store: store);
+    final stored = (await repo.load())!;
+    final slot = stored.skeleton.weeks.last;
+    final week = await repo.weekFor(stored, slot);
+
+    await plate(
+      tester,
+      'week-race-week',
+      pushed(
+        WeekDetailScreen(
+          week: week,
+          slot: slot,
+          paces: pacesFor(stored.profile)!,
+          profile: stored.profile,
+          raceDay: raceDayIn(stored, slot),
+        ),
+      ),
+      pixelRatio: 2,
+      drive: settle,
+    );
+  });
+
+  // --- Correcting a run, and deleting one ------------------------------------
+
+  /// A run as it was stored, for the edit form to open on.
+  RunDraft storedRun() => RunDraft(
+    startedAt: DateTime.now().subtract(const Duration(days: 2, hours: 3)),
+    duration: const Duration(minutes: 41, seconds: 12),
+    distanceMeters: 8050,
+    type: kTypeOutdoor,
+    rpe: 5,
+  );
+
+  testWidgets('a run being corrected, with Delete in the bar', (tester) async {
+    await plate(
+      tester,
+      'run-edit',
+      pushed(
+        RunFormScreen(
+          editor: RunEditor(db: db),
+          runId: 'run-1',
+          initial: storedRun(),
+        ),
+      ),
+      pixelRatio: 2,
+      drive: settle,
+    );
+  });
+
+  testWidgets('and the question it asks before it deletes', (tester) async {
+    await plate(
+      tester,
+      'run-delete',
+      pushed(
+        RunFormScreen(
+          editor: RunEditor(db: db),
+          runId: 'run-1',
+          initial: storedRun(),
+        ),
+      ),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await tester.tap(find.byTooltip('Delete this run'));
+        await settle(tester);
+        expect(find.text('Delete this run?'), findsOneWidget);
+      },
     );
   });
 

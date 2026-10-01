@@ -29,8 +29,8 @@ pre-release review that day found real problems that do not block submission,
 and each was either fixed for build 26 or written down in section 4 with a date
 to look at it again. They are specified, so they are work, not subjects; they
 are here rather than on [app-store-1.0.0.md](app-store-1.0.0.md) because that
-page is the list of what stands between build 26 and the stores, and none of
-these does.
+page is the list of what stands between the release candidate and the stores,
+and none of these does.
 
 It is a work document, so it has an end date: it ends when the first two
 entries have a specification or a written decision not to build them, and every
@@ -153,19 +153,21 @@ a promise to ship by then.
 |---|---|
 | **Plan dates shift a day when the phone moves west** across time zones | 2026-11-15 |
 | **The server half of local dates.** The app sends `local_date` and `utc_offset_minutes` with every coach request; the server still reasons in UTC | 2026-10-31 |
-| **Adjusting a week from the Plan tab's week view** (`WeekAdjustSheet`) is not given the race-day calendar; Home's *Adjust this week* is | 2026-10-31 |
+| **Adjusting a week from a week opened in the calendar** (`WeekAdjustSheet`) is not given the race-day calendar or what has already been run. *Adjust this week* on the Plan tab is, since build 28 | 2026-10-31 |
 | **Manual laps are discarded at Finish** | 2026-10-31 |
 | **A beginner at 0 km a week cannot build a plan** | 2026-10-31 |
 | **Android never asks for the notification permission** (Android 13+), so the "Recording your run" notification is hidden unless the runner turns notifications on | 2026-10-15 |
 | **Approximate location on Android is not detected.** The iPhone warns (`663f574`); Android's plugin reports "unknown", so a coarse-only run still records nothing | 2026-10-31 |
 | **The Esri map key is built into the app and expires 2027-09-29.** Serve the tile URL from the backend, read at launch and cached, so rotating the key needs no store release. Until then, the second key ships in an update by the end of August 2027 | 2027-03-01 |
+| **A real offline map**, for the first run somewhere new with no signal. The phone keeps the tiles it has been shown and loads the ones around the runner when the app opens ([ADR-0043](decisions/0043-the-map-keeps-what-it-has-shown.md)), and Esri's terms forbid downloading an area. It needs a provider whose terms allow it, or tiles we host | 2026-12-01 |
+| **Tell the model it is race week when the runner adjusts it.** The validator refuses a long run in race week and says why ([ADR-0044](decisions/0044-race-week-is-a-week-of-its-own.md)), but the adjust prompt in the coach function does not know, so a model can still propose one and spend the attempt. A prompt change and a function deploy | 2026-12-01 |
 | **Native maps**, only if Esri's tiles disappoint on a phone. Google Maps on both platforms (free on phones, an official Flutter plugin, styleable to greyscale), not an Apple/Google split: Apple Maps has no Android version, can't be restyled, and its Flutter plugins are barely maintained. Either way it rebuilds the map layer and the web board can no longer draw it | 2026-12-01 |
 
 ### Accounts
 
 | Item | Revisit |
 |---|---|
-| **Email confirmation is off in Supabase Auth.** Turning it on needs custom SMTP and changes sign-up, so it is a product decision. The release plan asks for it before launch; this is the date if it is deferred | 2026-10-15 |
+| ~~**Email confirmation is off in Supabase Auth.**~~ **Done, not deferred.** On since 2026-09-30, with mail through SMTP2GO and the templates in `supabase/templates/`, proved end to end the same week | Closed |
 
 ### Before the repository goes public
 

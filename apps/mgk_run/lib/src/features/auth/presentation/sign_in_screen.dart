@@ -13,10 +13,15 @@ import '../data/auth_repository.dart';
 
 /// Sign in or sign up: with Apple, with Google, or with an email and password.
 ///
-/// **Apple and Google above the form (R10).** One tap and no password for
-/// anybody with either on the phone, and the same account Lift signs into.
-/// Google is only offered beside Apple (App Store guideline 4.8), and the two
-/// are drawn with equal weight.
+/// **Apple and Google first (R10).** One tap and no password for anybody with
+/// either on the phone, and the same account Lift signs into. Google is only
+/// offered beside Apple (App Store guideline 4.8), and the two are drawn with
+/// equal weight.
+///
+/// **The email form is a second step, behind "Continue with email"**, as it is
+/// in Lift. With the three choices and the form on one screen, Password and the
+/// button that submits it were below the bottom of a 393pt phone (board C14 and
+/// K2): the screen asked for an account and hid the way to finish making one.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({
     super.key,
@@ -87,6 +92,15 @@ class _SignInScreenState extends State<SignInScreen> {
   String? _notice;
 
   bool _sendingReset = false;
+
+  /// Whether the email form is showing, rather than the three ways in.
+  bool _withEmail = false;
+
+  void _showEmail(bool show) => setState(() {
+    _withEmail = show;
+    _message = null;
+    _notice = null;
+  });
 
   /// Which provider's sheet is up, if any.
   SignInProvider? _asking;
@@ -179,12 +193,27 @@ class _SignInScreenState extends State<SignInScreen> {
           widget.onAuthenticated?.call();
         }
       } else {
+        // Signing *in*, whatever was claimed earlier on this screen. Apple on
+        // Android leaves the claim standing while its browser is open, and
+        // somebody who gives up on that and signs in with their email instead
+        // must not arrive as a new runner.
+        widget.onSignUpIntent?.call(false);
         await widget.auth.signIn(email: email, password: password);
         widget.onAuthenticated?.call();
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _message = _messageFor(error));
+        setState(() {
+          // Signing in before following the link is the next step, not a
+          // failure, and with confirmation on it is what a new runner does
+          // first. The server's own words are "Email not confirmed", in the
+          // error colour, which read as the account not having been made.
+          if (_awaitingConfirmation(error)) {
+            _notice = 'Check your email and follow the link, then sign in.';
+          } else {
+            _message = _messageFor(error);
+          }
+        });
       }
     } finally {
       if (mounted) {
@@ -326,86 +355,108 @@ class _SignInScreenState extends State<SignInScreen> {
                       // signing in already knows what they are buying; someone
                       // signing up is deciding, and had two fields and a button
                       // to decide from.
-                      if (_isSignUp) ...<Widget>[
+                      //
+                      // On the choice, not on the form: by the time somebody is
+                      // typing an address they have decided.
+                      if (_isSignUp && !_withEmail) ...<Widget>[
                         const SizedBox(height: 20),
                         const Entrance(index: 1, child: _WhatYouGet()),
                       ],
                       const SizedBox(height: 32),
-                      ProviderSignInButton.apple(
-                        busy: _asking == SignInProvider.apple,
-                        onPressed: _busy || _asking != null
-                            ? null
-                            : () => _withProvider(SignInProvider.apple),
-                      ),
-                      const SizedBox(height: 12),
-                      ProviderSignInButton.google(
-                        busy: _asking == SignInProvider.google,
-                        onPressed: _busy || _asking != null
-                            ? null
-                            : () => _withProvider(SignInProvider.google),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        // O2. Apple's relay address is a different address, so
-                        // there is nothing to join it to an existing account by.
-                        'Choosing Hide My Email with Apple starts a separate '
-                        'account.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
-                          height: 1.4,
+                      if (!_withEmail) ...<Widget>[
+                        ProviderSignInButton.apple(
+                          busy: _asking == SignInProvider.apple,
+                          onPressed: _busy || _asking != null
+                              ? null
+                              : () => _withProvider(SignInProvider.apple),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      const _Or(),
-                      const SizedBox(height: 24),
-                      // First, and only when signing up. The coach's whole
-                      // pitch is that it is *yours*, and it had no idea what to
-                      // call you — so the first thing it ever said was
-                      // addressed to nobody. Optional on purpose: a runner who
-                      // would rather not say gets a coach that simply does not
-                      // use a name, which is better than a required field
-                      // between them and the app.
-                      // Only when the coach has not already asked. Asking a
-                      // second time would undo the point of asking in the
-                      // conversation at all.
-                      if (_isSignUp && widget.introName == null) ...<Widget>[
+                        const SizedBox(height: 12),
+                        ProviderSignInButton.google(
+                          busy: _asking == SignInProvider.google,
+                          onPressed: _busy || _asking != null
+                              ? null
+                              : () => _withProvider(SignInProvider.google),
+                        ),
+                        const SizedBox(height: 12),
+                        AppOutlinedButton(
+                          label: 'Continue with email',
+                          icon: Icons.mail_outline,
+                          expand: true,
+                          onPressed: _busy || _asking != null
+                              ? null
+                              : () => _showEmail(true),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          // O2. Apple's relay address is a different address,
+                          // so there is nothing to join it to an existing
+                          // account by.
+                          'Choosing Hide My Email with Apple starts a separate '
+                          'account.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ] else ...<Widget>[
+                        // First, and only when signing up. The coach's whole
+                        // pitch is that it is *yours*, and it had no idea what
+                        // to call you — so the first thing it ever said was
+                        // addressed to nobody. Optional on purpose: a runner
+                        // who would rather not say gets a coach that simply
+                        // does not use a name, which is better than a required
+                        // field between them and the app.
+                        // Only when the coach has not already asked. Asking a
+                        // second time would undo the point of asking in the
+                        // conversation at all.
+                        if (_isSignUp && widget.introName == null) ...<Widget>[
+                          TextFormField(
+                            controller: _nameController,
+                            textCapitalization: TextCapitalization.words,
+                            autofillHints: const [AutofillHints.givenName],
+                            decoration: const InputDecoration(
+                              labelText: 'First name (optional)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         TextFormField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.words,
-                          autofillHints: const [AutofillHints.givenName],
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
                           decoration: const InputDecoration(
-                            labelText: 'First name (optional)',
+                            labelText: 'Email',
                             border: OutlineInputBorder(),
                           ),
+                          validator: (v) => (v == null || !v.contains('@'))
+                              ? 'Enter a valid email'
+                              : null,
                         ),
                         const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          autofillHints: const [AutofillHints.password],
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder(),
+                          ),
+                          // Eight, as Lift asks and the reset page does: it
+                          // is one account. Only when making one. Refusing a
+                          // short password at sign-in would lock out anybody
+                          // who chose one while Run still asked for six.
+                          validator: (v) {
+                            final String value = v ?? '';
+                            if (value.isEmpty) return 'Enter your password.';
+                            if (_isSignUp && value.length < 8) {
+                              return 'Use at least 8 characters.';
+                            }
+                            return null;
+                          },
+                        ),
                       ],
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? 'Enter a valid email'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        autofillHints: const [AutofillHints.password],
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => (v == null || v.length < 6)
-                            ? 'At least 6 characters'
-                            : null,
-                      ),
                       if (_message != null) ...[
                         const SizedBox(height: 16),
                         Text(
@@ -424,30 +475,34 @@ class _SignInScreenState extends State<SignInScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ],
-                      const SizedBox(height: 24),
-                      PrimaryButton(
-                        label: _isSignUp ? 'Sign up' : 'Sign in',
-                        onPressed: _submit,
-                        busy: _busy,
-                      ),
-                      // Signing in only: somebody making an account has no
-                      // password to forget. The link opens a page on the site,
-                      // not the app, so it works from a laptop's inbox too.
-                      if (!_isSignUp)
-                        AppTextButton(
-                          label: 'Forgot your password?',
-                          onPressed: _busy || _sendingReset
-                              ? null
-                              : _resetPassword,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                          ),
+                      if (_withEmail) ...<Widget>[
+                        const SizedBox(height: 24),
+                        PrimaryButton(
+                          label: _isSignUp ? 'Sign up' : 'Sign in',
+                          onPressed: _submit,
+                          busy: _busy,
                         ),
+                        // Signing in only: somebody making an account has no
+                        // password to forget. The link opens a page on the
+                        // site, not the app, so it works from a laptop's inbox
+                        // too.
+                        if (!_isSignUp)
+                          AppTextButton(
+                            label: 'Forgot your password?',
+                            onPressed: _busy || _sendingReset
+                                ? null
+                                : _resetPassword,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                            ),
+                          ),
+                      ] else
+                        const SizedBox(height: 8),
                       AppTextButton(
                         label: _isSignUp
                             ? 'Have an account? Sign in'
                             : 'New here? Create an account',
-                        onPressed: _busy
+                        onPressed: _busy || _asking != null
                             ? null
                             : () => setState(() {
                                 _isSignUp = !_isSignUp;
@@ -455,6 +510,14 @@ class _SignInScreenState extends State<SignInScreen> {
                                 _notice = null;
                               }),
                       ),
+                      if (_withEmail)
+                        AppTextButton(
+                          label: 'Other ways to sign in',
+                          onPressed: _busy ? null : () => _showEmail(false),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                          ),
+                        ),
                       if (kDebugMode &&
                           widget.devAccounts.isNotEmpty) ...<Widget>[
                         _DevSignIn(
@@ -491,30 +554,13 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 }
 
-/// "or", between the providers and the form.
-class _Or extends StatelessWidget {
-  const _Or();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: <Widget>[
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'or with your email',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider()),
-      ],
-    );
-  }
-}
+/// Whether the server refused a sign-in because the address is unconfirmed.
+///
+/// Matched on the message as Lift does: gotrue's code for it has changed
+/// between versions, and the words have not.
+bool _awaitingConfirmation(Object error) =>
+    error is AuthException &&
+    error.message.toLowerCase().contains('not confirmed');
 
 /// What to print when authenticating fails.
 ///

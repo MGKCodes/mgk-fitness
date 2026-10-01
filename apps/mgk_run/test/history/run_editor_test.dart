@@ -1,8 +1,33 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
+import 'package:mgk_run/src/features/history/data/run_backup.dart';
 import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
+import 'package:mgk_run/src/features/history/domain/run_writer.dart';
+
+/// A backup that records what it was asked to remove, and can be unreachable.
+class _Backup implements RunBackup {
+  _Backup({this.dead = false});
+
+  final bool dead;
+  final List<String> deleted = <String>[];
+
+  @override
+  Future<void> deleteRun(String runId) async {
+    if (dead) throw Exception('no network');
+    deleted.add(runId);
+  }
+
+  @override
+  Future<bool> pushRun(String runId) async => true;
+
+  @override
+  Future<void> pushTrace(String runId) async {}
+
+  @override
+  Future<int> backfill() async => 0;
+}
 
 /// Against a real in-memory database, because the guarantee worth testing is
 /// what survives in the rows — particularly the one about the trace.
@@ -178,5 +203,58 @@ void main() {
 
   test('draftOf a run that does not exist is null, not an error', () async {
     expect(await editor.draftOf('nope'), isNull);
+  });
+
+  // ---- delete --------------------------------------------------------------
+
+  // There was no way to remove a run. The log is restored from the backup
+  // every time the app opens, so the order here is the whole design: a run
+  // removed only from the phone would be back the next morning.
+  group('deleting a run', () {
+    RunEditor withBackup(RunBackup backup) => RunEditor(
+      db: db,
+      backup: backup,
+      now: () => now,
+      newId: () => 'run-${++seq}',
+    );
+
+    test('removes it from the backup and from the phone', () async {
+      final backup = _Backup();
+      final e = withBackup(backup);
+      final id = await e.add(draft());
+
+      await e.delete(id);
+
+      expect(backup.deleted, <String>[id]);
+      expect(await db.runById(id), isNull);
+    });
+
+    test('removes nothing when the backup cannot be reached', () async {
+      final e = withBackup(_Backup(dead: true));
+      final id = await e.add(draft());
+
+      await expectLater(e.delete(id), throwsA(isA<RunDeleteFailed>()));
+
+      expect(
+        await db.runById(id),
+        isNotNull,
+        reason: 'gone from the phone only, it would come back on restore',
+      );
+    });
+
+    test('needs no backup at all on a phone that has none', () async {
+      final id = await editor.add(draft());
+      await editor.delete(id);
+      expect(await db.allRuns(), isEmpty);
+    });
+
+    test('leaves every other run alone', () async {
+      final keep = await editor.add(draft());
+      final gone = await editor.add(draft(distance: 8000));
+
+      await editor.delete(gone);
+
+      expect((await db.allRuns()).map((r) => r.id), <String>[keep]);
+    });
   });
 }

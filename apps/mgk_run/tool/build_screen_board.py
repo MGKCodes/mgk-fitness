@@ -299,7 +299,7 @@ def build(out: str) -> None:
     w(f'<p class="lede">{esc(board["lede"])}</p>')
     w('<div class="meta">')
     for k, v in (
-        ('Build', '26 · 1.0.0+26'),
+        ('Build', board['build']),
         ('Rendered', when),
         ('Captured at', at),
         ('Plates', f'{len(plates)} · {new} new since 2 Sep'),
@@ -310,7 +310,7 @@ def build(out: str) -> None:
     w('</div></header>')
 
     # What changed.
-    w('<section class="panel"><p class="eyebrow">Since the last board (2 Sep, build 12)</p>')
+    w('<section class="panel"><p class="eyebrow">Since the September board (2 Sep, build 12), newest first</p>')
     w('<h2>What changed</h2><ul>')
     for line in board['changed']:
         w(f'<li>{esc(line)}</li>')

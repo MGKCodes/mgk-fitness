@@ -1,15 +1,15 @@
 # App Store listing — 1.0.0
 
-The copy that goes in the boxes. [app-store-1.0.0.md](app-store-1.0.0.md)'s
-Gate 4 says which boxes exist and what their limits are; this is what goes in
-them, so the checklist stays a checklist and the writing lives somewhere it can
-be edited as writing. The Google Play copy is in
+The copy that goes in the boxes. [store-setup.md](store-setup.md) §10 says
+which boxes exist, field by field; this is what goes in them, so the runbook
+stays a runbook and the writing lives somewhere it can be edited as writing. The Google Play copy is in
 [play-listing.md](play-listing.md), checked by the same script.
 
 Written 2026-09-02 against `f5599c3`. **Updated 2026-09-29 for build 26**: the
 description stopped promising watch runs from Apple Health (the app reads step
 count only), the terms link is our own terms (ADR-0040), Premium's description
-says what Premium actually buys (ADR-0038), the Play health disclaimer is in
+says what Premium actually buys (ADR-0038, then ADR-0041 the next day), the
+Play health disclaimer is in
 here too, and the review notes are final apart from the demo credentials.
 
 **Nothing here has been reviewed by anybody but its author.** Every character
@@ -284,7 +284,7 @@ WHAT THIS IS
 A free GPS running tracker (no account needed) with an optional AI running coach, sold as an auto-renewable subscription: Coach and Premium Coach, monthly, in one subscription group. Premium answers with a better AI model and has a bigger monthly allowance.
 
 DEMO ACCOUNTS
-On the first screen, tap "I already have an account".
+On the first screen, tap "I already have an account", then "Continue with email".
 A - coach already unlocked. Please review the coach with this account, and please do not make a purchase on it:
 review.subscribed@mgkfitness.mgkcodes.com / [PASSWORD_A]
 B - no subscription. Please use this one to test the purchase with your sandbox Apple ID:
@@ -300,7 +300,7 @@ The coach is a large language model. Before anything is sent, the app asks permi
 Any coach reply can be reported: press and hold the reply, choose a reason, and send.
 
 BACKGROUND LOCATION
-Used only while recording a run the user started, so recording continues with the screen locked (iOS shows the blue location indicator). The app requests "While Using" permission only, never "Always".
+Used only while recording a run the user started, so recording continues with the screen locked (iOS shows the blue location indicator). The app requests "While Using" permission only, never "Always". When the app is opened it also reads the last known position, if location is already allowed, to load the map around the runner before a run. It never prompts for that and takes no location in the background.
 
 HEALTHKIT
 Read-only. The app reads step count for the time window of a run recorded in the app, to show steps and cadence on that run. It never writes to Health. Nothing read from HealthKit is sent to the AI or used for advertising, and it stays on the device unless the user turns on backup.
@@ -309,7 +309,7 @@ MEDICAL
 Not a medical device. A medical disclaimer is shown before the first plan or conversation, and the description and terms say the same.
 
 SIGNING IN
-Sign in with Apple, Sign in with Google, or an email and password, all on the one sign-in screen. The demo accounts above use email and password.
+Sign in with Apple, Sign in with Google, or an email and password. The three are offered together, at equal size; "Continue with email" opens the email form. The demo accounts above use email and password. A new account made with an email address has to confirm it from an email before it can sign in; the demo accounts are already confirmed.
 
 ACCOUNT DELETION
 Profile tab > Settings (gear, top right) > Privacy & legal > Delete account. It is also on the account screen: tap the card at the top of Settings, then Delete account. Typing DELETE confirms, and the server data is deleted at once. For an account made with Apple, the app asks Apple to confirm, and the server revokes the app's Apple tokens when the login is deleted.
