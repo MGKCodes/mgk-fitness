@@ -28,7 +28,7 @@ written here, change the item and say why.
 | The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October |
 | Email and sign-in | SMTP2GO, email confirmation on, Apple and Google configured | Recorded done on 30 September in [store-setup.md](store-setup.md) steps 6 and 7. Not checked again today |
 | Builds | The last Lift builds are from 29 September, commit `4d12c46`: iOS 2.0.0 (32) on TestFlight, and an `.aab` uploaded to Play's internal testing as a draft | Codemagic's build list, 1 October |
-| The stores | No Lift product is recorded as created in App Store Connect, Play or RevenueCat, nor the Codemagic group `mgk_fitness_lift_env` | No dashboard box in store-setup.md steps 0, 1, 3, 4 or 5 is ticked, and the group is commented out in both Lift workflows. Not checked in the dashboards themselves |
+| The stores | Lift's two subscriptions exist on both stores, RevenueCat has both Lift apps with their products in the current offering, and Codemagic holds Lift's keys. `REVENUECAT_PRODUCTS` does not map Lift's ids yet | Walked through with Matthew on 1 October, from his screenshots of each dashboard. [store-setup.md](store-setup.md) says what is still open |
 
 **Built on 1 October, on the branch `docs/lift-release-checklist`, and not yet
 merged into `develop`:** "Delete my Lift data" taking the progress photos (the
@@ -46,8 +46,10 @@ Two things follow from that table.
 whole redesign and Sign in with Apple and Google. The first build of the
 finished app is the release candidate.
 
-**A build cut today could not sell.** Without the RevenueCat keys in Codemagic
-the app passes no store at all, and says subscriptions are not open.
+**A build can sell once this branch is in `develop` and the product mapping is
+set.** The keys are in Codemagic and both Lift workflows name their group, on
+this branch. Until `REVENUECAT_PRODUCTS` maps Lift's ids, a purchase is taken
+by the store and unlocks nothing.
 
 **After a fresh checkout, run `dart run build_runner build
 --delete-conflicting-outputs` in `apps/mgk_lift` before the tests.** The
@@ -92,10 +94,21 @@ None of this waits on anything else, and the release candidate waits on most
 of it. The three decisions that sat here were made on 1 October and are
 recorded as ticked items.
 
-- [ ] **[store-setup.md](store-setup.md) steps 0 to 5**, in its order: count
-      Liftio's subscribers; the two App Store products; Play's subscriptions,
-      service-account access and declarations; RevenueCat's two Lift apps,
-      products and offering; the Codemagic group; `REVENUECAT_PRODUCTS`.
+- [x] **[store-setup.md](store-setup.md) steps 1 to 4**, done with Matthew on 1
+      October: the two App Store products and their levels, Play's two
+      subscriptions and the service account's access, RevenueCat's two Lift
+      apps, products, entitlements and offering, Apple's server notifications,
+      and the Codemagic group.
+- [ ] **What the sweep left open:**
+      - the ids of Liftio's four active customers, and whether the two who
+        have never paid are granted access (step 0);
+      - `REVENUECAT_PRODUCTS` (step 5);
+      - confirmation that neither new App Store product still shows the red
+        banner, that each Play base plan is `monthly` at £0.99 and £2.99, and
+        that the service account holds release permissions;
+      - RevenueCat's check on Play purchases, which waits for a build on
+        internal testing;
+      - Play's declarations, which go with the store pages.
 - [ ] **Apply `lift_save_workout`.** Claude Code's auto mode refuses production
       migrations even with a go-ahead, so either run the file in the Supabase
       SQL editor or allow `mcp__supabase__apply_migration` in
@@ -146,8 +159,9 @@ recorded as ticked items.
 - [ ] **Track's UI first.** Matthew wants to go through elements of the Track
       tab before any build (1 October). No build is cut until that pass is
       done and its plates are back on the board.
-- [ ] Uncomment `mgk_fitness_lift_env` in both Lift workflows in
-      `codemagic.yaml`, once the group exists (store-setup.md step 4).
+- [x] `mgk_fitness_lift_env` is named in both Lift workflows in
+      `codemagic.yaml`, on this branch. It applies to a build once the branch
+      is in `develop`.
 - [ ] Uncomment `publishing:` in `lift-android-release`, once the service
       account has access to Lift's Play app (step 2).
 - [ ] Build both platforms from `develop` with

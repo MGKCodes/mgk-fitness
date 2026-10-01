@@ -29,12 +29,15 @@ Lift and the stores is in [submission-week.md](submission-week.md).
 
 Everything about the legacy products depends on this number.
 
-- [ ] **Old Liftio RevenueCat project** (the React Native app's, not
+- [x] **Old Liftio RevenueCat project** (the React Native app's, not
       `mgk-fitness`) › Overview › *Active subscriptions*. Then Customers,
       filtered to the `pro` entitlement, active. Note each customer's app user
       id: Liftio set it to the Supabase user id, and 2.0.0 uses the same
       Supabase project, so every one of them maps to an account that still
-      exists.
+      exists. *Counted 1 October: four customers are active. Two pay, both on
+      the monthly product and set to renew; nobody holds the annual one. The
+      other two are active with nothing ever spent and set to cancel, which
+      looks like access granted by hand.*
 - [ ] Tell me the ids (or "zero"). For each active one I grant `lift` / `paid`
       with `core.grant_entitlement()` so they open 2.0.0 already unlocked.
 
@@ -49,7 +52,7 @@ something, and it gains nothing.
 App Store Connect › Apps › Liftio (6759969740) › Monetization › Subscriptions ›
 the existing subscription group (the one holding `liftio_monthly`).
 
-- [ ] **Add both to the existing group.** One group is what lets somebody move
+- [x] **Add both to the existing group.** One group is what lets somebody move
       between tiers, and between a legacy product and a new one, without paying
       twice.
 
@@ -62,10 +65,10 @@ the existing subscription group (the one holding `liftio_monthly`).
 | Display name (30 chars) | `Coach` | `Premium Coach` |
 | Description (45 chars) | `A training plan, adjusted every week.` | `Far more room to talk to your coach.` |
 
-- [ ] **Levels: Premium Coach level 1, Coach level 2, and both legacy products
+- [x] **Levels: Premium Coach level 1, Coach level 2, and both legacy products
       level 2.** Level 1 is the *highest*. Ranked the other way round, moving
       up to Premium is treated as a downgrade and waits up to a month.
-- [ ] **Why those prices.** The coach's usage limits are set per tier, not per
+- [x] **Why those prices.** The coach's usage limits are set per tier, not per
       app, and they were sized against Run's £0.99 / £2.99 at the Small
       Business Program's 15% rate (Run's ADR-0029). Pricing Lift's Coach higher
       is fine; pricing it lower makes every Lift conversation cost more than it
@@ -78,16 +81,19 @@ the existing subscription group (the one holding `liftio_monthly`).
 - [ ] **Review notes per product:** "The coach, training plans and progress
       photos are the paid half. Tracking, saved workouts, history and stats are
       free with no account."
-- [ ] Group display name: `MGKFitness: Lift Coach`.
-- [ ] App Information › **App-Specific Shared Secret** › generate one (RevenueCat
+- [x] Group display name: `MGKFitness: Lift Coach`, on the English (U.K.)
+      localisation, with the app name left to follow the app.
+- [x] App Information › **App-Specific Shared Secret** › generate one (RevenueCat
       step 3 asks for it). Per app: Run's is not Lift's.
-- [ ] A **sandbox tester**: Users and Access › Sandbox › Testers. Do not sign
-      into iCloud with it; iOS asks for it at the moment of purchase.
+- [x] A **sandbox tester**: Users and Access › Sandbox › Testers. Do not sign
+      into iCloud with it; iOS asks for it at the moment of purchase. *One was
+      already there, `mgkcodes+sandbox@gmail.com`, last used in March: clear its
+      purchase history before the sandbox pass.*
 
-A new product reads **Ready to Submit** when it is done. That is the bar
-RevenueCat needs; do not submit anything to get past the "Unable to Submit"
-warning, which clears when the 2.0.0 version is submitted with the products
-attached.
+App Store Connect now shows **Prepare for Submission** on a new product whether
+or not it is complete, so the label says nothing. A product is done when its own
+page no longer shows the red "Unable to Add for Review" banner. Do not press
+*Add for Review*: the products go in with the 2.0.0 version.
 
 ## 2. Google Play Console: the app, then the products
 
@@ -103,13 +109,17 @@ production access (frunt is live on it), so no 14-day closed test is needed.
       `mgkfitness_upload` key (checked: `EC:4D:11:…:33:CF`). This claimed
       `com.mgkcodes.liftio` on Play and made Play generate Lift's app-signing
       key, whose fingerprint Google sign-in needed (7c).*
-- [ ] Monetize › Subscriptions:
+- [x] Monetize › Subscriptions *(created 1 October, one active base plan each)*:
   - `lift.coach.monthly`, base plan id `monthly`, auto-renewing, 1 month.
   - `lift.coach.premium.monthly`, base plan id `monthly`.
-  - **Price ex-VAT**, as Run did, so Android and iOS charge the same.
-- [ ] Setup › API access › give the **existing** service account (the one
-      Codemagic and RevenueCat use for Run) access to this app, with Release
-      manager permission.
+  - **Price before VAT**, so Android and iOS charge the same: Play adds 20% to
+    what is typed, and £0.99 typed shows as £1.19. Enter 0.83 and 2.49, then
+    check the United Kingdom row reads £0.99 and £2.99.
+- [x] Users and permissions › give the **existing** service account,
+      `mgk-fitness-play-publisher`, access to this app. *Done 1 October: it had
+      none, and RevenueCat could not see the app until it did. Whether it also
+      holds the release permissions Codemagic needs to publish is not
+      confirmed.*
 - [ ] Settings › License testing: add your Google account, for test purchases.
 - [ ] The declarations (store listing, content rating, target audience, Data
       safety, ads = none, app access = the demo account). The answers are
@@ -123,46 +133,52 @@ production access (frunt is live on it), so no 14-day closed test is needed.
 Not the old Liftio project. One project serves both apps: one webhook, one
 secret, and `core.entitlements.app` keeps Run and Lift apart.
 
-- [ ] **Apps › + › App Store:** name it `Lift`, bundle id `com.mgkcodes.liftio`.
+- [x] **Apps › + › App Store:** name it `Lift`, bundle id `com.mgkcodes.liftio`.
       Paste the App-Specific Shared Secret (step 1). Upload the **In-App
       Purchase key**: the same team `.p8`, Key ID and Issuer ID Run's app uses.
       It is issued to the team, not to an app.
-- [ ] **Apps › + › Play Store:** name it `Lift (Play)`, package
+- [x] **Apps › + › Play Store:** name it `Lift (Play)`, package
       `com.mgkcodes.liftio`, the same service-account JSON as Run's Play app.
-- [ ] **Products:** add `lift.coach.monthly` and `lift.coach.premium.monthly`
+      *Saved as `Lift (Play Store)`, with a second key made for the same
+      service account because the first file could not be found. RevenueCat
+      reads the catalogue; its check on purchases still says the package was
+      not found, most likely because Play has only a draft release. Check it
+      again once a build is on internal testing.*
+- [x] **Products:** add `lift.coach.monthly` and `lift.coach.premium.monthly`
       for the App Store app, the two Play subscriptions for the Play app, and
       the legacy `liftio_monthly` and `liftio_annual` for the App Store app (so
       their renewals are recorded here from now on).
-- [ ] **Entitlements:** attach Coach and both legacy products to `paid`, and
+- [x] **Entitlements:** attach Coach and both legacy products to `paid`, and
       Premium Coach to `premium`. These grant nothing on their own (the webhook
       maps product ids), but they make the customer page readable when
       somebody writes in.
-- [ ] **Offering:** in the **current** offering (the one Run uses), put Lift's
+- [x] **Offering:** in the **current** offering (the one Run uses), put Lift's
       products into the existing packages. A package holds one product per app,
       so the Coach package gets `lift.coach.monthly` for Lift beside Run's, and
       the Premium package gets `lift.coach.premium.monthly`. **Do not add the
       legacy products to the offering.** The app shows exactly what the offering
       holds, in its order.
-- [ ] **API keys:** Project settings › API keys. Copy **Lift's** App Store key
+- [x] **API keys:** Project settings › API keys. Copy **Lift's** App Store key
       (`appl_…`) and Play key (`goog_…`) for step 4.
-- [ ] **App Store Server Notifications:** RevenueCat shows a notification URL on
+- [x] **App Store Server Notifications:** RevenueCat shows a notification URL on
       the Lift App Store app's page. Paste it into App Store Connect › Lift ›
       App Information › App Store Server Notifications (production and
-      sandbox). That points legacy renewals at this project instead of the old
-      one.
-- [ ] Nothing to do for the webhook: the project's existing one already points
+      sandbox). *Both set 1 October. Neither had ever been set, so the old
+      Liftio project was not receiving them and nothing was taken from it.*
+- [x] Nothing to do for the webhook: the project's existing one already points
       at the `revenuecat` function and serves both apps.
 
 ## 4. Codemagic: Lift's keys
 
-- [ ] Team settings › Global variables and secrets › new group
-      **`mgk_fitness_lift_env`**, available to the mgk-fitness app:
+- [x] The mgk-fitness app's environment variables › new group
+      **`mgk_fitness_lift_env`** *(created 1 October)*:
   - `REVENUECAT_PUBLIC_KEY` = Lift's `appl_…` key, Secure
   - `REVENUECAT_GOOGLE_KEY` = Lift's `goog_…` key, Secure
-- [ ] Tell me, and I uncomment `mgk_fitness_lift_env` in both Lift workflows in
-      `codemagic.yaml`. It stays commented until the group exists, because a
-      workflow naming a missing group may fail before any script runs. Until
-      then builds ship unable to sell, and say so in a banner.
+- [x] `mgk_fitness_lift_env` is named in both Lift workflows in
+      `codemagic.yaml`. It was commented out until the group existed, because a
+      workflow naming a missing group may fail before any script runs. The
+      change is on the Lift branch: a build reads the file from the branch it
+      builds, so it applies once that branch is in `develop`.
 
 ## 5. Supabase: map Lift's products
 
@@ -395,9 +411,9 @@ Nothing the app sends needs it yet.
 
 | Step | State | Unblocks |
 |---|---|---|
-| 0 | open | legacy subscribers (I grant, same day) |
-| 1 + 3 + 4 | open | a TestFlight build that can sell; a sandbox purchase |
-| 2 | app and first upload done; products and declarations open | an Android build that can sell |
+| 0 | counted; the ids are still to come | legacy subscribers (I grant, same day) |
+| 1 + 3 + 4 | done 1 October | a TestFlight build that can sell; a sandbox purchase |
+| 2 | products done; declarations open | an Android build that can sell |
 | 5 | open | purchases reaching `core.entitlements` |
 | 6 | done | new people being able to sign up at all |
 | 7 | done | the sign-in build for both apps |

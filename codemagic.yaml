@@ -622,13 +622,11 @@ workflows:
         # because it had no secret of its own; payments gave it one. Same
         # variable names as Run's group, because each build reads only its own.
         #
-        # COMMENTED UNTIL THE GROUP EXISTS in Codemagic. Whether a workflow
+        # The group has existed in Codemagic since 1 October 2026, with both
+        # keys in it. It was commented out here until then: whether a workflow
         # naming a missing group fails is undocumented, and a failure there
-        # lands before any script runs — the shape this file already records
-        # costing five builds. Create the group, then uncomment this line here
-        # and in lift-android-release. Until then the build ships unable to
-        # sell, and says so in a banner.
-        # - mgk_fitness_lift_env
+        # lands before any script runs.
+        - mgk_fitness_lift_env
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -799,8 +797,8 @@ workflows:
         - mgkfitness_upload
       groups:
         - mgk_fitness_supabase
-        # Commented until the group exists — see lift-ios-release.
-        # - mgk_fitness_lift_env
+        # Lift's RevenueCat keys — see lift-ios-release.
+        - mgk_fitness_lift_env
       flutter: stable
     scripts:
       - name: Generate config/app_config.json from secure vars
