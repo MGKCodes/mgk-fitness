@@ -325,7 +325,7 @@ Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 
 | Category | Type | Collection | Purposes | What it is |
 |---|---|---|---|---|
-| Location | Approximate location | Optional | App functionality | Esri's tile requests for the map on screen |
+| Location | Approximate location | Optional | App functionality | Esri's tile requests for the map on screen, and for the tiles around the phone's last known position when the app opens |
 | Location | Precise location | Optional | App functionality | Route traces, sent only with backup on |
 | Personal info | Name | Optional | App functionality, Account management | The name the coach uses, if given |
 | Personal info | Email address | Optional | Account management | The account, typed in or passed on by Google or Apple at sign-in; the app works signed out |

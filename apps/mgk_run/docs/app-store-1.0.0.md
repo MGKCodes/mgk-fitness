@@ -38,7 +38,7 @@ Updated 2026-10-01.
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,850 tests pass and the analyzer is clean at `0945374`, with the three `live` tests excluded. This is the only place the count is written |
+| **Suite** | 1,873 tests pass and the analyzer is clean on 2026-10-01, with the map cache in, with the three `live` tests excluded. This is the only place the count is written |
 | **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 24, every plate drawn at `0945374` |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
@@ -50,8 +50,10 @@ Updated 2026-10-01.
 
 The code for build 27 is written: the Esri tile grid and a credit that can be
 seen, the policy naming Esri, sign-in in two steps so Sign up is on the screen,
-a new password of eight characters as in Lift, and a read of the sign-in and
-deletion code that came from the Lift lane. What is left here is not code.
+a new password of eight characters as in Lift, a read of the sign-in and
+deletion code that came from the Lift lane, and a map that keeps the tiles it
+has been shown and loads the ones around the runner when the app opens. What
+is left here is not code.
 
 - [ ] **Codemagic group `mgk_fitness_run_env`:** set `MAP_TILE_URL_TEMPLATE`
       and `MAP_ATTRIBUTION` to Esri's. Owner's step; the values are the two
@@ -70,7 +72,8 @@ deletion code that came from the Lift lane. What is left here is not code.
       needs rows it does not have: Sign in with Apple (natively on the iPhone,
       through the browser on Android), Google on both, "Forgot your password?"
       from the email to a new password, a new sign-up that waits for its
-      confirmation email, and deleting an account that has an Apple identity.
+      confirmation email, deleting an account that has an Apple identity, and
+      the map with no signal (below).
 - [ ] Both workflows fired from the same commit on `develop`:
       `scripts/codemagic-build.sh run-ios-release develop` and
       `scripts/codemagic-build.sh run-android-release develop`.
@@ -90,6 +93,11 @@ deletion code that came from the Lift lane. What is left here is not code.
       MapTiler's were), `kBasemapOpacity` (0.85 was set against MapTiler), and
       the credit: *Powered by Esri* above the in-run panel, opening the sources
       on a tap.
+- [ ] **The map with no signal**, which only a phone can show. Open the app
+      with a signal, wait a few seconds, switch to aeroplane mode, then press
+      Start: the map around you should already be drawn. Then run a street the
+      map has shown before, still offline: it should draw from the phone's
+      copy. A street it has never shown stays a plain ground, which is right.
 - [ ] Proved for the first time on a phone, because no test can: Google on the
       iPhone (it needs *Skip nonce checks* on in Supabase; Lift's
       `store-setup.md`, step 7), and Apple on Android coming back from the

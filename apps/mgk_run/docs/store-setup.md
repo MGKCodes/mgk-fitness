@@ -614,7 +614,7 @@ Backup consent makes several of these conditional, and the form cannot say
 | Health | Yes | App Functionality | HealthKit **step count** over a recorded run, stored with the run and sent to us only with backup on; injury notes and symptoms typed to the coach |
 | Fitness | Yes | App Functionality | Runs, pace, splits, plans and effort ratings, sent to the coach and, with backup on, stored |
 | Precise Location | Yes | App Functionality | Route traces, stored with backup on |
-| Coarse Location | **No** | App Functionality | Esri's tile requests show roughly where the map is. A judgement call: no account or id goes with them, and over-declaring costs nothing |
+| Coarse Location | **No** | App Functionality | Esri's tile requests show roughly where the map is, or where the phone last was when the app opens. A judgement call: no account or id goes with them, and over-declaring costs nothing |
 | Other User Content | Yes | App Functionality | Messages to the coach, the rolling summary, and replies the runner reports |
 | User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id; and Apple's or Google's identifier for the runner, when they sign in with one |
 | Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it |

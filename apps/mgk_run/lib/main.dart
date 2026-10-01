@@ -1,6 +1,8 @@
 import 'src/core/brand.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/core/config/app_config.dart';
@@ -32,6 +34,7 @@ import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
 import 'src/features/history/data/supabase_restore.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
+import 'src/features/recording/data/basemap_cache.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
 import 'src/features/recording/data/recording_run_recorder.dart';
 import 'src/features/recording/data/run_recovery.dart';
@@ -62,6 +65,33 @@ Future<void> main() async {
       phone: db == null ? null : _phoneServices(db),
     ),
   );
+
+  // The map around the runner, loaded before they ask for one. After the first
+  // frame is on its way, and never awaited: it is a convenience, and a launch
+  // must not wait on a tile server.
+  if (configured && AppConfig.current.hasBasemap && !kIsWeb) {
+    BasemapWarmUp(
+      urlTemplate: AppConfig.current.mapTileUrlTemplate,
+      cache: basemapCache(),
+      position: _lastKnownPosition,
+    ).start();
+  }
+}
+
+/// Where the phone last knew it was, without asking for anything.
+///
+/// **Never a prompt, and never a fix.** A runner who has not allowed location
+/// is not asked here, on a screen that has not said why; and the last known
+/// position is read rather than a new one taken, so opening the app switches
+/// no GPS on. Null on either count, and the warm-up then does nothing.
+Future<LatLng?> _lastKnownPosition() async {
+  final LocationPermission permission = await Geolocator.checkPermission();
+  if (permission != LocationPermission.whileInUse &&
+      permission != LocationPermission.always) {
+    return null;
+  }
+  final Position? last = await Geolocator.getLastKnownPosition();
+  return last == null ? null : LatLng(last.latitude, last.longitude);
 }
 
 /// The phone's own stores, made once for the life of the app.

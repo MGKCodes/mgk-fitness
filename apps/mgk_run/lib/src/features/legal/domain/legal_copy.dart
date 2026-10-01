@@ -156,10 +156,13 @@ const LegalDocument privacyPolicy = LegalDocument(
             'your coach. Like any purchase SDK it also collects technical '
             'information of its own about the install, such as a device-scoped '
             'identifier, your store country and your app version.',
-        'Esri — serves the basemap tiles behind your route while you run; '
-            'receives the map coordinates being displayed and, like any web '
+        'Esri — serves the basemap tiles behind your route while you run and, '
+            'once you have allowed location, the few around where you are when '
+            'you open the app, so the map is ready before you start; receives '
+            'the map coordinates being displayed or loaded and, like any web '
             'request, your IP address. This happens whether or not you have an '
-            'account.',
+            'account. The tiles are kept in the app’s cache on your phone, so '
+            'the map can still draw without a signal; we never receive them.',
         'SMTP2GO — sends the emails your account needs: the link to confirm '
             'your address when you sign up, the link to reset your password, '
             'and a note when your password changes. It receives your email '

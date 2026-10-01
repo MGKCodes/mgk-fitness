@@ -75,6 +75,11 @@ dependencies:
   health: 13.2.0
   purchases_flutter: ^10.10.1
   url_launcher: ^6.3.2
+  # The tile client that answers from the phone's cache when the network
+  # cannot (basemap_cache.dart). Already resolved through supabase_flutter and
+  # flutter_map; declared because the app now imports it. Tests use its
+  # `MockClient` too, to fake a PostgREST server.
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -82,12 +87,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.34.0
   build_runner: ^2.15.1
-  # Both already resolve transitively (drift on sqlite3, supabase_flutter on
-  # http); declared directly because tests fake a PostgREST server with
-  # `http`'s `MockClient` and inspect a migration's raw file state with
-  # `sqlite3` — bypassing `AppDatabase` on purpose so a check of what a
-  # migration left on disk cannot itself trigger another migration attempt.
-  http: ^1.6.0
+  # Already resolves transitively (drift depends on it); declared directly
+  # because tests inspect a migration's raw file state with `sqlite3`,
+  # bypassing `AppDatabase` on purpose so a check of what a migration left on
+  # disk cannot itself trigger another migration attempt.
   sqlite3: ^3.5.1
 
 flutter:

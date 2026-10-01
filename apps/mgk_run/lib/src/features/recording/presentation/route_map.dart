@@ -3,11 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/app_config.dart';
+import '../data/basemap_cache.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../domain/split_marker.dart';
+
+export '../data/basemap_cache.dart' show TileGrid;
 
 /// How much of the basemap shows through, over the app's charcoal base.
 ///
@@ -25,39 +28,6 @@ import '../domain/split_marker.dart';
 /// judged one: a fuller style wants nearer 0.72 for the same result, and
 /// anything below about 0.6 stops being recessive and starts being fog.
 const double kBasemapOpacity = 0.85;
-
-/// How a tile provider cuts up the world: how large one tile is drawn, and how
-/// far its zoom levels sit from the map's own.
-///
-/// **Read off the template, not configured beside it.** The grid is a fact
-/// about the service the template names, so a second setting could only ever
-/// agree with the first or be wrong, and wrong is quiet: Esri's tiles drawn on
-/// the standard grid still load, with every label at half size and four times
-/// as many tiles fetched against a monthly allowance.
-class TileGrid {
-  const TileGrid({required this.dimension, required this.zoomOffset});
-
-  /// Logical pixels along one side of a tile.
-  final int dimension;
-
-  /// Added to the map's zoom to get the level asked of the provider.
-  final double zoomOffset;
-
-  /// 256-point tiles whose levels are the map's own, which is what nearly
-  /// every provider serves. A `@2x` image on this grid is the same tile drawn
-  /// sharper, not a larger one.
-  static const TileGrid standard = TileGrid(dimension: 256, zoomOffset: 0);
-
-  /// ArcGIS Static Basemap Tiles: 512-pixel tiles on a grid whose level 0 is
-  /// one tile for the whole world, which is one level behind the 256 grid.
-  /// (The same service is why the template reads `{z}/{y}/{x}`, row first.)
-  static const TileGrid esriStatic = TileGrid(dimension: 512, zoomOffset: -1);
-
-  static TileGrid of(String urlTemplate) =>
-      urlTemplate.contains('static-basemap-tiles-service')
-      ? esriStatic
-      : standard;
-}
 
 /// Draws a run's route as a silver polyline over a dark basemap — used both for
 /// the live in-run map and the post-run route view.
@@ -233,6 +203,10 @@ class _RouteMapState extends State<RouteMap> {
   final MapController _controller = MapController();
   int? _lastLength;
 
+  /// Tiles through the phone's own cache, with the saved copy used when the
+  /// network cannot be. One per map, over a client the whole app shares.
+  late final NetworkTileProvider _tiles = basemapTileProvider();
+
   /// Snaps back to the runner when following is switched back on.
   ///
   /// **This is the whole of the recentre control.** Flipping [RouteMap.follow]
@@ -401,6 +375,7 @@ class _RouteMapState extends State<RouteMap> {
                   urlTemplate: widget.tileUrlTemplate,
                   tileDimension: TileGrid.of(widget.tileUrlTemplate).dimension,
                   zoomOffset: TileGrid.of(widget.tileUrlTemplate).zoomOffset,
+                  tileProvider: _tiles,
                   // flutter_map sends `User-Agent: flutter_map (<this>)`, so
                   // the provider's logs say which app asked.
                   userAgentPackageName: 'com.mgkcodes.fitness.run',
