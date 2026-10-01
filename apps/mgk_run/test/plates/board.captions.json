@@ -16,12 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 28",
-    "eyebrow": "apps/mgk_run · build 28 (1.0.0+28), drawn from develop before the build is cut",
-    "build": "28 · 1.0.0+28, not built yet",
+    "title": "MGKFitness: Run, every screen at build 29",
+    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29), drawn from develop before the build is cut",
+    "build": "29 · 1.0.0+29, not built yet",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "Build 29, from the owner's look at build 28 on TestFlight. The start screen shows where the runner is and what today's session asks for: pace, about how long, effort and how it should feel (R24, R25). 'Add a treadmill run' is a row at the foot of the This week tile, not a button under Start (H1, H2). The coach's line waits for the launch animation, opens out of the mark and is held about five seconds (C1, C6). The map's tiles are drawn at two pixels a point, which no plate can show: a test draws no tiles. Also in 29 and on no plate, because a test has no lock screen: a run's distance, time and pace are shown there while it records, as a Live Activity on the iPhone and a notification on Android.",
       "Build 28, from the first look at build 27 on a phone. The app opens on the icon's mark dashing across and leaving the name RUN behind it (B10 to B12, new). Race week is a week of its own and race day is on the plan (E6, E7, new): until now the Plan tab drew a training run on race day. 'Adjust this week' moved from Home's today card to the Plan tab, under the week (A2, E6). Home's today card offers 'Add a treadmill run' in its place (H1, H2, H3). A run can be deleted, from the bin on Edit run (S8, S9, new). The nav bar's selection is a soft plate behind the tab, which slides when the tab changes: it is on every plate that shows the bar.",
       "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
       "Signing in is two steps. Apple, Google and 'Continue with email' come first (B8, C14, K2), and the email form is behind the third (K3, new). On one screen the form's Password and Sign up were below the bottom of a 393pt phone.",
@@ -631,7 +632,7 @@
       "how": "driven",
       "reach": "Launch › three weeks into a plan",
       "job": "The screen the app opens on. It answers what to run today first, then how the week is going, the last run and the longer view.",
-      "done": "Today's session and Start are readable without scrolling; 'Add a treadmill run' sits under Start, quieter than it; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
+      "done": "Today's session and Start are readable without scrolling, and the today card has nothing else on it; 'Add a treadmill run' is a full-width row at the foot of This week; a missed session is raised once, with two plain answers (I ran it, Adjust); the coach mark and the nav bar cover nothing you need. If you have to scroll to learn what to run today, it has failed.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -641,7 +642,7 @@
         "lib/src/features/home/presentation/training_charts.dart"
       ],
       "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it.",
-      "changed": "Build 28: 'Adjust this week' stood where 'Add a treadmill run' is. It moved to the Plan tab (A2). The plates before build 28 never showed it, because their fixture had no coach to bend a week."
+      "changed": "Build 29: 'Add a treadmill run' was a lone button under Start, on the left with nothing beside it. It is a row on the week tile. Build 28: 'Adjust this week' stood there before it, and moved to the Plan tab (A2)."
     },
     "A2": {
       "file": "shell-plan",
@@ -783,7 +784,7 @@
       "how": "driven",
       "reach": "Launch › runs recorded, no plan",
       "job": "Home for a runner who just records: the week's runs and distance, answered from the log.",
-      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, 'Add a treadmill run' is under 'Record a run', and the coach mark is still there.",
+      "done": "It reads as a complete app, not the paid one with holes in it: the tiles count runs and distance rather than sessions against a plan, 'Add a treadmill run' is a row at the foot of This week, and the coach mark is still there.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
         "lib/src/features/home/presentation/home_tab.dart",
@@ -1030,13 +1031,15 @@
       "name": "Before the clock",
       "how": "driven",
       "reach": "Home › Start",
-      "job": "The start screen: the map, today's session, and a Start that does not start the clock yet.",
-      "done": "Today's session is named above one big Start in Home's words ('6 km · easy run'); the close control leaves without recording anything; nothing is being timed yet. (The map is blank: no tiles or position in a test.)",
+      "job": "The start screen: where the runner is, whether the GPS is ready, what today's session asks for, and a Start that does not start the clock yet.",
+      "done": "A dot marks the runner in the middle of the map above the panel. The panel leads with the GPS ('GPS ready', and how close), then the session: distance and name, the pace band, about how long, the effort out of ten, and one line on how it should feel. Start is the only button. Nothing is being timed yet. (The ground is plain: a test draws no map tiles.)",
       "files": [
-        "lib/src/features/recording/presentation/run_start_screen.dart"
+        "lib/src/features/recording/presentation/run_start_screen.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
       ],
       "isnew": "New since the September board.",
-      "changed": "Build 27: it read '6.00 km · easy' where Home says '6 km'."
+      "changed": "Build 29: it said '6 km · easy run' over a map with nothing on it to say where the runner was. Build 27: it read '6.00 km · easy' where Home says '6 km'.",
+      "note": "With no time trial there is no pace or time, only effort and feel. With no session the panel says 'Free run'. The dot follows a fix taken every three seconds; a pan parks the map and a recentre control appears."
     },
     "R25": {
       "file": "run-count",
@@ -1044,7 +1047,7 @@
       "how": "driven",
       "reach": "R24 › Start",
       "job": "Three seconds to put the phone away before recording begins.",
-      "done": "A big count and a Stop that returns to the start screen with nothing recorded.",
+      "done": "A big count and a Stop that returns to the start screen with nothing recorded. The map and the panel are dimmed almost to black under it, so the numeral is the only thing to read.",
       "files": [
         "lib/src/features/recording/presentation/run_start_screen.dart"
       ],
@@ -1533,9 +1536,10 @@
       "how": "built",
       "reach": "any tab, once per new observation",
       "job": "The coach mark delivering an observation, then retracting.",
-      "done": "One line and one sentence about the runner's training, readable in the second or two it is up. Caught mid-reveal on purpose.",
+      "done": "One line and one sentence about the runner's training. On Home it opens out of the mark once the launch animation has finished, is held about five seconds, and closes back into the mark. Caught mid-reveal on purpose.",
       "files": [],
-      "size": "393×240"
+      "size": "393×240",
+      "changed": "Build 29: it played behind the launch animation, so only its last second was seen, and it was held for under two seconds. It faded in already open; it opens out of the mark now."
     },
     "C6": {
       "file": "coach-locked",
@@ -1543,7 +1547,7 @@
       "how": "built",
       "reach": "any tab, not subscribed",
       "job": "What the mark says to a runner without the subscription.",
-      "done": "Reads as a sign ('Coaching is a subscription…') rather than as a broken observation, and plays once rather than every visit.",
+      "done": "Reads as a sign ('Coaching is a subscription…') rather than as a broken observation, is held long enough to read, and plays once rather than every visit.",
       "files": [],
       "size": "393×240",
       "isnew": "New since the September board."

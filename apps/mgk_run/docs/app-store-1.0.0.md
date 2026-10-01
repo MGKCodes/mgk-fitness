@@ -34,12 +34,12 @@ Updated 2026-10-01.
 | | |
 |---|---|
 | **On testers' phones** | iPhone: 1.0.0 (28) on TestFlight, from `7f84f2a`, looked at by the owner on 1 October. Android: 1.0.0 (27) on Play internal, from `080d760`. Neither tagged |
-| **Release candidate** | **Build 29, not cut.** Its code is written; the pubspec still reads `1.0.0+28`. 28 was never built for Android |
+| **Release candidate** | **Build 29.** The pubspec reads `1.0.0+29` (`6e20a70`). Android is built first this time. The iPhone build waits for the Live Activity extension's provisioning profile |
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,948 tests pass and the analyzer is clean with build 29's code, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
-| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 26, is build 28's. Build 29's plates are published once its code is committed |
+| **Suite** | 1,948 tests pass and the analyzer is clean at `6e20a70`, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
+| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 27, every plate drawn at `6e20a70`. The lock-screen readout is on no plate |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -84,16 +84,19 @@ it.
 
 ### 2. Cut build 29
 
-- [ ] `apps/mgk_run/pubspec.yaml` to `1.0.0+29`, in a commit of its own.
+- [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+29` (`6e20a70`).
 - [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 29, with
       rows for the coach's line (A12), the start screen (C13, C28, C29), the
       treadmill row (C27) and the map's sharpness (M1). Its header still says
       "not cut yet": write the two commits in when the builds exist.
-- [ ] **iOS first:** `scripts/codemagic-build.sh run-ios-release develop`.
-      The owner looks at it on TestFlight before anything else is built.
-- [ ] **Then Android, from the commit iOS was built from:**
-      `scripts/codemagic-build.sh run-android-release develop`. If `develop`
-      has moved on in anything but docs by then, both are cut again as 30.
+- [ ] **Android:** `scripts/codemagic-build.sh run-android-release develop`.
+- [ ] **The iPhone app compiles**, both targets, unsigned:
+      `scripts/codemagic-build.sh run-ios-compile develop`. Nothing here can
+      build the extension, so this is the first thing that does.
+- [ ] **Then the iPhone build**, once the extension's profile is in Codemagic:
+      `scripts/codemagic-build.sh run-ios-release develop`. If `develop` has
+      moved on in anything but docs or `apps/mgk_run/ios/` by then, both are
+      cut again as 30.
 - [ ] Tag `run/build-27` on `080d760`, and `run/build-29` on the commit
       Codemagic checks out, each with its build records in the message.
 
