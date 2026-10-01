@@ -1015,15 +1015,35 @@ workflows:
                 ;;
             esac
           fi
-          cat > config/app_config.json <<JSON
-          {
-            "SUPABASE_URL": "$SUPABASE_URL",
-            "SUPABASE_PUBLISHABLE_KEY": "$SUPABASE_PUBLISHABLE_KEY",
-            "MAP_TILE_URL_TEMPLATE": "$MAP_TILE_URL_TEMPLATE",
-            "MAP_ATTRIBUTION": "$MAP_ATTRIBUTION",
-            "REVENUECAT_GOOGLE_KEY": "${REVENUECAT_GOOGLE_KEY:-}"
+          # Written by Python, not a shell heredoc. The heredoc put each
+          # variable between quotes exactly as Codemagic held it, so a value
+          # saved with a trailing newline made the file invalid JSON: build 27
+          # died here in three seconds, on MAP_TILE_URL_TEMPLATE, with
+          # "Control character in string", while the iOS workflow built from
+          # the same variable because it has always stripped and escaped.
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+
+          def var(name):
+              return (os.environ.get(name) or "").strip()
+
+          cfg = {
+              "SUPABASE_URL": var("SUPABASE_URL"),
+              "SUPABASE_PUBLISHABLE_KEY": var("SUPABASE_PUBLISHABLE_KEY"),
+              "MAP_TILE_URL_TEMPLATE": var("MAP_TILE_URL_TEMPLATE"),
+              "MAP_ATTRIBUTION": var("MAP_ATTRIBUTION"),
+              "REVENUECAT_GOOGLE_KEY": var("REVENUECAT_GOOGLE_KEY"),
           }
-          JSON
+          # The same refusal the iOS workflow makes: a provider's tiles
+          # without their credit breaches their terms.
+          if cfg["MAP_TILE_URL_TEMPLATE"] and not cfg["MAP_ATTRIBUTION"]:
+              sys.exit(
+                  "MAP_TILE_URL_TEMPLATE is set but MAP_ATTRIBUTION is empty. "
+                  "Set both, or neither."
+              )
+          pathlib.Path("config/app_config.json").write_text(json.dumps(cfg, indent=2))
+          print(f"wrote config/app_config.json ({len(cfg)} keys)")
+          PY
       - name: Flutter packages
         script: flutter pub get
       - name: Generate code
