@@ -528,6 +528,55 @@ workflows:
         submit_to_testflight: true
         # submit_to_app_store: false   # flip on when ready for a store release
 
+  # ──────────────────────────────────────────────────────────────
+  # Run — does the iPhone app compile? Nothing is signed and nothing is sent.
+  #
+  # The app has two targets since build 29: Runner, and the RunLiveActivity
+  # widget extension that draws a run's figures on the lock screen (ADR-0045).
+  # Nobody here has a Mac, so the extension and the Xcode project entries for
+  # it were written by hand, and the release workflow above is a slow and
+  # expensive way to learn that a Swift file does not compile: it needs a
+  # provisioning profile for every target before it will build any of them.
+  #
+  # This builds both targets unsigned. It needs no profile, no App Store
+  # Connect key and no secrets (the config it compiles against is a
+  # placeholder), so it can run before the signing is in place and after any
+  # change to `apps/mgk_run/ios/`.
+  run-ios-compile:
+    name: Run — iOS compile check
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $CM_BUILD_DIR/apps/mgk_run/ios/Pods
+    working_directory: apps/mgk_run
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: A placeholder config to compile against
+        script: |
+          mkdir -p config
+          python3 - <<'PY'
+          import json, pathlib
+          pathlib.Path("config/app_config.json").write_text(json.dumps({
+              "SUPABASE_URL": "https://example.supabase.co",
+              "SUPABASE_PUBLISHABLE_KEY": "compile-check-only",
+          }))
+          PY
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Generate code
+        script: dart run build_runner build --delete-conflicting-outputs
+      - name: Compile Runner and its extension, unsigned
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define-from-file=config/app_config.json
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
   # ─────────────────────────────────────────────────────────────────────────
   # Lift — see apps/mgk_lift/docs/submission-week.md for the release this feeds.
   #
