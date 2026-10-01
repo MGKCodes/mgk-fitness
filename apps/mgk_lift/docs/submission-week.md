@@ -163,12 +163,16 @@ recorded as ticked items.
       merged in, the tabs move, and the app opens on its mark
       ([lift-2.0.0-track.md](lift-2.0.0-track.md), *Added on the way to the
       build*).
-- [ ] **An iOS build from this branch, for Matthew's phone.** Started on 1
-      October from `feat/lift-2.0.0-candidate` rather than from `develop`,
-      because the branch is not merged. It is the first build with the
-      redesign, both sign-in buttons, the new Track and Lift's own RevenueCat
-      key in it. If nothing changes after he has used it, it is the release
-      candidate.
+- [x] **An iOS build from this branch, for Matthew's phone: 2.0.0 (41).**
+      Built on 1 October from `feat/lift-2.0.0-candidate` at `e2a20d5`
+      rather than from `develop`, because the branch is not merged. Every
+      step passed, publishing to TestFlight included (Codemagic build
+      `6abec3a503a04954ee43d4c7`, eight and a half minutes). It is the first
+      build with the redesign, both sign-in buttons, the new Track, the launch
+      and Lift's own RevenueCat key in it. If nothing changes after he has
+      used it, it is the release candidate.
+- [ ] Matthew's notes from using build 41. The launch has only been seen as
+      stills, and nothing in this build has been on a phone before.
 - [x] `mgk_fitness_lift_env` is named in both Lift workflows in
       `codemagic.yaml`, on this branch. It applies to a build once the branch
       is in `develop`.

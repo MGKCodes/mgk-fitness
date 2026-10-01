@@ -16,8 +16,9 @@ that did not sync, and a hand-written `insert` to unlock the coach. Codes like
 
 ## Before you start
 
-**1. Use the release candidate**, not build 32. Build 32 predates the redesign
-and Sign in with Apple and Google, so nothing below describes it. See
+**1. Use build 41 or later**, not build 32. Build 32 predates the redesign
+and Sign in with Apple and Google, so nothing below describes it. Build 41,
+from 1 October, is the first this sheet describes. See
 [submission-week.md](submission-week.md), step 2.
 
 **2. Two accounts.** One left free, to see the offer and to buy. One entitled
