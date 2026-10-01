@@ -24,7 +24,7 @@ written here, change the item and say why.
 | The app | The redesign is finished: 68 of 68 items in [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md), merged into `develop` beside Run | `flutter analyze` clean and 860 tests passing, run 1 October |
 | The screens | 86 plates on the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1), version 16 | Rendered from `develop` at `db88a4f`. Every plate matches version 15's, so the merge changed nothing on screen |
 | Edge Functions | `coach` v31, `revenuecat` v10, `delete-account` v19 | Listed from production, 1 October |
-| Database | `20260929120000_lift_save_workout.sql` is **not applied**. The ledger ends at `release_hardening` | Listed from production, 1 October. The app falls back to four requests per workout, so nothing is broken |
+| Database | `20260929120000_lift_save_workout.sql` is **not applied**. The ledger ends at `release_hardening`; the photo-deletion routine was applied by hand on 1 October and is not in it | Listed from production, 1 October. The app falls back to four requests per workout, so nothing is broken |
 | The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October |
 | Email and sign-in | SMTP2GO, email confirmation on, Apple and Google configured | Recorded done on 30 September in [store-setup.md](store-setup.md) steps 6 and 7. Not checked again today |
 | Builds | The last Lift builds are from 29 September, commit `4d12c46`: iOS 2.0.0 (32) on TestFlight, and an `.aab` uploaded to Play's internal testing as a draft | Codemagic's build list, 1 October |
@@ -34,10 +34,11 @@ written here, change the item and say why.
 merged into `develop`:** "Delete my Lift data" taking the progress photos (the
 function, a migration, the app's wording, the policy and the web page), and
 the support address `lift@mgkfitness.mgkcodes.com` everywhere Lift names one.
-The function is deployed; the migration is not applied and the web pages are
-not live (step 1 below). Analyzer clean, 860 Lift tests and 16 function tests
-passing. The database test for the migration is written and has not run: this
-machine has no Docker.
+Both are deployed and live (step 1 below): the function, the migration and the
+web pages. The app's half ships with the next build. Analyzer clean, 860 Lift
+tests and 16 function tests passing. The pgTAP cases for the migration have
+not run, because this machine has no Docker; the routine was proved against
+production on a throwaway account instead.
 
 Two things follow from that table.
 
@@ -105,29 +106,35 @@ recorded as ticked items.
 - [x] **"Delete my Lift data" deletes progress photos too.** Decided 1 October
       and built the same day: the photos are Lift's, though the table sits in
       `core`. Rolling it out is the next item.
-- [ ] **Roll out photo deletion, in this order.** The order matters: rows
-      deleted before the function knows to sweep would leave picture files
-      with nothing pointing at them.
-      1. ~~Deploy `delete-account`.~~ **Done 1 October: version 19**, from
-         `96c4f4c`. Production's version 18 and its `core.delete_account` were
-         checked first and were byte for byte what the repository holds, so
-         the deploy changed only what the commit changed. It answers, and
-         behaves as before until step 2.
-      2. Apply `20261001120000_lift_deletion_takes_progress_photos.sql`, then
-         rename it to the version the ledger records. **Waiting on Matthew:**
-         he said to go ahead, and Claude Code's auto mode refused the
-         migration all the same. Either allow `mcp__supabase__apply_migration`
-         in `.claude/settings.local.json`, or paste the file into the Supabase
-         SQL editor.
-      3. Prove it on a throwaway account that has a run and a photo: a
-         Lift-only deletion removes the photo row and the file, and leaves the
-         login *(both)*.
-      4. Only then send the web pages to `main`: the deletion page and the
-         policy say the photos go, and must not say it before they do.
+- [x] **Photo deletion is rolled out.** All four steps on 1 October, in the
+      order that keeps picture files from being orphaned.
+      1. `delete-account` version 19, from `96c4f4c`. Production's version 18
+         and its `core.delete_account` were checked first and were byte for
+         byte what the repository holds.
+      2. `20261001120000_lift_deletion_takes_progress_photos.sql`, run by
+         Matthew in the Supabase SQL editor. The connector declined it twice
+         with no prompt shown, even with the permission rule added. The routine
+         in production then matched the file byte for byte, and only
+         `service_role` can call it. **Applied by hand, so the migrations
+         ledger has no row for it** and the file keeps its own timestamp.
+      3. Proved on a throwaway account with one run, one photo row and one
+         picture file. *Delete my Lift data* answered 200 with the login kept
+         for Run, and left 1 run, 0 photo rows and 0 files. A full deletion
+         then removed the run, the profile and the login.
+      4. The web pages went to `main` (`69f39e3`, `24f81dc`) and are live:
+         the deletion page lists the photos under Lift's data and the policy
+         is dated 1 October.
 - [x] **The support address is `lift@mgkfitness.mgkcodes.com`.** Decided 1
       October; the mailbox exists. Changed in the app (`kSupportEmail`), the
-      three legal documents, the listing draft and the web pages. The live
-      pages change when `web/` goes to `main`, with step 4 above.
+      three legal documents and their footer, the listing draft and the web
+      pages, and live on the site. Two addresses on the site are still
+      `hello@mgkcodes.com` and were left alone because both apps share them:
+      the footer of every page (`web/app/layout.tsx`) and the reset-password
+      page.
+- [ ] **Merge this branch into `develop`**, which also brings `develop` level
+      with what `main` now serves. `develop` has moved on since the branch was
+      cut, and another session is working in that checkout, so the merge is
+      for when that work is committed.
 - [ ] **Google's sign-in branding** still links to Run's pages (store-setup.md
       7c). Point it at pages that cover both apps.
 - [ ] **Liftio 1.x's listing.** The `/lift` pages now describe 2.0.0 while 1.x
