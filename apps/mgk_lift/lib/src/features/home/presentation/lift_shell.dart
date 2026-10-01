@@ -41,9 +41,7 @@ import '../../tracking/domain/rest_alerts.dart';
 import '../../tracking/domain/rest_lengths.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/domain/session_recorder.dart';
-import '../../tracking/data/starters.dart';
 import '../../tracking/domain/workout_library.dart';
-import '../../tracking/domain/workout_template.dart';
 import '../../tracking/presentation/active_session_screen.dart';
 import '../../tracking/presentation/session_summary_screen.dart';
 import '../../tracking/presentation/track_controller.dart';
@@ -323,10 +321,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     const <Session>[],
   );
 
-  /// The lifter's saved workouts, for Track's row. Read at the shell so the
-  /// row and the library screen it opens cannot disagree about what exists.
-  List<SavedWorkout> _workouts = const <SavedWorkout>[];
-
   /// When backup runs, and where it stands — read by Track's pill, the
   /// summary, the library's rows and Settings, so no two can disagree. Null
   /// is a build with no server.
@@ -346,8 +340,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// that has since signed out cannot land on the next one.
   String? _checkedFor;
 
-  /// Track's row follows the library, whichever screen changed it — the
-  /// summary teaching a workout included. See [WorkoutLibrary.changes].
+  /// A change to the library, whichever screen made it — the summary teaching
+  /// a workout included — is a checkpoint for backup. See
+  /// [WorkoutLibrary.changes].
   StreamSubscription<void>? _librarySub;
 
   /// The live block, held at the shell because Track shows today's session and
@@ -389,9 +384,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_loadCoachPreference());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
-    unawaited(_refreshWorkouts());
     _librarySub = widget.library?.changes.listen((_) {
-      unawaited(_refreshWorkouts());
       // A saved workout changed — saved, edited, taught at Finish, deleted.
       _backup?.checkpoint();
     });
@@ -504,11 +497,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() => _mayUse = true);
     // Everything held in memory was the erased training.
-    await Future.wait(<Future<void>>[
-      _refreshSession(),
-      _refreshLog(),
-      _refreshWorkouts(),
-    ]);
+    await Future.wait(<Future<void>>[_refreshSession(), _refreshLog()]);
     unawaited(_backup?.refresh());
     // And the account's own training comes down.
     unawaited(_backup?.runNow());
@@ -685,10 +674,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     }
 
     // What came down from another phone is written straight to the database,
-    // past the library's own signal, so both lists are read again.
+    // so the log is read again. The saved workouts are read by their own
+    // screen each time it opens.
     if (report.pulled > 0 && mounted) {
       await _refreshLog();
-      await _refreshWorkouts();
     }
     return report;
   }
@@ -731,14 +720,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     final loaded = await store.load();
     if (!mounted || loaded == _units) return;
     setState(() => _units = loaded);
-  }
-
-  Future<void> _refreshWorkouts() async {
-    final library = widget.library;
-    if (library == null) return;
-    final all = await library.all();
-    if (!mounted) return;
-    setState(() => _workouts = all);
   }
 
   Future<void> _refreshLog() async {
@@ -813,33 +794,23 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   (backup) => TrackSurface(
                     backup: backup,
                     onBackupAction: _onBackupAction,
-                    // Track's action pill shares the mark's row, so it has
-                    // to know whether the mark is there.
-                    coachBeside: coach != null,
                     openSession: _openSessionDetail,
                     log: _log,
                     onStartSession: widget.recorder == null
                         ? null
                         : _openSession,
+                    // *Start a session* opens the workouts, where a saved one
+                    // or a blank session is one more tap. With no library
+                    // there is nothing to choose, and it starts blank.
+                    onOpenLibrary: widget.library == null ? null : _openLibrary,
                     plan: _plan,
                     movedDay: _movedDay,
                     today: widget.today,
-                    unit: _units.mass,
                     onStartPlanned: widget.recorder == null
                         ? null
                         : _openPlannedSession,
-                    workouts: _workouts,
-                    onStartWorkout: widget.recorder == null
-                        ? null
-                        : _openWorkout,
-                    onDiscardAndStart: widget.recorder == null
-                        ? null
-                        : _discardAndStart,
-                    onOpenLibrary: widget.library == null ? null : _openLibrary,
-                    onOpenWorkout: widget.library == null
-                        ? null
-                        : (w) => _openLibrary(at: w),
-                    onAddStarter: widget.library == null ? null : _addStarter,
+                    onOpenSession: _openPastSession,
+                    onOpenPlan: () => _go(_planTab),
                   ),
                 ),
                 PlanSurface(
@@ -1257,34 +1228,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     await _openWorkout(workout);
   }
 
-  /// One of the three starting points (R11), added from Track's empty row,
-  /// with an Undo that takes back exactly what was added.
-  Future<void> _addStarter(WorkoutSplit split) async {
-    final library = widget.library;
-    if (library == null) return;
-    final added = await addStarter(library, split);
-    await _refreshWorkouts();
-    if (!mounted) return;
-    // Not awaited: the message never waits on the motor.
-    unawaited(AppHaptics.selection());
-    AppToast.show(
-      context,
-      added.length == 1
-          ? '${added.single.name} added.'
-          : '${split.name} added: ${added.length} workouts.',
-      actionLabel: 'Undo',
-      onAction: () async {
-        for (final w in added) {
-          await library.remove(w.id);
-        }
-        await _refreshWorkouts();
-      },
-    );
-  }
-
-  /// The whole library, from Track's "See all" — or opened at one workout,
-  /// from its card.
-  Future<void> _openLibrary({SavedWorkout? at}) async {
+  /// *Your workouts*, from Track's *Start a session*: a saved workout, one of
+  /// the starters, or a blank session.
+  Future<void> _openLibrary() async {
     final library = widget.library;
     if (library == null) return;
     final outcome = await WorkoutLibraryScreen.open(
@@ -1294,10 +1240,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       log: _log,
       backup: _backup?.status,
       openSessionName: _openSessionDetail?.name,
-      openAt: at?.id,
+      offerBlank: widget.recorder != null,
     );
     if (!mounted) return;
     switch (outcome) {
+      case StartBlank():
+        await _openSession();
       case StartWorkout(:final workout, discardingOpen: true):
         await _discardAndStart(workout);
       case StartWorkout(:final workout):

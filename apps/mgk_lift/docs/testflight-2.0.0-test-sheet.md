@@ -81,17 +81,20 @@ Do the whole section on an iPhone and on an Android phone.
 | B11 | *(Only if Run is on the phone)* Sign into Run with the same account | One person in both apps | ☐ |
 | B12 | Kill the app while signed in, reopen | Still signed in | ☐ |
 
-## C. Logging a workout: the free half (T1 to T8, W1 to W26)
+## C. Logging a workout: the free half (T1 to T9, W1 to W26)
 
 Signed out is fine for all of this. It is what Liftio's users already had, so
 it has to be right.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| C1 | First open, nothing saved | Three starters where your workouts will be: Full Body, Upper / Lower, PPL | ☐ |
-| C2 | Add a starter | Added in one tap, with Undo | ☐ |
+| C1 | First open, nothing saved | Track says "Ready when you are", with the week and the last session drawn empty (dashes, no noughts) | ☐ |
+| C2 | Start a session | Opens Your workouts: a blank session first, then three starters (Full Body, Upper / Lower, PPL). No photographs | ☐ |
+| C2a | Add a starter | Added in one tap, with Undo | ☐ |
 | C3 | Start on a saved workout | The session opens filled: every set with its reps and last time's weight. Nothing is pre-ticked | ☐ |
-| C4 | Start a session (blank) | Opens with the clock running | ☐ |
+| C4 | Start a session › Blank session | Opens with the clock running | ☐ |
+| C4a | Back on Track after finishing | Today names the session with when it ended and how long it took; This week has a dot and the start time on today | ☐ |
+| C4b | The next day | Last session shows it: name, day and time, length, sets, movements. Tapping it opens its page | ☐ |
 | C5 | + Add, then search `curl bicep`, `db press`, and a word with one typo | Each finds its movements; the typo ranks below a clean match | ☐ |
 | C6 | Narrow by a muscle chip and an equipment chip | The list narrows, with search or without | ☐ |
 | C7 | Tick a set | Saved at once; the rest dock rises with the timer | ☐ |
@@ -102,8 +105,8 @@ it has to be right.
 | C12 | The swap icon, on the free account | The picker in replace mode; logged sets stay under the old name | ☐ |
 | C13 | Reorder movements, at the foot of the list | Drag by the handle; the session follows | ☐ |
 | C14 | Beat a movement's best estimate with a ticked set | The C opens, says the new best, and closes. Matching a best says nothing | ☐ |
-| C15 | Back out of the session | Track offers Resume, in the same place | ☐ |
-| C16 | With that session open, Start a different workout | Asks: resume it, or discard it and start this one | ☐ |
+| C15 | Back out of the session | The Today card names it and how far in, and its button reads Resume session | ☐ |
+| C16 | With that session open | Track offers nothing but Resume; no second session can be started over it | ☐ |
 | C17 | Leave a session open overnight | Still offered the next day; nothing ended it for you | ☐ |
 | C18 | Finish, from a saved workout with a movement added or removed | The sheet asks once, "Save to … for next time?", listing the change, switched on | ☐ |
 | C19 | Finish with only set counts or order changed | Does not ask | ☐ |
@@ -117,7 +120,7 @@ it has to be right.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| D1 | Track › See all | Glass rows, each with Start and a … | ☐ |
+| D1 | Track › Start a session | Solid rows on a plain dark background, easy to read: Blank session, then each workout with Start and a … | ☐ |
 | D2 | Tap a row | Opens in place to every movement, sets × reps | ☐ |
 | D3 | … › Edit | The editor: set counts, rep targets, order, remove. No weights | ☐ |
 | D4 | … › Duplicate, then Delete | A copy under a free name; delete removes it | ☐ |
@@ -151,7 +154,8 @@ On an entitled account.
 | F3 | Build my plan | A plan arrives, with a name and why this shape for you | ☐ |
 | F4 | Count the training days | They match the days you gave | ☐ |
 | F5 | Plan on a training day | The week first; today links to Track. Nothing here starts a workout | ☐ |
-| F6 | Track on that day | Today's session in a card above the pill, with last time's numbers; the pill starts it | ☐ |
+| F6 | Track on that day | The Today card is the day: its name, a count of movements, a button named for it, and Start something else under it. This week rings the plan's days and says what is next | ☐ |
+| F6a | Track on a rest day | "Rest day", when the next session is, and Start a session anyway, outlined | ☐ |
 | F7 | Start it | Filled with the day's movements; nothing pre-ticked | ☐ |
 | F8 | Another day › Do it today | Track shows it as today's, "moved from …", until finished or the day ends | ☐ |
 | F9 | Plan on a rest day | Says so. Nothing owed | ☐ |

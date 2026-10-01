@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
 import 'package:mgk_lift/src/features/stats/data/drift_session_history.dart';
@@ -57,7 +56,7 @@ void main() {
     ],
   );
 
-  group("Track's pill", () {
+  group("Track's notice", () {
     Future<void> pump(
       WidgetTester tester,
       BackupStatus status,
@@ -302,8 +301,8 @@ void main() {
       final atLaunch = backup.runs;
 
       // Resume the open session and log a set: nothing goes up.
-      // Track's action pill, which reads "Resume <name>" with a session open.
-      await tester.tap(find.byType(ActionPill));
+      // The Today card's button, which reads Resume with a session open.
+      await tester.tap(find.text('Resume session'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Mark done').first);
       await tester.pump(const Duration(seconds: 5));

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/tracking/data/exercise_lookup.dart';
+import 'package:mgk_lift/src/features/planning/domain/standing_plan.dart';
 import 'package:mgk_lift/src/features/tracking/domain/exercise.dart';
+import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/workout_library.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/track_surface.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/workout_editor_screen.dart';
 import 'package:mgk_lift/src/features/tracking/presentation/workout_library_screen.dart';
 
-/// The workout screens on the narrowest phone the app supports, with the text
-/// turned up. A fixed-height card on Track overflowed the first time this was
-/// tried; an overflow fails these tests.
+/// Track and the workout screens on the narrowest phone the app supports, with
+/// the text turned up. A fixed-height card on Track overflowed the first time
+/// this was tried; an overflow fails these tests.
 void main() {
   final lookup = ExerciseLookup(const <Exercise>[]);
 
@@ -45,18 +47,75 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      testWidgets('Track, with workouts', (tester) async {
+      // A week with a long-named session in it, twice on one day, so the
+      // strip, both figures and the last session all have something to fit.
+      final log = <Session>[
+        Session(
+          id: 'a',
+          name: long.name,
+          startedAt: DateTime(2026, 9, 28, 22, 45),
+          endedAt: DateTime(2026, 9, 29, 0, 50),
+        ),
+        Session(
+          id: 'b',
+          name: 'Legs',
+          startedAt: DateTime(2026, 9, 28, 10, 30),
+          endedAt: DateTime(2026, 9, 28, 11, 40),
+        ),
+      ];
+
+      testWidgets('Track, a week in', (tester) async {
         await pump(
           tester,
           Scaffold(
             body: TrackSurface(
-              today: DateTime(2026, 9, 29),
-              workouts: <SavedWorkout>[
-                long,
-                long.copyWith(name: 'Legs'),
-              ],
+              today: DateTime(2026, 9, 29, 12),
+              log: log,
               onOpenLibrary: () {},
-              onStartWorkout: (_) {},
+              onOpenSession: (_) {},
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Track, a planned day with a long name', (tester) async {
+        await pump(
+          tester,
+          Scaffold(
+            body: TrackSurface(
+              today: DateTime(2026, 9, 29, 12),
+              log: log,
+              plan: const StandingPlan(
+                id: 'p',
+                name: 'Upper / Lower',
+                dayOrder: <String>['Chest, shoulders and the long head'],
+                weekdays: <int>[DateTime.tuesday],
+                slots: <String, List<MovementSlot>>{},
+              ),
+              movedDay: 'Chest, shoulders and the long head',
+              onStartPlanned: (_) {},
+              onOpenLibrary: () {},
+              onOpenPlan: () {},
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Track, a session left open', (tester) async {
+        await pump(
+          tester,
+          Scaffold(
+            body: TrackSurface(
+              today: DateTime(2026, 9, 29, 12),
+              log: log,
+              openSession: Session(
+                id: 'open',
+                name: long.name,
+                startedAt: DateTime(2026, 9, 20, 18),
+              ),
+              onStartSession: () {},
             ),
           ),
         );
@@ -68,7 +127,11 @@ void main() {
         await library.save(name: long.name, movements: long.movements);
         await pump(
           tester,
-          WorkoutLibraryScreen(library: library, lookup: lookup),
+          WorkoutLibraryScreen(
+            library: library,
+            lookup: lookup,
+            offerBlank: true,
+          ),
         );
         expect(tester.takeException(), isNull);
       });
@@ -97,6 +160,7 @@ void main() {
           WorkoutLibraryScreen(
             library: InMemoryWorkoutLibrary(),
             lookup: lookup,
+            offerBlank: true,
           ),
         );
         expect(tester.takeException(), isNull);

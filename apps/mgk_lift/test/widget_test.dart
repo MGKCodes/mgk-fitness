@@ -23,11 +23,14 @@ void main() {
 
     // SectionLabel uppercases its text — the eyebrow is a decision made once in
     // mgk_ui, not something each screen restates.
-    // The eyebrow names the day, since the headline under it says what
+    // The Today card names the day, since the headline under it says what
     // today is for.
+    expect(find.text('LIFT'), findsOneWidget);
     expect(
       find.textContaining(
-        RegExp(r'^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY) '),
+        RegExp(
+          r'^TODAY · (MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY) ',
+        ),
       ),
       findsOneWidget,
     );
@@ -310,19 +313,12 @@ void trackContentTests() {
     );
     await tester.pumpAndSettle();
 
+    // The headline is the session's own name, and the line under it says
+    // how far in and since when.
     expect(find.text('Push'), findsOneWidget);
     expect(find.textContaining('1 set in'), findsOneWidget);
-    expect(find.textContaining('yesterday'), findsOneWidget);
-
-    // The headline names the session instead of paraphrasing the card's label.
-    // It read "Pick up where you were" directly above a card labelled "Where
-    // you were" — the same phrase twice, the vaguer one larger.
-    expect(find.text('Push is still open'), findsOneWidget);
-    expect(
-      find.textContaining('Pick up where you were'),
-      findsNothing,
-      reason: 'the headline must not restate the label below it',
-    );
+    expect(find.textContaining('Left open yesterday'), findsOneWidget);
+    expect(find.text('Resume session'), findsOneWidget);
   });
 
   testWidgets('it reports recent training rather than nothing', (
@@ -342,27 +338,27 @@ void trackContentTests() {
     );
     await tester.pumpAndSettle();
 
-    // Upper case because these are SectionLabels now. Track used to draw its
-    // figures with a local widget that set its own label style; moving the row
-    // onto StatBlock put it in the same treatment as Profile and the session
-    // header, which is the point of the change rather than a side effect of it.
-    // One number (R12): this week's sessions. Streak and the rest are
-    // Profile's.
+    // The week as sessions and time in the gym (TR4), and the last session
+    // under it. Streak, volume and the rest are Profile's.
     expect(find.text('THIS WEEK'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    expect(find.text('sessions since Monday'), findsOneWidget);
+    expect(find.text('2h 00m'), findsOneWidget);
+    expect(find.text('LAST SESSION'), findsOneWidget);
     expect(find.text('WEEK STREAK'), findsNothing);
   });
 
-  testWidgets('an empty log shows no figures rather than zeroes', (
+  testWidgets('an empty log shows dashes rather than zeroes', (
     WidgetTester tester,
   ) async {
-    // Three noughts on day one is worse than nothing: it reads as a scoreboard
-    // somebody is already losing.
+    // Noughts on day one are worse than nothing: they read as a scoreboard
+    // somebody is already losing. The week is still drawn, as Run draws it,
+    // because a front page of one card and empty space was the other failure.
     await tester.pumpWidget(
       MaterialApp(home: TrackSurface(today: DateTime(2026, 8, 12))),
     );
     await tester.pumpAndSettle();
-    expect(find.text('THIS WEEK'), findsNothing);
+    expect(find.text('THIS WEEK'), findsOneWidget);
+    expect(find.text('0'), findsNothing);
+    expect(find.text('—'), findsNWidgets(2));
   });
 }

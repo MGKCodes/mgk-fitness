@@ -31,6 +31,11 @@ final class StartWorkout extends LibraryOutcome {
   final bool discardingOpen;
 }
 
+/// Start a session with nothing in it, movements added as it goes.
+final class StartBlank extends LibraryOutcome {
+  const StartBlank();
+}
+
 /// Go back to the session that was already open.
 final class ResumeOpen extends LibraryOutcome {
   const ResumeOpen();
@@ -41,6 +46,13 @@ final class ResumeOpen extends LibraryOutcome {
 /// Each row does the two things a row is for: **Start**, and a "…" for Edit,
 /// Duplicate and Delete. Tapping the row opens it in place to every movement
 /// with its sets and reps.
+///
+/// **This is where a session starts from** (docs/lift-2.0.0-track.md, TR2 and
+/// TR8): Track's *Start a session* opens it, so it leads with a blank session
+/// above the saved ones. And it is a list to be read, so it sits on the soft
+/// light the session screen uses, on solid rows, with no photographs: over
+/// Track's photograph, with a thumbnail on each starter, the review found it
+/// hard to read.
 ///
 /// **There is no preview any more** (the design review's finding 7). A row
 /// opened a sheet that showed the workout and offered Start, which was one
@@ -60,7 +72,13 @@ class WorkoutLibraryScreen extends StatefulWidget {
     this.openSessionName,
     this.openAt,
     this.backup,
+    this.offerBlank = false,
   });
+
+  /// Whether a blank session is offered above the workouts. True when the
+  /// screen was opened to start something; false when it is filling a session
+  /// that is already running, where "blank" would mean nothing.
+  final bool offerBlank;
 
   final WorkoutLibrary library;
   final ExerciseLookup lookup;
@@ -94,6 +112,7 @@ class WorkoutLibraryScreen extends StatefulWidget {
     String? openSessionName,
     String? openAt,
     ValueListenable<BackupStatus>? backup,
+    bool offerBlank = false,
   }) => Navigator.of(context).push<LibraryOutcome>(
     MaterialPageRoute<LibraryOutcome>(
       builder: (_) => WorkoutLibraryScreen(
@@ -104,6 +123,7 @@ class WorkoutLibraryScreen extends StatefulWidget {
         openSessionName: openSessionName,
         openAt: openAt,
         backup: backup,
+        offerBlank: offerBlank,
       ),
     ),
   );
@@ -306,14 +326,23 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final saved = _saved;
+    // Only with nothing open: a blank start on top of a running session would
+    // have to throw that session away, and this row does not ask.
+    final blank = widget.offerBlank && widget.openSessionName == null
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: _BlankRow(
+              label: widget.startLabel,
+              onStart: () => Navigator.of(context).pop(const StartBlank()),
+            ),
+          )
+        : null;
     return Scaffold(
       backgroundColor: AppColors.bg,
-      // Track's photograph, carried on so the library reads as a step further
-      // into the same place. At texture strength — this screen does not lead
-      // with it — and open through the middle, where the rows are, so the
-      // glass has something to be glass over.
-      body: PhotoBackdrop(
-        image: 'assets/images/backgrounds/hero_track.webp',
+      // A soft light, not a photograph (TR8, and the redesign's R13 for the
+      // session screen): this is a list to be read, and Track's photograph
+      // behind it was noise under every row.
+      body: GlowBackdrop(
         child: Builder(
           builder: (context) {
             final top = MediaQuery.paddingOf(context).top;
@@ -330,10 +359,8 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
             return Stack(
               children: <Widget>[
                 Positioned.fill(
-                  // Every row's glass reads one blur of the photograph instead
-                  // of taking a pass each — what makes glass rows affordable
-                  // in a list. The rows never overlap, which grouping needs.
-                  child: BackdropGroup(
+                  child: Material(
+                    type: MaterialType.transparency,
                     child: switch (saved) {
                       // Null is "not read yet", empty is "you have none". A
                       // spinner where the empty state belongs tells a new
@@ -342,11 +369,15 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
                       final List<SavedWorkout> list when list.isEmpty =>
                         ListView(
                           padding: padding,
-                          children: <Widget>[_Starters(onAdd: _addStarter)],
+                          children: <Widget>[
+                            ?blank,
+                            _Starters(onAdd: _addStarter),
+                          ],
                         ),
                       final List<SavedWorkout> list => ListView(
                         padding: padding,
                         children: <Widget>[
+                          ?blank,
                           for (final (i, workout) in list.indexed)
                             Entrance(
                               index: i,
@@ -468,8 +499,7 @@ class _WorkoutRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Semantics(
         expanded: expanded,
-        child: GlassSurface(
-          grouped: true,
+        child: AppCard(
           onTap: onToggle,
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -680,64 +710,79 @@ class _StarterRow extends StatelessWidget {
     final holds = sessions.length == 1
         ? '1 workout'
         : sessions.map((t) => t.name).join(', ');
-    return GlassSurface(
-      grouped: true,
-      padding: EdgeInsets.zero,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            SizedBox(
-              width: 88,
-              child: ColorFiltered(
-                colorFilter: const ColorFilter.matrix(<double>[
-                  0.2126, 0.7152, 0.0722, 0, 0, //
-                  0.2126, 0.7152, 0.0722, 0, 0, //
-                  0.2126, 0.7152, 0.0722, 0, 0, //
-                  0, 0, 0, 1, 0, //
-                ]),
-                child: Image.asset(
-                  split.image,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.surface),
+    // No photograph (TR8): three thumbnails over a fourth picture were what
+    // made this screen hard to read. The name and what it holds are the row.
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(split.name, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  '${split.daysPerWeek} days a week · $holds',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
+              ],
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          SmallPill(label: 'Add', onPressed: onAdd),
+        ],
+      ),
+    );
+  }
+}
+
+/// A session with nothing in it, above everything saved: what *Start a
+/// session* on Track meant before it opened this screen, kept one tap away.
+class _BlankRow extends StatelessWidget {
+  const _BlankRow({required this.label, required this.onStart});
+
+  final String label;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      onTap: onStart,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Blank session', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  'Add movements as you go.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(split.name, style: theme.textTheme.titleMedium),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${split.daysPerWeek} days a week · $holds',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    SmallPill(label: 'Add', onPressed: onAdd),
-                  ],
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          SmallPill(label: label, onPressed: onStart),
+        ],
       ),
     );
   }

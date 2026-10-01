@@ -40,9 +40,7 @@ final ExerciseLookup _lookup = ExerciseLookup(<Exercise>[
 
 /// Something inside the library row for [name].
 Finder inRow(String name, Finder what) => find.descendant(
-  of: find
-      .ancestor(of: find.text(name), matching: find.byType(GlassSurface))
-      .first,
+  of: find.ancestor(of: find.text(name), matching: find.byType(AppCard)).first,
   matching: what,
 );
 
@@ -628,6 +626,7 @@ void main() {
       WidgetTester tester, {
       String? openSessionName,
       String? openAt,
+      bool offerBlank = false,
     }) async {
       final popped = <LibraryOutcome?>[];
       await tester.pumpWidget(
@@ -643,6 +642,7 @@ void main() {
                       lookup: _lookup,
                       openSessionName: openSessionName,
                       openAt: openAt,
+                      offerBlank: offerBlank,
                     ),
                   ),
                   child: const Text('open'),
@@ -731,6 +731,58 @@ void main() {
       final outcome = popped.single! as StartWorkout;
       expect(outcome.workout.id, push.id);
       expect(outcome.discardingOpen, isFalse);
+    });
+
+    testWidgets('opened to start something: a blank session leads', (
+      tester,
+    ) async {
+      // What Track's Start a session meant before it opened this screen, one
+      // tap away and above everything saved (TR2, TR8).
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      final popped = await openLibrary(tester, offerBlank: true);
+
+      expect(
+        tester.getTopLeft(find.text('Blank session')).dy,
+        lessThan(tester.getTopLeft(find.text('Push')).dy),
+      );
+      await tester.tap(
+        inRow('Blank session', find.widgetWithText(SmallPill, 'Start')),
+      );
+      await tester.pumpAndSettle();
+      expect(popped.single, isA<StartBlank>());
+    });
+
+    testWidgets('nothing saved: blank, then the three starters', (
+      tester,
+    ) async {
+      await openLibrary(tester, offerBlank: true);
+      expect(find.text('Blank session'), findsOneWidget);
+      expect(find.text('Nothing saved yet'), findsOneWidget);
+      expect(find.text('PPL'), findsOneWidget);
+    });
+
+    testWidgets('filling a running session, there is no blank to offer', (
+      tester,
+    ) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await openLibrary(tester);
+      expect(find.text('Blank session'), findsNothing);
+    });
+
+    testWidgets('nor with a session open, which it would have to discard', (
+      tester,
+    ) async {
+      await library.save(name: 'Push', movements: moves(<String>['A']));
+      await openLibrary(tester, offerBlank: true, openSessionName: 'Legs');
+      expect(find.text('Blank session'), findsNothing);
+    });
+
+    testWidgets('no photographs: the list is for reading (TR8)', (
+      tester,
+    ) async {
+      await openLibrary(tester, offerBlank: true);
+      expect(find.byType(PhotoBackdrop), findsNothing);
+      expect(find.byType(Image), findsNothing);
     });
 
     testWidgets('with a session open, Start asks: resume it', (tester) async {

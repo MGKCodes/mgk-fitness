@@ -16,7 +16,7 @@ Documents tier by **lifecycle, not topic**, the same rule Run follows:
 
 Open work. Start with the first.
 
-**Lift's release is worked from these four files and nothing else.** Run's
+**Lift's release is worked from these five files and nothing else.** Run's
 plans, runbooks and checklists are not inputs to Lift's work and are not to be
 read or edited for it; where a step touches something both apps share (a
 secret, an account, a workflow file), the step says so itself. Lift's work
@@ -31,6 +31,9 @@ happens in its own worktree, never in a checkout another session is using
   drafted for pasting.
 - **[testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md)** — the
   form. Carried to a phone with the release candidate, ticked, handed back.
+- **[lift-2.0.0-track.md](lift-2.0.0-track.md)** — Track rebuilt as a front
+  page, and *Your workouts* with it: TR1 to TR8, decided 1 October. Built;
+  open until Matthew has reviewed the plates.
 
 Closed, and kept because the code and the screen board cite their decisions by
 number:

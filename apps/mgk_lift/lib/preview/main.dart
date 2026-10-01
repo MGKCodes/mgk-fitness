@@ -123,8 +123,8 @@ class PreviewApp extends StatelessWidget {
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
         today: previewNow,
       ),
-      // Backup, on Track: a pill only when something needs the lifter. The
-      // shell's launch checkpoint runs the fake two seconds in, so the pill
+      // Backup, on Track: a notice only when something needs the lifter. The
+      // shell's launch checkpoint runs the fake two seconds in, so the notice
       // arrives rather than being there from the first frame — as it would.
       'track-backup-failed': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
@@ -186,8 +186,9 @@ class PreviewApp extends StatelessWidget {
         today: previewNow,
         hasCoachNote: true,
       ),
-      // Somebody new: nothing saved, nothing logged. The three starting points
-      // take the workouts row (R11), each added in one tap.
+      // Somebody new: nothing saved, nothing logged. The week and the last
+      // session are drawn empty rather than left off, and Start a session
+      // opens the workouts, where the three starting points are (R11).
       'track-starters': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(const <Session>[]),
@@ -239,8 +240,8 @@ class PreviewApp extends StatelessWidget {
         isEntitled: true,
         initialTab: 1,
       ),
-      // Item 5: what Track shows when a plan has something for today, and
-      // when somebody walked away mid-session.
+      // What Track shows when a plan has something for today, when it has
+      // nothing, and when somebody walked away mid-session.
       'track-planned': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
         history: FakeHistory(sampleLog(previewNow)),
@@ -250,11 +251,24 @@ class PreviewApp extends StatelessWidget {
         isEntitled: true,
         plans: InMemoryStandingPlanStore(_standingPlan()),
       ),
+      // A Wednesday, which the plan rests on: the Today card says so and what
+      // is next, and offers a session without pushing one.
+      'track-rest': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(_restDay)),
+        coach: FakeCoach(),
+        library: InMemoryWorkoutLibrary(_savedWorkouts()),
+        today: _restDay,
+        isEntitled: true,
+        plans: InMemoryStandingPlanStore(_standingPlan()),
+      ),
       'track-interrupted': (_) => LiftShell(
         recorder: FakeSessionRecorder(
           Session(
             id: 'open',
-            name: 'Push',
+            // Not the name of yesterday's finished session in the sample log,
+            // so the plate does not read as one session shown twice.
+            name: 'Legs',
             startedAt: previewNow.subtract(const Duration(days: 1)),
             exercises: <SessionExercise>[
               SessionExercise(
@@ -290,18 +304,21 @@ class PreviewApp extends StatelessWidget {
       // no entry here is a surface nobody looks at, and the whole point of the
       // harness is that a screen either renders or the page fails.
       // A screen now, reached from Track — no longer a sheet that could only
-      // be opened from inside a session whose clock was already running.
+      // be opened from inside a session whose clock was already running. As
+      // Track's Start a session opens it: a blank session above the rest.
       'workout-library': (_) => WorkoutLibraryScreen(
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
         lookup: ExerciseLookup(),
         log: sampleLog(previewNow),
+        offerBlank: true,
       ),
       'workout-library-empty': (_) => WorkoutLibraryScreen(
         library: InMemoryWorkoutLibrary(),
         lookup: ExerciseLookup(),
+        offerBlank: true,
       ),
-      // Opened at one workout, as Track's card opens it: its row open to every
-      // movement, sets × reps — what the preview sheet showed, in place.
+      // A row tapped open to every movement, sets × reps — what the preview
+      // sheet showed, in place.
       'workout-library-open': (_) => WorkoutLibraryScreen(
         library: InMemoryWorkoutLibrary(_savedWorkouts()),
         lookup: ExerciseLookup(),
@@ -1036,6 +1053,9 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
+
+/// The Wednesday before [previewNow]: a day the plan below rests on.
+final DateTime _restDay = DateTime(2026, 8, 5, 18, 30);
 
 /// A real four-day Upper/Lower, generated rather than hand-listed.
 ///

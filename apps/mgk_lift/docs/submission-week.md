@@ -154,9 +154,11 @@ recorded as ticked items.
 
 ### 2. The release candidate *(Claude, on Matthew's go)*
 
-- [ ] **Track's UI first.** Matthew wants to go through elements of the Track
-      tab before any build (1 October). No build is cut until that pass is
-      done and its plates are back on the board.
+- [ ] **Track's UI first.** Rebuilt on 1 October as a front page, on the
+      layout Run's Home uses, with *Your workouts* reworked beside it
+      ([lift-2.0.0-track.md](lift-2.0.0-track.md)). The new plates (T1 to T9,
+      W2, W3, W24) are on the board. **Waiting on Matthew's review of them**;
+      no build is cut until he has looked.
 - [x] `mgk_fitness_lift_env` is named in both Lift workflows in
       `codemagic.yaml`, on this branch. It applies to a build once the branch
       is in `develop`.

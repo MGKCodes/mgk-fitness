@@ -22,8 +22,8 @@
     "in/out/next follow docs/navigation.md, which is the audit these answer to."
   ],
 
-  "previous": "30 September 2026, version 13",
-  "since": "the redesign's last phase: search that finds words, other names and a typo, with chips for muscle and equipment; and one movement over time, reached from its name anywhere, which is where Profile's bests went",
+  "previous": "1 October 2026, version 16",
+  "since": "Track rebuilt as a front page, on the layout Run's Home uses: a Today card that carries the start button, the week as days and times, and the last session. Your workouts left Track, gained a blank session, and lost its photographs (docs/lift-2.0.0-track.md)",
 
   "acts": [
     {
@@ -37,10 +37,11 @@
       "letter": "T",
       "title": "Track — now",
       "sub": "The tab the app opens on, and the whole free half",
-      "lede": "\"Track\", not \"Home\": in Run the front page is a summary of the day; here it is the thing you are actually doing in the gym, and the label should say so. One primary button, whose verb is decided by what the plan and the recorder have to say. The coach mark sits bottom-right on this and every other tab — the shell reserves that room, which is why a screenshot without it is a screenshot of a build nobody ships.",
+      "lede": "\"Track\", not \"Home\": the label says what the tab is for. Rebuilt on 1 October as a front page, on the layout Run's Home uses: a greeting and three cards over a quiet backdrop. <strong>Today</strong> says what today is and carries the one button, whose verb is decided by what the plan and the recorder have to say. <strong>This week</strong> shows when the lifter trained, not how much. <strong>Last session</strong> says how long it took. The saved workouts are no longer here: Start a session opens them. The coach mark sits bottom-right on this and every other tab — the shell reserves that room, which is why a screenshot without it is a screenshot of a build nobody ships.",
       "racks": [
         { "title": "The tab, at rest", "screens": ["track", "track-starters", "track-coach"] },
-        { "title": "With something in flight", "screens": ["track-open", "track-planned", "track-interrupted"] },
+        { "title": "With a plan", "screens": ["track-planned", "track-rest"] },
+        { "title": "With a session open", "screens": ["track-open", "track-interrupted"] },
         { "title": "When backup needs you", "screens": ["track-backup-failed", "track-backup-refused"] }
       ]
     },
@@ -247,10 +248,10 @@
       "host": "shell",
       "in": "Launch, and the nav bar",
       "out": "Nav bar — no back, correctly; nothing sits above a tab root",
-      "next": "Start a session, or a workout's own Start",
-      "note": "The photograph, one number, your workouts, one pill. Where a free account lives.",
-      "doc": "Rebuilt from the design review: the photograph carries the top with the headline on it, one big number (sessions this week, left off an empty log), the saved workouts each with their own Start, and one action pill anchored low beside the coach's mark. Done right: in the gym, the thing to press is obvious without reading, and nothing on the screen competes with it.",
-      "tags": ["free"],
+      "next": "Start a session, which opens {{workout-library}}",
+      "note": "A greeting and three cards: today with its button, the week, the last session.",
+      "doc": "No plan and nothing logged today, so the Today card says so and its button reads Start a session. That opens Your workouts, where a saved workout or a blank session is one more tap: two taps to start, where the row of workout cards made it one, accepted for a front page that reads at a glance. This week marks the days trained with the time each session started, and counts sessions and time in the gym rather than volume, which says nothing across a leg day and an arm day. Last session gives its length, sets and movements and opens its page. Done right: in the gym, the thing to press is obvious without reading, and it is in the card that says what it starts.",
+      "tags": ["free", "new"],
       "arch": {
         "class": "LiftShell",
         "file": "lib/src/features/home/presentation/lift_shell.dart",
@@ -271,9 +272,15 @@
           },
           {
             "depth": 0,
-            "call": "TrackController(recorder, library).openSession(context, …)",
+            "call": "WorkoutLibraryScreen.open(context, offerBlank: true) → LibraryOutcome",
+            "symbol": "WorkoutLibraryScreen",
+            "note": "Start a session opens Your workouts and waits for what it pops with: a saved workout to start, the open session to resume, or a blank one. With no library in the build there is nothing to choose from, and the button starts a blank session directly."
+          },
+          {
+            "depth": 0,
+            "call": "StartBlank → TrackController(recorder, library).openSession(context, …)",
             "symbol": "TrackController.openSession",
-            "note": "One controller for both entry points — plain start and planned start — so the resume rule cannot be implemented twice and drift."
+            "note": "One controller for every entry point — blank, saved workout, planned — so the resume rule cannot be implemented twice and drift."
           },
           {
             "depth": 1,
@@ -302,10 +309,10 @@
       "host": "shell",
       "in": "Launch, on a new install",
       "out": "Nav bar",
-      "next": "Add a starter, or Start a session",
-      "note": "Three starting points where the saved workouts will be.",
-      "doc": "Full Body, Upper / Lower and PPL, each added in one tap with an Undo, instead of an empty row or a catalogue of fifteen (R11). No number yet: an empty log shows none rather than a zero. Done right: from a first open, a starter is a started session in two taps.",
-      "tags": ["free"]
+      "next": "Start a session, which opens {{workout-library-empty}}",
+      "note": "Ready when you are, and an empty week drawn with dashes.",
+      "doc": "Nothing logged and nothing saved. The Today card says what the app does in one line and offers Start a session; the three starting points (R11) are on the screen that opens, under a blank session. The week and the last session are drawn rather than left off, with dashes where the numbers will be: a dash is an absence where a nought would be a score. Done right: from a first open, a starter is a started session in three taps, and the front page already shows the shape it will fill.",
+      "tags": ["free", "new"]
     },
     "track-coach": {
       "code": "T2",
@@ -316,7 +323,7 @@
       "next": "Tap the mark",
       "note": "The unread dot, and nothing else changed.",
       "doc": "The only difference from {{track}} is the dot on the mark, which is the entire reason both plates exist. The mark is a mark and not a dock (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app.",
-      "tags": ["free"]
+      "tags": ["free", "new"]
     },
     "track-open": {
       "code": "T3",
@@ -325,9 +332,9 @@
       "in": "Nav bar › Track, with a session still running",
       "out": "Nav bar",
       "next": "Resume session",
-      "note": "The pill says Resume, in the same place.",
-      "doc": "Backing out of a session leaves it open on purpose, since every change is already written, so Track offers it back. The pill becomes \"Resume\" rather than a second control appearing, and starting a different workout asks whether to resume this one or discard it.",
-      "tags": ["free"]
+      "note": "The session by name, how far in, and Resume where Start was.",
+      "doc": "Backing out of a session leaves it open on purpose, since every change is already written, so Track offers it back. The Today card names it, says how many sets in and when it started, and its button becomes Resume session rather than a second control appearing. Resuming beats everything: nothing here can start a second session over one that is running.",
+      "tags": ["free", "new"]
     },
     "track-planned": {
       "code": "T4",
@@ -335,10 +342,10 @@
       "host": "shell",
       "in": "Nav bar › Track, with a plan that has something for today",
       "out": "Nav bar",
-      "next": "Start upper — the day's name, not \"today's session\"",
-      "note": "Today's session, with last time's numbers, above the pill.",
-      "doc": "When a plan has something for today, the glass card above the pill lists the day's movements with last time's numbers, and the pill starts it. Starting something else is a quiet link under it: offered, not pushed.",
-      "tags": ["paid"]
+      "next": "Start upper, or Start something else",
+      "note": "The day's name, a count, and a button that starts it.",
+      "doc": "When the plan has something for today the Today card is that session: its name, how many movements, and a button named for it. The list of movements with last time's numbers went from here (TR5): it is one tap away inside the session, and on Plan. Start something else, outlined under it, opens {{workout-library}}. This week rings the days the plan trains on, counts sessions against the plan, says what is next, and opens Plan.",
+      "tags": ["paid", "new"]
     },
     "track-interrupted": {
       "code": "T5",
@@ -348,15 +355,26 @@
       "out": "Nav bar",
       "next": "Resume session",
       "note": "Yesterday's session, two sets in, still offered.",
-      "doc": "The case an app that only ever shows \"today\" gets wrong. The session is a day old and still open, and the screen offers it back rather than hiding it or quietly closing it — nothing in Lift ever ends a session on the lifter's behalf.",
-      "tags": ["free"]
+      "doc": "The case an app that only ever shows \"today\" gets wrong. The session is a day old and still open, and the Today card says so in words (Left open yesterday) and offers it back rather than hiding it or quietly closing it — nothing in Lift ever ends a session on the lifter's behalf.",
+      "tags": ["free", "new"]
+    },
+    "track-rest": {
+      "code": "T9",
+      "title": "Track — a rest day",
+      "host": "shell",
+      "in": "Nav bar › Track, on a day the plan does not train",
+      "out": "Nav bar",
+      "next": "Nothing, or Start a session anyway",
+      "note": "Rest day, what is next, and a session offered rather than pushed.",
+      "doc": "A rest day is an answer, not an empty state, so the Today card says Rest day and when the next session is. It is the one state with no silver button: a session is still one tap away, outlined, because a lifter who wants to train on a rest day should not have to argue with the app, and one who does not should not be nagged. Next is said once, on this card, and left off the week under it.",
+      "tags": ["paid", "new", "first"]
     },
 
     "session-empty": {
       "code": "W1",
       "title": "Session — nothing in it yet",
       "host": "pushed",
-      "in": "{{track}} › Start a session",
+      "in": "{{workout-library}} › Blank session",
       "out": "Back arrow — the session stays open",
       "next": "Add exercise, or Your workouts",
       "note": "The clock is already running; the mark sits bottom right.",
@@ -367,34 +385,34 @@
       "code": "W2",
       "title": "Your workouts, empty",
       "host": "pushed",
-      "in": "{{session-empty}} › Your workouts, or Track › See all",
+      "in": "{{track-starters}} › Start a session, or {{session-empty}} › Your workouts",
       "out": "Back arrow",
-      "next": "Add a starter",
-      "note": "The three starters, each one tap from being in the library.",
-      "doc": "Nothing saved yet, so the three starting points take the page (R11): no builder, no catalogue. Each is added with an Undo. Done right: nobody meets a blank page asking them to design a programme before they have trained.",
-      "tags": ["free"]
+      "next": "Blank session, or add a starter",
+      "note": "A blank session, then the three starters. No photographs.",
+      "doc": "Nothing saved yet, so a blank session leads and the three starting points take the page under it (R11): no builder, no catalogue. Each is added with an Undo. The thumbnails on the starters and the photograph behind them went on 1 October: four pictures on a list made it hard to read (TR8). Done right: nobody meets a blank page asking them to design a programme before they have trained.",
+      "tags": ["free", "new"]
     },
     "workout-library": {
       "code": "W3",
       "title": "Your workouts",
       "host": "pushed",
-      "in": "Track › See all, or {{session-empty}} › Your workouts",
+      "in": "{{track}} › Start a session, or {{session-empty}} › Your workouts",
       "out": "Back arrow",
-      "next": "Start, or … for Edit, Duplicate, Delete",
-      "note": "Glass rows over Track's photograph, each with its own Start.",
-      "doc": "Each row does the two things a row is for: Start, and a … for Edit, Duplicate and Delete. There is no preview any more: it was one screen between the lifter and the thing they came to do (finding 7). With a session already open, Start asks whether to resume it or discard it and start this one.",
-      "tags": ["free"]
+      "next": "Start on a row, Blank session, or … for Edit, Duplicate, Delete",
+      "note": "Where a session starts from: a blank one, then each saved workout with its own Start.",
+      "doc": "Track's Start a session lands here (TR2), so a blank session sits above the saved ones; opened from inside a running session it is left off, because the list is filling that session. Each row does the two things a row is for: Start, and a … for Edit, Duplicate and Delete. Solid rows on the soft light the session screen uses, where there were glass rows over Track's photograph (TR8). There is no preview: it was one screen between the lifter and the thing they came to do (finding 7). With a session already open, Start asks whether to resume it or discard it and start this one.",
+      "tags": ["free", "new"]
     },
     "workout-library-open": {
       "code": "W24",
       "title": "Your workouts, one open",
       "host": "pushed",
-      "in": "Track › a workout card, or {{workout-library}} › tap a row",
+      "in": "{{workout-library}} › tap a row",
       "out": "Back arrow",
       "next": "Start",
       "note": "The row opened in place to every movement, sets × reps.",
-      "doc": "What the preview sheet showed, without the sheet. Track's workout cards open the library at their workout, already open. Done right: choosing between a heavy and a light Push takes a glance, not a screen.",
-      "tags": ["free"]
+      "doc": "What the preview sheet showed, without the sheet: the row opens in place, one at a time. Done right: choosing between a heavy and a light Push takes a glance, not a screen.",
+      "tags": ["free", "new"]
     },
     "session": {
       "code": "W6",
@@ -1237,9 +1255,9 @@
       "in": "Nav bar › Track, after a backup run that could not finish",
       "out": "Nav bar",
       "next": "Try again, or carry on training",
-      "note": "A pill only when something needs the lifter, never a status bar.",
-      "doc": "Backup runs at checkpoints (launch, return to the app, Finish, a changed workout), never while logging, and retries on its own. The pill appears only when a run has actually failed and says what to do; a healthy backup is silent on Track, because training is the point of this tab and syncing is not.",
-      "tags": ["free"]
+      "note": "A notice only when something needs the lifter, never a status bar.",
+      "doc": "Backup runs at checkpoints (launch, return to the app, Finish, a changed workout), never while logging, and retries on its own. The notice appears only when a run has actually failed and says what to do, between the greeting and the Today card; a healthy backup is silent on Track, because training is the point of this tab and syncing is not.",
+      "tags": ["free", "new"]
     },
     "track-backup-refused": {
       "code": "T7",
@@ -1250,7 +1268,7 @@
       "next": "See why, in {{account-problems}}",
       "note": "One refused workout never holds up the rest.",
       "doc": "Each workout goes up on its own. One the server refuses is set aside with its reason and waits for an edit, while everything else carries on backing up, so a single bad row cannot block a lifter's whole history.",
-      "tags": ["free"]
+      "tags": ["free", "new"]
     },
     "workout-editor": {
       "code": "W17",
@@ -1360,7 +1378,7 @@
       "next": "Open a session it came from, {{session-past}}",
       "note": "Its best, the estimate over time, the sessions behind it, how it is done.",
       "doc": "Profile listed five bests and nothing behind them, and the question a best raises is \"since when?\" (R9). This answers it with a line: each session's best estimate, drawn by hand rather than with a chart library, with the set behind the best and the Epley caveat said where the number is. Its sessions open. The best is the one Profile showed, on the same rules: working sets only, nothing over 12 reps. Done right: a lifter can say whether the lift is moving, and trace the number to a session they remember.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "exercise-stats-bodyweight": {
       "code": "G14",
@@ -1371,7 +1389,7 @@
       "next": "Its sessions",
       "note": "No weight on the bar: no estimate, and it says why rather than going blank.",
       "doc": "Pull-ups, dips and high-rep work are a full log with nothing for Epley to estimate from. The screen still lists every session and how it is done, and says in one line what would produce an estimate, so an empty tile reads as a rule rather than a bug.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "session-past": {
       "code": "G11",
@@ -1422,7 +1440,10 @@
     { "from": "track", "to": "track-open", "label": "a session is open" },
     { "from": "track", "to": "track-planned", "label": "a plan has today" },
     { "from": "track-open", "to": "track-interrupted", "label": "left overnight" },
-    { "from": "track", "to": "session-empty", "label": "Start a session" },
+    { "from": "track", "to": "workout-library", "label": "Start a session" },
+    { "from": "track-starters", "to": "workout-library-empty", "label": "Start a session" },
+    { "from": "workout-library", "to": "session-empty", "label": "Blank session" },
+    { "from": "track-planned", "to": "track-rest", "label": "a rest day" },
     { "from": "track-open", "to": "session", "label": "Resume session" },
     { "from": "track-planned", "to": "session", "label": "Start upper" },
     { "from": "track", "to": "coach-empty", "label": "the mark" },
