@@ -16,15 +16,15 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen going into build 27",
-    "eyebrow": "apps/mgk_run · the build 27 candidate, drawn from develop before the build is cut",
-    "build": "27 candidate · pubspec still 1.0.0+26",
+    "title": "MGKFitness: Run, every screen at build 27",
+    "eyebrow": "apps/mgk_run · build 27 (1.0.0+27), drawn from develop before the build is cut",
+    "build": "27 · 1.0.0+27, not built yet",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
       "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
       "Signing in is two steps. Apple, Google and 'Continue with email' come first (B8, C14, K2), and the email form is behind the third (K3, new). On one screen the form's Password and Sign up were below the bottom of a 393pt phone.",
-      "The privacy policy says what Apple and Google pass on and names Esri as the map provider (T19), and the deletion messages give run@mgkfitness.mgkcodes.com in place of the studio's address (L5, L6).",
+      "The privacy policy says what Apple and Google pass on, names Esri as the map provider, and says map tiles are kept on the phone (T19). The deletion messages give run@mgkfitness.mgkcodes.com in place of the studio's address (L5, L6).",
       "A confirmation floats as a rounded card above the bottom edge instead of a bar across it (T15). The paywall's renewal terms say 'turned off' where they said 'switched off' (Y1 to Y9). The Plan tab before a plan starts has the same lit ground as the tab in week three (P5).",
       "Re-drawn on 30 Sep with the UI fixes for build 27, every plate at one commit. Fixed, with the \"done right\" line now describing the fixed screen and the old defect kept beside it: G4, G6, G7, H6, P5, T8, K1, T16, F7, S6, C9, G1, R16, R17, R18, R19, R28, R29, R24, T15, C8, P4.",
       "New for build 26: the coach's permission sheet and the notice before any price (C7, C8, C9), reporting a reply (C10 to C12), every paywall answer (Y2 to Y9), the account's subscription states and Manage subscription (T4 to T10), signing out with the erase switch (T11, T12), withdrawing the coach's permission (T13 to T15), every delete-account state (L1 to L7), another account's training on the phone (X1), Precise Location off (R28), finishing and leaving a run (R29, R30), a recovered run (F7, F8), a race too close to plan for (G6, G7) and the Health step (B9).",
@@ -750,7 +750,7 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button. Someone who has been here before is not walked through the intro again.",
+      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button, and signing in before the confirmation email is opened says to check it, in grey. Someone who has been here before is not walked through the intro again.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
@@ -2111,13 +2111,13 @@
       "how": "built",
       "reach": "T13 › Privacy policy",
       "job": "The privacy policy inside the app.",
-      "done": "Matches the published policy. It covers the name the app collects, the profile photo that never leaves the phone, what Apple and Google pass on when a runner signs in with either (an email address and an identifier, nothing else), and names Esri as the map provider.",
+      "done": "Matches the published policy. It covers the name the app collects, the profile photo that never leaves the phone, what Apple and Google pass on when a runner signs in with either (an email address and an identifier, nothing else), Esri as the map provider, and that map tiles are kept on the phone and nowhere else.",
       "files": [
         "lib/src/features/legal/presentation/privacy_policy_screen.dart",
         "lib/src/features/legal/domain/legal_copy.dart"
       ],
       "isnew": "Caught up with the published policy in build 26.",
-      "changed": "Build 27: signing in with Apple or Google, the service that sends account email, and Esri in place of MapTiler."
+      "changed": "Build 27: signing in with Apple or Google, the service that sends account email, Esri in place of MapTiler, and the map tiles the phone keeps."
     },
     "K1": {
       "file": "keep-runs-safe",
