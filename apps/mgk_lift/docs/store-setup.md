@@ -25,9 +25,14 @@ Lift and the stores is in [submission-week.md](submission-week.md).
 
 ---
 
-## 0. First: count Liftio's paying subscribers
+## 0. Liftio's subscribers: ended, not carried over
 
-Everything about the legacy products depends on this number.
+**Decided 1 October 2026, and it reverses what this step used to say.** The plan
+was to leave Liftio's two products on sale, let their subscribers keep renewing,
+and grant each of them the coach in 2.0.0. Matthew does not want the old
+subscription to continue: anyone who wants the coach subscribes to Coach or
+Premium Coach. So nothing is granted, nothing maps the legacy products, and the
+app no longer counts them as Lift's.
 
 - [x] **Old Liftio RevenueCat project** (the React Native app's, not
       `mgk-fitness`) › Overview › *Active subscriptions*. Then Customers,
@@ -38,14 +43,16 @@ Everything about the legacy products depends on this number.
       the monthly product and set to renew; nobody holds the annual one. The
       other two are active with nothing ever spent and set to cancel, which
       looks like access granted by hand.*
-- [ ] Tell me the ids (or "zero"). For each active one I grant `lift` / `paid`
-      with `core.grant_entitlement()` so they open 2.0.0 already unlocked.
-
-**Leave `liftio_monthly` and `liftio_annual` on sale in App Store Connect.** The
-app never offers them (they are not in the offering, step 3), so nobody new can
-buy them, and existing subscribers keep renewing exactly as they do today.
-Taking them off sale is the one move here that could cost a paying customer
-something, and it gains nothing.
+- [ ] **Take `liftio_monthly` and `liftio_annual` off sale** in App Store
+      Connect: each product's page › Availability › *Remove from Sale*. Nobody
+      can buy them afterwards. Read what Apple's confirmation says about
+      existing subscribers before confirming: the expectation is that the two
+      who pay are not renewed and keep what they paid for until the period
+      ends, and it has not been checked.
+- [ ] **Take the two legacy products back out of the `mgk-fitness` RevenueCat
+      project.** They were added on 1 October under the earlier plan (step 3):
+      detach each from `paid`, then delete it from *Lift (App Store)*.
+- [x] No grants. `core.grant_entitlement()` is not run for any Liftio customer.
 
 ## 1. App Store Connect: two new products
 
@@ -146,10 +153,11 @@ secret, and `core.entitlements.app` keeps Run and Lift apart.
       again once a build is on internal testing.*
 - [x] **Products:** add `lift.coach.monthly` and `lift.coach.premium.monthly`
       for the App Store app, the two Play subscriptions for the Play app, and
-      the legacy `liftio_monthly` and `liftio_annual` for the App Store app (so
-      their renewals are recorded here from now on).
-- [x] **Entitlements:** attach Coach and both legacy products to `paid`, and
-      Premium Coach to `premium`. These grant nothing on their own (the webhook
+      the legacy `liftio_monthly` and `liftio_annual` for the App Store app.
+      *The legacy pair was added under the plan as it stood that morning, and
+      comes out again: step 0.*
+- [x] **Entitlements:** attach Coach to `paid` and Premium Coach to `premium`
+      (the legacy pair was attached to `paid` too, and is detached in step 0). These grant nothing on their own (the webhook
       maps product ids), but they make the customer page readable when
       somebody writes in.
 - [x] **Offering:** in the **current** offering (the one Run uses), put Lift's
@@ -189,7 +197,9 @@ back exactly as they are, and if the secret holds anything else, keep that too.
 
 From **Git Bash, not PowerShell**. PowerShell strips the quotes and unmaps both
 apps, which is exactly what happened to Run for thirteen minutes on
-2026-09-11. I can run this for you once the Play ids are confirmed.
+2026-09-11. **Matthew runs it:** Claude Code's auto mode refuses to write a
+secret even with a go-ahead (1 October). The legacy ids are not in it, by the
+decision in step 0.
 
 ```bash
 npx supabase secrets set --project-ref cwpwzxjjhxbkwhrgnasn REVENUECAT_PRODUCTS='{
@@ -200,9 +210,7 @@ npx supabase secrets set --project-ref cwpwzxjjhxbkwhrgnasn REVENUECAT_PRODUCTS=
   "lift.coach.monthly":                 {"app":"lift", "product":"paid"},
   "lift.coach.premium.monthly":         {"app":"lift", "product":"premium"},
   "lift.coach.monthly:monthly":         {"app":"lift", "product":"paid"},
-  "lift.coach.premium.monthly:monthly": {"app":"lift", "product":"premium"},
-  "liftio_monthly":                     {"app":"lift", "product":"paid"},
-  "liftio_annual":                      {"app":"lift", "product":"paid"}
+  "lift.coach.premium.monthly:monthly": {"app":"lift", "product":"premium"}
 }'
 ```
 
@@ -411,7 +419,7 @@ Nothing the app sends needs it yet.
 
 | Step | State | Unblocks |
 |---|---|---|
-| 0 | counted; the ids are still to come | legacy subscribers (I grant, same day) |
+| 0 | decided 1 October: ended, not carried over. Two dashboard actions open | nothing waits on it |
 | 1 + 3 + 4 | done 1 October | a TestFlight build that can sell; a sandbox purchase |
 | 2 | products done; declarations open | an Android build that can sell |
 | 5 | open | purchases reaching `core.entitlements` |

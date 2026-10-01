@@ -44,12 +44,17 @@ class RevenueCatPurchases implements Purchases {
   /// attachment at the one moment it matters.
   String? _userId;
 
-  /// Whether [productId] is one of Lift's, the new tiers or Liftio's legacy
-  /// pair. Play reports a subscription as `product:basePlan`, so the prefix is
-  /// what is compared.
+  /// Whether [productId] is one of Lift's two tiers. Play reports a
+  /// subscription as `product:basePlan`, so the prefix is what is compared.
+  ///
+  /// **Liftio's legacy pair is not Lift's.** `liftio_monthly` and
+  /// `liftio_annual` sit in the same subscription group under the same bundle,
+  /// and until 1 October 2026 they counted here, because the plan was to carry
+  /// those subscriptions over. They are ended instead: nothing maps them to an
+  /// entitlement, so a lifter still holding one must hear "nothing to restore",
+  /// not "restored" in front of a screen that stays locked.
   @visibleForTesting
-  static bool isLiftProduct(String productId) =>
-      productId.startsWith('lift.') || productId.startsWith('liftio_');
+  static bool isLiftProduct(String productId) => productId.startsWith('lift.');
 
   /// Which tier a store product buys. The product id is the only thing both
   /// stores agree on, and the webhook maps the same ids the same way through

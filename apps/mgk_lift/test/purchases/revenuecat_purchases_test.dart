@@ -19,9 +19,12 @@ void main() {
       }
     });
 
-    test("Liftio's legacy pair, which still renews under the same bundle", () {
-      expect(RevenueCatPurchases.isLiftProduct('liftio_monthly'), isTrue);
-      expect(RevenueCatPurchases.isLiftProduct('liftio_annual'), isTrue);
+    test("not Liftio's legacy pair, though it shares the bundle", () {
+      // Those subscriptions are ended, not carried over, and nothing maps them
+      // to an entitlement. Counting one as Lift's would make Restore say
+      // "restored" in front of a screen that stays locked.
+      expect(RevenueCatPurchases.isLiftProduct('liftio_monthly'), isFalse);
+      expect(RevenueCatPurchases.isLiftProduct('liftio_annual'), isFalse);
     });
 
     test("not Run's, though one RevenueCat customer holds both", () {
@@ -45,8 +48,6 @@ void main() {
       RevenueCatPurchases.tierOf('lift.coach.premium.monthly:monthly'),
       EntitlementTier.premium,
     );
-    // Liftio's tiers were a single paid tier.
-    expect(RevenueCatPurchases.tierOf('liftio_annual'), EntitlementTier.paid);
   });
 
   test('a store period reads as a word after a price', () {

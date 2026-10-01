@@ -69,8 +69,9 @@ Settled 2 September 2026. The numbers are kept because other files cite them.
    Android is a first release.
 3. **The legal documents ship without legal review**, at
    `mgkfitness.mgkcodes.com/lift`.
-4. **No annual tier.** Two monthly tiers. Liftio's legacy products keep
-   renewing for whoever holds one
+4. **No annual tier.** Two monthly tiers. *Changed 1 October:* Liftio's legacy
+   subscriptions end rather than carry over. Nothing maps them and nobody is
+   granted access for holding one
    ([store-setup.md](store-setup.md) step 0).
 5. **The web pages live in this repository**, under `web/`, generated from
    `apps/mgk_lift/docs/*.md` by `tool/build_legal_pages.py`.
@@ -100,9 +101,10 @@ recorded as ticked items.
       apps, products, entitlements and offering, Apple's server notifications,
       and the Codemagic group.
 - [ ] **What the sweep left open:**
-      - the ids of Liftio's four active customers, and whether the two who
-        have never paid are granted access (step 0);
-      - `REVENUECAT_PRODUCTS` (step 5);
+      - taking Liftio's two products off sale and out of RevenueCat (step 0):
+        its subscriptions end rather than carry over, decided 1 October;
+      - `REVENUECAT_PRODUCTS` (step 5), which Matthew runs because auto mode
+        refuses to write a secret;
       - confirmation that neither new App Store product still shows the red
         banner, that each Play base plan is `monthly` at £0.99 and £2.99, and
         that the service account holds release permissions;
@@ -216,7 +218,9 @@ release:
       Matthew approves)*. Decided 1 October: the store assets are Claude's to
       design, after Track's UI is settled.
 - [ ] Listing copy, pasted from [store-listing.md](store-listing.md)
-      *(Matthew)*.
+      *(Matthew)*. The *What's New* text has to say that Liftio's old
+      subscription has ended and the coach is a new one, now that legacy
+      subscriptions do not carry over. Not written yet.
 - [ ] Privacy labels and the Data safety form, from the same file *(Matthew)*.
       One check first: RevenueCat's own privacy manifest.
 - [ ] Age rating, content rating, target audience, ads declaration
