@@ -107,7 +107,35 @@ Things settled while building, all small:
 - [x] Board rebuilt (version 17) and republished for Matthew to review.
       Checked against version 16 plate by plate: the nine Track plates and the
       three workouts plates changed, T9 is new, and the other 74 are the same.
-- [ ] Matthew's review of the plates. Changes from it are listed here.
+- [x] Matthew's review of the plates, 1 October: "happy with the screens for
+      now", and he wants to feel it in a build. Nothing changed from it.
+
+## Added on the way to the build
+
+Matthew trained on build 32 that evening, which predates all of this, and
+asked for two things from Run's lane before a new build.
+
+- [x] **The shared motion.** `develop` is merged into this branch, which
+      brings `mgk_ui`'s `TabStack` and the nav bar whose selection travels.
+      The bar is shared, so Lift had that the moment it merged. The shell now
+      uses `TabStack` where it used `IndexedStack`: a change of tab is a
+      short shift and a fade, not a cut, with every tab still kept alive.
+      Nothing else of Run's motion work is shared code.
+- [x] **TR9. The app opens on its mark.** Run's launch
+      (`LaunchCurtain`), rebuilt for Lift in
+      `lib/src/core/launch/launch_curtain.dart`. The icon's two chevrons dip,
+      drive up, and lift LIFT into place under them, with MGKFitness beneath;
+      then the curtain fades at 1.94 seconds. Run's timing and Run's rules:
+      the app loads underneath from the first frame, the curtain takes every
+      touch while it is up, it plays once per cold start and never on coming
+      back from the background, and it is not shown with Reduce Motion on.
+      Stacked where Run's lockup is in a line, because this mark travels up.
+      Plates O1 to O4 are the animation stopped at four moments. Lift's
+      Android and iOS launch windows were already charcoal, so nothing native
+      changed.
+- [ ] **Watched on a phone.** An animation cannot be reviewed from four
+      stills. Run sketched its launch as video first; this one was built
+      straight from Run's numbers and has not been seen moving.
 
 ## Left for later
 
@@ -116,3 +144,5 @@ Things settled while building, all small:
 - The start button is Lift's own copy of the shape Run's Home uses. If both
   keep it, it belongs in `mgk_ui`; moving it means editing Run, which is not
   this lane's to do.
+- The same goes for the launch curtain: the widget around the painter is a
+  copy of Run's, and only the painter differs.

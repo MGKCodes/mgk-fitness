@@ -787,7 +787,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                 context,
               ).padding.copyWith(bottom: _floatingChromeReserve(coach != null)),
             ),
-            child: IndexedStack(
+            // Every tab kept alive, as an IndexedStack keeps them, and the
+            // change between them drawn: a short shift and a fade, in step
+            // with the nav bar's selection travelling. Shared with Run.
+            child: TabStack(
               index: _index,
               children: <Widget>[
                 _withBackup(

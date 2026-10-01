@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/core/config/app_config.dart';
 import 'src/core/database/app_database.dart';
+import 'src/core/launch/launch_curtain.dart';
 import 'src/features/auth/data/phone_training_data.dart';
 import 'src/features/auth/data/supabase_auth.dart';
 import 'src/features/coaching/data/supabase_coach.dart';
@@ -74,6 +75,8 @@ Future<void> main() async {
     MgkLiftApp(
       database: database,
       client: client,
+      // Here and nowhere else: this is the one place a process starts.
+      playLaunch: true,
       // Whose training is on this phone. Only with a server: without one
       // nobody signs in, so there is nobody to ask.
       localData: client == null
@@ -100,7 +103,12 @@ class MgkLiftApp extends StatelessWidget {
     this.client,
     this.purchases,
     this.localData,
+    this.playLaunch = false,
   });
+
+  /// Whether to open with the launch animation. Off unless [main] says so, so
+  /// a test that pumps this widget meets the app and not a curtain over it.
+  final bool playLaunch;
 
   /// Whose training is on this phone. Built once in `main`, like [purchases],
   /// because it remembers the answer it gave for each account.
@@ -129,6 +137,12 @@ class MgkLiftApp extends StatelessWidget {
       title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      // Over the navigator, so the curtain covers whatever the app opens on,
+      // and the app under it is the same one before and after.
+      builder: (context, child) => LaunchCurtain(
+        enabled: playLaunch,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: LiftShell(
         recorder: db == null ? null : DriftSessionRecorder(db),
         // Fixing a past session reuses the session screen, with a recorder

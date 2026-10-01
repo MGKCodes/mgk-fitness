@@ -30,8 +30,9 @@ written here, change the item and say why.
 | Builds | The last Lift builds are from 29 September, commit `4d12c46`: iOS 2.0.0 (32) on TestFlight, and an `.aab` uploaded to Play's internal testing as a draft | Codemagic's build list, 1 October |
 | The stores | Lift's two subscriptions exist on both stores, RevenueCat has both Lift apps with their products in the current offering, and Codemagic holds Lift's keys. `REVENUECAT_PRODUCTS` maps Lift's four ids. Liftio's two legacy products are off sale | Walked through with Matthew on 1 October, from his screenshots of each dashboard. [store-setup.md](store-setup.md) says what is still open |
 
-**Built on 1 October, on the branch `docs/lift-release-checklist`, and not yet
-merged into `develop`:** "Delete my Lift data" taking the progress photos (the
+**Built on 1 October, on the branch `feat/lift-2.0.0-candidate` (called
+`docs/lift-release-checklist` until it was first pushed), and not yet merged
+into `develop`:** "Delete my Lift data" taking the progress photos (the
 function, a migration, the app's wording, the policy and the web page), and
 the support address `lift@mgkfitness.mgkcodes.com` everywhere Lift names one.
 Both are deployed and live (step 1 below): the function, the migration and the
@@ -154,11 +155,20 @@ recorded as ticked items.
 
 ### 2. The release candidate *(Claude, on Matthew's go)*
 
-- [ ] **Track's UI first.** Rebuilt on 1 October as a front page, on the
+- [x] **Track's UI first.** Rebuilt on 1 October as a front page, on the
       layout Run's Home uses, with *Your workouts* reworked beside it
-      ([lift-2.0.0-track.md](lift-2.0.0-track.md)). The new plates (T1 to T9,
-      W2, W3, W24) are on the board. **Waiting on Matthew's review of them**;
-      no build is cut until he has looked.
+      ([lift-2.0.0-track.md](lift-2.0.0-track.md)). Matthew reviewed the
+      plates the same day and asked for a build to feel it on a phone.
+- [x] **Run's shared motion, and a launch of Lift's own.** `develop` is
+      merged in, the tabs move, and the app opens on its mark
+      ([lift-2.0.0-track.md](lift-2.0.0-track.md), *Added on the way to the
+      build*).
+- [ ] **An iOS build from this branch, for Matthew's phone.** Started on 1
+      October from `feat/lift-2.0.0-candidate` rather than from `develop`,
+      because the branch is not merged. It is the first build with the
+      redesign, both sign-in buttons, the new Track and Lift's own RevenueCat
+      key in it. If nothing changes after he has used it, it is the release
+      candidate.
 - [x] `mgk_fitness_lift_env` is named in both Lift workflows in
       `codemagic.yaml`, on this branch. It applies to a build once the branch
       is in `develop`.

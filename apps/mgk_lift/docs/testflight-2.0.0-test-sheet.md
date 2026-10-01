@@ -55,7 +55,10 @@ knowingly*. The ones you will meet on this sheet:
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| A1 | Install and open | Opens on Track, usable, with no sign-in asked for | ☐ |
+| A1 | Install and open | The launch plays: the mark dips, drives up, and LIFT rises under it, with MGKFitness beneath. About two seconds, then Track, usable, with no sign-in asked for | ☐ |
+| A1a | Leave the app and come back | No launch the second time; you are where you left off | ☐ |
+| A1b | Tap between Track, Plan and Profile | Each tab shifts in and fades rather than cutting, and the bar's highlight slides to the tab you chose | ☐ |
+| A1c | *(Optional)* Settings › Accessibility › Reduce Motion on, then a cold start | No launch animation, and tabs change at once | ☐ |
 | A2 | *(Upgrade)* Open on a phone that had 1.4.0 | Opens; does not crash on the old app's data | ☐ |
 | A3 | *(Upgrade)* Sign in as the 1.4.0 account and look for your history | **Never seen either way.** Write down exactly what arrives: sessions, dates, weights, photos | ☐ |
 | A4 | The name under the icon | `Lift` | ☐ |

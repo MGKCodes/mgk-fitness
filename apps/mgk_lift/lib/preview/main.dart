@@ -59,6 +59,7 @@ import '../src/features/stats/presentation/exercise_stats_screen.dart';
 import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
 import '../src/features/tracking/presentation/session_summary_screen.dart';
+import '../src/core/launch/launch_curtain.dart';
 import 'fakes.dart';
 
 /// A harness for reviewing screens one at a time.
@@ -106,6 +107,13 @@ class PreviewApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screens = <String, WidgetBuilder>{
+      // The launch, stopped at four moments: an animation cannot be reviewed
+      // from one frame, and cannot be photographed while it moves.
+      'launch-mark': (_) => _launchAt(0.10),
+      'launch-dip': (_) => _launchAt(0.54),
+      'launch-drive': (_) => _launchAt(0.70),
+      'launch-rest': (_) => _launchAt(1.50),
+
       // **Every shell entry carries a coach**, because production does: main.dart
       // passes one whenever Supabase is configured, and the shell draws the mark
       // — and reserves the room above the nav bar for it — only when there is
@@ -1053,6 +1061,17 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
+
+/// The launch curtain as it is [seconds] in, with nothing under it.
+Widget _launchAt(double seconds) => ColoredBox(
+  color: AppColors.bg,
+  child: CustomPaint(
+    painter: LaunchMarkPainter(
+      progress: seconds * 1000 / kLaunchDuration.inMilliseconds,
+    ),
+    child: const SizedBox.expand(),
+  ),
+);
 
 /// The Wednesday before [previewNow]: a day the plan below rests on.
 final DateTime _restDay = DateTime(2026, 8, 5, 18, 30);

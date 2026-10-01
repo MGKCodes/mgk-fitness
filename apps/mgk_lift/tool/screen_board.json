@@ -22,10 +22,17 @@
     "in/out/next follow docs/navigation.md, which is the audit these answer to."
   ],
 
-  "previous": "1 October 2026, version 16",
-  "since": "Track rebuilt as a front page, on the layout Run's Home uses: a Today card that carries the start button, the week as days and times, and the last session. Your workouts left Track, gained a blank session, and lost its photographs (docs/lift-2.0.0-track.md)",
+  "previous": "1 October 2026, version 17",
+  "since": "the launch: the app opens on its mark, as Run does. Every plate with the nav bar is redrawn too, because the bar is shared and its selection now sits on a soft plate that travels between tabs",
 
   "acts": [
+    {
+      "letter": "O",
+      "title": "Opening the app",
+      "sub": "Two seconds, once per cold start, with the app loading underneath",
+      "lede": "The app used to drop straight into Track while it was still reading the log. It opens now on its own mark: the icon's two chevrons dip, drive up, and lift the name into place under them, with the studio's name beneath, and then the curtain fades and Track is there. The same launch as Run's turned through a right angle, with Run's timing, so the two apps open alike. It costs no time, because the app is built under it from the first frame; it takes every touch while it is up; it does not play on coming back from the background, so a lifter reopening the app between sets goes straight to the session; and it is not shown at all with Reduce Motion on. These four plates are the animation stopped: it has to be watched on a phone.",
+      "racks": [{ "title": "The launch, stopped", "screens": ["launch-mark", "launch-dip", "launch-drive", "launch-rest"] }]
+    },
     {
       "letter": "S",
       "title": "Signing in",
@@ -130,6 +137,50 @@
   ],
 
   "screens": {
+    "launch-mark": {
+      "code": "O1",
+      "title": "Launch — the mark",
+      "host": "pushed",
+      "in": "A cold start",
+      "out": "None: it takes no input",
+      "next": "It dips",
+      "note": "The icon's mark, where the icon had it.",
+      "doc": "The first frame Flutter draws, on the same charcoal as the launch window, so the system's own launch screen becomes this without a change of colour. The two chevrons are the icon's geometry, drawn rather than loaded.",
+      "tags": ["free", "new", "first"]
+    },
+    "launch-dip": {
+      "code": "O2",
+      "title": "Launch — the dip",
+      "host": "pushed",
+      "in": "0.2 to 0.56 seconds",
+      "out": "None",
+      "next": "It drives up",
+      "note": "Smaller, lower, and drawn in on itself.",
+      "doc": "The wind-up. Run's mark draws back before it dashes; this one sinks and its chevrons close up, the way a lift starts by going down.",
+      "tags": ["free", "new", "first"]
+    },
+    "launch-drive": {
+      "code": "O3",
+      "title": "Launch — the drive",
+      "host": "pushed",
+      "in": "0.56 to 1.02 seconds",
+      "out": "None",
+      "next": "It lands",
+      "note": "The mark going up, the name rising after it, the air falling past.",
+      "doc": "The mark drives up and opens out again, trailing where it was a moment ago. The name comes up from under its own baseline a beat behind, as if carried, and thin lines fall past either side of it and never across it.",
+      "tags": ["free", "new", "first"]
+    },
+    "launch-rest": {
+      "code": "O4",
+      "title": "Launch — at rest",
+      "host": "pushed",
+      "in": "1.4 seconds, held until 1.62",
+      "out": "The curtain fades, gone at 1.94 seconds",
+      "next": "{{track}}",
+      "note": "The mark above LIFT, the studio's name under both.",
+      "doc": "Stacked, where Run's lockup is in a line: each mark rests at the leading end of its name, and this one travels up. The name is the wordmark Track's header carries, set in type rather than drawn. Then the curtain lifts by fading and growing a touch, and the app behind it settles from a touch large.",
+      "tags": ["free", "new", "first"]
+    },
     "settings-coach": {
       "code": "A9",
       "title": "Settings — the coach switch",
@@ -367,7 +418,7 @@
       "next": "Nothing, or Start a session anyway",
       "note": "Rest day, what is next, and a session offered rather than pushed.",
       "doc": "A rest day is an answer, not an empty state, so the Today card says Rest day and when the next session is. It is the one state with no silver button: a session is still one tap away, outlined, because a lifter who wants to train on a rest day should not have to argue with the app, and one who does not should not be nagged. Next is said once, on this card, and left off the week under it.",
-      "tags": ["paid", "new", "first"]
+      "tags": ["paid", "new"]
     },
 
     "session-empty": {
