@@ -17,9 +17,12 @@ export default function LiftSupportPage() {
       <p className="eyebrow">MGKFitness: Lift</p>
       <h1>Support</h1>
       <p className="lede">
-        Email <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>. It is
-        read by the person who built the app, so please say what you were doing
-        when it went wrong as well as what went wrong.
+        Email{" "}
+        <a href="mailto:lift@mgkfitness.mgkcodes.com">
+          lift@mgkfitness.mgkcodes.com
+        </a>
+        . It is read by the person who built the app, so please say what you
+        were doing when it went wrong as well as what went wrong.
       </p>
 
       <h2>A workout did not save, or did not back up</h2>

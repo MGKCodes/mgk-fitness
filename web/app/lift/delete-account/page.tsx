@@ -50,8 +50,12 @@ export default function LiftDeleteAccountPage() {
 
       <h2>If you have uninstalled it</h2>
       <p>
-        Email <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a> from the
-        address your account uses, with <strong>Delete my Lift account</strong>{" "}
+        Email{" "}
+        <a href="mailto:lift@mgkfitness.mgkcodes.com">
+          lift@mgkfitness.mgkcodes.com
+        </a>{" "}
+        from the address your account uses, with{" "}
+        <strong>Delete my Lift account</strong>{" "}
         as the subject, and say whether you mean Lift&rsquo;s data or the whole
         account. We confirm when it is done.
       </p>
@@ -73,6 +77,7 @@ export default function LiftDeleteAccountPage() {
       <ul>
         <li>your workouts, their movements and sets, and your saved workouts</li>
         <li>your training plans and the answers you gave to build them</li>
+        <li>your progress photos, the picture files as well as the records</li>
         <li>
           your coach conversations, including the rolling summary written from
           them
@@ -80,19 +85,9 @@ export default function LiftDeleteAccountPage() {
       </ul>
       <p>Deleting your whole account erases all of that, and also:</p>
       <ul>
-        <li>your progress photos, the picture files as well as the records</li>
         <li>everything MGKFitness: Run holds for you</li>
         <li>your login</li>
       </ul>
-      <div className="card">
-        <p>
-          <strong>Progress photos belong to your MGKFitness account</strong>,
-          not to Lift alone, so deleting only Lift&rsquo;s data keeps them. To
-          remove them without deleting your account, delete them in the app
-          first: each one can be deleted on its own, and a deleted photo leaves
-          our servers straight away.
-        </p>
-      </div>
       <p>
         <strong>It cannot be undone</strong>, by you or by us. There is no
         recovery window and no backup we can restore from. Your phone keeps its
