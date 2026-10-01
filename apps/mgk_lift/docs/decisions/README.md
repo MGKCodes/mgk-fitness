@@ -28,4 +28,6 @@ belong to it:
 - [0025 — A coach conversation is a session, bounded by silence](../../../mgk_run/docs/decisions/0025-a-coach-conversation-is-a-session.md).
 - [0030 — The coach is the paid half, on both apps](../../../mgk_run/docs/decisions/0030-the-coach-is-the-paid-half.md).
 - [0042 — A screen that leads with its photograph may carry it at strength](../../../mgk_run/docs/decisions/0042-a-screen-that-leads-with-its-photograph.md):
-  Track and Sign in, from the redesign's R1.
+  Sign in, from the redesign's R1. Track was the other screen it was written
+  for, until Track was rebuilt on 1 October with the photograph as texture
+  ([lift-2.0.0-track.md](../lift-2.0.0-track.md), TR7).

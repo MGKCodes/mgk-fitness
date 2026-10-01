@@ -16,7 +16,7 @@ Documents tier by **lifecycle, not topic**, the same rule Run follows:
 
 Open work. Start with the first.
 
-**Lift's release is worked from these five files and nothing else.** Run's
+**Lift's release is worked from these four files and nothing else.** Run's
 plans, runbooks and checklists are not inputs to Lift's work and are not to be
 read or edited for it; where a step touches something both apps share (a
 secret, an account, a workflow file), the step says so itself. Lift's work
@@ -30,10 +30,7 @@ happens in its own worktree, never in a checkout another session is using
 - **[store-listing.md](store-listing.md)** — every listing and privacy field,
   drafted for pasting.
 - **[testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md)** — the
-  form. Carried to a phone with the release candidate, ticked, handed back.
-- **[lift-2.0.0-track.md](lift-2.0.0-track.md)** — Track rebuilt as a front
-  page, and *Your workouts* with it: TR1 to TR8, decided 1 October. Built;
-  open until Matthew has reviewed the plates.
+  form. Carried to a phone with build 41, ticked, handed back.
 
 Closed, and kept because the code and the screen board cite their decisions by
 number:
@@ -42,6 +39,9 @@ number:
 - **[lift-2.0.0-logging-rework.md](lift-2.0.0-logging-rework.md)** — D1 to D6.
 - **[design-review-2026-09-30.md](design-review-2026-09-30.md)** — the nineteen
   findings the redesign answered.
+- **[lift-2.0.0-track.md](lift-2.0.0-track.md)** — TR1 to TR9: Track as a
+  front page, *Your workouts* reworked, and the launch. It replaces the
+  redesign's Track (R1, R12 and the workouts row).
 
 ## History
 

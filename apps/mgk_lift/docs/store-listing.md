@@ -66,7 +66,7 @@ gym,workout log,weightlifting,strength,tracker,sets,reps,rest timer,progress pho
 > - Every set is saved on your phone the moment you tick it. No signal needed.
 >
 > YOUR WORKOUTS
-> - Save a session as a workout and start it again in one tap.
+> - Save a session as a workout and start it again with every set laid out.
 > - A saved workout learns from how you train: remove a movement and it stays
 >   removed next time.
 > - Every session is there to open, fix or delete, grouped by week.
@@ -96,9 +96,18 @@ gym,workout log,weightlifting,strength,tracker,sets,reps,rest timer,progress pho
 
 **What's New**
 
+*Draft.* The second paragraph was added on 1 October, when it was decided that
+Liftio's subscriptions end rather than carry over (store-setup.md step 0). The
+first paragraph's promise that history carries over is still unproved on a
+phone (submission-week.md, section 3).
+
 > Liftio is now MGKFitness: Lift, rebuilt from the ground up, so the icon and
 > name on your home screen have changed. Your account and backed-up history
 > carry over: sign in the same way you did before.
+>
+> Liftio's old subscription has ended and does not carry into this version.
+> Tracking your training is free. The AI coach is a new, optional
+> subscription.
 >
 > New: saved workouts that start ready-filled and learn from your sessions, a
 > rest timer that reaches your lock screen, every session editable, sign in

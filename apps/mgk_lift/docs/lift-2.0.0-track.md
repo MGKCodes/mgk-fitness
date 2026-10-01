@@ -1,17 +1,21 @@
 # Lift 2.0.0: Track, rebuilt as a front page
 
+> **Closed, 1 October 2026.** Built, reviewed on the screen board, shipped to
+> Matthew's phone in build 41 and approved there, the launch included. Merged
+> into `develop` the same day. Kept as the record of decisions TR1 to TR9,
+> which the code and the screen board cite. Where it differs from
+> [lift-2.0.0-redesign.md](lift-2.0.0-redesign.md) on Track (R1's photograph
+> at strength, R12's one big number, the workouts row and the action pill),
+> this is what was built last. What is left before the stores is in
+> [submission-week.md](submission-week.md).
+
 Decided with Matthew on 1 October 2026, after the dashboard sweep. Track as
 built on 30 September (a photograph across the top, one big number, a row of
 workout cards, an action pill anchored at the foot) is replaced by the layout
 Run's Home uses: a quiet backdrop, a greeting, and three cards, with the main
 button inside the first card rather than floating under everything.
 
-This is the last piece of UI before the release candidate
-([submission-week.md](submission-week.md), *What is left*, 2). No build is cut
-until Matthew has looked at the new plates on the screen board.
-
-Tick items as they land, and when something is settled differently from how it
-is written here, change the item and say why.
+It was the last piece of UI before the release candidate.
 
 ## What was decided
 
@@ -146,3 +150,8 @@ asked for two things from Run's lane before a new build.
   this lane's to do.
 - The same goes for the launch curtain: the widget around the painter is a
   copy of Run's, and only the painter differs.
+- `ActionPill` and `HeroStatTile` in `mgk_ui` were made for the Track this
+  replaced, and neither app uses them now. Their comments, and one in
+  `photo_backdrop.dart`, still name Track as a screen that leads with its
+  photograph. Removing a shared widget is a change to both apps' package, so
+  it is left for a pass that has both lanes' agreement.

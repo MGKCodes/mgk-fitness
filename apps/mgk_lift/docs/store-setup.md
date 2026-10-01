@@ -79,12 +79,13 @@ the existing subscription group (the one holding `liftio_monthly`).
       app, and they were sized against Run's £0.99 / £2.99 at the Small
       Business Program's 15% rate (Run's ADR-0029). Pricing Lift's Coach higher
       is fine; pricing it lower makes every Lift conversation cost more than it
-      earns. Liftio's £1.99 is not a constraint: its subscribers keep their
-      product.
+      earns. Liftio's £1.99 is not a constraint: that subscription has ended
+      (step 0).
 - [ ] **A review screenshot per product** (1290 × 2796, no transparency). The
-      sales screen is what it should show: plate P8 on the screen board. It is
-      rendered with the store screenshots, at that size, from the release
-      candidate.
+      sales screen is what it should show: plate P8 on the screen board.
+      Rendered on 1 October, and the sales screen has not changed since:
+      `apps/mgk_lift/screenshots/store/subscription-review-1290x2796.png`
+      (not in git). Upload it to both products.
 - [ ] **Review notes per product:** "The coach, training plans and progress
       photos are the paid half. Tracking, saved workouts, history and stats are
       free with no account."
@@ -184,9 +185,10 @@ secret, and `core.entitlements.app` keeps Run and Lift apart.
   - `REVENUECAT_GOOGLE_KEY` = Lift's `goog_…` key, Secure
 - [x] `mgk_fitness_lift_env` is named in both Lift workflows in
       `codemagic.yaml`. It was commented out until the group existed, because a
-      workflow naming a missing group may fail before any script runs. The
-      change is on the Lift branch: a build reads the file from the branch it
-      builds, so it applies once that branch is in `develop`.
+      workflow naming a missing group may fail before any script runs. A
+      build reads the file from the branch it builds. Build 41 read it from
+      the Lift branch, and it has been on `develop` since that branch was
+      merged on 1 October.
 
 ## 5. Supabase: map Lift's products
 
