@@ -806,15 +806,19 @@ workflows:
   #  2. **A Google Play service account.** Play Console ▸ Setup ▸ API access ▸
   #     link a Google Cloud project, create a service account, grant it Release
   #     manager. Download the JSON and paste it into a secure variable named
-  #     GCLOUD_SERVICE_ACCOUNT_CREDENTIALS in the group below.
+  #     GCLOUD_SERVICE_ACCOUNT_CREDENTIALS in the group below. **Done:** it is
+  #     the suite's `mgk-fitness-play-publisher`, in the group
+  #     `mgk_fitness_play`, and it was given access to Lift's app on 1 October
+  #     2026. Whether that access includes releasing is the one thing the first
+  #     published build finds out.
   #
   #  3. **Upload the first bundle BY HAND.** The Play Developer API cannot
   #     create an app listing — it can only add a release to one that exists —
   #     so the very first `.aab` has to go through the Play Console UI, along
   #     with the store listing, content rating and Data safety form. Every build
-  #     after that publishes through this workflow. Set `publishing` aside until
-  #     then: with no listing, the upload step fails after a successful build,
-  #     which reads like a broken pipeline rather than a missing prerequisite.
+  #     after that publishes through this workflow. **Done on 30 September
+  #     2026:** build 33, as a draft on internal testing, which is why
+  #     `publishing` below is live.
   #
   # There is no App Store Connect integration here and no `ios_signing`; an
   # Android build needs neither, and naming them would imply Apple credentials
@@ -848,6 +852,15 @@ workflows:
         - mgk_fitness_supabase
         # Lift's RevenueCat keys — see lift-ios-release.
         - mgk_fitness_lift_env
+        # Holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS, the suite's own Play
+        # service account — see the long note in `run-android-release`, which
+        # says why it is not frunt's and why one credential serves both apps.
+        #
+        # LIVE SINCE 2026-10-01, in step with the `publishing:` block at the
+        # end of this workflow. They are one switch: this group exists here
+        # only to feed that block. If publishing is turned back off, comment
+        # this out with it.
+        - mgk_fitness_play
       flutter: stable
     scripts:
       - name: Generate config/app_config.json from secure vars
@@ -936,13 +949,40 @@ workflows:
       # there is no way to symbolicate a crash after the fact.
       - build/app/outputs/mapping/**/mapping.txt
       - apps/mgk_lift/build/app/outputs/mapping/**/mapping.txt
-    # Commented until the listing exists — see setup step 3. Uncommenting before
-    # the first manual upload turns a working build into a failing one.
-    # publishing:
-    #   google_play:
-    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-    #     track: internal
-    #     submit_as_draft: true
+    # LIVE SINCE 2026-10-01. It was commented out until the listing existed
+    # (setup step 3) and the service account could reach it (step 2); both are
+    # true now.
+    #
+    # **If this step fails and the build was green, the `.aab` is still in the
+    # artifacts** and can be uploaded by hand. The likeliest reason is the
+    # service account lacking release permission on Lift's app, which nothing
+    # in this repository can check: Play Console ▸ Users and permissions ▸
+    # the service account ▸ App permissions ▸ Lift ▸ Release to testing tracks.
+    #
+    # THE `mgk_fitness_play` GROUP ABOVE IS PART OF THIS. Turn one off and
+    # turn the other off with it.
+    publishing:
+      google_play:
+        # The deprecated name, deliberately, and for Run's reason: the group
+        # holds the credential under this name. See `run-android-release` for
+        # the order in which to change it.
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        # **true here, where Run's is false, and the difference is the app's
+        # state on Play rather than a preference.**
+        #
+        # Lift has never had a release rolled out on any track: its one upload
+        # sits on internal testing as a draft. Play calls that a draft app and
+        # refuses anything but a draft release for it ("Only releases with
+        # status draft may be created on draft app"), so `false` fails the
+        # upload after a green build.
+        #
+        # What `true` costs is what it cost Run on build 24: the bundle
+        # uploads, the build is green, and **testers see nothing until the
+        # draft is rolled out by hand** in Play Console ▸ Testing ▸ Internal
+        # testing. Do that once for the first build, then change this to
+        # `false` so every later build reaches the testers on its own.
+        submit_as_draft: true
 
   run-android-release:
     name: Run — Android
@@ -1157,9 +1197,9 @@ workflows:
     # credentials this block reads; turn one off and turn the other off with it,
     # or the build fails on a group it cannot resolve.
     #
-    # Lift's equivalent, a few hundred lines up, stays commented — it has no
-    # Play listing to publish to, and uncommenting it would fail on the listing
-    # rather than on anything in this repository.
+    # Lift's equivalent, a few hundred lines up, has been live since 2026-10-01
+    # and reads the same group. It publishes as a draft, because Lift's app has
+    # no rolled-out release yet; see the note on its own flag.
     publishing:
       google_play:
         # **This name is deprecated and has to change, but not on its own.**

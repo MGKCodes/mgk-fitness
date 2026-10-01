@@ -125,12 +125,22 @@ None of this waits on anything else.
 - [x] **iOS: 2.0.0 (41)**, on TestFlight since 1 October. `develop` now holds
       the same app code, so it does not need building again unless something
       changes.
+- [x] **Android publishing is wired in**, since 1 October: the workflow names
+      the `mgk_fitness_play` group and publishes to the internal track. Not
+      yet exercised, because no build has run since.
 - [ ] **Android.** Build `lift-android-release` from `develop`
-      (`scripts/codemagic-build.sh lift-android-release develop`). Its
-      `publishing:` block is still commented out: either upload the `.aab` to
-      internal testing by hand, or uncomment the block and name the group that
-      holds the Play credentials, once the service account's release
-      permissions are confirmed (step 1).
+      (`scripts/codemagic-build.sh lift-android-release develop`). Two things
+      to expect from the first one:
+      - **It publishes as a draft**, because Lift's app has no rolled-out
+        release yet and Play refuses anything else for such an app. Testers
+        see nothing until the draft is rolled out by hand: Play Console ›
+        Testing › Internal testing. After that first rollout, change
+        `submit_as_draft` to `false` in `codemagic.yaml`, as Run's is, so
+        later builds reach testers on their own.
+      - **If the publishing step fails on a green build**, the likeliest cause
+        is the service account lacking release permission on Lift's app
+        (step 1). The `.aab` is still in the build's artifacts and can be
+        uploaded by hand.
 - [ ] **RevenueCat's check on Play purchases** ("package name was not found")
       clears once that build is on internal testing. Look again then.
 - [ ] **Tag what is built.** The suite's rule is that what shipped is a tag,
@@ -248,7 +258,7 @@ release:
 | A build of the shipping app on internal testing | Open: step 2 |
 | `INTERNET` in the release manifest | Done |
 | Subscriptions as base plans | Done 1 October; prices to confirm (step 1) |
-| Service-account access, then `publishing:` in the workflow | Access granted 1 October; release permissions unconfirmed; `publishing:` still commented out |
+| Service-account access, then `publishing:` in the workflow | Access granted 1 October; release permissions unconfirmed. `publishing:` is live, as a draft to the internal track; no build has used it yet |
 | Phone screenshots, feature graphic, 512×512 icon | Icon done; the rest open |
 | Short and full description | Drafted in store-listing.md |
 | Content rating, target audience, ads declaration | Open; answers drafted |
