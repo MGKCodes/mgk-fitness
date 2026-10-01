@@ -33,6 +33,7 @@ import 'src/features/history/data/drift_run_repository.dart';
 import 'src/features/history/data/reported_run_backup.dart';
 import 'src/features/history/data/run_editor.dart';
 import 'src/features/history/data/supabase_restore.dart';
+import 'src/core/launch/launch_curtain.dart';
 import 'src/features/history/data/supabase_run_backup.dart';
 import 'src/features/recording/data/basemap_cache.dart';
 import 'src/features/recording/data/geolocator_location_source.dart';
@@ -63,6 +64,8 @@ Future<void> main() async {
       isConfigured: configured,
       database: db,
       phone: db == null ? null : _phoneServices(db),
+      // Here and nowhere else: this is the one place a process starts.
+      playLaunch: true,
     ),
   );
 
@@ -131,7 +134,12 @@ class RunioApp extends StatelessWidget {
     required this.isConfigured,
     this.database,
     this.phone,
+    this.playLaunch = false,
   });
+
+  /// Whether to open with the launch animation. Off unless [main] says so, so
+  /// a test that pumps this widget meets the app and not a curtain over it.
+  final bool playLaunch;
 
   /// Whether Supabase config was supplied at build time. When false the app
   /// shows [ConfigMissingScreen] instead of trying to reach a backend.
@@ -152,14 +160,15 @@ class RunioApp extends StatelessWidget {
       title: kProductName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      // Above the navigator, so a route pushed from anywhere -- deleting the
-      // account from Privacy & legal, say -- reaches the same stores.
-      builder: phone == null
-          ? null
-          : (context, child) => PhoneScope(
-              phone: phone,
-              child: child ?? const SizedBox.shrink(),
-            ),
+      builder: (context, child) {
+        Widget app = child ?? const SizedBox.shrink();
+        // Above the navigator, so a route pushed from anywhere -- deleting the
+        // account from Privacy & legal, say -- reaches the same stores.
+        if (phone != null) app = PhoneScope(phone: phone, child: app);
+        // Over everything, the navigator included: the app loads underneath
+        // while the mark becomes the word.
+        return LaunchCurtain(enabled: playLaunch, child: app);
+      },
       home: isConfigured && db != null && phone != null
           ? _AppRoot(db: db, phone: phone)
           : const ConfigMissingScreen(),
