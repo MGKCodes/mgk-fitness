@@ -34,12 +34,12 @@ Updated 2026-10-01.
 | | |
 |---|---|
 | **On testers' phones** | 1.0.0 (26): TestFlight from `431db9c`, Play internal from `54e7487`, tagged `run/build-26` |
-| **Release candidate** | **Build 27, not cut.** The pubspec still reads `1.0.0+26` |
+| **Release candidate** | **Build 27, not cut.** The pubspec reads `1.0.0+27`; nothing has been built from it |
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,873 tests pass and the analyzer is clean on 2026-10-01, with the map cache in, with the three `live` tests excluded. This is the only place the count is written |
-| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 24, every plate drawn at `0945374` |
+| **Suite** | 1,874 tests pass and the analyzer is clean at `3ead35d`, with the three `live` tests excluded. This is the only place the count is written |
+| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 25, every plate drawn at `3ead35d` |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -50,10 +50,11 @@ Updated 2026-10-01.
 
 The code for build 27 is written: the Esri tile grid and a credit that can be
 seen, the policy naming Esri, sign-in in two steps so Sign up is on the screen,
-a new password of eight characters as in Lift, a read of the sign-in and
-deletion code that came from the Lift lane, and a map that keeps the tiles it
-has been shown and loads the ones around the runner when the app opens. What
-is left here is not code.
+a new password of eight characters as in Lift, a plain answer to signing in
+before the confirmation email is opened, a read of the sign-in and deletion
+code that came from the Lift lane, and a map that keeps the tiles it has been
+shown and loads the ones around the runner when the app opens. What is left
+here is not code.
 
 - [ ] **Codemagic group `mgk_fitness_run_env`:** set `MAP_TILE_URL_TEMPLATE`
       and `MAP_ATTRIBUTION` to Esri's. Owner's step; the values are the two
@@ -67,13 +68,10 @@ is left here is not code.
 
 ### 2. Cut build 27
 
-- [ ] `apps/mgk_run/pubspec.yaml` to `1.0.0+27`, committed on `develop`.
-- [ ] [The test sheet](testflight-1.0.0-test-sheet.md) rewritten for 27. It
-      needs rows it does not have: Sign in with Apple (natively on the iPhone,
-      through the browser on Android), Google on both, "Forgot your password?"
-      from the email to a new password, a new sign-up that waits for its
-      confirmation email, deleting an account that has an Apple identity, and
-      the map with no signal (below).
+- [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+27` (`c0375bb`).
+- [x] [The test sheet](testflight-1.0.0-test-sheet.md) is rewritten for 27,
+      with a section for signing in (S) and one for the map (M). Its header
+      still says "not cut yet": write the two commits in when the builds exist.
 - [ ] Both workflows fired from the same commit on `develop`:
       `scripts/codemagic-build.sh run-ios-release develop` and
       `scripts/codemagic-build.sh run-android-release develop`.

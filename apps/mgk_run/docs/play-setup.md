@@ -239,7 +239,7 @@ do not change an answer here without changing the policy with it.
         [store-setup.md](store-setup.md) §9 (the same account App Review
         gets; its row names no store, so the app reads right on Android)
       - Any other information: *"On the first screen tap 'I already have an
-        account' and sign in. This account already has the coach
+        account', then 'Continue with email', and sign in. This account already has the coach
         subscription, so please do not buy on it. Recording runs needs no
         account; the coach, plans and backup need one. The first time you open
         the coach it asks permission to send training data to the AI provider,
