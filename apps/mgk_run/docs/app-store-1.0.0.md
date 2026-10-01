@@ -33,13 +33,13 @@ Updated 2026-10-01.
 
 | | |
 |---|---|
-| **On testers' phones** | 1.0.0 (26): TestFlight from `431db9c`, Play internal from `54e7487`, tagged `run/build-26` |
-| **Release candidate** | **Build 27, not cut.** The pubspec reads `1.0.0+27`; nothing has been built from it |
+| **On testers' phones** | 1.0.0 (27): TestFlight from `b0384be`, Play internal from `080d760`, which differs from it in `codemagic.yaml` only. Not tagged yet. The iOS build was signed with `mgkfitness_distribution`, the first on MGKFitness's own certificate |
+| **Release candidate** | **Build 28, not cut.** Its code is written and the pubspec still reads `1.0.0+27` |
 | **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
-| **Suite** | 1,874 tests pass and the analyzer is clean at `3ead35d`, with the three `live` tests excluded. This is the only place the count is written |
-| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 25, every plate drawn at `3ead35d` |
+| **Suite** | 1,920 tests pass and the analyzer is clean with build 28's code, with the three `live` tests excluded. Lift's 860 and the shared package's 90 pass against the changed nav bar. This is the only place the count is written |
+| **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 25, is build 27's. Build 28's plates are drawn and captioned (138, seven of them new) and are published once its code is committed, because a plate is stamped with the commit it was drawn at |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -48,42 +48,40 @@ Updated 2026-10-01.
 
 ### 1. Before the cut
 
-The code for build 27 is written: the Esri tile grid and a credit that can be
-seen, the policy naming Esri, sign-in in two steps so Sign up is on the screen,
-a new password of eight characters as in Lift, a plain answer to signing in
-before the confirmation email is opened, a read of the sign-in and deletion
-code that came from the Lift lane, and a map that keeps the tiles it has been
-shown and loads the ones around the runner when the app opens. What is left
-here is not code.
+Build 27 was built, reached both stores, and was opened. Six things came out of
+that first look, and they are build 28: a launch animation (the icon's mark
+dashes across and leaves the name behind it), tabs that slide and fade instead
+of cutting, deleting a run,
+a treadmill run from Home, *Adjust this week* moved to the Plan tab, and race
+week as a week of its own with race day drawn on the plan
+([ADR-0044](decisions/0044-race-week-is-a-week-of-its-own.md)). The code is
+written and tested. What is left here is not code.
 
-- [ ] **Codemagic group `mgk_fitness_run_env`:** set `MAP_TILE_URL_TEMPLATE`
-      and `MAP_ATTRIBUTION` to Esri's. Owner's step; the values are the two
-      under those names in the local `config/app_config.json`. Until it is
-      done, a Codemagic build still fetches MapTiler's tiles, which the policy
-      in that same build no longer names. Nothing else changes: the app reads
-      Esri's 512-point grid off the template.
+- [ ] **Lift gets the nav bar's moving selection too.** It is in the shared
+      package, so Lift's next build has it and Lift's board is stale on every
+      plate that shows the bar. Lift's suite passes against it. Say so in
+      Lift's lane before its next cut.
 - [ ] **The published policy goes live with the build, not before.** The pages
       under `web/public/run/` name Esri now. They reach the site when `web/`
-      next goes to `main`, and build 26 on testers' phones still uses MapTiler.
+      next goes to `main`.
 
-### 2. Cut build 27
+### 2. Cut build 28
 
-- [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+27` (`c0375bb`).
-- [x] [The test sheet](testflight-1.0.0-test-sheet.md) is rewritten for 27,
-      with a section for signing in (S) and one for the map (M). Its header
-      still says "not cut yet": write the two commits in when the builds exist.
+- [ ] `apps/mgk_run/pubspec.yaml` to `1.0.0+28`, in a commit of its own.
+- [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 28, with
+      rows for the launch (A7 to A11), the treadmill run (C27), race week (D4,
+      D19, D20) and deleting a run (E18 to E20). Its header still says "not cut
+      yet": write the two commits in when the builds exist.
 - [ ] Both workflows fired from the same commit on `develop`:
       `scripts/codemagic-build.sh run-ios-release develop` and
       `scripts/codemagic-build.sh run-android-release develop`.
-- [ ] On the iOS build, confirm Codemagic signed with the profile on
-      `mgkfitness_distribution` (expires 2027-09-30). It holds Frunt's key as
-      well, and this is the first Run build on MGKFitness's own.
-- [ ] Tag `run/build-27` on the commit Codemagic checked out, with both build
-      records in the message.
+- [ ] Tag `run/build-27` on `080d760` and `run/build-28` on the commit
+      Codemagic checks out, each with both build records in the message. 27 is
+      tagged although nobody sat down with it: it is what testers hold today.
 
 ### 3. The sitting
 
-- [ ] **One sitting on build 27, on both phones**, from the test sheet. It has
+- [ ] **One sitting on build 28, on both phones**, from the test sheet. It has
       to include the purchase on each store (sections G and P), the Android
       foreground-service video (V) and the listing screenshots (H).
 - [ ] Judged on the phone while there: Esri's label size and sharpness (the
@@ -114,7 +112,7 @@ No build needed, so these can run alongside 1 to 3.
 
 ### 5. The graphics
 
-Taken from build 27 on a real phone. The plates draw no map tiles, and the
+Taken from build 28 on a real phone. The plates draw no map tiles, and the
 stand-ins in `store-assets/` show heart rate, calories and elevation that a
 recorded run never has, so neither may be submitted.
 
@@ -126,9 +124,9 @@ recorded run never has, so neither may be submitted.
 
 ### 6. Submit
 
-- [ ] **App Store:** build 27 with both subscriptions attached, demo account A
+- [ ] **App Store:** build 28 with both subscriptions attached, demo account A
       in Sign-in, the review notes, and manual release.
-- [ ] **Play:** build 27 promoted from internal to production, with managed
+- [ ] **Play:** build 28 promoted from internal to production, with managed
       publishing on ([play-setup.md](play-setup.md) §11).
 - [ ] Release both when both are approved, then promote `develop` to `main` as
       [CONTRIBUTING.md](../../../CONTRIBUTING.md) describes.
