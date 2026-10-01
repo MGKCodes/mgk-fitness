@@ -133,9 +133,9 @@ asked for two things from Run's lane before a new build.
       Plates O1 to O4 are the animation stopped at four moments. Lift's
       Android and iOS launch windows were already charcoal, so nothing native
       changed.
-- [ ] **Watched on a phone.** An animation cannot be reviewed from four
-      stills. Run sketched its launch as video first; this one was built
-      straight from Run's numbers and has not been seen moving.
+- [x] **Watched on a phone.** Matthew, on build 41, 1 October: "the intro
+      animation is good". It was built straight from Run's numbers and had
+      only been seen as four stills before that.
 
 ## Left for later
 
