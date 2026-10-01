@@ -42,6 +42,7 @@ export 'src/widgets/sign_in_buttons.dart';
 export 'src/widgets/settings_rows.dart';
 export 'src/widgets/sheet_handle.dart';
 export 'src/widgets/stat_block.dart';
+export 'src/widgets/tab_stack.dart';
 export 'src/widgets/step_progress.dart';
 export 'src/widgets/tiles.dart';
 export 'src/widgets/option_stack.dart';
