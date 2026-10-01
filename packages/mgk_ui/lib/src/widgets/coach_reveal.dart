@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../motion/app_motion.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import 'coach_mark.dart';
@@ -22,10 +21,12 @@ class CoachLine {
   final String detail;
 }
 
-/// How long the reveal takes: arrive, type, hold, retract.
+/// How long the reveal takes by default: open, type, hold, retract.
 ///
-/// Long enough to read the line, short enough that it is over before it is in
-/// the way.
+/// Long enough for a short line said in passing, mid-workout. A caller whose
+/// line is the first thing on a screen, and two sentences long, passes more:
+/// the three moving parts take the same time whatever this is, and everything
+/// over them is the hold.
 const Duration kCoachRevealDuration = Duration(milliseconds: 3400);
 
 /// The coach says its piece, then goes back to its corner.
@@ -64,7 +65,16 @@ class CoachReveal extends StatefulWidget {
     this.onFinished,
     this.hasUnread = false,
     this.duration = kCoachRevealDuration,
+    this.ready = true,
   });
+
+  /// Whether the line may be said yet. False holds the mark at rest and says
+  /// nothing; the reveal starts the moment this turns true.
+  ///
+  /// For a screen that is not on show yet. Run's launch animation covers Home
+  /// for its first two seconds, and a line said behind it was a line the
+  /// runner saw the last second of: open already, typed already, and closing.
+  final bool ready;
 
   /// What the coach has noticed. Null renders the resting mark and nothing
   /// else — there is no such thing as an empty announcement.
@@ -116,10 +126,24 @@ class CoachReveal extends StatefulWidget {
 
   final bool hasUnread;
 
-  /// How long the whole sequence takes. A parameter only so the preview harness
-  /// can slow it down enough to inspect a phase — every screenshot at the real
+  /// How long the whole sequence takes.
+  ///
+  /// Opening, typing and retracting take [openFor], [typeFor] and [retractFor]
+  /// whatever this is; the rest is the line held still to be read. So a longer
+  /// duration is a longer read, not a slower animation. The preview harness
+  /// also passes a long one to inspect a phase: every screenshot at the real
   /// speed lands after it has finished, the same reason `initialTab` exists.
   final Duration duration;
+
+  /// The mark opening out into the bar.
+  static const Duration openFor = Duration(milliseconds: 460);
+
+  /// The line being typed. Quick: slow typing is a novelty the first time and
+  /// an obstacle every time after.
+  static const Duration typeFor = Duration(milliseconds: 760);
+
+  /// The bar closing back into the mark.
+  static const Duration retractFor = Duration(milliseconds: 620);
 
   @override
   State<CoachReveal> createState() => _CoachRevealState();
@@ -132,14 +156,24 @@ class _CoachRevealState extends State<CoachReveal>
     duration: widget.duration,
   );
 
-  /// Arrive, type, hold, retract. Typing takes about a fifth of it and the hold
-  /// takes half: the point is being read, not being watched being typed.
-  static const Interval _arrive = Interval(0, 0.08, curve: AppMotion.entrance);
-
+  /// Open, type, hold, retract, as fractions of [CoachReveal.duration].
+  ///
+  /// **It opens out of the mark.** It used to fade in already open, which on a
+  /// screen that had just appeared read as a bar that was simply there: nothing
+  /// said it had come from the mark, or that the mark was where it went back
+  /// to. Now the mark is the resting state at both ends and the line is
+  /// something it does.
+  ///
   /// Eased at both ends. A linear width tween reads as mechanical even when
   /// every frame lands on time, which is most of what "janky" turned out to be.
-  static const Interval _retract = Interval(
-    0.82,
+  double get _total => widget.duration.inMicroseconds.toDouble();
+  double _share(Duration d) =>
+      (d.inMicroseconds / _total).clamp(0.0, 1.0).toDouble();
+
+  Interval get _open =>
+      Interval(0, _share(CoachReveal.openFor), curve: Curves.easeInOutCubic);
+  Interval get _retract => Interval(
+    1 - _share(CoachReveal.retractFor),
     1,
     curve: Curves.easeInOutCubic,
   );
@@ -195,7 +229,7 @@ class _CoachRevealState extends State<CoachReveal>
       widget.note ?? (widget.locked ? CoachReveal.lockedNote : null);
 
   void _maybePlay() {
-    if (_played || _shown == null) return;
+    if (_played || _shown == null || !widget.ready) return;
     _played = true;
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
       // Nothing to watch. The mark is simply there and the note is one tap
@@ -295,6 +329,11 @@ class _CoachRevealState extends State<CoachReveal>
                             note: note,
                             progress: _anim,
                             muted: widget.locked,
+                            openEnd: _share(CoachReveal.openFor),
+                            typeEnd: _share(
+                              CoachReveal.openFor + CoachReveal.typeFor,
+                            ),
+                            retractStart: 1 - _share(CoachReveal.retractFor),
                           ),
                         ),
                       ),
@@ -302,26 +341,25 @@ class _CoachRevealState extends State<CoachReveal>
                   ),
                   builder: (context, child) {
                     final t = _anim.value;
-                    final open = 1 - _retract.transform(t);
-                    return Opacity(
-                      opacity: _arrive.transform(t),
-                      child: CoachMarkSurface(
-                        width: kCoachMarkSize + (full - kCoachMarkSize) * open,
-                        height:
-                            kCoachMarkSize +
-                            (_openHeight - kCoachMarkSize) * open,
-                        onTap: _tap,
-                        // Laid out at full size and *clipped* by the shrinking
-                        // box. Letting it reflow instead made the line re-wrap
-                        // on every frame and stack into a column of single
-                        // letters on the way out.
-                        child: ClipRect(
-                          child: OverflowBox(
-                            alignment: Alignment.topLeft,
-                            maxWidth: full,
-                            maxHeight: _openHeight,
-                            child: child,
-                          ),
+                    // The mark at both ends, the bar between.
+                    final open =
+                        _open.transform(t) * (1 - _retract.transform(t));
+                    return CoachMarkSurface(
+                      width: kCoachMarkSize + (full - kCoachMarkSize) * open,
+                      height:
+                          kCoachMarkSize +
+                          (_openHeight - kCoachMarkSize) * open,
+                      onTap: _tap,
+                      // Laid out at full size and *clipped* by the moving
+                      // box. Letting it reflow instead made the line re-wrap
+                      // on every frame and stack into a column of single
+                      // letters on the way out.
+                      child: ClipRect(
+                        child: OverflowBox(
+                          alignment: Alignment.topLeft,
+                          maxWidth: full,
+                          maxHeight: _openHeight,
+                          child: child,
                         ),
                       ),
                     );
@@ -346,20 +384,24 @@ class _TypedNote extends StatelessWidget {
   const _TypedNote({
     required this.note,
     required this.progress,
+    required this.openEnd,
+    required this.typeEnd,
+    required this.retractStart,
     this.muted = false,
   });
 
   final CoachLine note;
   final Animation<double> progress;
 
+  /// Where the bar finishes opening, typing finishes, and retracting starts,
+  /// as fractions of [progress].
+  final double openEnd;
+  final double typeEnd;
+  final double retractStart;
+
   /// The locked line: dimmer, and shown whole rather than typed. See
   /// [CoachReveal.locked] for why it does not type.
   final bool muted;
-
-  /// Quick. Slow typing is a novelty the first time and an obstacle every time
-  /// after, and the runner came here for the sentence rather than the effect.
-  static const Interval _type = Interval(0.08, 0.30, curve: Curves.linear);
-  static const Interval _fade = Interval(0.82, 0.93, curve: Curves.easeOut);
 
   @override
   Widget build(BuildContext context) {
@@ -373,13 +415,29 @@ class _TypedNote extends StatelessWidget {
       animation: progress,
       builder: (context, _) {
         final t = progress.value;
-        // Whole from the first frame when muted — a sign does not write itself.
-        final shown = muted ? total : (total * _type.transform(t)).round();
+        // Typed once the bar is open, so no letter is written into a box
+        // still too narrow to show it.
+        final type = Interval(openEnd, typeEnd);
+        // Gone before the box finishes closing, so the last thing seen is the
+        // mark rather than a half-letter.
+        final fade = Interval(
+          retractStart,
+          retractStart + (1 - retractStart) * 0.6,
+          curve: Curves.easeOut,
+        );
+        // A sign does not write itself: the muted line is whole, and comes up
+        // as the bar opens rather than being typed into it.
+        final shown = muted ? total : (total * type.transform(t)).round();
+        final arrive = muted
+            ? Interval(
+                openEnd * 0.5,
+                openEnd,
+                curve: Curves.easeOut,
+              ).transform(t)
+            : 1.0;
 
         return Opacity(
-          // Gone before the box finishes closing, so the last thing seen is the
-          // mark rather than a half-letter.
-          opacity: 1 - _fade.transform(t),
+          opacity: arrive * (1 - fade.transform(t)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
