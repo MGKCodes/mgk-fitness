@@ -12,14 +12,18 @@ still change. Runio and Liftio were retired as user-facing names on 2026-08-21.
 | Bundle ID / `applicationId` | `com.mgkcodes.fitness.run` | `com.mgkcodes.liftio` |
 | Dart package | `mgk_run` | `mgk_lift` |
 
-## MGKFitness is a placeholder
+## MGKFitness is the name
 
-It is not the right name. It is a name good enough to stop the absence of one
-delaying releases, chosen on the understanding that a real consumer name
-replaces it later.
+It began as a placeholder: a name good enough to stop the absence of one
+delaying releases, chosen on the understanding that a real consumer name would
+replace it. On 2 October 2026, the day the website went live under it, Matthew
+kept it: he is happy with it, nothing better has come up, and the apps are
+still called Run and Lift, which he likes. It is the name until something
+better turns up, and nothing has.
 
-Everything is built so that replacement is cheap. The platform half is written
-down **once**, in `packages/mgk_ui/lib/src/brand/app_brand.dart`:
+It is still built so that replacing it would be cheap, because keeping that
+costs nothing. The platform half is written down **once**, in
+`packages/mgk_ui/lib/src/brand/app_brand.dart`:
 
 ```dart
 const String kPlatformName = 'MGKFitness';
@@ -28,9 +32,9 @@ const String kPlatformName = 'MGKFitness';
 Each app composes its own name from it in `lib/src/core/brand.dart`, and all
 copy interpolates those consts. **Never type the platform name into a string.**
 
-### What a rename costs
+### What a rename would cost
 
-Change the const, then these six things by hand, because none of them can read
+Change the const, then these things by hand, because none of them can read
 Dart:
 
 1. `apps/mgk_run/ios/Runner/Info.plist` — `CFBundleDisplayName`, `CFBundleName`
@@ -51,6 +55,12 @@ Dart:
 
    Entries recording the **frozen React Native app** keep their names and must
    not be swept — that history is what they are for.
+8. **The website.** `web/` cannot read Dart either, and types the name where
+   it needs it: the landing page's headline, its bar and the picture a shared
+   link shows, the documents' titles and sentences, and the suite's icon
+   files. The address `mgkfitness.mgkcodes.com`, and any account opened under
+   the name, are outside the repository altogether. Added on 2026-10-02, when
+   the landing page went live.
 
 Items 1–4 only change if the *app* half changes. Renaming only the platform
 leaves the phone alone entirely — see below.

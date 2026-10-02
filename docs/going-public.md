@@ -3,6 +3,10 @@
 The repository is private and is about to be made public. This is what was
 checked before that, what it found, and what is left for the day itself.
 
+**When:** on or before Sunday 11 October 2026. Matthew plans to announce the
+project that day, and said on 2 October that the week before it is for getting
+the repository ready.
+
 Checked on 2 October 2026, with `develop` at `82e7b3c`. **Redo the two scans
 if the flip is more than a few days later**: they describe the history as it
 was, and every commit since is unscanned.
@@ -169,12 +173,18 @@ list's one door, and the table has no other.
    `gitleaks git --redact --log-opts="--all" .`
    Then go through Run's own list, above.
 2. Decide on the addresses above.
-3. Make the repository public.
-4. In its settings, turn on **secret scanning** and **push protection**, both
+3. Bring to `main` what a visitor reads first and `develop` alone holds. On
+   2 October only `web/` was promoted, so [`SECURITY.md`](../SECURITY.md),
+   this page and the waiting list's migration were on `develop`, and `main`
+   is the branch a visitor lands on. Run's version bump stays behind: `main`
+   is what was submitted.
+4. Make the repository public.
+5. In its settings, turn on **secret scanning** and **push protection**, both
    free for a public repository, and **private vulnerability reporting**.
    Protect `main` and `develop`.
-5. Check that Vercel still asks before building a pull request from a fork.
-6. Set `open` to `true` in
+6. Check that Vercel still asks before building a pull request from a fork.
+7. Set `open` to `true` in
    [`web/app/(landing)/links.ts`](../web/app/(landing)/links.ts), build the
-   site, and follow its three links to the repository.
-7. Tick the line in Run's `docs/roadmap.md`.
+   site, and follow its three links to the repository. The website goes
+   straight to `main`.
+8. Tick the line in Run's `docs/roadmap.md`.

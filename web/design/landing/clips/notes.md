@@ -182,7 +182,8 @@ most likely to work and costs a second clip in each shape; a longer clip, so
 there is time to travel and then turn; or, for nothing, blurring the fastest
 frames of the turn sideways in `edits.json`, as a whip pan does, which hides
 the strip changing and cures nothing. Matthew was offered the blur the same
-day and chose to leave the move as it is for now.
+day and chose to leave the move as it is for now; both faults may be tried
+again in the week of 5 October 2026 if there is time.
 
 ### `s3`, the tunnel: good once re-paced
 
