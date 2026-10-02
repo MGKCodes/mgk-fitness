@@ -11,9 +11,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://mgkfitness.mgkcodes.com"),
   title: { absolute: "MGKFitness" },
   description:
-    "Two fitness apps that share one account, one design system and one coach. Run is a running tracker and training coach. Lift is for the gym.",
-  // Stays off until the film and the waiting list are real. A scaffold that
-  // ranks is a first impression nobody chose.
+    "MGKFitness is two apps on one account. Run is a running tracker and training coach. Lift is a strength log with a coach of its own.",
+  // Stays off until the film is real and the page is ready to be found. A page
+  // that ranks before then is a first impression nobody chose.
   robots: { index: false, follow: true },
 };
 

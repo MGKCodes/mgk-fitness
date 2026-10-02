@@ -92,14 +92,26 @@ else.
   sits left of it.
 - **Reduced motion gets cuts.** A visitor who has asked for less motion sees
   the stills change, not the camera travel.
+- **Run and Lift in the bar are places in the film.** Choosing one scrolls the
+  page there at the film's own speed, so the film is watched on the way and
+  not skipped. Anything the visitor does stops it. They are ordinary links to
+  `#run` and `#lift` underneath.
+- **It is MGKFitness first.** The page opens on the suite's name, set as its
+  apps' names are, and says what is true of the two together: one account, one
+  design, free to track.
 
 ## Not built yet
 
-- **The waiting list does not save anything.** It needs a table, wording that
-  says what the address is for, and a line in both apps' privacy policies. The
-  form says the list is not open until then.
-- **The headline is a stand-in.** "Two apps. One coach." and the sentence under
-  it come from the old home page, not from a listing.
+- **Anything that emails the waiting list.** The form saves an address and
+  says what it is for and how to come off; nothing sends the email yet. The
+  website also has no privacy notice of its own, and collecting addresses is
+  the first thing on it that wants one.
+- **Each app showing the other's training.** The page marks it as coming.
+  `core.activities` holds every run and workout so that it can be done, and
+  neither app reads it yet, so nothing on the page says that it is.
+- **The store links and the public repository.** Both are shown as coming, and
+  both are turned on in `app/(landing)/links.ts`. The repository is private
+  until its history is cleared of secrets.
 - **A portrait film for phones.** The landscape stills crop badly to a tall
   screen; `stills.md` leaves the portrait set for a later round.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,
