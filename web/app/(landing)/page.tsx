@@ -3,7 +3,7 @@ import { company, disclosure } from "../company";
 import { Bar } from "./bar";
 import { Phone } from "./device";
 import { Film } from "./film";
-import { social, source } from "./links";
+import { source } from "./links";
 import { Mark } from "./mark";
 import { Stores } from "./stores";
 import { WaitingList } from "./waiting-list";
@@ -28,50 +28,23 @@ function Beat({
 }
 
 /**
- * A way out to somewhere of ours that is not this site: the source, or an
- * account. A link once it has an address, and a place held for it until then.
- * `links.ts` says which.
+ * A way into the source: a link once the repository is public, and a place
+ * held for it until then. `links.ts` says which.
  */
-function Way({
-  href,
-  title,
-  note,
-  live,
-  held,
-}: {
-  href?: string;
-  title: string;
-  note: string;
-  /** The small line over the title once it is a link, and until it is. */
-  live: string;
-  held: string;
-}) {
+function Source({ to, title, note }: { to: string; title: string; note: string }) {
   const inside = (
     <>
-      <small>{href ? live : held}</small>
+      <small>{source.open ? "On GitHub" : "Opening soon"}</small>
       {title}
       <span>{note}</span>
     </>
   );
-  return href ? (
-    <a className="repo" href={href}>
+  return source.open ? (
+    <a className="repo" href={to}>
       {inside}
     </a>
   ) : (
     <span className="repo held">{inside}</span>
-  );
-}
-
-/** A way into the source, which is one only when the repository is public. */
-function Source({ to, title, note }: { to: string; title: string; note: string }) {
-  return (
-    <Way
-      href={source.open ? to : undefined}
-      title={title}
-      note={note}
-      live="On GitHub"
-      held="Opening soon"
-    />
   );
 }
 
@@ -436,25 +409,6 @@ export default function Home() {
           )}
         </section>
 
-        <section className="follow" id="follow">
-          <span className="tag">Follow</span>
-          <h2>
-            See it move. <span>Films of Run and Lift, and what is new in each.</span>
-          </h2>
-          <div className="repos">
-            {social.map((account) => (
-              <Way
-                key={account.name}
-                href={account.url}
-                title={account.name}
-                note={account.handle ?? "MGKFitness"}
-                live="Follow on"
-                held="Coming soon to"
-              />
-            ))}
-          </div>
-        </section>
-
         <section className="waiting" id="waiting-list">
           <h2>Get an email when Run and Lift are live.</h2>
           <WaitingList />
@@ -498,14 +452,6 @@ export default function Home() {
           <h3>MGKFitness</h3>
           <a href="/privacy">Privacy on this website</a>
           {source.open && <a href={source.repository}>Source on GitHub</a>}
-          {social.map(
-            (account) =>
-              account.url && (
-                <a key={account.name} href={account.url}>
-                  {account.name}
-                </a>
-              ),
-          )}
           <p>
             Made by {company.name}.{" "}
             <a href={`mailto:${company.email}`}>{company.email}</a>

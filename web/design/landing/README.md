@@ -114,8 +114,10 @@ else.
   not, and will need to before Lift shows a run.
 - **The store links, the accounts to follow and the public repository.** All
   three are shown as coming, and all are turned on in
-  `app/(landing)/links.ts`. [`docs/going-public.md`](../../../docs/going-public.md)
-  is the list for the day the repository opens.
+  `app/(landing)/links.ts`. The accounts are not a section of the page: they
+  are their own marks in the bar, greyed and not links until each has an
+  address. [`docs/going-public.md`](../../../docs/going-public.md) is the list
+  for the day the repository opens.
 - **A portrait film for phones.** The landscape stills crop badly to a tall
   screen; `stills.md` leaves the portrait set for a later round.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,

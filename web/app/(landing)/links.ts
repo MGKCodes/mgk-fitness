@@ -15,11 +15,12 @@ export const stores: Record<"run" | "lift", { apple?: string; google?: string }>
 };
 
 /**
- * The suite's accounts elsewhere. One with no address is shown as coming. One
- * that is not going to happen is taken out of the list, and is then not shown
- * at all. `handle` is what the account is called there, with its @.
+ * The suite's accounts elsewhere, which sit in the bar as their marks. One
+ * with no address is shown greyed and is not a link. Give it a `url` and it is
+ * one. One that is not going to happen is taken out of the list, and is then
+ * not shown at all.
  */
-export const social: { name: string; url?: string; handle?: string }[] = [
+export const social: { name: "Instagram" | "TikTok"; url?: string }[] = [
   { name: "Instagram" },
   { name: "TikTok" },
 ];
