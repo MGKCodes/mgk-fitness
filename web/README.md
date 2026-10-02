@@ -35,9 +35,10 @@ still `/run/support`.
 ## The landing page
 
 [`design/landing/README.md`](design/landing/README.md) has the idea, how the
-film is made and what is not built yet. In short: the page is designed and its
-stills are on it, the camera moves between them on an upright screen and not
-yet on a wide one, and it is not indexed.
+film is made and what is not built yet. In short: the page is designed, its
+stills are on it and the camera moves between them, on a wide screen and an
+upright one, with two faults that are known and left for now; and it is not
+indexed.
 
 Its waiting list writes to `core.waiting_list` through one function,
 `core.join_waiting_list`, with the publishable key. The migration
@@ -193,7 +194,8 @@ fine to anybody signed in to the team.
 
 ## What is not here yet
 
-- The landing film. See [`design/landing/README.md`](design/landing/README.md).
+- A landing film without faults. Two of its moves have one that is known and
+  left for now. See [`design/landing/README.md`](design/landing/README.md).
 - Anything that emails the waiting list. It is only collected.
 - Tailwind and a lint config. The landing page is one stylesheet; neither has
   earned its place yet.
