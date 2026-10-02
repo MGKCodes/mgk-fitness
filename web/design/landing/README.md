@@ -75,6 +75,14 @@ else.
   each says whether it is free or the subscription. The page may not promise
   what a listing may not: see "What the app may not claim" in Run's
   `app-store-listing.md`.
+- **The case for the coach answers troubles, and promises nothing.** Under the
+  film, the page says why somebody would pay: a personal trainer's cost and
+  hours, a plan written for somebody else, a missed week, nobody to ask. Each
+  trouble is answered with something a listing already says the coach does,
+  never with a result. The prices are the stores' own, £0.99 and £2.99 a month
+  (Run's ADR-0029), given as UK prices, and the page says that Run and Lift are
+  subscribed to separately, because they are (`core.entitlements` holds a row
+  per app).
 - **The page shades the film.** The stills' sky is too light for white type
   (about 2.8 to 1), so the stage lays the page's own colour over the top and
   bottom of the frame. That is done once in `landing.css`, not baked into the
