@@ -77,6 +77,12 @@ export function WaitingList() {
       </div>
       <p className="note" role="status">
         {says[stage]}
+        {stage === "asking" && (
+          <>
+            {" "}
+            <a href="/privacy">How we handle it.</a>
+          </>
+        )}
       </p>
     </form>
   );

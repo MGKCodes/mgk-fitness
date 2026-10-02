@@ -22,7 +22,8 @@ export default function RootLayout({
       <body>
         {children}
         <footer>
-          MGKCodes Ltd. <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>
+          MGKCodes Ltd. <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>{" "}
+          · <a href="/privacy">Privacy on this website</a>
         </footer>
       </body>
     </html>

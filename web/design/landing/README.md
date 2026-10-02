@@ -102,16 +102,20 @@ else.
 
 ## Not built yet
 
-- **Anything that emails the waiting list.** The form saves an address and
-  says what it is for and how to come off; nothing sends the email yet. The
-  website also has no privacy notice of its own, and collecting addresses is
-  the first thing on it that wants one.
-- **Each app showing the other's training.** The page marks it as coming.
-  `core.activities` holds every run and workout so that it can be done, and
-  neither app reads it yet, so nothing on the page says that it is.
-- **The store links and the public repository.** Both are shown as coming, and
-  both are turned on in `app/(landing)/links.ts`. The repository is private
-  until its history is cleared of secrets.
+- **Anything that emails the waiting list.** The form saves an address, says
+  what it is for and how to come off, and links to the website's privacy
+  notice at `/privacy`. Nothing sends the email yet, and the notice promises
+  to name whoever does before it is sent, and to delete the list once both
+  apps are live.
+- **Each app showing the other's training.** The page marks it as coming,
+  and it is planned. `core.activities` holds every run and workout so that it
+  can be done, and neither app reads it yet, so nothing on the page says that
+  it is. Run's privacy policy already describes the shared feed; Lift's does
+  not, and will need to before Lift shows a run.
+- **The store links, the accounts to follow and the public repository.** All
+  three are shown as coming, and all are turned on in
+  `app/(landing)/links.ts`. [`docs/going-public.md`](../../../docs/going-public.md)
+  is the list for the day the repository opens.
 - **A portrait film for phones.** The landscape stills crop badly to a tall
   screen; `stills.md` leaves the portrait set for a later round.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,
