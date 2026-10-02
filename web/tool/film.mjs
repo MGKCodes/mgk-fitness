@@ -47,13 +47,13 @@ const manifest = join(web, "app/(landing)/film.json");
 const KEYS = ["k1", "k2", "k3", "k4", "k5"];
 const MOVES = ["s1", "s2", "s3", "s4"];
 // `fps` is the frames a second taken from a clip, and `quality` what they are
-// saved at. A five-second move in the wide film is 120 frames, which is as
-// smooth as a scroll can show. The tall film is fetched by phones, often over
-// a mobile connection, so it takes every other frame: a move is still a frame
-// every dozen pixels of scrolling, and the first and last frames are kept, so
-// it joins its stills as before.
+// saved at. A clip is 24 frames a second and both films take every other one:
+// a five-second move is 61 frames, which is still a frame every dozen pixels
+// of scrolling, and half the weight. The first and last frames are kept, so a
+// move joins its stills as before. The tall film is fetched by phones, often
+// over a mobile connection, so it is saved a little lower as well.
 const SHAPES = {
-  wide: { across: 16, down: 9, suffix: "", fps: 24, quality: 78 },
+  wide: { across: 16, down: 9, suffix: "", fps: 12, quality: 76 },
   tall: { across: 9, down: 16, suffix: "p", fps: 12, quality: 70 },
 };
 

@@ -1,4 +1,6 @@
 {
   "s3p-1080p.mp4": "[0:v]trim=end=3.45,setpts=(PTS-STARTPTS)/1.97[a];[0:v]trim=start=3.45,setpts=(PTS-STARTPTS)*2.04[b];[a][b]concat=n=2:v=1:a=0[v]",
-  "s4p-1080p.mp4": "[0:v]trim=end_frame=50,setpts=PTS-STARTPTS[a];[0:v]trim=start_frame=50,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=0.4167:offset=1.6667[v]"
+  "s4p-1080p.mp4": "[0:v]trim=end_frame=50,setpts=PTS-STARTPTS[a];[0:v]trim=start_frame=50,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=0.4167:offset=1.6667[v]",
+  "s3-1080p.mp4": "[0:v]trim=end_frame=117,setpts=PTS-STARTPTS[a];[0:v]trim=start_frame=117,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=1.25[b];[a][b]xfade=transition=fade:duration=1.25:offset=3.625[v]",
+  "s4-1080p.mp4": "[0:v]trim=end_frame=42,setpts=PTS-STARTPTS[a];[0:v]trim=start_frame=42,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=0.4167:offset=1.3333[v]"
 }
