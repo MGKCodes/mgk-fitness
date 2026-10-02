@@ -26,13 +26,35 @@ turn those crossfades into a moving camera are the next step.
 | Step | Who | What |
 |---|---|---|
 | 1. Stills | Codex | Five keyframes of one venue, to the brief in [`stills.md`](stills.md) |
-| 2. Choice | Matthew | One image per keyframe, copied to `stills/selected/` as `k1.png` … `k5.png` |
+| 2. Choice | Matthew | One image per keyframe, copied to `stills/selected/` as `k1.png` … `k5.png`, and `k1p.png` … `k5p.png` for an upright screen |
 | 3. On the page | `node tool/film.mjs keys` | The page now crossfades between the stills as it scrolls |
 | 4. Clips | Replicate | One short video per move, given two stills as its first and last frame |
 | 5. Frames | `node tool/film.mjs frames s1 clip.mp4` | The clip is cut into frames and the page plays them |
 
 Step 3 is worth doing before step 4. It shows the storyboard in place, at full
 size, under the real type, for nothing; a clip costs money each time.
+
+## Two shapes
+
+The film is kept twice: **wide**, at 16:9, for a screen wider than it is tall,
+and **tall**, at 9:16, for an upright one. A wide still cropped to a phone
+keeps a slice from its middle and loses the stand and the tunnel, so the tall
+film is the same five moments framed again, not the wide ones cropped.
+
+- A tall still is its wide one's name with a `p`: `selected/k2p.png`. The
+  brief for them is "The portrait set" in [`stills.md`](stills.md).
+- `node tool/film.mjs keys` puts both sets on the page. A clip that is upright
+  is taken to be for the tall film.
+- An upright screen is shown the tall film as soon as that film has a still.
+  A keyframe with no tall still yet is shown its wide one, cropped. A move is
+  only ever played from tall frames there: wide frames between two tall stills
+  would jump.
+- **The tall film needs clips of its own.** A video model is given a first and
+  a last frame and returns their shape, so four moves in two shapes is eight
+  clips, not four.
+- On an upright screen the words sit in the top third of the frame and the
+  phone rises over the bottom of it, so what is seen clean is a band across
+  the middle. The brief says where each thing is, measured from the page.
 
 ## The shots
 
@@ -118,8 +140,8 @@ else.
   are their own marks in the bar, greyed and not links until each has an
   address. [`docs/going-public.md`](../../../docs/going-public.md) is the list
   for the day the repository opens.
-- **A portrait film for phones.** The landscape stills crop badly to a tall
-  screen; `stills.md` leaves the portrait set for a later round.
+- **The tall film.** The page plays one and the brief asks for its stills, as
+  round 4. None is chosen yet, so a phone still sees the wide stills, cropped.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,
   which is committed. Four moves at two sizes is some tens of megabytes; if
   that is too much for the repository they move to a storage bucket.
