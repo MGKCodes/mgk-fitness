@@ -182,6 +182,9 @@ else.
   design, free to track. The suite's own mark stands before its name in the
   bar: the apps' two chevrons, heading between Run's right and Lift's up. A
   phone too narrow for both is shown the name, and a narrower one the mark.
+  The name is settled: Matthew kept it on 2 October 2026, and
+  [`docs/naming.md`](../../../docs/naming.md) says what replacing it would
+  cost.
 
 ## Not built yet
 
@@ -204,7 +207,9 @@ else.
 - **The turn to the tunnel, made again.** In both films the red strip changes
   shape under the camera as it turns, so the move does not read as one shot.
   It is known and left for now. A prompt did not cure it in the wide film;
-  `clips/notes.md` has why it happens and what is left to try.
+  `clips/notes.md` has why it happens and what is left to try. Matthew may
+  come back to it, and to the weight room below, in the week of 5 October
+  2026 if there is time.
 - **One weight room.** K4's far end and K5 are two different rooms, in both
   sets: a bright hall with slanting columns, and the dark room the film ends
   in. A video model given both walks into the first and cuts to the second.
@@ -220,17 +225,11 @@ else.
   end and a desktop 13.3 MB, every eighth frame of each move first and then
   the gaps. Narrower frames would halve either, at some cost in sharpness
   while the camera is moving.
-- **A ruling on the name.** The page sets MGKFitness as its headline, puts it
-  in the bar and types it into its strings, and the accounts to follow will
-  carry it. [`docs/naming.md`](../../../docs/naming.md) says MGKFitness is a
-  placeholder that is never typed into a string, so that replacing it stays
-  one edit, and its list of what a rename costs does not include the website.
-  One of the two has to give: the name is held once in `web/` and the website
-  joins that list, or the placeholder is retired.
 - **A ruling on the suite's mark.** The apps' icons follow one rule, one mark
   and one rotation, with the third axis kept for a third app. The site's mark
   is for the suite, squares the chevrons and takes the diagonal.
   `tool/icon.py` says so and calls itself provisional.
 - **Being found.** The page is live on `main` and `robots` is still off in
-  the landing layout, so a link reaches it and a search does not. Turning
-  that on is one line and a decision.
+  the landing layout, so a link reaches it and a search does not. Matthew has
+  left that for a later pass over how the site is found, by search engines
+  and by AI answers alike. One line turns it on then.
