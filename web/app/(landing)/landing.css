@@ -98,13 +98,21 @@ input:focus-visible {
   pointer-events: none;
 }
 
-/* "MGKFITNESS" as the launch film sets it: small, wide and quiet. */
+/* "MGKFITNESS" as the launch film sets it: small, wide and quiet, after the
+   suite's own mark. */
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.4em;
   color: var(--silver);
   text-decoration: none;
+}
+
+.wordmark .mark {
+  height: 1.125rem;
 }
 
 /* Run and Lift: places in the film, to the right with the waiting list. */
@@ -184,6 +192,24 @@ a.social:hover {
 
   .bar .narrow {
     display: inline;
+  }
+}
+
+/* Narrower still, the bar has room for the name or the mark and not both: the
+   name for as long as it fits, and below that the mark alone. */
+@media (max-width: 389px) {
+  .wordmark .mark {
+    display: none;
+  }
+}
+
+@media (max-width: 355px) {
+  .wordmark .mark {
+    display: block;
+  }
+
+  .wordmark span {
+    display: none;
   }
 }
 

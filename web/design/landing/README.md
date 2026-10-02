@@ -120,7 +120,9 @@ else.
   `#run` and `#lift` underneath.
 - **It is MGKFitness first.** The page opens on the suite's name, set as its
   apps' names are, and says what is true of the two together: one account, one
-  design, free to track.
+  design, free to track. The suite's own mark stands before its name in the
+  bar: the apps' two chevrons, heading between Run's right and Lift's up. A
+  phone too narrow for both is shown the name, and a narrower one the mark.
 
 ## Not built yet
 

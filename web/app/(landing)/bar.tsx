@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from "react";
 import { social } from "./links";
+import { Mark } from "./mark";
 import { Social } from "./social";
 
 // How long the page takes to travel one screen of film going down, in
@@ -75,8 +76,10 @@ export function Bar() {
 
   return (
     <header className="bar">
-      <a className="wordmark" href="#top" onClick={go}>
-        MGKFITNESS
+      {/* Named for the widths at which only the mark is shown. */}
+      <a className="wordmark" href="#top" onClick={go} aria-label="MGKFitness">
+        <Mark of="suite" />
+        <span>MGKFITNESS</span>
       </a>
       <nav aria-label="On this page">
         <a href="#run" onClick={go}>
