@@ -22,6 +22,11 @@
 // in `film.json`, which this script also keeps: the page reads it to know
 // which stills and how many frames there are, so it never asks for a file that
 // is not there.
+//
+// A still whose subject sits too high or too low for what the page lays over
+// it is framed first: `selected/framing.json` gives, by the still's name, the
+// share of its height to cut from the `top` or the `bottom`. The cut is made
+// here, and the chosen image is left as it was made.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -46,7 +51,16 @@ const FPS = 24;
 const state = JSON.parse(readFileSync(manifest, "utf8"));
 const save = () => writeFileSync(manifest, JSON.stringify(state, null, 2) + "\n");
 
-function ffmpeg(shape, input, filters, quality, output) {
+const framingFile = join(selected, "framing.json");
+const framing = existsSync(framingFile) ? JSON.parse(readFileSync(framingFile, "utf8")) : {};
+
+/** The cut a still is given before it is cropped to its shape, if it has one. */
+function framed(name) {
+  const { top = 0, bottom = 0 } = framing[name] ?? {};
+  return top || bottom ? [`crop=iw:ih*${1 - top - bottom}:0:ih*${top}`] : [];
+}
+
+function ffmpeg(shape, input, filters, quality, output, first = []) {
   mkdirSync(dirname(output), { recursive: true });
   const { across, down } = SHAPES[shape];
   const crop = `crop='min(iw,ih*${across}/${down})':'min(ih,iw*${down}/${across})'`;
@@ -55,7 +69,7 @@ function ffmpeg(shape, input, filters, quality, output) {
   const each = output.includes("%") ? ["-f", "image2"] : [];
   const run = spawnSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-i", input, "-vf", [crop, ...filters].join(","),
+    ["-y", "-loglevel", "error", "-i", input, "-vf", [...first, crop, ...filters].join(","),
       "-c:v", "libwebp", "-quality", String(quality), ...each, output],
     { stdio: "inherit" },
   );
@@ -90,11 +104,12 @@ function keys() {
         console.log(`${key}${suffix}`.padEnd(5) + "not chosen yet");
         continue;
       }
+      const cut = framed(`${key}${suffix}`);
       for (const width of set.widths) {
-        ffmpeg(shape, source, [`scale=${width}:-2:flags=lanczos`], 84, join(film, shape, "keys", `${key}-${width}.webp`));
+        ffmpeg(shape, source, [`scale=${width}:-2:flags=lanczos`], 84, join(film, shape, "keys", `${key}-${width}.webp`), cut);
       }
       set.keys.push(key);
-      console.log(`${key}${suffix}`.padEnd(5) + "on the page");
+      console.log(`${key}${suffix}`.padEnd(5) + (cut.length ? "on the page, framed" : "on the page"));
     }
   }
   save();

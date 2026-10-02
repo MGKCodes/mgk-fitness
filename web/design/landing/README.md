@@ -10,8 +10,9 @@ Lift arrives where it comes out of the tunnel.** One venue holds both apps,
 which is the page's whole argument: they are one thing.
 
 The page is designed and the film is not made yet. All five stills are chosen
-and on the page, which crossfades between them as it scrolls. The clips that
-turn those crossfades into a moving camera are the next step.
+and on the page, in a wide set and an upright one, and the page crossfades
+between them as it scrolls. The clips that turn those crossfades into a moving
+camera are the next step.
 
 | Still | Chosen | Why |
 |---|---|---|
@@ -20,6 +21,16 @@ turn those crossfades into a moving camera are the next step.
 | K3 | round 3, `k3-c` | The mouth is largest and dead centre |
 | K4 | round 3, `k4-c` | Its room has the stepped underside of the terraces, as K5 does |
 | K5 | round 3, `k5-c` | The darkest floor, and the terraces overhead say "under the seats" |
+
+And the same five for an upright screen, all from round 4:
+
+| Still | Chosen | Why |
+|---|---|---|
+| K1p | `k1p-b` | Its lane numbers sit highest, a third of the way down, well clear of the headline |
+| K2p | `k2p-c` | The tunnel is furthest in from the right edge, which a phone trims, and the camera stands on a lane line as it does in K2 |
+| K3p | `k3p-c` | The roof comes down past the line of text. In `k3p-a` a strip of sky runs through the words |
+| K4p | `k4p-c` | The largest opening, with the most of the room through it, and a strip as wide as in the frames either side. `k4p-b`'s is a narrow path |
+| K5p | `k5p-c` | The plainest stepped ceiling, with its lights dim and out in the corners. Framed 8% lower, which sets the bar half way down |
 
 ## How the film gets made
 
@@ -55,6 +66,20 @@ film is the same five moments framed again, not the wide ones cropped.
 - On an upright screen the words sit in the top third of the frame and the
   phone rises over the bottom of it, so what is seen clean is a band across
   the middle. The brief says where each thing is, measured from the page.
+- **A phone is often a short screen.** With its browser's bars showing, an
+  iPhone gives the page about 390 by 664, and an app's own browser much the
+  same. The same type takes more of that, so on an upright screen the names
+  and captions are sized against the height as well as the width.
+- **A still can be framed.** `stills/selected/framing.json` names a share of a
+  still's height to cut from its top or bottom before it is cropped to shape,
+  which moves its subject to where the page leaves room. The chosen image is
+  left as it was made. K5p is cut 8% at the bottom, so the bar sits just above
+  the phone on a short screen and a tall one. **A clip for the tall film is
+  made from the framed still**, or its last frame will not match the page's.
+- **Words that cross a busy frame bring their own ground.** On an upright
+  screen the headline lies over lanes from edge to edge, and the line in the
+  tunnel reaches a strip of sky on a short one. Each has a shade of the page's
+  colour behind it that leaves when it does.
 
 ## The shots
 
@@ -142,8 +167,9 @@ else.
   are their own marks in the bar, greyed and not links until each has an
   address. [`docs/going-public.md`](../../../docs/going-public.md) is the list
   for the day the repository opens.
-- **The tall film.** The page plays one and the brief asks for its stills, as
-  round 4. None is chosen yet, so a phone still sees the wide stills, cropped.
+- **The clips, in either shape.** Both sets of stills are on the page and
+  neither has a clip, so every move is a crossfade. The tall film's clips are
+  its own: four more, each made from two upright stills.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,
   which is committed. Four moves at two sizes is some tens of megabytes; if
   that is too much for the repository they move to a storage bucket.

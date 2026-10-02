@@ -567,19 +567,28 @@ main > section > h2 span {
     background: linear-gradient(rgb(26 26 26 / 0.8), rgb(26 26 26 / 0.58) 42%, rgb(26 26 26 / 0) 72%);
   }
 
+  /* A phone with its browser's bars showing is a short screen, and the same
+     type takes more of it. So the name, the caption and the gaps between them
+     are measured against the height as well, and the words end above what the
+     frame is showing. */
+  .app h2 {
+    font-size: min(clamp(5.5rem, 19.5vw, 23rem), 11.5svh);
+  }
+
   .steps {
     position: static;
     width: auto;
-    margin-top: 1.5rem;
+    margin-top: min(1.5rem, 2.4svh);
   }
 
   .steps p {
-    margin-top: 0.8rem;
+    margin-top: min(0.8rem, 1.4svh);
+    font-size: min(clamp(1.7rem, 3vw, 3.1rem), 3.6svh);
   }
 
   .ticks {
     position: static;
-    margin-top: 1.1rem;
+    margin-top: min(1.1rem, 1.9svh);
   }
 
   .phone,
@@ -592,13 +601,41 @@ main > section > h2 span {
   }
 
   /* The middle of an upright frame is the tunnel's mouth and then the lit room
-     beyond it, so the line goes above them, where the names are. */
+     beyond it, so the line goes above them, where the names are: on the dark
+     of the stand's roof and then of the tunnel's ceiling. Three lines and not
+     four, which keeps it clear of the strip of sky under that roof. */
   .line {
     align-items: start;
   }
 
+  .line p {
+    max-width: 15ch;
+    font-size: min(clamp(1.9rem, 3.5vw, 3.6rem), 4.4svh);
+  }
+
+  /* On a short screen the third line still reaches that strip, so the line
+     has a ground of its own, as the headline does. */
+  .line::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 62%;
+    z-index: -1;
+    background: linear-gradient(rgb(26 26 26 / 0.85), rgb(26 26 26 / 0.7) 70%, rgb(26 26 26 / 0));
+  }
+
   .above::after {
     display: none;
+  }
+
+  /* An upright overhead frame is lanes from edge to edge, and white lane
+     lines running through small type make it hard to read. So here the
+     headline brings its own ground, which leaves when it does. */
+  .above::before {
+    content: "";
+    position: absolute;
+    inset: 42% 0 0;
+    z-index: -1;
+    background: linear-gradient(to top, rgb(26 26 26 / 0.92), rgb(26 26 26 / 0.82) 62%, rgb(26 26 26 / 0));
   }
 }
 

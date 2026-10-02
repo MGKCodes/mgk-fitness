@@ -18,8 +18,11 @@ frame. That only works if every still is plainly the same place, in the same
 light, through the same lens. **Consistency between the five matters more than
 any one of them being beautiful.**
 
-The five wide stills are chosen and are in `stills/selected/`. What is being
-made now is the same five again for an upright screen: go to
+Both sets are chosen and are in `stills/selected/`: five wide, `k1.png` to
+`k5.png`, and the same five for an upright screen, `k1p.png` to `k5p.png`.
+[`README.md`](README.md) says which image each is and why. This brief stays as
+the record of what they were made to, and is what a still made again should be
+made to: the wide ones from the top, the upright ones from
 [The portrait set](#the-portrait-set-round-4), which rests on everything
 before it.
 
@@ -388,6 +391,8 @@ web/design/landing/stills/
 ├─ round-04/            the portrait set: k1p-a.png and so on
 └─ selected/            the one chosen image per keyframe: k1.png … k5.png,
                         and k1p.png … k5p.png for the portrait set
+   └─ framing.json      any cut a chosen still is given before it goes on the
+                        page. The image itself is never altered
 ```
 
 The images in the round folders are not committed: they stay on the disk they
