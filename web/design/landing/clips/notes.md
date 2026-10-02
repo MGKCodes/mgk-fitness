@@ -181,7 +181,8 @@ where the strip leaves the track, and two clips for the move, which is the one
 most likely to work and costs a second clip in each shape; a longer clip, so
 there is time to travel and then turn; or, for nothing, blurring the fastest
 frames of the turn sideways in `edits.json`, as a whip pan does, which hides
-the strip changing and cures nothing.
+the strip changing and cures nothing. Matthew was offered the blur the same
+day and chose to leave the move as it is for now.
 
 ### `s3`, the tunnel: good once re-paced
 
