@@ -7,6 +7,12 @@ Checked on 2 October 2026, with `develop` at `82e7b3c`. **Redo the two scans
 if the flip is more than a few days later**: they describe the history as it
 was, and every commit since is unscanned.
 
+**The first scan was run again later the same day**, after Run 1.0.0 was
+submitted and `develop` was promoted to `main` (`8afe036`): `gitleaks` over
+every ref, 579 commits, and the same single finding, the demo key below. The
+second scan and the file-name check were not repeated, and that day's commits
+added what is listed under *Added on the day of the submission*.
+
 Run's `docs/compliance.md` names two things that must be true first: no secret
 anywhere in the history, and no copyrighted training table anywhere in the
 source. Both are below. Its roadmap still lists the first as open; that line is
@@ -66,6 +72,49 @@ Worth a decision each, because none can be taken back afterwards:
 - **`web/`**, which is visible and not open: it has its own licence, and
   [`NOTICE.md`](../NOTICE.md) says why.
 
+### Added on the day of the submission
+
+Run's store runbooks gained these on 2 October, after the scans above. None is
+a credential, and each is now part of what becomes public:
+
+- **The Google Cloud project's name**, `mgk-fitness`, the address of the
+  service account RevenueCat uses, and the name of the Pub/Sub topic Play
+  publishes to (`apps/mgk_run/docs/play-setup.md`). An address and two names;
+  the service account's key is not in the repository.
+- **Codemagic build ids** for builds 27 to 29, and App Store Connect's delivery
+  id for build 29, in the build tags and the release plan. They identify a
+  build to somebody already signed in, and open nothing.
+- **Three links to private pages** in the READMEs: the screen board, the store
+  shots and the submission sheet. A stranger who follows one is refused. Either
+  share the pages when the repository opens or say beside the links that they
+  are private, which Run's README does.
+- **A video on the site**,
+  `web/public/run/explanations/recording-with-the-screen-off.mp4`, recorded on
+  an emulator. It shows the app and nothing of anybody's.
+
+**The review accounts' passwords were reset that day, in the Supabase SQL
+editor, and were never written to a file.** A search of the working tree for
+both finds nothing.
+
+## Run's own list
+
+Run's [`after-1.0.0.md`](../apps/mgk_run/docs/after-1.0.0.md) has carried a
+table headed *Before the repository goes public* since the review of
+29 September. It was written before this page and the two do not yet agree, so
+read both on the day:
+
+- It says **pull requests from forks can reach Codemagic secrets**; this page
+  says the `checks` workflow holds none. Both can be true, since the release
+  workflows hold secrets and `checks` does not, but which workflows a fork's
+  pull request can trigger has not been tested. Settle it by reading
+  Codemagic's settings, not either document.
+- It lists four things this page does not: that `checks` has never run and
+  cannot pass as configured, gaps in `.gitignore` for keystores and credential
+  files, that `scripts/codemagic-build.sh` builds from any branch it is given,
+  and that `web/` sends no Content-Security-Policy header.
+- Its sixth, the demo key in `supabase/knowledge/sync.ts`, is the finding
+  explained above.
+
 ## Copyrighted training tables: none found
 
 A search of `apps/*/lib`, `packages/` and `supabase/` for VDOT tables and the
@@ -118,6 +167,7 @@ list's one door, and the table has no other.
 
 1. Redo the two scans if any time has passed. The first is
    `gitleaks git --redact --log-opts="--all" .`
+   Then go through Run's own list, above.
 2. Decide on the addresses above.
 3. Make the repository public.
 4. In its settings, turn on **secret scanning** and **push protection**, both
