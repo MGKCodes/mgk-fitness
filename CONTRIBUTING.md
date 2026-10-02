@@ -17,8 +17,30 @@ Two long-lived branches, and nothing else:
 
 - **`develop`** is where the work happens: both apps, the shared packages and
   the backend. Anything an app is built from lives here.
-- **`main`** is what has shipped. `develop` is promoted to it when both apps
-  release, and the release is tagged (`run/build-27`).
+- **`main`** is what was submitted to the stores. `develop` is promoted to it
+  when an app's version goes for review, and the build is tagged on the commit
+  it was built from (`run/build-29`). Between submissions `main` does not move,
+  apart from the website.
+
+### Versions
+
+A version number is submitted once. This is Run's rule
+([ADR-0046](apps/mgk_run/docs/decisions/0046-a-version-is-submitted-once.md)),
+and Lift's when it submits:
+
+- **The commit after a promotion moves `develop` to the next version**: the
+  next patch number and the next build number in the app's `pubspec.yaml`
+  (`1.0.0+29` becomes `1.0.1+30`). Everything from then on belongs to it.
+- **A rejection that needs a new binary is answered by that next version**,
+  built from `develop`. Never a second build of the version that was rejected,
+  and never a fix made on `main`.
+- **A rejection that needs no binary** (a screenshot, a description, a form) is
+  fixed in the store's console and resubmitted with the same build.
+- **The build number** is the `+N`, bumped by a commit before a build is fired,
+  and it only ever goes up
+  ([ADR-0039](apps/mgk_run/docs/decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
+- **The changelog is cut at the promotion**: `[Unreleased]` becomes the version,
+  and a new, empty `[Unreleased]` opens above it.
 
 **The website is the exception.** `web/` is not an app release and can move
 ahead of the apps, so a change there merges **straight to `main`**, which Vercel

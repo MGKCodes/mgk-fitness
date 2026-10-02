@@ -57,3 +57,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0043](0043-the-map-keeps-what-it-has-shown.md) | The map keeps what it has shown, and does not download what it has not | Accepted |
 | [0044](0044-race-week-is-a-week-of-its-own.md) | Race week is a week of its own, and race day is on the plan | Accepted |
 | [0045](0045-the-runs-figures-on-the-lock-screen.md) | A run's figures are on the lock screen, drawn natively | Accepted |
+| [0046](0046-a-version-is-submitted-once.md) | A version is submitted once, and `main` is what was submitted | Accepted |
