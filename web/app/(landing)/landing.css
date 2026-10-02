@@ -126,6 +126,34 @@ input:focus-visible {
   color: var(--white);
 }
 
+.bar .narrow {
+  display: none;
+}
+
+/* A phone's width: the same things, closer together, and the list in a word. */
+@media (max-width: 560px) {
+  .wordmark {
+    letter-spacing: 0.26em;
+  }
+
+  .bar nav {
+    gap: 0.9rem;
+    margin: 0 0.9rem 0 auto;
+  }
+
+  .bar .pill {
+    padding: 0 1rem;
+  }
+
+  .bar .wide {
+    display: none;
+  }
+
+  .bar .narrow {
+    display: inline;
+  }
+}
+
 .pill,
 .list button {
   display: inline-flex;
@@ -748,8 +776,9 @@ main > section > h2 {
   color: var(--dim);
 }
 
-/* ── Open source ─────────────────────────────────────────────────────────── */
-.open {
+/* ── Open source, and where to follow ────────────────────────────────────── */
+.open,
+.follow {
   padding: 18svh var(--edge) 6svh;
 }
 
@@ -943,7 +972,13 @@ a.store:hover {
   color: var(--white);
 }
 
-.foot p a {
+.foot p {
+  margin-top: 0.9rem;
+}
+
+.foot p a,
+.note a {
+  color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

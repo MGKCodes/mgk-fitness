@@ -54,7 +54,8 @@ function glide(to: number) {
 }
 
 /**
- * The bar: the suite's name, its two apps and the waiting list.
+ * The bar: the suite's name, its two apps, where to follow it and the waiting
+ * list.
  *
  * Run and Lift are places in the film, not pages, so their links scroll the
  * film to where each app arrives. They are ordinary links to `#run` and
@@ -75,16 +76,20 @@ export function Bar() {
       <a className="wordmark" href="#top" onClick={go}>
         MGKFITNESS
       </a>
-      <nav aria-label="The apps">
+      <nav aria-label="On this page">
         <a href="#run" onClick={go}>
           Run
         </a>
         <a href="#lift" onClick={go}>
           Lift
         </a>
+        {/* Below the film, so there is nothing to play on the way. It jumps. */}
+        <a href="#follow">Follow</a>
       </nav>
-      <a className="pill" href="#waiting-list">
-        Waiting list
+      {/* Said in one word where the bar has no room for two. */}
+      <a className="pill" href="#waiting-list" aria-label="Waiting list">
+        <span className="wide">Waiting list</span>
+        <span className="narrow">Join</span>
       </a>
     </header>
   );

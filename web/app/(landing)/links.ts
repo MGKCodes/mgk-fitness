@@ -15,6 +15,16 @@ export const stores: Record<"run" | "lift", { apple?: string; google?: string }>
 };
 
 /**
+ * The suite's accounts elsewhere. One with no address is shown as coming. One
+ * that is not going to happen is taken out of the list, and is then not shown
+ * at all. `handle` is what the account is called there, with its @.
+ */
+export const social: { name: string; url?: string; handle?: string }[] = [
+  { name: "Instagram" },
+  { name: "TikTok" },
+];
+
+/**
  * The source. Run and Lift are AGPL and live in one repository, with the
  * backend they share.
  *
