@@ -9,9 +9,10 @@ the weight room beneath it. **Run arrives where the camera lands on the track.
 Lift arrives where it comes out of the tunnel.** One venue holds both apps,
 which is the page's whole argument: they are one thing.
 
-The page is designed and the film is made, in both shapes. All five stills are
-chosen and on the page, in a wide set and an upright one, and **each film has
-its four clips**, so the camera moves on a phone and on a wide screen alike.
+The page is designed, the film is made in both shapes, and **it went live on
+2 October 2026**. All five stills are chosen and on the page, in a wide set
+and an upright one, and each film has its four clips, so the camera moves on a
+phone and on a wide screen alike.
 [`clips/notes.md`](clips/notes.md) says how each clip came out. Two moves have
 faults that are known and left for now, both in both shapes and both under
 "Not built yet": the turn to the tunnel, where the red strip changes shape,
@@ -168,6 +169,14 @@ else.
   page there at the film's own speed, so the film is watched on the way and
   not skipped. Anything the visitor does stops it. They are ordinary links to
   `#run` and `#lift` underneath.
+- **The link preview is the hero, photographed.** What a shared link shows is
+  `app/(landing)/opengraph-image.jpg`: the built page's first screen at 1200
+  by 630, with the bar and the two smallest lines hidden and the headline at
+  9.2vw, which at that shape ends it short of the first lane as the page's own
+  headline does. Its words for somebody who cannot see it are in
+  `opengraph-image.alt.txt`, and the title and description beside it are the
+  landing layout's. Take it again when the overhead still, the headline or
+  the line under it changes. The documents have no picture, on purpose.
 - **It is MGKFitness first.** The page opens on the suite's name, set as its
   apps' names are, and says what is true of the two together: one account, one
   design, free to track. The suite's own mark stands before its name in the
@@ -222,10 +231,6 @@ else.
   and one rotation, with the third axis kept for a third app. The site's mark
   is for the suite, squares the chevrons and takes the diagonal.
   `tool/icon.py` says so and calls itself provisional.
-- **The page is not live, and not indexed.** It is on `develop` and has not
-  been promoted to `main`, which is what Vercel deploys. `robots` is off in
-  the landing layout. The film and the list are both real now, so going live
-  and being found are decisions to take and no longer things to build. What
-  the page still lacks for that day is a picture for link previews: it has no
-  Open Graph image, so a link to it shared anywhere shows its title and its
-  description and no picture.
+- **Being found.** The page is live on `main` and `robots` is still off in
+  the landing layout, so a link reaches it and a search does not. Turning
+  that on is one line and a decision.
