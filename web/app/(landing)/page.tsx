@@ -176,7 +176,7 @@ function App({
     <Beat from={shot} className={`app ${app}`}>
       <h2>
         {app.toUpperCase()}
-        <Mark app={app} />
+        <Mark of={app} />
       </h2>
       <ol className="steps">
         {steps.map((step, i) => (
