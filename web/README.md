@@ -32,9 +32,15 @@ still `/run/support`.
 ## The landing page
 
 [`design/landing/README.md`](design/landing/README.md) has the idea, how the
-film is made and what is not built yet. In short: the page is a scaffold. It
-draws a slate where the film will go, the waiting list does not save anything,
-and it is not indexed.
+film is made and what is not built yet. In short: the page is designed and its
+stills are on it, the camera does not move between them yet, and it is not
+indexed.
+
+Its waiting list writes to `core.waiting_list` through one function,
+`core.join_waiting_list`, with the publishable key. The migration
+`20261002140000_core_waiting_list.sql` says why it is shaped that way. Things
+that are not live yet, the store links and the public repository, are turned
+on in [`app/(landing)/links.ts`](app/(landing)/links.ts).
 
 ## The legal pages are generated, not written
 
@@ -117,8 +123,9 @@ directly, with no client library, and signs its short session out once the
 password is changed.
 
 It needs the project's two **public** values, the same two every copy of the
-apps carries: its address and its publishable key. Since `c41f2bd` they are
-written into `reset-password-form.tsx` as defaults, so Vercel needs no settings.
+apps carries: its address and its publishable key. They are written into
+[`app/supabase.ts`](app/supabase.ts) as defaults, which the waiting list uses
+too, so Vercel needs no settings.
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` still
 override them, which is how a test points the page at a stand-in server. A
 secret key never goes here, and `.env*` stays ignored so this folder cannot
@@ -164,8 +171,8 @@ fine to anybody signed in to the team.
 
 ## What is not here yet
 
-- The landing film and a working waiting list. See
-  [`design/landing/README.md`](design/landing/README.md).
+- The landing film. See [`design/landing/README.md`](design/landing/README.md).
+- Anything that emails the waiting list. It is only collected.
 - Tailwind and a lint config. The landing page is one stylesheet; neither has
   earned its place yet.
 - Anything that needs a secret. If a contact form arrives, its key lives in

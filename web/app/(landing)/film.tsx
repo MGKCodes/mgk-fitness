@@ -37,8 +37,18 @@ const spanOf = (id: string) => spans.find((span) => span.shot.id === id);
  * A move with frames plays them. A move without crossfades between its two
  * stills, so the storyboard can be walked before any video exists. With no
  * stills either it draws a slate naming the shot.
+ *
+ * `places` names points in the film that a link can go to: an id, and the hold
+ * it stands for. Each is put a third of the way into its hold, where whatever
+ * arrives during that hold has arrived.
  */
-export function Film({ children }: { children: ReactNode }) {
+export function Film({
+  places = {},
+  children,
+}: {
+  places?: Record<string, string>;
+  children: ReactNode;
+}) {
   const film = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
 
@@ -246,6 +256,11 @@ export function Film({ children }: { children: ReactNode }) {
       className="film"
       style={{ "--screens": screens } as CSSProperties}
     >
+      {Object.entries(places).map(([id, shot]) => {
+        const span = spanOf(shot)!;
+        const at = (span.start + (span.end - span.start) * 0.3) * screens;
+        return <i key={id} id={id} className="place" style={{ top: `${at * 100}svh` }} />;
+      })}
       <div className="stage">
         <canvas ref={canvas} aria-hidden="true" />
         {children}

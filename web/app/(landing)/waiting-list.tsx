@@ -1,23 +1,59 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { PUBLISHABLE_KEY, SUPABASE_URL } from "../supabase";
+
+type Stage = "asking" | "sending" | "joined" | "refused" | "failed";
 
 /**
- * The waiting list's form.
- *
- * **It does not save anything yet.** An address collected for launch news is
- * personal data, so the list needs a table to hold it, wording that says what
- * the address is for, and a line in both apps' privacy policies before it can
- * take one. Until then sending the form says the list is not open, which is
- * true, rather than thanking somebody for an address that went nowhere.
+ * Puts an address on the list, through `core.join_waiting_list`: the one thing
+ * the publishable key may do to that table. It answers the same whether or not
+ * the address was already there, so this cannot tell either.
+ */
+async function join(email: string): Promise<Stage> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/join_waiting_list`, {
+      method: "POST",
+      headers: {
+        apikey: PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+        "Content-Profile": "core",
+      },
+      body: JSON.stringify({ p_email: email }),
+    });
+    if (response.ok) return "joined";
+    // 400 is the table's own checks turning the address down.
+    return response.status === 400 ? "refused" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
+const says: Record<Stage, string> = {
+  // What the address is for and how to take it back, said where it is given.
+  asking:
+    "We will only use it to tell you when Run and Lift are live. To come off the list, email hello@mgkcodes.com.",
+  sending: "Adding you…",
+  joined: "You are on the list. We will email you when they are live.",
+  refused: "That does not look like an email address.",
+  failed: "That did not save. Try again in a minute, or email hello@mgkcodes.com.",
+};
+
+/**
+ * The waiting list's form. It only collects: nothing sends the email yet.
  */
 export function WaitingList() {
   const id = useId();
-  const [asked, setAsked] = useState(false);
+  const [stage, setStage] = useState<Stage>("asking");
 
-  function send(event: FormEvent) {
+  async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAsked(true);
+    const form = new FormData(event.currentTarget);
+    // A field no person sees or fills. Something that fills it is thanked and
+    // sent nowhere, so it has no reason to try again differently.
+    if (form.get("company")) return setStage("joined");
+    setStage("sending");
+    setStage(await join(String(form.get("email") ?? "")));
   }
 
   return (
@@ -31,13 +67,16 @@ export function WaitingList() {
           autoComplete="email"
           placeholder="you@example.com"
           required
+          disabled={stage === "joined"}
+          aria-invalid={stage === "refused"}
         />
-        <button type="submit">Tell me when it is live</button>
+        <input className="trap" type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+        <button type="submit" disabled={stage === "sending" || stage === "joined"}>
+          {stage === "joined" ? "On the list" : "Tell me when it is live"}
+        </button>
       </div>
       <p className="note" role="status">
-        {asked
-          ? "The list is not open yet. Come back soon."
-          : "An email when Run and Lift are in the stores."}
+        {says[stage]}
       </p>
     </form>
   );

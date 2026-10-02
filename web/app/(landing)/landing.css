@@ -34,13 +34,15 @@ h2,
 h3,
 p,
 ol,
+ul,
 dl,
 dd {
   margin: 0;
   padding: 0;
 }
 
-ol {
+ol,
+ul {
   list-style: none;
 }
 
@@ -105,6 +107,25 @@ input:focus-visible {
   text-decoration: none;
 }
 
+/* Run and Lift: places in the film, to the right with the waiting list. */
+.bar nav {
+  display: flex;
+  gap: clamp(1.1rem, 2.4vw, 2.25rem);
+  margin: 0 clamp(1.1rem, 2.4vw, 2.25rem) 0 auto;
+}
+
+.bar nav a {
+  padding: 0.75rem 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--silver);
+  text-decoration: none;
+}
+
+.bar nav a:hover {
+  color: var(--white);
+}
+
 .pill,
 .list button {
   display: inline-flex;
@@ -134,6 +155,12 @@ input:focus-visible {
   top: 0;
   height: 100svh;
   overflow: hidden;
+}
+
+/* A point in the film that a link goes to. It has a place and no size. */
+.place {
+  position: absolute;
+  left: 0;
 }
 
 .stage canvas {
@@ -187,12 +214,22 @@ input:focus-visible {
   gap: 1.5rem;
 }
 
+/* The suite's name, at the size its apps' names are given further down. Sized
+   to end on the infield, short of the first lane. */
 .above h1 {
-  /* Sized to end on the infield, short of the first lane. */
-  font-size: clamp(3.25rem, 10.4vw, 10.5rem);
+  font-size: clamp(3.25rem, 9.8vw, 10rem);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.045em;
+}
+
+.above .lede {
+  max-width: none;
+  font-size: clamp(1.35rem, 2.5vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--white);
 }
 
 .above p {
@@ -276,10 +313,10 @@ input:focus-visible {
   letter-spacing: -0.03em;
 }
 
+.above .lede span,
 .steps p span,
 .line p span,
-.coach h2 span,
-.terms h2 span {
+main > section > h2 span {
   display: block;
   color: var(--silver);
 }
@@ -482,12 +519,51 @@ input:focus-visible {
   }
 }
 
+/* ── What makes it one suite ─────────────────────────────────────────────── */
+.suite {
+  padding: 22svh var(--edge) 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 3rem var(--edge);
+  margin-top: clamp(3rem, 9svh, 6rem);
+}
+
+.facts li {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--white);
+}
+
+.facts h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  font-size: clamp(1.4rem, 2.1vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.facts p,
+.open > p:not(.small) {
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.5;
+  color: var(--silver);
+}
+
+.facts p {
+  max-width: 30ch;
+  margin-top: 0.75rem;
+}
+
 /* ── Why pay for the coach ───────────────────────────────────────────────── */
 .coach {
   padding: 22svh var(--edge) 4svh;
 }
 
-.coach > .tag {
+main > section > .tag {
   margin-bottom: 2rem;
 }
 
@@ -628,9 +704,7 @@ input:focus-visible {
   padding: 20svh var(--edge) 6svh;
 }
 
-.coach h2,
-.terms h2,
-.waiting h2 {
+main > section > h2 {
   font-size: clamp(2.25rem, 5.8vw, 5.5rem);
   font-weight: 800;
   line-height: 0.98;
@@ -674,9 +748,121 @@ input:focus-visible {
   color: var(--dim);
 }
 
+/* ── Open source ─────────────────────────────────────────────────────────── */
+.open {
+  padding: 18svh var(--edge) 6svh;
+}
+
+.open > p:not(.small) {
+  max-width: 58ch;
+  margin-top: 2.25rem;
+}
+
+.repos,
+.stores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.repos {
+  margin-top: 3rem;
+}
+
+/* A way in: to the source, or to a store. The same shape for both, and the
+   same way of saying that it is not open yet: a dashed edge, and "soon". */
+.repo,
+.store {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.9rem 1.4rem 1rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.repo {
+  flex: 1 1 13rem;
+  max-width: 20rem;
+}
+
+.store {
+  min-width: 11.5rem;
+}
+
+.repo small,
+.store small {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.repo span {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--silver);
+}
+
+/* Held for a link that does not exist yet. */
+.repo.held,
+.store.held {
+  border-style: dashed;
+  color: var(--silver);
+}
+
+a.repo:hover,
+a.store:hover {
+  border-color: var(--white);
+}
+
 /* ── The waiting list ────────────────────────────────────────────────────── */
 .waiting {
   padding: 16svh var(--edge) 16svh;
+}
+
+/* Where each app will be got from, under the form that stands in for them. */
+.get {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 3rem var(--edge);
+  margin-top: clamp(4rem, 13svh, 8rem);
+}
+
+.get > div {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--white);
+}
+
+.get dt {
+  margin-bottom: 1.25rem;
+  font-size: clamp(1.4rem, 2.1vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* The field no person fills. Off the page, not `display: none`, which the
+   things it is for have learnt to skip. */
+.trap {
+  position: absolute;
+  left: -200vw;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--white);
+}
+
+.list button:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .waiting h2 {
