@@ -565,6 +565,12 @@ main > section > h2 span {
     margin-right: calc(223.2 * var(--pt) * -1);
   }
 
+  /* The middle of an upright frame is the tunnel's mouth and then the lit room
+     beyond it, so the line goes above them, where the names are. */
+  .line {
+    align-items: start;
+  }
+
   .above::after {
     display: none;
   }

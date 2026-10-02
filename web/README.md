@@ -20,7 +20,7 @@ web/
 │        ├─ support/page.tsx       both stores require a support URL that resolves
 │        └─ delete-account/page.tsx  Play requires a deletion URL. Apple does not
 ├─ design/landing/          the landing page's idea, and the brief for its stills
-├─ tool/film.mjs            puts chosen stills and clips on the page. Needs ffmpeg
+├─ tool/film.mjs            puts chosen stills and clips on the page, wide and tall. Needs ffmpeg
 ├─ public/run/              GENERATED. Do not edit. See below.
 └─ next.config.ts           the rewrites that give each document one URL
 ```
