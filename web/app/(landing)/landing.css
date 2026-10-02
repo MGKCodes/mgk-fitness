@@ -1,0 +1,311 @@
+/* The apps' own palette (`AppColors` in `packages/mgk_ui`), so the page and
+   the screens shown on it are one surface. Always dark: the film is, and the
+   apps are. */
+:root {
+  color-scheme: dark;
+  --bg: #1a1a1a;
+  --raised: #3a3a3a;
+  --silver: #c0c0c0;
+  --white: #ffffff;
+  --dim: #8a8f98;
+  --edge: clamp(1.25rem, 4.5vw, 4.5rem);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 3px;
+}
+
+/* ── The bar ─────────────────────────────────────────────────────────────── */
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem var(--edge);
+}
+
+/* "MGKFITNESS" as the launch film sets it: small, wide and quiet. */
+.wordmark {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  color: var(--silver);
+  text-decoration: none;
+}
+
+.pill,
+.list button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--silver);
+  color: var(--bg);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* ── The film ────────────────────────────────────────────────────────────── */
+/* As tall as the scrolling it takes, plus one screen for the stage itself. */
+.film {
+  position: relative;
+  height: calc((var(--screens) + 1) * 100svh);
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* A floor of shade, so type holds over whichever frame is behind it. */
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(26 26 26 / 0.78), rgb(26 26 26 / 0) 55%);
+  pointer-events: none;
+}
+
+/* The film sets each beat's opacity and `--t`. Before it has, only the first
+   is shown, so the page opens on its headline and not on four at once. */
+.beat {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 5.5rem var(--edge) clamp(2rem, 7svh, 5rem);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.beat[data-from="above"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.above {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1.5rem;
+}
+
+.above h1 {
+  font-size: clamp(3.25rem, 11.5vw, 11rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+
+.above p,
+.app p {
+  max-width: 34ch;
+  font-size: clamp(1rem, 1.35vw, 1.3rem);
+  line-height: 1.45;
+  color: var(--silver);
+}
+
+/* An app's name at the size of the page, and its screen coming up over it. */
+.app h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+  font-size: clamp(5.5rem, 24vw, 27rem);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.025em;
+}
+
+.mark {
+  height: 0.62em;
+  flex: none;
+}
+
+.app p {
+  margin-top: 1.75rem;
+}
+
+.phone {
+  position: absolute;
+  top: 14svh;
+  right: clamp(1.25rem, 9vw, 10rem);
+  width: auto;
+  height: 80svh;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: clamp(1.5rem, 3.4svh, 2.75rem);
+  box-shadow: 0 2.5rem 6rem rgb(0 0 0 / 0.55);
+  /* Up from below the fold in the first part of the hold, then at rest. */
+  transform: translateY(calc(max(0, 1 - var(--t, 0) * 2.2) * 80svh));
+}
+
+.line {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.line p {
+  max-width: 16ch;
+  text-wrap: balance;
+  font-size: clamp(1.75rem, 4.4vw, 4rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 760px) {
+  .phone {
+    top: auto;
+    bottom: -14svh;
+    right: 50%;
+    height: 66svh;
+    margin-right: calc(66svh * 786 / 1704 / -2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone {
+    transform: none;
+  }
+}
+
+/* ── The waiting list ────────────────────────────────────────────────────── */
+.waiting {
+  padding: 18svh var(--edge) 16svh;
+}
+
+.waiting h2 {
+  max-width: 13ch;
+  margin-bottom: 2.5rem;
+  text-wrap: balance;
+  font-size: clamp(2.25rem, 6.5vw, 6rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.list {
+  max-width: 34rem;
+}
+
+.list label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.field input {
+  flex: 1 1 14rem;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--white);
+  font: inherit;
+}
+
+.field input::placeholder {
+  color: var(--dim);
+}
+
+.note {
+  margin-top: 0.9rem;
+  font-size: 0.875rem;
+  color: var(--dim);
+}
+
+/* ── The foot ────────────────────────────────────────────────────────────── */
+.foot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 2.5rem var(--edge);
+  padding: 3.5rem var(--edge) 4rem;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+  font-size: 0.875rem;
+  color: var(--dim);
+}
+
+.foot nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.foot h3 {
+  margin-bottom: 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+
+.foot a {
+  text-decoration: none;
+}
+
+.foot a:hover {
+  color: var(--white);
+}
+
+.foot p a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
