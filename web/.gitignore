@@ -26,3 +26,9 @@ next-env.d.ts
 # still that cannot be regenerated cannot be matched, and so are the chosen
 # five in `selected/`.
 /design/landing/stills/round-*/*.png
+
+# The clips the film's frames are cut from. Each is several megabytes and the
+# page uses only the frames, which are committed in `public/film/`. A clip
+# stays on the disk it was made on; `design/landing/clips/notes.md` is
+# committed and says how each was made.
+/design/landing/clips/*.mp4

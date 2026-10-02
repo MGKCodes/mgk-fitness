@@ -44,6 +44,10 @@ And the same five for an upright screen, all from round 4:
 
 Step 3 is worth doing before step 4. It shows the storyboard in place, at full
 size, under the real type, for nothing; a clip costs money each time.
+[`clips/notes.md`](clips/notes.md) says how a clip is made and records each
+one: the first, a test of the tunnel move for an upright screen, showed that
+the model begins and ends on the stills it is given and moves between them as
+a camera would.
 
 ## Two shapes
 
