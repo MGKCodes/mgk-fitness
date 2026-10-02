@@ -211,6 +211,17 @@ else.
   end and a desktop 13.3 MB, every eighth frame of each move first and then
   the gaps. Narrower frames would halve either, at some cost in sharpness
   while the camera is moving.
+- **A ruling on the name.** The page sets MGKFitness as its headline, puts it
+  in the bar and types it into its strings, and the accounts to follow will
+  carry it. [`docs/naming.md`](../../../docs/naming.md) says MGKFitness is a
+  placeholder that is never typed into a string, so that replacing it stays
+  one edit, and its list of what a rename costs does not include the website.
+  One of the two has to give: the name is held once in `web/` and the website
+  joins that list, or the placeholder is retired.
+- **A ruling on the suite's mark.** The apps' icons follow one rule, one mark
+  and one rotation, with the third axis kept for a third app. The site's mark
+  is for the suite, squares the chevrons and takes the diagonal.
+  `tool/icon.py` says so and calls itself provisional.
 - **The page is not live, and not indexed.** It is on `develop` and has not
   been promoted to `main`, which is what Vercel deploys. `robots` is off in
   the landing layout. The film and the list are both real now, so going live

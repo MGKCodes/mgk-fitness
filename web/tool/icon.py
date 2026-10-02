@@ -14,6 +14,14 @@ of a browser tab every edge lies on a pixel. On a grid of sixteen the stroke is
 two, each arm is four long, and the trailing chevron sits four back and four
 down.
 
+**It is provisional, and it bends the family's rule twice.** The rule is one
+mark and one rotation, an app to an axis, with the third axis kept for a third
+app. This mark is for the suite and not for an app, it squares the arms and so
+is not a rotation of the apps' mark, and it takes the diagonal. It was drawn
+on 2 October 2026 so that the site had an icon at all. If a third app wants
+that heading, or the rule is to hold, redraw it here: everything below is
+written from this file's numbers.
+
 ## Why it is here and not beside the apps' marks
 
 The apps' icons are part of the apps, which are AGPL. This mark is used by the
