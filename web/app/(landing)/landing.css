@@ -188,7 +188,8 @@ input:focus-visible {
 }
 
 .above h1 {
-  font-size: clamp(3.25rem, 11.5vw, 11rem);
+  /* Sized to end on the infield, short of the first lane. */
+  font-size: clamp(3.25rem, 10.4vw, 10.5rem);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.045em;
@@ -323,15 +324,23 @@ input:focus-visible {
   opacity: clamp(0, (var(--t, 0) - var(--in)) * 18, 1);
 }
 
-/* The one line said in the tunnel, on its dark. */
+/* In the weight room the bar reaches further right than anything on the track
+   does, so the phone moves out of its way. */
+.lift .phone {
+  right: 8vw;
+}
+
+/* The one line said in the tunnel. On the left, because that is wall in both
+   stills it is said over: concrete at the mouth, dark inside. The middle of
+   the frame is the mouth itself and then the room beyond it. */
 .line {
   display: grid;
-  place-items: center;
-  text-align: center;
+  align-items: center;
 }
 
 .line p {
-  font-size: clamp(1.9rem, 4.6vw, 4.5rem);
+  max-width: 11ch;
+  font-size: clamp(1.9rem, 3.5vw, 3.6rem);
   font-weight: 700;
   line-height: 1.04;
   letter-spacing: -0.035em;
