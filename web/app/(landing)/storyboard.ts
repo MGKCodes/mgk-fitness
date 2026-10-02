@@ -13,13 +13,14 @@ export type Shot =
 // The whole page's pacing is these seven numbers. A move that feels slow is
 // shortened here, not in the component.
 export const shots: Shot[] = [
-  { id: "above", kind: "hold", at: "k1", screens: 0.75 },
-  { id: "s1", kind: "move", from: "k1", to: "k2", screens: 1.5 },
-  { id: "track", kind: "hold", at: "k2", screens: 1.75 },
-  { id: "s2", kind: "move", from: "k2", to: "k3", screens: 1 },
-  { id: "s3", kind: "move", from: "k3", to: "k4", screens: 1.25 },
-  { id: "s4", kind: "move", from: "k4", to: "k5", screens: 0.75 },
-  { id: "room", kind: "hold", at: "k5", screens: 1.75 },
+  { id: "above", kind: "hold", at: "k1", screens: 0.6 },
+  { id: "s1", kind: "move", from: "k1", to: "k2", screens: 1.25 },
+  // The two long holds each show three screens, one after another.
+  { id: "track", kind: "hold", at: "k2", screens: 2.4 },
+  { id: "s2", kind: "move", from: "k2", to: "k3", screens: 0.9 },
+  { id: "s3", kind: "move", from: "k3", to: "k4", screens: 1 },
+  { id: "s4", kind: "move", from: "k4", to: "k5", screens: 0.6 },
+  { id: "room", kind: "hold", at: "k5", screens: 2.4 },
 ];
 
 export const screens = shots.reduce((sum, shot) => sum + shot.screens, 0);
