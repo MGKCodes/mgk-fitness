@@ -190,6 +190,10 @@ else.
   none, so on a screen wider than it is tall every move is still a crossfade.
   Four more, each made from two wide stills: about $3 at the prices in
   `clips/notes.md`, if each lands first time.
+- **The turn to the tunnel, made again.** In the upright film the red strip
+  changes shape under the camera as it turns, so the move does not read as one
+  shot. It is known and left for now: `clips/notes.md` has why it happens and
+  what to try.
 - **One weight room.** K4's far end and K5 are two different rooms, in both
   sets: a bright hall with slanting columns, and the dark room the film ends
   in. A video model given both walks into the first and cuts to the second.

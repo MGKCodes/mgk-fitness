@@ -26,6 +26,15 @@ done to a clip as it is cut.
   (`cloudflared tunnel --url`), which is closed as soon as the clips are made.
 - **Create the prediction and then ask after it. Never wait on the request.**
   See below: this cost $1.41.
+- **One clip at a time, and each is checked before the next.** Before: both
+  frames answer at their URLs. As soon as it is created: it is `starting` or
+  `processing`, it has no error, and the inputs it echoes are the ones meant,
+  which are the size, the seconds, audio off and the two frames. Then the
+  account's list shows one new prediction and not more. When it is done: the
+  seconds it reports are the seconds asked for, and the file that comes down
+  is the size and shape expected. Only then the next one.
+- **What is left on the account is on Replicate's dashboard and nowhere
+  else.** The API does not say. Do not work it out: ask.
 - **The output is deleted from Replicate after an hour**, so it is downloaded
   at once.
 - **A test is 540p and a final is 1080p.** The same seed at another size is
@@ -96,7 +105,7 @@ One crane down with the lane numbers passing under the camera and the horizon
 coming up. The lanes hold. Both 540p tests bent the track part of the way
 down; the final, with "the lanes stay straight and parallel" added, does not.
 
-### `s2`, the turn to the tunnel: good, with a wobble
+### `s2`, the turn to the tunnel: a known fault, left for now
 
 > One continuous shot, no cuts. The camera glides forward along the empty
 > running track, one metre above it, then curves smoothly to the right,
@@ -108,9 +117,20 @@ down; the final, with "the lanes stay straight and parallel" added, does not.
 > red surface is the only colour. Photorealistic, 35mm lens, fine film grain.
 
 The model turns the camera to the right more than it travels, and the stand
-swings round to face it. It reads as one move. Between about three fifths and
-three quarters of the way the red strip and the track change shape under the
-camera as the model works out which is which.
+swings round to face it. Between about three fifths and three quarters of the
+way the red strip and the track change shape under the camera as the model
+works out which is which.
+
+**Matthew, on seeing it on 2 October: the red strip moves, so it does not look
+like one shot.** It is the one fault he named in the upright film, and he is
+content to leave it for now. It is to be made again, not edited: nothing in
+`edits.json` can hold a strip still. Why it happens, as far as the clip shows:
+K2p has the tunnel forty metres off and K3p stands eight metres from it, and
+in five seconds the model turns on the spot instead of travelling there, so
+the strip under the camera at the end has to be made out of the track that was
+under it at the start. What to try when it is made again: a longer clip, so
+there is time to travel and then turn; a prompt that says the strip lies still
+on the ground; or a still half way, on the apron, and two clips.
 
 ### `s3`, the tunnel: good once re-paced
 
