@@ -1,5 +1,5 @@
-import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
+import { Phone } from "./device";
 import { Film } from "./film";
 import { Mark } from "./mark";
 import { WaitingList } from "./waiting-list";
@@ -85,11 +85,16 @@ function App({
   app,
   steps,
   size,
+  time,
+  bare,
 }: {
   shot: string;
   app: "run" | "lift";
   steps: Step[];
   size: [number, number];
+  /** What the phone's clock says. It should agree with what the screens show. */
+  time: string;
+  bare?: { ground: string };
 }) {
   return (
     <Beat from={shot} className={`app ${app}`}>
@@ -112,20 +117,16 @@ function App({
           <i key={step.screen} style={during(i)} />
         ))}
       </div>
-      <div className="phone">
-        {steps.map((step, i) => (
-          <Image
-            key={step.screen}
-            style={during(i)}
-            src={`/screens/${step.screen}.png`}
-            alt={step.alt}
-            width={size[0]}
-            height={size[1]}
-            sizes="(max-width: 760px) 70vw, 40svh"
-            priority={i === 0 && app === "run"}
-          />
-        ))}
-      </div>
+      <Phone
+        screens={steps.map((step, i) => ({
+          src: `/screens/${step.screen}.png`,
+          alt: step.alt,
+          style: during(i),
+        }))}
+        size={size}
+        time={time}
+        bare={bare}
+      />
     </Beat>
   );
 }
@@ -162,7 +163,9 @@ export default function Home() {
             <p className="soon">Coming to iPhone and Android</p>
           </Beat>
 
-          <App shot="track" app="run" steps={run} size={[1290, 2796]} />
+          {/* 14:41 is the time Run's store screens were drawn at: the coach
+              screen greets the afternoon. */}
+          <App shot="track" app="run" steps={run} size={[1290, 2796]} time="14:41" />
 
           <Beat from="s3" className="line">
             <p>
@@ -170,7 +173,16 @@ export default function Home() {
             </p>
           </Beat>
 
-          <App shot="room" app="lift" steps={lift} size={[1170, 2532]} />
+          {/* Lift's session started at 6:30pm and is 34 minutes in. Its
+              captures leave no room for a status bar, so they sit under it. */}
+          <App
+            shot="room"
+            app="lift"
+            steps={lift}
+            size={[1170, 2532]}
+            time="19:04"
+            bare={{ ground: "#1f1f1f" }}
+          />
         </Film>
 
         <section className="terms">

@@ -301,27 +301,115 @@ input:focus-visible {
 /* Clear of the stand's tunnel on the right of the frame, which is where the
    film is going next. */
 .phone {
+  /* The phone is measured in its own points: a 430 by 932 screen and 8.2 of
+     frame all round, as `device.tsx` says. `--tall` is its height on the page
+     and `--pt` one point of it. */
+  --tall: 83svh;
+  --pt: calc(var(--tall) / 948.4);
   position: absolute;
   top: 11svh;
   right: 16vw;
-  height: 83svh;
-  aspect-ratio: 1290 / 2796;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: clamp(1.5rem, 3.6svh, 3rem);
-  background: var(--bg);
-  box-shadow: 0 2.5rem 7rem rgb(0 0 0 / 0.6);
+  width: calc(446.4 * var(--pt));
+  height: var(--tall);
   /* Up from below the fold in the first fifth of the hold, then at rest. */
   transform: translateY(calc(max(0, 1 - var(--t, 0) * 5.5) * 90svh));
 }
 
-.phone img {
+.phone > *,
+.screen > * {
   position: absolute;
+}
+
+.phone .rim {
+  inset: 0;
+  border-radius: calc(63.2 * var(--pt));
+  background: linear-gradient(140deg, #6b6b6e 0%, #38383a 14%, #232325 38%, #1d1d1f 62%, #343436 86%, #58585b 100%);
+  box-shadow:
+    0 calc(50 * var(--pt)) calc(90 * var(--pt)) rgb(0 0 0 / 0.55),
+    0 calc(8 * var(--pt)) calc(20 * var(--pt)) rgb(0 0 0 / 0.35);
+}
+
+.phone .bezel {
+  inset: calc(3.2 * var(--pt));
+  border-radius: calc(60 * var(--pt));
+  background: #050505;
+}
+
+.phone .button {
+  left: calc(-1.6 * var(--pt));
+  top: calc(var(--top) * var(--pt));
+  width: calc(3 * var(--pt));
+  height: calc(var(--long) * var(--pt));
+  border-radius: calc(1.5 * var(--pt));
+  background: linear-gradient(90deg, #2c2c2e, #4a4a4d 50%, #2c2c2e);
+}
+
+.phone .button.right {
+  left: auto;
+  right: calc(-1.6 * var(--pt));
+}
+
+.screen {
+  inset: calc(8.2 * var(--pt));
+  overflow: hidden;
+  border-radius: calc(55 * var(--pt));
+  background: var(--bg);
+}
+
+.screen img {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
   opacity: clamp(0, (var(--t, 0) - var(--in)) * 18, 1);
+}
+
+/* A capture with no room left for the status bar sits under it and above the
+   home indicator, whole, with its own edge colour either side. Its first few
+   points fade in, so the band above it does not end on a line. */
+.screen.bare img {
+  top: calc(59 * var(--pt));
+  left: 50%;
+  width: auto;
+  height: calc(858 * var(--pt));
+  translate: -50% 0;
+  mask-image: linear-gradient(transparent, #000 calc(10 * var(--pt)));
+}
+
+/* What the phone itself draws over a screen. */
+.clock {
+  left: calc(28 * var(--pt));
+  top: calc(19 * var(--pt));
+  width: calc(100 * var(--pt));
+  font-size: calc(17 * var(--pt));
+  font-weight: 600;
+  line-height: calc(21 * var(--pt));
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.signal {
+  left: calc(314 * var(--pt));
+  top: calc(23 * var(--pt));
+  width: calc(80 * var(--pt));
+  height: calc(14 * var(--pt));
+}
+
+.island {
+  left: calc(153 * var(--pt));
+  top: calc(11 * var(--pt));
+  width: calc(124 * var(--pt));
+  height: calc(36 * var(--pt));
+  border-radius: calc(18 * var(--pt));
+  background: #000;
+}
+
+.home {
+  left: calc(143 * var(--pt));
+  bottom: calc(8 * var(--pt));
+  width: calc(144 * var(--pt));
+  height: calc(5 * var(--pt));
+  border-radius: calc(3 * var(--pt));
+  background: var(--white);
 }
 
 /* In the weight room the bar reaches further right than anything on the track
@@ -369,12 +457,13 @@ input:focus-visible {
     margin-top: 1.1rem;
   }
 
-  .phone {
+  .phone,
+  .lift .phone {
+    --tall: 64svh;
     top: auto;
     right: 50%;
     bottom: -20svh;
-    height: 64svh;
-    margin-right: calc(64svh * 1290 / 2796 / -2);
+    margin-right: calc(223.2 * var(--pt) * -1);
   }
 
   .above::after {
