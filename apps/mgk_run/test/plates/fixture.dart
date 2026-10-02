@@ -18,6 +18,7 @@ import 'package:mgk_run/preview/fake_plan_client.dart';
 import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
 import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
+import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/purchase_client.dart';
 import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
@@ -189,6 +190,7 @@ HomeShell plateApp(
   PurchaseClient? purchases,
   RunRecorder Function()? recorderFactory,
   Future<List<RunSummary>> Function()? historySource,
+  CoachChatClient? chatClient,
 }) => HomeShell(
   // Where the start screen finds the runner. A test has no phone to ask, and
   // without an answer the screen draws its "Finding you" state, which is a
@@ -215,6 +217,9 @@ HomeShell plateApp(
   historySource: historySource ?? () async => runs,
   recorderFactory: recorderFactory,
   coach: FakeCoachService(),
+  // Who answers in the conversation, when it is not the fake above. The
+  // store's pictures bring their own (`store.dart`).
+  chatClient: chatClient,
   // Without one the Plan tab has no "Adjust this week", which is the control
   // the shipping app has there.
   planClient: FakePlanClient(),

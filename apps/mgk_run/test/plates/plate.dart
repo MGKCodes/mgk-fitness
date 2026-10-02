@@ -142,6 +142,10 @@ EdgeInsets safeAreaFor(Size size) {
 /// its Health step, and the App Store review screenshot cut from `paywall-store`
 /// described the wrong store. The board is read against the App Store build
 /// first; a plate that is about Android asks for it by name.
+///
+/// [safeArea] and [into] are for the store's screenshots (`store.dart`), which
+/// are drawn as phones the board has no size for and are written somewhere the
+/// board does not read.
 Future<void> plate(
   WidgetTester tester,
   String name,
@@ -150,6 +154,8 @@ Future<void> plate(
   double pixelRatio = 3,
   TargetPlatform platform = TargetPlatform.iOS,
   Future<void> Function(WidgetTester tester)? drive,
+  EdgeInsets? safeArea,
+  String into = 'plates',
 }) async {
   await loadInter();
   debugDefaultTargetPlatformOverride = platform;
@@ -161,7 +167,7 @@ Future<void> plate(
   // came out the wrong height, and nothing looked broken enough to notice.
   tester.view.devicePixelRatio = pixelRatio;
   tester.view.physicalSize = size * pixelRatio;
-  final EdgeInsets inset = safeAreaFor(size);
+  final EdgeInsets inset = safeArea ?? safeAreaFor(size);
   tester.view.padding = FakeViewPadding(
     top: inset.top * pixelRatio,
     bottom: inset.bottom * pixelRatio,
@@ -206,7 +212,7 @@ Future<void> plate(
     );
     image.dispose();
 
-    final Directory out = Directory('plates');
+    final Directory out = Directory(into);
     if (!out.existsSync()) out.createSync(recursive: true);
     final File file = File('${out.path}/$name.png');
     file.writeAsBytesSync(png!.buffer.asUint8List());
