@@ -73,6 +73,33 @@ const lift: Step[] = [
   },
 ];
 
+// Why somebody would pay for the coach: what goes wrong without one, and what
+// the coach does about it. The left of each pair is a trouble a reader will
+// recognise; the right is something the listings already say the coach does,
+// so the answer is never bigger than the product. Nothing here promises a
+// result, and the prices beside it are the stores' own (Run's ADR-0029).
+const reasons: [string, string][] = [
+  [
+    "A plan off the internet was written for somebody else.",
+    "Yours is built around your goal and the days you can train.",
+  ],
+  [
+    "One missed week and the plan no longer fits.",
+    "It is adjusted every week, around what you actually did.",
+  ],
+  [
+    "Nobody to ask whether today still makes sense.",
+    "Ask the coach. It reads what you have logged, so the answer is about you.",
+  ],
+  [
+    "You open the app and have to work out what to do.",
+    "Today’s session is already there, ready to start.",
+  ],
+];
+
+/** A screen that is simply shown, outside the film. */
+const always = { "--in": -1 } as CSSProperties;
+
 // When each of three steps is on screen, as shares of its hold. The phone
 // takes the first fifth to arrive, so the first step is given longest.
 const turns = [0.44, 0.72];
@@ -185,6 +212,74 @@ export default function Home() {
           />
         </Film>
 
+        <section className="coach">
+          <span className="tag">The coach &middot; &pound;0.99 a month</span>
+          <h2>
+            A personal trainer costs too much and is never free when you are.{" "}
+            <span>The coach is &pound;0.99 a month, and there whenever you train.</span>
+          </h2>
+
+          <div className="case">
+            <ol className="reasons">
+              {reasons.map(([trouble, answer]) => (
+                <li key={trouble}>
+                  <p>{trouble}</p>
+                  <p>{answer}</p>
+                </li>
+              ))}
+            </ol>
+            {/* The coach itself, in both apps, saying something only a coach
+                that has read the log could say. */}
+            <div className="pair">
+              <Phone
+                screens={[
+                  {
+                    src: "/screens/run-coach.png",
+                    alt: "Run's coach, asked what a half marathon could be run in, answering from a recent 5k.",
+                    style: always,
+                  },
+                ]}
+                size={[1290, 2796]}
+                time="14:41"
+              />
+              <Phone
+                screens={[
+                  {
+                    src: "/screens/lift-coach.png",
+                    alt: "Lift's coach saying: your bench has not moved in three weeks. Want to look at it?",
+                    style: always,
+                  },
+                ]}
+                size={[1170, 2532]}
+                time="19:04"
+                bare={{ ground: "#1f1f1f" }}
+              />
+            </div>
+          </div>
+
+          <dl className="tiers">
+            <div>
+              <dt>Coach</dt>
+              <dd>
+                <b>&pound;0.99</b> a month
+              </dd>
+              <dd>A training plan, adjusted every week, and a coach to ask.</dd>
+            </div>
+            <div>
+              <dt>Premium Coach</dt>
+              <dd>
+                <b>&pound;2.99</b> a month
+              </dd>
+              <dd>The same coach, with far more room to talk.</dd>
+            </div>
+          </dl>
+          <p className="small">
+            UK prices. Run and Lift each have their own subscription, which renews
+            monthly until you cancel it. Tracking stays free either way. The coach is
+            an AI model, not a person, and it is not medical advice.
+          </p>
+        </section>
+
         <section className="terms">
           <h2>
             Tracking is free. <span>The coach is the part you pay for.</span>
@@ -219,9 +314,6 @@ export default function Home() {
               </dl>
             </div>
           </div>
-          <p className="small">
-            The coach is an AI model, not a person, and it is not medical advice.
-          </p>
         </section>
 
         <section className="waiting" id="waiting-list">

@@ -278,6 +278,7 @@ input:focus-visible {
 
 .steps p span,
 .line p span,
+.coach h2 span,
 .terms h2 span {
   display: block;
   color: var(--silver);
@@ -481,11 +482,153 @@ input:focus-visible {
   }
 }
 
+/* ── Why pay for the coach ───────────────────────────────────────────────── */
+.coach {
+  padding: 22svh var(--edge) 4svh;
+}
+
+.coach > .tag {
+  margin-bottom: 2rem;
+}
+
+.coach h2 {
+  max-width: 21ch;
+}
+
+/* The troubles and their answers down the left, and the coach itself on the
+   right, staying in view while they are read. */
+.case {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(2.5rem, 7vw, 8rem);
+  margin-top: clamp(4rem, 14svh, 9rem);
+}
+
+.reasons {
+  counter-reset: reason;
+}
+
+.reasons li {
+  padding: 2.25rem 0 2.5rem;
+  border-top: 1px solid var(--hair);
+  counter-increment: reason;
+}
+
+.reasons li:last-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+/* The trouble, small and dim, under its number. */
+.reasons p:first-child {
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.4;
+  color: var(--dim);
+}
+
+.reasons p:first-child::before {
+  content: "0" counter(reason);
+  display: block;
+  margin-bottom: 0.9rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--silver);
+}
+
+/* The answer, large. */
+.reasons p:last-child {
+  max-width: 24ch;
+  margin-top: 0.6rem;
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.pair {
+  position: sticky;
+  top: 13svh;
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(1rem, 2vw, 2rem);
+}
+
+/* The film's phone, standing still, with none of the film's placing. */
+.pair .phone {
+  --tall: min(64svh, 42rem);
+  position: relative;
+  inset: auto;
+  flex: none;
+  margin: 0;
+  transform: none;
+}
+
+.pair .phone + .phone {
+  margin-top: 9svh;
+}
+
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 3rem var(--edge);
+  margin-top: clamp(5rem, 16svh, 10rem);
+}
+
+.tiers > div {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--white);
+}
+
+.tiers dt {
+  font-size: clamp(1.4rem, 2.1vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tiers dd {
+  margin-top: 0.75rem;
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.4;
+  color: var(--silver);
+}
+
+.tiers b {
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  color: var(--white);
+}
+
+.coach .small {
+  max-width: 62ch;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px), (max-aspect-ratio: 1 / 1) {
+  .case {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Before the reasons, and side by side across the screen. */
+  .pair {
+    position: static;
+    order: -1;
+    justify-content: center;
+  }
+
+  .pair .phone {
+    --tall: min(88vw, 34rem);
+  }
+}
+
 /* ── What is free and what is not ────────────────────────────────────────── */
 .terms {
   padding: 20svh var(--edge) 6svh;
 }
 
+.coach h2,
 .terms h2,
 .waiting h2 {
   font-size: clamp(2.25rem, 5.8vw, 5.5rem);
