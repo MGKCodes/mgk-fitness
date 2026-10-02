@@ -1,6 +1,6 @@
 # store-assets
 
-Images destined for App Store Connect.
+Images destined for App Store Connect and Play Console.
 
 ```
 python tool/export_store_assets.py             # from apps/mgk_run
@@ -49,51 +49,38 @@ that an icon has square corners.
 | File | Spec | For |
 |---|---|---|
 | `derived/run-iap-review-screenshot.png` | 1290x2796, no alpha | Both subscriptions' review screenshot |
+| `derived/screens/iphone/`, `derived/screens/android/` | 1290x2796, 1080x2160 | The six listing screens, as the app draws them. An input, not something to upload |
+| `derived/listing/ios-still/` | 1290x2796, no alpha | The App Store listing pictures |
+| `derived/listing/play-still/` | 1080x1920, no alpha | The Google Play listing pictures |
+| `derived/play-feature-graphic.png` | 1024x500, no alpha | Play's feature graphic |
+| `derived/play-icon-512.png` | 512x512, **with** alpha | Play's icon, re-saved from `apps/mgk_run/design/store/` |
+| `derived/submission-sheet.html` | | Every store field, ready to paste: `python tool/build_submission_sheet.py`. Published as [the submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM) |
 
-## What is not here yet
+`listing/` holds the design that was chosen (Still) and nothing else. The other
+two are drawn only when `render.sh` is asked for them by name, and asking
+replaces what is there.
 
-**The 6.9" listing screenshots.** Those are a different requirement and the
-plates are *not* usable for them: plates are 393x852 logical renders and the
-test framework answers every network image with a 400, so there are no basemap
-tiles, and the map is half of what makes the in-run shot worth showing. Take
-them off an iPhone running the TestFlight build, drop them in `captured/` named
-`listing-*.png`, and the script will check the dimensions (it accepts 1320x2868
-and 1290x2796; App Store Connect also takes 1260x2736).
+## The listing pictures are drawn
 
-### There are stand-ins, and they are not submittable
+Three steps, each repeatable, described in
+[`apps/mgk_run/design/store-shots/README.md`](../apps/mgk_run/design/store-shots/README.md):
+`test/plates/store.dart` draws the six screens with the real map,
+`design/store-shots/render.sh` sets each in a frame with its words, and the
+script above checks the result against what each store accepts.
 
-`derived/stand-ins/` holds six captures at the right dimensions, taken on
-2026-09-08 from the **Android emulator** with `wm size 1290x2796` and
-`wm density 480` — which is the 6.7" iPhone's geometry, so they pass
-`--check` — driven through `lib/preview/main.dart`'s screen keys. The captioned
-versions are in `derived/mockups/`.
+**This file used to say the plates were not usable for the listing**, for two
+reasons: no basemap tiles, and fixtures that showed stats the app does not
+record. Both are answered in `store.dart` rather than worked round. It takes
+the test framework's network stub off and waits for the tiles, and its runner
+has no elevation and no heart rate, with steps on the iPhone only. The board's
+own plates are still not usable, for the same two reasons.
 
-**They exist to settle composition and caption copy, and for nothing else.**
-Three reasons they cannot be submitted:
+A capture off a real phone is still welcome in `captured/`, named
+`listing-*.png`, and is checked the same way.
 
-1. **They are an Android render of an iOS app.** The emulator's own status bar
-   and gesture pill are cropped out of the mockups, but the widgets underneath
-   are Material's, not UIKit's.
-2. **There are no basemap tiles.** Same absence the plates have, for a different
-   reason — the preview harness points at a keyless dev basemap and the emulator
-   has no tile key. The in-run and finished-run shots draw the route on the
-   charcoal ground.
-3. **The fixtures show what the app does not.** `_demoSummary()` fills
-   `avgHr`, `caloriesEst` and elevation; a recorded run fills none of the three
-   (`recording_run_recorder.dart` never sets them, and there is no barometric
-   source). The finished-run shot therefore advertises three stats the shipped
-   build leaves out. Deliberate, decided 2026-09-08, and recorded here so it is
-   a choice rather than a surprise.
-
-**They live in `derived/` on purpose.** `captured/` is where the real device
-shots go, and a stand-in sitting there under the name the script expects is
-exactly the file somebody drags into App Store Connect by mistake. `derived/`
-is gitignored, so nothing here is committed either.
-
-The six worth shooting are named in
-[app-store-listing.md](../apps/mgk_run/docs/app-store-listing.md) § Screenshots,
-which is the only copy of the list, chosen off
-[the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190).
+Which six screens, in what order, with what words, and which design is on the
+listing: [app-store-listing.md](../apps/mgk_run/docs/app-store-listing.md)
+§ Screenshots, which is the only copy of the list.
 
 **No marketing icon to upload.** App Store Connect takes the 1024 icon from the
 build's asset catalogue, so there is nothing to put here for it.
@@ -102,7 +89,7 @@ before both apps got their current icons on 2026-09-11. Do not upload it
 anywhere; it can be deleted. The script still checks any `icon-*` file it finds
 for 1024x1024 and no alpha.
 
-**Google Play's images are not checked here.** Its 512 icon, feature graphic and
-phone screenshots have different rules (a 32-bit icon, a 1024x500 graphic,
-screenshots no longer than twice their width), listed in
+**Google Play's images are checked here too.** Its rules are its own: a
+32-bit icon, a 1024x500 graphic, and screenshots no longer than twice their
+width. They are listed in
 [play-listing.md](../apps/mgk_run/docs/play-listing.md).
