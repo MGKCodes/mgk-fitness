@@ -37,6 +37,12 @@ have the same shape.
   apps are built on. Grounding for the coach lives in
   [`supabase/knowledge/`](../supabase/knowledge).
 
+## Work
+
+- **[going-public.md](going-public.md)** — what was checked before the
+  repository is made public, what it found, and what is left for the day. It
+  has an end date: the day after.
+
 ## History
 
 - **[roadmap.md](roadmap.md)** — worked through on 2026-08-07 and kept rather
