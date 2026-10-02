@@ -256,7 +256,7 @@ input:focus-visible {
   left: var(--edge);
   bottom: clamp(4.25rem, 12svh, 8rem);
   display: grid;
-  width: min(34rem, 46vw);
+  width: min(42rem, 50vw);
 }
 
 .steps li {

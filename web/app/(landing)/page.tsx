@@ -55,7 +55,7 @@ const run: Step[] = [
 const lift: Step[] = [
   {
     tag: "Free",
-    lines: ["Log a set in one tap.", "Last time's numbers already in."],
+    lines: ["Log a set in one tap.", "Last time’s numbers already in."],
     screen: "lift-log",
     alt: "Lift during a session: sets of bench press ticked off, the next one filled in.",
   },
