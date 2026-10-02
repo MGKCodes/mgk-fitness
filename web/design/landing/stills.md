@@ -8,10 +8,10 @@ by Matthew when choosing between results. The idea behind the film is in
 ## What you are making
 
 Five still images of **one fictional athletics stadium**, at five points along
-one straight camera path. They are the storyboard for a film that plays as the
-visitor scrolls: the camera starts high above the track, comes down to track
-level, travels along the home straight into a tunnel under the stand, and comes
-out in the weight room beneath it.
+one camera path. They are the storyboard for a film that plays as the visitor
+scrolls: the camera starts high above the track, comes down to track level,
+travels along the home straight, swings into the players' tunnel in the base of
+the grandstand and comes out in the weight room under the seats.
 
 A video model will later be given pairs of these stills as its first and last
 frame. That only works if every still is plainly the same place, in the same
@@ -42,24 +42,31 @@ Describe the same place in every prompt. These facts do not change:
 
 - **Track:** eight lanes, a muted oxblood red, slightly damp with a soft matte
   sheen. White lane lines. No puddles and no mirror reflections.
-- **Infield:** dark, closely mown grass, almost black in this light.
+- **Infield:** closely mown grass so dark it is almost black. **Not green.**
 - **Stand:** one grandstand, along the home straight only. Raw grey concrete
   terraces with dark grey seats, all empty, under a flat cantilevered roof of
-  dark steel. Facing the tunnel, the stand is on the **right**.
-- **Far side:** no stand. A low dark treeline and misty hills beyond it.
+  dark steel. Looking along the straight, the stand is on the **right**. A dry
+  concrete apron a few metres wide lies between the track and the stand's base
+  wall.
+- **The players' tunnel:** the way into the stand. A plain rectangular opening
+  with square edges in the stand's concrete base wall, directly beneath the
+  seats, about four metres wide and three high, dark inside. It is on the
+  right, about forty metres ahead of the track-level camera. **A strip of the
+  same red track surface, two metres wide, leaves the edge of the track,
+  crosses the apron and runs into the tunnel.**
+- **Far end of the straight:** the track bends away to the left. Beyond it, a
+  low concrete wall, a dark treeline and misty hills. No tunnel and no opening
+  there.
+- **Far side:** no stand. The same treeline and hills.
 - **Floodlights:** four tall masts, switched off.
-- **The tunnel:** the home straight runs on past the bend as a straight chute
-  and enters a tunnel in a concrete end wall. The mouth is a plain rectangle
-  with square edges, as wide as the eight lanes and about four metres high,
-  with a few rows of empty terrace above it. The lane lines run straight into
-  it.
-- **The weight room:** the tunnel opens into a long room under the stand. Raw
-  concrete walls and a concrete ceiling with the underside of the terraces
-  visible. Black rubber floor. **The eight white lane lines carry on across the
-  floor** and stop at a lifting platform. One steel power rack stands on the
-  platform, centred, with a loaded barbell on its hooks. Plates are black and
-  bare steel. Light comes from a row of plain strip lights and a high slot
-  window letting in the same grey daylight.
+- **The weight room:** the tunnel is short and opens into a long room under the
+  stand's seats, as a changing room would be. Raw concrete walls. The ceiling
+  is the stepped underside of the terraces above. Black rubber floor. **The red
+  strip carries on along the tunnel floor and across the room**, and ends at a
+  lifting platform. One steel power rack stands on the platform, centred, with
+  a loaded barbell on its hooks. Plates are black and bare steel. Light comes
+  from a row of plain strip lights and a high slot window letting in the same
+  grey daylight.
 
 ## The light and the grade
 
@@ -75,14 +82,34 @@ Describe the same place in every prompt. These facts do not change:
 
 ## The camera
 
-- One straight path. The camera always looks **along the home straight towards
-  the tunnel**. It never turns.
-- Ground-level frames: about one metre above the track, on the line between
-  lanes 4 and 5, a 35mm lens. The vanishing point is at the centre of the
-  frame.
+- About one metre above the ground in every frame but the overhead. A 35mm
+  lens.
+- **On the track it looks along the home straight**, on the line between lanes
+  4 and 5, with the lanes' vanishing point at the centre of the frame.
+- **Then it leaves the track.** Between K2 and K3 it moves forward and swings
+  right in one smooth arc, following the red strip, until it faces the tunnel
+  square on. From K3 onwards it travels in a straight line along the strip,
+  with the tunnel's vanishing point at the centre of the frame.
 - The overhead frame looks straight down from about sixty metres, with the
-  lanes running from the bottom of the frame to the top and the tunnel end at
-  the top.
+  lanes running from the bottom of the frame to the top and the stand's roof
+  along the right edge.
+
+## What round 1 taught
+
+Round 1 made three K2 frames with the tunnel at the far end of the straight.
+They held the venue well between them, which was the main thing to find out.
+Three things change for round 2:
+
+- **The tunnel moves into the stand.** At the end of the straight it sat in a
+  low wall with nothing behind it but trees, so there was nowhere for a weight
+  room to be. Weight rooms and changing rooms are under the seats.
+- **The grade is `k2-b`'s.** Its grass is nearly black and the whole frame is
+  close to monochrome. In `k2-a` and `k2-c` the grass is plainly green.
+- **The track is `k2-a`'s.** The red fills the bottom third or more of the
+  frame and the lanes converge hard. In `k2-b` the track is a thin band.
+
+The apron beside the track was also wet and reflective in all three. It should
+be dry and matte.
 
 ## The five keyframes
 
@@ -92,89 +119,104 @@ reference for all the others, so they inherit its stand, track and light.
 
 ### K2. Track level (make this first)
 
-- **Where:** standing on the home straight, about eighty metres from the
-  tunnel.
+- **Where:** standing on the home straight, the stand alongside on the right.
 - **Shows:** the lane lines running away to a vanishing point at the centre of
-  the frame, where the tunnel mouth sits small and dark. The stand rises on the
-  right. The infield, treeline and hills fall away on the left. Sky fills the
-  top half.
+  the frame, where the track bends off to the left. The red fills the bottom
+  third of the frame or more. The stand rises on the right, and in its base
+  wall, about forty metres ahead, the dark rectangle of the players' tunnel,
+  with the red strip leaving the track and crossing the apron to it. The
+  infield, treeline and hills fall away on the left. Sky fills the top half.
 - **Keep empty:** the sky, especially the upper left. The word RUN and a phone
   screen sit there.
 - **Prompt:** *Photograph from one metre above an eight-lane athletics track,
-  looking straight down the home straight. Muted oxblood red track, slightly
-  damp, white lane lines converging on a small dark rectangular tunnel mouth in
-  a concrete end wall at the exact centre of the frame. On the right, an empty
-  raw concrete grandstand with dark grey seats under a flat dark steel roof. On
-  the left, dark mown infield grass, then a low treeline and misty hills. Four
-  unlit floodlight masts. First light before sunrise, thin even cloud, no sun
-  visible. Nearly monochrome cool greys, the red track the only colour.
-  35mm lens, fine film grain. No people, no text, no logos.*
+  looking straight along the home straight. Muted oxblood red track, slightly
+  damp with a matte sheen, white lane lines converging to a vanishing point at
+  the centre of the frame, where the track bends away to the left. The red
+  track fills the bottom third of the frame. On the right, an empty raw
+  concrete grandstand with dark grey seats under a flat cantilevered dark steel
+  roof. In the grandstand's concrete base wall, about forty metres ahead, a
+  plain dark rectangular players' tunnel four metres wide, directly beneath the
+  seats. A two-metre strip of the same red surface leaves the track, crosses a
+  dry matte concrete apron and runs into the tunnel. On the left, closely mown
+  infield grass so dark it is almost black, then a low treeline and misty
+  hills. Four unlit floodlight masts. First light before sunrise, thin even
+  cloud, no sun visible. Nearly monochrome cool greys, the red track the only
+  colour, no green. 35mm lens, fine film grain. No people, no text, no logos.*
 
 ### K1. Overhead
 
 - **Where:** sixty metres above the same spot, looking straight down.
 - **Shows:** the eight lanes as a band of parallel red strips down the right
   third of the frame, running bottom to top, with the painted numbers 1 to 8
-  across them. The edge of the stand's roof runs along the far right. The
-  infield fills the left two thirds as a flat field of near-black.
+  across them. To their right, the grey apron, crossed by the red strip, and
+  then the edge of the stand's roof along the far right. The infield fills the
+  left two thirds as a flat field of near-black.
 - **Keep empty:** the infield. The headline sits on it.
 - **Prompt:** *Aerial photograph looking straight down from sixty metres onto
   the home straight of the same athletics stadium as the reference image. Eight
   parallel lanes of muted oxblood red with white lines run from the bottom of
   the frame to the top, in the right third of the frame, with the numbers 1 to
-  8 painted across them. The flat dark steel roof of the grandstand runs along
-  the right edge. The left two thirds of the frame are dark mown infield grass,
-  almost black, flat and empty. Same first light, same nearly monochrome cool
-  grey grade, the red track the only colour. Fine film grain. No people, no
-  shadows of people, no text other than the lane numbers.*
+  8 painted across them. To the right of the lanes, a strip of dry grey
+  concrete apron, crossed by one two-metre band of the same red surface leading
+  right. The flat dark steel roof of the grandstand runs along the right edge.
+  The left two thirds of the frame are closely mown infield grass, almost
+  black, flat and empty. Same first light, same nearly monochrome cool grey
+  grade, the red the only colour. Fine film grain. No people, no shadows of
+  people, no text other than the lane numbers.*
 
 ### K3. The tunnel mouth
 
-- **Where:** on the same line, about ten metres from the tunnel.
-- **Shows:** the mouth filling the middle third of the frame, dark inside, with
-  the lane lines running into it and fading. Concrete end wall around it, a few
-  rows of empty terrace above. A little sky at the very top.
+- **Where:** on the red strip, on the apron, about eight metres from the
+  tunnel, facing it square on. The track is behind the camera.
+- **Shows:** the tunnel mouth filling the middle third of the frame, dark
+  inside, with the red strip running into it and fading. The stand's concrete
+  base wall either side. Rows of empty seats rising above the mouth, and the
+  underside of the roof at the very top.
 - **Keep empty:** the darkness inside the mouth. A line of text sits on it.
-- **Prompt:** *Photograph from one metre above the track, ten metres from the
-  tunnel in the reference image. A plain rectangular tunnel mouth in a raw
-  concrete wall fills the middle third of the frame, as wide as the eight lanes
-  and four metres high, dark inside. The oxblood red lanes and white lines run
-  straight into it and fade into the dark. A few rows of empty concrete terrace
-  above the mouth, a strip of grey sky at the top. Same light and grade as the
-  reference. 35mm lens, vanishing point at the centre. No people, no signs, no
-  text.*
+- **Prompt:** *Photograph from one metre above the ground, eight metres from
+  the players' tunnel in the reference image, facing it square on. A plain
+  rectangular tunnel mouth in the raw concrete base wall of a grandstand fills
+  the middle third of the frame, dark inside. A two-metre strip of muted
+  oxblood red track surface runs from the camera straight into it and fades
+  into the dark, with dry matte concrete either side. Rows of empty dark grey
+  seats rise above the mouth, and the underside of a dark steel roof crosses
+  the top of the frame. Same light and grade as the reference. 35mm lens,
+  vanishing point at the centre. No people, no signs, no text.*
 
 ### K4. The threshold
 
 - **Where:** inside the tunnel, near its far end.
 - **Shows:** black tunnel walls framing a lit rectangle at the centre: the
   weight room seen through the tunnel's exit, with the rack small in the
-  middle. The lane lines are just visible on the floor, running towards it.
+  middle. The red strip is just visible on the floor, running towards it.
 - **Keep empty:** the dark walls either side. The word LIFT arrives here.
-- **Prompt:** *Photograph from inside a dark concrete tunnel, one metre above
-  the floor, looking straight ahead to its exit. The walls, floor and ceiling
-  are nearly black. At the exact centre, a bright rectangle one third of the
-  frame wide shows a concrete weight room beyond, with a steel power rack and
-  loaded barbell centred in it. Faint white lane lines on the floor run towards
-  the exit. Cool grey light, nearly monochrome. 35mm lens. No people, no text.*
+- **Prompt:** *Photograph from inside a short dark concrete tunnel, one metre
+  above the floor, looking straight ahead to its exit. The walls, floor and
+  ceiling are nearly black. At the exact centre, a bright rectangle one third
+  of the frame wide shows a concrete weight room beyond, with a steel power
+  rack and loaded barbell centred in it. A faint strip of muted red track
+  surface on the floor runs towards the exit. Cool grey light, nearly
+  monochrome. 35mm lens. No people, no text.*
 
 ### K5. The weight room
 
 - **Where:** just inside the room, on the same line.
 - **Shows:** the room, symmetrical, with the rack and loaded barbell centred on
-  its platform. The lane lines cross the black rubber floor and stop at the
-  platform. Concrete walls, strip lights, the slot window high on one side.
+  its platform. The red strip crosses the black rubber floor and ends at the
+  platform. Concrete walls, the stepped underside of the terraces overhead,
+  strip lights, the slot window high on one side.
 - **Keep empty:** the wall above and to the left of the rack. The word LIFT and
   a phone screen sit there.
-- **Prompt:** *Photograph of a weight room beneath a concrete grandstand, taken
-  from one metre above the floor, looking straight ahead, symmetrical. A steel
-  power rack with a loaded barbell stands centred on a lifting platform. Black
-  rubber floor with eight white lane lines running from the camera to the
-  platform, where they stop. Raw concrete walls, a concrete ceiling showing the
-  stepped underside of the terraces, a row of plain strip lights, a high slot
-  window with grey daylight. Black and bare steel plates. Nearly monochrome
-  cool greys, darkest areas near charcoal not pure black. 35mm lens, fine film
-  grain. No people, no mirrors, no text, no logos.*
+- **Prompt:** *Photograph of a weight room beneath the seats of a concrete
+  grandstand, taken from one metre above the floor, looking straight ahead,
+  symmetrical. A steel power rack with a loaded barbell stands centred on a
+  lifting platform. Black rubber floor with one two-metre strip of muted
+  oxblood red track surface running from the camera to the platform, where it
+  ends. Raw concrete walls, a concrete ceiling that is the stepped underside of
+  the terraces, a row of plain strip lights, a high slot window with grey
+  daylight. Black and bare steel plates. Nearly monochrome cool greys, the red
+  strip the only colour, darkest areas near charcoal not pure black. 35mm lens,
+  fine film grain. No people, no mirrors, no text, no logos.*
 
 ## Where files go
 
@@ -197,8 +239,8 @@ web/design/landing/stills/
 - Record the exact prompt for each file in the round's `notes.md`. A still that
   cannot be regenerated cannot be matched.
 - Never overwrite or delete an earlier round.
-- **Stop after K2 in round 1** and wait for Matthew to choose. The other four
-  depend on it.
+- **Stop after K2** and wait for Matthew to choose. The other four depend on
+  it.
 
 Matthew copies each chosen image to `selected/` under its keyframe name. From
 there `node tool/film.mjs keys` (run in `web/`) puts them on the page.
@@ -207,8 +249,10 @@ there `node tool/film.mjs keys` (run in `web/`) puts them on the page.
 
 Lay the five side by side and check:
 
-- Is the stand on the right in every ground-level frame?
+- Is the stand on the right in K1 and K2, with the tunnel in its base?
 - Are there eight lanes, the same red, in every frame that shows the track?
+- Is the red strip in all five, leading the same way?
+- Is the grass near black, and is the red the only colour?
 - Could all five have been taken within the same ten minutes?
 - Is the vanishing point at the centre in K2, K3, K4 and K5?
 - Is the named area in each frame empty enough to set type on?

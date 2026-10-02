@@ -34,7 +34,7 @@ Five stills, four moves between them, and three places the camera rests.
 | `above` | hold | K1 | The headline, over the infield |
 | `s1` | move | K1 to K2 | Down to the track |
 | `track` | hold | K2 | RUN, and Run's screen |
-| `s2` | move | K2 to K3 | Along the straight to the tunnel |
+| `s2` | move | K2 to K3 | Along the straight, then round to face the players' tunnel in the stand |
 | `s3` | move | K3 to K4 | Through the tunnel. The dark is where one line of text sits |
 | `s4` | move | K4 to K5 | Out into the weight room |
 | `room` | hold | K5 | LIFT, and Lift's screen |
