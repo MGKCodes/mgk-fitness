@@ -92,7 +92,7 @@ function App({
   size: [number, number];
 }) {
   return (
-    <Beat from={shot} className="app">
+    <Beat from={shot} className={`app ${app}`}>
       <h2>
         {app.toUpperCase()}
         <Mark app={app} />

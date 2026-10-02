@@ -9,9 +9,17 @@ the weight room beneath it. **Run arrives where the camera lands on the track.
 Lift arrives where it comes out of the tunnel.** One venue holds both apps,
 which is the page's whole argument: they are one thing.
 
-The page is designed and the film is not made yet. The stills that have been
-chosen are on the page, which crossfades between them as it scrolls; where a
-still is missing it draws a slate naming the shot.
+The page is designed and the film is not made yet. All five stills are chosen
+and on the page, which crossfades between them as it scrolls. The clips that
+turn those crossfades into a moving camera are the next step.
+
+| Still | Chosen | Why |
+|---|---|---|
+| K1 | round 3, `k1-c` | The most infield, so the headline ends short of the first lane |
+| K2 | round 2, `k2-b` | The strongest track and the darkest grade; a dry apron |
+| K3 | round 3, `k3-c` | The mouth is largest and dead centre |
+| K4 | round 3, `k4-c` | Its room has the stepped underside of the terraces, as K5 does |
+| K5 | round 3, `k5-c` | The darkest floor, and the terraces overhead say "under the seats" |
 
 ## How the film gets made
 
