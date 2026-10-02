@@ -15,8 +15,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing has been released. The app has been built to TestFlight but has never
-been on a store, so everything the app does is still listed here.
+Nothing yet. This is 1.0.1
+([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+## [1.0.0] — submitted 2026-10-02, build 29
+
+Submitted to the App Store and Google Play on 2 October 2026, both from
+`9204036` (tag `run/build-29`). Not yet approved by either as this is written;
+the date here is the submission's.
+
+It is the first version, so everything the app does is listed under it.
+
+> **A second note on the gap.** This file stopped being kept again after build
+> 14. The block below was written on the day of the submission from the build
+> tags, the decision records and the release plan, and it itemises builds 26 to
+> 29 only. Builds 15 to 25 are in
+> [`docs/history/app-store-1.0.0-record.md`](docs/history/app-store-1.0.0-record.md)
+> and the tags `run/build-17` to `run/build-25`, not here.
+
+### Builds 26 to 29 — what the store builds added
+
+- **A run's distance, time and pace while the phone is locked.** A Live
+  Activity on the iPhone's lock screen, and a notification on Android, which
+  Android 16 does not show on the lock screen unless the runner turns that on
+  (ADR-0045).
+- **The start screen shows where you are**, with a GPS line that says when the
+  fix is good, and what today's session asks for: its pace, about how long,
+  the effort and how it should feel.
+- **A map that is ready before Start and sharp on a phone.** The basemap is
+  Esri's, credited on the map; the phone keeps the tiles it has shown and loads
+  the ones around the runner when the app opens (ADR-0043).
+- **Race week is a week of its own**, with race day on the plan as the race
+  and the runs before it short and easy (ADR-0044).
+- **Adjust this week** on the Plan tab, not only inside an opened week.
+- **A run can be deleted**, from its edit form, and is removed from the backup
+  with it.
+- **A treadmill run can be added from Home**, as a row on the week tile.
+- **A launch animation**, and tabs that slide instead of cutting.
+- **The coach's line on Home opens out of its mark, is held long enough to
+  read, and closes back.**
+- **Sign in with Apple and with Google**, beside email and password, and a new
+  email address is confirmed before it can sign in.
+- **The coach asks before it sends anything** to the AI provider, says what is
+  sent and what never is, and the permission can be taken back in Settings
+  (ADR-0036). A coach reply can be reported by pressing and holding it.
+- **The phone's training belongs to one account** (ADR-0035), deleting an
+  account clears the phone as well as the server, and a run interrupted by the
+  app being killed is recovered at the next launch.
+- **The paywall says what each tier buys**, links to managing the subscription,
+  and Premium is a better AI model for replies and a bigger allowance
+  (ADR-0041).
+- **The privacy policy is in the app**, the same text as the published page,
+  and the terms of use are linked from it.
 
 ### Build 14 — the build 13 field test's answers
 
@@ -44,6 +94,11 @@ been on a store, so everything the app does is still listed here.
   access for workouts and steps and nothing else, so this described a
   permission the binary never exercises — Guideline 5.1.1. It goes back in the
   same commit as the write, not before.
+
+  **It went back, and not with a write.** App Store Connect refuses an upload
+  that links HealthKit without the key (error 90683), so 1.0.0 carries it
+  while writing nothing to Health. The read list is steps alone: workouts came
+  off it on 2026-09-29.
 
 ### Added
 

@@ -200,6 +200,15 @@ reviewed alongside an app version on the first submission and never on their
 own, so the item sits in the draft until the submission forms (§10) are
 filled in and goes up with the build.
 
+**The two reasons clear separately, and this page once implied they clear
+together.** Adding the app version (Add for Review on the version page) clears
+the second. The first, *"must be submitted with its subscription group"*,
+stays until **the group itself** is in the draft: Subscriptions ▸ the `Run
+Coach` group ▸ **Add for Review** on the group's own page, into the same
+draft. A first submission carries three kinds of item: the version, the group,
+and the subscriptions. Found on 2 October 2026, with Submit for Review greyed
+out and everything else done.
+
 Ready to Submit is also the bar that matters for everything downstream:
 **RevenueCat cannot fetch a product below it**, and neither can sandbox
 StoreKit. Do not submit anything to get past the warning.
@@ -273,6 +282,25 @@ documentation puts first.
       **"(Legacy)"**: it is the older receipt-validation path, superseded by the
       key above. Fill it in if you like; it is not what makes StoreKit 2 work.
       **This one is genuinely per-app**, unlike the key, so Run's is not Lift's.
+- [x] **App Store Server Notifications — set on 2 October 2026**, both URLs,
+      to RevenueCat's. App Store Connect ▸ the app ▸ App Information, near the
+      foot: a *Production Server URL* and a *Sandbox Server URL*. Nothing in
+      this runbook mentioned them until that day, and both were empty.
+
+      **Both take RevenueCat's URL, not ours.** RevenueCat ▸ the project ▸
+      the App Store app ▸ *Apple Server Notifications* shows the URL to copy.
+      Paste the same one into both fields and choose **Version 2**. The
+      `revenuecat` Edge Function is the wrong address: it speaks RevenueCat's
+      webhook format, and Apple's notifications are a different one.
+
+      **What it buys.** Without it RevenueCat still works: it learns of a
+      renewal, a cancellation, a refund or a billing problem by asking Apple
+      on its own schedule or when the app next opens, and only then tells our
+      webhook. With it Apple tells RevenueCat as it happens, so a refund or a
+      lapse reaches `core.entitlements` in seconds rather than hours.
+      App Review does not check it and nothing is refused without it. Sandbox
+      is set too because App Review buys in the sandbox
+      ([ADR-0037](decisions/0037-the-sandbox-stays-open-in-production.md)).
 - [ ] **App Store Connect API key — only if you want products imported.**
       Without it the two product ids are typed into RevenueCat by hand, which
       takes a minute, and price changes are not applied automatically. A third
@@ -567,6 +595,8 @@ repeated here.
 | Name, subtitle, categories | [app-store-listing.md](app-store-listing.md) |
 | Content Rights | **Yes**, it contains third-party content, and **yes**, we have the rights: the basemap tiles are Esri's (ArcGIS Location Platform, whose free tier allows commercial apps) and carry data from OpenStreetMap and the other sources Esri names. The map shows *Powered by Esri* and opens the sources on a tap, and the build fails if tiles are configured without a credit. True of build 27 on, once Codemagic's `MAP_TILE_URL_TEMPLATE` is Esri's; it was MapTiler's non-commercial plan before |
 | Age Rating | The questionnaire below |
+| Regulated Medical Device | **No: not a regulated medical device.** App Information asks every app in the Health & Fitness category to declare it (read off the page on 2 October 2026; it is the category that triggers it, not the age rating). The description, the terms and the in-app disclaimer all say the same thing |
+| App Store Server Notifications | RevenueCat's URL in both fields, Version 2 (§3). Optional for review, wanted for launch |
 | License Agreement | **Apple's Standard EULA.** The field takes plain text, not a URL; our terms are linked from the description and the app, and say Apple's EULA governs App Store purchases ([ADR-0040](decisions/0040-our-terms-and-apples-eula.md)) |
 
 **EU trader status (Digital Services Act)** is set once for the account, under
@@ -617,7 +647,7 @@ Backup consent makes several of these conditional, and the form cannot say
 | Coarse Location | **No** | App Functionality | Esri's tile requests show roughly where the map is, or where the phone last was when the app opens. A judgement call: no account or id goes with them, and over-declaring costs nothing |
 | Other User Content | Yes | App Functionality | Messages to the coach, the rolling summary, and replies the runner reports |
 | User ID | Yes | App Functionality, Analytics | The Supabase user id, which RevenueCat holds as the app user id; and Apple's or Google's identifier for the runner, when they sign in with one |
-| Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it |
+| Purchase History | Yes | App Functionality, Analytics | The subscription, as RevenueCat declares it. **In the form's tick list it is the single box called *Purchases***; the name Purchase History only appears once it is saved. It was left off the first pass on 2 October for that reason |
 | Product Interaction | Yes | App Functionality | The coach usage ledger: one row per request, kept 31 days |
 
 Signing in with Apple or Google adds no type: they pass an email address and
@@ -636,16 +666,24 @@ Location, and `the_privacy_manifest_declares_what_is_sent_test.dart` pins it.
 Free, with the two subscriptions as in-app purchases. **Never Paid**: the app is
 free and the coach is the subscription.
 
+**Untick the Mac and Apple Vision Pro.** The same page offers the iPhone app
+on Apple silicon Macs and on Apple Vision Pro, and both boxes arrive ticked.
+The app records runs by GPS, reads steps from Health and puts a Live Activity
+on a lock screen; none of that has been run on either, and the description
+says "iPhone only". An iPad still runs it, in the iPhone's shape, and that
+cannot be switched off.
+
 ### The 1.0.0 version page
 
 | Field | Answer |
 |---|---|
 | Screenshots, promotional text, description, keywords | [app-store-listing.md](app-store-listing.md) |
 | Support URL | `https://mgkfitness.mgkcodes.com/run/support` |
-| Marketing URL | Optional. Leave blank |
+| Marketing URL | `https://mgkfitness.mgkcodes.com` — the site's home page. Decided 2 October 2026: the marketing page is going to be built there, so the address is right before the page is. Today it is a plain page naming both apps with their legal links, which resolves and says nothing false. Not `/run`, which is a 404 |
+| Version | The page offers `1.0`. The build says `1.0.0`, and App Store Connect treats the two as the same version, which is why build 29 attaches. Type `1.0.0` so the store shows what everything else calls it |
 | Copyright | `2026 MGKCodes Ltd` |
 | Build | The release candidate named in [app-store-1.0.0.md](app-store-1.0.0.md) (this row said 26 after 27 replaced it) |
-| In-App Purchases and Subscriptions | **Add both**, Coach and Premium Coach. A first subscription is only ever reviewed with a version, so this is where they go up |
+| In-App Purchases and Subscriptions | **Add both**, Coach and Premium Coach. A first subscription is only ever reviewed with a version, so this is where they go up. **The section is not always there.** It sits between Build and Game Center, and only while a product is *Ready to Submit* and in no submission already. If it is missing, look in two places: the **Draft Submissions** button at the foot of the page, where the two may already be parked (§2 says why they should not be left there, and they go up with the version from there just the same), and Subscriptions ▸ the group, where a product reading *Missing Metadata* names what it lacks |
 | App icon | Nothing to upload: it comes from the build |
 | Sign-in required | **Yes**, demo account A (§9) |
 | Notes | The review notes in [app-store-listing.md](app-store-listing.md), with A and B filled in |

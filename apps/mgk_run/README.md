@@ -4,17 +4,30 @@
 goal, and have a coach that adapts when life gets in the way. Part of the
 [mgk-fitness](../../README.md) suite.
 
-[![Status: in testing](https://img.shields.io/badge/Status-TestFlight%20%26%20Play%20internal-blue.svg)](docs/app-store-1.0.0.md)
+[![Status: in review](https://img.shields.io/badge/Status-1.0.0%20in%20review-blue.svg)](docs/app-store-1.0.0.md)
 [![Platforms: iOS and Android](https://img.shields.io/badge/Platforms-iOS%20%7C%20Android-lightgrey.svg)](#)
 [![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B.svg)](https://flutter.dev)
 
 ## Status
 
-**On TestFlight and Google Play internal testing, not yet submitted.** Tracking,
-plan generation and the coach all run, and the coach is sold as a subscription
-through both stores. Which build is where, and what is left, is in
+**1.0.0 was submitted to the App Store and Google Play on 2 October 2026**, and
+is with both reviewers. Tracking, plan generation and the coach all run, and
+the coach is sold as a subscription through both stores. `main` holds what was
+submitted and `develop` is the next version
+([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)). Which build
+is where, and what is left, is in
 [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md), and only there: a build
 number written here was two builds behind within a week.
+
+Three pages are kept open while this release is worked on. They are private to
+the owner's account:
+
+- **[The screen board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190)**: every screen of the app, drawn by the app's own
+  code, each with what it is for. Rebuilt with the `screen-board` skill.
+- **[The store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU)**: the pictures on both listings, and the designs
+  they were chosen from. Source in [`design/store-shots`](design/store-shots/).
+- **[The submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM)**: every field of App Store Connect and Play
+  Console, ready to paste. Built by `tool/build_submission_sheet.py`.
 
 The test count lives in
 [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md) and only there. It read
@@ -120,7 +133,7 @@ un-namespaced call fails at runtime rather than at compile time.
   [`app-store-listing.md`](docs/app-store-listing.md) and
   [`play-listing.md`](docs/play-listing.md) are listing copy parsed by
   `tool/check_listing.py`.
-- [`docs/decisions/`](docs/decisions/) — 40 ADRs, the *why*. Superseded, never
+- [`docs/decisions/`](docs/decisions/) — the ADRs, the *why*. Superseded, never
   edited.
 - [`docs/architecture/`](docs/architecture/) — the *how*. Four of the six have
   not been touched since 2026-08-06; trust `decisions/` where they disagree.

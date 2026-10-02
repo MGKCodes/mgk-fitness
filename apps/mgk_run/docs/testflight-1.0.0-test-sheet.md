@@ -3,9 +3,9 @@
 **Build 29, both stores: TestFlight on the iPhone, Play internal testing on
 Android.** The file name is older than Android; the sheet covers both.
 
-**Tests `1.0.0+29`, to be tagged `run/build-29`.** Not cut yet. The commits
-both stores were built from are written here when it is, read off the Codemagic
-build records
+**Tests `1.0.0+29`, tagged `run/build-29`.** Both stores were built from
+`9204036` on 1 October 2026, read off the Codemagic build records: Android
+`6abed24d6ae690405c3a70d8`, the iPhone `6abed6a85aeae4113434d463`
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 A tester holding a different build is testing something else.
 
@@ -128,7 +128,8 @@ safe direction and the reason this works.
 | G6, P4 | What the two prices read, in which currency, and Premium's line under its price |
 | G18, P5 | The row: `product`, `status`, `platform`, `expires_at`, `event_ms` |
 | G's or P's failure | **The ignore-reason from the `revenuecat` function log**, not a description of the screen |
-| H | Whether there is enough history for shot 6 (a year of running) |
+| H1, H2 | Which picture is not what the phone shows, and how it differs |
+| H3 | **The coach's reply, word for word.** It goes on the listing |
 | S3, S6 | What Apple's sheet or page asked for, and where you landed afterwards |
 | S4 | Which account Google put you in: your own, with your runs, or an empty one |
 | S10 | The confirmation email: who it says it is from, inbox or spam, and what the page says after the link |
@@ -602,14 +603,18 @@ Play's foreground-service declaration needs this video (play-setup.md §4).
 
 ## H. The listing screenshots
 
-**The list is in [app-store-listing.md](app-store-listing.md) § Screenshots**,
-and nowhere else; open it on the phone. They cannot come from Windows: the plate
-harness draws no basemap tiles.
+**The pictures are drawn, not captured**, since build 29: the app's own code
+draws each screen with the real map, and a frame and the words are added
+afterwards ([app-store-listing.md](app-store-listing.md) § Screenshots). So
+this section no longer asks for captures. It asks whether each picture is true
+to the build in your hand. The pictures are on
+[the gallery](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU); open it beside the phone.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| H1 | **iPhone:** the six shots, on the phone's own capture | 6.9" sizes (1260×2736, 1290×2796 or 1320×2868). Drop them in `store-assets/captured/` as `listing-*.png`, then `python tool/export_store_assets.py --check` from `apps/mgk_run` | ☐ |
-| H2 | **Android:** the same six | **Long side at most twice the short side** — 1080×1920 is safe. An iPhone capture is refused by Play. Method in [play-listing.md](play-listing.md) § Graphics | ☐ |
+| H1 | **iPhone:** each of the six pictures against the same screen on the phone | The same layout and the same kinds of figure. The finished run shows time and pace, and steps and cadence if Health was allowed. Nothing is on a picture that the phone does not have | ☐ |
+| H2 | **Android:** the same six | The same, and the finished run has **no** steps or cadence | ☐ |
+| H3 | Signed in as a subscriber, ask the coach **"What could I run a half marathon in?"** and copy the reply out | A reply in the runner's own units. It replaces the scripted reply in picture 5 | ☐ |
 
 **No app icon to capture.** App Store Connect takes the icon from the build.
 `store-assets/captured/icon-1024.png` is the **old** mark; do not upload it.

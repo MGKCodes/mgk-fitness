@@ -272,7 +272,15 @@ do not change an answer here without changing the policy with it.
 
 Run declares `FOREGROUND_SERVICE_LOCATION` and deliberately **not**
 `ACCESS_BACKGROUND_LOCATION` (see the note in `AndroidManifest.xml`), which
-keeps this much simpler than it would otherwise be. Paste these exactly:
+keeps this much simpler than it would otherwise be.
+
+**The form, as it was on 2 October 2026, asks for less than this table.** With
+*Other* ticked under *Background location updates* it shows one field, the
+video link, and nothing else. The description box (*Describe permission use*)
+belongs to the second *Other*, under *Other tasks*, which is not our case and
+stays unticked. So only the task and the video row below were entered. The
+three text rows are kept because Google's guidance still lists them, and a
+reviewer who writes back will be asking for exactly these:
 
 | Field | Answer |
 |---|---|
@@ -280,18 +288,29 @@ keeps this much simpler than it would otherwise be. Paste these exactly:
 | Describe the feature | When the user taps Start to record a run, the app starts a foreground service of type location with an ongoing "Recording your run" notification so it keeps receiving GPS fixes while the screen is locked or the phone is in a pocket. It computes the route, distance, pace and splits of that run. The service stops when the user taps Finish. The app does not request ACCESS_BACKGROUND_LOCATION. When no run is being recorded it reads location only while the app is open on screen, to centre the map before a run starts. |
 | Impact if the task is deferred | The start of the run would have no location, so route, distance and pace would be missing. |
 | Impact if the task is interrupted | Distance freezes while the timer runs; pace, splits and route become wrong and the run is lost. |
-| Video | A link to the video below (an unlisted YouTube video works) |
+| Task (the form's tick list) | **Other**, under *Background location updates*. Not sharing, navigation or geofencing |
+| Video | `https://mgkfitness.mgkcodes.com/run/explanations/recording-with-the-screen-off.mp4`. Any link that plays works; Google names no host |
 
-**The video**, on a real Android phone running the Play build:
+**The video is on our own site**, at the address above, added on 2 October
+2026 (`06a57d4` on `main`). Ten captioned steps in ninety-five seconds: open
+the app, start a run, the notification with the run's figures, the screen
+locked for fifteen seconds, the distance having gone up when it is unlocked,
+Finish, and the notification gone.
+
+**How it was made, because it is not what this page first asked for.** It was
+recorded on an Android 16 emulator, from a release build of build 29's commit,
+with the GPS fed along a road route. Not on a phone, and not the Play build
+itself. If Google asks for more, the same six steps on a phone running the
+Play build are:
 
 1. **Allow notifications when Run asks**, which it does the first time the
    start screen opens (since build 29). If it was refused: Settings ▸ Apps ▸
-   Run ▸ Notifications. Without it the notification that the video exists to
-   show does not appear in the shade.
+   Run ▸ Notifications.
 2. Open Run ▸ Record a run ▸ **Start**.
-3. Lock the screen, wake it, and show the **"Recording your run"**
-   notification.
-4. Walk for a minute or two with the screen locked.
+3. Pull the notification shade down and show the **"Recording your run"**
+   notification. **Not the lock screen:** on Android 16 a quiet notification
+   is not on it by default, which is how the video shows it too.
+4. Lock the screen and walk for a minute or two.
 5. Unlock and show that the **distance went up** while it was locked.
 6. Tap **Finish**, then show the notification has **gone**.
 
@@ -319,7 +338,7 @@ Top-level questions:
 | Is all of the user data collected by your app encrypted in transit? | **Yes** — HTTPS/TLS throughout |
 | Which of the following methods of account creation does your app support? | **Username and password** (email and password, in the app) and **OAuth** (Sign in with Google, and Sign in with Apple, which on Android runs in the browser) |
 | Delete account URL | `https://mgkfitness.mgkcodes.com/run/delete-account` |
-| Do you provide a way for users to request that some or all of their data is deleted, without requiring them to delete their account? | **Yes** — turning backup off erases the server copy of their training |
+| Do you provide a way for users to request that some or all of their data is deleted, without requiring them to delete their account? | **Left unanswered for 1.0.0** (the question is optional; use *Remove answers*). The true answer is Yes, because turning backup off erases the server copy of their training, but Yes demands a public *Delete data URL* that names the app, gives the steps and says what is deleted and kept, and no page of ours does that for the backup route. Not No, which would be false. Write that section on the site, then answer Yes with its address |
 
 Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 
@@ -395,10 +414,14 @@ permitted too; it is not chosen because nothing in the product is made for
 teenagers, and the app gives training advice, holds health information and
 sells a subscription. Appeals to children: **No**.
 
-**Corrected 2026-09-29:** this used to say that selecting any bracket under 18
-pulls the listing into the Families policy. That is wrong. The Families policy
-applies when the target audience includes children **under 13**. The answer
-stays 18+; the reason given for it was the error.
+**Corrected 2026-09-29, and corrected again 2026-10-02.** This once said that
+any bracket under 18 pulls the listing into the Families policy, then that only
+under 13 does. The form itself settles it: with 16-17 ticked it prints a
+*Policy requirements summary* saying that, depending on the country, some of
+that audience may be considered children, and the Families policy applies
+whenever a child uses the app. So 16-17 is allowed by our terms and is not
+free. 13-15 is not allowed by our terms at all (accounts are from 16), and the
+form and the terms have to agree. The answer stays 18+.
 
 ## 4b. A Google Payments merchant account — the real long pole
 
@@ -546,6 +569,39 @@ which begins `goog_`.
 - [x] Service account granted access to this app, JSON uploaded — `mgk-fitness-play-publisher@mgk-fitness.iam.gserviceaccount.com`, its own GCP project
 - [x] Products attached to the existing entitlement and offering — 2026-09-10
 - [x] `goog_` key copied
+
+### Real-time developer notifications — set up 2 October 2026
+
+Play's version of App Store Server Notifications: Play tells RevenueCat about
+a renewal, a cancellation or a refund as it happens, through a Google Cloud
+Pub/Sub topic, instead of RevenueCat finding out on its own schedule. A test
+notification was received at 14:59 UTC that day.
+
+- [x] **Pub/Sub API enabled** on the `mgk-fitness` Google Cloud project.
+- [x] **The service account can use it.** IAM on that project:
+      `mgk-fitness-play-publisher@…` has **Pub/Sub Editor** and **Monitoring
+      Viewer**. It had no project role at all before, which RevenueCat reports
+      as *"do not have permissions to access the Google Cloud Pub/Sub API"*.
+      **Not "Pub/Sub Lite Editor"**, which sits beside it in the role list and
+      is a different product; with it RevenueCat says it *"cannot create a
+      topic"*.
+- [x] **RevenueCat ▸ Run (Play Store) ▸ Google developer notifications ▸
+      Connect to Google.** It made the topic
+      `projects/mgk-fitness/topics/Play-Store-Notifications`.
+- [x] **Play may publish to the topic.** Editor cannot grant this, so it was
+      added by hand: Pub/Sub ▸ Topics ▸ the topic ▸ Permissions ▸ Add
+      principal `google-play-developer-notifications@system.gserviceaccount.com`
+      with **Pub/Sub Publisher**. Without it Play says *"Test notification
+      couldn't be sent"*.
+- [x] **Play Console ▸ Monetize with Play ▸ Monetization setup:** real-time
+      notifications enabled, the topic name pasted, **Send test notification**.
+      RevenueCat then shows *Last received*.
+- [ ] **Notification content** should be *Subscriptions, voided purchases, and
+      all one-time products*. Not confirmed from a screenshot.
+
+*Track new purchases from server-to-server notifications* is left off in
+RevenueCat: a purchase made in the app already arrives through the SDK with
+the signed-in account on it.
 
 ## 7. Codemagic — the Google key
 
@@ -699,11 +755,14 @@ once more to confirm.
 
 In this order, once §4, §5, §8b and the listing are done:
 
-1. **Managed publishing on** (Publishing overview). The Play equivalent of
-   App Store Connect's manual release: an approved release waits for you to
-   press Publish instead of going live at whatever hour review finishes.
-2. **Promote build 26** from internal testing to Production, as a new release
-   with release notes. It goes to review.
+1. **Managed publishing** (Publishing overview) is the Play equivalent of
+   App Store Connect's manual release: on, an approved release waits for you
+   to press Publish. **For 1.0.0 it is off**, the owner's choice on 2 October
+   2026, so the release goes live when review finishes.
+2. **Promote the release candidate** named in
+   [app-store-1.0.0.md](app-store-1.0.0.md) from internal testing to
+   Production, as a new release with release notes. It goes to review. (This
+   step said build 26 three builds after 26.)
 3. **Publish** when both stores are approved, or when you decide Play goes
    first.
 

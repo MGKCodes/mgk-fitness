@@ -33,13 +33,15 @@ Updated 2026-10-01.
 
 | | |
 |---|---|
-| **On testers' phones** | iPhone: 1.0.0 (28) on TestFlight, from `7f84f2a`, looked at by the owner on 1 October. Android: 1.0.0 (27) on Play internal, from `080d760`. Neither tagged |
-| **Release candidate** | **Build 29.** The pubspec reads `1.0.0+29` (`6e20a70`). Android is built first this time. The iPhone build waits for the Live Activity extension's provisioning profile |
-| **Built from** | `develop`. `main` is what has shipped ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching) |
+| **On testers' phones** | **1.0.0 (29) on both**: TestFlight and Play internal, each built from `9204036` on 1 October. Tagged `run/build-29`; build 27 is `run/build-27` |
+| **Release candidate** | **Build 29**, `9204036`, **and the build being submitted**: the owner used it on the iPhone on 2 October, lock-screen readout included, and is happy with it |
+| **Built from** | `develop`, at `9204036`. **`main` was promoted on 2 October and holds what was submitted; `develop` is 1.0.1** ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
 | **Suite** | 1,948 tests pass and the analyzer is clean at `6e20a70`, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
 | **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 27, every plate drawn at `6e20a70`. The lock-screen readout is on no plate |
+| **For the forms** | [The submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM): every field of both consoles, ready to paste. [The store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU): the listing pictures |
+| **In review** | **Apple: submitted 2 October 2026**, 1.0.0 (29) with the subscription group and both subscriptions; Waiting for Review, manual release. **Play: submitted 2 October 2026**, build 29 on full rollout to 177 countries and the rest of the world, with the listing and every declaration; in review, and **it publishes itself on approval** (managed publishing off) |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -71,40 +73,46 @@ Android half was run on an emulator. The iPhone half is a second target in the
 Xcode project, written without a Mac: Codemagic is the first thing to compile
 it.
 
-- [ ] **The Live Activity extension's App ID and profile**, owner's step, and
-      **the iPhone build cannot be signed without it**
-      ([store-setup.md](store-setup.md) §11). Android does not wait for it.
+- [x] **The Live Activity extension's App ID and profile** are in Codemagic
+      ([store-setup.md](store-setup.md) §11), and the iPhone build signed with
+      them.
 - [ ] **Lift gets two shared changes.** The nav bar's moving selection (build
       28) and the coach's line opening out of its mark (build 29) are in the
       shared package. Lift's suite passes against both and its board is stale
       where either shows. Say so in Lift's lane before its next cut.
-- [ ] **The published policy goes live with the build, not before.** The pages
-      under `web/public/run/` name Esri now. They reach the site when `web/`
-      next goes to `main`.
+- [x] **The published policy names Esri.** `web/public/run/privacy-policy.html`
+      went to `main` on 2 October (`ee5cfe6`) and the live page was read back.
+      Only the page went: the document and the in-app copy on `main` stay as
+      they were until `develop` is promoted, so `main`'s own legal test expects
+      the old name until then. `main` has not been merged back into `develop`,
+      which already has the page; do that with the next push of `develop`.
 
 ### 2. Cut build 29
 
 - [x] `apps/mgk_run/pubspec.yaml` is `1.0.0+29` (`6e20a70`).
 - [x] [The test sheet](testflight-1.0.0-test-sheet.md) is carried to 29, with
       rows for the coach's line (A12), the start screen (C13, C28, C29), the
-      treadmill row (C27) and the map's sharpness (M1). Its header still says
-      "not cut yet": write the two commits in when the builds exist.
-- [ ] **Android:** `scripts/codemagic-build.sh run-android-release develop`.
-- [ ] **The iPhone app compiles**, both targets, unsigned:
-      `scripts/codemagic-build.sh run-ios-compile develop`. Nothing here can
-      build the extension, so this is the first thing that does.
-- [ ] **Then the iPhone build**, once the extension's profile is in Codemagic:
-      `scripts/codemagic-build.sh run-ios-release develop`. If `develop` has
-      moved on in anything but docs or `apps/mgk_run/ios/` by then, both are
-      cut again as 30.
-- [ ] Tag `run/build-27` on `080d760`, and `run/build-29` on the commit
-      Codemagic checks out, each with its build records in the message.
+      treadmill row (C27) and the map's sharpness (M1). Its header names the
+      commit and both build records.
+- [x] **Android:** built and on Play internal (Codemagic
+      `6abed24d6ae690405c3a70d8`).
+- [x] **The iPhone app compiles**, both targets, unsigned (Codemagic
+      `6abed24e6d9c8b2e33d5c126`). It was the first thing to build the
+      extension.
+- [x] **The iPhone build:** signed and on TestFlight (Codemagic
+      `6abed6a85aeae4113434d463`), from the same commit as Android.
+- [x] Tagged, 2 October: `run/build-27` on `080d760` and `run/build-29` on
+      `9204036`, each with its build records in the message.
 
 ### 3. The sitting
 
-- [ ] **One sitting on build 29, on both phones**, from the test sheet. It has
-      to include the purchase on each store (sections G and P), the Android
-      foreground-service video (V) and the listing screenshots (H).
+- [x] **The owner used build 29 on the iPhone** on 2 October and is happy to
+      submit it. The lock-screen readout was seen working there (C30 to C33).
+- [ ] **What that did not cover, and a store will.** A purchase on each store
+      on this build (sections G and P): App Review buys in the sandbox as its
+      first act. And build 29 on an Android phone at all: it has only been
+      run on an emulator, which is also where its foreground-service video was
+      recorded.
 - [ ] Judged on the phone while there: Esri's label size and sharpness (the
       tiles are drawn at one pixel per point, so expect them softer than
       MapTiler's were), `kBasemapOpacity` (0.85 was set against MapTiler), and
@@ -122,35 +130,76 @@ it.
 
 ### 4. The store forms
 
-No build needed, so these can run alongside 1 to 3.
+No build needed, so these can run alongside 1 to 3. **Paste from
+[the submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM)**, which reads every field out of the listing docs
+and unwraps the descriptions; build it again after any change to them
+(`python tool/build_submission_sheet.py`).
 
-- [ ] **App Store Connect:** Premium's description
-      ([store-setup.md](store-setup.md) §2), the two review accounts (§9), and
-      every submission form (§10).
-- [ ] **Play Console:** every App content declaration
-      ([play-setup.md](play-setup.md) §4), the subscriptions' descriptions and
-      benefits (§5), and the listing ([play-listing.md](play-listing.md)).
+- [x] **App Store Connect:** every form filled on 2 October, from the
+      submission sheet: the version page, App Information, App Privacy (ten
+      data types, published), Pricing, both subscriptions and the review
+      accounts, whose passwords were reset that day.
+- [x] **Play Console:** every form filled on 2 October, from the submission
+      sheet: the listing, store settings, both subscriptions, and every App
+      content declaration. One optional Data safety question is left
+      unanswered until the site has a page for it
+      ([play-setup.md](play-setup.md) §4).
+- [x] **App Store Server Notifications** point at RevenueCat, both URLs, set
+      on 2 October ([store-setup.md](store-setup.md) §3).
+- [x] **Play's real-time developer notifications** reach RevenueCat, set up
+      and tested on 2 October ([play-setup.md](play-setup.md) §6).
+- [x] **The regulated medical device declaration** in App Information:
+      declared not one, 2 October.
+- [x] **The subscriptions' review screenshot and Premium's review notes** were
+      September's, and said Premium's plans came from a better model. Both
+      replaced on 2 October: the screenshot is the current paywall, and the
+      notes say replies and allowance, as ADR-0041 has it.
+- [x] **Both descriptions mention the run's figures**, one line under WHAT IS
+      FREE, added on 2 October. The App Store says *on your lock screen*, where
+      the owner saw it. **Play says *in a notification*:** on Android 16 the
+      readout is not on the lock screen by default
+      ([after-1.0.0.md](after-1.0.0.md)). Play's first wording said lock
+      screen and was saved in the console that way; **paste the corrected
+      description again before sending Play for review.**
+- [x] **The foreground-service video** is on the site (`06a57d4`), recorded on
+      an emulator ([play-setup.md](play-setup.md) §4).
 
 ### 5. The graphics
 
-Taken from build 29 on a real phone. The plates draw no map tiles, and the
-stand-ins in `store-assets/` show heart rate, calories and elevation that a
-recorded run never has, so neither may be submitted.
+Drawn, not captured: the app's own code draws the six screens with the real
+map, and a frame and the words are added afterwards
+([app-store-listing.md](app-store-listing.md) § Screenshots). Every file below
+passes `python tool/export_store_assets.py --check`.
 
-- [ ] **App Store:** the 6.9" screenshots
-      ([app-store-listing.md](app-store-listing.md) § Screenshots).
-- [ ] **Play:** the feature graphic (1024 × 500, missing and mandatory), the
-      phone screenshots, and the 512 icon re-saved with alpha if Play refuses
-      it ([play-listing.md](play-listing.md) § Graphics).
+- [x] **The six screens**, for each phone, with a runner who has only what the
+      app records.
+- [x] **Play's feature graphic** (1024 × 500) and **its 512 icon with alpha**.
+- [x] **The design is Still**, chosen by the owner on 2 October from
+      [the gallery](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU).
+- [ ] **Upload:** `ios-still` to App Store Connect; `play-still`, the feature
+      graphic and the icon to Play Console. The files are in `Downloads`, and
+      [the submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM) says which goes where.
 
 ### 6. Submit
 
-- [ ] **App Store:** build 29 with both subscriptions attached, demo account A
-      in Sign-in, the review notes, and manual release.
-- [ ] **Play:** build 29 promoted from internal to production, with managed
-      publishing on ([play-setup.md](play-setup.md) §11).
-- [ ] Release both when both are approved, then promote `develop` to `main` as
-      [CONTRIBUTING.md](../../../CONTRIBUTING.md) describes.
+- [x] **App Store: submitted on 2 October 2026**, four items in one
+      submission: iOS App 1.0.0 (29), the `Run Coach` group and both
+      subscriptions. Waiting for Review, on manual release.
+- [x] **Play: submitted on 2 October 2026**, eleven changes in one
+      submission: build 29 promoted from internal to production
+      ([play-setup.md](play-setup.md) §11), its countries, the listing and the
+      declarations. **Managed publishing is off, the
+      owner's choice on 2 October:** the app goes live on Play as soon as
+      Google approves it, with no button to press, and so possibly before the
+      App Store does.
+- [x] **`develop` promoted to `main`** on the day of the submission, and
+      `develop` moved to `1.0.1+30`
+      ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)).
+- [ ] **When Apple approves**, press release in App Store Connect. Play
+      publishes itself.
+- [ ] **If either store rejects it:** a form, a picture or a description is
+      fixed in the console and resubmitted with build 29. Anything that needs a
+      new binary goes out as `1.0.1`, from `develop`.
 
 ---
 

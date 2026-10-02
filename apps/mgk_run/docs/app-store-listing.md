@@ -12,6 +12,12 @@ says what Premium actually buys (ADR-0038, then ADR-0041 the next day), the
 Play health disclaimer is in
 here too, and the review notes are final apart from the demo credentials.
 
+**To paste it, use [the submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM)**, not this file. The
+descriptions are wrapped at eighty columns here, and pasted as they stand both
+stores would break every sentence in the middle. `python
+tool/build_submission_sheet.py` reads every field out of these docs, unwraps
+it and puts a Copy button on it, in the order the consoles ask.
+
 **Nothing here has been reviewed by anybody but its author.** Every character
 count is verified by `tool/check_listing.py`, which fails on an overrun — Apple
 truncates silently in some fields and rejects in others, and neither is a thing
@@ -120,6 +126,7 @@ WHAT IS FREE
 
 - GPS tracking with a live map, splits and pace
 - Keeps recording with the screen locked and the phone in a pocket
+- Distance, time and pace on your lock screen while you run
 - Records without a signal. The run is written to your phone as it happens,
   not to a server
 - Treadmill and manual entry, for the runs your phone did not see
@@ -210,6 +217,12 @@ reversed in the app on 2026-09-10. App Store Connect's **License Agreement**
 field is a different thing and stays Apple's Standard EULA: it takes plain text,
 not a URL, and our terms already say Apple's EULA applies to App Store purchases
 and wins where the two disagree.
+
+**The lock screen line was added on 2 October 2026**, after the owner saw the
+Live Activity working on build 29
+([ADR-0045](decisions/0045-the-runs-figures-on-the-lock-screen.md)). A runner
+can switch Live Activities off, so it is a feature and not a promise; the run
+records either way, and the line above it says so.
 
 **Apple Health is named on purpose.** Guideline 2.5.1 asks an app using
 HealthKit to say so in its description. The sentence says exactly what is
@@ -319,50 +332,83 @@ No ads, no analytics, no crash reporting and no tracking.
 
 ## Screenshots — the list
 
-**This is the one list of which screens to shoot.** It used to be in three
-places (here, the release plan, and section H of the test sheet), which the
-release plan recorded as a problem twice without fixing. The release plan now
-points here, and the test sheet asks for "the list in app-store-listing.md"
-rather than carrying a copy.
+**This is the one list of which screens are on the listing.** It used to be in
+three places (here, the release plan, and section H of the test sheet). The
+release plan points here, and the test sheet asks for "the list in
+app-store-listing.md" rather than carrying a copy.
 
-Six shots, chosen off
-[the board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190).
-The first two are what shows in search, so they carry the argument alone.
+Six pictures, in the order the stores show them. The first two are what shows
+in search, so they carry the subtitle between them: tracking, then the plan.
 
-| # | The screen | Board code | Plate id |
+| # | The screen | Tag | Headline | Screen file |
+|---|---|---|---|---|
+| 1 | A run in progress, **outdoors, map drawn** | Free | Track every run. Free. No account. | `2-run` |
+| 2 | Home: a plan, and today's session | Coach · Subscription | Know what to run today. | `1-home` |
+| 3 | A finished run: route, time, pace, splits | Free | Every run, kept on your phone. | `3-finished` |
+| 4 | The plan: the race, this week, *Adjust this week* | Coach · Subscription | A real plan, adjusted weekly. | `4-plan` |
+| 5 | The coach answering | AI coach · Subscription | Ask the coach about any run. | `5-coach` |
+| 6 | A year of running, on the profile | Free | Your year, at a glance. | `6-year` |
+
+**The words live in
+[`design/store-shots/src/shots.ts`](../design/store-shots/src/shots.ts).** This
+table is a copy for reading; that file is what is rendered.
+
+**Every picture is tagged free or subscription.** Three of the six show the
+coach, and App Review guideline 2.3.2 asks a listing to make clear which of the
+things it shows need a purchase.
+
+**Changed on 2026-10-01, with build 29.** The run moved ahead of Home, so the
+first two pictures follow the subtitle. Picture 4 was "a week of the plan,
+opened" and is the Plan tab: it shows the race, the week and *Adjust this week*
+in one screen, where the opened week showed one week's rows.
+
+### They are drawn, not captured
+
+**Until build 29 this section said to take them on a real phone**, because the
+plate harness answers every network image with a 400 and so drew no map. That
+reason is gone. `test/plates/store.dart` takes the stub off and waits for the
+real tiles, at the exact size each store takes. It draws the shipped app's own
+screens for a seeded runner, `design/store-shots` adds the frame, the status
+bar and the words, and the whole set is redrawn in a few minutes after any
+change to a screen ([README](../design/store-shots/README.md)).
+
+A listing is read as a promise, so the runner in the pictures has only what the
+app does:
+
+- **Only what a recorded run has.** Time, pace and splits; steps and cadence on
+  the iPhone picture only, because Android reads no step count. No elevation
+  and no heart rate on either.
+- **The coach's reply in picture 5 is scripted** (`StoreCoach` in
+  `store.dart`), because nothing that draws the pictures can reach the real
+  coach. It is in the runner's own units, and its half-marathon time is the one
+  the pace model gives this runner. If the test sheet's H3 brings back what the
+  real coach said to the same question, that replaces it word for word.
+- **Home's greeting follows the clock** when the set is drawn. `store.dart`
+  writes a status-bar time that agrees with it, and the mockups read it.
+
+A capture off a phone is still acceptable, and still checked: drop it in
+`store-assets/captured/` as `listing-*.png`.
+
+**Still is on the listing.** Three designs were drawn (Still, Slipstream and
+Plain; the README says what each is) and shown on [the gallery](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU). The owner
+chose Still on 2 October 2026, and it is what `render.sh` draws.
+
+| Store | Size | Count | Where they are |
 |---|---|---|---|
-| 1 | Home: a plan, and today's session | `H1` | `home-with-plan` |
-| 2 | A run in progress — **outdoors, map drawn** | `R4`/`R5` | `03-warmed` / `04-deep` |
-| 3 | A finished run: route, splits, stats | `F1` | `run-complete` |
-| 4 | A week of the plan, opened | `P2` | `week-detail` |
-| 5 | The coach answering | `C4` | `coach-answering` |
-| 6 | A year of running, on the profile | `S4` | `year-grid` |
+| App Store | 6.9": **1260×2736, 1290×2796 or 1320×2868**, no alpha. Drawn at 1290×2796 | 1–10 per localisation | `store-assets/derived/listing/ios-still/` |
+| Google Play | **long side at most 2× the short side**; JPEG or 24-bit PNG. Drawn at 1080×1920 | 2–8 | `store-assets/derived/listing/play-still/` |
 
-Board codes exist only inside the contact sheet; the plate ids are the repo's
-own names. **Shoot from the description** — the codes are only there to find
-the reference.
+From `apps/mgk_run`, `python tool/export_store_assets.py --check` checks every
+set against these, and `--downloads` copies them out of the worktree to where a
+browser can reach them.
 
-**Take them on a real phone, not from the plate harness.** The harness answers
-every network image with a 400, so there are no basemap tiles, and the map is
-half of what makes shot 2 worth showing. The stand-ins in
-`store-assets/derived/stand-ins/` are an Android render with demo fixtures and
-are not submittable ([store-assets/README.md](../../../store-assets/README.md)).
-
-Shot 3 will show only the tiles a real run has: time, pace, and steps and
-cadence if Health allowed them. No elevation, no heart rate — that is the
-product, not a fault in the shot.
-
-| Store | Size | Count | Where they go |
-|---|---|---|---|
-| App Store | 6.9": **1260×2736, 1290×2796 or 1320×2868**, no alpha | 1–10 per localisation | `store-assets/captured/listing-*.png`, then `python tool/export_store_assets.py --check` |
-| Google Play | **long side at most 2× the short side**, e.g. 1080×1920; JPEG or 24-bit PNG | 2–8 | see [play-listing.md](play-listing.md) |
-
-An iPhone capture (1290×2796 is 2.17:1) is refused by Play, so the Android set
-is shot separately rather than resized from the iPhone one.
+The two stores' sets are drawn separately, each as its own platform's screen.
+An iPhone picture is 2.17:1, which Play refuses, and the Android finished run
+has no steps.
 
 ## Still to produce
 
-- [ ] **The 6.9" screenshots**, from the list above.
+- [ ] **The 6.9" screenshots.** Drawn, and Still chosen. Left: upload them.
 - [x] **App icon — nothing to upload.** App Store Connect takes the 1024 icon
       from the build's asset catalogue. `store-assets/captured/icon-1024.png`
       is the **old** loop mark from before the 2026-09-11 icon change; do not

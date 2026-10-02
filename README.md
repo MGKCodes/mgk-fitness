@@ -32,9 +32,13 @@ built and verified; the apps are at very different stages.
 
 | App | Package | State |
 |---|---|---|
-| **Run** | `apps/mgk_run` | Working. Tracking, plans, and the AI coach. Not yet released. |
+| **Run** | `apps/mgk_run` | 1.0.0 submitted to the App Store and Google Play on 2 October 2026, and in review. Tracking, plans, and the AI coach. |
 | **Lift** | `apps/mgk_lift` | A shell. Being rewritten in Flutter from a React Native app that is live today. |
 | **Eat** | — | An idea. Deliberately not built. The structure makes adding it cheap; that is the whole claim. |
+
+Run's [screen board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190) and its [store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU) are the two pages its
+release is worked from; both are private to the owner's account, and
+[Run's README](apps/mgk_run/README.md) says what each is.
 
 The suite name is not final. Apps are referred to as **Run** and **Lift**;
 package names (`mgk_run`, `mgk_lift`) and bundle IDs

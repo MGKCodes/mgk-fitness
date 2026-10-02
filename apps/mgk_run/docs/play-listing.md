@@ -23,13 +23,18 @@ things that are Android's own:
   and reads nothing from Health Connect or anywhere else. Steps and cadence are
   an iPhone feature, so this listing does not mention them.
 - **Not "iPhone only".** Obviously, and it was in the first draft.
-- **No promise of a notification.** Android keeps a run going with the screen
-  off through a foreground service whose notification reads "Recording your
-  run". On Android 13 and later that notification only shows if the runner has
-  allowed notifications for Run, and the app never asks (a known gap, in
-  [after-1.0.0.md](after-1.0.0.md)). So the listing says the run keeps
-  recording, and says nothing about a notification until the app asks for the
-  permission.
+- **Not "on your lock screen".** The run's distance, time and pace are on a
+  notification ([ADR-0045](decisions/0045-the-runs-figures-on-the-lock-screen.md)),
+  and for most of 2 October 2026 this listing said they were on the lock
+  screen. They are not, by default, on Android 16: the notification is a quiet
+  one, and Android 16 keeps quiet notifications off the lock screen unless the
+  runner turns them on in Settings. Seen on an emulator that afternoon, with a
+  lock screen, while recording the foreground-service video; the earlier check
+  had been made in the notification shade with no lock screen set. So the
+  description says *in a notification*, with its condition, *if you allow
+  notifications*, and says separately and without condition that the run keeps
+  recording. The App Store listing keeps "lock screen": a Live Activity is on
+  it, and the owner has seen it there.
 
 **Google requires one paragraph verbatim**, because the app is in the Health &
 Fitness category and gives training advice (Health Content and Services
@@ -67,6 +72,8 @@ WHAT IS FREE
 
 - GPS tracking with a live map, splits and pace
 - Keeps recording with the screen locked and the phone in a pocket
+- Distance, time and pace in a notification while you run, if you allow
+  notifications
 - Records without a signal. The run is written to your phone as it happens,
   not to a server
 - Treadmill and manual entry, for the runs your phone did not see
@@ -198,30 +205,39 @@ Change it in Play Console by hand; nothing in the build carries it.
 Main store listing › Graphics. None of these is in the app bundle, so no build
 carries them.
 
-- [ ] **App icon — 512 × 512, 32-bit PNG with alpha, at most 1 MB.**
-      `apps/mgk_run/design/store/play-listing-icon-512.png` is the right art but
-      is saved as 24-bit RGB with no alpha channel. If Play refuses it, re-save
-      it with one; nothing about the picture changes:
+- [ ] **App icon — 512 × 512, 32-bit PNG with alpha, at most 1 MB.** The art
+      is `apps/mgk_run/design/store/play-listing-icon-512.png`, saved as 24-bit
+      with no alpha channel. `python tool/export_store_assets.py` re-saves it
+      with one as `store-assets/derived/play-icon-512.png`. Upload that file;
+      nothing about the picture changes.
+- [ ] **Feature graphic — 1024 × 500, JPEG or 24-bit PNG, no alpha.** Drawn:
+      `store-assets/derived/play-feature-graphic.png`, the launch animation's
+      last frame (`RUN »`) with the App Store subtitle under it, from
+      `design/store-shots`. Play crops and overlays it in places, so nothing
+      that matters is within about 80 px of an edge.
+- [ ] **Phone screenshots — 2 to 8, JPEG or 24-bit PNG, no alpha.** Drawn: six,
+      at 1080 × 1920, in `store-assets/derived/listing/play-still/`. Which six, in what order and with what words is in
+      [app-store-listing.md](app-store-listing.md) § Screenshots. Each side
+      has to be between 320 and 3840 px, with **the long side at most twice the
+      short side**, and four or more at 1080 px or wider is what Play asks for
+      before it will feature an app.
 
-      ```
-      python -c "from PIL import Image; Image.open('apps/mgk_run/design/store/play-listing-icon-512.png').convert('RGBA').save('play-icon-512-rgba.png')"
-      ```
+      **They are drawn as an Android phone, not resized from the iPhone set.**
+      An iPhone picture is 2.17 : 1, over the limit, and it would show steps
+      and cadence that Android does not have.
 
-- [ ] **Feature graphic — 1024 × 500, JPEG or 24-bit PNG, no alpha.**
-      **Missing, and Play will not publish without it.** Keep it plain: the
-      mark on the app's near-black, and the name. Play crops and overlays it in
-      places, so nothing important within about 80 px of the edges.
-- [ ] **Phone screenshots — 2 to 8, JPEG or 24-bit PNG, no alpha.** **Missing.**
-      Each side between 320 and 3840 px, and **the long side at most twice the
-      short side**. 1080 × 1920 is the safe size: it passes that rule, and four
-      or more at 1080 px or wider is what Play asks for before it will feature
-      an app. Shoot the six in
-      [app-store-listing.md](app-store-listing.md) § Screenshots, on an Android
-      phone or an emulator set to that size (`adb shell wm size 1080x1920`).
+All three are checked by `python tool/export_store_assets.py --check`, from
+`apps/mgk_run`.
 
-      **An iPhone capture is refused.** 1290 × 2796 is 2.17 : 1, over the
-      limit, and most modern Android phones capture at 20 : 9, which is over it
-      too. Set the size, or crop, before capturing rather than after.
+## Release notes — 500 characters
+
+Asked for when a release is created (Test and release ▸ Production ▸ Create
+new release), between the `<en-GB>` tags the box arrives with. Shown on the
+listing as *What's new*.
+
+```
+The first release of MGKFitness: Run. Free GPS run tracking with a live map, splits and pace, and an optional AI coach that builds your training plan and adjusts it every week.
+```
 
 ## Store settings
 
