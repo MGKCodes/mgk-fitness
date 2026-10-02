@@ -64,6 +64,12 @@ else.
   screens its store pictures are made from (`test/plates/store.dart`, 1290 by
   2796). Lift's are from its review captures, which have no status bar; they
   want retaking the way Run's were once Lift has store screens of its own.
+- **The phone is the store pictures' phone.** The screens sit in a drawn frame
+  with an iPhone's proportions, its camera island, buttons and status bar,
+  measure for measure the one Run's store pictures use, so the site and the
+  listing show one device. It is drawn rather than Apple's own product image,
+  for the reason the store pictures give: a listing may not show another
+  company's product as though it endorsed the app. `device.tsx` has it.
 - **The words are the listings' words.** Every line over the film, and every
   line under "Tracking is free", is one the store listings already make, and
   each says whether it is free or the subscription. The page may not promise
