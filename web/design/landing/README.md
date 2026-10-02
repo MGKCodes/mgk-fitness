@@ -9,8 +9,9 @@ the weight room beneath it. **Run arrives where the camera lands on the track.
 Lift arrives where it comes out of the tunnel.** One venue holds both apps,
 which is the page's whole argument: they are one thing.
 
-It is a scaffold today. The structure, the pacing and the mechanism are built;
-the film itself is not made yet, and the page draws a slate where it will go.
+The page is designed and the film is not made yet. The stills that have been
+chosen are on the page, which crossfades between them as it scrolls; where a
+still is missing it draws a slate naming the shot.
 
 ## How the film gets made
 
@@ -51,8 +52,22 @@ else.
 - **The tunnel is the join.** The clips are made separately, and the dark hides
   where one ends and the next begins.
 - **The screens are real.** The phones show captures of the apps, not drawings
-  of them. `public/screens/` holds two stand-ins today, copied from Run's plates
-  and Lift's review captures; the page wants them retaken at three times size.
+  of them, three per app, changing as the hold is scrolled. Run's are the
+  screens its store pictures are made from (`test/plates/store.dart`, 1290 by
+  2796). Lift's are from its review captures, which have no status bar; they
+  want retaking the way Run's were once Lift has store screens of its own.
+- **The words are the listings' words.** Every line over the film, and every
+  line under "Tracking is free", is one the store listings already make, and
+  each says whether it is free or the subscription. The page may not promise
+  what a listing may not: see "What the app may not claim" in Run's
+  `app-store-listing.md`.
+- **The page shades the film.** The stills' sky is too light for white type
+  (about 2.8 to 1), so the stage lays the page's own colour over the top and
+  bottom of the frame. That is done once in `landing.css`, not baked into the
+  stills, so every frame gets the same treatment.
+- **The phone stays clear of the tunnel.** At track level the players' tunnel
+  is on the right of the frame and is where the film goes next, so the phone
+  sits left of it.
 - **Reduced motion gets cuts.** A visitor who has asked for less motion sees
   the stills change, not the camera travel.
 
@@ -61,8 +76,8 @@ else.
 - **The waiting list does not save anything.** It needs a table, wording that
   says what the address is for, and a line in both apps' privacy policies. The
   form says the list is not open until then.
-- **The words are stand-ins**, taken from the description the old home page
-  carried.
+- **The headline is a stand-in.** "Two apps. One coach." and the sentence under
+  it come from the old home page, not from a listing.
 - **A portrait film for phones.** The landscape stills crop badly to a tall
   screen; `stills.md` leaves the portrait set for a later round.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,

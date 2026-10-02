@@ -19,3 +19,10 @@ next-env.d.ts
 # here.
 # (No ignore rule. This note exists because "generated" usually means "ignored"
 #  and the next person to tidy this file needs to know why it does not.)
+
+# The stills' rounds. Every image an image model offers stays on the disk it
+# was made on: each is a couple of megabytes, most are turned down, and git
+# would keep them all for good. Each round's notes.md is committed, because a
+# still that cannot be regenerated cannot be matched, and so are the chosen
+# five in `selected/`.
+/design/landing/stills/round-*/*.png
