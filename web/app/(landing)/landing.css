@@ -976,6 +976,15 @@ a.store:hover {
   margin-top: 0.9rem;
 }
 
+/* Who the company is, as it has to be said: across the foot, under the rest. */
+.foot .registered {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--hair);
+  font-size: 0.8125rem;
+}
+
 .foot p a,
 .note a {
   color: inherit;

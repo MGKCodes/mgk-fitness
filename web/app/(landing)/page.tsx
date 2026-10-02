@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { company, disclosure } from "../company";
 import { Bar } from "./bar";
 import { Phone } from "./device";
 import { Film } from "./film";
@@ -506,10 +507,11 @@ export default function Home() {
               ),
           )}
           <p>
-            Made by MGKCodes Ltd.{" "}
-            <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>
+            Made by {company.name}.{" "}
+            <a href={`mailto:${company.email}`}>{company.email}</a>
           </p>
         </nav>
+        <p className="registered">{disclosure}</p>
       </footer>
     </>
   );

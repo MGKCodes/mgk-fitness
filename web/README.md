@@ -126,7 +126,9 @@ password is changed.
 It needs the project's two **public** values, the same two every copy of the
 apps carries: its address and its publishable key. They are written into
 [`app/supabase.ts`](app/supabase.ts) as defaults, which the waiting list uses
-too, so Vercel needs no settings.
+too, so Vercel needs no settings. [`app/company.ts`](app/company.ts) is the
+same idea for who the company is: its number and registered office, read by
+both footers and the privacy notice.
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` still
 override them, which is how a test points the page at a stand-in server. A
 secret key never goes here, and `.env*` stays ignored so this folder cannot
