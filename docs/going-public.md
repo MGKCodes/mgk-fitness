@@ -99,8 +99,10 @@ easier to find. Supabase's security advisor, run on the day of the scans, said:
 - **`coach.usage` has row-level security and no policy.** Intended: it is
   reached only through functions, under `service_role`.
 
-Once the waiting list's migration is applied the advisor will also name
-`core.join_waiting_list` as callable by anybody. That one is meant to be.
+Since the waiting list's migration was applied, later the same day, the
+advisor also names `core.join_waiting_list` as callable by anybody and
+`core.waiting_list` as having no policy. Both are meant: the function is the
+list's one door, and the table has no other.
 
 ## What strangers will be able to do
 

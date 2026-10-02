@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { company, disclosure } from "../company";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,8 +23,10 @@ export default function RootLayout({
       <body>
         {children}
         <footer>
-          MGKCodes Ltd. <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>{" "}
-          · <a href="/privacy">Privacy on this website</a>
+          <a href={`mailto:${company.email}`}>{company.email}</a> ·{" "}
+          <a href="/privacy">Privacy on this website</a>
+          <br />
+          {disclosure}
         </footer>
       </body>
     </html>

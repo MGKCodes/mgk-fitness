@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { company, disclosure } from "../../company";
 
 export const metadata: Metadata = {
   title: "Privacy on this website",
@@ -42,8 +43,12 @@ export default function PrivacyPage() {
       </p>
       <p>
         <strong>Last updated:</strong> 2 October 2026 · <strong>Controller:</strong>{" "}
-        MGKCodes Ltd · <strong>Contact:</strong>{" "}
-        <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>
+        {company.name} · <strong>Contact:</strong>{" "}
+        <a href={`mailto:${company.email}`}>{company.email}</a>
+      </p>
+      <p>
+        {disclosure} It is registered with the Information Commissioner&rsquo;s
+        Office as a data controller, number {company.ico}.
       </p>
       <div className="card">
         <p>
@@ -144,7 +149,8 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        MGKCodes Ltd, at <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>.
+        {company.name}, at <a href={`mailto:${company.email}`}>{company.email}</a>, or by
+        post at {company.office}.
       </p>
     </main>
   );
