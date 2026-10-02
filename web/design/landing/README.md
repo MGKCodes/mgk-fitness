@@ -9,10 +9,13 @@ the weight room beneath it. **Run arrives where the camera lands on the track.
 Lift arrives where it comes out of the tunnel.** One venue holds both apps,
 which is the page's whole argument: they are one thing.
 
-The page is designed and the film is not made yet. All five stills are chosen
-and on the page, in a wide set and an upright one, and the page crossfades
-between them as it scrolls. The clips that turn those crossfades into a moving
-camera are the next step.
+The page is designed and half the film is made. All five stills are chosen and
+on the page, in a wide set and an upright one. **The upright film has its four
+clips**, so on a phone the camera moves; on a wide screen the page still
+crossfades between the stills, and the wide film's clips are the next step.
+[`clips/notes.md`](clips/notes.md) says how each clip came out. One did not
+come out well: the move into the weight room, for a reason that is in the
+stills and is under "Not built yet".
 
 | Still | Chosen | Why |
 |---|---|---|
@@ -45,9 +48,8 @@ And the same five for an upright screen, all from round 4:
 Step 3 is worth doing before step 4. It shows the storyboard in place, at full
 size, under the real type, for nothing; a clip costs money each time.
 [`clips/notes.md`](clips/notes.md) says how a clip is made and records each
-one: the first, a test of the tunnel move for an upright screen, showed that
-the model begins and ends on the stills it is given and moves between them as
-a camera would.
+one, with its prompt, its cost and what it showed. Read "The retry that cost
+$1.41" there before making another.
 
 ## Two shapes
 
@@ -67,6 +69,10 @@ film is the same five moments framed again, not the wide ones cropped.
 - **The tall film needs clips of its own.** A video model is given a first and
   a last frame and returns their shape, so four moves in two shapes is eight
   clips, not four.
+- **The tall film is cut lighter.** A phone fetches it, often over a mobile
+  connection, so it takes 12 frames a second where the wide film takes 24.
+  Its four moves are 214 frames and 9.6 MB. A visitor whose browser asks to
+  save data is sent no frames at all, and sees the crossfades.
 - On an upright screen the words sit in the top third of the frame and the
   phone rises over the bottom of it, so what is seen clean is a band across
   the middle. The brief says where each thing is, measured from the page.
@@ -110,6 +116,15 @@ else.
   reads the same both ways.
 - **The tunnel is the join.** The clips are made separately, and the dark hides
   where one ends and the next begins.
+- **A hold is its still.** A clip's first and last frames are its stills as a
+  video model remade them: near enough to pass for them, and softer. So where
+  the camera rests the page shows the still, and eases out of the frame the
+  camera arrived on and into the one it leaves on over a little scrolling at
+  either end.
+- **A clip is cut to the scroll, not to the clock.** A video model paces a
+  move as it likes, and one that creeps and then rushes scrubs badly. What is
+  done to a clip as it is cut, to even it out or to dissolve a jump inside it,
+  is in `clips/edits.json`, and the clip is left as it was made.
 - **The screens are real.** The phones show captures of the apps, not drawings
   of them, three per app, changing as the hold is scrolled. Run's are the
   screens its store pictures are made from (`test/plates/store.dart`, 1290 by
@@ -171,11 +186,24 @@ else.
   are their own marks in the bar, greyed and not links until each has an
   address. [`docs/going-public.md`](../../../docs/going-public.md) is the list
   for the day the repository opens.
-- **The clips, in either shape.** Both sets of stills are on the page and
-  neither has a clip, so every move is a crossfade. The tall film's clips are
-  its own: four more, each made from two upright stills.
+- **The wide film's clips.** The upright film has its four. The wide one has
+  none, so on a screen wider than it is tall every move is still a crossfade.
+  Four more, each made from two wide stills: about $3 at the prices in
+  `clips/notes.md`, if each lands first time.
+- **One weight room.** K4's far end and K5 are two different rooms, in both
+  sets: a bright hall with slanting columns, and the dark room the film ends
+  in. A video model given both walks into the first and cuts to the second.
+  The upright film dissolves across that cut, which hides the jump and not the
+  difference. The cure is a K4, and a K4p, whose far end is K5's room, made
+  from K5, and then the tunnel move and the move into the room made again.
 - **Where the frames live.** `tool/film.mjs` writes them into `public/film/`,
-  which is committed. Four moves at two sizes is some tens of megabytes; if
-  that is too much for the repository they move to a storage bucket.
+  which is committed. The upright film's frames are 9.6 MB and the wide film's
+  will be about twice that; if that is too much for the repository they move
+  to a storage bucket. The clips they are cut from are several megabytes each
+  and are not committed at all: see `clips/notes.md`.
+- **A lighter film for phones.** 9.6 MB is what a phone fetches if it stays
+  on the page, every eighth frame of each move first and then the gaps.
+  Narrower frames would halve it, at some cost in sharpness while the camera
+  is moving.
 - **The page is not indexed.** `robots` is off in the landing layout until the
   film and the list are real.

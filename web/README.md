@@ -36,8 +36,8 @@ still `/run/support`.
 
 [`design/landing/README.md`](design/landing/README.md) has the idea, how the
 film is made and what is not built yet. In short: the page is designed and its
-stills are on it, the camera does not move between them yet, and it is not
-indexed.
+stills are on it, the camera moves between them on an upright screen and not
+yet on a wide one, and it is not indexed.
 
 Its waiting list writes to `core.waiting_list` through one function,
 `core.join_waiting_list`, with the publishable key. The migration
