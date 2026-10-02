@@ -1,6 +1,8 @@
 "use client";
 
 import type { MouseEvent } from "react";
+import { social } from "./links";
+import { Social } from "./social";
 
 // How long the page takes to travel one screen of film going down, in
 // milliseconds. The film is played by scrolling, so this is its playing speed
@@ -54,8 +56,8 @@ function glide(to: number) {
 }
 
 /**
- * The bar: the suite's name, its two apps, where to follow it and the waiting
- * list.
+ * The bar: the suite's name, its two apps, its accounts elsewhere and the
+ * waiting list.
  *
  * Run and Lift are places in the film, not pages, so their links scroll the
  * film to where each app arrives. They are ordinary links to `#run` and
@@ -83,9 +85,12 @@ export function Bar() {
         <a href="#lift" onClick={go}>
           Lift
         </a>
-        {/* Below the film, so there is nothing to play on the way. It jumps. */}
-        <a href="#follow">Follow</a>
       </nav>
+      <div className="socials">
+        {social.map((account) => (
+          <Social key={account.name} {...account} />
+        ))}
+      </div>
       {/* Said in one word where the bar has no room for two. */}
       <a className="pill" href="#waiting-list" aria-label="Waiting list">
         <span className="wide">Waiting list</span>
