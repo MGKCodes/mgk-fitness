@@ -55,6 +55,10 @@ const spanOf = (id: string) => spans.find((span) => span.shot.id === id);
  * frames and no others, and its stills, with the wide still standing in for
  * any it has not got yet.
  *
+ * The frames are megabytes, so they are fetched as they are wanted: the first
+ * move with the page, the rest at the first scroll, and none at all for a
+ * visitor who has asked for less motion or to save data.
+ *
  * `places` names points in the film that a link can go to: an id, and the hold
  * it stands for. Each is put a third of the way into its hold, where whatever
  * arrives during that hold has arrived.
@@ -113,13 +117,37 @@ export function Film({
         ?.saveData === true;
     const count = (shot: string) => (sparing ? 0 : (reels[shape].frames[shot] ?? 0));
 
-    // The stills, then every eighth frame, then the gaps, so a move can be
-    // scrubbed roughly as soon as it is reached and sharpens as the rest lands.
+    // What is fetched, six at a time. The stills come first. Frames come in
+    // two goes, so that somebody who leaves from the headline has fetched one
+    // move and not four: the first move as the page opens, and the others
+    // once the visitor has scrolled at all. Within a move it is every eighth
+    // frame and then the gaps, so it can be scrubbed roughly as soon as it is
+    // reached and sharpens as the rest lands. A visitor who has asked for
+    // less motion is shown cuts between the stills and is sent no frames.
+    const moves = spans.map((span) => span.shot).filter((shot) => shot.kind === "move");
+    let engaged = false;
+    let queue: string[] = [];
+    let cursor = 0;
+    let lanes = 0;
+    const pump = () => {
+      while (!stopped && lanes < 6 && cursor < queue.length) {
+        const img = image(queue[cursor++]);
+        if (img.complete) continue;
+        lanes++;
+        const done = () => {
+          lanes--;
+          pump();
+        };
+        img.addEventListener("load", done, { once: true });
+        img.addEventListener("error", done, { once: true });
+      }
+    };
     const preload = () => {
-      const queue = everyKey.map(stillUrl).filter((src) => src !== null);
+      const wanted = reduced.matches ? [] : engaged ? moves : moves.slice(0, 1);
+      queue = everyKey.map(stillUrl).filter((src) => src !== null);
       const seen = new Set<string>();
       for (const stride of [8, 4, 2, 1]) {
-        for (const { shot } of spans) {
+        for (const shot of wanted) {
           for (let i = 0; i < count(shot.id); i += stride) {
             const src = frameUrl(shape, shot.id, width[shape], i);
             if (!seen.has(src)) queue.push(src);
@@ -127,17 +155,8 @@ export function Film({
           }
         }
       }
-      let next = 0;
-      const pull = () => {
-        while (!stopped && next < queue.length) {
-          const img = image(queue[next++]);
-          if (img.complete) continue;
-          img.addEventListener("load", pull, { once: true });
-          img.addEventListener("error", pull, { once: true });
-          return;
-        }
-      };
-      for (let lane = 0; lane < 6; lane++) pull();
+      cursor = 0;
+      pump();
     };
 
     // The smallest width a film has that fills the canvas without being
@@ -283,6 +302,11 @@ export function Film({
       raf = requestAnimationFrame(tick);
       const box = root.getBoundingClientRect();
       const target = clamp(-box.top / (box.height - view.clientHeight));
+      // The first scroll is the sign that the rest of the film is wanted.
+      if (!engaged && target > 0.001) {
+        engaged = true;
+        preload();
+      }
       // Ease towards the scroll position: a wheel moves in steps, and a film
       // that steps with it reads as a slideshow.
       const next =
@@ -298,12 +322,14 @@ export function Film({
 
     resize();
     window.addEventListener("resize", resize);
+    reduced.addEventListener("change", preload);
     raf = requestAnimationFrame(tick);
 
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      reduced.removeEventListener("change", preload);
     };
   }, []);
 

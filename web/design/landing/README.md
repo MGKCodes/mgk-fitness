@@ -72,9 +72,13 @@ film is the same five moments framed again, not the wide ones cropped.
 - **Both films take every other frame of their clips**, 12 a second, which is
   half the weight and still a frame every dozen pixels of scrolling. The tall
   film's four moves are 214 frames and 9.6 MB. The wide film's are 215 frames
-  and 13.3 MB at 1920 wide, which is what a desktop fetches. A visitor whose
-  browser asks to save data is sent no frames at all, and sees the
-  crossfades.
+  and 13.3 MB at 1920 wide, which is what a desktop fetches.
+- **Frames are fetched as they are wanted.** The stills and the first move
+  come with the page: about 4 MB on a phone and 5 MB on a desktop. The other
+  three moves are fetched at the first scroll, so somebody who leaves from
+  the headline has not been sent the whole film. A visitor who has asked for
+  less motion is shown cuts between the stills and is sent no frames, and nor
+  is one whose browser asks to save data, who sees the crossfades.
 - On an upright screen the words sit in the top third of the frame and the
   phone rises over the bottom of it, so what is seen clean is a band across
   the middle. The brief says where each thing is, measured from the page.
@@ -203,9 +207,14 @@ else.
   18 MB, in its two widths; if that is too much for the repository they move
   to a storage bucket. The clips they are cut from are several megabytes each
   and are not committed at all: see `clips/notes.md`.
-- **A lighter film.** 9.6 MB is what a phone fetches if it stays on the page,
-  and 13.3 MB a desktop, every eighth frame of each move first and then the
-  gaps. Narrower frames would halve either, at some cost in sharpness while
-  the camera is moving.
-- **The page is not indexed.** `robots` is off in the landing layout until the
-  film and the list are real.
+- **A lighter film.** A phone that scrolls fetches 9.6 MB of frames in the
+  end and a desktop 13.3 MB, every eighth frame of each move first and then
+  the gaps. Narrower frames would halve either, at some cost in sharpness
+  while the camera is moving.
+- **The page is not live, and not indexed.** It is on `develop` and has not
+  been promoted to `main`, which is what Vercel deploys. `robots` is off in
+  the landing layout. The film and the list are both real now, so going live
+  and being found are decisions to take and no longer things to build. What
+  the page still lacks for that day is a picture for link previews: it has no
+  Open Graph image, so a link to it shared anywhere shows its title and its
+  description and no picture.
