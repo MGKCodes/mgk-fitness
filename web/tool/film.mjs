@@ -27,26 +27,35 @@
 // it is framed first: `selected/framing.json` gives, by the still's name, the
 // share of its height to cut from the `top` or the `bottom`. The cut is made
 // here, and the chosen image is left as it was made.
+//
+// A clip can be edited on its way in, likewise. `design/landing/clips/edits.json`
+// gives, by the clip's file name, an ffmpeg filter graph that takes `[0:v]` and
+// ends in `[v]`. It is how a move a video model paced unevenly is evened out,
+// and how a jump inside one is dissolved. `clips/notes.md` says what each is for.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const web = join(dirname(fileURLToPath(import.meta.url)), "..");
 const selected = join(web, "design/landing/stills/selected");
+const editsFile = join(web, "design/landing/clips/edits.json");
 const film = join(web, "public/film");
 const manifest = join(web, "app/(landing)/film.json");
 
 const KEYS = ["k1", "k2", "k3", "k4", "k5"];
 const MOVES = ["s1", "s2", "s3", "s4"];
+// `fps` is the frames a second taken from a clip, and `quality` what they are
+// saved at. A five-second move in the wide film is 120 frames, which is as
+// smooth as a scroll can show. The tall film is fetched by phones, often over
+// a mobile connection, so it takes every other frame: a move is still a frame
+// every dozen pixels of scrolling, and the first and last frames are kept, so
+// it joins its stills as before.
 const SHAPES = {
-  wide: { across: 16, down: 9, suffix: "" },
-  tall: { across: 9, down: 16, suffix: "p" },
+  wide: { across: 16, down: 9, suffix: "", fps: 24, quality: 78 },
+  tall: { across: 9, down: 16, suffix: "p", fps: 12, quality: 70 },
 };
-// Frames a second taken from a clip. A five-second move is 120 frames, which
-// is as smooth as a scroll can show and about as much as a phone should fetch.
-const FPS = 24;
 
 const state = JSON.parse(readFileSync(manifest, "utf8"));
 const save = () => writeFileSync(manifest, JSON.stringify(state, null, 2) + "\n");
@@ -60,16 +69,21 @@ function framed(name) {
   return top || bottom ? [`crop=iw:ih*${1 - top - bottom}:0:ih*${top}`] : [];
 }
 
-function ffmpeg(shape, input, filters, quality, output, first = []) {
+function ffmpeg(shape, input, filters, quality, output, first = [], edit) {
   mkdirSync(dirname(output), { recursive: true });
   const { across, down } = SHAPES[shape];
   const crop = `crop='min(iw,ih*${across}/${down})':'min(ih,iw*${down}/${across})'`;
+  const chain = [...first, crop, ...filters].join(",");
+  // An edit is a graph of its own, which the usual chain is then hung from.
+  const graph = edit
+    ? ["-filter_complex", `${edit};[v]${chain}[out]`, "-map", "[out]"]
+    : ["-vf", chain];
   // A numbered output is a file per frame. Left to guess from ".webp", ffmpeg
   // writes one animated image called "%04d.webp" instead.
   const each = output.includes("%") ? ["-f", "image2"] : [];
   const run = spawnSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-i", input, "-vf", [...first, crop, ...filters].join(","),
+    ["-y", "-loglevel", "error", "-i", input, ...graph,
       "-c:v", "libwebp", "-quality", String(quality), ...each, output],
     { stdio: "inherit" },
   );
@@ -120,13 +134,16 @@ function frames(move, clip) {
   if (!clip || !existsSync(clip)) throw new Error(`No clip at "${clip}".`);
   const shape = shapeOf(clip);
   const set = state[shape];
+  const { fps, quality } = SHAPES[shape];
+  const edits = existsSync(editsFile) ? JSON.parse(readFileSync(editsFile, "utf8")) : {};
+  const edit = edits[basename(clip)];
   clear(move, shape);
   for (const width of set.widths) {
-    ffmpeg(shape, clip, [`fps=${FPS}`, `scale=${width}:-2:flags=lanczos`], 78, join(film, shape, move, String(width), "%04d.webp"));
+    ffmpeg(shape, clip, [`fps=${fps}`, `scale=${width}:-2:flags=lanczos`], quality, join(film, shape, move, String(width), "%04d.webp"), [], edit);
   }
   set.frames[move] = readdirSync(join(film, shape, move, String(set.widths[0]))).length;
   save();
-  console.log(`${move}  ${set.frames[move]} frames, ${shape}`);
+  console.log(`${move}  ${set.frames[move]} frames, ${shape}${edit ? ", edited" : ""}`);
 }
 
 /** Takes a move's frames off the page: from one film, or from both. */

@@ -106,7 +106,12 @@ export function Film({
       const from = reels[shape].keys.includes(key) ? shape : "wide";
       return reels[from].keys.includes(key) ? keyUrl(from, key, width[from]) : null;
     };
-    const count = (shot: string) => reels[shape].frames[shot] ?? 0;
+    // A visitor who has asked their browser to save data is not sent several
+    // megabytes of frames. For them every move stays a crossfade.
+    const sparing =
+      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+        ?.saveData === true;
+    const count = (shot: string) => (sparing ? 0 : (reels[shape].frames[shot] ?? 0));
 
     // The stills, then every eighth frame, then the gaps, so a move can be
     // scrubbed roughly as soon as it is reached and sharpens as the rest lands.
@@ -220,23 +225,33 @@ export function Film({
       ctx.fillStyle = "#1a1a1a";
       ctx.fillRect(0, 0, view.width, view.height);
 
+      // Reduced motion gets a cut where a move would have been, and no frames.
+      const cut = reduced.matches;
+
       if (shot.kind === "hold") {
-        // Rest on the frame the camera arrived on, so a hold and the move
-        // before it never disagree about where the camera stopped.
+        // A hold is its still, the sharpest picture of that moment there is.
+        // A clip's first and last frames are that still as a video model
+        // remade it: near enough to pass for it, and not it. So the hold
+        // eases out of the frame the camera arrived on and into the one it
+        // leaves on, over a little scrolling at either end, and a hold and
+        // the moves beside it never disagree about where the camera is.
         const before = spans[spans.indexOf(span) - 1]?.shot;
         const after = spans[spans.indexOf(span) + 1]?.shot;
-        const img =
-          (before && frame(before.id, count(before.id) - 1)) ||
-          (after && frame(after.id, 0)) ||
-          still(shot.at);
-        if (img) cover(img);
-        else slate(shot, t);
+        const arrived =
+          before && !cut ? frame(before.id, count(before.id) - 1) : null;
+        const leaving = after && !cut ? frame(after.id, 0) : null;
+        const img = still(shot.at) ?? arrived ?? leaving;
+        if (!img) return slate(shot, t);
+        cover(img);
+        const edge = 0.15 / shot.screens;
+        if (arrived && arrived !== img && t < edge) cover(arrived, 1 - t / edge);
+        if (leaving && leaving !== img && t > 1 - edge) {
+          cover(leaving, (t - (1 - edge)) / edge);
+        }
         return;
       }
 
       const total = count(shot.id);
-      // Reduced motion gets a cut where the move would have been.
-      const cut = reduced.matches;
       const played = cut ? null : frame(shot.id, Math.round(t * (total - 1)));
       if (played) return cover(played);
 
