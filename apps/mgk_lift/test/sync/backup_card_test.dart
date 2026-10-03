@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
-import 'package:mgk_lift/src/features/sync/presentation/account_section.dart';
+import 'package:mgk_lift/src/features/sync/presentation/backup_card.dart';
 import 'package:mgk_lift/src/features/sync/presentation/backup_scheduler.dart';
 
 Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
@@ -24,23 +24,23 @@ BackupStatus status({
   ),
 );
 
+const refused = RejectedWorkout(
+  id: 'w',
+  name: 'Push',
+  isTemplate: false,
+  detail: '22003: numeric field overflow',
+);
+
 void main() {
-  group('signed out', () {
-    testWidgets('says the training exists in one place only', (
-      WidgetTester tester,
-    ) async {
+  group('signed out, the note on the profile card', () {
+    test('says the training exists in one place only', () {
       // The one fact worth stating unprompted, because discovering it after
       // losing a phone is the worst possible time.
-      await tester.pumpWidget(
-        wrap(AccountSection(status: status(), isSignedIn: false)),
-      );
-
-      expect(find.text('Not signed in'), findsOneWidget);
-      expect(find.text('Your training is on this phone only.'), findsOneWidget);
-      expect(find.text('Sign in'), findsOneWidget);
+      final line = phoneOnlyLine(status().pending);
+      expect(line, 'Your training is on this phone only.');
 
       // Reports, does not sell. An account is a thing people already
-      // understand, so the card must not explain that a cloud account is
+      // understand, so the note must not explain that a cloud account is
       // readable when you sign in, nor argue for creating one.
       for (final pitch in <String>[
         'keeps it with you',
@@ -50,69 +50,40 @@ void main() {
         'backed up',
       ]) {
         expect(
-          find.textContaining(pitch),
-          findsNothing,
-          reason: 'the card is arguing for an account: "$pitch"',
+          line.contains(pitch),
+          isFalse,
+          reason: 'the note is arguing for an account: "$pitch"',
         );
       }
     });
 
-    testWidgets('counts what would be lost, rather than just warning', (
-      WidgetTester tester,
-    ) async {
+    test('counts what would be lost, rather than just warning', () {
       // The number makes the state concrete where there is one.
-      await tester.pumpWidget(
-        wrap(AccountSection(status: status(sessions: 9), isSignedIn: false)),
-      );
-
-      expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
-    });
-
-    testWidgets('counts the library too, now that it can go up', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          AccountSection(
-            status: status(sessions: 9, saved: 3),
-            isSignedIn: false,
-          ),
-        ),
-      );
-
       expect(
-        find.text('9 sessions and 3 saved workouts are on this phone only.'),
-        findsOneWidget,
+        phoneOnlyLine(status(sessions: 9).pending),
+        '9 sessions are on this phone only.',
       );
     });
 
-    testWidgets('gets the singular right', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        wrap(AccountSection(status: status(sessions: 1), isSignedIn: false)),
-      );
+    test('counts the library too, now that it can go up', () {
       expect(
-        find.textContaining('1 session is on this phone only'),
-        findsOneWidget,
+        phoneOnlyLine(status(sessions: 9, saved: 3).pending),
+        '9 sessions and 3 saved workouts are on this phone only.',
+      );
+    });
+
+    test('gets the singular right', () {
+      expect(
+        phoneOnlyLine(status(sessions: 1).pending),
+        '1 session is on this phone only.',
       );
     });
   });
 
-  group('signed in', () {
+  group('the card on the account screen', () {
     testWidgets('reports what is waiting', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        wrap(
-          AccountSection(
-            status: status(sessions: 3),
-            isSignedIn: true,
-            email: 'lifter@example.com',
-          ),
-        ),
-      );
+      await tester.pumpWidget(wrap(BackupCard(status: status(sessions: 3))));
 
-      // The card is titled with the account it is talking about, so somebody
-      // signed in as the wrong address finds out here rather than by
-      // wondering where their training went.
-      expect(find.text('lifter@example.com'), findsOneWidget);
       expect(find.text('3 sessions waiting to upload.'), findsOneWidget);
       expect(find.text('Sync now'), findsOneWidget);
     });
@@ -122,11 +93,10 @@ void main() {
     ) async {
       await tester.pumpWidget(
         wrap(
-          AccountSection(
+          BackupCard(
             status: status(
               last: DateTime.now().subtract(const Duration(minutes: 3)),
             ),
-            isSignedIn: true,
           ),
         ),
       );
@@ -145,7 +115,7 @@ void main() {
       // silence - `pushed` and `pulled` were computed and never shown.
       await tester.pumpWidget(
         wrap(
-          AccountSection(
+          BackupCard(
             status: status(
               report: SyncReport(
                 outcome: SyncOutcome.synced,
@@ -154,7 +124,6 @@ void main() {
                 at: DateTime.now(),
               ),
             ),
-            isSignedIn: true,
           ),
         ),
       );
@@ -169,13 +138,12 @@ void main() {
       // is not theirs to fix.
       await tester.pumpWidget(
         wrap(
-          AccountSection(
+          BackupCard(
             status: status(
               sessions: 2,
               state: BackupState.failed,
               report: const SyncReport.unavailable('PGRST002: schema cache'),
             ),
-            isSignedIn: true,
           ),
         ),
       );
@@ -190,10 +158,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         wrap(
-          AccountSection(
-            status: status(sessions: 1, state: BackupState.offline),
-            isSignedIn: true,
-          ),
+          BackupCard(status: status(sessions: 1, state: BackupState.offline)),
         ),
       );
       expect(find.textContaining('No connection'), findsOneWidget);
@@ -204,9 +169,8 @@ void main() {
       var asked = 0;
       await tester.pumpWidget(
         wrap(
-          AccountSection(
+          BackupCard(
             status: status(sessions: 1, state: BackupState.expired),
-            isSignedIn: true,
             onSignIn: () => asked++,
           ),
         ),
@@ -221,18 +185,8 @@ void main() {
     ) async {
       await tester.pumpWidget(
         wrap(
-          AccountSection(
-            status: status(
-              rejected: const <RejectedWorkout>[
-                RejectedWorkout(
-                  id: 'w',
-                  name: 'Push',
-                  isTemplate: false,
-                  detail: '22003: numeric field overflow',
-                ),
-              ],
-            ),
-            isSignedIn: true,
+          BackupCard(
+            status: status(rejected: const <RejectedWorkout>[refused]),
           ),
         ),
       );
@@ -246,9 +200,8 @@ void main() {
     testWidgets('syncing blocks a second tap', (WidgetTester tester) async {
       await tester.pumpWidget(
         wrap(
-          AccountSection(
+          BackupCard(
             status: status(sessions: 1, state: BackupState.running),
-            isSignedIn: true,
             onSyncNow: () {},
           ),
         ),
@@ -257,6 +210,51 @@ void main() {
       final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
       expect(button.onPressed, isNull);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+  });
+
+  group('the row on the settings index', () {
+    // One word where the card has a sentence, so the index can be read at a
+    // glance. Only what the lifter alone can put right is coloured.
+    test('says where backup stands', () {
+      expect(backupRowValue(status()), ('Nothing saved yet', false));
+      expect(backupRowValue(status(last: DateTime(2026, 10, 1))), (
+        'Up to date',
+        false,
+      ));
+      expect(backupRowValue(status(sessions: 2, saved: 1)), (
+        '3 waiting',
+        false,
+      ));
+      expect(backupRowValue(status(sessions: 1, state: BackupState.running)), (
+        'Backing up',
+        false,
+      ));
+      expect(backupRowValue(status(sessions: 1, state: BackupState.offline)), (
+        'Offline',
+        false,
+      ));
+      expect(backupRowValue(status(sessions: 1, state: BackupState.failed)), (
+        'Failed, retrying',
+        false,
+      ));
+    });
+
+    test('and asks for the lifter only when it needs them', () {
+      expect(backupRowValue(status(sessions: 1, state: BackupState.expired)), (
+        'Sign in again',
+        true,
+      ));
+      expect(
+        backupRowValue(status(rejected: const <RejectedWorkout>[refused])),
+        ('1 needs attention', true),
+      );
+      expect(
+        backupRowValue(
+          status(rejected: const <RejectedWorkout>[refused, refused]),
+        ),
+        ('2 need attention', true),
+      );
     });
   });
 }

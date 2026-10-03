@@ -125,10 +125,10 @@ void main() {
 
       await tester.tap(find.text('Continue with email'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Create an account'));
+      await tester.tap(find.text('New here? Create an account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Create account'), findsWidgets);
+      expect(find.text('Sign up'), findsWidgets);
       expect(find.textContaining('By continuing you agree'), findsOneWidget);
     });
   });

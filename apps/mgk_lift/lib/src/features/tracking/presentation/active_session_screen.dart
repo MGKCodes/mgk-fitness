@@ -1551,7 +1551,7 @@ class _TopBar extends StatelessWidget {
                   children: <Widget>[
                     AppIconButton(
                       onPressed: onBack,
-                      icon: Icons.arrow_back,
+                      icon: backIcon(context),
                       color: AppColors.textSecondary,
                       tooltip: editing
                           ? 'Back — your changes are saved'

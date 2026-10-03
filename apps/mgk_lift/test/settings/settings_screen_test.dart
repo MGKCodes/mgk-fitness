@@ -142,17 +142,21 @@ void main() {
         ),
       );
 
-      // The profile card: initial, address, plan — above everything else.
+      // The suite's profile card: initial, address, plan — above everything
+      // else, and the same card Run's Settings leads with.
+      expect(find.byType(ProfileCard), findsOneWidget);
       expect(find.text('L'), findsOneWidget);
       expect(find.text('Subscribed'), findsOneWidget);
       final card = tester.getTopLeft(find.text('lifter@example.com')).dy;
       expect(card, lessThan(tester.getTopLeft(find.text('Weight')).dy));
-      // Sign out and Restore are not rows on the index any more.
+      // Sign out, Restore and Sync now are not on the index.
       expect(find.text('Sign out'), findsNothing);
+      expect(find.text('Sync now'), findsNothing);
 
       await tester.tap(find.text('lifter@example.com'));
       await tester.pumpAndSettle();
       expect(find.text('Account'), findsOneWidget);
+      expect(find.text('Sync now'), findsOneWidget);
 
       await tester.tap(find.text('Restore purchases'));
       await tester.pumpAndSettle();
@@ -163,7 +167,7 @@ void main() {
       expect(signedOut, 1);
     });
 
-    testWidgets('signed out, the card offers to sign in and opens nothing', (
+    testWidgets('signed out, the card is the way in and opens no account', (
       WidgetTester tester,
     ) async {
       var signIns = 0;
@@ -175,12 +179,45 @@ void main() {
           onSignIn: () => signIns++,
         ),
       );
-      await tester.tap(find.text('Not signed in'));
-      await tester.pumpAndSettle();
-      expect(find.text('Account'), findsNothing);
+      // The state, and nothing after it: the card reports, it does not sell.
+      expect(find.text('Your training is on this phone only.'), findsOneWidget);
+      // Nothing to report about a backup nobody has.
+      expect(find.text('Backup'), findsNothing);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Sign in'));
+      await tester.tap(find.widgetWithText(ProfileCard, 'Sign in'));
+      await tester.pumpAndSettle();
       expect(signIns, 1);
+      expect(find.text('Account'), findsNothing);
+    });
+
+    testWidgets('the groups and the foot are named as Run names them', (
+      WidgetTester tester,
+    ) async {
+      // Half of Settings is the suite's, so somebody with both apps should
+      // not have to learn it twice.
+      Uri? opened;
+      await pumpTall(
+        tester,
+        SettingsScreen(
+          initial: const UnitPreferences(),
+          store: InMemoryUnitPreferences(),
+          isSignedIn: true,
+          email: 'lifter@example.com',
+          openUrl: (url) async {
+            opened = url;
+            return true;
+          },
+        ),
+      );
+
+      double top(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(top('PREFERENCES'), lessThan(top('YOUR DATA')));
+      expect(top('YOUR DATA'), lessThan(top('ABOUT')));
+      expect(find.text('MGKFitness: Lift 2.0.0 · MGKCodes'), findsOneWidget);
+
+      await tester.tap(find.text('Support'));
+      await tester.pumpAndSettle();
+      expect(opened.toString(), 'https://mgkfitness.mgkcodes.com/lift/support');
     });
 
     testWidgets('the account and the units fit a 375pt phone unscrolled', (
@@ -338,11 +375,11 @@ void backupSmoke() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.text('Not signed in'), findsOneWidget);
+    expect(find.widgetWithText(ProfileCard, 'Sign in'), findsOneWidget);
     expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
   });
 
-  testWidgets('the account card follows backup while the screen is open', (
+  testWidgets('the backup row follows backup while the screen is open', (
     WidgetTester tester,
   ) async {
     // A run started from here — or by a checkpoint behind it — is reported
@@ -360,12 +397,12 @@ void backupSmoke() {
         onSyncNow: () {},
       ),
     );
-    expect(find.text('2 sessions waiting to upload.'), findsOneWidget);
+    expect(find.widgetWithText(SettingsRow, '2 waiting'), findsOneWidget);
 
     backup.value = BackupStatus(
       pending: SyncPending(workouts: 0, lastSyncedAt: DateTime.now()),
     );
     await tester.pump();
-    expect(find.textContaining('Everything is saved'), findsOneWidget);
+    expect(find.widgetWithText(SettingsRow, 'Up to date'), findsOneWidget);
   });
 }

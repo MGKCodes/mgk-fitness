@@ -30,6 +30,7 @@ import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/photo_backup.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
+import '../../settings/presentation/account_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_messages.dart';
@@ -697,7 +698,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       case BackupAction.signIn:
         unawaited(_openSignIn());
       case BackupAction.review:
-        unawaited(_openSettings());
+        // Where each refusal is listed. That was the card on Settings; it is
+        // on the account screen now, so this goes there and not one tap short.
+        unawaited(_openAccount());
       case BackupAction.none:
         break;
     }
@@ -936,7 +939,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
-          // On the account card. Only in a build that can sell: with no
+          // On the profile card. Only in a build that can sell: with no
           // store there is no plan to have or not have.
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
           onSyncNow: _backup == null ? null : _syncNow,
@@ -952,6 +955,32 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           onUseCoachChanged: widget.coachPreference == null
               ? null
               : _setUseCoach,
+        ),
+      ),
+    );
+  }
+
+  /// Opens the account screen straight from Track, for a backup message whose
+  /// answer is on it. Settings opens the same screen from its profile card,
+  /// with the same values.
+  Future<void> _openAccount() async {
+    final account = _account;
+    // A refusal needs an account to have been refused, so this is only ever
+    // a lifter who has signed out since. Settings says where they stand.
+    if (account == null) return _openSettings();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AccountScreen(
+          email: account.email,
+          backup: _backup?.status,
+          planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
+          onSyncNow: _backup == null ? null : _syncNow,
+          onSignIn: widget.auth == null ? null : _openSignIn,
+          onRestorePurchases: _flow == null ? null : _restorePurchases,
+          onSignOut: _signOut,
+          auth: widget.auth,
+          deleter: widget.deleter,
+          onAccountGone: widget.localData?.release,
         ),
       ),
     );

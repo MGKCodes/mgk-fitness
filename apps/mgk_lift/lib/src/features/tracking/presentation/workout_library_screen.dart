@@ -432,7 +432,7 @@ class _WorkoutLibraryScreenState extends State<WorkoutLibraryScreen> {
                           child: Row(
                             children: <Widget>[
                               AppIconButton(
-                                icon: Icons.arrow_back,
+                                icon: backIcon(context),
                                 tooltip: 'Back',
                                 color: AppColors.textSecondary,
                                 onPressed: () =>

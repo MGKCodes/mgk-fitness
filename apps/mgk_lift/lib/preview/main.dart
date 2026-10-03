@@ -585,11 +585,15 @@ class PreviewApp extends StatelessWidget {
         source: FakePhotoSource(null),
         now: previewNow,
       ),
+      // Signed out as the app has it, with somewhere to sign in: without
+      // onSignIn the profile card is a build with no server, and reads "Not
+      // signed in" with no way in.
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
         restAlerts: FakeRestAlerts(isAllowed: false),
+        onSignIn: () {},
       ),
       // The two states that matter: signed out with training that exists in
       // one place, and signed in with everything up to date.
@@ -633,11 +637,11 @@ class PreviewApp extends StatelessWidget {
         ),
         onSignIn: () {},
       ),
-      'account-synced': (_) => SettingsScreen(
-        initial: const UnitPreferences(),
-        store: InMemoryUnitPreferences(),
-        now: previewNow,
-        isSignedIn: true,
+      // The index says where backup stands in a word; the sentence is on the
+      // account screen, so that is what these two draw.
+      'account-synced': (_) => AccountScreen(
+        email: 'matt@example.com',
+        planLabel: 'Free',
         backup: _backup(
           pending: SyncPending(
             workouts: 0,
@@ -645,15 +649,16 @@ class PreviewApp extends StatelessWidget {
           ),
         ),
         onSyncNow: () {},
+        onRestorePurchases: () async {},
+        onSignOut: () {},
+        now: previewNow,
       ),
       // What a refusal looks like where it is listed in full, beside a run
       // that failed and will try again.
-      'account-problems': (_) => SettingsScreen(
-        initial: const UnitPreferences(),
-        store: InMemoryUnitPreferences(),
-        now: previewNow,
-        isSignedIn: true,
+      'account-problems': (_) => AccountScreen(
         email: 'matt@example.com',
+        onSignOut: () {},
+        now: previewNow,
         backup: _backup(
           state: BackupState.failed,
           pending: const SyncPending(
@@ -945,6 +950,14 @@ class PreviewApp extends StatelessWidget {
       // space.
       'sign-in-email': (_) =>
           SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
+      // The same form as the sales screen opens it, for somebody subscribing:
+      // starting on making an account.
+      'sign-in-create': (_) => SignInScreen(
+        auth: FakeAuth(),
+        pendingWorkouts: 9,
+        emailFirst: true,
+        initialSignUp: true,
+      ),
       'credits': (_) => const CreditsScreen(),
 
       // ---- Privacy, legal and leaving --------------------------------------
