@@ -37,6 +37,7 @@ export 'src/widgets/hero_numeral.dart';
 export 'src/widgets/pace_band_meter.dart';
 export 'src/widgets/photo_backdrop.dart';
 export 'src/widgets/primary_button.dart';
+export 'src/widgets/profile_identity.dart';
 export 'src/widgets/section_label.dart';
 export 'src/widgets/sign_in_buttons.dart';
 export 'src/widgets/settings_rows.dart';
