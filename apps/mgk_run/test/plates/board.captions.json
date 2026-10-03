@@ -16,12 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 29",
-    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29), drawn from develop before the build is cut",
-    "build": "29 · 1.0.0+29, not built yet",
+    "title": "MGKFitness: Run, every screen at build 29, and 1.0.1 so far",
+    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29) as submitted, with ten plates retaken for 1.0.1",
+    "build": "29 · 1.0.0+29, submitted 2 Oct; 1.0.1 in progress",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "1.0.1 so far, retaken on 3 Oct. The sign-in says which app it is and whose account: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile, drawn by the same piece Lift's sign-in uses, and it is laid out as Lift's: the night-road photograph at full strength above, the choices at the foot with the terms and privacy line under them, and no list of what an account gives (B8, C14, K2, K3). The switch between signing in and making an account is on the email form only, as on Lift, and the icon and name are larger. Signing in now has a row of its own, as on Lift's board: B8, the email form for signing back in (B13, new) and the one for making an account (K3). Delete account calls the login an MGKFitness account too (L1, L2, L3, L7). B1, P1 and C14 show the photograph behind them, which the 1 Oct pictures had been taken too early to load. Only these ten were retaken: every other plate is still the 1 Oct picture, because the fixtures are dated from the day a plate is drawn and a Saturday redraw would have moved plates this release has not touched.",
       "Build 29, from the owner's look at build 28 on TestFlight. The start screen shows where the runner is and what today's session asks for: pace, about how long, effort and how it should feel (R24, R25). 'Add a treadmill run' is a row at the foot of the This week tile, not a button under Start (H1, H2). The coach's line waits for the launch animation, opens out of the mark and is held about five seconds (C1, C6). The map's tiles are drawn at two pixels a point, which no plate can show: a test draws no tiles. Also in 29 and on no plate, because a test has no lock screen: a run's distance, time and pace are shown there while it records, as a Live Activity on the iPhone and a notification on Android.",
       "Build 28, from the first look at build 27 on a phone. The app opens on the icon's mark dashing across and leaving the name RUN behind it (B10 to B12, new). Race week is a week of its own and race day is on the plan (E6, E7, new): until now the Plan tab drew a training run on race day. 'Adjust this week' moved from Home's today card to the Plan tab, under the week (A2, E6). Home's today card offers 'Add a treadmill run' in its place (H1, H2, H3). A run can be deleted, from the bin on Edit run (S8, S9, new). The nav bar's selection is a soft plate behind the tab, which slides when the tab changes: it is on every plate that shows the bar.",
       "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
@@ -182,9 +183,11 @@
           ]
         },
         {
-          "title": "The other door",
+          "title": "Signing in",
           "plates": [
-            "B8"
+            "B8",
+            "B13",
+            "K3"
           ]
         }
       ]
@@ -555,8 +558,7 @@
           "sequence": true,
           "plates": [
             "K1",
-            "K2",
-            "K3"
+            "K2"
           ]
         }
       ]
@@ -681,7 +683,7 @@
       "files": [
         "lib/src/features/onboarding/presentation/welcome_screen.dart"
       ],
-      "changed": "The September board's B1 was a blank frame taken before the screen had drawn."
+      "changed": "3 Oct: the photograph behind it is drawn; the 1 Oct picture had been taken before it loaded. The September board's B1 was a blank frame taken before the screen had drawn."
     },
     "B2": {
       "file": "arrive-greeting",
@@ -772,11 +774,24 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button, and signing in before the confirmation email is opened says to check it, in grey. Someone who has been here before is not walked through the intro again.",
+      "done": "Run's icon and name first, then MGKFitness Account and 'Sign in or create your account': which app this is, and that the login is the suite's. Continue with Apple, Continue with Google and Continue with email, at equal width; under them the Hide My Email line and the terms and privacy line, and nothing else, as on Lift. Email, password and 'Forgot your password?' are behind the third button (B13). Someone who has been here before is not walked through the intro again.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
+    },
+    "B13": {
+      "file": "arrive-sign-in-email",
+      "name": "Signing back in with email",
+      "how": "driven",
+      "reach": "B8 › Continue with email",
+      "job": "Signing back in with an email address, for a runner whose account was made with one.",
+      "done": "Under Run's icon and MGKFitness Account and 'Welcome back', email, password, Sign in and 'Forgot your password?', then 'New here? Create an account' and 'Other ways to sign in', with the terms and privacy line at the foot: Lift's S3, line for line. A wrong password never says which half was wrong.",
+      "isnew": "New in 1.0.1, beside K3, so the three sign-in screens sit in a row as Lift's do.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/profile_identity.dart"
+      ]
     },
     "H2": {
       "file": "home-no-plan",
@@ -943,7 +958,8 @@
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
-      ]
+      ],
+      "changed": "3 Oct: the photograph behind the week is drawn; the 1 Oct picture had been taken before it loaded."
     },
     "P2": {
       "file": "week-detail",
@@ -1568,12 +1584,12 @@
       "how": "driven",
       "reach": "any tab, signed out › the mark",
       "job": "Tapping the coach with no account.",
-      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Says what an account is for, then the three ways to make one, all on the screen with nothing to scroll for.",
+      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Run's icon and MGKFitness Account say which app and whose account, then the three ways to make one and the terms and privacy line, all on the screen with nothing to scroll for.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
       "isnew": "Order settled in build 26.",
-      "changed": "Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. The photograph behind it is drawn too; the 1 Oct picture had been taken before it loaded. Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
     },
     "C7": {
       "file": "coach-consent",
@@ -2162,11 +2178,11 @@
       "how": "driven",
       "reach": "K1 › Back them up",
       "job": "The account asked for at the moment it buys something.",
-      "done": "Create your account with what an account is for, then Apple, Google and Continue with email. Backing out leaves nothing written.",
+      "done": "The same choices as B8, reached from the backup prompt: Run's icon and MGKFitness Account, then Apple, Google and Continue with email, the Hide My Email line and the terms and privacy line, on the screen of a 393-point phone. Its email form starts on making an account (K3). Backing out leaves nothing written.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "Build 27: Apple and Google lead, and the email form is the next step (K3)."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. At 64 points the icon pushed 'Have an account? Sign in' under the bottom of the phone, so it is drawn at 48. Build 27: Apple and Google lead, and the email form is the next step (K3)."
     },
     "L1": {
       "file": "delete-account",
@@ -2178,7 +2194,8 @@
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "The billing box and the erase switch are new in build 26."
+      "isnew": "The billing box and the erase switch are new in build 26.",
+      "changed": "1.0.1: the login is an MGKFitness account, where it said MGKFitness profile, as the sign-in now calls it."
     },
     "L2": {
       "file": "delete-account-armed",
@@ -2189,7 +2206,8 @@
       "done": "The erase switch on with its sentence, the signed-in address, DELETE in the field, Delete my data enabled (it stays disabled until DELETE is typed) and Keep my account under it.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
-      ]
+      ],
+      "changed": "1.0.1: the login is an MGKFitness account, where it said MGKFitness profile, as the sign-in now calls it."
     },
     "L3": {
       "file": "delete-account-keep-phone",
@@ -2201,7 +2219,8 @@
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the login is an MGKFitness account, where it said MGKFitness profile, as the sign-in now calls it."
     },
     "L4": {
       "file": "delete-done",
@@ -2248,7 +2267,8 @@
       "done": "Refuses without claiming anything was deleted: 'Please sign in again, then retry the deletion.' (the server's answer, word for word).",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
-      ]
+      ],
+      "changed": "1.0.1: the login is an MGKFitness account, where it said MGKFitness profile, as the sign-in now calls it."
     },
     "X1": {
       "file": "another-account",
@@ -2338,11 +2358,12 @@
       "how": "driven",
       "reach": "K2 › Continue with email",
       "job": "Making the account with an email address, for a runner who has neither Apple nor Google on the phone or would rather not use them.",
-      "done": "Email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
+      "done": "Under Run's icon and MGKFitness Account, email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "isnew": "New in build 27."
+      "isnew": "New in build 27.",
+      "changed": "1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon."
     },
     "B10": {
       "file": "launch-mark",
