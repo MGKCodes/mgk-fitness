@@ -128,8 +128,8 @@ account). Notes:
 > screen opens from Start coaching on the Plan tab, from the C button at the
 > bottom right of any tab, or from Unlock photos under Profile > Progress
 > photos. It shows both tiers, the renewal terms, links to the terms and
-> privacy policy, and Restore purchases. Restore is also under Settings > the
-> account card.
+> privacy policy, and Restore purchases. Restore is also on the account
+> screen: Settings > the card at the top.
 >
 > The demo account below is already subscribed, so the coach, plans and photos
 > are open without purchasing.
@@ -169,9 +169,9 @@ account), **not used for tracking**, purpose **App Functionality** only.
 | Usage Data › Other Usage Data | Yes | Per-request AI usage (tokens, cost), for fair-use limits |
 | Location, Contacts, Browsing, Search, Diagnostics, Sensitive Info, Financial Info | No | |
 
-One check before submitting: open the RevenueCat SDK's privacy manifest
-(`PrivacyInfo.xcprivacy` in the built app, or RevenueCat's docs page on Apple
-privacy labels). If it declares a type not in this table, add it.
+RevenueCat's own privacy manifest was checked on 2 October, from the SDK's
+repository: Purchases › Purchase History only, for App Functionality, not
+linked and not tracking. That is already in the table.
 
 ### Age rating
 
@@ -251,8 +251,8 @@ off the device.
 
 ## Open questions
 
-1. **RevenueCat's own collection:** confirm against its privacy manifest before
-   filing the Apple labels (above).
+1. **RevenueCat's own collection:** settled 2 October (above). Its manifest
+   declares purchase history only.
 2. **OpenRouter's processor terms for special-category data:** still open
    (privacy-policy note 1). It does not change any answer here, but it is the
    agreement those answers assume.

@@ -72,11 +72,11 @@ Do the whole section on an iPhone and on an Android phone.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| B1 | Profile › the gear › Sign in, on the account card | The sign-in screen: Apple, Google, then Continue with email | ☐ |
+| B1 | Profile › the gear › Sign in, on the profile card at the top | The sign-in screen: Lift's icon and name, then MGKFitness Account, then Apple, Google and Continue with email | ☐ |
 | B2 | Continue with Apple | Signed in. On Android it goes out to a browser and comes back to the app | ☐ |
 | B3 | Continue with Apple, choosing Hide My Email | A separate account, as the line under the button says | ☐ |
 | B4 | Continue with Google | Signed in, with no password | ☐ |
-| B5 | Continue with email › create an account | "Check your email and follow the link, then sign in." The email arrives from MGKFitness, in the inbox and not spam; its link confirms | ☐ |
+| B5 | Continue with email › New here? Create an account | "Check your email and follow the link, then sign in." The email arrives from MGKFitness, in the inbox and not spam; its link confirms | ☐ |
 | B6 | Sign in before confirming | Refused in words, not a raw code | ☐ |
 | B7 | A wrong password | Does not say which half was wrong | ☐ |
 | B8 | Forgot your password? | The email arrives; its link opens the reset page; the new password works and the old one does not | ☐ |
@@ -139,10 +139,10 @@ On the **free** account. Needs the store products
 | E1 | Tap the C on Track, on Plan, on Profile and in a session | The same sales screen each time | ☐ |
 | E2 | Plan › Start coaching; Photos › Unlock photos | The same screen | ☐ |
 | E3 | Read it | Two tiers, each with the store's own price; renewal terms, Terms, Privacy and Restore at the foot | ☐ |
-| E4 | Signed out, choose a tier | Asks for an account first, then goes on to the store. Backing out buys nothing | ☐ |
+| E4 | Signed out, choose a tier | Asks for an account first, then goes on to the store. Continue with email starts on Create your account. Backing out buys nothing | ☐ |
 | E5 | Buy Coach | The screen you came from unlocks, without restarting the app | ☐ |
 | E6 | Move up to Premium Coach | The store treats it as an upgrade of the same subscription, not a second one. Write down when it takes effect | ☐ |
-| E7 | Reinstall, sign in, Settings › the account card › Restore purchases | The subscription comes back | ☐ |
+| E7 | Reinstall, sign in, Settings › the profile card › Restore purchases | The subscription comes back | ☐ |
 | E8 | Restore on an account with nothing bought | Says there is nothing to restore; not an error | ☐ |
 | E9 | Cancel in the store's settings | Access stays until the period ends | ☐ |
 | E10 | *(Only if Run is on the phone)* Open Run on the same account after buying in Lift | Run is not unlocked by it; each app has its own subscription | ☐ |
@@ -202,10 +202,10 @@ On an entitled account.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| I1 | Settings, signed out | The account card says what is on this phone only | ☐ |
+| I1 | Settings, signed out | The profile card says what is on this phone only, and nothing more. The page reads like Run's: the same card, Preferences and About, MGKFitness: Lift and MGKCodes at the foot | ☐ |
 | I2 | Switch kg to lb | Every weight converts, everywhere, at once | ☐ |
 | I3 | Aeroplane mode, log a session, come back online | Backs up without being asked | ☐ |
-| I4 | The account card › Sync now | A time, "3 min ago", not a status word | ☐ |
+| I4 | Settings › Your data › Backup, then Sync now on the account screen | A time, "3 min ago", not a status word | ☐ |
 | I5 | Sign in on a second phone | The same history arrives | ☐ |
 | I6 | Sign out | Training stays on the phone | ☐ |
 | I7 | Privacy & legal | Terms, privacy and the AI disclosure open with no signal | ☐ |

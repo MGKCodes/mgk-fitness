@@ -22,8 +22,8 @@
     "in/out/next follow docs/navigation.md, which is the audit these answer to."
   ],
 
-  "previous": "1 October 2026, version 17",
-  "since": "the launch: the app opens on its mark, as Run does. Every plate with the nav bar is redrawn too, because the bar is shared and its selection now sits on a soft plate that travels between tabs",
+  "previous": "3 October 2026, version 22",
+  "since": "three are redrawn instead: the icon and the app's name on the sign-in (S1, S3, S4) are larger, and Run's sign-in now has the same layout and the same three screens",
 
   "acts": [
     {
@@ -38,7 +38,7 @@
       "title": "Signing in",
       "sub": "Reached, never launched into",
       "lede": "Tracking is never gated, so the app opens usable and an account is optional. These screens exist only because somebody asked for something that needs a server. Apple and Google come first, as one tap and no password; email is one tap behind them.",
-      "racks": [{ "title": "The account", "screens": ["sign-in", "sign-in-email"] }]
+      "racks": [{ "title": "The account", "screens": ["sign-in", "sign-in-email", "sign-in-create"] }]
     },
     {
       "letter": "T",
@@ -146,7 +146,7 @@
       "next": "It dips",
       "note": "The icon's mark, where the icon had it.",
       "doc": "The first frame Flutter draws, on the same charcoal as the launch window, so the system's own launch screen becomes this without a change of colour. The two chevrons are the icon's geometry, drawn rather than loaded.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "launch-dip": {
       "code": "O2",
@@ -157,7 +157,7 @@
       "next": "It drives up",
       "note": "Smaller, lower, and drawn in on itself.",
       "doc": "The wind-up. Run's mark draws back before it dashes; this one sinks and its chevrons close up, the way a lift starts by going down.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "launch-drive": {
       "code": "O3",
@@ -168,7 +168,7 @@
       "next": "It lands",
       "note": "The mark going up, the name rising after it, the air falling past.",
       "doc": "The mark drives up and opens out again, trailing where it was a moment ago. The name comes up from under its own baseline a beat behind, as if carried, and thin lines fall past either side of it and never across it.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "launch-rest": {
       "code": "O4",
@@ -179,7 +179,7 @@
       "next": "{{track}}",
       "note": "The mark above LIFT, the studio's name under both.",
       "doc": "Stacked, where Run's lockup is in a line: each mark rests at the leading end of its name, and this one travels up. The name is the wordmark Track's header carries, set in type rather than drawn. Then the curtain lifts by fading and growing a touch, and the app behind it settles from a touch large.",
-      "tags": ["free", "new", "first"]
+      "tags": ["free", "new"]
     },
     "settings-coach": {
       "code": "A9",
@@ -274,23 +274,35 @@
       "code": "S1",
       "title": "Sign in",
       "host": "pushed",
-      "in": "Settings › Back up your training, or anything that needs an account",
+      "in": "{{settings}} › Sign in, to back up; or {{sales-signed-out}} › choose a tier, to subscribe",
       "out": "Back arrow, blocked while a sign-in is in flight",
       "next": "Continue with Apple, Google, or email",
-      "note": "Apple and Google first, email one tap behind; on the generated photograph.",
-      "doc": "Most people arriving here already have Apple or Google on the phone, so those are one tap and no password, drawn with equal weight, and Google only ever beside Apple (guideline 4.8). The same buttons make an account, which the line under the headline says. The nine sessions waiting are stated as a fact, not argued for. Done right: somebody who opened it by accident can leave without feeling they lost anything, and nobody reads Hide My Email and then finds a second account they did not know about.",
+      "note": "Lift's icon and name, then MGKFitness Account. Apple and Google first, email one tap behind; on the generated photograph.",
+      "doc": "Opened on purpose and for two things only: to sign in and back up, or to have an account for a subscription to belong to. Lift's icon and name come first, so nobody wonders which app they are in. Then MGKFitness Account, in the head Run's sign-in draws, because the account made here is the suite's one account and the one from Run already works; Run's sign-in draws the same, under Run's icon, from Run 1.0.1. Apple and Google are one tap and no password, drawn with equal weight, and Google only ever beside Apple (guideline 4.8); they sign in or make an account without being told which, so the line says both. The sessions waiting are stated as a fact, not argued for. Done right: somebody arriving from Run knows their sign-in works here before they try it, nobody is told they do not need the thing they just asked for, and nobody reads Hide My Email and then finds a second account they did not know about.",
       "tags": ["free"]
     },
     "sign-in-email": {
       "code": "S3",
       "title": "Sign in with email",
       "host": "pushed",
-      "in": "{{sign-in}} › Continue with email",
+      "in": "{{sign-in}} › Continue with email, from Settings",
       "out": "Other ways to sign in, or back",
-      "next": "Sign in, or Create an account",
-      "note": "The form that used to be the whole screen, on the same photograph.",
-      "doc": "Email and password stay for everybody without Apple or Google, and for the accounts made before either existed. One form toggles between signing in and making an account, as before. Wrong credentials never say which half was wrong, and a password reset says the same thing whether or not the address has an account. Done right: the keyboard never hides the field being typed in or its button.",
+      "next": "Sign in, or New here? Create an account",
+      "note": "Signing back in: the form starts on Welcome back.",
+      "doc": "From Settings the email form starts on signing in, because the people there are mostly Liftio's, signing back in after the update; one tap makes it {{sign-in-create}}. It sits under the same head, Lift's icon and MGKFitness Account, with Run's labels. Wrong credentials never say which half was wrong, and a password reset says the same thing whether or not the address has an account. Done right: the keyboard never hides the field being typed in or its button.",
       "tags": ["free"]
+    },
+
+    "sign-in-create": {
+      "code": "S4",
+      "title": "Create an account with email",
+      "host": "pushed",
+      "in": "{{sign-in}} › Continue with email, after choosing a tier on {{sales-signed-out}}",
+      "out": "Other ways to sign in, or back",
+      "next": "Sign up, or Have an account? Sign in",
+      "note": "The same form, starting on making an account.",
+      "doc": "Opened from the sales screen by somebody subscribing with no account yet, who is more likely new than returning, so the form starts where Run's does when something needs an account: Create your account, Sign up, eight characters at least. The sessions on this phone are counted, because making the account is what backs them up. One tap turns it into {{sign-in-email}}. Done right: nobody new has to find the way to make an account, and nobody returning is stopped from signing in.",
+      "tags": ["free", "new"]
     },
 
     "track": {
@@ -1161,10 +1173,10 @@
       "host": "pushed",
       "in": "{{profile}} › the gear",
       "out": "App bar back",
-      "next": "Change units, or back up",
+      "next": "Change units, or sign in",
       "next_note": "units apply as they change, not on close",
-      "note": "The account card first, then units as rows.",
-      "doc": "Signed out, the card says so and what is on this phone only, with Sign in. Units are rows with their values on the right (19); each opens a sheet that carries its explanation, so the page shows settings rather than paragraphs. The version is in the footer.",
+      "note": "The suite's profile card first, then Run's groups with Lift's rows.",
+      "doc": "The same index as Run's, because half of it is the same thing. The card at the top is the one both apps draw; the groups carry Run's names and order, with Lift's rows inside them; the foot names the product and its maker as Run's does. Signed out, the card is the way in, and its note is the one fact worth stating unprompted: what is on this phone only. Each row shows what it is set to (19), and opens a sheet that carries its explanation. Done right: somebody with both apps does not learn Settings twice, and nobody is argued into an account.",
       "tags": ["free"]
     },
     "settings-signed-in": {
@@ -1173,46 +1185,46 @@
       "host": "pushed",
       "in": "{{profile}} › the gear, with an account",
       "out": "App bar back",
-      "next": "Sync, sign out, or open Coach",
-      "note": "Initial, address and plan, as Run's profile card.",
-      "doc": "The account first (19): initial, address and Subscribed or Free, then where backup stands. Tapping it opens the account screen, which holds the things done to an account; the index keeps what is checked. On a 375 by 667 phone the account and both units show without scrolling.",
+      "next": "Open the account, or what the coach remembers",
+      "note": "Initial, address and plan, on the card Run's Settings leads with.",
+      "doc": "The profile first (19): initial, address, and Subscribed or Free. Under it Preferences, then Your data, where one row says where backup stands in a word, then the coach and About. The card and the Backup row both open the account screen, which holds the things done to an account; the index keeps what is checked. On a 375 by 667 phone the profile and both units show without scrolling. Done right: everything here can be read without touching anything, and the only thing in colour is a backup that needs the lifter.",
       "tags": ["free"]
     },
     "settings-account": {
       "code": "A12",
       "title": "Account",
       "host": "pushed",
-      "in": "{{settings-signed-in}} › the account card",
-      "out": "Back arrow",
+      "in": "{{settings-signed-in}} › the profile card, or the Backup row",
+      "out": "App bar back",
       "next": "Restore, Sign out, or Delete account",
-      "note": "Backup, the plan and Restore, and the two ways out.",
-      "doc": "Sign out, Restore purchases and Delete account were rows on the page opened most. They are rare, and one of them is for good, so they are one screen in, beside where backup stands.",
+      "note": "The person, where backup stands, the plan and Restore, and the two ways out.",
+      "doc": "Laid out as Run's account screen is, because it is the same account: the person centred at the top, then backup with Sync now, then the plan and Restore, then Sign out and Delete account as buttons at the foot, each with a line under it saying what it does. They are rare, and one of them is for good, so they are a screen in from the page opened most. Lift keeps no photograph and asks no name, so the circle holds a letter and the address stands where Run has a name. Done right: nobody deletes an account while looking for Sign out.",
       "tags": ["free"]
     },
     "account-signed-out": {
       "code": "A3",
-      "title": "Account — nine waiting",
+      "title": "Settings — nine sessions on one phone",
       "host": "pushed",
       "in": "{{settings}} › with training in one place only",
       "out": "App bar back",
       "next": "Sign in",
-      "note": "The argument for an account, made with a number.",
-      "doc": "Nothing here blocks logging — the local database has everything and the rows stay pending. It reports rather than reassures, because discovering that your training is on one device only is worst after losing a phone.",
+      "note": "The one fact worth stating unprompted, made with a number.",
+      "doc": "The profile card's note counts what exists in one place. Nothing here blocks logging: the local database has everything and the rows stay pending. It reports rather than reassures, and stops there, because discovering that your training is on one device only is worst after losing a phone, and an account is not something people need explained to them.",
       "tags": ["free"]
     },
     "account-synced": {
       "code": "A4",
       "title": "Account — up to date",
       "host": "pushed",
-      "in": "{{settings-signed-in}} › after a sync",
+      "in": "{{settings-signed-in}} › the profile card, after a sync",
       "out": "App bar back",
       "next": "Sync now",
       "note": "A time rather than a status word.",
-      "doc": "\"Synced\" is only useful if you know when. This card read the wall clock until 2026-08-27, so on a pinned fixture it said a three-minute-old sync was 20 days ago — and got a day worse every day.",
+      "doc": "\"Synced\" is only useful if you know when. The index says Up to date; the time is here, on the account screen. This card read the wall clock until 2026-08-27, so on a pinned fixture it said a three-minute-old sync was 20 days ago — and got a day worse every day.",
       "tags": ["free"],
       "arch": {
-        "class": "AccountSection",
-        "file": "lib/src/features/sync/presentation/account_section.dart",
+        "class": "BackupCard",
+        "file": "lib/src/features/sync/presentation/backup_card.dart",
         "adrs": ["0004", "0012"],
         "action": "Tapping Sync now",
         "path": [
@@ -1249,7 +1261,7 @@
           {
             "depth": 0,
             "call": "_ago(lastSyncedAt, now)",
-            "symbol": "AccountSection",
+            "symbol": "BackupCard",
             "note": "Rough on purpose: \"3 min ago\" answers \"did that work\"; a timestamp to the second does not. Takes an injected clock so a pinned fixture reads correctly."
           }
         ]
@@ -1468,11 +1480,11 @@
       "code": "A11",
       "title": "Account — what backup could not do",
       "host": "pushed",
-      "in": "{{settings}}, when a run failed or a workout was refused",
+      "in": "{{settings-signed-in}} › the Backup row, or Review on Track, when a run failed or a workout was refused",
       "out": "App bar back",
       "next": "Sync now, or edit the refused workout",
       "note": "Every refusal listed with its reason.",
-      "doc": "Where {{track-backup-refused}} sends the lifter. A refused workout is named with the server's reason and waits for an edit; a failed run says when it will try again. Settings also gained a Workout section on 2026-09-29 with the rest-alert switch, shown on {{settings}} and {{settings-signed-in}}.",
+      "doc": "Where {{track-backup-refused}} sends the lifter, in one tap. A refused workout is named with the server's reason and waits for an edit; a failed run says it will try again. On the settings index the same state is one coloured word on the Backup row. Done right: the lifter learns which workout and why, and never reads a server code.",
       "tags": ["free"]
     }
   },
@@ -1485,7 +1497,7 @@
     { "from": "history", "to": "session-past", "label": "a session" },
     { "from": "session-past", "to": "session-editing", "label": "Edit session" },
     { "from": "track-backup-refused", "to": "account-problems", "label": "See why" },
-    { "from": "settings", "to": "sign-in", "label": "Back up your training" },
+    { "from": "settings", "to": "sign-in", "label": "the profile card" },
 
     { "from": "track", "to": "track-coach", "label": "coach has a note" },
     { "from": "track", "to": "track-open", "label": "a session is open" },
@@ -1568,14 +1580,15 @@
     { "from": "legal", "to": "privacy", "label": "Privacy policy" },
     { "from": "legal", "to": "ai-disclosure", "label": "How your coach uses AI" },
     { "from": "legal", "to": "delete-account", "label": "Delete account" },
-    { "from": "sign-in", "to": "sign-in-email", "label": "Continue with email" },
+    { "from": "sign-in", "to": "sign-in-email", "label": "Continue with email, from Settings" },
+    { "from": "sign-in", "to": "sign-in-create", "label": "Continue with email, to subscribe" },
     { "from": "workout-library", "to": "workout-library-open", "label": "tap a row" },
     { "from": "workout-library", "to": "workout-editor", "label": "… › Edit" },
     { "from": "session", "to": "finish-sheet-save", "label": "Finish" },
     { "from": "finish-sheet-save", "to": "session-summary", "label": "Finish" },
     { "from": "plan", "to": "sales", "label": "Start coaching" },
     { "from": "sales-signed-out", "to": "sign-in", "label": "choose a tier" },
-    { "from": "settings-signed-in", "to": "settings-account", "label": "the account card" },
+    { "from": "settings-signed-in", "to": "settings-account", "label": "the profile card" },
     { "from": "profile", "to": "exercise-stats", "label": "a most-trained row" },
     { "from": "session", "to": "exercise-stats", "label": "a movement's name" },
     { "from": "session-summary", "to": "exercise-stats", "label": "a movement's name" },

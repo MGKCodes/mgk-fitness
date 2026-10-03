@@ -4,8 +4,9 @@ The one current list of what stands between `apps/mgk_lift` and two store
 submissions, App Store and Google Play.
 
 **Checked on the evening of 1 October 2026**, when the Lift branch
-(`feat/lift-2.0.0-candidate`) was merged into `develop`. Each line under *Where
-it stands* says how it is known.
+(`feat/lift-2.0.0-candidate`) was merged into `develop`, and **again on 2
+October** against git, production and the site. Each line under *Where it
+stands* says how it is known.
 
 This file replaces `release-2.0.0.md`, the 30 September handover, the August
 punch list and this file's own earlier draft, which are frozen in
@@ -21,13 +22,13 @@ written here, change the item and say why.
 
 | | State | Known by |
 |---|---|---|
-| The app | Finished as designed, and all of it on `develop`: the redesign (R1 to R13), Track as a front page with *Your workouts* reworked (TR1 to TR9), the launch, and tabs that move | `flutter analyze` clean and 894 Lift tests passing, run 1 October after the merge |
-| The screens | 91 plates on the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1), version 18 | Rendered at `e2a20d5`, the commit build 41 was made from |
-| Builds, iOS | **2.0.0 (41) is on TestFlight**, built from `e2a20d5`. Matthew used it on 1 October and is happy with it, the launch included. It is the release candidate unless the phone pass turns something up | Codemagic build `6abec3a503a04954ee43d4c7`, every step green; Matthew's phone |
+| The app | Finished as designed, and all of it on `develop`: the redesign (R1 to R13), Track as a front page with *Your workouts* reworked (TR1 to TR9), the launch, and tabs that move. On 2 October the screens Lift shares with Run were drawn as Run draws them (below, *Done on 2 October*) | `flutter analyze` clean and 898 Lift tests passing, 2 October |
+| The screens | 91 plates on the [Lift Screen Board](https://claude.ai/artifact/UZKDFbA8qht1Nj9TQ3dQB1), version 19: sign-in, Settings and the account screen redrawn | Rendered 2 October, with the shared-screens change |
+| Builds, iOS | **2.0.0 (41) is on TestFlight**, built from `e2a20d5`. Matthew used it on 1 October and is happy with it, the launch included. **It is no longer what `develop` builds**: the coach's line now opens out of its mark (`643c463`, shared with Run), and the sign-in, Settings and account screens changed on 2 October | Codemagic build `6abec3a503a04954ee43d4c7`, every step green; Matthew's phone. The difference: `git diff e2a20d5..develop`, 2 October |
 | Builds, Android | The only `.aab` is from 29 September, before the redesign, sitting as a draft on Play's internal testing. **No Android build of the shipping app exists** | Codemagic's build list, 1 October |
-| Edge Functions | `coach` v31, `revenuecat` v10, `delete-account` v19 | Listed from production, 1 October |
-| Database | `20260929120000_lift_save_workout.sql` is **not applied**. The ledger ends at `release_hardening`; the photo-deletion routine was applied by hand on 1 October and is not in it | Listed from production, 1 October. The app falls back to four requests per workout, so nothing is broken |
-| The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October |
+| Edge Functions | `coach` v31, `revenuecat` v10, `delete-account` v19, none redeployed since | Listed from production, 1 October, and again on 2 October by their deploy times. The Supabase connector numbers the same deploys one higher (v32, v11, v20) |
+| Database | `20260929120000_lift_save_workout.sql` is **not applied**: `lift.save_workout` does not exist in production. The photo-deletion routine was applied by hand on 1 October and is not in the ledger | Listed from production and the catalog read, 2 October. The app falls back to four requests per workout, so nothing is broken |
+| The site | `/lift/privacy`, `/lift/terms`, `/lift/ai-disclosure`, `/lift/support`, `/lift/delete-account` and `/reset-password` all answer 200, and the policy names SMTP2GO | Fetched 1 October, and the six again on 2 October |
 | Email and sign-in | SMTP2GO, email confirmation on, Apple and Google configured | Recorded done on 30 September in [store-setup.md](store-setup.md) steps 6 and 7. Not checked again since |
 | The stores | Lift's two subscriptions exist on both stores, RevenueCat has both Lift apps with their products in the current offering, Codemagic holds Lift's keys, and `REVENUECAT_PRODUCTS` maps Lift's four ids. Liftio's two legacy products are off sale. The App Store record is still named *Liftio*, which is the name TestFlight shows | Walked through with Matthew on 1 October, from his screenshots. [store-setup.md](store-setup.md) says what is still open |
 
@@ -109,11 +110,14 @@ None of this waits on anything else.
       asks developer accounts registered as personal after November 2023 to
       run a closed test with 12 testers for 14 days first. If MGKCodes'
       account is one of those, Android's date moves by at least two weeks, so
-      find out now. Not checked: it needs the Console.
-- [ ] **Apply `lift_save_workout`.** Claude Code's auto mode refuses production
-      migrations even with a go-ahead, so run the file in the Supabase SQL
-      editor. Then rename the file to the version the ledger records. Until
-      then the app uses four requests per workout, which works.
+      find out now. *Very likely answered on 2 October:* the same developer
+      account submitted Run 1.0.0 to production with no closed test. Not read
+      off Lift's own Console page, which is the check that closes this.
+- [ ] **Apply `lift_save_workout`.** On Matthew's go. The connector refused
+      production migrations on 1 October and applied one as written on 2
+      October, so Claude tries it first and hands over the SQL editor only if
+      it is declined. Then rename the file to the version the ledger records.
+      Until then the app uses four requests per workout, which works.
 - [ ] **Google's sign-in branding** still links to Run's pages (store-setup.md
       7c). Point it at pages that cover both apps.
 - [ ] **Liftio 1.x's listing.** The `/lift` pages now describe 2.0.0 while 1.x
@@ -122,9 +126,11 @@ None of this waits on anything else.
 
 ### 2. Builds *(Claude, on Matthew's go)*
 
-- [x] **iOS: 2.0.0 (41)**, on TestFlight since 1 October. `develop` now holds
-      the same app code, so it does not need building again unless something
-      changes.
+- [x] **iOS: 2.0.0 (41)**, on TestFlight since 1 October.
+- [ ] **iOS again, from `develop`.** `develop` is no longer build 41's app
+      (*Where it stands*), so a build from it is what both stores should ship
+      from one commit, and what the phone pass should run on. Not before
+      Matthew says builds may go.
 - [x] **Android publishing is wired in**, since 1 October: the workflow names
       the `mgk_fitness_play` group and publishes to the internal track. Not
       yet exercised, because no build has run since.
@@ -149,8 +155,10 @@ None of this waits on anything else.
       there if it becomes the release candidate, and every Lift build after
       it gets its own.
 - [ ] **Run the pgTAP cases for photo deletion** (`supabase/tests/delete_account.sql`,
-      20 cases). Written on 1 October and never run, because that machine has
-      no Docker. The routine itself was proved against production by hand.
+      20 cases). Written on 1 October and never run, because that machine had
+      no Docker. It has since 2 October; the daemon has to be started
+      (Docker Desktop) first. The routine itself was proved against production
+      by hand.
 
 A "Publishing failed" from Codemagic can be a successful upload: Apple answered
 500 mid-upload on build 31 and the IPA arrived anyway. Read the step log before
@@ -207,7 +215,9 @@ release:
       *(Matthew)*. The *What's New* text now says that Liftio's old
       subscription has ended; read it before pasting, it is a draft.
 - [ ] Privacy labels and the Data safety form, from the same file *(Matthew)*.
-      One check first: RevenueCat's own privacy manifest.
+      RevenueCat's own privacy manifest was checked on 2 October: it declares
+      purchase history only, for app functionality, not linked and not
+      tracking, which the table already has.
 - [ ] Age rating, content rating, target audience, ads declaration, and Play's
       account deletion URL *(Matthew)*. The answers are drafted in
       store-listing.md and store-setup.md step 2.
@@ -221,8 +231,10 @@ release:
       (App Store Connect › App Information › Name). TestFlight shows *Liftio*
       until then.
 - [ ] Android: internal testing, then production.
-- [ ] When both apps have shipped: promote `develop` to `main`
-      ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching).
+- [ ] When Lift goes for review, promote `develop` to `main`: `main` is what
+      was submitted ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching).
+      Promoting all of `develop` deploys `web/`, so check what `web/` holds
+      first. Then `develop` moves to 2.0.1 (CONTRIBUTING.md, Versions).
 
 ---
 
@@ -303,6 +315,28 @@ Kept short, as the record of how each was settled. The commits hold the rest.
 - **The branch is merged into `develop`**, together with `main`'s two web
   commits, so `develop` holds everything `main` serves. The branch and its
   worktree are removed.
+
+## Done on 2 October
+
+- **The screens Lift shares with Run are drawn as Run draws them**, from one
+  place in `mgk_ui` that Run's screens now use too (Run's 58 account, screen
+  and arrival plates redraw byte for byte, and its 1,948 tests pass). The
+  sign-in opens with Lift's icon and name and calls the login an *MGKFitness
+  Account*, with Run's words and labels. Run's sign-in says the same, under
+  Run's icon, from Run 1.0.1.
+  Settings leads with the suite's profile card, carries Run's groups
+  (Preferences, Your data, About, with a Support row) and its foot
+  (*MGKFitness: Lift 2.0.0 · MGKCodes*), and says where backup stands in one
+  row. The account screen is laid out as Run's: the person, backup with Sync
+  now, the plan and Restore, then Sign out and Delete account. Track's
+  *Review* opens it directly, since that is where refusals are listed. Back
+  buttons Lift draws itself use the app bar's glyph, so an iPhone shows one
+  kind of back everywhere.
+- **The sign-in no longer says you do not need an account.** It is only
+  opened to back up, from Settings, or to subscribe, from the sales screen,
+  and on a screen somebody asked for the line read as a contradiction. From
+  the sales screen its email form starts on *Create your account*, as Run's
+  does when something needs an account; from Settings, on *Welcome back*.
 
 ---
 
