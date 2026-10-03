@@ -27,6 +27,12 @@
     "added for the email form (K3). hero_weights again not retaken.",
     "Build 27 (1 Oct): every board plate re-rendered at 3ead35d, after the map cache and the bump to",
     "1.0.0+27. No picture changed. hero_weights again not retaken.",
+    "1.0.1 so far (3 Oct): eleven plates retaken or new, B1 B8 B13 C14 K2 K3 L1 L2 L3 L7 P1,",
+    "drawn at b0c650b with the shared sign-in head and the delete wording not yet committed,",
+    "and stamped 8d77713, the commit that landed them. Every other plate is the 1 Oct picture,",
+    "kept rather than redrawn on a Saturday, because the fixtures are dated from the day a plate",
+    "is drawn. The plate harness now loads every image before it photographs, so B1, P1 and C14",
+    "show the photographs the 1 Oct pictures had been taken too early to load.",
     "",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
@@ -189,8 +195,8 @@
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "account-google-play": {
       "source": "test/plates/account.dart",
@@ -254,13 +260,18 @@
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
+    },
+    "arrive-sign-in-email": {
+      "source": "test/plates/arrival.dart",
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "coach-answering": {
       "source": "test/plates/flows.dart",
@@ -324,8 +335,8 @@
     },
     "coach-signed-out": {
       "source": "test/plates/coach.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "coach-speaking": {
       "source": "test/plates/screens.dart",
@@ -334,18 +345,18 @@
     },
     "delete-account": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "delete-account-armed": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "delete-account-keep-phone": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "delete-done": {
       "source": "test/plates/account.dart",
@@ -364,8 +375,8 @@
     },
     "delete-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "hero_weights": {
       "source": "test/plates/hero_weights.dart",
@@ -529,8 +540,8 @@
     },
     "plan-week": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "profile-empty": {
       "source": "test/plates/screens.dart",
@@ -699,8 +710,8 @@
     },
     "account-gate-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
+      "captured": "2026-10-03"
     },
     "launch-mark": {
       "source": "test/plates/launch.dart",
