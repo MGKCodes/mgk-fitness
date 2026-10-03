@@ -15,8 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. This is 1.0.1
+This is 1.0.1
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+### Changed
+
+- The sign-in screen says which app it is and whose account: Run's icon and
+  name above *MGKFitness Account*, where it said *MGKFitness Profile*. Lift's
+  sign-in draws the same head with its own icon, from one shared piece, so the
+  two cannot drift. The title shrinks to fit a small phone rather than
+  wrapping, and "sign-in" no longer breaks across two lines.
+- The sign-in is laid out as Lift's: a photograph at full strength above
+  (the night road), the choices at the foot on the dark it fades into, and the
+  terms and privacy line under them on every step. The list of what an account
+  gives is gone from the sign-up, as Lift's sign-in has none.
+- Delete account calls the login an *MGKFitness account* too, where it said
+  *MGKFitness profile*. The privacy policy's paragraph on deletion still says
+  *profile*: it changes with the published page, after 1.0.0's review, because
+  the live policy is what that review compares against the 1.0.0 binary.
 
 ## [1.0.0] — submitted 2026-10-02, build 29
 

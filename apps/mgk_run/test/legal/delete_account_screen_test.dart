@@ -69,7 +69,8 @@ void main() {
         findsOneWidget,
       );
       // The shared-login consequence is disclosed before the runner commits.
-      expect(find.textContaining('$kPlatformName profile'), findsOneWidget);
+      // Called an account, as the sign-in calls it, since 1.0.1.
+      expect(find.textContaining('$kPlatformName account'), findsOneWidget);
     });
 
     testWidgets('the delete button is inert until the phrase is typed', (

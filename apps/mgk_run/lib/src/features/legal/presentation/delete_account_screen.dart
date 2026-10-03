@@ -341,10 +341,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your login is your $kPlatformName profile, so Lift can use '
-                'it too. If it holds no data from Lift we delete the profile '
+                // "Account", as the sign-in now calls it, and as Lift's own
+                // delete screen always has. Until 1.0.1 this said "profile".
+                'Your login is your $kPlatformName account, so Lift can use '
+                'it too. If it holds no data from Lift we delete the account '
                 'as well. If it does, we delete everything this app holds '
-                'and keep only the profile, so your data in Lift survives.',
+                'and keep only the account, so your data in Lift survives.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.5,
