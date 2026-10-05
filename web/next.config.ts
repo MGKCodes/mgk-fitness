@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-// Same three as the studio site. A legal page that can be framed is a legal
-// page somebody can present as their own.
+// Only the studio site may frame this one: mgkcodes.com shows the suite running
+// live on its home page. Every other site is still refused, legal pages
+// included, because a legal page that can be framed is a legal page somebody
+// can present as their own. frame-ancestors replaces X-Frame-Options, which
+// cannot name an allowed site.
 const securityHeaders = [
-  { key: "X-Frame-Options", value: "DENY" },
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'self' https://mgkcodes.com https://www.mgkcodes.com",
+  },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];
