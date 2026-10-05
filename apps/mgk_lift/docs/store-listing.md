@@ -9,8 +9,14 @@ What the code does, which every answer below rests on:
 
 - **No account is needed to track.** With no account nothing leaves the phone.
   Signing in (Apple, Google, or email and password; Supabase, EU) backs
-  workouts up. Apple and Google pass an email address and an identifier, and
-  nothing else (O1).
+  workouts up. Apple passes an email address and an identifier (O1). Google
+  may also send a name and a picture link, which Supabase keeps with the login
+  and the app does not use (privacy policy, 5 October).
+
+**Uploaded from [`../store/listing.json`](../store/listing.json)** by
+`python scripts/store/stores.py listing lift`, since 5 October: that file is
+the text the stores are sent, and this one keeps the reasons and the counts.
+Change the two together.
 - **Paid half:** the AI coach, training plans and progress photos, as Coach or
   Premium Coach. Photos go to a private Supabase bucket. Coach text goes to
   OpenRouter, sent by our server, never with name, email or account id.
@@ -128,11 +134,15 @@ account). Notes:
 > screen opens from Start coaching on the Plan tab, from the C button at the
 > bottom right of any tab, or from Unlock photos under Profile > Progress
 > photos. It shows both tiers, the renewal terms, links to the terms and
-> privacy policy, and Restore purchases. Restore is also on the account
+> privacy policy, and Restore. Restore purchases is also on the account
 > screen: Settings > the card at the top.
 >
 > The demo account below is already subscribed, so the coach, plans and photos
-> are open without purchasing.
+> are open without purchasing. The first time the coach or a plan is opened on
+> a phone, the app shows a medical disclaimer to accept: the coach gives
+> training guidance, not medical advice. The subscription can be managed from
+> Settings > the card at the top > Manage subscription, and Delete account says
+> that deleting does not cancel it.
 >
 > The AI coach sends the lifter's messages and a summary of their training to
 > OpenRouter, from our server. It is disclosed at the point of use (the info
