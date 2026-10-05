@@ -155,12 +155,16 @@ class Play:
             except StoreError as e:
                 if 'draft app' in str(e).lower() and not draft:
                     raise StoreError(
-                        f"{e}\n  This app has never had a release rolled out, so Play "
-                        'takes only a draft. Run again with --draft, then roll it '
-                        'out once in Play Console; every later release can go from here.'
+                        f"{e}\n  Play treats an app as a draft until it is first published "
+                        '(an internal rollout does not count), and takes only draft '
+                        'releases for it. Run again with --draft, then start the rollout '
+                        'in Play Console; every later release can go from here.'
                     ) from None
                 raise
             committed = True
+            if draft:
+                return plan[:1] + ['  a draft on production: nothing goes to Google until it is '
+                                   'rolled out in Play Console › Production › Start rollout']
             return plan[:1] + (['  sent to Google for review'] if sent else [HELD])
         finally:
             if not committed:

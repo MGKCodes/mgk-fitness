@@ -98,9 +98,11 @@ Both stores answer, or the script says which key is missing or refused.
 - **App Review's sign-in and contact.** `listing` sends the notes; the demo
   login's address and password, and the contact's name, phone and email, are
   typed in on the version page, so no password passes through here.
-- **Lift's first Android release.** Play takes only a draft for an app that has
-  never rolled one out: `submit lift --android --draft`, then roll it out once
-  in Play Console. Every later release can go from here.
+- **Lift's first Android release.** Play treats an app as a draft until it is
+  first published, and takes only draft releases for it; rolling a build out
+  on internal testing does not end that (5 October 2026). So: `submit lift
+  --android --draft`, then start the rollout once in Play Console ›
+  Production. Every later release can go from here.
 - **Sending to Google for review, sometimes.** Play can refuse to send a
   change for review from the API ("Changes cannot be sent for review
   automatically"), for instance while changes made in Play Console are waiting
