@@ -8,10 +8,21 @@
  * nothing else.
  */
 
-/** Each app's page in each store. Left out until the app is on sale there. */
+/**
+ * Each app's page in each store. Left out until the app is on sale there.
+ * `python scripts/store/stores.py links run` (or `lift`) prints all four
+ * addresses and says which pages are live; uncomment each as it goes live.
+ */
 export const stores: Record<"run" | "lift", { apple?: string; google?: string }> = {
-  run: {},
-  lift: {},
+  run: {
+    // apple: "https://apps.apple.com/app/id6800052303", // 1.0.0 in review
+    google: "https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run",
+  },
+  lift: {
+    // Liftio 1.4.0's page until 2.0.0 is approved, so held until then.
+    // apple: "https://apps.apple.com/app/id6759969740",
+    // google: "https://play.google.com/store/apps/details?id=com.mgkcodes.liftio", // 2.0.0 in review
+  },
 };
 
 /**

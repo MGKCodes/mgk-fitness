@@ -307,6 +307,34 @@ class PlaySubmit(unittest.TestCase):
         self.assertTrue(any(u.endswith(':commit') for _, u in fake.sent))
 
 
+class Links(unittest.TestCase):
+    """The public pages: Apple's by the app's id and what is on sale, Play's
+    by whether the page itself answers."""
+
+    def test_each_store_says_whether_its_page_is_live(self):
+        apple = FakeStore({
+            ('GET', '/v1/apps?'): {'data': [{'id': '6759969740', 'attributes': {'primaryLocale': 'en-GB'}}]},
+            ('GET', '/appStoreVersions?'): {'data': [
+                {'id': 'V2', 'attributes': {'versionString': '2.0.0', 'appVersionState': 'WAITING_FOR_REVIEW'}},
+                {'id': 'V1', 'attributes': {'versionString': '1.4.0', 'appVersionState': 'READY_FOR_DISTRIBUTION'}},
+            ]},
+        })
+
+        def play_page(method, url, **kwargs):
+            raise play.StoreError(f'GET {url} refused (404): Not Found')
+
+        with mock.patch.object(asc, '_token', return_value='t'), \
+                mock.patch.object(asc, 'call', apple), \
+                mock.patch.object(play, '_token', return_value='t'), \
+                mock.patch.object(play, 'call', play_page), \
+                contextlib.redirect_stdout(io.StringIO()) as printed:
+            code = stores.main(['links', 'lift'])
+        self.assertEqual(code, 0)
+        self.assertIn('https://apps.apple.com/app/id6759969740 (on sale: 1.4.0)', printed.getvalue())
+        self.assertIn('https://play.google.com/store/apps/details?id=com.mgkcodes.liftio (not live yet)',
+                      printed.getvalue())
+
+
 class PlayHeldForReview(unittest.TestCase):
     """Play refuses to send some edits for review from the API; they are then
     committed unsent, as its message asks, and the output says where to send them."""

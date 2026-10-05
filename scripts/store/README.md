@@ -6,6 +6,7 @@ through Claude Code").
 
 ```
 python scripts/store/stores.py status      lift                  # where each version stands
+python scripts/store/stores.py links       lift                  # the public store pages, and whether each is live
 python scripts/store/stores.py prepare     lift --build 52 --yes # open the version without submitting it
 python scripts/store/stores.py submit      lift --ios --build 52 --notes whats-new.txt --yes
 python scripts/store/stores.py submit      lift --android --notes play-notes.txt --yes
