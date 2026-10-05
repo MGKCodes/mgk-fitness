@@ -14,6 +14,7 @@ python scripts/store/stores.py add-tester  lift --email someone@example.com --gr
 python scripts/store/stores.py listing     lift --yes            # text from apps/mgk_lift/store/listing.json
 python scripts/store/stores.py screenshots lift --yes            # the pictures store-shots rendered
 python scripts/store/stores.py release     lift --yes            # a version held for a manual release
+python scripts/store/stores.py release-type run --automatic --yes  # a version already submitted: release on approval
 ```
 
 **Nothing changes without `--yes`.** Every command first prints what it would
@@ -24,6 +25,8 @@ the moment Apple approves it, and an Android release goes to production for
 everybody, live the moment Google approves it, as long as managed publishing
 is off (Play Console › Publishing overview; check it once per app). `release`
 is for later, should a version ever be held for a chosen moment instead.
+`release-type --automatic` or `--manual` switches a version that is already
+submitted (Run 1.0.0 went in held, before these scripts).
 
 ## The keys
 

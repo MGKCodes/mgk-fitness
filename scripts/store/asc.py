@@ -236,6 +236,29 @@ class AppStore:
         })
         return plan[:1] + ['  submitted: it releases itself once Apple approves it']
 
+    def release_type(self, automatic: bool, apply: bool) -> list[str]:
+        """How the next version goes live once Apple approves it: by itself,
+        or held for `release`. Changes the newest version not yet on sale."""
+        wanted = 'AFTER_APPROVAL' if automatic else 'MANUAL'
+        on_sale = {'READY_FOR_SALE', 'READY_FOR_DISTRIBUTION', 'REPLACED_WITH_NEW_VERSION',
+                   'REMOVED_FROM_SALE', 'DEVELOPER_REMOVED_FROM_SALE'}
+        coming = [v for v in self.versions(limit=5) if v['state'] not in on_sale]
+        if not coming:
+            return [f"App Store: {self.app['name']} has no version on its way to the store."]
+        version = coming[0]
+        label = 'release itself on approval' if automatic else 'wait for a manual release'
+        if version['release'] == wanted:
+            return [f"App Store: {self.app['name']} {version['version']} already set to {label}."]
+        plan = [f"App Store: {self.app['name']} {version['version']} ({version['state']}): "
+                f"{version['release']} -> {wanted}, to {label}"]
+        if not apply:
+            return plan + ['  (plan only: run again with --yes to do it)']
+        self.patch(f"/v1/appStoreVersions/{version['id']}", {
+            'data': {'type': 'appStoreVersions', 'id': version['id'],
+                     'attributes': {'releaseType': wanted}},
+        })
+        return plan + ['  changed']
+
     def release(self, apply: bool) -> list[str]:
         """Release a version Apple approved and is holding for a manual release."""
         held = [v for v in self.versions(limit=5) if v['state'] == 'PENDING_DEVELOPER_RELEASE']

@@ -116,6 +116,42 @@ class AppleSubmit(unittest.TestCase):
         self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/R1') for m, u in fake.sent))
 
 
+class AppleReleaseType(unittest.TestCase):
+    def run_it(self, *flags):
+        sent = []
+        fake = FakeStore({
+            ('GET', '/v1/apps?'): {'data': [{'id': 'A1', 'attributes': {'primaryLocale': 'en-GB'}}]},
+            ('GET', '/appStoreVersions?'): {'data': [
+                {'id': 'V9', 'attributes': {'versionString': '1.0.0', 'appVersionState': 'WAITING_FOR_REVIEW',
+                                            'releaseType': 'MANUAL'}},
+            ]},
+        })
+
+        def recording(method, url, **kwargs):
+            if method == 'PATCH':
+                sent.append((url, kwargs['body']))
+            return fake(method, url, **kwargs)
+
+        with mock.patch.object(asc, '_token', return_value='t'), \
+                mock.patch.object(asc, 'call', recording), \
+                contextlib.redirect_stdout(io.StringIO()) as printed:
+            code = stores.main(['release-type', 'run', '--automatic', *flags])
+        return code, sent, printed.getvalue()
+
+    def test_without_yes_it_only_plans(self):
+        code, sent, printed = self.run_it()
+        self.assertEqual(code, 0)
+        self.assertEqual(sent, [])
+        self.assertIn('MANUAL -> AFTER_APPROVAL', printed)
+
+    def test_with_yes_the_version_in_review_releases_itself(self):
+        code, sent, _ = self.run_it('--yes')
+        self.assertEqual(code, 0)
+        url, body = sent[0]
+        self.assertTrue(url.endswith('/v1/appStoreVersions/V9'))
+        self.assertEqual(body['data']['attributes'], {'releaseType': 'AFTER_APPROVAL'})
+
+
 class PlaySubmit(unittest.TestCase):
     def fake(self):
         return FakeStore({
