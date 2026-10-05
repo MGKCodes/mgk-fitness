@@ -283,5 +283,31 @@ class PlaySubmit(unittest.TestCase):
         self.assertTrue(any(u.endswith(':commit') for _, u in fake.sent))
 
 
+class PlayPictures(unittest.TestCase):
+    def test_the_icon_goes_up_with_the_screenshots(self):
+        fake = FakeStore({
+            ('POST', '/edits'): {'id': 'E1'},
+            ('GET', '/details'): {'defaultLanguage': 'en-GB'},
+        })
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'play-still').mkdir()
+            (root / 'play-still' / '1-log.png').write_bytes(b'shot')
+            icon = root / 'icon.png'
+            icon.write_bytes(b'icon')
+            with mock.patch.dict(stores.SHOTS, {'lift': root}), \
+                    mock.patch.dict(stores.FEATURE, {'lift': root / 'none.png'}), \
+                    mock.patch.dict(stores.ICON, {'lift': icon}), \
+                    mock.patch.object(play, '_token', return_value='t'), \
+                    mock.patch.object(play, 'call', fake), \
+                    contextlib.redirect_stdout(io.StringIO()) as printed:
+                code = stores.main(['screenshots', 'lift', '--android', '--yes'])
+        self.assertEqual(code, 0)
+        self.assertIn('the icon', printed.getvalue())
+        posted = [u for m, u in fake.sent if m == 'POST']
+        self.assertTrue(any('/listings/en-GB/icon?' in u for u in posted))
+        self.assertFalse(any('/featureGraphic?' in u for u in posted))
+
+
 if __name__ == '__main__':
     unittest.main()
