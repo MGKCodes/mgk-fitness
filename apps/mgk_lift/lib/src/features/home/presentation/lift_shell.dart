@@ -17,6 +17,8 @@ import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
+import '../../legal/domain/disclaimer_store.dart';
+import '../../legal/presentation/medical_disclaimer_screen.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/moved_day.dart';
@@ -84,6 +86,7 @@ class LiftShell extends StatefulWidget {
     this.transcript,
     this.coachMemory,
     this.coachPreference,
+    this.disclaimers,
     this.deleter,
     this.planner,
     this.plans,
@@ -161,6 +164,12 @@ class LiftShell extends StatefulWidget {
   /// with no store wired up should do: the toggle is a consent control, and
   /// one that cannot persist an answer is worse than none.
   final CoachPreferenceStore? coachPreference;
+
+  /// Whether this phone has accepted the medical disclaimer, which is asked
+  /// once before the coach answers anything or builds a plan (5 October 2026,
+  /// as Run's coach asks it). Null asks nothing: the widget tests and the
+  /// preview, which are not about the disclaimer. The app always passes one.
+  final DisclaimerStore? disclaimers;
 
   /// Erases the account. Null hides the deletion row — a build with no
   /// server cannot delete anything, and offering to would be a button that
@@ -1031,6 +1040,29 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_backup?.refresh());
   }
 
+  /// The medical disclaimer, once on this phone: true to carry on.
+  ///
+  /// Pushed over the shell rather than shown in the sheet, because it is a
+  /// page to read and accept, and a full page is how Run asks it. "Not now"
+  /// opens nothing and records nothing, so the next tap asks again.
+  Future<bool> _acceptedDisclaimer() async {
+    final store = widget.disclaimers;
+    if (store == null || await store.isAcknowledged()) return true;
+    if (!mounted) return false;
+    final accepted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        fullscreenDialog: true,
+        builder: (context) => MedicalDisclaimerScreen(
+          onAcknowledge: () => Navigator.of(context).pop(true),
+          onDecline: () => Navigator.of(context).pop(false),
+        ),
+      ),
+    );
+    if (accepted != true) return false;
+    await store.acknowledge();
+    return true;
+  }
+
   /// Opens the coach, or the thing that has to happen first.
   ///
   /// **Checked before the message, not after it.** Sending a question and
@@ -1041,6 +1073,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   Future<void> _openCoach() async {
     final coach = widget.coach;
     if (coach == null || !_useCoach) return;
+    // The disclaimer first, and only then a price, as Run's coach asks it:
+    // what somebody is about to be able to ask is the reason it is said.
+    if (!await _acceptedDisclaimer() || !mounted) return;
     // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
     // included, the mark opens the sales screen, wherever it is tapped. It
     // used to send the signed-out to sign in and the rest to the Plan tab —
@@ -1117,6 +1152,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     final planner = widget.planner;
     final plans = widget.plans;
     if (planner == null || plans == null) return;
+    // A plan is the coach's too, and asks about injuries on the way.
+    if (!await _acceptedDisclaimer() || !mounted) return;
 
     final intake = await Navigator.of(context).push<PlanIntake>(
       MaterialPageRoute<PlanIntake>(

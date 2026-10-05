@@ -31,6 +31,7 @@ import '../src/features/legal/domain/legal_copy.dart';
 import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
+import '../src/features/legal/presentation/medical_disclaimer_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
@@ -998,6 +999,10 @@ class PreviewApp extends StatelessWidget {
       // it is entered. The done state is deliberately not addressable: it
       // exists only after a typed phrase and a tap, and a harness entry that
       // faked it would be a photograph of a state the code cannot reach.
+      // Asked once on a phone, before the coach answers anything or builds a
+      // plan (5 October 2026, as Run's coach asks it).
+      'coach-disclaimer': (_) =>
+          MedicalDisclaimerScreen(onAcknowledge: () {}, onDecline: () {}),
       'delete-account': (_) => DeleteAccountScreen(
         auth: _signedInAuth(),
         deleter: FakeAccountDeleter(),

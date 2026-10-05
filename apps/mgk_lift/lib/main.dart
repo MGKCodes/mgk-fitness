@@ -24,6 +24,7 @@ import 'src/features/photos/data/drift_photo_library.dart';
 import 'src/features/photos/data/supabase_photo_sync.dart';
 import 'src/features/purchases/data/revenuecat_purchases.dart';
 import 'src/features/purchases/domain/purchases.dart';
+import 'src/features/legal/data/local_disclaimer_store.dart';
 import 'src/features/settings/data/local_coach_preference.dart';
 import 'src/features/settings/data/local_unit_preferences.dart';
 import 'src/features/entitlement/data/local_entitlement_cache.dart';
@@ -209,6 +210,9 @@ class MgkLiftApp extends StatelessWidget {
         // Supabase has no coach to switch off, which the shell reads from
         // `coach` being null rather than from this.
         coachPreference: LocalCoachPreference(),
+        // Device-local too: the medical disclaimer is accepted once on this
+        // phone, before the coach or a plan is first used.
+        disclaimers: LocalDisclaimerStore(),
         // Device-local, like the coach switch above: a buzz and a habit, with
         // no account or server involved in either.
         restAlerts: LocalRestAlerts(),

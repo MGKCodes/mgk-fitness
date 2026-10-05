@@ -47,10 +47,12 @@ everything at any time.
 ## What we collect
 
 - **Account data** — your email address and an account identifier. If you sign
-  in with Apple or Google, that is what they pass us too: an email address and
-  an identifier, and nothing else. We do not ask either for your name or
-  photograph. With Apple's Hide My Email, the address is one Apple forwards to
-  yours, and we never see the real one.
+  in with Apple or Google, that is what we ask them for: an email address and
+  an identifier. We do not ask either for your name or photograph, though
+  Google may send your name and a link to your profile picture anyway; if it
+  does, they are kept with your login and the app does not use them. With
+  Apple's Hide My Email, the address is one Apple forwards to yours, and we
+  never see the real one.
 - **Training data** — the sessions you log: exercise names, sets, reps, weight,
   set type, and for cardio work its duration and distance. Session and exercise
   notes are free text you wrote, so they hold whatever you chose to put there.

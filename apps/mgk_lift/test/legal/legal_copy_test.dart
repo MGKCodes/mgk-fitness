@@ -87,8 +87,14 @@ void main() {
       // that makes them lawful here: an address and an identifier (O1), and
       // the revocation Apple requires when an account made with it goes.
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
-        'If you sign in with Apple or Google, that is what they pass us too: '
-            'an email address and an identifier, and nothing else.',
+        'If you sign in with Apple or Google, that is what we ask them for: '
+            'an email address and an identifier.',
+        // Since 5 October 2026. "Nothing else" was what we asked for, not
+        // what Google sends: Supabase can keep Google's name and picture link
+        // with the login whether or not the app asks.
+        'Google may send your name and a link to your profile picture anyway; '
+            'if it does, they are kept with your login and the app does not '
+            'use them.',
         'Apple and Google — only if you sign in with them.',
         "end the app's access to your Apple ID",
         'You can sign in with Apple, with Google, or with an email address '

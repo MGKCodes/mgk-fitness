@@ -7,6 +7,7 @@ import '../domain/account_deleter.dart';
 import '../domain/legal_copy.dart';
 import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
+import 'medical_disclaimer_screen.dart';
 
 /// Privacy & legal: the one place the compliance surfaces are reachable from.
 ///
@@ -111,6 +112,14 @@ class LegalScreen extends StatelessWidget {
                 context,
                 const LegalDocumentScreen(document: aiDisclosure),
               ),
+            ),
+            // What the coach asks to be accepted before it answers anything,
+            // readable again here, as on Run's legal screen.
+            SettingsTile(
+              icon: Icons.health_and_safety_outlined,
+              title: medicalDisclaimer.title,
+              subtitle: 'The coach and its plans are not medical advice',
+              onTap: () => _push(context, const MedicalDisclaimerScreen()),
             ),
 
             // Deletion is a data right, so it belongs with the documents that

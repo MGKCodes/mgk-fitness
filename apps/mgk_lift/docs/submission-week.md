@@ -118,6 +118,10 @@ None of this waits on anything else.
       October, so Claude tries it first and hands over the SQL editor only if
       it is declined. Then rename the file to the version the ledger records.
       Until then the app uses four requests per workout, which works.
+      *5 October:* tried, and the connector declined it. Paste
+      `supabase/migrations/20260929120000_lift_save_workout.sql` into the SQL
+      editor (Matthew). It is `create or replace`, so it is safe to run twice,
+      and its 15 tests pass on a clean local database.
 - [ ] **Google's sign-in branding** still links to Run's pages (store-setup.md
       7c). Point it at pages that cover both apps.
 - [ ] **Liftio 1.x's listing.** The `/lift` pages now describe 2.0.0 while 1.x
@@ -154,11 +158,14 @@ None of this waits on anything else.
       made from `e2a20d5`, which is on `develop`; `lift/build-41` belongs
       there if it becomes the release candidate, and every Lift build after
       it gets its own.
-- [ ] **Run the pgTAP cases for photo deletion** (`supabase/tests/delete_account.sql`,
-      20 cases). Written on 1 October and never run, because that machine had
-      no Docker. It has since 2 October; the daemon has to be started
-      (Docker Desktop) first. The routine itself was proved against production
-      by hand.
+- [x] **Run the pgTAP cases for photo deletion** (`supabase/tests/delete_account.sql`,
+      20 cases). *Done 5 October:* every database test passes (68, in five
+      files) on a local database built from the migrations alone. The
+      contract test was out of date, not the schema: it now names
+      `core.waiting_list` beside `coach.usage` as deliberately unreachable.
+      Production's `core.delete_account` deletes progress photos for a
+      Lift-only deletion too (read on 5 October), though that change is not
+      in the migration ledger: it went in by hand.
 
 A "Publishing failed" from Codemagic can be a successful upload: Apple answered
 500 mid-upload on build 31 and the IPA arrived anyway. Read the step log before
@@ -385,6 +392,20 @@ person meets in both apps made to look like one family's.
   charcoal rather than on the photograph. Every store word on it follows
   the phone: an Android phone reads Google Play, never an Apple ID (P10 on
   the board).
+- **The coach asks for the medical disclaimer first** (Matthew's call: Run's
+  full screen, not a line). Once on a phone, before the coach answers
+  anything or a plan is built, and before the offer for anybody not
+  subscribed, as Run's coach asks it (`MedicalDisclaimerScreen`,
+  `LocalDisclaimerStore`). Every sentence is the terms' own "Not medical
+  advice", held once in `legal_copy.dart` so the two cannot disagree, and it
+  can be read again under Privacy & legal. Smart exercise swaps are not
+  gated: they pick a machine, not a treatment.
+- **The privacy policy says what Google may send.** "An email address and an
+  identifier, and nothing else" was what we ask for, not what Google sends:
+  Supabase can keep Google's name and picture link with the login. The
+  policy now says so, and that the app does not use them (nothing in the
+  app or the functions reads them). Run's policy says the same as Lift's
+  used to, and changes after 1.0.0's review.
 - **A subscription can be managed from the app.** Account › Coaching has
   *Manage subscription* for a subscriber, opening the App Store's
   subscriptions page or Lift's entry in Google Play's Subscription Center
