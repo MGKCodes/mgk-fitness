@@ -113,15 +113,14 @@ None of this waits on anything else.
       find out now. *Very likely answered on 2 October:* the same developer
       account submitted Run 1.0.0 to production with no closed test. Not read
       off Lift's own Console page, which is the check that closes this.
-- [ ] **Apply `lift_save_workout`.** On Matthew's go. The connector refused
-      production migrations on 1 October and applied one as written on 2
-      October, so Claude tries it first and hands over the SQL editor only if
-      it is declined. Then rename the file to the version the ledger records.
-      Until then the app uses four requests per workout, which works.
-      *5 October:* tried, and the connector declined it. Paste
-      `supabase/migrations/20260929120000_lift_save_workout.sql` into the SQL
-      editor (Matthew). It is `create or replace`, so it is safe to run twice,
-      and its 15 tests pass on a clean local database.
+- [x] **Apply `lift_save_workout`.** *Done 5 October:* the connector declined
+      it twice, and Matthew ran the file in the SQL editor. Production has the
+      function, as the caller, with `authenticated` able to run it and `anon`
+      not (read back the same day). It is not in the migration ledger, since
+      the editor writes none, so the file keeps its own version, as the photo
+      deletion change kept its own. The app tries it first and falls back to
+      four requests only where it is missing, so builds from now on send a
+      workout in one request.
 - [ ] **Google's sign-in branding** still links to Run's pages (store-setup.md
       7c). Point it at pages that cover both apps.
 - [ ] **Liftio 1.x's listing.** The `/lift` pages now describe 2.0.0 while 1.x
@@ -134,13 +133,16 @@ None of this waits on anything else.
 - [ ] **iOS again, from `develop`.** `develop` is no longer build 41's app
       (*Where it stands*), so a build from it is what both stores should ship
       from one commit, and what the phone pass should run on. Not before
-      Matthew says builds may go.
+      Matthew says builds may go. *Started 5 October* from `c0b7c0e`, the
+      sweep's merge: Codemagic build `6ac3b8a95db35febf72b6d24`, publishing to
+      TestFlight. Tick this when TestFlight offers it, and tag it.
 - [x] **Android publishing is wired in**, since 1 October: the workflow names
       the `mgk_fitness_play` group and publishes to the internal track. Not
       yet exercised, because no build has run since.
 - [ ] **Android.** Build `lift-android-release` from `develop`
-      (`scripts/codemagic-build.sh lift-android-release develop`). Two things
-      to expect from the first one:
+      (`scripts/codemagic-build.sh lift-android-release develop`). *Started 5
+      October* from `c0b7c0e`: Codemagic build `6ac3b8aea036e7e4d2ecdc68`.
+      Two things to expect from the first one:
       - **It publishes as a draft**, because Lift's app has no rolled-out
         release yet and Play refuses anything else for such an app. Testers
         see nothing until the draft is rolled out by hand: Play Console ›

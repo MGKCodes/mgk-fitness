@@ -16,9 +16,10 @@ that did not sync, and a hand-written `insert` to unlock the coach. Codes like
 
 ## Before you start
 
-**1. Use build 41 or later**, not build 32. Build 32 predates the redesign
-and Sign in with Apple and Google, so nothing below describes it. Build 41,
-from 1 October, is the first this sheet describes. See
+**1. Use the build from 5 October**, made from `develop` at `c0b7c0e`, not
+build 41. Build 41 (1 October) predates the sister-apps sweep: no medical
+disclaimer, the old paywall, the old coach sheet and profile, and no way to
+manage a subscription. Start with *New in this build* below. See
 [submission-week.md](submission-week.md), step 2.
 
 **2. Two accounts.** One left free, to see the offer and to buy. One entitled
@@ -51,6 +52,29 @@ knowingly*. The ones you will meet on this sheet:
 - Progress photos in a browser preview are grey tiles. On a phone they are not.
 
 ---
+
+## New in this build: test these first
+
+What changed on 4 and 5 October, and has only ever run in tests and the
+browser preview. N4 has never been seen on a phone with a keyboard: if
+it fails, say so before anything else.
+
+| # | Step | Expected | ✓ |
+|---|---|---|---|
+| N1 | On a phone that has never opened the coach, tap the C | *Before we start*: the medical disclaimer, with I understand and Not now (C12) | ☐ |
+| N2 | Not now, then the C again | Nothing opened the first time; asked again the second | ☐ |
+| N3 | I understand | The coach opens, or the offer if not subscribed. Never asked again on this phone | ☐ |
+| N4 | In the coach, tap the message field (both platforms) | The sheet rises above the keyboard: the field and Send stay in sight | ☐ |
+| N5 | An empty coach | "It has read your log" and three questions. Tap one: it is sent as written and answered | ☐ |
+| N6 | The offer, on an iPhone and on Android | One screen, no scrolling; the coach's C beside the app's name; Coach labelled Recommended. Android says Google Play, never Apple ID | ☐ |
+| N7 | Subscribed: the gear › your card › Manage subscription | iPhone: the App Store's subscriptions page. Android: Lift in Google Play's subscriptions | ☐ |
+| N8 | Subscribed: Delete account | *About your subscription*: deleting does not cancel it, with Manage subscription. Again on the done screen | ☐ |
+| N9 | Delete account › this app's data, *Also erase this phone's copy* on | "This phone's copy has been erased too"; Profile and Track are empty without reopening the app | ☐ |
+| N10 | Delete account with that switch off | Headed *Deleted from our servers*; the sessions still on the phone | ☐ |
+| N11 | Profile | Run's layout: the lifetime volume, two records, most trained, the year, the last five sessions | ☐ |
+| N12 | Finish a session, then open it from the log | *Session complete* after Finish, *Session summary* from the log | ☐ |
+| N13 | Signed in, log a session, then the gear › your card › Sync now | Backed up with no error. It now goes up in one request (`lift.save_workout`) | ☐ |
+| N14 | Privacy & legal | Medical disclaimer is listed, and reads the same as N1 | ☐ |
 
 ## A. Install and first run
 
