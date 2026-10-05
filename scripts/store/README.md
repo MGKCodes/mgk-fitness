@@ -38,6 +38,10 @@ Connect before review (a first subscription always does):
 2. `listing` and `screenshots` fill it from the repository.
 3. In App Store Connect: what the API cannot do (below).
 4. `submit --ios --build N` sends it for review, using the version as it is.
+   If a draft submission was started in App Store Connect (its Draft
+   Submissions panel, where a first subscription is added), the version goes
+   into that draft and the whole draft is sent, so nothing in it is split off.
+   Don't press Submit for Review on such a draft by hand first.
 
 ## The keys
 

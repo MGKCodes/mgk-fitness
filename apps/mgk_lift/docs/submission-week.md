@@ -101,19 +101,16 @@ None of this waits on anything else.
         permissions, which the Android workflow's `publishing:` needs;
       - the odd combined row seen in the App Store subscription group's list
         is gone after a refresh.
-- [ ] **Liftio's two paying subscribers.** Their subscriptions end in the app
+- [x] **Liftio's two paying subscribers.** Their subscriptions end in the app
       (decision 4), but taking a product off sale may not stop it renewing:
       Apple's help says it does, and a developer reported in August 2026 that
       subscribers kept being charged
       ([forum thread 842508](https://developer.apple.com/forums/thread/842508)).
-      *Decided 5 October: email them.* Their ids are only in RevenueCat's old
-      Liftio project; this database has no record of Liftio's subscriptions
-      (read 5 October). With the two ids, their addresses come from
-      `auth.users`, and Claude drafts the email for Matthew to send. 2.0.0's
-      What's New now tells anyone still subscribed how to cancel. RevenueCat
-      showed four active customers on 1 October, two paying monthly and two
-      who never paid. An older plan says Liftio 1.4.0 has not worked since 7
-      August, when its tables moved; that was not checked.
+      *Settled 5 October: no email.* Emailing them was chosen first, then
+      Matthew: "the two people who were subscribed weren't using the app."
+      2.0.0's What's New tells anyone still subscribed how to cancel. Their ids
+      are only in RevenueCat's old Liftio project; this database has no record
+      of Liftio's subscriptions (read 5 October).
 - [x] **Confirm Play will let this account publish to production.** Google
       asks developer accounts registered as personal after November 2023 to
       run a closed test with 12 testers for 14 days first. *Taken as answered,
@@ -186,6 +183,13 @@ A "Publishing failed" from Codemagic can be a successful upload: Apple answered
 building again.
 
 ### 3. On a phone *(both)*
+
+**Not done before release, by decision.** Matthew, 5 October: "im not going
+to do any phone tests. they need to be live and we go from there, we can be
+stricter on these tests once we have users." What this risks is a rejection,
+not a lifter: App Review signs in with the review account and opens the
+subscription, and a binary fix goes out as 2.0.1. The list below stays as the
+test for when there are users to protect.
 
 The sheet is [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md),
 written for build 41, with what is new in build 45 at the top (N1 to N14).
@@ -280,10 +284,15 @@ release:
 - [ ] iOS: 2.0.0 with both subscriptions attached to the version. *Opened 5
       October:* `stores.py prepare lift --build 45` created version 2.0.0
       (being prepared, releases itself on approval, build 45 attached), and
-      the listing renamed it *MGKFitness: Lift*. Left: *Matthew* attaches Coach
-      and Premium Coach on the version page and fills in App Review's login
-      and contact; then `stores.py submit lift --ios --build 45 --yes`.
-- [ ] Android: once build 46 is rolled out and tested on internal testing,
+      the listing renamed it *MGKFitness: Lift*. Matthew put the subscription
+      group and both subscriptions in a draft submission in App Store Connect
+      the same day; `submit` adds the version to that draft and sends it, so
+      they go for review together (do not press Submit for Review on the
+      draft by itself). Left: App Review's login and contact, App Privacy, a
+      look at the age rating; then `stores.py submit lift --ios --build 45
+      --yes`.
+- [ ] Android: build 46 is rolled out on internal testing; once Play's setup
+      list (App content) is complete,
       `stores.py submit lift --android --notes
       apps/mgk_lift/store/play-release-notes.txt --yes` sends it to production
       for everybody. A first production release is reviewed by Google, which
@@ -484,6 +493,8 @@ person meets in both apps made to look like one family's.
 Each is a gap in 2.0.0 that somebody decided on or accepted. Say so in review
 notes where a reviewer could meet it.
 
+- **No phone pass before release** (section 3). Matthew's call on 5 October:
+  live first, stricter tests once there are users.
 - **An account deleted on Android keeps its Apple tokens.** Android sends no
   authorization code; getting one needs Apple's web flow, a callback route on
   the site and that route on the Services ID. The policies claim revocation

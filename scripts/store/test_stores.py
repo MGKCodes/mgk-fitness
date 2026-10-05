@@ -87,14 +87,15 @@ APPLE = {
     ('GET', '/appStoreVersions?'): {'data': []},
     ('POST', '/v1/appStoreVersions'): {'data': {'id': 'V1'}},
     ('POST', '/v1/reviewSubmissions'): {'data': {'id': 'R1'}},
+    ('GET', '/v1/reviewSubmissions?'): {'data': []},
     ('GET', '/appStoreVersionLocalizations'): {
         'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
 }
 
 
 class AppleSubmit(unittest.TestCase):
-    def run_submit(self, *flags):
-        fake = FakeStore(APPLE)
+    def run_submit(self, *flags, answers=None):
+        fake = FakeStore(answers or APPLE)
         with mock.patch.object(asc, '_token', return_value='t'), \
                 mock.patch.object(asc, 'call', fake), \
                 contextlib.redirect_stdout(io.StringIO()) as printed:
@@ -115,6 +116,29 @@ class AppleSubmit(unittest.TestCase):
         self.assertTrue(any(u.endswith('/v1/appStoreVersions') for u in posts))
         self.assertTrue(any(u.endswith('/v1/reviewSubmissionItems') for u in posts))
         self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/R1') for m, u in fake.sent))
+
+    def with_draft(self, items):
+        answers = dict(APPLE)
+        answers[('GET', '/v1/reviewSubmissions?')] = {'data': [{'id': 'D1'}]}
+        answers[('GET', '/reviewSubmissions/D1/items')] = {'data': items}
+        return answers
+
+    def test_a_draft_started_in_app_store_connect_is_the_one_submitted(self):
+        code, fake, printed = self.run_submit(answers=self.with_draft([]))
+        self.assertIn('in the draft submission started in App Store Connect', printed)
+        code, fake, _ = self.run_submit('--yes', answers=self.with_draft([]))
+        self.assertEqual(code, 0)
+        self.assertFalse(any(m == 'POST' and u.endswith('/v1/reviewSubmissions') for m, u in fake.sent))
+        self.assertTrue(any(m == 'POST' and u.endswith('/v1/reviewSubmissionItems') for m, u in fake.sent))
+        self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/D1') for m, u in fake.sent))
+
+    def test_a_version_already_in_the_draft_is_not_added_twice(self):
+        already = [{'id': 'I1', 'relationships': {
+            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': 'V1'}}}}]
+        code, fake, _ = self.run_submit('--yes', answers=self.with_draft(already))
+        self.assertEqual(code, 0)
+        self.assertFalse(any(u.endswith('/v1/reviewSubmissionItems') for _, u in fake.sent))
+        self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/D1') for m, u in fake.sent))
 
 
 class ApplePrepare(unittest.TestCase):
