@@ -22,8 +22,8 @@
     "in/out/next follow docs/navigation.md, which is the audit these answer to."
   ],
 
-  "previous": "3 October 2026, version 22",
-  "since": "three are redrawn instead: the icon and the app's name on the sign-in (S1, S3, S4) are larger, and Run's sign-in now has the same layout and the same three screens",
+  "previous": "5 October 2026, version 25",
+  "since": "the coach is one sheet with Run's now, the same glass, bar, bubbles and composer, with three questions to tap on an empty conversation, and it rises above the keyboard; the paywall is the suite's, fitting the phone without scrolling, four short lines with their detail a tap away and one Subscribe button naming the price, Coach labelled Recommended and the coach's own C beside the app's name; Account offers Manage subscription; and deleting asks how much on the suite's screen, with a switch to erase this phone's copy too and, for a subscriber, the note that deleting does not cancel what the store bills",
 
   "acts": [
     {
@@ -72,7 +72,7 @@
       "sub": "Behind the entitlement, and the paywall is the empty state",
       "lede": "The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. Past it: no week number, no end date, no completion. Those are marathon ideas, and \"get stronger\" has no week 12 — the week is derived from weekdays rather than scheduled into, which is why a rest day here is an answer and not a gap.",
       "racks": [
-        { "title": "The offer", "screens": ["plan", "sales", "sales-signed-out", "plan-entitled"] },
+        { "title": "The offer", "screens": ["plan", "sales", "sales-android", "sales-signed-out", "plan-entitled"] },
         { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest"] }
       ]
     },
@@ -264,9 +264,9 @@
       "host": "pushed",
       "in": "{{legal}} › Delete account",
       "out": "App bar back, until it has happened",
-      "next": "Choose a scope, type DELETE",
-      "note": "Opens on the narrower scope, disarmed.",
-      "doc": "Guideline 5.1.1(v). One login serves the whole suite, so \"delete my account\" names two different requests and the app has to ask which — run offers neither and sends no scope at all, which the function reads as everything. The narrow choice still cannot promise the login survives, and this screen says so before the tap rather than after it: if Run holds nothing, a profile with nothing behind it is not kept on somebody's behalf.",
+      "next": "Choose how much, type DELETE",
+      "note": "Opens on the narrower choice, disarmed, with the phone's copy set to be erased too.",
+      "doc": "Guideline 5.1.1(v). One login serves the whole suite, so \"delete my account\" names two different requests, and the screen asks which: this app's data, or the whole MGKFitness account. Since 4 October it is the suite's shared screen, the same words as Run's (which gains the choice in 1.0.1): the app's icon and name at the head, because the two apps look alike and this one can take the other's data too; the login note, which says before the tap that the narrow choice can still take the login if Run holds nothing; and, as on Run, a switch to erase this phone's copy as well, on by default. For a subscriber it says, before the tap and again after it, that deleting does not cancel the subscription, with Manage subscription beside it, in Run's words.",
       "flag": "The done state is not on this board. It exists only after a typed phrase and a tap, so the harness cannot address it without faking a state the code cannot reach. Both scopes were proved against the deployed function on 2026-09-01 instead.",
       "tags": ["free", "flag"]
     },
@@ -676,10 +676,10 @@
       "title": "The coach, for sale",
       "host": "pushed",
       "in": "The C, for anybody unsubscribed; {{plan}} › Start coaching; Photos › Unlock photos",
-      "out": "Close, or a tier",
-      "next": "Subscribe to Coach, or to Premium Coach",
-      "note": "One screen from every door; each tier lists only what ships.",
-      "doc": "It replaced a sheet and three pitches that each sold differently (R6). Choosing a tier is the purchase: no second button that might still be buying the first. Each line is something the code does, and two promises the old pitch made are gone: moving Thursday's session, and a coach that sees your running. The renewal terms, both links and Restore sit at the foot, as guideline 3.1.2 wants. Done right: a reviewer can match every line to a feature, and nobody pays for something the app cannot do.",
+      "out": "Close, or Subscribe",
+      "next": "Subscribe to the chosen tier",
+      "note": "Fits the phone without scrolling: four short lines, their detail a tap away, the two tiers side by side and one Subscribe button.",
+      "doc": "It replaced a sheet and three pitches that each sold differently (R6), and on 5 October became the suite's paywall, the same screen as Run's. It fits a 390 × 844 phone without scrolling. The app's icon and name sit above the headline, because the two apps look alike and this is where money is decided. Each benefit is one short line with its detail a tap away, so the list is read at a glance (\"those ticks must be read quicker\"). Coach is chosen to start and Premium reads \"3× the coaching\"; the one Subscribe button names the chosen tier's price, so there is no second button that might still be buying the first. Coach carries a Recommended label: the studio's advice, not \"Most popular\", which the research advised against without data to back it. The coach's own C sits beside the app's name, the mark that opens the coach on every tab, so what is for sale is plainly that. Each line is something the code does. The renewal terms, Restore, Terms and Privacy sit at the foot, as guideline 3.1.2 wants. Done right: a reviewer can match every line to a feature, and nobody pays for something the app cannot do.",
       "tags": ["paid"]
     },
     "sales-signed-out": {
@@ -687,11 +687,22 @@
       "title": "The coach, for sale, signed out",
       "host": "pushed",
       "in": "The C, signed out",
-      "out": "Close, or a tier",
-      "next": "Choose a tier, then sign in",
-      "note": "The offer in full; the account is asked for when a tier is chosen.",
-      "doc": "A purchase must belong to an account, because the webhook keys the entitlement on it, but the offer is shown before anything is asked. Choosing a tier opens Sign in, with Apple, Google or email, attaches the account to the store, and then buys. Backing out of signing in buys nothing.",
+      "out": "Close, or Subscribe",
+      "next": "Subscribe, then sign in",
+      "note": "The same screen, with one sentence more: \"You'll sign in first, so it reaches your coach.\"",
+      "doc": "A purchase must belong to an account, because the webhook keys the entitlement on it, but the offer is shown before anything is asked. The small print says so before the tap rather than after it. Subscribe opens Sign in, with Apple, Google or email, attaches the account to the store, and then buys. Backing out of signing in buys nothing.",
       "tags": ["paid"]
+    },
+    "sales-android": {
+      "code": "P10",
+      "title": "The coach, for sale, on Android",
+      "host": "pushed",
+      "in": "The C, on an Android phone",
+      "out": "Close, or Subscribe",
+      "next": "Subscribe to the chosen tier",
+      "note": "Every store word follows the phone: Google Play, never an Apple ID.",
+      "doc": "{{sales}} on an Android phone. The renewal terms, the restore note and the store's name are chosen by the phone the paywall is on, so a Play customer reads about their Google Play account and Play Store › Payments and subscriptions, never about an Apple ID. Nothing in the screen's words is fixed to one store. Done right: nothing on it mentions Apple.",
+      "tags": ["paid", "new"]
     },
     "plan-entitled": {
       "code": "P2",
@@ -778,8 +789,8 @@
       "in": "The mark, on any tab",
       "out": "App bar back; a reply in flight is abandoned",
       "next": "Ask something",
-      "note": "A sheet over where you were, so you can still see it.",
-      "doc": "Not a fourth destination pushed on top of the app — you can still see the surface you came from, which is the difference between asking about this and leaving to go and ask. Opening it checks the account and the entitlement before the message rather than after, so a refusal never arrives on a screen with no route to the fix.",
+      "note": "Three questions to tap, as Run's empty coach offers.",
+      "doc": "Not a fourth destination pushed on top of the app — you can still see the surface you came from, which is the difference between asking about this and leaving to go and ask. Opening it checks the account and the entitlement before the message rather than after, so a refusal never arrives on a screen with no route to the fix. Since 5 October it is the suite's coach sheet, shared with Run's: the same glass, frosted bar, bubbles and composer, three questions to tap on an empty conversation (each starts a conversation of its own), and the sheet rises above the keyboard, which it did not before.",
       "tags": ["paid"],
       "arch": {
         "class": "CoachSheet",
@@ -840,7 +851,7 @@
       "out": "App bar back",
       "next": "Answer, or ask your own",
       "note": "\"Your bench has not moved in three weeks.\"",
-      "doc": "The coach opens on an observation drawn from the log rather than a greeting, because a blank conversation puts the work of starting it on the lifter. Glass over the surface underneath — the one presentation GlassSurface says does not work on flat charcoal, which is why every coach preview goes through the real sheet.",
+      "doc": "The coach opens on an observation drawn from the log rather than a greeting, because a blank conversation puts the work of starting it on the lifter. Glass over the surface underneath — the one presentation GlassSurface says does not work on flat charcoal, which is why every coach preview goes through the real sheet. The bubbles are the suite's, drawn the same in Run's coach, with the corner nearest the speaker tucked in.",
       "tags": ["paid"]
     },
     "coach-resumed": {
@@ -1029,9 +1040,9 @@
       "host": "shell",
       "in": "Nav bar › Profile",
       "out": "Nav bar",
-      "next": "Open photos, settings, or the log",
-      "note": "Six tiles on glass, the last five sessions, then the most trained, each opening its movement.",
-      "doc": "What was done comes before what it adds up to (18): the six numbers as tiles on glass, then the last five sessions in a card with See all, then the year grid, consistency and the most trained. Each most-trained row opens its movement ({{exercise-stats}}), which is where the bests went (R9): five numbers with nothing behind them became one screen per movement with its line. A line promising that runs from Run appear here went: nothing in Lift reads them.",
+      "next": "Open photos, settings, a movement or a session",
+      "note": "Run's profile, section for section: the lifetime total in its card, two records, the most-trained table, the year, then the recent sessions.",
+      "doc": "Rebuilt on 4 October as Run's profile is, so the two apps stop looking like two: a Profile title bar over the photograph; the lifetime volume counting up over sessions, time and streak, where Run has distance over runs, time and streak; the heaviest set and the biggest session as Run's two record tiles; the movements trained most as Run's Typical table, each row opening its movement ({{exercise-stats}}); the year, in the grid both apps now share; and the last five sessions as Run's log, with See all. The six tiles, the consistency card and the separate list of previous workouts went with the old layout.",
       "tags": ["free", "new"]
     },
     "profile-empty": {
@@ -1040,9 +1051,9 @@
       "host": "shell",
       "in": "Nav bar › Profile, on a new account",
       "out": "Nav bar",
-      "next": "Log a session",
-      "note": "Dashes, not zeros, in the same six tiles.",
-      "doc": "Run's Profile still collapses to \"No runs yet.\" — the same complaint you made about Lift, still open there.",
+      "next": "Track, from the nav bar",
+      "note": "Dashes held open in the same cards, and one sentence under the lifetime figures, as on Run's.",
+      "doc": "The \"Nothing logged yet\" card and its button went: Run's empty profile has neither. What builds here is said under the figures it describes, the table and the year stand open, and the log shows two quiet rows in the shape a session takes, with nothing to tap.",
       "tags": ["free"]
     },
     "photos-empty": {
@@ -1196,8 +1207,8 @@
       "host": "pushed",
       "in": "{{settings-signed-in}} › the profile card, or the Backup row",
       "out": "App bar back",
-      "next": "Restore, Sign out, or Delete account",
-      "note": "The person, where backup stands, the plan and Restore, and the two ways out.",
+      "next": "Manage subscription, Restore, Sign out, or Delete account",
+      "note": "The person, where backup stands, the plan, Manage subscription and Restore, and the two ways out.",
       "doc": "Laid out as Run's account screen is, because it is the same account: the person centred at the top, then backup with Sync now, then the plan and Restore, then Sign out and Delete account as buttons at the foot, each with a line under it saying what it does. They are rare, and one of them is for good, so they are a screen in from the page opened most. Lift keeps no photograph and asks no name, so the circle holds a letter and the address stands where Run has a name. Done right: nobody deletes an account while looking for Sign out.",
       "tags": ["free"]
     },
@@ -1562,7 +1573,7 @@
     { "from": "photo-actions", "to": "photo-delete-confirm", "label": "Delete photo" },
     { "from": "photo-series", "to": "series-playback", "label": "play" },
     { "from": "profile", "to": "settings", "label": "the gear" },
-    { "from": "profile-empty", "to": "track", "label": "Log a session" },
+    { "from": "profile-empty", "to": "track", "label": "nav bar" },
 
     { "from": "settings", "to": "settings-signed-in", "label": "signed in" },
     { "from": "settings", "to": "account-signed-out", "label": "rows pending" },
