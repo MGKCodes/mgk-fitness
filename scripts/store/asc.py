@@ -167,9 +167,9 @@ class AppStore:
         )['data']
         return data[0] if data else None
 
-    def submit(self, build_number: str, whats_new: str | None, apply: bool) -> list[str]:
-        """Attach the build to its version, release it automatically once
-        Apple approves it, set What's New, and send it for review."""
+    def _build_and_version(self, build_number: str) -> tuple[dict, str, dict | None]:
+        """The build, its version string, and that version if it exists. Refuses
+        a build still processing and a version that can no longer change."""
         found = self.builds(limit=1, number=build_number)
         if not found:
             raise StoreError(f'No build {build_number} for {self.app["name"]}.')
@@ -183,16 +183,11 @@ class AppStore:
                 f'Version {version} is {_state(existing["attributes"])}: '
                 'it cannot be changed or submitted again (a version is submitted once).'
             )
-        plan = [
-            f"App Store: {self.app['name']} {version} with build {build_number}",
-            f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
-            f'  attach build {build_number}',
-            f"  What's New ({self.locale}): {'set' if whats_new else 'left as it is'}",
-            '  submit for review',
-        ]
-        if not apply:
-            return plan + ['  (plan only: run again with --yes to do it)']
+        return build, version, existing
 
+    def _open_version(self, build: dict, version: str, existing: dict | None) -> str:
+        """Create the version, or take the one open for changes; set it to
+        release itself on approval; attach the build. Returns its id."""
         if existing:
             version_id = existing['id']
             self.patch(f'/v1/appStoreVersions/{version_id}', {
@@ -211,6 +206,39 @@ class AppStore:
         self.patch(f'/v1/appStoreVersions/{version_id}/relationships/build', {
             'data': {'type': 'builds', 'id': build['id']},
         })
+        return version_id
+
+    def prepare(self, build_number: str, apply: bool) -> list[str]:
+        """Open the build's version without sending it for review, so the
+        listing, the screenshots and the version page's subscriptions can be
+        added first. Apple takes a first subscription only from that page."""
+        build, version, existing = self._build_and_version(build_number)
+        plan = [
+            f"App Store: {self.app['name']} {version} with build {build_number}",
+            f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
+            f'  attach build {build_number}',
+            '  not sent for review: submit does that',
+        ]
+        if not apply:
+            return plan + ['  (plan only: run again with --yes to do it)']
+        self._open_version(build, version, existing)
+        return plan[:1] + ['  ready: listing, screenshots and subscriptions can go on it now']
+
+    def submit(self, build_number: str, whats_new: str | None, apply: bool) -> list[str]:
+        """Attach the build to its version, release it automatically once
+        Apple approves it, set What's New, and send it for review."""
+        build, version, existing = self._build_and_version(build_number)
+        plan = [
+            f"App Store: {self.app['name']} {version} with build {build_number}",
+            f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
+            f'  attach build {build_number}',
+            f"  What's New ({self.locale}): {'set' if whats_new else 'left as it is'}",
+            '  submit for review',
+        ]
+        if not apply:
+            return plan + ['  (plan only: run again with --yes to do it)']
+
+        version_id = self._open_version(build, version, existing)
         if whats_new:
             self._localization_update(version_id, {'whatsNew': whats_new})
 
@@ -339,8 +367,40 @@ class AppStore:
                 return v
         raise StoreError(
             f"{self.app['name']} has no version open for changes. Create the next "
-            'one first (submit creates it), or wait for a rejection to reopen one.'
+            'one first (prepare creates it), or wait for a rejection to reopen one.'
         )
+
+    def _editable_info(self) -> dict:
+        """The app information that goes out with the next version. While one is
+        being prepared there are two, and the live one cannot be changed.
+        Apple's newer `state` says READY_FOR_DISTRIBUTION where the older
+        `appStoreState` said READY_FOR_SALE, so both are read."""
+        for info in self.get(f'/v1/apps/{self.app_id}/appInfos')['data']:
+            attributes = info['attributes']
+            if (attributes.get('state') or attributes.get('appStoreState')) in EDITABLE:
+                return info
+        raise StoreError(
+            f"{self.app['name']} has no app information open for changes. "
+            'Run prepare first: a new version opens it.'
+        )
+
+    def _review_notes(self, version_id: str, notes: str) -> None:
+        found = self.get(f'/v1/appStoreVersions/{version_id}', {'include': 'appStoreReviewDetail'})
+        detail = found['data'].get('relationships', {}).get('appStoreReviewDetail', {}).get('data')
+        if detail:
+            self.patch(f"/v1/appStoreReviewDetails/{detail['id']}", {
+                'data': {'type': 'appStoreReviewDetails', 'id': detail['id'],
+                         'attributes': {'notes': notes}},
+            })
+        else:
+            self.post('/v1/appStoreReviewDetails', {
+                'data': {
+                    'type': 'appStoreReviewDetails',
+                    'attributes': {'notes': notes},
+                    'relationships': {'appStoreVersion': {
+                        'data': {'type': 'appStoreVersions', 'id': version_id}}},
+                },
+            })
 
     def _localization_update(self, version_id: str, attributes: dict) -> None:
         locs = self.get(f'/v1/appStoreVersions/{version_id}/appStoreVersionLocalizations')['data']
@@ -354,25 +414,33 @@ class AppStore:
 
     def listing(self, fields: dict, apply: bool) -> list[str]:
         """Text from the app's store/listing.json "ios" block: version-level
-        fields on the version open for changes, app-level ones on the app."""
+        fields on the version open for changes, app-level ones on the app
+        information going out with it, and the notes for App Review."""
         version_level = {k: fields[k] for k in
                          ('description', 'keywords', 'promotionalText', 'supportUrl',
                           'marketingUrl', 'whatsNew') if k in fields}
+        version_own = {k: fields[k] for k in ('copyright',) if k in fields}
         app_level = {k: fields[k] for k in ('name', 'subtitle', 'privacyPolicyUrl') if k in fields}
+        notes = fields.get('reviewNotes')
         version = self._editable_version()
         plan = [
             f"App Store listing: {self.app['name']} {version['version']} ({self.locale})",
-            f"  version: {', '.join(version_level) or 'nothing'}",
+            f"  version: {', '.join([*version_level, *version_own]) or 'nothing'}",
             f"  app: {', '.join(app_level) or 'nothing'}",
+            f"  App Review notes: {'set' if notes else 'left as they are'}",
         ]
         if not apply:
             return plan + ['  (plan only: run again with --yes to do it)']
         if version_level:
             self._localization_update(version['id'], version_level)
+        if version_own:
+            self.patch(f"/v1/appStoreVersions/{version['id']}", {
+                'data': {'type': 'appStoreVersions', 'id': version['id'], 'attributes': version_own},
+            })
+        if notes:
+            self._review_notes(version['id'], notes)
         if app_level:
-            infos = self.get(f'/v1/apps/{self.app_id}/appInfos')['data']
-            # The info being edited is the one not yet live, when there is one.
-            info = next((i for i in infos if i['attributes'].get('appStoreState') != 'READY_FOR_SALE'), infos[0])
+            info = self._editable_info()
             locs = self.get(f"/v1/appInfos/{info['id']}/appInfoLocalizations")['data']
             mine = [l for l in locs if l['attributes'].get('locale') == self.locale]
             if not mine:
