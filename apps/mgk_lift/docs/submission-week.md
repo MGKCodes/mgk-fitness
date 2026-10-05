@@ -289,18 +289,27 @@ release:
       started with the subscription group and both subscriptions, and the
       whole draft was sent. Read back: WAITING_FOR_REVIEW, releases itself on
       approval. The listing is renamed *MGKFitness: Lift* with it.
-- [ ] Android: *Sent as a draft 5 October*, by `stores.py submit lift
-      --android --draft --notes apps/mgk_lift/store/play-release-notes.txt
-      --yes`: build 46 on production, read back `draft`. Play refused a
-      non-draft release ("Only releases with status draft may be created on
-      draft app") although build 46 is rolled out on internal testing. Left:
-      *Matthew* starts the rollout in Play Console › Production, which sends
-      it and the App content forms to Google. A first production release is
-      reviewed, which can take several days.
+- [x] Android: *Submitted 5 October.* `stores.py submit lift --android
+      --draft --notes apps/mgk_lift/store/play-release-notes.txt --yes` put
+      build 46 on production as a draft: Play refused a non-draft release
+      ("Only releases with status draft may be created on draft app")
+      although build 46 is rolled out on internal testing. Matthew added all
+      178 countries and regions to the production track (it had none) and
+      started the full rollout; Publishing overview then showed the release,
+      the countries and the store listing under *Changes in review*, after
+      Google's quick checks. Read back: production `completed`. **Managed
+      publishing is off** (Publishing overview, 5 October), so it goes live
+      the moment Google approves it. A first production review can take
+      several days.
 - [ ] When Lift goes for review, promote `develop` to `main`: `main` is what
       was submitted ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching).
       Promoting all of `develop` deploys `web/`, so check what `web/` holds
       first. Then `develop` moves to 2.0.1 (CONTRIBUTING.md, Versions).
+      *5 October:* `web/` checked: the one served change is Lift's privacy
+      policy gaining the Google sentence, as build 45 has it; Run's policy is
+      untouched. Claude's `git push origin develop:main` was refused by the
+      auto-mode safety check (it deploys the site), so *Matthew* runs it; the
+      bump to 2.0.1 follows it, never before.
 
 ---
 
