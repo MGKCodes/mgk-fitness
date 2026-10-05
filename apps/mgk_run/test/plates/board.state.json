@@ -37,6 +37,12 @@
     "and coach-signed-out with them), drawn at d81ca3e with the suite's coach sheet, paywall and",
     "delete screen not yet committed, and stamped 0ad435b, the commit that landed them. Y8 and Y9",
     "are not among them: their way in needs a planned run that Monday's fixtures lack.",
+    "1.0.1, 5 Oct, evening: seventy-two plates retaken at 170ab2d on develop. The 45 that --stale flagged",
+    "(account, arrival, coach, flows, screens and shell sources): 35 are pixel-identical to their 1 Oct",
+    "pictures and the rest moved only by Monday's dates, so every description stands. With them, the",
+    "morning's 21 and the six of 3 Oct, whose pictures were no longer on disk. The other 31 plates those",
+    "files draw keep their 1 Oct pictures and stamps: a Monday redraw changes their weeks, not their code.",
+    "H4, H5, Y8 and Y9 again not: Monday's fixtures have no planned run to reach them.",
     "",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
@@ -184,43 +190,43 @@
     },
     "account": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-ended": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-free": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-google-play": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-payment-failed": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-premium": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "add-run": {
       "source": "test/plates/flows.dart",
@@ -229,78 +235,78 @@
     },
     "another-account": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-greeting": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-health": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-home": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-name": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-permission": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-permission-allowed": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-sign-in-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "coach-answering": {
       "source": "test/plates/flows.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-consent": {
       "source": "test/plates/coach.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "coach-consent-small": {
       "source": "test/plates/coach.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "coach-conversation": {
       "source": "test/plates/flows.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-disclaimer": {
       "source": "test/plates/coach.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "coach-gate": {
       "source": "test/plates/flows.dart",
@@ -309,8 +315,8 @@
     },
     "coach-gate-after-consent": {
       "source": "test/plates/coach.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "coach-locked": {
       "source": "test/plates/screens.dart",
@@ -319,17 +325,17 @@
     },
     "coach-report": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-report-failed": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-report-sent": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-resting": {
@@ -339,7 +345,7 @@
     },
     "coach-signed-out": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "coach-speaking": {
@@ -349,42 +355,42 @@
     },
     "delete-account": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-account-armed": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-account-everything": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-account-keep-phone": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-done": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-done-lift": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-done-login-stuck": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "delete-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "hero_weights": {
@@ -414,8 +420,8 @@
     },
     "keep-runs-safe": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "last-run-free": {
       "source": "test/plates/shell.dart",
@@ -429,57 +435,57 @@
     },
     "legal": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "legal-disclaimer": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "legal-privacy": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "legal-withdraw": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "legal-withdrawn": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "paywall": {
       "source": "test/plates/flows.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-already-owned": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-android": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-offline": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-pending": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-restore-none": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-restore-sign-in-first": {
@@ -489,7 +495,7 @@
     },
     "paywall-restored": {
       "source": "test/plates/coach.dart",
-      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
       "captured": "2026-10-05"
     },
     "paywall-sign-in-first": {
@@ -514,58 +520,58 @@
     },
     "plan-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-disclaimer": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-intake": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-near-race": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-near-race-confirm": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-reveal": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-shape": {
       "source": "test/plates/arrival.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "plan-week": {
       "source": "test/plates/screens.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "profile-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "profile-records-by-hand": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "profile-with-log": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "route-draw-100": {
       "source": "test/plates/screens.dart",
@@ -604,8 +610,8 @@
     },
     "run-list": {
       "source": "test/plates/flows.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "run-recovered": {
       "source": "test/plates/journeys.dart",
@@ -624,23 +630,23 @@
     },
     "settings": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "settings-backup": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "settings-no-account": {
       "source": "test/plates/flows.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "settings-permissions": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "shell-plan": {
       "source": "test/plates/shell.dart",
@@ -664,13 +670,13 @@
     },
     "shell-profile": {
       "source": "test/plates/shell.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "shell-profile-empty": {
       "source": "test/plates/shell.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "shell-race-after": {
       "source": "test/plates/shell.dart",
@@ -694,13 +700,13 @@
     },
     "sign-out": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "sign-out-erase": {
       "source": "test/plates/account.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "week-detail": {
       "source": "test/plates/flows.dart",
@@ -709,18 +715,18 @@
     },
     "year-grid": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "year-grid-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "account-gate-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "8d77713c5b5c7f54055ac4b79620a8cb096214c8",
-      "captured": "2026-10-03"
+      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "captured": "2026-10-05"
     },
     "launch-mark": {
       "source": "test/plates/launch.dart",
