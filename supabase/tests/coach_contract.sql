@@ -73,19 +73,22 @@ select is(
 
 -- 3 ------------------------------------------------------------------------
 -- RLS on with no policy denies everything, which is only correct on purpose.
+-- Two tables are that on purpose: coach.usage, and core.waiting_list
+-- (20261002140000), which only service_role reads.
 select is(
   (select count(*)::int
    from pg_class c
    join pg_namespace n on n.oid = c.relnamespace
    where n.nspname in ('core', 'coach', 'lift', 'run')
      and c.relkind = 'r' and c.relrowsecurity
-     and (n.nspname, c.relname) <> ('coach', 'usage')
+     and (n.nspname, c.relname) not in
+       (('coach', 'usage'), ('core', 'waiting_list'))
      and not exists (
        select 1 from pg_policies p
        where p.schemaname = n.nspname and p.tablename = c.relname
      )),
   0,
-  'every table has at least one policy, except coach.usage which is deliberately unreachable'
+  'every table has at least one policy, except coach.usage and core.waiting_list, which are deliberately unreachable'
 );
 
 
