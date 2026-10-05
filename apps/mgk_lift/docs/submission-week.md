@@ -161,13 +161,14 @@ None of this waits on anything else.
         (step 1). The `.aab` is still in the build's artifacts and can be
         uploaded by hand. *It did not fail:* the testing-track permission
         works. Production's is proved by the production submission.
-- [ ] **Roll build 46 out on internal testing** *(Matthew)*: Play Console ›
+- [x] **Roll build 46 out on internal testing** *(Matthew)*: Play Console ›
       Testing › Internal testing › the draft › Review release › Start
       rollout. Play's API refuses this for an app that has never released.
-      Then `submit_as_draft: false` in `codemagic.yaml` *(Claude)*.
+      Then `submit_as_draft: false` in `codemagic.yaml` *(Claude)*. *Done 5
+      October:* the internal release reads `completed`, and the workflow
+      publishes ordinary releases from the next build.
 - [ ] **RevenueCat's check on Play purchases** ("package name was not found")
-      clears once that build is rolled out on internal testing. Look again
-      then.
+      clears now that build 46 is rolled out on internal testing. Look again.
 - [x] **Tag what is built.** The suite's rule is that what shipped is a tag.
       *Done 5 October:* `lift/build-45` and `lift/build-46` on `c0b7c0e`,
       annotated as Run's are. Every Lift build from here gets its own.
