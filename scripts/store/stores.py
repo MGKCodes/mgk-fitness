@@ -2,6 +2,7 @@
 """Run and Lift on the App Store and Google Play, from the terminal.
 
     python scripts/store/stores.py status      <run|lift> [--ios|--android]
+    python scripts/store/stores.py prepare     <run|lift> --build 52 [--yes]
     python scripts/store/stores.py submit      <run|lift> --ios --build 52 [--notes FILE] [--yes]
     python scripts/store/stores.py submit      <run|lift> --android [--notes FILE] [--draft] [--yes]
     python scripts/store/stores.py release     <run|lift> [--yes]
@@ -65,7 +66,7 @@ def _text(path: str | None) -> str | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='stores.py', description=__doc__.split('\n\n')[0])
     parser.add_argument('command', choices=[
-        'status', 'submit', 'release', 'release-type', 'test-notes', 'testers',
+        'status', 'prepare', 'submit', 'release', 'release-type', 'test-notes', 'testers',
         'add-tester', 'listing', 'screenshots',
     ])
     parser.add_argument('app', choices=sorted(APPS))
@@ -95,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
             if android:
                 from play import Play
                 out += Play(args.app).status()
+
+        elif args.command == 'prepare':
+            if not args.build:
+                parser.error('prepare needs --build, the TestFlight build number')
+            from asc import AppStore
+            out += AppStore(args.app).prepare(args.build, args.yes)
 
         elif args.command == 'submit':
             if ios == android:

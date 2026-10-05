@@ -12,17 +12,19 @@ What the code does, which every answer below rests on:
   workouts up. Apple passes an email address and an identifier (O1). Google
   may also send a name and a picture link, which Supabase keeps with the login
   and the app does not use (privacy policy, 5 October).
-
-**Uploaded from [`../store/listing.json`](../store/listing.json)** by
-`python scripts/store/stores.py listing lift`, since 5 October: that file is
-the text the stores are sent, and this one keeps the reasons and the counts.
-Change the two together.
 - **Paid half:** the AI coach, training plans and progress photos, as Coach or
   Premium Coach. Photos go to a private Supabase bucket. Coach text goes to
   OpenRouter, sent by our server, never with name, email or account id.
 - **RevenueCat** gets the Supabase user id and the store's purchase record.
 - **No ads, no analytics SDK, no crash reporter, no tracking.** Checked in
   `pubspec.yaml` and the lockfile on 2026-09-29.
+
+**Uploaded from [`../store/listing.json`](../store/listing.json)** by
+`python scripts/store/stores.py listing lift`, since 5 October: that file is
+the text the stores are sent (the App Store name, copyright and App Review
+notes included), and this one keeps the reasons and the counts. Change the two
+together. Play's release notes are
+[`../store/play-release-notes.txt`](../store/play-release-notes.txt).
 
 ---
 
@@ -107,13 +109,20 @@ Liftio's subscriptions end rather than carry over (store-setup.md step 0). The
 first paragraph's promise that history carries over is still unproved on a
 phone (submission-week.md, section 3).
 
+*Changed 5 October:* "has ended" became "If you still have one, cancel it".
+Apple's help says a subscription taken off sale stops renewing, but a
+developer reported in August 2026 that subscribers kept being charged
+([forum thread 842508](https://developer.apple.com/forums/thread/842508)), so
+Liftio's two paying subscribers may still be billed. This is the one screen
+every updating Liftio user sees.
+
 > Liftio is now MGKFitness: Lift, rebuilt from the ground up, so the icon and
 > name on your home screen have changed. Your account and backed-up history
 > carry over: sign in the same way you did before.
 >
-> Liftio's old subscription has ended and does not carry into this version.
-> Tracking your training is free. The AI coach is a new, optional
-> subscription.
+> Liftio's old subscription does not carry into this version. If you still
+> have one, cancel it in Settings › your name › Subscriptions. Tracking your
+> training is free, and the AI coach is a new, optional subscription.
 >
 > New: saved workouts that start ready-filled and learn from your sessions, a
 > rest timer that reaches your lock screen, every session editable, sign in
@@ -122,9 +131,11 @@ phone (submission-week.md, section 3).
 
 ### App Review information
 
-Leave the credentials for a **confirmed and entitled** demo account here
-(`core.grant_entitlement()` makes it entitled; I can do it once you create the
-account). Notes:
+The demo account is `review.subscribed`, the one Run's review uses: one
+MGKFitness account signs into both apps. It is confirmed, and since 5 October
+holds Lift's Premium Coach (`core.grant_entitlement()`, a `manual:` row beside
+its Run one). Its login and the contact details are typed into App Store
+Connect; the notes below go from `listing.json`. Notes:
 
 > Lift is a workout log. Tracking, saved workouts, history and stats are free
 > and need no account: tap Start a session on the Track tab.
@@ -213,6 +224,14 @@ review notes.
 | Contact email | `lift@mgkfitness.mgkcodes.com` |
 | Website | `https://mgkfitness.mgkcodes.com` |
 | Privacy policy | `https://mgkfitness.mgkcodes.com/lift/privacy` |
+
+### Release notes (2.0.0)
+
+> First release on Google Play: log every set, with an optional AI coach. [71]
+
+Not the App Store's What's New: that tells Liftio's users what changed, and
+Lift has never been on Google Play, so there is nobody on Android to tell.
+Play takes 500 characters. Matthew asked for one short line (5 October).
 
 ### Data safety
 

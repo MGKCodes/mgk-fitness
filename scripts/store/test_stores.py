@@ -11,6 +11,7 @@ import contextlib
 import io
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -114,6 +115,86 @@ class AppleSubmit(unittest.TestCase):
         self.assertTrue(any(u.endswith('/v1/appStoreVersions') for u in posts))
         self.assertTrue(any(u.endswith('/v1/reviewSubmissionItems') for u in posts))
         self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/R1') for m, u in fake.sent))
+
+
+class ApplePrepare(unittest.TestCase):
+    def run_prepare(self, *flags):
+        fake = FakeStore(APPLE)
+        with mock.patch.object(asc, '_token', return_value='t'), \
+                mock.patch.object(asc, 'call', fake), \
+                contextlib.redirect_stdout(io.StringIO()) as printed:
+            code = stores.main(['prepare', 'lift', '--build', '52', *flags])
+        return code, fake, printed.getvalue()
+
+    def test_without_yes_it_only_plans(self):
+        code, fake, printed = self.run_prepare()
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.writes(), [])
+        self.assertIn('create version 2.0.0', printed)
+
+    def test_with_yes_the_version_is_opened_and_not_sent_for_review(self):
+        code, fake, _ = self.run_prepare('--yes')
+        self.assertEqual(code, 0)
+        writes = fake.writes()
+        self.assertIn(('POST', 'https://api.appstoreconnect.apple.com/v1/appStoreVersions'), writes)
+        self.assertTrue(any(u.endswith('/v1/appStoreVersions/V1/relationships/build') for _, u in writes))
+        self.assertFalse(any('reviewSubmission' in u for _, u in writes))
+
+
+class AppleListing(unittest.TestCase):
+    """The listing goes on the app information being prepared, never the live one."""
+
+    def run_listing(self, fields):
+        sent = []
+        fake = FakeStore({
+            ('GET', '/v1/apps?'): {'data': [{'id': 'A1', 'attributes': {'primaryLocale': 'en-GB'}}]},
+            ('GET', '/appStoreVersions?'): {'data': [
+                {'id': 'V2', 'attributes': {'versionString': '2.0.0', 'appVersionState': 'PREPARE_FOR_SUBMISSION'}},
+                {'id': 'V1', 'attributes': {'versionString': '1.4.0', 'appVersionState': 'READY_FOR_DISTRIBUTION'}},
+            ]},
+            ('GET', '/appStoreVersionLocalizations'): {
+                'data': [{'id': 'L2', 'attributes': {'locale': 'en-GB'}}]},
+            ('GET', '/v1/apps/A1/appInfos'): {'data': [
+                {'id': 'LIVE', 'attributes': {'state': 'READY_FOR_DISTRIBUTION'}},
+                {'id': 'NEXT', 'attributes': {'state': 'PREPARE_FOR_SUBMISSION'}},
+            ]},
+            ('GET', '/appInfos/NEXT/appInfoLocalizations'): {
+                'data': [{'id': 'IL2', 'attributes': {'locale': 'en-GB'}}]},
+            ('GET', '/appStoreVersions/V2?'): {'data': {'id': 'V2', 'relationships': {
+                'appStoreReviewDetail': {'data': None}}}},
+        })
+
+        def recording(method, url, **kwargs):
+            if method != 'GET':
+                sent.append((method, url.split('/v1/')[-1], kwargs.get('body')))
+            return fake(method, url, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'listing.json'
+            source.write_text(json.dumps({'ios': fields}), encoding='utf-8')
+            with mock.patch.object(asc, '_token', return_value='t'), \
+                    mock.patch.object(asc, 'call', recording), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = stores.main(['listing', 'lift', '--ios', '--from', str(source), '--yes'])
+        return code, sent
+
+    def test_the_name_goes_on_the_information_being_prepared(self):
+        code, sent = self.run_listing({'name': 'MGKFitness: Lift'})
+        self.assertEqual(code, 0)
+        self.assertEqual(sent, [('PATCH', 'appInfoLocalizations/IL2', {
+            'data': {'type': 'appInfoLocalizations', 'id': 'IL2',
+                     'attributes': {'name': 'MGKFitness: Lift'}}})])
+
+    def test_review_notes_and_copyright_go_on_the_version(self):
+        code, sent = self.run_listing({'reviewNotes': 'Sign in with the demo account.',
+                                       'copyright': '2026 MGKCodes Ltd'})
+        self.assertEqual(code, 0)
+        self.assertIn(('PATCH', 'appStoreVersions/V2', {
+            'data': {'type': 'appStoreVersions', 'id': 'V2',
+                     'attributes': {'copyright': '2026 MGKCodes Ltd'}}}), sent)
+        posted = [body for method, path, body in sent if path == 'appStoreReviewDetails']
+        self.assertEqual(posted[0]['data']['attributes'], {'notes': 'Sign in with the demo account.'})
+        self.assertEqual(posted[0]['data']['relationships']['appStoreVersion']['data']['id'], 'V2')
 
 
 class AppleReleaseType(unittest.TestCase):

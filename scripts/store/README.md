@@ -6,6 +6,7 @@ through Claude Code").
 
 ```
 python scripts/store/stores.py status      lift                  # where each version stands
+python scripts/store/stores.py prepare     lift --build 52 --yes # open the version without submitting it
 python scripts/store/stores.py submit      lift --ios --build 52 --notes whats-new.txt --yes
 python scripts/store/stores.py submit      lift --android --notes play-notes.txt --yes
 python scripts/store/stores.py test-notes  lift --ios --build 52 --notes what-to-test.txt --yes
@@ -27,6 +28,16 @@ is off (Play Console › Publishing overview; check it once per app). `release`
 is for later, should a version ever be held for a chosen moment instead.
 `release-type --automatic` or `--manual` switches a version that is already
 submitted (Run 1.0.0 went in held, before these scripts).
+
+**An iOS version in four steps,** when anything has to be added in App Store
+Connect before review (a first subscription always does):
+
+1. `prepare --build N` creates the version, set to release on approval, with
+   the build attached. It also opens the app information (name, subtitle, age
+   rating) for changes.
+2. `listing` and `screenshots` fill it from the repository.
+3. In App Store Connect: what the API cannot do (below).
+4. `submit --ios --build N` sends it for review, using the version as it is.
 
 ## The keys
 
@@ -77,8 +88,12 @@ Both stores answer, or the script says which key is missing or refused.
   safety, and both age ratings. The answers are drafted in each app's
   `docs/store-listing.md`.
 - **A subscription's first review.** Apple takes a subscription's first
-  submission only with a version: attach it on the version's page before
-  running `submit --ios` (Lift 2.0.0's Coach and Premium Coach).
+  submission only with a version: attach it on the version's page (made by
+  `prepare`) before running `submit --ios` (Lift 2.0.0's Coach and Premium
+  Coach).
+- **App Review's sign-in and contact.** `listing` sends the notes; the demo
+  login's address and password, and the contact's name, phone and email, are
+  typed in on the version page, so no password passes through here.
 - **Lift's first Android release.** Play takes only a draft for an app that has
   never rolled one out: `submit lift --android --draft`, then roll it out once
   in Play Console. Every later release can go from here.
