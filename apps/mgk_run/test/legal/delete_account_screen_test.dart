@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/features/legal/domain/account_deleter.dart';
 import 'package:mgk_run/src/features/legal/presentation/delete_account_screen.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 
 /// Records whether deletion was actually requested — the assertion that matters
 /// most here is that it *isn't*, until the runner has typed the phrase.
@@ -15,9 +16,15 @@ class _FakeDeleter implements AccountDeleter {
 
   int calls = 0;
 
+  /// What each request asked for.
+  final List<DeletionScope> scopes = <DeletionScope>[];
+
   @override
-  Future<AccountDeletionResult> deleteAccount() async {
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async {
     calls++;
+    scopes.add(scope);
     final failure = this.failure;
     if (failure != null) throw failure;
     return result ?? const AccountDeletionResult(accountDeleted: true);
@@ -60,17 +67,75 @@ void main() {
       await pumpScreen(tester, deleter: _FakeDeleter());
 
       expect(find.text('This cannot be undone.'), findsOneWidget);
+      // Which app is asking: the two look alike, and this screen can take
+      // the other one's data too.
+      expect(find.text(kProductName), findsOneWidget);
       expect(
-        find.textContaining('Every run, with its route points and splits'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Your runner profile and generated plans'),
+        find.textContaining('Your runs, routes and splits, your runner '),
         findsOneWidget,
       );
       // The shared-login consequence is disclosed before the runner commits.
       // Called an account, as the sign-in calls it, since 1.0.1.
-      expect(find.textContaining('$kPlatformName account'), findsOneWidget);
+      expect(
+        find.textContaining('Your login is your $kPlatformName account'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('offers both scopes and starts on the narrower one', (
+      tester,
+    ) async {
+      // Until 1.0.1 the only way to the whole account was an email to us.
+      await pumpScreen(tester, deleter: _FakeDeleter());
+
+      expect(find.byKey(DeletionChoice.narrowKey), findsOneWidget);
+      expect(find.byKey(DeletionChoice.wideKey), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(DeletionChoice.narrowKey),
+          matching: find.byIcon(Icons.radio_button_checked),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    });
+
+    testWidgets('sends this app only, by default', (tester) async {
+      final deleter = _FakeDeleter();
+      await pumpScreen(tester, deleter: deleter);
+      await typeConfirmation(tester, 'DELETE');
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
+      await tester.pumpAndSettle();
+      expect(deleter.scopes, <DeletionScope>[DeletionScope.runOnly]);
+    });
+
+    testWidgets('sends everything only when everything is chosen', (
+      tester,
+    ) async {
+      final wide = _FakeDeleter();
+      await pumpScreen(tester, deleter: wide);
+      await tester.tap(find.byKey(DeletionChoice.wideKey));
+      await tester.pumpAndSettle();
+      // The button relabels itself, so the last thing read before the tap is
+      // the scope that was chosen, and the note says what becomes of Lift.
+      expect(
+        find.textContaining('anything $kPlatformName: Lift holds goes with it'),
+        findsOneWidget,
+      );
+      await typeConfirmation(tester, 'DELETE');
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Delete my whole account'),
+      );
+      await tester.pumpAndSettle();
+      expect(wide.scopes, <DeletionScope>[DeletionScope.everything]);
+      expect(
+        find.textContaining(
+          'Everything $kPlatformName: Lift held is gone as well',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the delete button is inert until the phrase is typed', (
@@ -79,7 +144,10 @@ void main() {
       final deleter = _FakeDeleter();
       await pumpScreen(tester, deleter: deleter);
 
-      final button = find.widgetWithText(OutlinedButton, 'Delete my data');
+      final button = find.widgetWithText(
+        OutlinedButton,
+        "Delete this app's data",
+      );
       expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
 
       // Tapping a disabled button must not delete anything.
@@ -93,7 +161,10 @@ void main() {
       await pumpScreen(tester, deleter: deleter);
 
       await typeConfirmation(tester, 'DELET');
-      final button = find.widgetWithText(OutlinedButton, 'Delete my data');
+      final button = find.widgetWithText(
+        OutlinedButton,
+        "Delete this app's data",
+      );
       expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
 
       await tester.tap(button);
@@ -108,7 +179,10 @@ void main() {
       await pumpScreen(tester, deleter: deleter);
 
       await typeConfirmation(tester, 'DELETE');
-      final button = find.widgetWithText(OutlinedButton, 'Delete my data');
+      final button = find.widgetWithText(
+        OutlinedButton,
+        "Delete this app's data",
+      );
       expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
 
       await tester.tap(button);
@@ -124,7 +198,9 @@ void main() {
       await pumpScreen(tester, deleter: deleter);
 
       await typeConfirmation(tester, ' delete ');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(deleter.calls, 1);
@@ -201,7 +277,9 @@ void main() {
       await tester.pumpAndSettle();
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(auth.isSignedIn, isFalse);
@@ -231,13 +309,19 @@ void main() {
       );
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Your data is deleted'), findsOneWidget);
-      expect(find.textContaining('Your login is still active'), findsOneWidget);
+      // Lift's sentence since 1.0.1. It no longer says to email us for the
+      // rest: the screen offers the whole account itself.
       expect(
-        find.textContaining('run@mgkfitness.mgkcodes.com'),
+        find.textContaining(
+          'still active because $kPlatformName: Lift is using it, which is '
+          'what you asked for',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('along with your login'), findsNothing);
@@ -257,10 +341,12 @@ void main() {
       );
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Your login is still active'), findsOneWidget);
+      expect(find.textContaining('account is still active'), findsOneWidget);
     });
 
     testWidgets('a login that could not be removed is not called removed', (
@@ -279,7 +365,9 @@ void main() {
       );
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(find.textContaining('along with your login'), findsNothing);
@@ -294,9 +382,11 @@ void main() {
       );
     });
 
-    testWidgets('says the profile went too when it held nothing else', (
+    testWidgets('says the account went too when it held nothing else', (
       tester,
     ) async {
+      // The honesty case: this app only was asked for, and the login went
+      // anyway because Lift was not using it. Said plainly, not glossed.
       await pumpScreen(
         tester,
         deleter: _FakeDeleter(
@@ -305,11 +395,13 @@ void main() {
       );
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('along with your login'), findsOneWidget);
-      expect(find.textContaining('Your login is still active'), findsNothing);
+      expect(find.textContaining('nothing else was using it'), findsOneWidget);
+      expect(find.textContaining('is still active'), findsNothing);
     });
   });
 
@@ -332,7 +424,9 @@ void main() {
       );
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(
@@ -351,9 +445,13 @@ void main() {
       await pumpScreen(tester, deleter: deleter);
 
       await typeConfirmation(tester, 'DELETE');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, "Delete this app's data"),
+      );
       await tester.pumpAndSettle();
 
       expect(deleter.calls, 2);

@@ -23,7 +23,9 @@ void main() => runApp(const LegalPreviewApp());
 /// login stayed because Liftio is using it.
 class _SiblingRetainedDeleter implements AccountDeleter {
   @override
-  Future<AccountDeletionResult> deleteAccount() async {
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     return const AccountDeletionResult(
       accountDeleted: false,

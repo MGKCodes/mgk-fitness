@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
+import '../../../core/brand.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../coaching/data/purchase_client.dart';
@@ -16,6 +17,14 @@ import '../../settings/presentation/phone_scope.dart';
 import '../data/account_deletion_service.dart';
 import '../domain/account_deleter.dart';
 
+/// The other app, by its full name: the one that keeps the login when this
+/// app's data is all that goes.
+const String _lift = '$kPlatformName: Lift';
+
+/// Where a runner writes to us, and where a login that would not go is
+/// finished by hand.
+const String _support = 'run@mgkfitness.mgkcodes.com';
+
 /// Account deletion, confirmed properly.
 ///
 /// `docs/compliance.md` requires the user to be able to delete their account and
@@ -23,9 +32,18 @@ import '../domain/account_deleter.dart';
 /// the gate is a typed confirmation, not a tap: the runner must type `DELETE`.
 /// Nothing leaves the screen until they do.
 ///
+/// ## Two ways to delete, as in Lift (1.0.1)
+///
+/// One login serves the suite (ADR-0008), so "delete my account" names two
+/// requests: this app's data, or the whole MGKFitness account and everything
+/// in both apps. Until 1.0.1 this screen offered only the first and told the
+/// runner to email us for the second. It now asks, in the suite's own widgets
+/// ([DeletionChoice], [NoticePanel], [PhoneCopySwitch]), so the two apps ask
+/// in the same words, and it opens on the narrower choice.
+///
 /// Afterwards the outcome is stated plainly, including the case the shared
-/// MGKCodes login survives because Liftio is using it (ADR-0008), and what
-/// became of this phone's copy.
+/// login survives because Lift is using it, and what became of this phone's
+/// copy.
 ///
 /// ## Deleting the account used to leave the phone ready to put it back
 ///
@@ -88,6 +106,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   String? _error;
   AccountDeletionResult? _result;
 
+  /// Starts on the narrower of the two. A destructive screen should not open
+  /// with the most destructive option already chosen.
+  DeletionScope _scope = DeletionScope.runOnly;
+
   /// Whether to erase this phone's copy as well. **On by default** here, where
   /// signing out has it off: somebody deleting their account has asked for
   /// their data to go, and a copy left on the phone is the part of that request
@@ -127,6 +149,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   LocalDataGuard? get _localData =>
       widget.localData ?? PhoneScope.maybeOf(context)?.localData;
 
+  bool get _wide => _scope == DeletionScope.everything;
+
   @override
   void initState() {
     super.initState();
@@ -149,6 +173,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     final consent = _consentStore;
     final localData = _localData;
     final erasePhone = _erasePhone;
+    final scope = _scope;
     setState(() {
       _busy = true;
       _error = null;
@@ -158,7 +183,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     // opened, so this is almost always already done.
     await _subscriptionRead;
     try {
-      final result = await widget.deleter.deleteAccount();
+      final result = await widget.deleter.deleteAccount(scope: scope);
       final phoneCopy = await _afterDeletion(
         result,
         consent: consent,
@@ -267,10 +292,23 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   Widget _buildConfirm(BuildContext context) {
     final theme = Theme.of(context);
     final email = widget.auth.currentEmail;
+    final localData = _localData;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.sm,
+        AppSpacing.xl,
+        AppSpacing.xxl,
+      ),
       children: <Widget>[
+        // Which app is asking, as the paywall says it: the two apps look alike
+        // on purpose, and this screen can take the other one's data too.
+        const AppIdentityRow(
+          icon: AssetImage('assets/images/brand/app_icon.png'),
+          name: kProductName,
+        ),
+        const SizedBox(height: AppSpacing.lg),
         // Arrives, but only just. This screen asks somebody to confirm
         // something irreversible, and a flourish would be the wrong register —
         // the warning should be there when they look, not perform its way in.
@@ -283,7 +321,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 color: AppColors.danger,
                 size: 22,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   'This cannot be undone.',
@@ -294,98 +332,57 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
         ),
         if (_stillBilling) ...<Widget>[
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
           _StillBilling(
             subscription: _subscription!,
             onManage: _manageSubscription,
           ),
         ],
-        const SizedBox(height: 20),
-        Text(
-          'Deleting removes all of your data from our servers — not '
-          'hidden, actually deleted:',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.5,
+        const SizedBox(height: AppSpacing.xl),
+
+        // The suite's two choices, the same words in Lift's screen.
+        DeletionChoice(
+          wide: _wide,
+          enabled: !_busy,
+          onChanged: (wide) => setState(
+            () => _scope = wide
+                ? DeletionScope.everything
+                : DeletionScope.runOnly,
           ),
+          otherApp: _lift,
+          // What is actually erased and actually sensitive. It once promised
+          // "the date of birth and weight you gave the app", which this app
+          // has never asked for -- on the one page where a runner is asked to
+          // trust a claim about deletion. The coach's conversations carry
+          // injury notes and how somebody said they were feeling, which is
+          // the most personal thing this app holds.
+          holds:
+              'Your runs, routes and splits, your runner profile and plans, '
+              'and your coach conversations, with what the coach remembered '
+              'about you.',
         ),
-        const SizedBox(height: 14),
-        const _DeletedItem('Every run, with its route points and splits'),
-        const _DeletedItem('Your runner profile and generated plans'),
-        // Was "The date of birth and weight you gave the app". This app has
-        // never asked for either — `core.profiles.dob` and `weight_kg` exist
-        // and belong to Liftio — so the screen promised to delete two things
-        // that were never collected, on the one page where a runner is being
-        // asked to trust a claim about deletion.
-        //
-        // Replaced with what is actually erased and actually sensitive: the
-        // conversation carries injury notes and how somebody said they were
-        // feeling, which is the most personal thing this app holds.
-        const _DeletedItem(
-          'Your conversations with the coach, and what it '
-          'remembered about you',
+
+        const SizedBox(height: AppSpacing.md),
+        // Said before the deletion, not discovered after it.
+        NoticePanel(
+          label: 'About your login',
+          text: deletionLoginNote(wide: _wide, otherApp: _lift),
         ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const SectionLabel(
-                'About your login',
-                color: AppColors.textTertiary,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                // "Account", as the sign-in now calls it, and as Lift's own
-                // delete screen always has. Until 1.0.1 this said "profile".
-                'Your login is your $kPlatformName account, so Lift can use '
-                'it too. If it holds no data from Lift we delete the account '
-                'as well. If it does, we delete everything this app holds '
-                'and keep only the account, so your data in Lift survives.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (_localData != null) ...<Widget>[
-          const SizedBox(height: 20),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  "Also erase this phone's copy",
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-              Switch(
-                value: _erasePhone,
-                onChanged: _busy
-                    ? null
-                    : (on) => setState(() => _erasePhone = on),
-              ),
-            ],
-          ),
-          Text(
-            _erasePhone
-                ? 'Your runs, plan, coach conversations, name and photo are '
-                      'removed from this phone as well.'
-                : 'Your runs stay on this phone, and nothing on it is backed '
-                      'up any more.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textTertiary,
-              height: 1.4,
-            ),
+
+        if (localData != null) ...<Widget>[
+          const SizedBox(height: AppSpacing.lg),
+          PhoneCopySwitch(
+            value: _erasePhone,
+            onChanged: _busy ? null : (on) => setState(() => _erasePhone = on),
+            erasing:
+                'Your runs, plan, coach conversations, name and photo are '
+                'removed from this phone as well.',
+            keeping:
+                'Your runs stay on this phone, and nothing on it is backed '
+                'up any more.',
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xl),
         if (email != null) ...<Widget>[
           Text(
             'Signed in as $email',
@@ -393,10 +390,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               color: AppColors.textTertiary,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
         ],
         Text('Type $_phrase to confirm', style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _confirm,
           enabled: !_busy,
@@ -406,7 +403,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           decoration: const InputDecoration(hintText: _phrase),
         ),
         if (_error != null) ...<Widget>[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             _error!,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -415,13 +412,15 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xl),
         DestructiveButton(
-          label: 'Delete my data',
+          // Names what is about to happen rather than saying "Delete", so the
+          // last thing read before the tap is the scope that was chosen.
+          label: _wide ? 'Delete my whole account' : "Delete this app's data",
           busy: _busy,
           onPressed: _armed ? _delete : null,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         AppTextButton(
           label: 'Keep my account',
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
@@ -438,14 +437,21 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     );
     final phone = _phoneSentence;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+        AppSpacing.xxl,
+      ),
       children: <Widget>[
-        const Icon(
-          Icons.check_circle_outline,
+        Icon(
+          result.loginNotRemoved
+              ? Icons.error_outline
+              : Icons.check_circle_outline,
           size: 40,
-          color: AppColors.success,
+          color: result.loginNotRemoved ? AppColors.danger : AppColors.success,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Text(
           // "Your data is deleted" over a phone still holding every run was
           // true of the server and false of the thing in the runner's hand.
@@ -454,40 +460,38 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               : 'Your data is deleted',
           style: theme.textTheme.titleLarge,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Text(_serverSentence(result), style: body),
         if (phone != null) ...<Widget>[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(phone, style: body),
         ],
         if (_stillBilling) ...<Widget>[
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
           _StillBilling(
             subscription: _subscription!,
             onManage: _manageSubscription,
           ),
         ],
-        const SizedBox(height: 32),
-        FilledButton(onPressed: _finish, child: const Text('Done')),
+        const SizedBox(height: AppSpacing.xxl),
+        PrimaryButton(label: 'Done', onPressed: _finish),
       ],
     );
   }
 
   /// What the server did, including the login -- which was said wrongly for
-  /// two of the three answers the server can give.
-  static String _serverSentence(AccountDeletionResult result) {
-    const removed =
-        'Every run, route point, split, and your runner profile have been '
-        'removed from our servers';
-    if (result.accountDeleted) return '$removed, along with your login.';
-    if (result.loginRetainedForSiblingApp) {
-      return '$removed. Your login is still active because Lift is using '
-          'it — email run@mgkfitness.mgkcodes.com if you want that removed '
-          'too.';
-    }
-    return '$removed. Your login could not be removed — email '
-        'run@mgkfitness.mgkcodes.com and we will remove it.';
-  }
+  /// two of the three answers the server can give, until the suite's sentence
+  /// replaced this app's own.
+  String _serverSentence(AccountDeletionResult result) => deletionOutcome(
+    removed:
+        'Your runs, routes and splits, your runner profile and plans, and '
+        'your coach conversations have been removed from our servers.',
+    wide: _wide,
+    accountDeleted: result.accountDeleted,
+    keptForOtherApp: result.loginRetainedForSiblingApp,
+    otherApp: _lift,
+    supportEmail: _support,
+  );
 
   String? get _phoneSentence => switch (_phoneCopy) {
     _PhoneCopy.notMentioned => null,
@@ -515,37 +519,14 @@ class _StillBilling extends StatelessWidget {
   final CoachSubscription subscription;
   final VoidCallback onManage;
 
+  /// The store that bills it, which is not always this phone's: a runner
+  /// who subscribed on an iPhone and deletes from an Android phone is told
+  /// the App Store. The words are the suite's, shared with Lift's screen.
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final store = billingStoreFor(subscription, defaultTargetPlatform).label;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SectionLabel(
-            'About your subscription',
-            color: AppColors.textTertiary,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Deleting your account does not cancel your subscription. Cancel '
-            'it in $store, or it will keep renewing.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          AppTextButton(label: 'Manage subscription', onPressed: onManage),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => StillBillingNotice(
+    store: billingStoreFor(subscription, defaultTargetPlatform).label,
+    onManage: onManage,
+  );
 }
 
 /// What became of this phone's copy of the training.
@@ -555,33 +536,4 @@ enum _PhoneCopy {
   erased,
   kept,
   eraseFailed,
-}
-
-class _DeletedItem extends StatelessWidget {
-  const _DeletedItem(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(Icons.remove, size: 16, color: AppColors.textTertiary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -91,7 +91,7 @@ void main() {
     }
 
     Future<void> subscribe(WidgetTester tester) async {
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pumpAndSettle();
     }
 
@@ -149,7 +149,7 @@ void main() {
         tester,
         FakePurchases(restoreOutcome: PurchaseOutcome.purchased),
       );
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pump();
       for (final s in <int>[1, 2, 3, 5]) {
         await tester.pump(Duration(seconds: s));
@@ -165,7 +165,7 @@ void main() {
 
     testWidgets('a restore that finds nothing says so', (tester) async {
       await pump(tester, FakePurchases());
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
 
       expect(
@@ -183,7 +183,7 @@ void main() {
         tester,
         FakePurchases(restoreOutcome: PurchaseOutcome.offline),
       );
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
 
       expect(
@@ -196,7 +196,7 @@ void main() {
       tester,
     ) async {
       await pump(tester, FakePurchases(restoreOutcome: PurchaseOutcome.failed));
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
 
       expect(

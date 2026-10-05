@@ -323,7 +323,7 @@ void main() {
         pixelRatio: 2,
         drive: (tester) async {
           await toPaywall(tester);
-          await tester.tap(find.text('Subscribe').first);
+          await tester.tap(find.textContaining('Subscribe ·'));
           await settle(tester);
         },
       );
@@ -339,7 +339,7 @@ void main() {
       pixelRatio: 2,
       drive: (tester) async {
         await toPaywall(tester);
-        await tester.tap(find.text('Restore purchases'));
+        await tester.tap(find.text('Restore'));
         await settle(tester);
       },
     );
@@ -356,7 +356,7 @@ void main() {
       pixelRatio: 2,
       drive: (tester) async {
         await toPaywall(tester);
-        await tester.tap(find.text('Restore purchases'));
+        await tester.tap(find.text('Restore'));
         for (var i = 0; i < 14; i++) {
           await tester.pump(const Duration(seconds: 1));
         }
@@ -414,7 +414,7 @@ void main() {
       pixelRatio: 2,
       drive: (tester) async {
         await signedOutToPaywall(tester);
-        await tester.tap(find.text('Subscribe').first);
+        await tester.tap(find.textContaining('Subscribe ·'));
         await settle(tester);
       },
     );
@@ -433,7 +433,7 @@ void main() {
       pixelRatio: 2,
       drive: (tester) async {
         await signedOutToPaywall(tester);
-        await tester.tap(find.text('Restore purchases'));
+        await tester.tap(find.text('Restore'));
         await settle(tester);
       },
     );

@@ -67,12 +67,10 @@ class CoachConversationSheet extends StatefulWidget {
     if (opener != null && controller != null) {
       unawaited(controller.openWithNote(opener));
     }
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      // The keyboard has to push the composer, not cover it.
-      useSafeArea: true,
+    // The suite's way of opening the coach, shared with Lift's. The frame
+    // pushes the composer above the keyboard rather than under it.
+    return showCoachSheet<void>(
+      context,
       builder: (_) => CoachConversationSheet(
         controller: controller,
         suggestions: suggestions,
@@ -168,142 +166,46 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     if (sent && mounted) setState(() => _reported.add(entry));
   }
 
+  /// The suite's coach sheet (5 October 2026): Lift's glass over a photograph,
+  /// in place of the solid panel this was, and drawn by the same pieces
+  /// (`CoachSheetFrame`, `CoachSheetLayout`, `CoachTopBar`, `CoachComposer`,
+  /// `CoachEmptyState`), so the two apps' coaches look like one product's.
+  ///
+  /// The night road, not the photograph Home shows: the sheet rises over Home,
+  /// and the same image blurred over itself reads as a smear rather than as a
+  /// pane in front of something.
   @override
   Widget build(BuildContext context) {
     final controller = _c;
-    final media = MediaQuery.of(context);
-    final insets = media.viewInsets.bottom;
-
-    // **A settled height, not one that tracks the content.** Growing with what
-    // was said was right for the dock — it was already on the page, and taking
-    // the screen to hold one line would have been absurd. A sheet is somewhere
-    // you have arrived, and three attempts at content-driven sizing each failed
-    // a different way: hugging opened a 200px strip that read as a snackbar,
-    // `Expanded` pinned it to its ceiling whatever was said, and `Flexible`
-    // honoured the floor but left the composer stranded mid-panel with dead
-    // space beneath it.
-    final available = media.size.height - media.padding.top;
-
-    // The ceiling is clamped before it is used as one. `clamp` throws
-    // ArgumentError when the upper bound is below the lower, and
-    // `available - insets - 8` goes negative on a layout pass that reports no
-    // height — which is not hypothetical: it took the sheet down with
-    // "Invalid argument(s): 0.0" on the way into this screen.
-    //
-    // Same shape as the negative width in coach_reveal.dart. Both are a
-    // measurement of the screen used as a size without asking whether the
-    // screen had been measured yet.
-    final ceiling = (available - insets - 8).clamp(0.0, double.infinity);
-    final height = (available * 0.62).clamp(0.0, ceiling);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: insets),
-      child: SizedBox(
-        height: height,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            // Solid. Glass exists where there is something behind it to distort,
-            // and behind a sheet is a scrim.
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AppRadius.sheet),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const Padding(
-                  padding: EdgeInsets.only(top: AppSpacing.md),
-                  child: SheetHandle(bottomSpacing: 0),
+    return CoachSheetFrame(
+      photo: 'assets/images/backgrounds/summary.jpg',
+      child: CoachSheetLayout(
+        bar: CoachTopBar(
+          // "[icon] Coach", as Lift's says it: the icon is what tells the two
+          // apps' coaches apart.
+          icon: const AssetImage('assets/images/brand/app_icon.png'),
+          // The way back to what was said before. A conversation ends when
+          // the session window lapses, so opening the app no longer puts last
+          // week's transcript in front of the runner. This is where it went.
+          onHistory: controller == null
+              ? null
+              : () => unawaited(
+                  PastConversationsSheet.show(context, controller: controller),
                 ),
-                _header(context),
-                if (controller == null)
-                  const _Offline()
-                else
-                  // Expanded, so the transcript takes the room and the
-                  // composer stays on the floor of the sheet where a thumb
-                  // expects it.
-                  Expanded(
-                    child: controller.isEmpty && !controller.isBusy
-                        ? _empty()
-                        : _transcript(controller),
-                  ),
-                if (controller?.error != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                    ),
-                    child: Text(
-                      controller!.error!,
-                      style: const TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                if (controller != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                    ),
-                    child: ChatComposer(
-                      controller: _input,
-                      enabled: controller.canSend,
-                      onSend: _send,
-                      hintText: 'Tell your coach',
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          onClose: () => Navigator.of(context).maybePop(),
         ),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    final controller = _c;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.xs,
-        AppSpacing.sm,
-        AppSpacing.sm,
-      ),
-      child: Row(
-        children: <Widget>[
-          const Expanded(child: SectionLabel('Your coach')),
-          // The way back to what was said before. It matters more than it
-          // looks: a conversation now ends when the session window lapses
-          // rather than never, so opening the app no longer puts last week's
-          // transcript in front of the runner. This is where it went.
-          if (controller != null)
-            AppIconButton(
-              icon: Icons.history,
-              tooltip: 'Previous conversations',
-              onPressed: () => unawaited(
-                PastConversationsSheet.show(context, controller: controller),
+        conversation: controller == null
+            ? const _Offline()
+            : controller.isEmpty && !controller.isBusy
+            ? _empty(controller)
+            : _transcript(controller),
+        footer: controller == null
+            ? null
+            : CoachComposer(
+                controller: _input,
+                enabled: controller.canSend,
+                onSend: () => unawaited(_send()),
               ),
-              size: 22,
-              color: AppColors.textSecondary,
-            ),
-          AppIconButton(
-            icon: Icons.close,
-            tooltip: 'Close the conversation',
-            onPressed: () => Navigator.of(context).maybePop(),
-            size: 22,
-            color: AppColors.textSecondary,
-          ),
-        ],
       ),
     );
   }
@@ -313,21 +215,17 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
     final now = DateTime.now();
     final thinking = controller.isBusy || controller.isProposing;
 
-    // Bottom-anchored, like every other conversation in the suite. A
-    // ListView top-anchors, which pinned a single message — the common case
-    // for a sheet somebody has just opened, and for the rate-limited state —
-    // to the ceiling with the rest of the sheet empty beneath it.
-    //
     // Built eagerly rather than lazily: a transcript is bounded by what has
     // been said in one conversation, and each row needs the row before it to
-    // know whether it starts a run or crosses a day.
+    // know whether it crosses a day.
     return ConversationView(
       controller: _scroll,
+      // Room for the bar floating over this, so the first turn opens below it.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
-        AppSpacing.sm,
+        CoachTopBar.height,
         AppSpacing.lg,
-        AppSpacing.sm,
+        AppSpacing.lg,
       ),
       children: <Widget>[
         for (int i = 0; i < entries.length; i++)
@@ -335,36 +233,53 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
             builder: (BuildContext context) {
               final entry = entries[i];
               final previous = i == 0 ? null : entries[i - 1];
-              final startsRun =
-                  previous == null || previous.isUser != entry.isUser;
               final at = entry.at;
               final crossesDay =
                   at != null &&
                   previous != null &&
                   (previous.at == null || !_sameDay(previous.at!, at));
+              final proposal = entry.proposal;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   if (crossesDay) DayDivider(label: dayLabel(at, now)),
-                  ChatBubble(
+                  ConversationBubble(
                     text: entry.text,
-                    isUser: entry.isUser,
-                    showAvatar: startsRun,
-                    proposal: entry.proposal,
-                    unit: widget.unit,
-                    onApply: () => unawaited(controller.applyProposal(entry)),
-                    onDecline: () => controller.declineProposal(entry),
+                    fromCoach: !entry.isUser,
+                    // Only the coach's replies take a report: they are what
+                    // a model wrote, and Play's policy on AI-generated content
+                    // wants them reportable where they are read.
                     onReport: entry.isUser
                         ? null
                         : () => unawaited(_report(entry)),
-                    reported: _reported.contains(entry),
+                    note: _reported.contains(entry)
+                        ? "Reported. Thanks, we'll take a look."
+                        : null,
                   ),
+                  // Under the reply, full width, not inside its bubble: an
+                  // offer to change somebody's week should not be a card in
+                  // a bubble in a sheet.
+                  if (proposal != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: ProposalCard(
+                        proposal: proposal,
+                        unit: widget.unit,
+                        onApply: () =>
+                            unawaited(controller.applyProposal(entry)),
+                        onDecline: () => controller.declineProposal(entry),
+                      ),
+                    ),
                 ],
               );
             },
           ),
-        if (thinking) const TypingBubble(),
+        if (thinking) const ThinkingIndicator(),
+        // Next to the message it refers to, as Lift's says it, rather than
+        // stranded above the composer.
+        if (controller.error case final String error)
+          CoachFailureLine(message: error),
       ],
     );
   }
@@ -374,51 +289,22 @@ class _CoachConversationSheetState extends State<CoachConversationSheet> {
 
   /// Nothing said yet. Openers rather than instructions — a runner should not
   /// have to think of a question before anything has been offered.
-  /// Anchored to the composer like the transcript that replaces it.
-  ///
-  /// Otherwise the sheet opens with its invitation at the ceiling and the
-  /// content drops to the floor the moment the first message lands — one
-  /// component, two resting positions, and a jump between them that reads as
-  /// a glitch rather than as an answer arriving.
-  Widget _empty() => ConversationView(
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.lg,
-      0,
-      AppSpacing.lg,
-      AppSpacing.md,
-    ),
-    children: <Widget>[
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Text(
-            'Your coach can see your plan and your recent runs.',
-            style: TextStyle(color: AppColors.textSecondary, height: 1.45),
-          ),
-          if (widget.suggestions.isNotEmpty) ...<Widget>[
-            const SizedBox(height: AppSpacing.lg),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: <Widget>[
-                for (final suggestion in widget.suggestions)
-                  _SuggestionChip(
-                    text: suggestion,
-                    // `ask`, not `send`: a suggested question starts its own
-                    // conversation. A chip is a subject a surface raised rather
-                    // than the next line of one the runner was already having,
-                    // and continuing into it is how a half-finished exchange
-                    // about a sore calf becomes the context for "how has my
-                    // training been going".
-                    onTap: () => _ask(suggestion),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    ],
+  Widget _empty(ChatController controller) => CoachEmptyState(
+    lead: 'It has read your runs',
+    detail:
+        'Your coach can see your plan and your recent runs. Ask about any of '
+        'it, or start with one of these.',
+    suggestions: widget.suggestions,
+    // `ask`, not `send`: a suggested question starts its own conversation. A
+    // chip is a subject a surface raised rather than the next line of one the
+    // runner was already having, and continuing into it is how a half-finished
+    // exchange about a sore calf becomes the context for "how has my training
+    // been going".
+    onSuggestion: (String suggestion) => unawaited(_ask(suggestion)),
+    trailing: switch (controller.error) {
+      final String error => CoachFailureLine(message: error),
+      null => null,
+    },
   );
 }
 
@@ -431,7 +317,7 @@ class _Offline extends StatelessWidget {
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.fromLTRB(
       AppSpacing.lg,
-      0,
+      CoachTopBar.height + AppSpacing.lg,
       AppSpacing.lg,
       AppSpacing.xl,
     ),
@@ -446,37 +332,6 @@ class _Offline extends StatelessWidget {
           ),
         ),
       ],
-    ),
-  );
-}
-
-class _SuggestionChip extends StatelessWidget {
-  const _SuggestionChip({required this.text, required this.onTap});
-
-  final String text;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: AppColors.elevated,
-    borderRadius: AppRadius.chipAll,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.chipAll,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm + 2,
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     ),
   );
 }

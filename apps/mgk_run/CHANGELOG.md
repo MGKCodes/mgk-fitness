@@ -33,6 +33,34 @@ This is 1.0.1
   *MGKFitness profile*. The privacy policy's paragraph on deletion still says
   *profile*: it changes with the published page, after 1.0.0's review, because
   the live policy is what that review compares against the 1.0.0 binary.
+- Delete account asks how much, as Lift's always has: *Delete this app's
+  data*, or *Delete my whole MGKFitness account*, which erases what Lift holds
+  as well and the login itself. Until now the second meant emailing us. It is
+  the suite's shared screen: the app's icon and name at the head, the same
+  choice cards, login note, phone-copy switch and outcome sentences as Lift's.
+  A login kept because Lift uses it no longer comes with an address to email
+  for the rest, and a login that could not be removed shows the warning icon.
+  The privacy policy's deletion paragraph needs the second choice adding, with
+  *profile* above, after 1.0.0's review.
+- The paywall is the suite's, as Lift's: one screen that fits without
+  scrolling, with Run's icon and name where the decision is made, three short
+  benefit lines that open their detail on tap, the two tiers side by side
+  with Coach chosen to start, and one *Subscribe* button that names the chosen
+  price. The renewal terms are one line, with Restore, Terms and Privacy at
+  the foot. Coach is labelled *Recommended*, the coach's own C sits beside
+  the app's name, everything read to decide sits on charcoal, and the
+  photograph is the night road rather than the fog.
+- The coach is headed by Run's icon and "Coach", as Lift's is, and waits on a
+  breathing orb with *Thinking…* rather than three dots. The message field
+  says *Ask your coach*.
+- The coach sheet is the suite's, Lift's design: glass over a photograph
+  (the night road) where it was a solid panel, the header floating over the
+  conversation, and 0.88 of the screen where it was 0.62. The bubbles are
+  Lift's: the coach's replies are boxed rather than text beside a mark, and a
+  proposed change to the week sits under its reply. The suggested questions
+  are centred under a lead line. Holding a reply still reports it, an error
+  is said under the message it belongs to rather than above the field, and
+  the close button is called *Close*.
 
 ## [1.0.0] — submitted 2026-10-02, build 29
 

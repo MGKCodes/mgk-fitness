@@ -188,7 +188,12 @@ void main() {
       expect(kept, isNotNull);
       expect(kept!.version, kAiConsentVersion);
 
-      await tester.tap(find.byTooltip('Close the conversation'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(CoachTopBar),
+          matching: find.byTooltip('Close'),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byType(CoachButton));
       await tester.pumpAndSettle();
