@@ -23,7 +23,7 @@
   ],
 
   "previous": "5 October 2026, version 25",
-  "since": "the coach is one sheet with Run's now, the same glass, bar, bubbles and composer, with three questions to tap on an empty conversation, and it rises above the keyboard; the paywall is the suite's, fitting the phone without scrolling, four short lines with their detail a tap away and one Subscribe button naming the price, Coach labelled Recommended and the coach's own C beside the app's name; Account offers Manage subscription; and deleting asks how much on the suite's screen, with a switch to erase this phone's copy too and, for a subscriber, the note that deleting does not cancel what the store bills",
+  "since": "the coach asks for the medical disclaimer once, before it answers anything or builds a plan, as Run's does; it is one sheet with Run's now, the same glass, bar, bubbles and composer, with three questions to tap on an empty conversation, and it rises above the keyboard; the paywall is the suite's, fitting the phone without scrolling, four short lines with their detail a tap away and one Subscribe button naming the price, Coach labelled Recommended and the coach's own C beside the app's name; Account offers Manage subscription; and deleting asks how much on the suite's screen, with a switch to erase this phone's copy too and, for a subscriber, the note that deleting does not cancel what the store bills",
 
   "acts": [
     {
@@ -82,7 +82,7 @@
       "sub": "A sheet over where you were, never a fourth destination",
       "lede": "The mark floats over all three tabs (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app. Opening it checks the account and the entitlement <em>before</em> the message rather than after, so a refusal never arrives on a screen with no route to the thing that would fix it. What opens is a sheet over the surface you were on — you can still see where you were, which is the difference between asking about this and leaving to go and ask.",
       "racks": [
-        { "title": "The conversation", "screens": ["coach-empty", "coach", "coach-resumed", "coach-limit"] },
+        { "title": "The conversation", "screens": ["coach-disclaimer", "coach-empty", "coach", "coach-resumed", "coach-limit"] },
         { "title": "Where a conversation goes when it ends", "screens": ["coach-history", "coach-history-empty", "coach-past"] },
         { "title": "Judged in a bubble, not in a table", "screens": ["coach-eval-jump", "coach-eval-joint-pain"] },
         { "title": "After a session", "screens": ["plan-review-after", "plan-review-answered"] }
@@ -782,6 +782,17 @@
       "tags": ["paid"]
     },
 
+    "coach-disclaimer": {
+      "code": "C12",
+      "title": "Before the coach",
+      "host": "pushed",
+      "in": "The C, or Build a plan, the first time on a phone",
+      "out": "I understand, or Not now",
+      "next": "The coach, the offer, or the plan's first question",
+      "note": "Once on a phone, and before the price: the terms' own words.",
+      "doc": "The coach answers questions about sore shoulders and builds plans around injuries, and until 5 October the only place Lift said \"not medical advice\" was the terms. Now it is said where the asking happens, as Run's coach has always said it: once on a phone, before the coach answers anything or a plan is built, and before the offer for anybody not subscribed. Every sentence is the terms' own, so the two cannot disagree. Not now opens nothing and records nothing. It can be read again under Privacy & legal.",
+      "tags": ["free", "new"]
+    },
     "coach-empty": {
       "code": "C1",
       "title": "Coach — nothing said yet",
