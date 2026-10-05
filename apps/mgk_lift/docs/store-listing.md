@@ -160,6 +160,7 @@ account), **not used for tracking**, purpose **App Functionality** only.
 | Apple data type | Collected | What it is in Lift |
 |---|---|---|
 | Contact Info › Email Address | Yes | The account login: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
+| Contact Info › Name | Yes | Only with Google sign-in, which may send a name that Supabase keeps with the login. Not asked for and not used, but kept, so declared (privacy policy, 5 October) |
 | Identifiers › User ID | Yes | The Supabase user id, also passed to RevenueCat; and Apple's or Google's identifier for the lifter, when they sign in with one |
 | Health & Fitness › Fitness | Yes | Logged workouts: movements, sets, reps, weights |
 | Health & Fitness › Health | Yes | Injury notes typed into plan intake, and whatever a lifter tells the coach about their body |
@@ -217,6 +218,7 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | Play category › type | Required or optional | Notes |
 |---|---|---|
 | Personal info › Email address | Optional | Only with an account |
+| Personal info › Name | Optional | Only with Google sign-in, which may send one; kept with the login, not used |
 | Personal info › User IDs | Optional | Only with an account |
 | Health and fitness › Fitness info | Optional | Synced only when signed in |
 | Health and fitness › Health info | Optional | Injury notes, coach messages |
@@ -226,8 +228,14 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | Financial info › Purchase history | Optional | Only if subscribed |
 | App activity › Other actions | Optional | AI usage records for fair-use limits |
 
-Signing in with Apple or Google adds no type to either table: they pass an
-email address and an identifier, which are the two rows already there.
+Signing in with Apple adds no type to either table: it passes an email address
+and an identifier, the two rows already there (none of the ten Apple-made
+accounts holds a name, read 5 October). **Google may add Name**: Supabase keeps
+the profile Google sends with the login, which the privacy policy says since 5
+October. No Google-made account existed on 5 October to read it from, so the
+Name rows are declared on the safe side: declaring a type that turns out
+unused costs nothing, and leaving out one that is kept is a false label. After
+the first Google sign-in, read it back; if no name was kept, the rows can go.
 
 "Optional" is honest here: every one of them depends on the lifter choosing to
 sign in, subscribe or use the coach. The core feature, logging, collects nothing
