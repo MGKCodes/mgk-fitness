@@ -9,14 +9,22 @@ What the code does, which every answer below rests on:
 
 - **No account is needed to track.** With no account nothing leaves the phone.
   Signing in (Apple, Google, or email and password; Supabase, EU) backs
-  workouts up. Apple and Google pass an email address and an identifier, and
-  nothing else (O1).
+  workouts up. Apple passes an email address and an identifier (O1). Google
+  may also send a name and a picture link, which Supabase keeps with the login
+  and the app does not use (privacy policy, 5 October).
 - **Paid half:** the AI coach, training plans and progress photos, as Coach or
   Premium Coach. Photos go to a private Supabase bucket. Coach text goes to
   OpenRouter, sent by our server, never with name, email or account id.
 - **RevenueCat** gets the Supabase user id and the store's purchase record.
 - **No ads, no analytics SDK, no crash reporter, no tracking.** Checked in
   `pubspec.yaml` and the lockfile on 2026-09-29.
+
+**Uploaded from [`../store/listing.json`](../store/listing.json)** by
+`python scripts/store/stores.py listing lift`, since 5 October: that file is
+the text the stores are sent (the App Store name, copyright and App Review
+notes included), and this one keeps the reasons and the counts. Change the two
+together. Play's release notes are
+[`../store/play-release-notes.txt`](../store/play-release-notes.txt).
 
 ---
 
@@ -101,13 +109,20 @@ Liftio's subscriptions end rather than carry over (store-setup.md step 0). The
 first paragraph's promise that history carries over is still unproved on a
 phone (submission-week.md, section 3).
 
+*Changed 5 October:* "has ended" became "If you still have one, cancel it".
+Apple's help says a subscription taken off sale stops renewing, but a
+developer reported in August 2026 that subscribers kept being charged
+([forum thread 842508](https://developer.apple.com/forums/thread/842508)), so
+Liftio's two paying subscribers may still be billed. This is the one screen
+every updating Liftio user sees.
+
 > Liftio is now MGKFitness: Lift, rebuilt from the ground up, so the icon and
 > name on your home screen have changed. Your account and backed-up history
 > carry over: sign in the same way you did before.
 >
-> Liftio's old subscription has ended and does not carry into this version.
-> Tracking your training is free. The AI coach is a new, optional
-> subscription.
+> Liftio's old subscription does not carry into this version. If you still
+> have one, cancel it in Settings › your name › Subscriptions. Tracking your
+> training is free, and the AI coach is a new, optional subscription.
 >
 > New: saved workouts that start ready-filled and learn from your sessions, a
 > rest timer that reaches your lock screen, every session editable, sign in
@@ -116,9 +131,11 @@ phone (submission-week.md, section 3).
 
 ### App Review information
 
-Leave the credentials for a **confirmed and entitled** demo account here
-(`core.grant_entitlement()` makes it entitled; I can do it once you create the
-account). Notes:
+The demo account is `review.subscribed`, the one Run's review uses: one
+MGKFitness account signs into both apps. It is confirmed, and since 5 October
+holds Lift's Premium Coach (`core.grant_entitlement()`, a `manual:` row beside
+its Run one). Its login and the contact details are typed into App Store
+Connect; the notes below go from `listing.json`. Notes:
 
 > Lift is a workout log. Tracking, saved workouts, history and stats are free
 > and need no account: tap Start a session on the Track tab.
@@ -128,11 +145,15 @@ account). Notes:
 > screen opens from Start coaching on the Plan tab, from the C button at the
 > bottom right of any tab, or from Unlock photos under Profile > Progress
 > photos. It shows both tiers, the renewal terms, links to the terms and
-> privacy policy, and Restore purchases. Restore is also under Settings > the
-> account card.
+> privacy policy, and Restore. Restore purchases is also on the account
+> screen: Settings > the card at the top.
 >
 > The demo account below is already subscribed, so the coach, plans and photos
-> are open without purchasing.
+> are open without purchasing. The first time the coach or a plan is opened on
+> a phone, the app shows a medical disclaimer to accept: the coach gives
+> training guidance, not medical advice. The subscription can be managed from
+> Settings > the card at the top > Manage subscription, and Delete account says
+> that deleting does not cancel it.
 >
 > The AI coach sends the lifter's messages and a summary of their training to
 > OpenRouter, from our server. It is disclosed at the point of use (the info
@@ -160,6 +181,7 @@ account), **not used for tracking**, purpose **App Functionality** only.
 | Apple data type | Collected | What it is in Lift |
 |---|---|---|
 | Contact Info › Email Address | Yes | The account login: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
+| Contact Info › Name | Yes | Only with Google sign-in, which may send a name that Supabase keeps with the login. Not asked for and not used, but kept, so declared (privacy policy, 5 October) |
 | Identifiers › User ID | Yes | The Supabase user id, also passed to RevenueCat; and Apple's or Google's identifier for the lifter, when they sign in with one |
 | Health & Fitness › Fitness | Yes | Logged workouts: movements, sets, reps, weights |
 | Health & Fitness › Health | Yes | Injury notes typed into plan intake, and whatever a lifter tells the coach about their body |
@@ -169,9 +191,9 @@ account), **not used for tracking**, purpose **App Functionality** only.
 | Usage Data › Other Usage Data | Yes | Per-request AI usage (tokens, cost), for fair-use limits |
 | Location, Contacts, Browsing, Search, Diagnostics, Sensitive Info, Financial Info | No | |
 
-One check before submitting: open the RevenueCat SDK's privacy manifest
-(`PrivacyInfo.xcprivacy` in the built app, or RevenueCat's docs page on Apple
-privacy labels). If it declares a type not in this table, add it.
+RevenueCat's own privacy manifest was checked on 2 October, from the SDK's
+repository: Purchases › Purchase History only, for App Functionality, not
+linked and not tracking. That is already in the table.
 
 ### Age rating
 
@@ -203,6 +225,14 @@ review notes.
 | Website | `https://mgkfitness.mgkcodes.com` |
 | Privacy policy | `https://mgkfitness.mgkcodes.com/lift/privacy` |
 
+### Release notes (2.0.0)
+
+> First release on Google Play: log every set, with an optional AI coach. [71]
+
+Not the App Store's What's New: that tells Liftio's users what changed, and
+Lift has never been on Google Play, so there is nobody on Android to tell.
+Play takes 500 characters. Matthew asked for one short line (5 October).
+
 ### Data safety
 
 - **Is data encrypted in transit?** Yes.
@@ -217,6 +247,7 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | Play category › type | Required or optional | Notes |
 |---|---|---|
 | Personal info › Email address | Optional | Only with an account |
+| Personal info › Name | Optional | Only with Google sign-in, which may send one; kept with the login, not used |
 | Personal info › User IDs | Optional | Only with an account |
 | Health and fitness › Fitness info | Optional | Synced only when signed in |
 | Health and fitness › Health info | Optional | Injury notes, coach messages |
@@ -226,8 +257,14 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | Financial info › Purchase history | Optional | Only if subscribed |
 | App activity › Other actions | Optional | AI usage records for fair-use limits |
 
-Signing in with Apple or Google adds no type to either table: they pass an
-email address and an identifier, which are the two rows already there.
+Signing in with Apple adds no type to either table: it passes an email address
+and an identifier, the two rows already there (none of the ten Apple-made
+accounts holds a name, read 5 October). **Google may add Name**: Supabase keeps
+the profile Google sends with the login, which the privacy policy says since 5
+October. No Google-made account existed on 5 October to read it from, so the
+Name rows are declared on the safe side: declaring a type that turns out
+unused costs nothing, and leaving out one that is kept is a false label. After
+the first Google sign-in, read it back; if no name was kept, the rows can go.
 
 "Optional" is honest here: every one of them depends on the lifter choosing to
 sign in, subscribe or use the coach. The core feature, logging, collects nothing
@@ -251,8 +288,8 @@ off the device.
 
 ## Open questions
 
-1. **RevenueCat's own collection:** confirm against its privacy manifest before
-   filing the Apple labels (above).
+1. **RevenueCat's own collection:** settled 2 October (above). Its manifest
+   declares purchase history only.
 2. **OpenRouter's processor terms for special-category data:** still open
    (privacy-policy note 1). It does not change any answer here, but it is the
    agreement those answers assume.

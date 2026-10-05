@@ -967,99 +967,38 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // The same avatar signed out: a runner who gave the coach a name in the
+    // intro has one before they have an account.
+    final avatar = Avatar(photo: photo, name: name, size: 64);
 
     if (email == null) {
-      return AppCard(
-        // The profile, not the sign-up. The name and the photo are behind this
-        // card whether or not there is an account, and the invitation to make
-        // one is on that screen where it can be explained.
+      // The profile, not the sign-up. The name and the photo are behind this
+      // card whether or not there is an account, and the invitation to make
+      // one is on that screen where it can be explained.
+      return ProfileCard.withoutAccount(
+        avatar: avatar,
+        title: name ?? 'Create an account',
+        // States the position rather than selling the fix.
+        note:
+            'Everything is on this phone only. An account backs up '
+            'your training and lets you ask for a plan.',
         onTap: onOpen,
-        child: Row(
-          children: <Widget>[
-            // The same avatar signed out: a runner who gave the coach a name
-            // in the intro has one before they have an account.
-            Avatar(photo: photo, name: name, size: 64),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    name ?? 'Create an account',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    // States the position rather than selling the fix.
-                    'Everything is on this phone only. An account backs up '
-                    'your training and lets you ask for a plan.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: AppColors.textTertiary,
-            ),
-          ],
-        ),
       );
     }
 
-    return AppCard(
+    final (String, Color)? plan = subscription == null
+        ? null
+        : _planLine(subscription!);
+    return ProfileCard(
+      avatar: avatar,
+      // The name leads where there is one. Somebody who gave none gets the
+      // address promoted rather than a placeholder: an empty line reserved
+      // for a name they declined to give is a reproach.
+      title: name ?? email!,
+      email: name == null ? null : email,
+      plan: plan?.$1,
+      planColor: plan?.$2 ?? AppColors.textSecondary,
       onTap: onOpen,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Row(
-        children: <Widget>[
-          Avatar(photo: photo, name: name, size: 64),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                // The name leads where there is one. Somebody who gave none
-                // gets the address promoted rather than a placeholder — an
-                // empty line reserved for a name they declined to give is a
-                // reproach.
-                Text(
-                  name ?? email!,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (name != null) ...<Widget>[
-                  const SizedBox(height: 1),
-                  Text(
-                    email!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (subscription != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.xs),
-                  _PlanLine(subscription!),
-                ],
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right,
-            size: 20,
-            color: AppColors.textTertiary,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1072,16 +1011,8 @@ class _ProfileCard extends StatelessWidget {
 /// believes they are paying, the coach is locked, and the app would otherwise
 /// say nothing. The full explanation is on the account screen; this is the
 /// headline.
-class _PlanLine extends StatelessWidget {
-  const _PlanLine(this.subscription);
-
-  final CoachSubscription subscription;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final (String text, Color colour) = switch (subscription.standing) {
+(String, Color) _planLine(CoachSubscription subscription) =>
+    switch (subscription.standing) {
       // Says what the free app *is* rather than what it lacks: recording is
       // the product, not a trial of one (ADR-0030).
       SubscriptionStanding.none => ('Free', AppColors.textTertiary),
@@ -1098,13 +1029,3 @@ class _PlanLine extends StatelessWidget {
         AppColors.textTertiary,
       ),
     };
-
-    return Text(
-      text,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: colour,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}

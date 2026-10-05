@@ -243,7 +243,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('WEDNESDAY 23 SEP'), findsOneWidget);
+      expect(find.text('Session summary'), findsOneWidget);
+      expect(find.text('Wednesday 23 Sep  ·  Push'), findsOneWidget);
       expect(find.text('Back to Track'), findsNothing);
       expect(find.text('Talk it over with your coach'), findsNothing);
       await tester.tap(find.text('Edit session'));

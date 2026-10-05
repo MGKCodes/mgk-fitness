@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/brand.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
 import '../../auth/domain/account.dart';
@@ -12,7 +14,7 @@ import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_screen.dart';
-import '../../sync/presentation/account_section.dart';
+import '../../sync/presentation/backup_card.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../../tracking/domain/rest_alerts.dart';
 import '../domain/unit_preferences.dart';
@@ -26,10 +28,18 @@ import 'credits_screen.dart';
 /// worse than none.
 const String kAppVersion = '2.0.0';
 
-/// Units, and the credits the licence requires.
+/// Everything about the app rather than about the training: who is signed in,
+/// how weights read, where backup stands, what the app says about itself.
 ///
-/// Deliberately thin. Everything an account owns — email, deletion, the plan —
-/// belongs with the account rather than here.
+/// **The same index as Run's, because half of it is the same thing.** The
+/// profile at the top is the suite's one profile, so it is the suite's one
+/// card ([ProfileCard]); the groups under it carry Run's names and order
+/// (Preferences, Your data, About), with Lift's own rows inside them; and the
+/// foot names the product and its maker the way Run's does. Somebody with both
+/// apps should not have to learn Settings twice.
+///
+/// Deliberately thin. Everything done *to* an account — signing out,
+/// restoring, deleting — is one tap in, on the account screen.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -48,12 +58,19 @@ class SettingsScreen extends StatefulWidget {
     this.auth,
     this.deleter,
     this.onAccountGone,
+    this.eraseThisPhone,
+    this.onManageSubscription,
     this.onRestorePurchases,
     this.restAlerts,
     this.version = kAppVersion,
     this.now,
     this.planLabel,
+    this.openUrl,
   });
+
+  /// Opens the support page in the browser. Null is the real browser; a test
+  /// passes its own, having none.
+  final Future<bool> Function(Uri url)? openUrl;
 
   /// What the account pays for, on its card: `Subscribed` or `Free`. Null in
   /// a build that sells nothing.
@@ -118,6 +135,14 @@ class SettingsScreen extends StatefulWidget {
 
   /// See [DeleteAccountScreen.onAccountGone].
   final Future<void> Function()? onAccountGone;
+
+  /// See [DeleteAccountScreen.eraseThisPhone].
+  final Future<void> Function()? eraseThisPhone;
+
+  /// The store's page for the subscription. **Null for somebody not
+  /// subscribed**, which hides the row on the account screen and the note
+  /// beside deleting.
+  final VoidCallback? onManageSubscription;
 
   /// Restore purchases. **Null hides the row**, on the same rule as every other
   /// optional here: a build with no store cannot restore anything.
@@ -198,18 +223,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = false);
   }
 
-  Widget _account(BackupStatus status) => AccountSection(
-    status: status,
-    isSignedIn: widget.isSignedIn,
-    email: widget.email,
-    planLabel: widget.planLabel,
-    onSyncNow: widget.onSyncNow,
-    onSignIn: widget.onSignIn,
-    onOpen: widget.isSignedIn ? _openAccount : null,
-    now: widget.now,
-  );
+  /// Who this is, as Run's Settings shows it: a face, the address, and what
+  /// they pay for. Lift keeps no photograph of anybody (O1) and asks no name,
+  /// so the circle holds the address's first letter.
+  ///
+  /// Signed out, the card is the way in, and its note is the one fact worth
+  /// stating unprompted: what exists on this phone only. It states that and
+  /// stops. An account is a thing people already understand.
+  Widget _profile(BackupStatus status) {
+    if (!widget.isSignedIn) {
+      return ProfileCard.withoutAccount(
+        avatar: const InitialsAvatar(initials: null, size: 64),
+        title: widget.onSignIn == null ? 'Not signed in' : 'Sign in',
+        note: phoneOnlyLine(status.pending),
+        onTap: widget.onSignIn,
+      );
+    }
+    final email = widget.email;
+    return ProfileCard(
+      avatar: InitialsAvatar(initials: _initial(email), size: 64),
+      // The address, when there is one. Naming the account is also how
+      // somebody signed in as the wrong address finds out before they wonder
+      // where their training went.
+      title: email ?? 'Signed in',
+      plan: widget.planLabel,
+      onTap: _openAccount,
+    );
+  }
 
-  /// Sign out, restore and delete: one tap behind the card (19).
+  static String? _initial(String? email) {
+    final e = email?.trim() ?? '';
+    return e.isEmpty ? null : e.characters.first.toUpperCase();
+  }
+
+  /// Backup, sign out, restore and delete: one tap behind the card (19).
   Future<void> _openAccount() => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => AccountScreen(
@@ -223,10 +270,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         auth: widget.auth,
         deleter: widget.deleter,
         onAccountGone: widget.onAccountGone,
+        eraseThisPhone: widget.eraseThisPhone,
+        onManageSubscription: widget.onManageSubscription,
         now: widget.now,
       ),
     ),
   );
+
+  /// The support page, which both store listings point at.
+  Future<void> _openSupport() async {
+    final Uri uri = Uri.parse(kSupportUrl);
+    final open =
+        widget.openUrl ??
+        (Uri url) => launchUrl(url, mode: LaunchMode.externalApplication);
+    if (await open(uri)) return;
+    if (!mounted) return;
+    // Says where it is when the browser will not open. A dead support link is
+    // worse than a long one.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open support. It is at $uri')),
+    );
+  }
 
   Future<void> _pickMass() async {
     final picked = await showChoiceSheet<MassUnit>(
@@ -315,18 +379,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static String _distanceLabel(UnitSystem u) =>
       u == UnitSystem.metric ? 'Kilometres' : 'Miles';
 
-  Widget _group(String label, List<Widget> rows) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.lg,
-      AppSpacing.lg,
-      AppSpacing.lg,
-      0,
-    ),
-    child: SettingsGroup(label: label, children: rows),
-  );
-
   @override
   Widget build(BuildContext context) {
+    // Live, so a run started from the account screen, or by a checkpoint
+    // while this one is open, is reported as it happens.
+    if (widget.backup case final backup?) {
+      return ValueListenableBuilder<BackupStatus>(
+        valueListenable: backup,
+        builder: (context, status, _) => _screen(context, status),
+      );
+    }
+    return _screen(context, const BackupStatus());
+  }
+
+  Widget _screen(BuildContext context, BackupStatus status) {
     final theme = Theme.of(context);
     final readOnly = widget.store == null;
     final canChange = !readOnly && !_saving;
@@ -334,182 +400,168 @@ class _SettingsScreenState extends State<SettingsScreen> {
       color: AppColors.textTertiary,
       height: 1.4,
     );
+    final (String backupValue, bool backupNeedsYou) = backupRowValue(status);
+    final hasCoach =
+        widget.useCoach != null ||
+        (widget.isSignedIn && widget.coachMemory != null);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+        // A column of a scroll view and a footer, as Run's is: the version
+        // belongs at the bottom of the screen, and as a list item it sat
+        // wherever the content happened to end.
+        child: Column(
           children: <Widget>[
-            // **The account first (19)**, as Run's Settings has it: who is
-            // signed in and what they pay for, then where backup stands. The
-            // things done to an account — signing out, restoring, deleting —
-            // are one tap in, on the account screen, rather than rows here.
-            //
-            // Live, so a run started here — or by a checkpoint while the
-            // screen is open — is reported as it happens.
-            if (widget.backup case final backup?)
-              ValueListenableBuilder<BackupStatus>(
-                valueListenable: backup,
-                builder: (context, status, _) => _account(status),
-              )
-            else
-              _account(const BackupStatus()),
-
-            // Units as rows, the value on the right (19). The explanations
-            // are on the sheet each opens, where the choice is made.
-            _group('Units', <Widget>[
-              SettingsRow(
-                title: 'Weight',
-                value: _massLabel(_prefs.mass),
-                onTap: canChange ? _pickMass : null,
-              ),
-              SettingsRow(
-                title: 'Distance',
-                value: _distanceLabel(_prefs.distance),
-                onTap: canChange ? _pickDistance : null,
-              ),
-            ]),
-            if (readOnly)
-              Padding(
+            Expanded(
+              child: ListView(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl + AppSpacing.lg,
+                  AppSpacing.lg,
                   AppSpacing.sm,
-                  AppSpacing.xl,
-                  0,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
                 ),
-                child: Text('Sign in to change these.', style: quiet),
-              ),
+                children: <Widget>[
+                  // **The profile first (19)**, as Run's Settings has it.
+                  Entrance(child: _profile(status)),
+                  const SizedBox(height: AppSpacing.lg),
 
-            if (widget.restAlerts != null)
-              _group('Workout', <Widget>[
-                SettingsRow(
-                  title: 'Rest timer alerts',
-                  value: switch (_alertsAllowed) {
-                    true => 'On',
-                    false when _alertsRefused => 'Not allowed',
-                    false => 'Off',
-                    null => ' ',
-                  },
-                  onTap: switch (_alertsAllowed) {
-                    false when !_alertsRefused => _turnOnAlerts,
-                    false => () => _explain(
-                      'Rest timer alerts',
-                      "Your phone said no. Turn on notifications for Lift in "
-                          "your phone's settings, and the buzz comes back.",
-                    ),
-                    true => () => _explain(
-                      'Rest timer alerts',
-                      'A buzz when rest is over, even with your phone locked. '
-                          'It names the next set, and it is withdrawn when you '
-                          'come back to the app, so there is never a second.',
-                    ),
-                    null => null,
-                  },
-                ),
-              ]),
-
-            if (widget.useCoach != null ||
-                (widget.isSignedIn && widget.coachMemory != null))
-              _group('Coach', <Widget>[
-                if (widget.useCoach case final bool on)
-                  // A consent control, so the row still says in one line where
-                  // the words go. What exactly is sent is behind the info
-                  // button, and the full disclosure is the next row.
-                  SwitchListTile(
-                    value: on,
-                    onChanged: widget.onUseCoachChanged,
-                    contentPadding: const EdgeInsets.only(
-                      left: AppSpacing.xl,
-                      right: AppSpacing.md,
-                    ),
-                    title: Row(
+                  // Each row shows what it is set to (19). The explanations
+                  // are on the sheet each opens, where the choice is made.
+                  Entrance(
+                    index: 1,
+                    child: SettingsGroup(
+                      label: 'Preferences',
                       children: <Widget>[
-                        const Flexible(child: Text('Use the AI coach')),
-                        AppIconButton(
-                          icon: Icons.info_outline,
-                          tooltip: 'What is sent',
-                          size: 18,
-                          color: AppColors.textTertiary,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _explain(
-                            'What the coach is sent',
-                            'Your messages, a summary of your recent training, '
-                                'and your injury notes if you gave any. Off '
-                                'means none of it leaves the app, and the coach '
-                                'mark goes away with it — logging, plans you '
-                                'already have, photos and syncing all keep '
-                                'working.',
+                        SettingsRow(
+                          title: 'Weight',
+                          value: _massLabel(_prefs.mass),
+                          onTap: canChange ? _pickMass : null,
+                        ),
+                        SettingsRow(
+                          title: 'Distance',
+                          value: _distanceLabel(_prefs.distance),
+                          onTap: canChange ? _pickDistance : null,
+                        ),
+                        if (widget.restAlerts != null)
+                          SettingsRow(
+                            title: 'Rest timer alerts',
+                            value: switch (_alertsAllowed) {
+                              true => 'On',
+                              false when _alertsRefused => 'Not allowed',
+                              false => 'Off',
+                              null => ' ',
+                            },
+                            onTap: switch (_alertsAllowed) {
+                              false when !_alertsRefused => _turnOnAlerts,
+                              false => () => _explain(
+                                'Rest timer alerts',
+                                "Your phone said no. Turn on notifications "
+                                    "for Lift in your phone's settings, and "
+                                    "the buzz comes back.",
+                              ),
+                              true => () => _explain(
+                                'Rest timer alerts',
+                                'A buzz when rest is over, even with your '
+                                    'phone locked. It names the next set, and '
+                                    'it is withdrawn when you come back to '
+                                    'the app, so there is never a second.',
+                              ),
+                              null => null,
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (readOnly)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xl,
+                        AppSpacing.sm,
+                        AppSpacing.xl,
+                        0,
+                      ),
+                      child: Text('Sign in to change these.', style: quiet),
+                    ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Where backup stands, in a word, where Run's index says
+                  // whether backup is on. The sentence, each refusal and
+                  // Sync now are on the account screen this opens. Signed out
+                  // there is nothing to report that the card has not said.
+                  if (widget.isSignedIn) ...<Widget>[
+                    Entrance(
+                      index: 2,
+                      child: SettingsGroup(
+                        label: 'Your data',
+                        children: <Widget>[
+                          SettingsRow(
+                            title: 'Backup',
+                            value: backupValue,
+                            tint: backupNeedsYou ? AppColors.danger : null,
+                            onTap: _openAccount,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
+
+                  if (hasCoach) ...<Widget>[
+                    Entrance(
+                      index: 3,
+                      child: SettingsGroup(
+                        label: 'Coach',
+                        children: _coachRows(context, quiet),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
+
+                  Entrance(
+                    index: 4,
+                    child: SettingsGroup(
+                      label: 'About',
+                      children: <Widget>[
+                        SettingsRow(title: 'Support', onTap: _openSupport),
+                        SettingsRow(
+                          title: 'Privacy & legal',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => LegalScreen(
+                                email: widget.email,
+                                auth: widget.auth,
+                                deleter: widget.deleter,
+                                onAccountGone: widget.onAccountGone,
+                                eraseThisPhone: widget.eraseThisPhone,
+                                onManageSubscription:
+                                    widget.onManageSubscription,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SettingsRow(
+                          title: 'Credits',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const CreditsScreen(),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    subtitle: Text(
-                      on
-                          ? 'On. What you write is sent to OpenRouter.'
-                          : 'Off. Nothing is sent to OpenRouter.',
-                      style: quiet,
-                    ),
                   ),
-                if (widget.useCoach != null)
-                  SettingsRow(
-                    // Reachable from beside the switch as well as from the
-                    // legal hub: somebody deciding whether to turn it off is
-                    // exactly who the disclosure is for.
-                    title: aiDisclosure.title,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            const LegalDocumentScreen(document: aiDisclosure),
-                      ),
-                    ),
-                  ),
-                if (widget.isSignedIn && widget.coachMemory != null)
-                  SettingsRow(
-                    // The title is where the app says the coach remembers at
-                    // all, so a lifter who never opens it still learns it.
-                    title: 'What your coach remembers',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            CoachMemoryScreen(store: widget.coachMemory!),
-                      ),
-                    ),
-                  ),
-              ]),
-
-            _group('About', <Widget>[
-              SettingsRow(
-                title: 'Privacy & legal',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => LegalScreen(
-                      email: widget.email,
-                      auth: widget.auth,
-                      deleter: widget.deleter,
-                      onAccountGone: widget.onAccountGone,
-                    ),
-                  ),
-                ),
+                ],
               ),
-              SettingsRow(
-                title: 'Credits',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const CreditsScreen(),
-                  ),
-                ),
-              ),
-            ]),
-
-            // The version in a footer, where people look for it, rather than
-            // as a row that looks like it goes somewhere.
+            ),
+            // The product and its maker, in the words Run's foot uses.
             Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
-                'Lift ${widget.version}',
-                textAlign: TextAlign.center,
-                style: quiet,
+                '$kProductName ${widget.version} · MGKCodes',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
             ),
           ],
@@ -517,6 +569,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  List<Widget> _coachRows(BuildContext context, TextStyle? quiet) => <Widget>[
+    if (widget.useCoach case final bool on)
+      // A consent control, so the row still says in one line where the words
+      // go. What exactly is sent is behind the info button, and the full
+      // disclosure is the next row.
+      SwitchListTile(
+        value: on,
+        onChanged: widget.onUseCoachChanged,
+        contentPadding: const EdgeInsets.only(
+          left: AppSpacing.xl,
+          right: AppSpacing.md,
+        ),
+        title: Row(
+          children: <Widget>[
+            const Flexible(child: Text('Use the AI coach')),
+            AppIconButton(
+              icon: Icons.info_outline,
+              tooltip: 'What is sent',
+              size: 18,
+              color: AppColors.textTertiary,
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _explain(
+                'What the coach is sent',
+                'Your messages, a summary of your recent training, and your '
+                    'injury notes if you gave any. Off means none of it '
+                    'leaves the app, and the coach mark goes away with it — '
+                    'logging, plans you already have, photos and syncing all '
+                    'keep working.',
+              ),
+            ),
+          ],
+        ),
+        subtitle: Text(
+          on
+              ? 'On. What you write is sent to OpenRouter.'
+              : 'Off. Nothing is sent to OpenRouter.',
+          style: quiet,
+        ),
+      ),
+    if (widget.useCoach != null)
+      SettingsRow(
+        // Reachable from beside the switch as well as from the legal hub:
+        // somebody deciding whether to turn it off is exactly who the
+        // disclosure is for.
+        title: aiDisclosure.title,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const LegalDocumentScreen(document: aiDisclosure),
+          ),
+        ),
+      ),
+    if (widget.isSignedIn && widget.coachMemory != null)
+      SettingsRow(
+        // The title is where the app says the coach remembers at all, so a
+        // lifter who never opens it still learns it.
+        title: 'What your coach remembers',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => CoachMemoryScreen(store: widget.coachMemory!),
+          ),
+        ),
+      ),
+  ];
 }
 
 /// One row in a settings list: icon, title, supporting line, chevron.

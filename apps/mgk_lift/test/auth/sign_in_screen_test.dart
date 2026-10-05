@@ -63,23 +63,55 @@ Future<void> fill(WidgetTester tester, String email, String password) async {
 }
 
 void main() {
-  testWidgets('signing in is never presented as required', (
+  testWidgets('is left in one tap, and does not argue with being opened', (
     WidgetTester tester,
   ) async {
-    // The whole product decision. An app that demands an account before it
-    // will let you write down a set is one people close.
-    await pump(tester, FakeAuth());
-    expect(
-      find.textContaining('do not need an account to track'),
-      findsOneWidget,
+    // Opened on purpose, to back up or to subscribe, so it does not end on a
+    // line saying the account is not needed: on a screen somebody just asked
+    // for, that read as a contradiction. What keeps it out of the way of the
+    // free half is that leaving costs one tap and loses nothing.
+    final auth = FakeAuth();
+    addTearDown(auth.dispose);
+    final popped = await open(tester, auth);
+    expect(find.textContaining('do not need an account'), findsNothing);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(popped, <bool?>[null]);
+    expect(find.text('under'), findsOneWidget);
+  });
+
+  testWidgets('opened to subscribe, the email form starts on a new account', (
+    WidgetTester tester,
+  ) async {
+    // As Run's does when something needs an account: somebody subscribing is
+    // more likely new than returning. One tap still signs in instead.
+    tester.view.physicalSize = const Size(1080, 4200);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(home: SignInScreen(auth: FakeAuth(), initialSignUp: true)),
     );
+    await tester.pumpAndSettle();
+    // Apple and Google do both, so the choices are the same either way.
+    expect(find.text('Sign in or create your account'), findsOneWidget);
+
+    await tester.tap(find.text('Continue with email'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create your account'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Sign up'), findsOneWidget);
+    expect(find.text('Forgot your password?'), findsNothing);
+
+    await tester.tap(find.text('Have an account? Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back'), findsOneWidget);
   });
 
   testWidgets('says what is on one phone only, and nothing more', (
     WidgetTester tester,
   ) async {
     await pump(tester, FakeAuth(), pending: 9);
-    await tester.tap(find.text('Create an account'));
+    await tester.tap(find.text('New here? Create an account'));
     await tester.pumpAndSettle();
 
     expect(find.text('9 sessions are on this phone only.'), findsOneWidget);
@@ -102,7 +134,7 @@ void main() {
     // here to fill the space is how the screen started arguing in the first
     // place.
     await pump(tester, FakeAuth());
-    await tester.tap(find.text('Create an account'));
+    await tester.tap(find.text('New here? Create an account'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('on this phone only'), findsNothing);
@@ -114,15 +146,39 @@ void main() {
     await pump(tester, FakeAuth());
     expect(find.text('Welcome back'), findsOneWidget);
 
-    await tester.tap(find.text('Create an account'));
+    await tester.tap(find.text('New here? Create an account'));
     await tester.pumpAndSettle();
-    // Two of them now: the headline and the toggle that got us here.
-    expect(find.text('Create an account'), findsWidgets);
+    expect(find.text('Create your account'), findsOneWidget);
     expect(find.text('Welcome back'), findsNothing);
 
-    await tester.tap(find.text('I already have an account'));
+    await tester.tap(find.text('Have an account? Sign in'));
     await tester.pumpAndSettle();
     expect(find.text('Welcome back'), findsOneWidget);
+  });
+
+  testWidgets('says which app this is, and whose account', (
+    WidgetTester tester,
+  ) async {
+    // Lift's icon and name first, so nobody wonders where they are signing
+    // in; then the account, which is the suite's and not Lift's own, in the
+    // head Run's sign-in draws, so the two cannot drift.
+    for (final emailFirst in <bool>[false, true]) {
+      await pump(tester, FakeAuth(), emailFirst: emailFirst);
+      expect(find.byType(ProfileHeader), findsOneWidget);
+      expect(
+        find.image(const AssetImage('assets/images/brand/app_icon.png')),
+        findsOneWidget,
+      );
+      expect(find.text('Lift'), findsOneWidget);
+      expect(find.text('MGKFitness Account'), findsOneWidget);
+      expect(find.textContaining('One account for every'), findsOneWidget);
+      expect(find.textContaining('works in Run'), findsOneWidget);
+      // The app comes before the account.
+      expect(
+        tester.getTopLeft(find.text('Lift')).dy,
+        lessThan(tester.getTopLeft(find.text('MGKFitness Account')).dy),
+      );
+    }
   });
 
   group('validation', () {
@@ -154,10 +210,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Use at least 8 characters.'), findsNothing);
 
-      await tester.tap(find.text('Create an account'));
+      await tester.tap(find.text('New here? Create an account'));
       await tester.pumpAndSettle();
       await fill(tester, 'a@b.com', 'short');
-      await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign up'));
       await tester.pumpAndSettle();
       expect(find.text('Use at least 8 characters.'), findsOneWidget);
     });
@@ -185,10 +241,10 @@ void main() {
     ) async {
       // The account was created. Colouring this red would read as "it was not".
       await pump(tester, FakeAuth(failWith: AuthFailure.needsConfirmation));
-      await tester.tap(find.text('Create an account'));
+      await tester.tap(find.text('New here? Create an account'));
       await tester.pumpAndSettle();
       await fill(tester, 'a@b.com', 'longenough1');
-      await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign up'));
       await tester.pumpAndSettle();
 
       final text = tester.widget<Text>(
@@ -262,7 +318,7 @@ void main() {
     ) async {
       // "Sign in" alone reads as a door for people who already have one.
       await pump(tester, FakeAuth(), emailFirst: false);
-      expect(find.textContaining('make your account too'), findsOneWidget);
+      expect(find.text('Sign in or create your account'), findsOneWidget);
     });
 
     testWidgets('say that hiding the email is a separate account (O2)', (
@@ -315,7 +371,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.current, isNull);
-      expect(find.text('Sign in'), findsOneWidget);
+      expect(find.text('Sign in or create your account'), findsOneWidget);
       for (final failure in AuthFailure.values) {
         expect(find.text(failure.message), findsNothing);
       }

@@ -10,8 +10,9 @@ import 'package:mgk_run/src/features/settings/presentation/account_screen.dart';
 
 class _NeverDeleter implements AccountDeleter {
   @override
-  Future<AccountDeletionResult> deleteAccount() async =>
-      throw StateError('the test must not reach deletion');
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => throw StateError('the test must not reach deletion');
 }
 
 /// **"Not included in backup" was a promise nothing kept.**

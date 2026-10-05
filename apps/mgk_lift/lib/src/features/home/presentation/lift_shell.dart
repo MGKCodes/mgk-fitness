@@ -1,19 +1,24 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_auth/mgk_auth.dart' show LocalDataGuard;
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../entitlement/domain/entitlement.dart';
+import '../../purchases/domain/manage_subscription.dart';
 import '../../purchases/domain/purchases.dart';
 import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
+import '../../legal/domain/disclaimer_store.dart';
+import '../../legal/presentation/medical_disclaimer_screen.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/moved_day.dart';
@@ -30,6 +35,7 @@ import '../../settings/domain/unit_preferences.dart';
 import '../../photos/domain/photo_backup.dart';
 import '../../photos/domain/progress_photo.dart';
 import '../../photos/presentation/photos_surface.dart';
+import '../../settings/presentation/account_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../sync/domain/sync_status.dart';
 import '../../sync/presentation/backup_messages.dart';
@@ -80,6 +86,7 @@ class LiftShell extends StatefulWidget {
     this.transcript,
     this.coachMemory,
     this.coachPreference,
+    this.disclaimers,
     this.deleter,
     this.planner,
     this.plans,
@@ -157,6 +164,12 @@ class LiftShell extends StatefulWidget {
   /// with no store wired up should do: the toggle is a consent control, and
   /// one that cannot persist an answer is worse than none.
   final CoachPreferenceStore? coachPreference;
+
+  /// Whether this phone has accepted the medical disclaimer, which is asked
+  /// once before the coach answers anything or builds a plan (5 October 2026,
+  /// as Run's coach asks it). Null asks nothing: the widget tests and the
+  /// preview, which are not about the disclaimer. The app always passes one.
+  final DisclaimerStore? disclaimers;
 
   /// Erases the account. Null hides the deletion row — a build with no
   /// server cannot delete anything, and offering to would be a button that
@@ -588,6 +601,23 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     await _report(await flow.restore(), restoring: true);
   }
 
+  /// The store's own page for the subscription: where it is managed and
+  /// cancelled, which neither store lets an app do itself. Offered on the
+  /// account screen and beside deleting, only to somebody subscribed.
+  Future<void> _manageSubscription() async {
+    final platform = defaultTargetPlatform;
+    final uri = manageSubscriptionUri(platform);
+    bool opened;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } on Object {
+      opened = false;
+    }
+    // Says where it is when nothing will open it: a dead link to the way out
+    // of a subscription is worse than a long one.
+    if (!opened) _say('Could not open ${storeName(platform)}. It is at $uri');
+  }
+
   /// Says what happened, and makes the screen agree with it.
   Future<void> _report(PurchaseResult result, {bool restoring = false}) async {
     // Refreshed regardless of outcome: a restore that found nothing still
@@ -697,7 +727,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       case BackupAction.signIn:
         unawaited(_openSignIn());
       case BackupAction.review:
-        unawaited(_openSettings());
+        // Where each refusal is listed. That was the card on Settings; it is
+        // on the account screen now, so this goes there and not one tap short.
+        unawaited(_openAccount());
       case BackupAction.none:
         break;
     }
@@ -844,7 +876,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   onOpenMovement: _openMovement,
                   now: widget.today,
                   massUnit: _units.mass,
-                  onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,
                   // Shown whether or not the account is entitled. A lapsed
                   // lifter has to be able to reach photos they already took, and
@@ -936,7 +967,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
-          // On the account card. Only in a build that can sell: with no
+          // On the profile card. Only in a build that can sell: with no
           // store there is no plan to have or not have.
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
           onSyncNow: _backup == null ? null : _syncNow,
@@ -946,6 +977,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           auth: widget.auth,
           deleter: widget.deleter,
           onAccountGone: widget.localData?.release,
+          eraseThisPhone: widget.localData == null ? null : _eraseThisPhone,
+          onManageSubscription: _entitled ? _manageSubscription : null,
           onRestorePurchases: _flow == null ? null : _restorePurchases,
           restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,
@@ -955,6 +988,79 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  /// Opens the account screen straight from Track, for a backup message whose
+  /// answer is on it. Settings opens the same screen from its profile card,
+  /// with the same values.
+  Future<void> _openAccount() async {
+    final account = _account;
+    // A refusal needs an account to have been refused, so this is only ever
+    // a lifter who has signed out since. Settings says where they stand.
+    if (account == null) return _openSettings();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AccountScreen(
+          email: account.email,
+          backup: _backup?.status,
+          planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
+          onSyncNow: _backup == null ? null : _syncNow,
+          onSignIn: widget.auth == null ? null : _openSignIn,
+          onRestorePurchases: _flow == null ? null : _restorePurchases,
+          onSignOut: _signOut,
+          auth: widget.auth,
+          deleter: widget.deleter,
+          onAccountGone: widget.localData?.release,
+          eraseThisPhone: widget.localData == null ? null : _eraseThisPhone,
+          onManageSubscription: _entitled ? _manageSubscription : null,
+        ),
+      ),
+    );
+  }
+
+  /// "Also erase this phone's copy", from deleting the account: the training
+  /// goes, the phone is left unclaimed, and everything this shell holds in
+  /// memory was that training, so it is read again. Throws only when the
+  /// erase itself failed, which the delete screen reports.
+  Future<void> _eraseThisPhone() async {
+    final guard = widget.localData;
+    if (guard == null) return;
+    await guard.erase();
+    if (!mounted) return;
+    try {
+      await Future.wait(<Future<void>>[
+        _refreshSession(),
+        _refreshLog(),
+        _refreshPlan(),
+      ]);
+    } on Object {
+      // The phone is erased, which is what was asked. A read that fails here
+      // is read again at the next launch, not a failed erase.
+    }
+    unawaited(_backup?.refresh());
+  }
+
+  /// The medical disclaimer, once on this phone: true to carry on.
+  ///
+  /// Pushed over the shell rather than shown in the sheet, because it is a
+  /// page to read and accept, and a full page is how Run asks it. "Not now"
+  /// opens nothing and records nothing, so the next tap asks again.
+  Future<bool> _acceptedDisclaimer() async {
+    final store = widget.disclaimers;
+    if (store == null || await store.isAcknowledged()) return true;
+    if (!mounted) return false;
+    final accepted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        fullscreenDialog: true,
+        builder: (context) => MedicalDisclaimerScreen(
+          onAcknowledge: () => Navigator.of(context).pop(true),
+          onDecline: () => Navigator.of(context).pop(false),
+        ),
+      ),
+    );
+    if (accepted != true) return false;
+    await store.acknowledge();
+    return true;
   }
 
   /// Opens the coach, or the thing that has to happen first.
@@ -967,6 +1073,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   Future<void> _openCoach() async {
     final coach = widget.coach;
     if (coach == null || !_useCoach) return;
+    // The disclaimer first, and only then a price, as Run's coach asks it:
+    // what somebody is about to be able to ask is the reason it is said.
+    if (!await _acceptedDisclaimer() || !mounted) return;
     // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
     // included, the mark opens the sales screen, wherever it is tapped. It
     // used to send the signed-out to sign in and the rest to the Plan tab —
@@ -1043,6 +1152,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     final planner = widget.planner;
     final plans = widget.plans;
     if (planner == null || plans == null) return;
+    // A plan is the coach's too, and asks about injuries on the way.
+    if (!await _acceptedDisclaimer() || !mounted) return;
 
     final intake = await Navigator.of(context).push<PlanIntake>(
       MaterialPageRoute<PlanIntake>(

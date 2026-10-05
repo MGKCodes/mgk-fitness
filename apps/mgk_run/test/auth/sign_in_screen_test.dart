@@ -19,6 +19,15 @@ Future<void> openEmail(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Scrolls [target] into view and taps it. The default test surface is
+/// shorter than a phone, and since the head shows the app's icon the lower
+/// buttons can sit below it, where a plain tap lands on nothing.
+Future<void> tapVisible(WidgetTester tester, Finder target) async {
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+  await tester.tap(target);
+}
+
 void main() {
   const devAccounts = <DevAccount>[
     DevAccount(
@@ -81,6 +90,28 @@ void main() {
     expect(auth.lastPassword, 'secret6');
   });
 
+  testWidgets('says which app this is, and whose account', (tester) async {
+    // Run's icon and name first, so nobody wonders where they are signing in;
+    // then the account, which is the suite's, in the head Lift's sign-in draws
+    // too, so the two cannot drift.
+    await tester.pumpWidget(
+      MaterialApp(home: SignInScreen(auth: FakeAuthRepository())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.image(const AssetImage('assets/images/brand/app_icon.png')),
+      findsOneWidget,
+    );
+    expect(find.text('Run'), findsOneWidget);
+    expect(find.text('MGKFitness Account'), findsOneWidget);
+    expect(find.textContaining('One account for every'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Run')).dy,
+      lessThan(tester.getTopLeft(find.text('MGKFitness Account')).dy),
+    );
+  });
+
   group('Apple and Google', () {
     testWidgets('come first, with email as the third way in', (tester) async {
       await tester.pumpWidget(
@@ -105,7 +136,7 @@ void main() {
       expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
       expect(find.text('Continue with Apple'), findsNothing);
 
-      await tester.tap(find.text('Other ways to sign in'));
+      await tapVisible(tester, find.text('Other ways to sign in'));
       await tester.pumpAndSettle();
       expect(find.text('Continue with Apple'), findsOneWidget);
       expect(find.byType(TextFormField), findsNothing);
@@ -138,7 +169,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        tester.getRect(find.text('Have an account? Sign in')).bottom,
+        tester.getRect(find.textContaining('By continuing you agree')).bottom,
         lessThanOrEqualTo(818),
       );
 
@@ -174,7 +205,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Continue with Google'));
+      await tapVisible(tester, find.text('Continue with Google'));
       await tester.pumpAndSettle();
 
       expect(auth.lastProvider, 'google');
@@ -250,12 +281,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(intent, isTrue);
 
+      // The switch is on the email form since 1.0.1, as on Lift.
+      await openEmail(tester);
       final toggle = find.text('Have an account? Sign in');
       await tester.ensureVisible(toggle);
       await tester.pumpAndSettle();
       await tester.tap(toggle);
       await tester.pumpAndSettle();
-      await openEmail(tester);
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Email'),
         'sam@example.com',

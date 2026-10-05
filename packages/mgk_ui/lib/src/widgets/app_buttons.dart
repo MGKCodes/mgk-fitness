@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../motion/press_scale.dart';
@@ -160,6 +161,26 @@ class AppOutlinedButton extends StatelessWidget {
       child: expand ? SizedBox(width: double.infinity, child: button) : button,
     );
   }
+}
+
+/// The back glyph the platform draws in an app bar: a chevron on an iPhone,
+/// an arrow elsewhere.
+///
+/// For a screen that draws its own back button rather than taking the app
+/// bar's. Lift's photograph and glass screens passed `Icons.arrow_back`, so on
+/// an iPhone some of its screens went back with an arrow and the rest, and all
+/// of Run's, with a chevron.
+///
+/// The same choice Flutter's `BackButtonIcon` makes, the web included, so a
+/// screen with its own button and a screen with an app bar agree wherever they
+/// are drawn.
+IconData backIcon(BuildContext context) {
+  if (kIsWeb) return Icons.arrow_back;
+  return switch (Theme.of(context).platform) {
+    TargetPlatform.iOS ||
+    TargetPlatform.macOS => Icons.arrow_back_ios_new_rounded,
+    _ => Icons.arrow_back,
+  };
 }
 
 /// An icon on its own — a close, a back, a refresh.

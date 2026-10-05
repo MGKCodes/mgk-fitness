@@ -7,7 +7,9 @@ import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_lift/src/core/database/app_database.dart';
 import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
 import 'package:mgk_lift/src/features/auth/data/phone_training_data.dart';
+import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
+import 'package:mgk_lift/src/features/legal/data/account_deletion_service.dart';
 import 'package:mgk_lift/src/features/sync/domain/sync_status.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
@@ -165,6 +167,60 @@ void main() {
       expect(find.byType(AnotherAccountScreen), findsNothing);
       expect(await owner.read(), 'fake-user');
       expect(training.erasures, 0);
+    });
+  });
+
+  group('the shell, when the account is deleted', () {
+    testWidgets("erasing the phone's copy erases it and leaves it unclaimed", (
+      tester,
+    ) async {
+      // The eraser is the shell's, threaded through Settings and Account to
+      // the delete screen: this is the test that it arrives.
+      tester.view.physicalSize = const Size(1080, 4200);
+      tester.view.devicePixelRatio = 2.625;
+      addTearDown(tester.view.reset);
+      final auth = FakeAuth(
+        account: const Account(id: 'u1', email: 'lifter@example.com'),
+      );
+      addTearDown(auth.dispose);
+      final training = _Training();
+      final owner = InMemoryLocalDataOwner('u1');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: LiftShell(
+            auth: auth,
+            deleter: FakeAccountDeleter(),
+            localData: LocalDataGuard(owner: owner, data: training),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('lifter@example.com'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(DestructiveButton, 'Delete account'),
+      );
+      await tester.pumpAndSettle();
+
+      // On by default.
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+      await tester.enterText(find.byType(TextField), 'DELETE');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DestructiveButton));
+      await tester.pumpAndSettle();
+
+      expect(training.erasures, 1);
+      expect(await owner.read(), isNull);
+      expect(
+        find.text("This phone's copy has been erased too."),
+        findsOneWidget,
+      );
     });
   });
 

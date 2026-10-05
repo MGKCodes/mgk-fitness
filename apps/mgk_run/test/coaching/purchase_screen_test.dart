@@ -99,8 +99,12 @@ void main() {
       // stand-in for a storefront, and the assertion is that whatever it says
       // reaches the screen -- which is why it is priced at the real points
       // rather than the round numbers ADR-0029 reasoned with.
-      expect(find.textContaining('£0.99 / month'), findsOneWidget);
-      expect(find.textContaining('£2.99 / month'), findsOneWidget);
+      // On each tier's card, as its largest figure, and again on the button
+      // that charges it.
+      for (final price in <String>['£0.99', '£2.99']) {
+        expect(find.textContaining(price, findRichText: true), findsWidgets);
+      }
+      expect(find.text('Subscribe · £0.99/month'), findsOneWidget);
     });
 
     testWidgets('a link to the terms of use', (tester) async {
@@ -109,7 +113,7 @@ void main() {
         purchases: FakePurchases(),
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
-      expect(find.text('Terms of use'), findsOneWidget);
+      expect(find.text('Terms'), findsOneWidget);
       // **Ours now, not Apple's.** This pinned `apple.com` and `stdeula` until
       // 2026-09-10, when the app got terms of its own — Google Play does not
       // accept a store's EULA from a listing selling a subscription, and
@@ -128,7 +132,7 @@ void main() {
         purchases: FakePurchases(),
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
-      expect(find.text('Privacy policy'), findsOneWidget);
+      expect(find.text('Privacy'), findsOneWidget);
     });
 
     testWidgets('and a restore that needs no purchase first', (tester) async {
@@ -139,7 +143,7 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
 
       expect(purchases.restores, 1, reason: 'Apple requires this to work');
@@ -162,14 +166,16 @@ void main() {
       // Which store gets which wording is pinned in
       // `the_paywall_names_the_right_store_test.dart`, where the platform is
       // stated rather than inherited from the test runner.
-      for (final phrase in <String>[
-        'renew every month until cancelled',
-        'auto-renew is turned off at least 24',
-      ]) {
-        expect(find.textContaining(phrase), findsOneWidget, reason: phrase);
-      }
+      //
+      // At the length of a glance since 4 October 2026, when the paywall was
+      // made to fit one screen: who charges, how often, until when, and where
+      // to stop it. The full wording is in the terms.
       expect(
-        find.text(renewalWording(defaultTargetPlatform)),
+        find.textContaining('every month until you cancel'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(renewalShort(defaultTargetPlatform)),
         findsOneWidget,
         reason:
             'the screen must show the disclosure for the store it is '
@@ -197,7 +203,8 @@ void main() {
       entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
     );
 
-    expect(find.textContaining(r'$1.29 / month'), findsOneWidget);
+    expect(find.textContaining(r'$1.29', findRichText: true), findsWidgets);
+    expect(find.text(r'Subscribe · $1.29/month'), findsOneWidget);
     expect(find.textContaining(kCoachPrice), findsNothing);
     expect(find.textContaining(kPremiumCoachPrice), findsNothing);
   });
@@ -216,7 +223,7 @@ void main() {
       final purchases = FakePurchases();
       await pump(tester, purchases: purchases, entitlements: entitlements);
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pump();
       // Two waits from the backoff: 1s then 2s.
       await tester.pump(const Duration(seconds: 1));
@@ -242,7 +249,7 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pump();
       for (final s in <int>[1, 2, 3, 5]) {
         await tester.pump(Duration(seconds: s));
@@ -263,7 +270,7 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pumpAndSettle();
 
       // Backing out is a decision, not an error.
@@ -284,7 +291,7 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('did not go through'), findsOneWidget);
@@ -305,7 +312,7 @@ void main() {
         entitlements: _ScriptedEntitlements(<CoachAccess>[CoachAccess.free]),
       );
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pumpAndSettle();
 
       // It names the fix, because retrying without signing in refuses again.
@@ -333,9 +340,13 @@ void main() {
     );
 
     expect(find.text('Not available to buy yet'), findsOneWidget);
-    expect(find.text('Subscribe'), findsNothing);
+    // The button is there, and buys nothing.
+    expect(
+      tester.widget<PrimaryButton>(find.byType(PrimaryButton)).onPressed,
+      isNull,
+    );
     // Still reachable, because somebody who paid on another device needs it.
-    expect(find.text('Restore purchases'), findsOneWidget);
+    expect(find.text('Restore'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -361,8 +372,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Terms of use'), findsOneWidget);
-    expect(find.text('Privacy policy'), findsOneWidget);
+    expect(find.text('Terms'), findsOneWidget);
+    expect(find.text('Privacy'), findsOneWidget);
   });
 
   /// The sheet in front of the paywall, and the reason it is conditional.

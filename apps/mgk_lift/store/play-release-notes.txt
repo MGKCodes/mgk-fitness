@@ -1,0 +1,1 @@
+First release on Google Play: log every set, with an optional AI coach.

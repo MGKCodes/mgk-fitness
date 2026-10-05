@@ -7,8 +7,9 @@ import 'package:mgk_run/src/features/legal/presentation/legal_screen.dart';
 
 class _NeverDeleter implements AccountDeleter {
   @override
-  Future<AccountDeletionResult> deleteAccount() async =>
-      throw StateError('the test must not reach deletion');
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => throw StateError('the test must not reach deletion');
 }
 
 void main() {

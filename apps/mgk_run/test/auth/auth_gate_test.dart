@@ -151,7 +151,8 @@ void main() {
 
       await tester.tap(find.text('I already have an account'));
       await tester.pumpAndSettle();
-      expect(find.text('Welcome back'), findsOneWidget);
+      // The choices say both since 1.0.1, as Lift's do.
+      expect(find.text('Sign in or create your account'), findsOneWidget);
 
       expect(await tester.binding.handlePopRoute(), isTrue);
       await tester.pumpAndSettle();

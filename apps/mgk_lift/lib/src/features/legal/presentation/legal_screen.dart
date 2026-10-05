@@ -7,6 +7,7 @@ import '../domain/account_deleter.dart';
 import '../domain/legal_copy.dart';
 import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
+import 'medical_disclaimer_screen.dart';
 
 /// Privacy & legal: the one place the compliance surfaces are reachable from.
 ///
@@ -24,6 +25,8 @@ class LegalScreen extends StatelessWidget {
     this.deleter,
     this.onSignedOut,
     this.onAccountGone,
+    this.eraseThisPhone,
+    this.onManageSubscription,
   });
 
   /// Shown at the top when signed in, so it is obvious which account the
@@ -44,6 +47,12 @@ class LegalScreen extends StatelessWidget {
 
   /// See [DeleteAccountScreen.onAccountGone].
   final Future<void> Function()? onAccountGone;
+
+  /// See [DeleteAccountScreen.eraseThisPhone].
+  final Future<void> Function()? eraseThisPhone;
+
+  /// See [DeleteAccountScreen.onManageSubscription].
+  final VoidCallback? onManageSubscription;
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -104,6 +113,14 @@ class LegalScreen extends StatelessWidget {
                 const LegalDocumentScreen(document: aiDisclosure),
               ),
             ),
+            // What the coach asks to be accepted before it answers anything,
+            // readable again here, as on Run's legal screen.
+            SettingsTile(
+              icon: Icons.health_and_safety_outlined,
+              title: medicalDisclaimer.title,
+              subtitle: 'The coach and its plans are not medical advice',
+              onTap: () => _push(context, const MedicalDisclaimerScreen()),
+            ),
 
             // Deletion is a data right, so it belongs with the documents that
             // describe the others rather than under Account, where it would sit
@@ -125,7 +142,7 @@ class LegalScreen extends StatelessWidget {
                 title: 'Delete account',
                 // Says there is a choice, so the row is not read as the one
                 // irreversible thing it could have been.
-                subtitle: 'This app only, or your whole profile',
+                subtitle: 'This app only, or your whole account',
                 tint: AppColors.danger,
                 onTap: () => _push(
                   context,
@@ -134,6 +151,8 @@ class LegalScreen extends StatelessWidget {
                     deleter: deleter!,
                     onSignedOut: onSignedOut,
                     onAccountGone: onAccountGone,
+                    eraseThisPhone: eraseThisPhone,
+                    onManageSubscription: onManageSubscription,
                   ),
                 ),
               ),

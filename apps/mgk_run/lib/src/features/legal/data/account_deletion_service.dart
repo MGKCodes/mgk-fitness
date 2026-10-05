@@ -33,36 +33,32 @@ class AccountDeletionService implements AccountDeleter {
   SupabaseClient get _client => _injected ?? Supabase.instance.client;
 
   @override
-  Future<AccountDeletionResult> deleteAccount() async {
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async {
     final apple = await _appleRevocation();
     if (apple is AppleDeclined) throw const AccountDeletionException(_declined);
 
     final Object? data;
     try {
-      // **`app` is not optional here, whatever the wire contract says.**
+      // **The scope is required, and only the runner's choice leaves `app`
+      // out.**
       //
       // The function treats an absent `app` as "erase everything, everywhere,
-      // and the login" — its own comment calls that safe-by-omission, on the
-      // reasoning that a client which forgets to say gets the full erasure it
-      // asked for in plain English. This client forgot to say. It sent no body
-      // at all, so every Run account deletion took the whole-suite branch and
-      // erased `lift.*` with it.
-      //
-      // Nothing else in this feature agreed with that. `AccountDeletionResult`
-      // carries `loginRetainedForSiblingApp`, the server can answer
-      // `sibling_app_data`, and `DeleteAccountScreen` tells the runner in as
-      // many words: "we delete everything this app holds and keep only the
-      // profile, so your data in Lift survives". The published privacy policy
-      // says the same. Every layer was built for app-scoped deletion except
-      // the one line that had to name the app.
+      // and the login" — its own comment calls that safe-by-omission. This
+      // client once sent no body at all, so every Run account deletion took
+      // the whole-suite branch and erased `lift.*` with it, while the screen
+      // and the privacy policy promised Lift's data survived. Then it named
+      // the app every time; since 1.0.1 it asks the runner which they meant,
+      // as Lift does, and the absent `app` is the answer "my whole account"
+      // and nothing else.
       //
       // See the decision *Account deletion is scoped by the app asking, not by
-      // which binary deployed last* — this is that decision's client half,
-      // which never landed.
+      // which binary deployed last*.
       final res = await _client.functions.invoke(
         'delete-account',
         body: <String, Object>{
-          'app': 'run',
+          if (scope.app case final String app) 'app': app,
           if (apple is AppleCode) 'apple': apple.toJson(),
         },
       );

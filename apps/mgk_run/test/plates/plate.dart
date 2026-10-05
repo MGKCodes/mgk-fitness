@@ -199,6 +199,18 @@ Future<void> plate(
     await tester.pump(const Duration(milliseconds: 700));
   }
 
+  // Every image on the screen is loaded for real before it is photographed.
+  // Decoding happens off the fake clock, so an image this file had not drawn
+  // before came out as an empty box: Run's icon on the arrival's sign-in, on
+  // 3 October 2026, beside a backdrop that only showed because an earlier
+  // plate had already loaded it.
+  await tester.runAsync(() async {
+    for (final Element element in find.byType(Image).evaluate()) {
+      await precacheImage((element.widget as Image).image, element);
+    }
+  });
+  await tester.pump();
+
   final RenderRepaintBoundary boundary =
       _boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
 

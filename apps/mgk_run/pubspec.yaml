@@ -98,6 +98,10 @@ flutter:
 
   assets:
     - assets/images/backgrounds/
+    # The home-screen icon, 192 pixels square, so the sign-in screen can say
+    # which app it is in. Downscaled from the iOS 1024 icon, which
+    # tool/build_app_icons.py makes: regenerate this with it.
+    - assets/images/brand/
 
   # No `fonts:` block, deliberately. Inter is declared by mgk_ui, so the family
   # is addressed as `packages/mgk_ui/Inter` and reaches this app through

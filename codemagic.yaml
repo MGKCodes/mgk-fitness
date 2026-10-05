@@ -969,19 +969,21 @@ workflows:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
         # **true here, where Run's is false, and the difference is the app's
-        # state on Play rather than a preference.**
+        # state on Play rather than a preference.** Play calls Lift a draft
+        # app until it is first published, and refuses anything but a draft
+        # release for one ("Only releases with status draft may be created on
+        # draft app"), so `false` fails the upload after a green build.
         #
-        # Lift has never had a release rolled out on any track: its one upload
-        # sits on internal testing as a draft. Play calls that a draft app and
-        # refuses anything but a draft release for it ("Only releases with
-        # status draft may be created on draft app"), so `false` fails the
-        # upload after a green build.
+        # An internal rollout does not end that. Build 46 (2.0.0) was rolled
+        # out on internal testing by hand on 5 October, this was set to
+        # `false`, and the same day Play still refused a production release
+        # for being on a draft app. Change it to `false` once Lift is live
+        # on Google Play.
         #
         # What `true` costs is what it cost Run on build 24: the bundle
         # uploads, the build is green, and **testers see nothing until the
         # draft is rolled out by hand** in Play Console ▸ Testing ▸ Internal
-        # testing. Do that once for the first build, then change this to
-        # `false` so every later build reaches the testers on its own.
+        # testing.
         submit_as_draft: true
 
   run-android-release:

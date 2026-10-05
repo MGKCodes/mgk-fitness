@@ -14,7 +14,8 @@ enum BackupAction {
   /// Sign in (again).
   signIn,
 
-  /// Look at what needs attention — Settings, which lists each refusal.
+  /// Look at what needs attention — the account screen, which lists each
+  /// refusal.
   review,
 }
 

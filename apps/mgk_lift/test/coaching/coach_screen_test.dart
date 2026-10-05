@@ -24,7 +24,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('It has read your log'), findsOneWidget);
-    expect(find.textContaining('why a lift has stalled'), findsOneWidget);
+    // Questions to tap since 5 October 2026, as Run's empty coach offers.
+    expect(find.text('Why have my lifts stalled?'), findsOneWidget);
+  });
+
+  testWidgets('a suggestion is sent as written, and answered', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(CoachScreen(coach: FakeCoach(reply: 'Add 2.5kg next week.'))),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Was this week enough?'));
+    await tester.pumpAndSettle();
+
+    // The chip's own words go into the transcript: a chip that sent
+    // something other than what it showed would put a sentence nobody saw
+    // into what the coach replays.
+    expect(find.text('Was this week enough?'), findsOneWidget);
+    expect(find.text('Add 2.5kg next week.'), findsOneWidget);
+    expect(find.text('Why have my lifts stalled?'), findsNothing);
   });
 
   testWidgets('a reply appears after the question', (

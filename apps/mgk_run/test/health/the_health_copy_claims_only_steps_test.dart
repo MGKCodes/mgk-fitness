@@ -133,10 +133,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Since 1.0.1 the sign-up has no list of what an account gives, as Lift's
+    // sign-in has none, so nothing on it can call the coach free.
     expect(
       find.text('A coach that answers questions about your running'),
       findsNothing,
     );
-    expect(find.textContaining('With a subscription, a coach'), findsOneWidget);
+    expect(find.textContaining('coach'), findsNothing);
+    expect(find.textContaining('Coach'), findsNothing);
   });
 }

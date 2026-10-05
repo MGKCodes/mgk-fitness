@@ -38,7 +38,23 @@ const here = dirname(fileURLToPath(import.meta.url));
 const git = (...args) =>
   execFileSync('git', args, { cwd: here, encoding: 'utf8' }).trim();
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
-const commit = git('rev-parse', '--short', 'HEAD');
+
+// A capture of work that is not committed yet is not a capture of that commit,
+// and the masthead says so rather than naming a commit the plates were not
+// drawn from. Only what the app is built from counts: a doc edited beside it
+// does not change a plate.
+const dirty =
+  git(
+    'status',
+    '--porcelain',
+    '--',
+    ':/apps/mgk_lift/lib',
+    ':/apps/mgk_lift/assets',
+    ':/apps/mgk_lift/pubspec.yaml',
+    ':/packages',
+  ) !== '';
+const commit =
+  git('rev-parse', '--short', 'HEAD') + (dirty ? ' + uncommitted work' : '');
 
 // Same resolution trick, and the same reason, as capture_screens_web.mjs: this
 // is a Flutter workspace with no package.json, so the image encoder is resolved
@@ -735,7 +751,7 @@ dialog::backdrop{background:rgba(12,14,16,.72)}
   <p class="eyebrow">apps/mgk_lift &middot; ${esc(branch)} @ ${esc(commit)}</p>
   <h1>Every screen in Lift, in the order you reach it</h1>
   <p class="lede">All ${counts.all} of them, rendered from the preview harness rather than a device, with the
-    chrome they really have. <strong>${counts.first} are new since the last board</strong>
+    chrome they really have. <strong>${counts.first} ${counts.first === 1 ? 'is' : 'are'} new since the last board</strong>
     (${esc(board.previous ?? 'none')})${board.since ? `: ${esc(board.since)}` : ''}. Each plate carries a code you
     can say out loud and the taps that reach it, so a note about a design can name exactly the screen it is
     about.</p>

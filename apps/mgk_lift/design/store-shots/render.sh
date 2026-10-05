@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Renders Lift's store pictures from the screens tool/capture_store_screens.mjs
+# drew: the design on the listing for both stores (or the sets named), and
+# Play's feature graphic. Writes them to screenshots/store/listing/, named for
+# the order the stores show them in.
+#
+# Run from this folder, after `npm install`:
+#
+#     bash render.sh                          # Still, the one on the listing
+#     bash render.sh ios-plain play-plain     # or the sets named
+#
+# **Only what was asked for is left in listing/.** A set from an earlier
+# render, in a design that was not chosen, is exactly the folder somebody
+# drags into a store by mistake.
+set -e
+store="../../screenshots/store"
+fonts="../../../../packages/mgk_ui/assets/fonts"
+if [ ! -d "$store/screens/iphone" ]; then
+  echo "No screens. Draw them first, from apps/mgk_lift:"
+  echo "  flutter build web -t lib/preview/main.dart --release"
+  echo "  node tool/capture_store_screens.mjs"
+  exit 1
+fi
+
+# public/ is not committed: the app's own fonts and the screens, copied in.
+mkdir -p public
+cp "$fonts"/Inter-{Black,ExtraBold,Bold,SemiBold,Medium,Regular}.ttf public/
+rm -rf public/screens
+cp -r "$store/screens" public/screens
+
+sets="${@:-ios-still play-still}"
+# In the order of src/shots.ts.
+names=(1-log 2-today 3-finished 4-plan 5-coach 6-training)
+rm -rf "$store/listing"
+for s in $sets; do
+  rm -rf "out/$s"
+  # One run per set: each picture is a frame of a six-frame sequence.
+  npx remotion render src/index.ts "$s" "out/$s" --sequence --image-format=png --log=error
+  for i in 0 1 2 3 4 5; do
+    mv "out/$s/element-$i.png" "out/$s/${names[$i]}.png"
+  done
+  mkdir -p "$store/listing/$s"
+  cp "out/$s"/*.png "$store/listing/$s/"
+done
+npx remotion still src/index.ts play-feature out/play-feature.png --log=error
+cp out/play-feature.png "$store/play-feature-graphic.png"
+echo "Written to $store/listing and $store/play-feature-graphic.png"

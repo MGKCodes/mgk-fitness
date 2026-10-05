@@ -38,8 +38,9 @@ Future<StoredPlan> _aPlan(RunnerProfile profile) async => StoredPlan(
 /// A deleter that never returns, so the screen stays in its resting state.
 class _IdleDeleter implements AccountDeleter {
   @override
-  Future<AccountDeletionResult> deleteAccount() async =>
-      const AccountDeletionResult(accountDeleted: true);
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => const AccountDeletionResult(accountDeleted: true);
 }
 
 void main() {

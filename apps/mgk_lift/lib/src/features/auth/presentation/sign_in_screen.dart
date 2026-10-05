@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../../core/brand.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/domain/legal_document.dart';
 import '../../legal/presentation/legal_document_screen.dart';
@@ -22,14 +23,23 @@ import '../domain/account.dart';
 /// one; the headline and the choices sit low, over the dark floor the image
 /// was composed with.
 ///
+/// **Headed by the app, then the account.** Lift's icon and name come first,
+/// so nobody wonders which app they are signing in to, and then the suite's
+/// head ([ProfileHeader], which Run's sign-in draws too, with Run's icon): an
+/// MGKFitness Account, the same one Run signs into. It used to read "Sign in", with nothing to say
+/// whose account it was, which app it was for, or that Run's would work.
+///
 /// **One screen for signing in and for making an account.** Apple and Google
 /// do both without being told which; the email form toggles, as it always has,
 /// because its fields are identical and two screens would mean a "wrong
 /// screen" dead end for anybody who tapped the wrong entry point.
 ///
-/// This is never in anybody's way. Tracking works signed out, and the screen
-/// says so at the bottom — somebody who opened it by accident should be able to
-/// leave without feeling they have lost something.
+/// **Opened on purpose, and only for two things:** to sign in and back up,
+/// from Settings, or to have an account for a subscription to belong to, from
+/// the sales screen. Tracking never needs one, so the screen does not stand in
+/// front of anything and back is always one tap. It used to end on "You do not
+/// need an account to track your training", which on a screen somebody had
+/// just asked for read as a contradiction: it is gone.
 ///
 /// Pops with true once somebody is signed in.
 class SignInScreen extends StatefulWidget {
@@ -38,6 +48,7 @@ class SignInScreen extends StatefulWidget {
     required this.auth,
     this.pendingWorkouts = 0,
     this.emailFirst = false,
+    this.initialSignUp = false,
   });
 
   final AuthService auth;
@@ -48,6 +59,13 @@ class SignInScreen extends StatefulWidget {
 
   /// Opens on the email form rather than the three choices.
   final bool emailFirst;
+
+  /// Whether the email form starts on making an account rather than signing
+  /// back in, as Run's sign-in decides it: by why the person came. Somebody
+  /// subscribing from the sales screen is more likely new than returning;
+  /// somebody who tapped Sign in in Settings is the reverse. Either way one
+  /// tap switches. Apple and Google do both, so the choices do not change.
+  final bool initialSignUp;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -61,7 +79,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
 
   late bool _withEmail = widget.emailFirst;
-  bool _creating = false;
+  late bool _creating = widget.initialSignUp;
   bool _busy = false;
   _Provider? _asking;
   bool _obscure = true;
@@ -230,18 +248,22 @@ class _SignInScreenState extends State<SignInScreen> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Text(
-                            _headline,
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              height: 1.15,
+                          ProfileHeader(
+                            line: _line,
+                            otherApp: 'Run',
+                            app: const AppIdentity(
+                              icon: AssetImage(
+                                'assets/images/brand/app_icon.png',
+                              ),
+                              name: kAppName,
                             ),
                           ),
-                          if (_support() case final String line) ...<Widget>[
-                            const SizedBox(height: AppSpacing.sm),
+                          if (_pending() case final String fact) ...<Widget>[
+                            const SizedBox(height: AppSpacing.md),
                             Text(
-                              line,
-                              style: theme.textTheme.bodyMedium?.copyWith(
+                              fact,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.textSecondary,
                                 height: 1.4,
                               ),
@@ -260,6 +282,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               _error!,
+                              textAlign: TextAlign.center,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.danger,
                               ),
@@ -269,30 +292,18 @@ class _SignInScreenState extends State<SignInScreen> {
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               _notice!,
+                              textAlign: TextAlign.center,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.textSecondary,
                               ),
                             ),
                           ],
-                          const SizedBox(height: AppSpacing.xl),
-                          Text(
-                            // The escape hatch. Somebody who opened this by
-                            // accident should be able to leave without feeling
-                            // they have lost something, because they have not.
-                            'You do not need an account to track your '
-                            'training.',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textTertiary,
-                              height: 1.4,
-                            ),
-                          ),
                           // Required wherever an account can be created, and
                           // this screen is the only place it can be. Shown on
                           // every step: somebody signing in on a new phone is
                           // re-accepting the same terms, and a link that
                           // appears and disappears reads as a trick.
-                          const SizedBox(height: AppSpacing.sm),
+                          const SizedBox(height: AppSpacing.xl),
                           const _LegalLinks(),
                         ],
                       ),
@@ -304,7 +315,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 top: top + AppSpacing.xs,
                 left: AppSpacing.sm,
                 child: AppIconButton(
-                  icon: Icons.arrow_back,
+                  icon: backIcon(context),
                   tooltip: 'Back',
                   onPressed: _anyBusy
                       ? null
@@ -318,31 +329,25 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  String get _headline {
-    if (!_withEmail) return 'Sign in';
-    return _creating ? 'Create an account' : 'Welcome back';
+  /// What this visit is, under the suite's name.
+  ///
+  /// On the choices it says both, because Apple and Google do both without
+  /// being told which, and "Sign in" alone reads as a door for people who
+  /// already have an account.
+  String get _line {
+    if (!_withEmail) return 'Sign in or create your account';
+    return _creating ? 'Create your account' : 'Welcome back';
   }
 
-  /// What is worth saying under the headline, or null when nothing is.
-  ///
-  /// On the choices: that the same buttons make an account, because "Sign in"
-  /// alone reads as a door for people who already have one.
-  ///
-  /// Then one fact, and only when there is one — sessions that exist in a
-  /// single place. That is state the person may not have, not an argument for
-  /// the account. Signing in with an email gets nothing more: somebody with an
-  /// account knows what it does.
-  String? _support() {
+  /// The one fact worth adding, or null when there is none: sessions that
+  /// exist in a single place. That is state the person may not have, not an
+  /// argument for the account. Signing in with an email gets nothing more:
+  /// somebody with an account knows what it does.
+  String? _pending() {
     final n = widget.pendingWorkouts;
-    final pending = n == 0
-        ? null
-        : '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'is' : 'are'} on this '
-              'phone only.';
-    if (!_withEmail) {
-      const both = 'New to Lift? These make your account too.';
-      return pending == null ? both : '$both $pending';
-    }
-    return _creating ? pending : null;
+    if (n == 0 || (_withEmail && !_creating)) return null;
+    return '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'is' : 'are'} on this '
+        'phone only.';
   }
 
   Widget _choices(ThemeData theme) => Column(
@@ -438,21 +443,13 @@ class _SignInScreenState extends State<SignInScreen> {
         // Busy in place: a disabled button on a slow connection reads as "you
         // did something wrong" rather than "waiting".
         PrimaryButton(
-          label: _creating ? 'Create account' : 'Sign in',
+          label: _creating ? 'Sign up' : 'Sign in',
           busy: _busy,
           onPressed: _submit,
         ),
         const SizedBox(height: AppSpacing.xs),
-        AppTextButton(
-          label: _creating ? 'I already have an account' : 'Create an account',
-          onPressed: _busy
-              ? null
-              : () => setState(() {
-                  _creating = !_creating;
-                  _error = null;
-                  _notice = null;
-                }),
-        ),
+        // Signing in only: somebody making an account has no password to
+        // forget.
         if (!_creating)
           AppTextButton(
             label: 'Forgot your password?',
@@ -461,6 +458,18 @@ class _SignInScreenState extends State<SignInScreen> {
               foregroundColor: AppColors.textSecondary,
             ),
           ),
+        AppTextButton(
+          label: _creating
+              ? 'Have an account? Sign in'
+              : 'New here? Create an account',
+          onPressed: _busy
+              ? null
+              : () => setState(() {
+                  _creating = !_creating;
+                  _error = null;
+                  _notice = null;
+                }),
+        ),
         AppTextButton(
           label: 'Other ways to sign in',
           onPressed: _busy ? null : () => _showEmail(false),

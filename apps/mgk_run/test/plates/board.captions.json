@@ -16,12 +16,14 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 29",
-    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29), drawn from develop before the build is cut",
-    "build": "29 · 1.0.0+29, not built yet",
+    "title": "MGKFitness: Run, every screen at build 29, and 1.0.1 so far",
+    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29) as submitted, with the 1.0.1 plates retaken on 3 and 5 Oct",
+    "build": "29 · 1.0.0+29, submitted 2 Oct; 1.0.1 in progress",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "1.0.1, retaken on 5 Oct. The coach is the suite's sheet, Lift's design: glass over the night road where it was a solid panel, Run's icon and Coach in a frosted bar, Lift's bubbles, and three questions to tap on an empty conversation (C3, C4, C10 to C12). The paywall is the suite's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach labelled Recommended, the coach's C beside the app's name, the night road behind, and one Subscribe button naming the price (Y1 to Y7). Y8 and Y9 are still the 1 Oct pictures: their way in needs a planned run that Monday's fixtures do not have. Delete account asks how much, as Lift's does: this app's data or the whole MGKFitness account (L1 to L7, and L8, new). Only these were retaken; every other plate is as it was.",
+      "1.0.1 so far, retaken on 3 Oct. The sign-in says which app it is and whose account: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile, drawn by the same piece Lift's sign-in uses, and it is laid out as Lift's: the night-road photograph at full strength above, the choices at the foot with the terms and privacy line under them, and no list of what an account gives (B8, C14, K2, K3). The switch between signing in and making an account is on the email form only, as on Lift, and the icon and name are larger. Signing in now has a row of its own, as on Lift's board: B8, the email form for signing back in (B13, new) and the one for making an account (K3). Delete account calls the login an MGKFitness account too (L1, L2, L3, L7). B1, P1 and C14 show the photograph behind them, which the 1 Oct pictures had been taken too early to load. Only these ten were retaken: every other plate is still the 1 Oct picture, because the fixtures are dated from the day a plate is drawn and a Saturday redraw would have moved plates this release has not touched.",
       "Build 29, from the owner's look at build 28 on TestFlight. The start screen shows where the runner is and what today's session asks for: pace, about how long, effort and how it should feel (R24, R25). 'Add a treadmill run' is a row at the foot of the This week tile, not a button under Start (H1, H2). The coach's line waits for the launch animation, opens out of the mark and is held about five seconds (C1, C6). The map's tiles are drawn at two pixels a point, which no plate can show: a test draws no tiles. Also in 29 and on no plate, because a test has no lock screen: a run's distance, time and pace are shown there while it records, as a Live Activity on the iPhone and a notification on Android.",
       "Build 28, from the first look at build 27 on a phone. The app opens on the icon's mark dashing across and leaving the name RUN behind it (B10 to B12, new). Race week is a week of its own and race day is on the plan (E6, E7, new): until now the Plan tab drew a training run on race day. 'Adjust this week' moved from Home's today card to the Plan tab, under the week (A2, E6). Home's today card offers 'Add a treadmill run' in its place (H1, H2, H3). A run can be deleted, from the bin on Edit run (S8, S9, new). The nav bar's selection is a soft plate behind the tab, which slides when the tab changes: it is on every plate that shows the bar.",
       "Re-drawn on 1 Oct, every plate at one commit, after Lift 2.0.0 was merged in beside Run and the design package both apps share changed under it. Most pictures came out the same as on 30 Sep. The rest are named below, or differ only because the fixtures are dated from today.",
@@ -182,9 +184,11 @@
           ]
         },
         {
-          "title": "The other door",
+          "title": "Signing in",
           "plates": [
-            "B8"
+            "B8",
+            "B13",
+            "K3"
           ]
         }
       ]
@@ -555,8 +559,7 @@
           "sequence": true,
           "plates": [
             "K1",
-            "K2",
-            "K3"
+            "K2"
           ]
         }
       ]
@@ -565,7 +568,7 @@
       "n": "11",
       "title": "Leaving, and a second account",
       "sub": "Deleting the account, and a phone that changes hands",
-      "lede": "Deleting now erases the phone's copy by default and warns that the subscription keeps renewing; the done screen says exactly what happened to the login.",
+      "lede": "Deleting asks which: this app's data, or the whole MGKFitness account (new in 1.0.1, as on Lift). It erases the phone's copy by default and warns that the subscription keeps renewing; the done screen says exactly what happened to the login.",
       "bands": [
         {
           "title": "Deleting the account",
@@ -574,6 +577,12 @@
             "L1",
             "L2",
             "L3"
+          ]
+        },
+        {
+          "title": "Choosing the whole account",
+          "plates": [
+            "L8"
           ]
         },
         {
@@ -681,7 +690,7 @@
       "files": [
         "lib/src/features/onboarding/presentation/welcome_screen.dart"
       ],
-      "changed": "The September board's B1 was a blank frame taken before the screen had drawn."
+      "changed": "3 Oct: the photograph behind it is drawn; the 1 Oct picture had been taken before it loaded. The September board's B1 was a blank frame taken before the screen had drawn."
     },
     "B2": {
       "file": "arrive-greeting",
@@ -772,11 +781,24 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Continue with Apple, Continue with Google and Continue with email, at equal width, then a way to create an account instead. A line says the login is shared with Lift, and another that Hide My Email starts a separate account. Email, password and 'Forgot your password?' are behind the third button, and signing in before the confirmation email is opened says to check it, in grey. Someone who has been here before is not walked through the intro again.",
+      "done": "Run's icon and name first, then MGKFitness Account and 'Sign in or create your account': which app this is, and that the login is the suite's. Continue with Apple, Continue with Google and Continue with email, at equal width; under them the Hide My Email line and the terms and privacy line, and nothing else, as on Lift. Email, password and 'Forgot your password?' are behind the third button (B13). Someone who has been here before is not walked through the intro again.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
+    },
+    "B13": {
+      "file": "arrive-sign-in-email",
+      "name": "Signing back in with email",
+      "how": "driven",
+      "reach": "B8 › Continue with email",
+      "job": "Signing back in with an email address, for a runner whose account was made with one.",
+      "done": "Under Run's icon and MGKFitness Account and 'Welcome back', email, password, Sign in and 'Forgot your password?', then 'New here? Create an account' and 'Other ways to sign in', with the terms and privacy line at the foot: Lift's S3, line for line. A wrong password never says which half was wrong.",
+      "isnew": "New in 1.0.1, beside K3, so the three sign-in screens sit in a row as Lift's do.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/profile_identity.dart"
+      ]
     },
     "H2": {
       "file": "home-no-plan",
@@ -943,7 +965,8 @@
         "lib/src/features/coaching/presentation/plan_screen.dart",
         "lib/src/features/coaching/presentation/week_list.dart",
         "lib/src/features/coaching/presentation/week_ribbon.dart"
-      ]
+      ],
+      "changed": "3 Oct: the photograph behind the week is drawn; the 1 Oct picture had been taken before it loaded."
     },
     "P2": {
       "file": "week-detail",
@@ -1568,12 +1591,12 @@
       "how": "driven",
       "reach": "any tab, signed out › the mark",
       "job": "Tapping the coach with no account.",
-      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Says what an account is for, then the three ways to make one, all on the screen with nothing to scroll for.",
+      "done": "Asks for an account before anything else: never the permission sheet or a price without one. Run's icon and MGKFitness Account say which app and whose account, then the three ways to make one and the terms and privacy line, all on the screen with nothing to scroll for.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
       "isnew": "Order settled in build 26.",
-      "changed": "Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. The photograph behind it is drawn too; the 1 Oct picture had been taken before it loaded. Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
     },
     "C7": {
       "file": "coach-consent",
@@ -1633,11 +1656,12 @@
       "how": "driven",
       "reach": "the mark, subscribed and agreed",
       "job": "The paid coach, opened over whichever tab the runner was on.",
-      "done": "Opens to about two thirds of the screen with three suggested questions and a composer; the tab behind stays visible above it; history and close are in the header.",
+      "done": "Opens to most of the screen as glass over the night road, with Run's icon and Coach in a frosted bar and history and close beside them; with nothing said yet, what the coach can see and three questions to tap, centred; the composer on the floor of the sheet. The tab behind shows above it.",
       "files": [
         "lib/src/features/coaching/presentation/coach_conversation.dart",
         "lib/src/features/coaching/presentation/chat_widgets.dart"
-      ]
+      ],
+      "changed": "1.0.1: the suite's coach sheet, Lift's design: glass over a photograph where it was a solid panel, the bar floating over the conversation, the questions centred under a lead line, and the sheet at 0.88 of the screen where it was 0.62. It rises above the keyboard, as it always did."
     },
     "C4": {
       "file": "coach-answering",
@@ -1645,11 +1669,12 @@
       "how": "driven",
       "reach": "C3 › a suggestion",
       "job": "A question asked and answered.",
-      "done": "The runner's question on the right, the coach's answer on the left with the mark, readable without the sheet resizing. The words are the offline coach's script.",
+      "done": "The runner's question on the right in the quieter bubble, the coach's answer on the left in the brighter one, each with the corner nearest the speaker tucked in, readable without the sheet resizing. The words are the offline coach's script.",
       "files": [
         "lib/src/features/coaching/presentation/coach_conversation.dart",
         "lib/src/features/coaching/presentation/chat_widgets.dart"
-      ]
+      ],
+      "changed": "1.0.1: Lift's bubbles. The coach's reply is boxed where it was text beside a mark, and the runner's question is the quiet bubble where it was the silver one. A proposed change to the week sits under the reply, full width."
     },
     "C10": {
       "file": "coach-report",
@@ -1663,7 +1688,8 @@
         "lib/src/features/coaching/presentation/coach_conversation.dart",
         "lib/src/features/coaching/presentation/chat_widgets.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: drawn over the suite's coach sheet; the report itself is unchanged."
     },
     "C11": {
       "file": "coach-report-sent",
@@ -1676,7 +1702,8 @@
         "lib/src/features/coaching/presentation/chat_widgets.dart"
       ],
       "isnew": "New in build 26.",
-      "note": "The only plate on the board with a seam the app lacks: the conversation is opened directly so the report can succeed without a server."
+      "note": "The only plate on the board with a seam the app lacks: the conversation is opened directly so the report can succeed without a server.",
+      "changed": "1.0.1: drawn over the suite's coach sheet; the report itself is unchanged."
     },
     "C12": {
       "file": "coach-report-failed",
@@ -1688,7 +1715,8 @@
       "files": [
         "lib/src/features/coaching/presentation/coach_report_sheet.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: drawn over the suite's coach sheet; the report itself is unchanged."
     },
     "Y1": {
       "file": "paywall",
@@ -1696,11 +1724,12 @@
       "how": "driven",
       "reach": "C5 › See the plans",
       "job": "Where the coach is bought: both tiers, priced by the store, with everything Apple requires on the same screen.",
-      "done": "Both prices in the store's currency, Premium's line reading 'A better AI model and a bigger allowance.', Restore purchases reachable without buying, the renewal terms naming the Apple ID, and working Terms of use and Privacy policy links. Prices and descriptions here are the store's copy, filled in by the fixture.",
+      "done": "The night road at the top; Run's icon and MGKFitness: Run above the headline, with the coach's own C beside them, the mark that opens the coach on Home; three short benefit lines, each opening its detail on tap; Coach and Premium Coach side by side with Coach chosen and labelled Recommended, both prices in the store's currency and Premium's line reading '3× the coaching, sharper model'; one Subscribe button naming the chosen price; the renewal terms naming the Apple ID; Restore, Terms and Privacy at the foot. All of it on one phone screen, with no scrolling. Prices are the store's, filled in by the fixture.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
-      ]
+      ],
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y2": {
       "file": "paywall-android",
@@ -1713,7 +1742,8 @@
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "platform": "Android"
+      "platform": "Android",
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y3": {
       "file": "paywall-pending",
@@ -1721,12 +1751,13 @@
       "how": "driven",
       "reach": "Y1 › Subscribe, payment pending",
       "job": "The store has taken the request but not the money yet.",
-      "done": "Says the payment is pending with the App Store and the coach unlocks when it completes; it does not claim nothing was charged. Check it is noticed: it is small grey text below both tiers.",
+      "done": "Says the payment is pending with the App Store and the coach unlocks when it completes; it does not claim nothing was charged. It sits between the tiers and the Subscribe button: check it is noticed.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y4": {
       "file": "paywall-offline",
@@ -1739,7 +1770,8 @@
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y5": {
       "file": "paywall-already-owned",
@@ -1747,37 +1779,40 @@
       "how": "driven",
       "reach": "Y1 › Subscribe, already owned",
       "job": "The Apple ID already has this subscription.",
-      "done": "Says so and points to Restore purchases. Never a second charge, never 'try again'.",
+      "done": "Says so and points to Restore. Never a second charge, never 'try again'.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y6": {
       "file": "paywall-restore-none",
       "name": "Nothing to restore",
       "how": "driven",
-      "reach": "Y1 › Restore purchases",
+      "reach": "Y1 › Restore",
       "job": "Restore found no subscription.",
       "done": "'No previous subscription found on this Apple ID.' Plain, not an error.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
-      ]
+      ],
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y7": {
       "file": "paywall-restored",
       "name": "Restored, unlocking",
       "how": "driven",
-      "reach": "Y1 › Restore purchases, found",
+      "reach": "Y1 › Restore, found",
       "job": "The store restored a subscription and the server has not caught up yet.",
       "done": "After about eleven seconds of checking: 'Restored. The coach can take a minute to unlock.' It must not say 'Payment went through', because a restore moves no money.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the suite's paywall, as Lift's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach chosen, one Subscribe button naming the price, and the content on charcoal rather than on the photograph. Coach is labelled Recommended (advice, not a 'Most popular' claim with no data behind it), the coach's C sits beside the app's name, and the photograph is the night road, whose top third has lamps and trees where the fog had grey."
     },
     "Y8": {
       "file": "paywall-sign-in-first",
@@ -1789,20 +1824,22 @@
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
-      ]
+      ],
+      "note": "Still the 1 October picture, of the paywall before 1.0.1. The way here needs the Home card's 'See what a coach adds', which shows only when the last run answers a planned session, and the fixtures dated on Monday 5 October have none. Redraw on another weekday."
     },
     "Y9": {
       "file": "paywall-restore-sign-in-first",
       "name": "Restoring signed out",
       "how": "driven",
-      "reach": "signed out › the paywall › Restore purchases",
+      "reach": "signed out › the paywall › Restore",
       "job": "A restore refused for the same reason.",
       "done": "'Sign in first, then restore…' with Sign in under it.",
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "note": "Still the 1 October picture, of the paywall before 1.0.1. The way here needs the Home card's 'See what a coach adds', which shows only when the last run answers a planned session, and the fixtures dated on Monday 5 October have none. Redraw on another weekday."
     },
     "S1": {
       "file": "profile-with-log",
@@ -2162,11 +2199,11 @@
       "how": "driven",
       "reach": "K1 › Back them up",
       "job": "The account asked for at the moment it buys something.",
-      "done": "Create your account with what an account is for, then Apple, Google and Continue with email. Backing out leaves nothing written.",
+      "done": "The same choices as B8, reached from the backup prompt: Run's icon and MGKFitness Account, then Apple, Google and Continue with email, the Hide My Email line and the terms and privacy line, on the screen of a 393-point phone. Its email form starts on making an account (K3). Backing out leaves nothing written.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "Build 27: Apple and Google lead, and the email form is the next step (K3)."
+      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. At 64 points the icon pushed 'Have an account? Sign in' under the bottom of the phone, so it is drawn at 48. Build 27: Apple and Google lead, and the email form is the next step (K3)."
     },
     "L1": {
       "file": "delete-account",
@@ -2174,11 +2211,12 @@
       "how": "built",
       "reach": "T4 › Delete account, or T13 › Delete account",
       "job": "Deleting the account, for a runner still paying through Google Play.",
-      "done": "'This cannot be undone' first; then About your subscription saying deleting does not cancel it, with Manage subscription; what is deleted; what happens to the login; 'Also erase this phone's copy' on by default.",
+      "done": "Run's icon and MGKFitness: Run at the head, then 'This cannot be undone'; About your subscription saying deleting does not cancel it, with Manage subscription; How much, with 'Delete this app's data' chosen (what this app holds, and that Lift's data is left alone) above 'Delete my whole MGKFitness account'; About your login; 'Also erase this phone's copy' on by default.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "The billing box and the erase switch are new in build 26."
+      "isnew": "The billing box and the erase switch are new in build 26.",
+      "changed": "1.0.1: on the suite's shared delete screen, as Lift's: Run's icon and name at the head, a choice between this app's data and the whole MGKFitness account, the login note and the phone switch in the same words as Lift's. Until then the only way to the whole account was an email to us."
     },
     "L2": {
       "file": "delete-account-armed",
@@ -2186,10 +2224,11 @@
       "how": "built",
       "reach": "L1 › type DELETE",
       "job": "The foot of the screen once DELETE has been typed.",
-      "done": "The erase switch on with its sentence, the signed-in address, DELETE in the field, Delete my data enabled (it stays disabled until DELETE is typed) and Keep my account under it.",
+      "done": "The erase switch on with its sentence, the signed-in address, DELETE in the field, \"Delete this app's data\" enabled (it stays disabled until DELETE is typed) and Keep my account under it.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
-      ]
+      ],
+      "changed": "1.0.1: on the suite's shared delete screen, as Lift's: Run's icon and name at the head, a choice between this app's data and the whole MGKFitness account, the login note and the phone switch in the same words as Lift's. The button names the choice: \"Delete this app's data\" or 'Delete my whole account', where it said 'Delete my data'."
     },
     "L3": {
       "file": "delete-account-keep-phone",
@@ -2201,43 +2240,47 @@
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: on the suite's shared delete screen, as Lift's: Run's icon and name at the head, a choice between this app's data and the whole MGKFitness account, the login note and the phone switch in the same words as Lift's."
     },
     "L4": {
       "file": "delete-done",
       "name": "Done: everything gone",
       "how": "built",
-      "reach": "L2 › Delete my data",
-      "job": "The deletion done, login and phone copy included.",
-      "done": "'Your data is deleted', the server sentence ending 'along with your login', and 'This phone's copy has been erased too.' Done returns to a fresh app.",
+      "reach": "L2 › Delete this app's data, Lift holds nothing",
+      "job": "The deletion done, where this app only was asked for and the login went too because nothing else was using it.",
+      "done": "'Your data is deleted', the server sentence saying the MGKFitness account went too because nothing else was using it (said, not glossed: this app only was asked for), and 'This phone's copy has been erased too.' Done returns to a fresh app.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the outcome sentences are the suite's, the same as Lift's. This one used to end 'along with your login', as if the whole account had been asked for."
     },
     "L5": {
       "file": "delete-done-lift",
       "name": "Done: login kept for Lift",
       "how": "built",
-      "reach": "L2 › Delete my data, the login holds Lift data",
+      "reach": "L2 › Delete this app's data, the login holds Lift data",
       "job": "The deletion done where the same login still has Lift data.",
-      "done": "Says the login is still active because Lift is using it and gives run@mgkfitness.mgkcodes.com to have it removed; the phone copy erased; the subscription box repeated because it is still renewing.",
+      "done": "Says the MGKFitness account is still active because MGKFitness: Lift is using it, which is what was asked for; the phone copy erased; the subscription box repeated because it is still renewing.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: Lift's sentence. It no longer gives an address to email for the rest, because the screen now offers the whole account itself."
     },
     "L6": {
       "file": "delete-done-login-stuck",
       "name": "Done: login not removed, phone kept",
       "how": "built",
-      "reach": "L3 › Delete my data, the login could not be removed",
+      "reach": "L3 › Delete this app's data, the login could not be removed",
       "job": "The deletion done, but the login could not be removed and the phone copy was kept.",
-      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), says to email run@mgkfitness.mgkcodes.com to have the login removed, and that the runs are still on this phone with no backup.",
+      "done": "Headed 'Deleted from our servers' (not 'Your data is deleted'), with the warning icon, says the login could not be removed and to email run@mgkfitness.mgkcodes.com to finish it, and that the runs are still on this phone with no backup.",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.1: the warning icon in place of the tick, as on Lift, and the suite's sentence."
     },
     "L7": {
       "file": "delete-signed-out",
@@ -2248,7 +2291,8 @@
       "done": "Refuses without claiming anything was deleted: 'Please sign in again, then retry the deletion.' (the server's answer, word for word).",
       "files": [
         "lib/src/features/legal/presentation/delete_account_screen.dart"
-      ]
+      ],
+      "changed": "1.0.1: on the suite's shared delete screen, as Lift's: Run's icon and name at the head, a choice between this app's data and the whole MGKFitness account, the login note and the phone switch in the same words as Lift's."
     },
     "X1": {
       "file": "another-account",
@@ -2338,11 +2382,12 @@
       "how": "driven",
       "reach": "K2 › Continue with email",
       "job": "Making the account with an email address, for a runner who has neither Apple nor Google on the phone or would rather not use them.",
-      "done": "Email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
+      "done": "Under Run's icon and MGKFitness Account, email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "isnew": "New in build 27."
+      "isnew": "New in build 27.",
+      "changed": "1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon."
     },
     "B10": {
       "file": "launch-mark",
@@ -2437,6 +2482,18 @@
         "lib/src/features/history/data/run_editor.dart"
       ],
       "isnew": "New in build 28."
+    },
+    "L8": {
+      "file": "delete-account-everything",
+      "name": "The whole account chosen",
+      "how": "built",
+      "reach": "L1 › Delete my whole MGKFitness account",
+      "job": "Deleting everything: both apps' data and the login, for somebody leaving MGKFitness altogether.",
+      "done": "The whole-account card chosen with a red edge; About your login now says anything MGKFitness: Lift holds goes with it, and to choose the first option to leave only this app; the button reads 'Delete my whole account'.",
+      "files": [
+        "lib/src/features/legal/presentation/delete_account_screen.dart"
+      ],
+      "isnew": "New in 1.0.1: the choice Lift has always offered."
     }
   }
 }

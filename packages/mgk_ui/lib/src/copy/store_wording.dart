@@ -39,3 +39,15 @@ const String _googleRenewal =
     '24 hours before the period ends unless auto-renew is turned off at least '
     '24 hours before then. Manage or cancel it in the Play Store under '
     'Payments and subscriptions.';
+
+/// The same facts at the length of one glance, for the paywall that has to
+/// fit on one screen (4 October 2026): who charges, how often, until when, and
+/// where to stop it. Apple no longer asks for its old paragraph word for word;
+/// Play asks for the facts, without a tap to reach them. The full wording
+/// stays in the terms.
+String renewalShort(TargetPlatform platform) =>
+    platform == TargetPlatform.android
+    ? 'Charged to your Google Play account every month until you cancel, '
+          'any time, in Play Store › Payments and subscriptions.'
+    : 'Charged to your Apple ID every month until you cancel, any time, in '
+          'your Apple ID settings.';

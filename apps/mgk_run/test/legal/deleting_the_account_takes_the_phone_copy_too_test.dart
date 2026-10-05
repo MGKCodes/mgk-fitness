@@ -58,7 +58,9 @@ void main() {
   Future<void> deleteIt(WidgetTester tester) async {
     await tester.enterText(find.byType(TextField), 'DELETE');
     await tester.pump();
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Delete my data'));
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, "Delete this app's data"),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -211,7 +213,9 @@ class _Deleter implements AccountDeleter {
   final AccountDeletionException? failure;
 
   @override
-  Future<AccountDeletionResult> deleteAccount() async {
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async {
     final failure = this.failure;
     if (failure != null) throw failure;
     return result;

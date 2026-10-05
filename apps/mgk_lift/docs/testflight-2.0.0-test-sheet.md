@@ -16,9 +16,10 @@ that did not sync, and a hand-written `insert` to unlock the coach. Codes like
 
 ## Before you start
 
-**1. Use build 41 or later**, not build 32. Build 32 predates the redesign
-and Sign in with Apple and Google, so nothing below describes it. Build 41,
-from 1 October, is the first this sheet describes. See
+**1. Use the build from 5 October**, made from `develop` at `c0b7c0e`, not
+build 41. Build 41 (1 October) predates the sister-apps sweep: no medical
+disclaimer, the old paywall, the old coach sheet and profile, and no way to
+manage a subscription. Start with *New in this build* below. See
 [submission-week.md](submission-week.md), step 2.
 
 **2. Two accounts.** One left free, to see the offer and to buy. One entitled
@@ -52,6 +53,29 @@ knowingly*. The ones you will meet on this sheet:
 
 ---
 
+## New in this build: test these first
+
+What changed on 4 and 5 October, and has only ever run in tests and the
+browser preview. N4 has never been seen on a phone with a keyboard: if
+it fails, say so before anything else.
+
+| # | Step | Expected | ✓ |
+|---|---|---|---|
+| N1 | On a phone that has never opened the coach, tap the C | *Before we start*: the medical disclaimer, with I understand and Not now (C12) | ☐ |
+| N2 | Not now, then the C again | Nothing opened the first time; asked again the second | ☐ |
+| N3 | I understand | The coach opens, or the offer if not subscribed. Never asked again on this phone | ☐ |
+| N4 | In the coach, tap the message field (both platforms) | The sheet rises above the keyboard: the field and Send stay in sight | ☐ |
+| N5 | An empty coach | "It has read your log" and three questions. Tap one: it is sent as written and answered | ☐ |
+| N6 | The offer, on an iPhone and on Android | One screen, no scrolling; the coach's C beside the app's name; Coach labelled Recommended. Android says Google Play, never Apple ID | ☐ |
+| N7 | Subscribed: the gear › your card › Manage subscription | iPhone: the App Store's subscriptions page. Android: Lift in Google Play's subscriptions | ☐ |
+| N8 | Subscribed: Delete account | *About your subscription*: deleting does not cancel it, with Manage subscription. Again on the done screen | ☐ |
+| N9 | Delete account › this app's data, *Also erase this phone's copy* on | "This phone's copy has been erased too"; Profile and Track are empty without reopening the app | ☐ |
+| N10 | Delete account with that switch off | Headed *Deleted from our servers*; the sessions still on the phone | ☐ |
+| N11 | Profile | Run's layout: the lifetime volume, two records, most trained, the year, the last five sessions | ☐ |
+| N12 | Finish a session, then open it from the log | *Session complete* after Finish, *Session summary* from the log | ☐ |
+| N13 | Signed in, log a session, then the gear › your card › Sync now | Backed up with no error. It now goes up in one request (`lift.save_workout`) | ☐ |
+| N14 | Privacy & legal | Medical disclaimer is listed, and reads the same as N1 | ☐ |
+
 ## A. Install and first run
 
 | # | Step | Expected | ✓ |
@@ -72,11 +96,11 @@ Do the whole section on an iPhone and on an Android phone.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| B1 | Profile › the gear › Sign in, on the account card | The sign-in screen: Apple, Google, then Continue with email | ☐ |
+| B1 | Profile › the gear › Sign in, on the profile card at the top | The sign-in screen: Lift's icon and name, then MGKFitness Account, then Apple, Google and Continue with email | ☐ |
 | B2 | Continue with Apple | Signed in. On Android it goes out to a browser and comes back to the app | ☐ |
 | B3 | Continue with Apple, choosing Hide My Email | A separate account, as the line under the button says | ☐ |
 | B4 | Continue with Google | Signed in, with no password | ☐ |
-| B5 | Continue with email › create an account | "Check your email and follow the link, then sign in." The email arrives from MGKFitness, in the inbox and not spam; its link confirms | ☐ |
+| B5 | Continue with email › New here? Create an account | "Check your email and follow the link, then sign in." The email arrives from MGKFitness, in the inbox and not spam; its link confirms | ☐ |
 | B6 | Sign in before confirming | Refused in words, not a raw code | ☐ |
 | B7 | A wrong password | Does not say which half was wrong | ☐ |
 | B8 | Forgot your password? | The email arrives; its link opens the reset page; the new password works and the old one does not | ☐ |
@@ -139,10 +163,10 @@ On the **free** account. Needs the store products
 | E1 | Tap the C on Track, on Plan, on Profile and in a session | The same sales screen each time | ☐ |
 | E2 | Plan › Start coaching; Photos › Unlock photos | The same screen | ☐ |
 | E3 | Read it | Two tiers, each with the store's own price; renewal terms, Terms, Privacy and Restore at the foot | ☐ |
-| E4 | Signed out, choose a tier | Asks for an account first, then goes on to the store. Backing out buys nothing | ☐ |
+| E4 | Signed out, choose a tier | Asks for an account first, then goes on to the store. Continue with email starts on Create your account. Backing out buys nothing | ☐ |
 | E5 | Buy Coach | The screen you came from unlocks, without restarting the app | ☐ |
 | E6 | Move up to Premium Coach | The store treats it as an upgrade of the same subscription, not a second one. Write down when it takes effect | ☐ |
-| E7 | Reinstall, sign in, Settings › the account card › Restore purchases | The subscription comes back | ☐ |
+| E7 | Reinstall, sign in, Settings › the profile card › Restore purchases | The subscription comes back | ☐ |
 | E8 | Restore on an account with nothing bought | Says there is nothing to restore; not an error | ☐ |
 | E9 | Cancel in the store's settings | Access stays until the period ends | ☐ |
 | E10 | *(Only if Run is on the phone)* Open Run on the same account after buying in Lift | Run is not unlocked by it; each app has its own subscription | ☐ |
@@ -202,10 +226,10 @@ On an entitled account.
 
 | # | Step | Expected | ✓ |
 |---|---|---|---|
-| I1 | Settings, signed out | The account card says what is on this phone only | ☐ |
+| I1 | Settings, signed out | The profile card says what is on this phone only, and nothing more. The page reads like Run's: the same card, Preferences and About, MGKFitness: Lift and MGKCodes at the foot | ☐ |
 | I2 | Switch kg to lb | Every weight converts, everywhere, at once | ☐ |
 | I3 | Aeroplane mode, log a session, come back online | Backs up without being asked | ☐ |
-| I4 | The account card › Sync now | A time, "3 min ago", not a status word | ☐ |
+| I4 | Settings › Your data › Backup, then Sync now on the account screen | A time, "3 min ago", not a status word | ☐ |
 | I5 | Sign in on a second phone | The same history arrives | ☐ |
 | I6 | Sign out | Training stays on the phone | ☐ |
 | I7 | Privacy & legal | Terms, privacy and the AI disclosure open with no signal | ☐ |

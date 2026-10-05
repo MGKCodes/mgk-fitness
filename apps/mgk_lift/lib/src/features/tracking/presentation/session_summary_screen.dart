@@ -161,10 +161,16 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
                     onBack: () => Navigator.of(context).maybePop(),
                     summary: _summary,
                     massUnit: widget.massUnit,
-                    // From the log, the date is the point: which Tuesday it was.
-                    label: widget.fromHistory
-                        ? _dayLabel(widget.session.startedAt)
+                    // Run's two titles for the same two moments: the thing
+                    // arriving, and a record looked up later.
+                    title: widget.fromHistory
+                        ? 'Session summary'
                         : 'Session complete',
+                    // From the log, the date is the point: which Tuesday it was.
+                    when: widget.fromHistory
+                        ? _dayLabel(widget.session.startedAt)
+                        : 'Just now',
+                    justFinished: !widget.fromHistory,
                     backTooltip: widget.fromHistory ? 'Back' : 'Done',
                     // At the top, where it is seen first (14): backing up, and
                     // then gone; or why not, with the one thing that fixes it.
@@ -271,17 +277,31 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
 /// Fixed rather than scrolling with the breakdown. The name and the totals are
 /// the answer to "what did I just do"; scrolling to the third movement should
 /// not take them off screen.
+///
+/// **Laid out as Run's finished run is** (4 October 2026): a title bar saying
+/// what this moment is, then a card that opens on when and what — "Just now ·
+/// Push", as Run's says "Just now · Outdoor run" — over one large figure.
 class _Header extends StatelessWidget {
   const _Header({
     required this.onBack,
     required this.summary,
     required this.massUnit,
-    this.label = 'Session complete',
+    this.title = 'Session complete',
+    this.when = 'Just now',
+    this.justFinished = true,
     this.backTooltip = 'Done',
     this.backup,
   });
 
-  final String label;
+  final String title;
+
+  /// "Just now", or the day, before the session's name on the card.
+  final String when;
+
+  /// Whether the figure counts up. Only on arrival, as Run's distance does:
+  /// opening last Tuesday from the log is looking something up.
+  final bool justFinished;
+
   final String backTooltip;
 
   /// Where backup stands, above the totals. Null says nothing.
@@ -297,117 +317,116 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+    final noLoad = summary.volume == Mass.zero;
+    // One number leads: the load moved, or the sets for a session with no
+    // load in it, which then carries its own word so a bare "6" is not left
+    // to be guessed at.
+    String figure(double n) {
+      if (!noLoad) return Mass.kilograms(n).label(massUnit);
+      final sets = n.round();
+      return '$sets set${sets == 1 ? '' : 's'}';
+    }
+
+    final value = noLoad
+        ? summary.workingSets.toDouble()
+        : summary.volume.kilograms;
+    final heroStyle = theme.textTheme.displayMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        // A title bar, as Run's run screen has: the same height, glyph and
+        // type as every other title in either app.
+        AppBar(
+          primary: false,
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          leading: AppIconButton(
+            onPressed: onBack,
+            icon: backIcon(context),
+            tooltip: backTooltip,
+          ),
+          title: Text(title),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              AppIconButton(
-                onPressed: onBack,
-                icon: Icons.arrow_back,
-                color: AppColors.textSecondary,
-                tooltip: backTooltip,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
+              if (backup case final pill?) ...<Widget>[
+                Align(alignment: Alignment.centerLeft, child: pill),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              // On glass, and louder (12): one number leads and the other
+              // three sit under it. The grid of four equal cells read as a
+              // form.
+              GlassSurface(
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    // Where the running screen says "In progress". No date
-                    // under it: the lifter finished this four seconds ago, and
-                    // telling them which day it was is the app filling space.
-                    SectionLabel(label),
-                    const SizedBox(height: 2),
                     Text(
-                      summary.name,
-                      style: theme.textTheme.titleLarge,
+                      '$when  ·  ${summary.name}',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 1,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    if (justFinished)
+                      CountUp(value: value, format: figure, style: heroStyle)
+                    else
+                      Text(figure(value), style: heroStyle),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: StatBlock(
+                            // "Duration", not "Elapsed": nothing is elapsing any
+                            // more.
+                            label: 'Duration',
+                            value: _clock(summary.duration),
+                            shrinkToFit: true,
+                          ),
+                        ),
+                        if (summary.volume != Mass.zero)
+                          Expanded(
+                            child: StatBlock.counting(
+                              label: 'Sets',
+                              count: summary.workingSets.toDouble(),
+                              format: (n) => '${n.round()}',
+                              shrinkToFit: true,
+                            ),
+                          ),
+                        Expanded(
+                          child: StatBlock.counting(
+                            label: 'Movements',
+                            count: summary.movements.toDouble(),
+                            format: (n) => '${n.round()}',
+                            shrinkToFit: true,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          if (backup case final pill?) ...<Widget>[
-            const SizedBox(height: AppSpacing.sm),
-            Align(alignment: Alignment.centerLeft, child: pill),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          // On glass, and louder (12): one number leads — the load moved, or
-          // the sets for a session with no load in it — and the other three sit
-          // under it. The grid of four equal cells read as a form.
-          GlassSurface(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                SectionLabel(
-                  summary.volume == Mass.zero ? 'Sets' : 'Volume',
-                  emphasis: LabelEmphasis.stat,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                CountUp(
-                  value: summary.volume == Mass.zero
-                      ? summary.workingSets.toDouble()
-                      : summary.volume.kilograms,
-                  format: (n) => summary.volume == Mass.zero
-                      ? '${n.round()}'
-                      : Mass.kilograms(n).label(massUnit),
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w300,
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: StatBlock(
-                        // "Duration", not "Elapsed": nothing is elapsing any
-                        // more.
-                        label: 'Duration',
-                        value: _clock(summary.duration),
-                        shrinkToFit: true,
-                      ),
-                    ),
-                    if (summary.volume != Mass.zero)
-                      Expanded(
-                        child: StatBlock.counting(
-                          label: 'Sets',
-                          count: summary.workingSets.toDouble(),
-                          format: (n) => '${n.round()}',
-                          shrinkToFit: true,
-                        ),
-                      ),
-                    Expanded(
-                      child: StatBlock.counting(
-                        label: 'Movements',
-                        count: summary.movements.toDouble(),
-                        format: (n) => '${n.round()}',
-                        shrinkToFit: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
