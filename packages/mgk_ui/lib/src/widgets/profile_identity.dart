@@ -155,6 +155,9 @@ class AppIdentity extends StatelessWidget {
               fit: BoxFit.cover,
               // The name under it says the same thing to a screen reader.
               excludeFromSemantics: true,
+              // An icon that will not load leaves its square, not an error
+              // printed across the head of the sign-in.
+              errorBuilder: (_, _, _) => SizedBox.square(dimension: size),
             ),
           ),
         ),

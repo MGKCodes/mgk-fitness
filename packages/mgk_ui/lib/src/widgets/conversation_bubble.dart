@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/coach_orb.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 
@@ -20,12 +21,22 @@ import '../theme/app_radius.dart';
 ///    contrast and the person in `surface` at secondary — which also puts the
 ///    emphasis on the reply rather than on your own words, since you already
 ///    know what you said.
+///
+/// **One bubble for both apps' coaches** since 5 October 2026: Lift's, which
+/// the owner preferred, with the corner nearest the speaker tucked in, and
+/// with what Run's replies had that Lift's did not — a long press to report a
+/// reply ([onReport]) and the line that says it was ([note]). Anything a reply
+/// carries, such as a proposed change to the week, goes under the bubble, not
+/// inside it: a card inside a bubble is two containers deep before any
+/// content.
 class ConversationBubble extends StatelessWidget {
   const ConversationBubble({
     super.key,
     required this.text,
     required this.fromCoach,
     this.selectable = true,
+    this.onReport,
+    this.note,
   });
 
   final String text;
@@ -35,11 +46,23 @@ class ConversationBubble extends StatelessWidget {
   final bool fromCoach;
 
   /// Whether the text can be selected. On by default: a coach's answer is
-  /// something people copy out.
+  /// something people copy out. Off wherever [onReport] is given, because
+  /// selection takes the long press the report needs.
   final bool selectable;
+
+  /// Opens the report sheet for a coach's reply, on a long press. A model
+  /// wrote it, and Play's policy on AI-generated content wants it reportable
+  /// where it is read. Null offers nothing.
+  final VoidCallback? onReport;
+
+  /// A small line under the bubble: "Reported. Thanks, we'll take a look."
+  final String? note;
 
   /// The share of the width a bubble may occupy.
   static const double _maxWidthFraction = 0.8;
+
+  static const Radius _round = Radius.circular(AppRadius.card);
+  static const Radius _tucked = Radius.circular(AppSpacing.xs + 2);
 
   @override
   Widget build(BuildContext context) {
@@ -48,41 +71,86 @@ class ConversationBubble extends StatelessWidget {
       color: fromCoach ? AppColors.textPrimary : AppColors.textSecondary,
       height: 1.4,
     );
+    final report = fromCoach ? onReport : null;
+    final words = selectable && report == null
+        ? SelectableText(text, style: style)
+        : Text(text, style: style);
+
+    Widget bubble = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * _maxWidthFraction,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: fromCoach ? AppColors.elevated : AppColors.surface,
+          // The corner nearest the speaker tucked in: which side said it,
+          // readable at a glance down a long conversation.
+          borderRadius: BorderRadius.only(
+            topLeft: _round,
+            topRight: _round,
+            bottomLeft: fromCoach ? _tucked : _round,
+            bottomRight: fromCoach ? _round : _tucked,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: words,
+        ),
+      ),
+    );
+    if (report != null) {
+      bubble = Semantics(
+        onLongPressHint: 'Report this reply',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onLongPress: report,
+          child: bubble,
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Align(
         alignment: fromCoach ? Alignment.centerLeft : Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * _maxWidthFraction,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: fromCoach ? AppColors.elevated : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: fromCoach
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          children: <Widget>[
+            bubble,
+            if (note case final String note)
+              Padding(
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.xs,
+                  left: AppSpacing.xs,
+                  right: AppSpacing.xs,
+                ),
+                child: Text(
+                  note,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ),
-              child: selectable
-                  ? SelectableText(text, style: style)
-                  : Text(text, style: style),
-            ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// The coach composing a reply.
+/// The coach composing a reply: its orb, with the word beside it.
 ///
-/// Text rather than a spinner, on the coach's side of the conversation, so the
-/// wait reads as somebody thinking rather than as the app working. A spinner
-/// here would be the only indeterminate progress in the product.
+/// On the coach's side of the conversation, so the wait reads as somebody
+/// thinking rather than as the app working. A spinner here would be the only
+/// indeterminate progress in the product. The orb is the same one every wait
+/// for the coach shows, in both apps ([CoachOrb]); the word is what says this
+/// wait is a real one.
 class ThinkingIndicator extends StatelessWidget {
   const ThinkingIndicator({super.key, this.label = 'Thinking…'});
 
@@ -92,12 +160,19 @@ class ThinkingIndicator extends StatelessWidget {
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
     child: Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const CoachOrb(),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+          ),
+        ],
       ),
     ),
   );
