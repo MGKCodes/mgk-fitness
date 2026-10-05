@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/profile/presentation/profile_surface.dart';
-import 'package:mgk_lift/src/features/profile/presentation/year_activity_grid.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -12,7 +11,7 @@ Session session(
   String exercise = 'Barbell Bench Press',
   List<SessionSet> sets = const <SessionSet>[],
 }) => Session(
-  id: day.toIso8601String() + exercise,
+  id: day.toIso8601String() + exercise + name,
   name: name,
   startedAt: day,
   endedAt: day.add(const Duration(hours: 1)),
@@ -34,247 +33,52 @@ SessionSet done(double kg, int reps) => SessionSet(
   isCompleted: true,
 );
 
-Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget wrap(Widget child) => MaterialApp(theme: AppTheme.dark, home: child);
+
+/// The value a [StatBlock] with [label] shows.
+Finder statValue(String label, String value) => find.descendant(
+  of: find.ancestor(of: find.text(label), matching: find.byType(StatBlock)),
+  matching: find.text(value),
+);
 
 void main() {
-  // Profile is a tall scroller, and a `ListView` only builds what it has
-  // scrolled to. The binding's default 800×600 surface used to hold the whole
-  // screen; the activity grid and the sections under it put everything
-  // below them off the bottom of it, where `find` cannot see them. A
-  // phone-shaped width and a viewport tall enough for the whole surface tests
-  // what a lifter scrolls through rather than only its first screen.
+  // Profile is a tall scroller, and a sliver list only builds what it has
+  // scrolled to. A phone-shaped width and a viewport tall enough for the whole
+  // surface tests what a lifter scrolls through rather than its first screen.
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     binding.platformDispatcher.views.first
-      ..physicalSize = const Size(400, 2600)
+      ..physicalSize = const Size(400, 3000)
       ..devicePixelRatio = 1;
   });
 
   tearDown(() => binding.platformDispatcher.views.first.reset());
 
-  group('an empty log', () {
-    // This screen used to swap its whole contents for one card, so the lifter
-    // who most needed to know what the app tracks — the one who has not
-    // started — was the only one who could not see it. The layout renders
-    // either way now, with dashes where the figures will be.
-
-    testWidgets('still says nothing is logged, and offers the one next step', (
+  group('laid out as Run\'s profile is', () {
+    testWidgets('titled Profile in a bar, with the way to settings', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        wrap(ProfileSurface(onOpenTrack: () {}, now: DateTime(2026, 8, 24))),
+        wrap(ProfileSurface(now: DateTime(2026, 8, 24), onOpenSettings: () {})),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Nothing logged yet'), findsOneWidget);
-      expect(find.text('Log a session'), findsOneWidget);
-      // One call to action. A screen with no data and two buttons has one too
-      // many, because there is only one next step from any angle.
-      expect(find.byType(AppTextButton), findsOneWidget);
-    });
-
-    testWidgets('the surface has a title, not a third section label', (
-      WidgetTester tester,
-    ) async {
-      // It used to announce itself with the same SectionLabel component its own
-      // subsections use, so the screen had no hierarchy: "Profile" and
-      // "Personal bests" were set identically. Every other surface in the suite
-      // pairs an eyebrow with a headline.
-      await tester.pumpWidget(
-        wrap(ProfileSurface(onOpenTrack: () {}, now: DateTime(2026, 8, 24))),
+      expect(
+        find.ancestor(
+          of: find.text('Profile'),
+          matching: find.byType(SliverAppBar),
+        ),
+        findsOneWidget,
       );
-      await tester.pumpAndSettle();
-
-      final title = tester.widget<Text>(find.text('Your training'));
-      final theme = Theme.of(
-        tester.element(find.text('Your training')),
-      ).textTheme;
-      expect(title.style, theme.headlineSmall);
-      // And it must not repeat the empty card's line, which is a fault this
-      // very screen shipped for about ten minutes.
-      expect(find.text('Nothing logged yet'), findsOneWidget);
+      expect(find.byTooltip('Settings'), findsOneWidget);
+      // A tab's root, with nothing behind it.
+      expect(find.byType(BackButton), findsNothing);
+      // The eyebrow-and-headline it had until Run's became the standard.
+      expect(find.text('Your training'), findsNothing);
     });
 
-    testWidgets('shows every heading it will fill', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(const ProfileSurface(now: null, log: <Session>[])),
-      );
-      await tester.pumpAndSettle();
-
-      for (final label in <String>[
-        'SESSIONS',
-        'VOLUME',
-        'SETS',
-        'TIME',
-        'PER WEEK',
-        'STREAK',
-        'LAST 52 WEEKS',
-        'MOST TRAINED',
-      ]) {
-        expect(find.text(label), findsWidgets, reason: '$label is missing');
-      }
-      expect(find.byType(YearActivityGrid), findsOneWidget);
-    });
-
-    testWidgets('draws dashes, not zeroes', (WidgetTester tester) async {
-      // A lifter who has not trained has not scored zero — they have not
-      // started. Six blocks reading 0 is a screen reporting six results.
-      await tester.pumpWidget(wrap(const ProfileSurface(log: <Session>[])));
-      await tester.pumpAndSettle();
-
-      expect(find.text('—'), findsWidgets);
-      expect(find.text('0'), findsNothing);
-      expect(find.text('0w'), findsNothing);
-      expect(find.text('0 kg'), findsNothing);
-    });
-
-    testWidgets('leaves out the list of sessions it does not have', (
-      WidgetTester tester,
-    ) async {
-      // The one section that stays hidden. "Most trained" and "Personal bests"
-      // name things the app works out for a lifter, which is worth
-      // advertising; a list of the sessions they have not done only repeats
-      // the card at the top.
-      await tester.pumpWidget(wrap(const ProfileSurface(log: <Session>[])));
-      await tester.pumpAndSettle();
-
-      expect(find.text('PREVIOUS WORKOUTS'), findsNothing);
-    });
-  });
-
-  testWidgets('headline figures are folds over the log', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-            session(
-              DateTime(2026, 8, 5),
-              exercise: 'Barbell Back Squat',
-              sets: <SessionSet>[done(120, 5)],
-            ),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // Scoped to the stat block: "SESSIONS" now appears twice on this screen,
-    // once as the headline count and once heading the most-trained column.
-    expect(
-      find.descendant(
-        of: find.byType(StatBlock),
-        matching: find.text('SESSIONS'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('2'), findsWidgets);
-    // 100x5 + 120x5 = 1100 kg, shown as tonnes past four figures.
-    expect(find.text('1.1 t'), findsOneWidget);
-  });
-
-  testWidgets('the streak explains what a week means', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('1 week in a row'), findsOneWidget);
-  });
-
-  testWidgets('no streak says how to start one, and from when', (
-    WidgetTester tester,
-  ) async {
-    // "A week counts from Monday" is worth saying out loud, because Liftio's
-    // weeks ran Thursday to Wednesday and nobody could have known.
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 20),
-          log: <Session>[
-            session(DateTime(2026, 6, 1), sets: <SessionSet>[done(100, 5)]),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('No streak running'), findsOneWidget);
-    expect(find.textContaining('A week counts from Monday'), findsOneWidget);
-  });
-
-  testWidgets('most-trained ranks by sessions, not by sets', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-            session(DateTime(2026, 8, 4), sets: <SessionSet>[done(100, 5)]),
-            session(
-              DateTime(2026, 8, 5),
-              exercise: 'Barbell Back Squat',
-              sets: <SessionSet>[done(120, 5), done(120, 5), done(120, 5)],
-            ),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('MOST TRAINED'), findsOneWidget);
-    // Squat has more sets; bench appears in more sessions and should lead.
-    //
-    // `.last`, because both movements are also named in the personal-bests
-    // section above this one — which is ranked by estimate rather than by
-    // frequency, and is the whole reason the two sections both exist.
-    final bench = tester.getTopLeft(find.text('Barbell Bench Press').last).dy;
-    final squat = tester.getTopLeft(find.text('Barbell Back Squat').last).dy;
-    expect(bench, lessThan(squat));
-  });
-
-  testWidgets('the session count is labelled, not left as a bare number', (
-    WidgetTester tester,
-  ) async {
-    // A bare "2" beside a movement name could be sessions, sets or kilos.
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('SESSIONS'), findsWidgets);
-  });
-
-  group('most-trained bars', () {
-    // A bar is a comparison. Found by screenshotting Profile: with a short log
-    // every movement has been done once, so every bar was full — three
-    // identical full-width rules that read as dividers and said nothing.
-
-    testWidgets('are absent when everything shown has the same count', (
+    testWidgets('lifetime, records, the table, the year, then the log', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -283,31 +87,96 @@ void main() {
             now: DateTime(2026, 8, 6),
             log: <Session>[
               session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-              session(
-                DateTime(2026, 8, 4),
-                exercise: 'Barbell Back Squat',
-                sets: <SessionSet>[done(120, 5)],
-              ),
             ],
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('MOST TRAINED'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
+      double top(String text) => tester.getTopLeft(find.text(text).first).dy;
+      expect(top('LIFETIME'), lessThan(top('RECORDS')));
+      expect(top('RECORDS'), lessThan(top('MOST TRAINED')));
+      expect(top('MOST TRAINED'), lessThan(top('THE YEAR')));
+      expect(top('THE YEAR'), lessThan(top('1 SESSION')));
     });
+  });
 
-    testWidgets('are present as soon as there is something to compare', (
+  group('an empty log', () {
+    // The layout renders either way, with dashes where the figures will be,
+    // and the one sentence under the lifetime figures, as Run's does.
+
+    testWidgets('holds the lifetime figures open and says what builds there', (
       WidgetTester tester,
     ) async {
+      await tester.pumpWidget(wrap(ProfileSurface(now: DateTime(2026, 8, 24))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('LIFETIME'), findsOneWidget);
+      expect(find.text('— kg'), findsOneWidget);
+      expect(
+        find.textContaining('Log your first session and your totals'),
+        findsOneWidget,
+      );
+      // No card announcing the emptiness, and no button: Run's has neither.
+      expect(find.text('Nothing logged yet'), findsNothing);
+      expect(find.byType(AppTextButton), findsNothing);
+    });
+
+    testWidgets('shows every heading it will fill', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(wrap(ProfileSurface(now: DateTime(2026, 8, 24))));
+      await tester.pumpAndSettle();
+
+      for (final label in <String>[
+        'LIFETIME',
+        'SESSIONS',
+        'TIME',
+        'STREAK',
+        'RECORDS',
+        'HEAVIEST LIFT',
+        'BIGGEST SESSION',
+        'MOST TRAINED',
+        'THE YEAR',
+        'YOUR SESSIONS',
+      ]) {
+        expect(find.text(label), findsWidgets, reason: '$label is missing');
+      }
+      expect(find.byType(ActivityYearGrid), findsOneWidget);
+    });
+
+    testWidgets('draws dashes, not zeroes', (WidgetTester tester) async {
+      // A lifter who has not trained has not scored zero; they have not
+      // started.
+      await tester.pumpWidget(wrap(ProfileSurface(now: DateTime(2026, 8, 24))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('—'), findsWidgets);
+      expect(find.text('0'), findsNothing);
+      expect(find.text('0 wk'), findsNothing);
+      expect(find.text('0 kg'), findsNothing);
+      expect(find.textContaining('0 days'), findsNothing);
+    });
+
+    testWidgets('holds the log open with two rows there is nothing to tap', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(wrap(ProfileSurface(now: DateTime(2026, 8, 24))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Date  ·  time  ·  sets  ·  load'), findsNWidgets(2));
+      expect(find.byIcon(Icons.chevron_right), findsNothing);
+    });
+  });
+
+  group('lifetime', () {
+    testWidgets('figures are folds over the log', (WidgetTester tester) async {
       await tester.pumpWidget(
         wrap(
           ProfileSurface(
             now: DateTime(2026, 8, 6),
             log: <Session>[
               session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-              session(DateTime(2026, 8, 4), sets: <SessionSet>[done(100, 5)]),
               session(
                 DateTime(2026, 8, 5),
                 exercise: 'Barbell Back Squat',
@@ -319,13 +188,167 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
+      expect(statValue('SESSIONS', '2'), findsOneWidget);
+      expect(statValue('TIME', '2 h'), findsOneWidget);
+      // 100x5 + 120x5 = 1100 kg, shown as tonnes past four figures.
+      expect(find.text('1.1 t'), findsOneWidget);
+    });
+
+    testWidgets('the streak is counted in weeks', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(statValue('STREAK', '1 wk'), findsOneWidget);
+    });
+
+    testWidgets('a lapsed streak is a dash', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 20),
+            log: <Session>[
+              session(DateTime(2026, 6, 1), sets: <SessionSet>[done(100, 5)]),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(statValue('STREAK', '—'), findsOneWidget);
+    });
+  });
+
+  testWidgets('records are the heaviest set and the biggest session', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        ProfileSurface(
+          now: DateTime(2026, 8, 6),
+          log: <Session>[
+            session(
+              DateTime(2026, 8, 3),
+              sets: <SessionSet>[done(100, 5), done(80, 10)],
+            ),
+            session(
+              DateTime(2026, 8, 5),
+              exercise: 'Barbell Back Squat',
+              sets: <SessionSet>[done(120, 5)],
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(statValue('HEAVIEST LIFT', '120 kg'), findsOneWidget);
+    // 100x5 + 80x10, more than the squat session's 600.
+    expect(statValue('BIGGEST SESSION', '1300 kg'), findsOneWidget);
+  });
+
+  group('most trained', () {
+    testWidgets('ranks by sessions, not by sets', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+              session(DateTime(2026, 8, 4), sets: <SessionSet>[done(100, 5)]),
+              session(
+                DateTime(2026, 8, 5),
+                exercise: 'Barbell Back Squat',
+                sets: <SessionSet>[done(120, 5), done(120, 5), done(120, 5)],
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Set as Run sets "5K": a label, in capitals.
+      final bench = tester.getTopLeft(find.text('BARBELL BENCH PRESS')).dy;
+      final squat = tester.getTopLeft(find.text('BARBELL BACK SQUAT')).dy;
+      expect(bench, lessThan(squat));
+    });
+
+    testWidgets('the count is labelled, not left as a bare number', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Once over the lifetime count, once over the table's column.
+      expect(find.text('SESSIONS'), findsNWidgets(2));
+    });
+
+    testWidgets('a row opens its movement', (WidgetTester tester) async {
+      String? opened;
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
+            ],
+            onOpenMovement: (name) => opened = name,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('BARBELL BENCH PRESS'));
+      await tester.pumpAndSettle();
+
+      expect(opened, 'Barbell Bench Press');
+    });
+
+    testWidgets('with nowhere to open, the rows stay text', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 6),
+            log: <Session>[
+              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.ancestor(
+          of: find.text('BARBELL BENCH PRESS'),
+          matching: find.byType(PressScale),
+        ),
+        findsNothing,
+      );
     });
   });
 
   group('units', () {
     // Profile reporting kilograms while the session screen reports pounds is
-    // the same "two screens, two answers" fault the warm-up bug was.
+    // the "two screens, two answers" fault the warm-up bug was.
 
     testWidgets('volume follows the chosen unit', (WidgetTester tester) async {
       final log = <Session>[
@@ -355,8 +378,8 @@ void main() {
     testWidgets('pounds are never reported in tonnes', (
       WidgetTester tester,
     ) async {
-      // A short tonne is 2,000 lb and nobody means that, so the headline
-      // switches to thousands separators rather than a unit no lifter uses.
+      // A short ton is 2,000 lb and nobody means that, so the lifetime figure
+      // takes thousands separators rather than a unit no lifter uses.
       await tester.pumpWidget(
         wrap(
           ProfileSurface(
@@ -375,169 +398,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Scoped to the stat blocks. The screen now carries prose — the shading
-      // caption, the Epley footnote — and a bare `textContaining(' t')` over
-      // the whole surface tests the copy rather than the unit rule.
+      expect(find.text('26,455 lb'), findsOneWidget);
       expect(
         find.descendant(
-          of: find.byType(StatBlock),
+          of: find.byType(CountUp),
           matching: find.textContaining(' t'),
         ),
         findsNothing,
       );
-      expect(find.text('26455 lb'), findsNothing);
-      expect(find.text('26,455 lb'), findsOneWidget);
     });
   });
 
-  testWidgets('claims nothing about Run, which it does not read', (
-    WidgetTester tester,
-  ) async {
-    // It said "Runs you log in Run appear here too." Nothing in Lift reads
-    // Run's data; the line was a promise, and a false one.
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Run'), findsNothing);
-  });
-
-  testWidgets('previous workouts come before what they add up to (18)', (
-    WidgetTester tester,
-  ) async {
-    tester.view
-      ..physicalSize = const Size(1179, 4800)
-      ..devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      wrap(
-        ProfileSurface(
-          now: DateTime(2026, 8, 6),
-          log: <Session>[
-            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final previous = tester.getTopLeft(find.text('PREVIOUS WORKOUTS')).dy;
-    expect(
-      previous,
-      lessThan(tester.getTopLeft(find.text('LAST 52 WEEKS')).dy),
-    );
-    expect(previous, lessThan(tester.getTopLeft(find.text('MOST TRAINED')).dy));
-  });
-
-  group('a movement', () {
-    // Bests left this page when each movement got a screen of its own (R9).
-    // Their rules are pinned in test/stats/exercise_stats_screen_test.dart;
-    // what is pinned here is the way there.
-
-    testWidgets('opens from the most-trained list', (
-      WidgetTester tester,
-    ) async {
-      String? opened;
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
-            ],
-            onOpenMovement: (name) => opened = name,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Barbell Bench Press').last);
-      await tester.pumpAndSettle();
-
-      expect(opened, 'Barbell Bench Press');
-    });
-
-    testWidgets('its best is no longer listed here', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('PERSONAL BESTS'), findsNothing);
-      expect(find.text('144 kg'), findsNothing);
-    });
-
-    testWidgets('with nowhere to open, the rows stay text', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 6),
-            log: <Session>[
-              session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final row = find.ancestor(
-        of: find.text('Barbell Bench Press').last,
-        matching: find.byType(PressScale),
-      );
-      expect(row, findsNothing);
-    });
-  });
-
-  group('streaks', () {
-    testWidgets('the longest run sits beside the current one', (
-      WidgetTester tester,
-    ) async {
-      // `longestWeekStreak` was folded on every build and shown nowhere. A
-      // streak number on its own has no scale: one week is either a start or a
-      // collapse, and only the pair says which.
-      await tester.pumpWidget(
-        wrap(
-          ProfileSurface(
-            now: DateTime(2026, 8, 24),
-            log: <Session>[
-              session(DateTime(2026, 8, 24), sets: <SessionSet>[done(100, 5)]),
-              session(DateTime(2026, 1, 5), sets: <SessionSet>[done(100, 5)]),
-              session(DateTime(2026, 1, 12), sets: <SessionSet>[done(100, 5)]),
-              session(DateTime(2026, 1, 19), sets: <SessionSet>[done(100, 5)]),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('THIS RUN'), findsOneWidget);
-      expect(find.text('LONGEST'), findsOneWidget);
-      expect(find.text('1w'), findsWidgets);
-      expect(find.text('3w'), findsOneWidget);
-    });
-  });
-
-  group('the activity grid', () {
-    testWidgets('is on the surface, counting the days in the window', (
+  group('the year', () {
+    testWidgets('is Run\'s grid, counting days trained and their load', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -553,9 +426,104 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('LAST 52 WEEKS'), findsOneWidget);
-      expect(find.byType(YearActivityGrid), findsOneWidget);
-      expect(find.text('2 days trained · darker is longer'), findsOneWidget);
+      expect(find.byType(ActivityYearGrid), findsOneWidget);
+      // Tonnes past four figures, as the lifetime total is.
+      expect(find.text('2 days trained · 1.0 t'), findsOneWidget);
+      expect(find.text('Trained'), findsOneWidget);
+      expect(find.text('Rest'), findsOneWidget);
     });
+
+    testWidgets('says day, not days, for one', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 24),
+            log: <Session>[
+              session(DateTime(2026, 8, 17), sets: <SessionSet>[done(100, 5)]),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 day trained · 500 kg'), findsOneWidget);
+    });
+  });
+
+  group('the log', () {
+    testWidgets('shows the recent sessions and hands over to all of them', (
+      WidgetTester tester,
+    ) async {
+      var history = 0;
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 24),
+            onOpenHistory: () => history++,
+            log: <Session>[
+              for (var i = 0; i < 7; i++)
+                session(
+                  DateTime(2026, 8, 20 - i),
+                  name: 'Session $i',
+                  sets: <SessionSet>[done(100, 5)],
+                ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('7 SESSIONS'), findsOneWidget);
+      expect(find.text('Session 0'), findsOneWidget);
+      expect(find.text('Session 4'), findsOneWidget);
+      expect(find.text('Session 5'), findsNothing);
+
+      await tester.tap(find.text('See all'));
+      expect(history, 1);
+    });
+
+    testWidgets('a session opens from its row', (WidgetTester tester) async {
+      Session? opened;
+      final only = session(
+        DateTime(2026, 8, 20),
+        name: 'Push',
+        sets: <SessionSet>[done(100, 5)],
+      );
+      await tester.pumpWidget(
+        wrap(
+          ProfileSurface(
+            now: DateTime(2026, 8, 24),
+            log: <Session>[only],
+            onOpenSession: (s) => opened = s,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 SESSION'), findsOneWidget);
+      expect(find.textContaining('20 Aug'), findsOneWidget);
+      await tester.tap(find.text('Push'));
+      expect(opened, same(only));
+    });
+  });
+
+  testWidgets('claims nothing about Run, which it does not read', (
+    WidgetTester tester,
+  ) async {
+    // It once said "Runs you log in Run appear here too." Nothing in Lift
+    // reads Run's data.
+    await tester.pumpWidget(
+      wrap(
+        ProfileSurface(
+          now: DateTime(2026, 8, 6),
+          log: <Session>[
+            session(DateTime(2026, 8, 3), sets: <SessionSet>[done(100, 5)]),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Run'), findsNothing);
   });
 }

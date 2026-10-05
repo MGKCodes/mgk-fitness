@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_auth/mgk_auth.dart' show LocalDataGuard;
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../coaching/domain/coach.dart';
 import '../../entitlement/domain/entitlement.dart';
+import '../../purchases/domain/manage_subscription.dart';
 import '../../purchases/domain/purchases.dart';
 import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
@@ -589,6 +592,23 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     await _report(await flow.restore(), restoring: true);
   }
 
+  /// The store's own page for the subscription: where it is managed and
+  /// cancelled, which neither store lets an app do itself. Offered on the
+  /// account screen and beside deleting, only to somebody subscribed.
+  Future<void> _manageSubscription() async {
+    final platform = defaultTargetPlatform;
+    final uri = manageSubscriptionUri(platform);
+    bool opened;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } on Object {
+      opened = false;
+    }
+    // Says where it is when nothing will open it: a dead link to the way out
+    // of a subscription is worse than a long one.
+    if (!opened) _say('Could not open ${storeName(platform)}. It is at $uri');
+  }
+
   /// Says what happened, and makes the screen agree with it.
   Future<void> _report(PurchaseResult result, {bool restoring = false}) async {
     // Refreshed regardless of outcome: a restore that found nothing still
@@ -847,7 +867,6 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   onOpenMovement: _openMovement,
                   now: widget.today,
                   massUnit: _units.mass,
-                  onOpenTrack: () => _go(_trackTab),
                   onOpenSettings: _openSettings,
                   // Shown whether or not the account is entitled. A lapsed
                   // lifter has to be able to reach photos they already took, and
@@ -949,6 +968,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           auth: widget.auth,
           deleter: widget.deleter,
           onAccountGone: widget.localData?.release,
+          eraseThisPhone: widget.localData == null ? null : _eraseThisPhone,
+          onManageSubscription: _entitled ? _manageSubscription : null,
           onRestorePurchases: _flow == null ? null : _restorePurchases,
           restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,
@@ -981,9 +1002,33 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           auth: widget.auth,
           deleter: widget.deleter,
           onAccountGone: widget.localData?.release,
+          eraseThisPhone: widget.localData == null ? null : _eraseThisPhone,
+          onManageSubscription: _entitled ? _manageSubscription : null,
         ),
       ),
     );
+  }
+
+  /// "Also erase this phone's copy", from deleting the account: the training
+  /// goes, the phone is left unclaimed, and everything this shell holds in
+  /// memory was that training, so it is read again. Throws only when the
+  /// erase itself failed, which the delete screen reports.
+  Future<void> _eraseThisPhone() async {
+    final guard = widget.localData;
+    if (guard == null) return;
+    await guard.erase();
+    if (!mounted) return;
+    try {
+      await Future.wait(<Future<void>>[
+        _refreshSession(),
+        _refreshLog(),
+        _refreshPlan(),
+      ]);
+    } on Object {
+      // The phone is erased, which is what was asked. A read that fails here
+      // is read again at the next launch, not a failed erase.
+    }
+    unawaited(_backup?.refresh());
   }
 
   /// Opens the coach, or the thing that has to happen first.

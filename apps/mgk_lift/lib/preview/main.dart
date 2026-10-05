@@ -229,6 +229,18 @@ class PreviewApp extends StatelessWidget {
         auth: _signedInAuth(),
         platform: TargetPlatform.iOS,
       ),
+      // The same screen on an Android phone: the renewal terms and the
+      // notes name Google Play and the Google Play account, never an Apple
+      // ID. Every store word on the paywall follows the phone.
+      'sales-android': (_) => SalesScreen(
+        flow: PurchaseFlow(
+          purchases: FakePurchases(offers: _storeOffers),
+          gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
+        ),
+        offers: _storeOffers,
+        auth: _signedInAuth(),
+        platform: TargetPlatform.android,
+      ),
       // Signed out, the offer is the same; choosing a tier asks for the
       // account on the way to the store.
       'sales-signed-out': (_) => SalesScreen(
@@ -617,6 +629,8 @@ class PreviewApp extends StatelessWidget {
         planLabel: 'Subscribed',
         backup: _backup(),
         onSyncNow: () {},
+        // Subscribed, so the store's page is offered (5 October 2026).
+        onManageSubscription: () {},
         onRestorePurchases: () async {},
         onSignOut: () {},
         auth: _signedInAuth(),
@@ -988,6 +1002,14 @@ class PreviewApp extends StatelessWidget {
         auth: _signedInAuth(),
         deleter: FakeAccountDeleter(),
         onSignedOut: () {},
+        // The app always has an eraser to offer, so the screen is shown with
+        // the switch it has. Nothing here erases anything: the done state is
+        // not addressable.
+        eraseThisPhone: () async {},
+        // A subscriber, as Run's board draws its own: the case where the
+        // screen has the most to say.
+        onManageSubscription: () {},
+        platform: TargetPlatform.iOS,
       ),
       // `coach-mark` used to sit here, and was character-for-character the same
       // shell as `track-coach` — two entries, one screen, two frames on the
@@ -1308,20 +1330,19 @@ Widget _sheetOf({
         scrim: ScrimStrength.balanced,
         opacity: 0.5,
       ),
-      // The modal barrier, at the strength CoachSheet.show uses. Dimmed rather
-      // than blacked out: seeing the surface you came from is the difference
-      // between a sheet and a screen.
-      const ColoredBox(color: Color(0x66000000), child: SizedBox.expand()),
+      // The modal barrier, at the strength showCoachSheet uses (45%). Dimmed
+      // rather than blacked out: seeing the surface you came from is the
+      // difference between a sheet and a screen.
+      const ColoredBox(color: Color(0x73000000), child: SizedBox.expand()),
+      // The frame sizes itself to 0.88 of what it is given, as it does in
+      // the app's modal route.
       Align(
         alignment: Alignment.bottomCenter,
-        child: FractionallySizedBox(
-          heightFactor: 0.88,
-          child: CoachSheet(
-            coach: coach,
-            transcript: transcript,
-            opener: opener,
-            massUnit: massUnit,
-          ),
+        child: CoachSheet(
+          coach: coach,
+          transcript: transcript,
+          opener: opener,
+          massUnit: massUnit,
         ),
       ),
     ],

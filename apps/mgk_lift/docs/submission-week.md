@@ -338,6 +338,74 @@ Kept short, as the record of how each was settled. The commits hold the rest.
   the sales screen its email form starts on *Create your account*, as Run's
   does when something needs an account; from Settings, on *Welcome back*.
 
+## Done on 4 and 5 October
+
+The sister-apps sweep: the two screen boards side by side, and every screen a
+person meets in both apps made to look like one family's.
+
+- **Profile is laid out as Run's**, section for section, after the two
+  screen boards side by side showed two different apps. A *Profile* title bar
+  over the photograph; the lifetime volume counting up in its own card over
+  sessions, time and streak; the heaviest set and the biggest session as
+  Run's two record tiles; the most-trained movements as Run's table; the year
+  in the grid both apps now draw from `mgk_ui` (Run's five profile and year
+  plates redraw byte for byte); and the last five sessions as Run's log, with
+  *See all*. The six tiles, the consistency card, the "Nothing logged yet"
+  card and its button went. Matthew's call: "I like the Run one".
+- **Deleting says account, not profile**, on Privacy & legal and the account
+  screen, as Run's does.
+- **The session summary has a title bar**, as Run's finished run does:
+  *Session complete* after Finish, *Session summary* from the log, with
+  "Just now · Push" over the volume.
+- **The coach is headed by Lift's icon and "Coach"**, and every wait for it
+  is the breathing orb (`CoachOrb`) with *Thinking…*, not three dots. Run's
+  coach has the same heading and orb from 1.0.1.
+- **The coach sheet is the suite's** (`CoachSheetFrame`, `CoachTopBar`,
+  `CoachComposer`, `CoachEmptyState` in `mgk_ui`): Lift's design, which Run's
+  coach now draws too. Three changes a lifter will see: an empty coach offers
+  three questions to tap, each starting a conversation of its own; the
+  bubbles tuck in the corner nearest the speaker; and **the sheet rises above
+  the keyboard**. It did not pad for it before, so on a phone the keyboard
+  could come up over the field the sheet was opened to type into; check it
+  on the TestFlight build. Also fixed: the previous-conversations labels
+  counted days across a clock change wrongly ("Today" for yesterday, the day
+  after the clocks move, 25 October next), as Run's did until 248d289.
+- **The paywall is the suite's** (`CoachPaywall` in `mgk_ui`): one screen
+  that fits a 390 × 844 phone without scrolling; the app's icon and name where
+  the decision is made; four short benefit lines, each opening its detail on
+  tap; the two tiers side by side with Coach chosen to start and Premium
+  shown as "3× the coaching"; one *Subscribe* button that names the chosen
+  price; the renewal terms in one line; Restore, Terms and Privacy at the
+  foot. Matthew's brief: "those ticks must be read quicker and explanation
+  can be found if you want". Run's paywall moves to the same screen in 1.0.1.
+  Then, from his look at the board: Coach is labelled *Recommended* (advice,
+  not "Most popular", which the research said not to claim without data);
+  the coach's own C sits beside the app's name, so the paywall is plainly
+  for the thing that button opens; and everything read to decide sits on
+  charcoal rather than on the photograph. Every store word on it follows
+  the phone: an Android phone reads Google Play, never an Apple ID (P10 on
+  the board).
+- **A subscription can be managed from the app.** Account › Coaching has
+  *Manage subscription* for a subscriber, opening the App Store's
+  subscriptions page or Lift's entry in Google Play's Subscription Center
+  (`manage_subscription.dart`); Google Play's policy wants that way out in
+  the app. Deleting the account says, before the tap and again after it,
+  that deleting does not cancel the subscription, with the same link, in
+  Run's words (`StillBillingNotice`), as Apple's account-deletion guidance
+  asks. Known limit: the link is the phone's store, so a subscription bought
+  on an iPhone and managed from an Android phone is sent to the wrong one,
+  until the entitlement row says which store sold it.
+- **Deleting asks how much, on the suite's screen** (`DeletionChoice`,
+  `NoticePanel`, `PhoneCopySwitch`): the app's icon and name at the head;
+  *Delete this app's data* or *Delete my whole MGKFitness account*; the note
+  on what becomes of the login; and, new to Lift, a switch to erase this
+  phone's copy as well, on by default. Erasing takes what
+  `PhoneTrainingData.eraseAll` holds (sessions, saved workouts, the plan and
+  the progress photos) and the shell reads its log, session and plan again.
+  The outcome sentences are shared with Run's (`deletionOutcome`), and the
+  title says *Deleted from our servers* when the phone kept its copy. Run
+  offers the same choice from 1.0.1.
+
 ---
 
 ## Shipping with these, knowingly

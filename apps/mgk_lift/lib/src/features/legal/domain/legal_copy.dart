@@ -166,7 +166,8 @@ const LegalDocument privacyPolicy = LegalDocument(
             'and withdraw consent. Delete account removes every record we hold '
             'for you — your sessions, exercises and sets, your plans, your '
             'progress photos, your coach conversations and your usage '
-            'records. Your phone keeps its own copy until you uninstall.',
+            "records. It erases this phone's copy too, unless you choose to "
+            'keep it; a copy you keep stays until you uninstall the app.',
         'Deletion asks how much, because your login is your $kPlatformName '
             'account and it is shared with $kPlatformName: Run. Delete this '
             'app only, and we erase everything this app holds, your progress '

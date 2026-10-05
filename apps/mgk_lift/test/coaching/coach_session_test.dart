@@ -296,6 +296,21 @@ void main() {
       expect(dayLabel(DateTime(2026, 8, 25), now), 'Tuesday');
       expect(dayLabel(DateTime(2026, 8, 10), now), '10 Aug');
     });
+
+    test('a daylight-saving change does not move a day', () {
+      // The UK's clocks go forward on 29 March 2026 and back on 25 October.
+      // Local midnights either side are 23 or 25 hours apart, which called
+      // the day after spring-forward "Today" on a phone in the UK. Only a
+      // test run in such a zone can see the old fault; in UTC it holds anyway.
+      expect(
+        dayLabel(DateTime(2026, 3, 29, 9), DateTime(2026, 3, 30, 8)),
+        'Yesterday',
+      );
+      expect(
+        dayLabel(DateTime(2026, 10, 25, 9), DateTime(2026, 10, 26, 8)),
+        'Yesterday',
+      );
+    });
   });
 }
 

@@ -29,7 +29,7 @@
      editing the policy.
 -->
 
-**Last updated:** 1 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 5 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 lift@mgkfitness.mgkcodes.com
 
 ## Summary
@@ -164,7 +164,8 @@ the address Apple gives us is not one any other account uses.
 Under UK GDPR you can access, correct, export, or delete your data, and withdraw
 consent. Delete account removes every record we hold for you — your sessions,
 exercises and sets, your plans, your progress photos, your coach conversations
-and your usage records. Your phone keeps its own copy until you uninstall.
+and your usage records. It erases this phone's copy too, unless you choose to
+keep it; a copy you keep stays until you uninstall the app.
 
 **Deletion asks how much**, because your login is your MGKFitness account and it
 is shared with MGKFitness: Run. Delete this app only, and we erase everything

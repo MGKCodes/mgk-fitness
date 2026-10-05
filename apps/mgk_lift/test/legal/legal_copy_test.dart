@@ -152,6 +152,9 @@ void main() {
     test('says what deletion removes, and what an account is shared with', () {
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
         'Delete account removes every record we hold for you',
+        // Since 5 October 2026 the delete screen erases the phone's copy by
+        // default. It said the phone kept it until an uninstall.
+        "It erases this phone's copy too, unless you choose to keep it",
         'usage records are pruned after 31 days',
         'then pruned after 180 days',
       ]);

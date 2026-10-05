@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
@@ -261,14 +259,31 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
         // The composer below stays live throughout.
         ? const Center(child: CircularProgressIndicator())
         : _turns.isEmpty && !_waiting
-        ? const _Empty()
+        ? CoachEmptyState(
+            lead: 'It has read your log',
+            detail:
+                'Ask about any lift, session or week, or start with one of '
+                'these.',
+            // Concrete openers, because "ask me anything" is the least
+            // useful prompt in software. Run's empty coach offers its own
+            // three the same way.
+            suggestions: _openers,
+            onSuggestion: (String s) => _sendText(s, startsSession: true),
+            // Said before the first message rather than discovered later.
+            // The coach keeps notes about somebody's training and their
+            // body; a lifter who has not been told that cannot decide what
+            // to tell it. Settings is where they can read and clear it.
+            footnote:
+                'It also remembers you between conversations. Settings shows '
+                'exactly what it has kept, and clears it.',
+          )
         : ConversationView(
             controller: _scroll,
             // Room for the bar stacked over this. Without it the
             // first turn opens already underneath the blur.
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
-              _TopBar.height,
+              CoachTopBar.height,
               AppSpacing.lg,
               AppSpacing.lg,
             ),
@@ -324,10 +339,18 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
               if (_waiting) const ThinkingIndicator(),
               // Attached to the message it refers to, not stranded at
               // the bottom of the screen with the question at the top.
-              if (_failure != null) _Failure(failure: _failure!),
+              if (_failure case final CoachFailure failure)
+                CoachFailureLine(message: failure.message),
             ],
           );
   }
+
+  /// The questions an empty coach offers, as a lifter would ask them.
+  static const List<String> _openers = <String>[
+    'Why have my lifts stalled?',
+    'My shoulder is sore. What should I change?',
+    'Was this week enough?',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -337,89 +360,42 @@ class _CoachScreenState extends State<CoachScreen> with WidgetsBindingObserver {
     // a back arrow to a place you never left. Material, because the composer is
     // a TextField and ink has to land somewhere.
     //
-    // Transparent, because [CoachSheet] paints the photograph and the glass
-    // behind this. A fill here would put an opaque sheet on top of the effect
-    // and leave the blur doing nothing, which is exactly the no-op GlassSurface
-    // warns about.
-    return Material(
-      color: Colors.transparent,
-      child: SafeArea(
-        top: false,
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: Stack(
-                children: <Widget>[
-                  Positioned.fill(child: _conversation(context)),
-                  // **The bar floats over the conversation, and blurs it.**
-                  //
-                  // Laid out above the list, the bar cut the topmost bubble
-                  // dead along a straight edge — text simply stopped, mid-word,
-                  // against a hard line. Content passing UNDER a blurred bar is
-                  // what makes a scroll read as continuing past the chrome
-                  // rather than being clipped by it.
-                  //
-                  // The list carries matching top padding, so nothing is
-                  // permanently hidden: the first turn starts below the bar and
-                  // only travels under it once there is more than a screenful.
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _TopBar(
-                      progress: _progress,
-                      // Only where there is somewhere to look. With no
-                      // transcript wired there are no past conversations, and
-                      // a control that opens an empty list is a promise the
-                      // app cannot keep.
-                      onHistory: widget.transcript == null
-                          ? null
-                          : () => PastConversationsSheet.show(
-                              context,
-                              transcript: widget.transcript!,
-                              liveConversationId: _conversationId,
-                            ),
-                      onClose: () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                ],
+    // The suite's coach sheet (5 October 2026): Lift's design, now in mgk_ui
+    // so Run's coach is drawn by the same pieces. [CoachSheet] paints the
+    // photograph and the glass behind this.
+    return CoachSheetLayout(
+      bar: CoachTopBar(
+        // "[icon] Coach", as Run's says it: the icon is what tells the two
+        // apps' coaches apart.
+        icon: const AssetImage('assets/images/brand/app_icon.png'),
+        progress: _progress,
+        // Only where there is somewhere to look. With no transcript wired
+        // there are no past conversations, and a control that opens an empty
+        // list is a promise the app cannot keep.
+        onHistory: widget.transcript == null
+            ? null
+            : () => PastConversationsSheet.show(
+                context,
+                transcript: widget.transcript!,
+                liveConversationId: _conversationId,
               ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      enabled: !_waiting,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: const InputDecoration(
-                        hintText: 'Ask your coach',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  IconButton.filled(
-                    onPressed: _waiting ? null : _send,
-                    icon: const Icon(Icons.arrow_upward),
-                    tooltip: 'Send',
-                  ),
-                ],
-              ),
-            ),
-          ],
+        // The disclosure, at the point of use (Guideline 5.1.2(i)). Shown
+        // mid-intake as well, unlike history: the questionnaire is where the
+        // injury notes are typed, so it is the last moment the answer is
+        // worth having.
+        onDisclosure: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const LegalDocumentScreen(document: aiDisclosure),
+          ),
         ),
+        disclosureTooltip: aiDisclosure.title,
+        onClose: () => Navigator.of(context).maybePop(),
+      ),
+      conversation: _conversation(context),
+      footer: CoachComposer(
+        controller: _input,
+        enabled: !_waiting,
+        onSend: _send,
       ),
     );
   }
@@ -533,189 +509,4 @@ class _AskField extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              'It has read your log',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              // Concrete openers, because "ask me anything" is the least
-              // useful prompt in software.
-              'Ask why a lift has stalled, what to do about a sore shoulder, '
-              'or whether this week was enough.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              // Said before the first message rather than discovered later.
-              // The coach keeps notes about somebody's training and their
-              // body; a lifter who has not been told that cannot decide what
-              // to tell it. Settings is where they can read and clear it.
-              'It also remembers you between conversations. Settings shows '
-              'exactly what it has kept, and clears it.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textTertiary,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Why the last message got no answer, next to the message.
-class _Failure extends StatelessWidget {
-  const _Failure({required this.failure});
-
-  final CoachFailure failure;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-    child: Text(
-      failure.message,
-      style: Theme.of(
-        context,
-      ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-    ),
-  );
-}
-
-/// The sheet's chrome: a handle, the label, how far through, and a way out.
-///
-/// **Blurred, with the conversation running under it.** Laid out above the
-/// list, this cut the topmost bubble along a straight edge and text stopped
-/// mid-word against a hard line. A bar that frosts what passes behind it is
-/// what makes the scroll read as continuing past the chrome rather than being
-/// clipped by it — and it is the one piece of this sheet where the iOS
-/// convention is simply right.
-///
-/// The fade below the blur matters as much as the blur. A blurred band with a
-/// hard bottom edge is still an edge; letting it dissolve over the last few
-/// pixels is what stops the boundary being a line.
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.progress,
-    required this.onHistory,
-    required this.onClose,
-  });
-
-  final (int, int)? progress;
-
-  /// Opens the previous conversations, or null when there is no store to read
-  /// them from.
-  final VoidCallback? onHistory;
-
-  final VoidCallback onClose;
-
-  /// Mirrored into the list's top padding, so the first turn opens below the
-  /// bar rather than already under it.
-  static const double height = 64;
-
-  @override
-  Widget build(BuildContext context) => ClipRect(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              AppColors.bg.withValues(alpha: 0.55),
-              AppColors.bg.withValues(alpha: 0.28),
-              AppColors.bg.withValues(alpha: 0),
-            ],
-            stops: const <double>[0, 0.65, 1],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const SheetHandle(bottomSpacing: AppSpacing.xs),
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.lg,
-                right: AppSpacing.sm,
-              ),
-              child: Row(
-                children: <Widget>[
-                  const SectionLabel('Coach'),
-                  const Spacer(),
-                  if (progress != null) ...<Widget>[
-                    StepProgress(step: progress!.$1, total: progress!.$2),
-                    const SizedBox(width: AppSpacing.md),
-                  ],
-                  // Hidden mid-questionnaire: the intake is a sequence with an
-                  // end, and offering a way into old conversations part-way
-                  // through it is an invitation to abandon one.
-                  if (onHistory != null && progress == null)
-                    AppIconButton(
-                      onPressed: onHistory,
-                      icon: Icons.history,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                      tooltip: 'Previous conversations',
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  // The disclosure, at the point of use (Guideline 5.1.2(i)).
-                  // Settings carries it too, but this is the screen that does
-                  // the sending, and a disclosure somebody has to go looking
-                  // for in another tab is one they will not read.
-                  //
-                  // Shown mid-intake as well, unlike history: the questionnaire
-                  // is where the injury notes are typed, so it is the last
-                  // moment the answer is worth having.
-                  AppIconButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            const LegalDocumentScreen(document: aiDisclosure),
-                      ),
-                    ),
-                    icon: Icons.info_outline,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                    tooltip: aiDisclosure.title,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  AppIconButton(
-                    onPressed: onClose,
-                    icon: Icons.close,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                    tooltip: 'Close',
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }

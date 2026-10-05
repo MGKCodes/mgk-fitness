@@ -15,6 +15,10 @@ import 'package:mgk_lift/src/features/purchases/presentation/sales_screen.dart';
 /// cover the join rather than the widgets: a paywall that renders a button is
 /// not the same as a paywall that can sell anything. Every door now opens the
 /// sales screen (R6), where choosing a tier is the purchase.
+/// The one button, on each tier, at FakePurchases' prices.
+const String _buyCoach = 'Subscribe · £1.00/month';
+const String _buyPremium = 'Subscribe · £3.00/month';
+
 void main() {
   Future<void> openPlan(WidgetTester tester, Widget shell) async {
     tester.view
@@ -91,16 +95,19 @@ void main() {
 
     final sheet = find.byType(SalesScreen);
     expect(sheet, findsOneWidget);
-    // What each adds: the second, a better model and a bigger allowance
-    // (ADR-0041).
-    expect(find.textContaining('A better AI model'), findsOneWidget);
-    for (final text in <String>['£1.00 / month', '£3.00 / month']) {
+    // What sets the second apart, as an amount (ADR-0041, 3.1.2(c)).
+    expect(find.text('3× the coaching, sharper model'), findsOneWidget);
+    for (final price in <String>['£1.00', '£3.00']) {
       expect(
-        find.descendant(of: sheet, matching: find.text(text)),
-        findsOneWidget,
+        find.descendant(
+          of: sheet,
+          matching: find.textContaining(price, findRichText: true),
+        ),
+        findsWidgets,
       );
     }
-    expect(find.text('Subscribe to Coach'), findsOneWidget);
+    // One button, on the tier chosen, which starts as the first.
+    expect(find.text(_buyCoach), findsOneWidget);
   });
 
   testWidgets('Subscribe to Coach buys Coach', (tester) async {
@@ -113,7 +120,7 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
 
     expect(store.bought.single.tier, EntitlementTier.paid);
   });
@@ -130,9 +137,10 @@ void main() {
       ),
     );
     await openSales(tester);
-    // Choosing the tier is the purchase: no second button that might still
-    // be buying the first.
-    await tapVisible(tester, find.text('Subscribe to Premium Coach'));
+    // Choosing the tier moves the one button onto it.
+    await tapVisible(tester, find.text('Premium Coach'));
+    expect(find.text(_buyCoach), findsNothing);
+    await tapVisible(tester, find.text(_buyPremium));
 
     expect(store.bought.single.tier, EntitlementTier.premium);
   });
@@ -152,7 +160,7 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
 
     expect(find.byType(SalesScreen), findsNothing);
     expect(
@@ -179,7 +187,7 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
 
     expect(find.byType(SalesScreen), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
@@ -202,9 +210,9 @@ void main() {
     );
     await openSales(tester);
 
-    expect(find.text('Subscribe to Coach'), findsOneWidget);
-    expect(find.text('Subscribe to Premium Coach'), findsOneWidget);
-    expect(find.textContaining('sign in or make an account first'), findsOne);
+    expect(find.text(_buyCoach), findsOneWidget);
+    expect(find.text('Premium Coach'), findsOneWidget);
+    expect(find.textContaining("You'll sign in first"), findsOne);
     expect(store.bought, isEmpty);
   });
 
@@ -225,7 +233,7 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
 
     expect(find.byType(SignInScreen), findsOneWidget);
     expect(store.bought, isEmpty, reason: 'nothing before the account');
@@ -253,13 +261,13 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
     await tester.pageBack();
     await tester.pumpAndSettle();
 
     expect(find.byType(SalesScreen), findsOneWidget);
     expect(store.bought, isEmpty);
-    expect(find.text('Subscribe to Coach'), findsOneWidget);
+    expect(find.text(_buyCoach), findsOneWidget);
   });
 
   testWidgets('a store that refuses for want of an account says so, and that '
@@ -276,7 +284,7 @@ void main() {
       ),
     );
     await openSales(tester);
-    await tapVisible(tester, find.text('Subscribe to Coach'));
+    await tapVisible(tester, find.text(_buyCoach));
 
     expect(find.byType(SalesScreen), findsOneWidget);
     expect(find.textContaining('Sign in first'), findsOneWidget);
@@ -360,21 +368,17 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('carries the auto-renew terms in Apple\'s words on iOS', (
+    testWidgets('says who charges, how often and where to stop it, on iOS', (
       tester,
     ) async {
-      // Guideline 3.1.2(a): at the point of purchase, in full.
+      // Guideline 3.1.2(a), at the point of purchase, at the length of a
+      // glance: the full wording is in the terms.
       await pumpSheet(tester, platform: TargetPlatform.iOS);
       expect(
-        find.textContaining('Payment is charged to your Apple ID'),
+        find.textContaining('Charged to your Apple ID every month'),
         findsOneWidget,
       );
-      expect(
-        find.textContaining(
-          'unless auto-renew is turned off at least 24 hours',
-        ),
-        findsOneWidget,
-      );
+      expect(find.textContaining('until you cancel'), findsOneWidget);
       expect(find.textContaining('Google Play'), findsNothing);
     });
 
@@ -382,7 +386,7 @@ void main() {
       // Run's paywall told a Play customer their Apple ID would be charged.
       await pumpSheet(tester, platform: TargetPlatform.android);
       expect(
-        find.textContaining('your Google Play account at confirmation'),
+        find.textContaining('Charged to your Google Play account'),
         findsOneWidget,
       );
       expect(find.textContaining('Apple ID'), findsNothing);
@@ -392,7 +396,7 @@ void main() {
       tester,
     ) async {
       await pumpSheet(tester, platform: TargetPlatform.iOS);
-      for (final link in <String>['Terms of use', 'Privacy policy']) {
+      for (final link in <String>['Terms', 'Privacy']) {
         await tester.ensureVisible(find.text(link));
         await tester.pumpAndSettle();
         await tester.tap(find.text(link));
@@ -413,7 +417,7 @@ void main() {
         );
         expect(find.text('Not available to buy yet'), findsOneWidget);
         // Restore still works for somebody who already paid.
-        expect(find.text('Restore purchases'), findsOneWidget);
+        expect(find.text('Restore'), findsOneWidget);
       },
     );
 
@@ -421,11 +425,21 @@ void main() {
       tester,
     ) async {
       await pumpSheet(tester, platform: TargetPlatform.iOS);
-      expect(find.textContaining('A training plan built from'), findsOneWidget);
+      // A few words each, to scan.
+      for (final title in <String>[
+        'Your own training plan',
+        'A coach on call',
+        'Weekly progress photos',
+        'Smart exercise swaps',
+      ]) {
+        expect(find.text(title), findsOneWidget, reason: title);
+      }
+      expect(find.text('3× the coaching, sharper model'), findsOneWidget);
+      // And the sentence behind one, a tap away.
+      expect(find.textContaining('reads your recent sessions'), findsNothing);
+      await tester.tap(find.text('A coach on call'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('reads your recent sessions'), findsOneWidget);
-      expect(find.textContaining('Progress photos'), findsOneWidget);
-      expect(find.textContaining('A better AI model'), findsOneWidget);
-      expect(find.textContaining('A bigger monthly allowance'), findsOneWidget);
       // Nothing moves a planned session, and the coach reads nothing of Run.
       expect(find.textContaining('Thursday'), findsNothing);
       expect(find.textContaining('running'), findsNothing);
@@ -449,8 +463,9 @@ void main() {
           ),
         ],
       );
-      expect(find.text('1,09 € / month'), findsOneWidget);
-      expect(find.textContaining('£'), findsNothing);
+      expect(find.textContaining('1,09 €', findRichText: true), findsWidgets);
+      expect(find.text('Subscribe · 1,09 €/month'), findsOneWidget);
+      expect(find.textContaining('£', findRichText: true), findsNothing);
     });
   });
 }

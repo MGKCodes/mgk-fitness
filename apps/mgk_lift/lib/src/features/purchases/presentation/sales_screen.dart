@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../../entitlement/domain/entitlement.dart';
 import '../../legal/domain/legal_copy.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../domain/purchases.dart';
-import 'restore_button.dart';
 
 /// Where the coach is sold: one screen, reached from every door (R6).
 ///
@@ -21,11 +21,13 @@ import 'restore_button.dart';
 /// this, and it returns what happened so the door can open onto what was just
 /// bought.
 ///
-/// **Choosing a tier is the purchase**, as Run's screen already works: each
-/// tier is a card with its own button, rather than a choice and then a second
-/// button that might still be buying the first tier.
+/// **Drawn by the suite's [CoachPaywall]** (4 October 2026), the same screen
+/// Run sells through: Lift's icon and name where the decision is made, four
+/// benefits to scan, the two tiers side by side, and one button that buys the
+/// one chosen, on one screen that does not scroll. This file keeps what is
+/// Lift's: the words, and the purchase itself.
 ///
-/// **It promises only what ships.** Each bullet below is one thing the coach
+/// **It promises only what ships.** Each benefit below is one thing the coach
 /// function or the app actually does, and names it in a comment. The plan's
 /// pitch once promised to move Thursday's session when a shoulder was sore,
 /// which nothing in the app can do, and that the coach saw your running, which
@@ -201,281 +203,109 @@ class _SalesScreenState extends State<SalesScreen> {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen)),
   );
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final top = MediaQuery.paddingOf(context).top;
-    final height = MediaQuery.sizeOf(context).height;
-    final signedOut = widget.auth != null && widget.auth!.current == null;
+  /// What the subscription adds, **one row per thing that ships**, each with
+  /// the code it rests on. A few words to scan, and the sentence behind them a
+  /// tap away (the paywall research of 4 October 2026). Nothing here moves a
+  /// planned session or reads Run, because nothing in the app does.
+  static const List<PaywallBenefit> _benefits = <PaywallBenefit>[
+    // lift_intake and lift_plan, which read the log as the caller.
+    PaywallBenefit(
+      icon: Icons.event_note_outlined,
+      title: 'Your own training plan',
+      detail:
+          'A training plan built from your goal, the days you can train and '
+          'what you have actually lifted. It adjusts as you go.',
+    ),
+    // lift_chat, given the last ten sessions (lift_log.ts).
+    PaywallBenefit(
+      icon: Icons.forum_outlined,
+      title: 'A coach on call',
+      detail:
+          'Ask about your training at any time. The coach reads your recent '
+          'sessions before it answers.',
+    ),
+    // Photos: taking one needs the entitlement.
+    PaywallBenefit(
+      icon: Icons.photo_camera_outlined,
+      title: 'Weekly progress photos',
+      detail:
+          'One photo a week for each pose, kept privately on your account and '
+          'played back in order.',
+    ),
+    // lift_swap, from the session screen.
+    PaywallBenefit(
+      icon: Icons.swap_horiz,
+      title: 'Smart exercise swaps',
+      detail:
+          'When a machine is taken, the coach picks a swap that trains the '
+          'same thing.',
+    ),
+  ];
 
-    return PopScope(
-      canPop: !_busy,
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        body: PhotoBackdrop.hero(
-          image: 'assets/images/backgrounds/hero_paywall.webp',
-          child: Stack(
-            children: <Widget>[
-              // Not a lazy list: the offer is short and finite, and every
-              // part of it — the second tier, Restore, the renewal terms, the
-              // two links — must exist whether or not it has been scrolled to.
-              SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  // The photograph carries the top; the offer starts where it
-                  // has faded, so nothing is read against a face or a bar.
-                  (height * 0.30).clamp(160, 300),
-                  AppSpacing.xl,
-                  AppSpacing.xxl + MediaQuery.paddingOf(context).bottom,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    const SectionLabel('The coach'),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'A plan built for you, and a coach to ask',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Tracking stays free, whatever you choose. This is what a '
-                      'subscription adds.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (_loading && _offers.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (_offers.isEmpty)
-                      const _NothingToSell()
-                    else
-                      for (final offer in _offers) ...<Widget>[
-                        _TierCard(
-                          offer: offer,
-                          busy: _buying == offer.tier,
-                          onChoose: _busy ? null : () => _choose(offer),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                    if (signedOut && _offers.isNotEmpty)
-                      Text(
-                        "You'll sign in or make an account first: a "
-                        'subscription belongs to your account, which is how it '
-                        'reaches your coach and follows you to a new phone.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    if (_note case final note?) ...<Widget>[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        note,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    Center(
-                      child: RestorePurchasesButton(
-                        onRestore: _busy ? null : _restore,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      renewalWording(_platform),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiary,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Wrap, not Row: these are the two links Guideline 3.1.2
-                    // requires to be present and working, so a layout that clips
-                    // one at large text is a rejection, not a cosmetic complaint.
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: AppSpacing.md,
-                      children: <Widget>[
-                        AppTextButton(
-                          label: 'Terms of use',
-                          onPressed: () => _open(
-                            const LegalDocumentScreen(document: termsOfUse),
-                          ),
-                        ),
-                        AppTextButton(
-                          label: 'Privacy policy',
-                          onPressed: () => _open(
-                            const LegalDocumentScreen(document: privacyPolicy),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: top + AppSpacing.xs,
-                left: AppSpacing.sm,
-                child: AppIconButton(
-                  icon: Icons.close,
-                  tooltip: 'Close',
-                  onPressed: _busy
-                      ? null
-                      : () => Navigator.of(context).maybePop(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One tier: what it is, what the store charges for it, what it adds, and the
-/// button that buys it.
-class _TierCard extends StatelessWidget {
-  const _TierCard({
-    required this.offer,
-    required this.busy,
-    required this.onChoose,
-  });
-
-  final PurchaseOffer offer;
-  final bool busy;
-  final VoidCallback? onChoose;
-
-  /// What each tier adds, **one line per thing that ships**, with where it
-  /// lives. The two paid tiers hold the same features; Premium adds a better
-  /// model and more room to use it (ADR-0041), and says so without naming
-  /// either, since both are configuration.
-  static List<String> _adds(EntitlementTier tier) => switch (tier) {
-    // ADR-0041: a better model and a bigger allowance. Lift's chat is a
-    // human-facing surface, so `modelFor` gives Premium the sharp model.
-    EntitlementTier.premium => const <String>[
-      'Everything in Coach',
-      // surfaces.ts `modelFor` with COACH_CHAT_MODEL_SHARP.
-      "A better AI model behind your coach's replies",
-      // limits.ts: the monthly allowance per tier.
-      'A bigger monthly allowance to talk to your coach',
-    ],
-    _ => const <String>[
-      // lift_intake and lift_plan, which read the log as the caller.
-      'A training plan built from your goal, your days and what you have '
-          'actually lifted',
-      // lift_chat, given the last ten sessions (lift_log.ts).
-      'A coach to ask about your training, who reads your recent sessions',
-      // lift_swap, from the session screen.
-      'A swap the coach picks when a machine is taken',
-      // Photos: taking one needs the entitlement.
-      'Progress photos, week by week',
-    ],
+  /// What sets a tier apart, in a line. The two hold the same features;
+  /// Premium has a better model behind the replies (surfaces.ts `modelFor`)
+  /// and three times the monthly coaching allowance (limits.ts:
+  /// `monthly_spend` 1.92 against 0.64), which Guideline 3.1.2(c) wants said
+  /// as an amount rather than as "more" (ADR-0041).
+  static String _line(EntitlementTier tier) => switch (tier) {
+    EntitlementTier.premium => '3× the coaching, sharper model',
+    _ => 'Everything above',
   };
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassSurface(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.sm,
-            children: <Widget>[
-              Text(offer.tier.label, style: theme.textTheme.titleMedium),
-              Text(
-                // Straight from the storefront, already in the lifter's own
-                // currency. The app names tiers; it never prices them.
-                '${offer.price} / ${offer.period}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontFeatures: const <FontFeature>[
-                    FontFeature.tabularFigures(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          for (final line in _adds(offer.tier))
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Icons.check,
-                      size: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      line,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          PrimaryButton(
-            label: 'Subscribe to ${offer.tier.label}',
-            busy: busy,
-            onPressed: onChoose,
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final signedOut = widget.auth != null && widget.auth!.current == null;
+    final tiers = <PaywallTier>[
+      for (final offer in _offers)
+        PaywallTier(
+          id: offer.id,
+          name: offer.tier.label,
+          // Straight from the storefront, already in the lifter's own
+          // currency. The app names tiers; it never prices them.
+          price: offer.price,
+          period: offer.period,
+          line: _line(offer.tier),
+          // The tier the screen opens on, and the one to start with: the
+          // cheap first step, which upgrades on the day it is outgrown.
+          recommended: offer.tier == EntitlementTier.paid,
+        ),
+    ];
+    PurchaseOffer? offerFor(String id) {
+      for (final offer in _offers) {
+        if (offer.id == id) return offer;
+      }
+      return null;
+    }
 
-/// The build cannot sell, or the store had nothing to offer. One state for
-/// both, because they are the same fact to a lifter and neither is their
-/// problem.
-class _NothingToSell extends StatelessWidget {
-  const _NothingToSell();
+    String? busyId;
+    for (final offer in _offers) {
+      if (offer.tier == _buying) busyId = offer.id;
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassSurface(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Not available to buy yet', style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Everything you log stays free and stays yours in the meantime.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+    return CoachPaywall(
+      appIcon: const AssetImage('assets/images/brand/app_icon.png'),
+      appName: kProductName,
+      photo: 'assets/images/backgrounds/hero_paywall.webp',
+      headline: 'A plan built for you, and a coach to ask',
+      benefits: _benefits,
+      tiers: tiers,
+      loading: _loading,
+      busyTierId: busyId,
+      restoring: _restoring,
+      note: _note,
+      signedOut: signedOut && _offers.isNotEmpty,
+      platform: _platform,
+      onSubscribe: _busy
+          ? null
+          : (tier) {
+              final offer = offerFor(tier.id);
+              if (offer != null) unawaited(_choose(offer));
+            },
+      onRestore: _busy ? null : () => unawaited(_restore()),
+      onClose: _busy ? null : () => Navigator.of(context).maybePop(),
+      onTerms: () => _open(const LegalDocumentScreen(document: termsOfUse)),
+      onPrivacy: () =>
+          _open(const LegalDocumentScreen(document: privacyPolicy)),
     );
   }
 }

@@ -35,6 +35,8 @@ class AccountScreen extends StatelessWidget {
     this.auth,
     this.deleter,
     this.onAccountGone,
+    this.eraseThisPhone,
+    this.onManageSubscription,
     this.now,
   });
 
@@ -51,6 +53,15 @@ class AccountScreen extends StatelessWidget {
   final AuthService? auth;
   final AccountDeleter? deleter;
   final Future<void> Function()? onAccountGone;
+
+  /// See [DeleteAccountScreen.eraseThisPhone].
+  final Future<void> Function()? eraseThisPhone;
+
+  /// The store's page for the subscription, where it is managed and
+  /// cancelled. Null hides the row: somebody not subscribed has nothing there
+  /// to manage. Google Play's policy wants this way out inside the app.
+  final VoidCallback? onManageSubscription;
+
   final DateTime? now;
 
   @override
@@ -129,6 +140,11 @@ class AccountScreen extends StatelessWidget {
                 label: 'Coaching',
                 children: <Widget>[
                   SettingsRow(title: 'Plan', value: planLabel),
+                  if (onManageSubscription != null)
+                    SettingsRow(
+                      title: 'Manage subscription',
+                      onTap: onManageSubscription,
+                    ),
                   if (onRestorePurchases != null)
                     SettingsRow(
                       title: 'Restore purchases',
@@ -163,13 +179,15 @@ class AccountScreen extends StatelessWidget {
                       auth: service,
                       deleter: delete,
                       onAccountGone: onAccountGone,
+                      eraseThisPhone: eraseThisPhone,
+                      onManageSubscription: onManageSubscription,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'This app only, or your whole profile. It cannot be undone.',
+                'This app only, or your whole account. It cannot be undone.',
                 style: dim,
               ),
             ],

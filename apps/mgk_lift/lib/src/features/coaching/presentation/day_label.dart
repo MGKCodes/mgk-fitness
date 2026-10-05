@@ -22,11 +22,16 @@
 /// compiling the moment the branches meet. Consolidating needs both apps in
 /// hand at once, which is a cross-lane change and not this plan's to make.
 String dayLabel(DateTime at, DateTime now) {
-  final days = DateTime(
+  // In UTC, as Run's has been since 248d289. Two local midnights are 23 or 25
+  // hours apart across a daylight-saving change, so `inDays` of their
+  // difference called the day after the clocks went forward "Today" when it
+  // was yesterday. Built from the calendar dates in UTC, the change cannot
+  // move it.
+  final days = DateTime.utc(
     now.year,
     now.month,
     now.day,
-  ).difference(DateTime(at.year, at.month, at.day)).inDays;
+  ).difference(DateTime.utc(at.year, at.month, at.day)).inDays;
   if (days <= 0) return 'Today';
   if (days == 1) return 'Yesterday';
   if (days < 7) return _weekdays[at.weekday - 1];

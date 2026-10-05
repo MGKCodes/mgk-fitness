@@ -93,8 +93,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('SESSION COMPLETE'), findsOneWidget);
-      expect(find.text('Push'), findsOneWidget);
+      expect(find.text('Session complete'), findsOneWidget);
+      // When and what, as Run's says "Just now · Outdoor run".
+      expect(find.text('Just now  ·  Push'), findsOneWidget);
 
       // Read off the StatBlocks rather than by searching for the numbers,
       // because each figure has to be checked **against its own label**. A
@@ -264,12 +265,12 @@ void main() {
       );
       await tester.tap(find.text('Track'));
       await tester.pumpAndSettle();
-      expect(find.text('SESSION COMPLETE'), findsOneWidget);
+      expect(find.text('Session complete'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Done'));
       await tester.pumpAndSettle();
 
-      expect(find.text('SESSION COMPLETE'), findsNothing);
+      expect(find.text('Session complete'), findsNothing);
       expect(find.text('Track'), findsOneWidget);
     });
 
@@ -305,7 +306,7 @@ void main() {
       // redirect rather than refuse. Opening it from on top of the summary
       // would hide both behind a screen the lifter has finished with.
       expect(opened, isTrue);
-      expect(find.text('SESSION COMPLETE'), findsNothing);
+      expect(find.text('Session complete'), findsNothing);
     });
   });
 
@@ -347,7 +348,7 @@ void main() {
       await finishSession(tester);
 
       expect(find.byType(SessionSummaryScreen), findsOneWidget);
-      expect(find.text('SESSION COMPLETE'), findsOneWidget);
+      expect(find.text('Session complete'), findsOneWidget);
       // The session that `finish()` returned, not the one the screen was
       // holding: it has an `endedAt`, so it has a duration and can be compared
       // against the log at all.

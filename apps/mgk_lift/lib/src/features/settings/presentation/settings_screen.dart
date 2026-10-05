@@ -58,6 +58,8 @@ class SettingsScreen extends StatefulWidget {
     this.auth,
     this.deleter,
     this.onAccountGone,
+    this.eraseThisPhone,
+    this.onManageSubscription,
     this.onRestorePurchases,
     this.restAlerts,
     this.version = kAppVersion,
@@ -133,6 +135,14 @@ class SettingsScreen extends StatefulWidget {
 
   /// See [DeleteAccountScreen.onAccountGone].
   final Future<void> Function()? onAccountGone;
+
+  /// See [DeleteAccountScreen.eraseThisPhone].
+  final Future<void> Function()? eraseThisPhone;
+
+  /// The store's page for the subscription. **Null for somebody not
+  /// subscribed**, which hides the row on the account screen and the note
+  /// beside deleting.
+  final VoidCallback? onManageSubscription;
 
   /// Restore purchases. **Null hides the row**, on the same rule as every other
   /// optional here: a build with no store cannot restore anything.
@@ -260,6 +270,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         auth: widget.auth,
         deleter: widget.deleter,
         onAccountGone: widget.onAccountGone,
+        eraseThisPhone: widget.eraseThisPhone,
+        onManageSubscription: widget.onManageSubscription,
         now: widget.now,
       ),
     ),
@@ -521,6 +533,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 auth: widget.auth,
                                 deleter: widget.deleter,
                                 onAccountGone: widget.onAccountGone,
+                                eraseThisPhone: widget.eraseThisPhone,
+                                onManageSubscription:
+                                    widget.onManageSubscription,
                               ),
                             ),
                           ),

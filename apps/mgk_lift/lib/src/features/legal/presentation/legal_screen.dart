@@ -24,6 +24,8 @@ class LegalScreen extends StatelessWidget {
     this.deleter,
     this.onSignedOut,
     this.onAccountGone,
+    this.eraseThisPhone,
+    this.onManageSubscription,
   });
 
   /// Shown at the top when signed in, so it is obvious which account the
@@ -44,6 +46,12 @@ class LegalScreen extends StatelessWidget {
 
   /// See [DeleteAccountScreen.onAccountGone].
   final Future<void> Function()? onAccountGone;
+
+  /// See [DeleteAccountScreen.eraseThisPhone].
+  final Future<void> Function()? eraseThisPhone;
+
+  /// See [DeleteAccountScreen.onManageSubscription].
+  final VoidCallback? onManageSubscription;
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -125,7 +133,7 @@ class LegalScreen extends StatelessWidget {
                 title: 'Delete account',
                 // Says there is a choice, so the row is not read as the one
                 // irreversible thing it could have been.
-                subtitle: 'This app only, or your whole profile',
+                subtitle: 'This app only, or your whole account',
                 tint: AppColors.danger,
                 onTap: () => _push(
                   context,
@@ -134,6 +142,8 @@ class LegalScreen extends StatelessWidget {
                     deleter: deleter!,
                     onSignedOut: onSignedOut,
                     onAccountGone: onAccountGone,
+                    eraseThisPhone: eraseThisPhone,
+                    onManageSubscription: onManageSubscription,
                   ),
                 ),
               ),
