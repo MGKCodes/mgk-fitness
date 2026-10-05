@@ -233,6 +233,7 @@ void main() {
 
 class _NoDeleter implements AccountDeleter {
   @override
-  Future<AccountDeletionResult> deleteAccount() async =>
-      const AccountDeletionResult(accountDeleted: true);
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => const AccountDeletionResult(accountDeleted: true);
 }

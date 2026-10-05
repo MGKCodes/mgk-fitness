@@ -61,9 +61,12 @@ void main() {
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
-    // With no log, Profile explains what will appear rather than showing six
-    // stat blocks reading zero.
-    expect(find.text('Nothing logged yet'), findsOneWidget);
+    // With no log, Profile holds its figures open and says what will build
+    // there, as Run's does, rather than showing blocks reading zero.
+    expect(
+      find.textContaining('Log your first session and your totals'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Track'));
     await tester.pumpAndSettle();

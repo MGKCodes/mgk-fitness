@@ -28,8 +28,12 @@ Future<void> pumpScreen(
   await pumpTall(tester, DeleteAccountScreen(auth: service, deleter: deleter));
 }
 
-Finder scopeCard(DeletionScope scope) =>
-    find.byKey(ValueKey<DeletionScope>(scope));
+/// The two cards are the suite's [DeletionChoice] since 4 October 2026, the
+/// same in both apps, keyed by what they erase rather than by Lift's enum.
+Finder scopeCard(DeletionScope scope) => find.byKey(switch (scope) {
+  DeletionScope.liftOnly => DeletionChoice.narrowKey,
+  DeletionScope.everything => DeletionChoice.wideKey,
+});
 
 Future<void> arm(WidgetTester tester) async {
   await tester.enterText(find.byType(TextField), 'DELETE');
@@ -101,7 +105,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(DestructiveButton),
-          matching: find.text('Delete my Lift data'),
+          matching: find.text("Delete this app's data"),
         ),
         findsOneWidget,
       );
@@ -311,6 +315,100 @@ void main() {
       );
       expect(calls, isEmpty);
     });
+
+    /// Deletes with an eraser on offer, as the shell gives one, and reports
+    /// what was erased and released.
+    Future<({int erased, int released})> deleteOffering(
+      WidgetTester tester, {
+      bool keep = false,
+      bool eraseFails = false,
+    }) async {
+      var erased = 0;
+      var released = 0;
+      final auth = FakeAuth(account: _signedIn);
+      addTearDown(auth.dispose);
+      await pumpTall(
+        tester,
+        DeleteAccountScreen(
+          auth: auth,
+          deleter: FakeAccountDeleter(
+            result: const AccountDeletionResult(accountDeleted: true),
+          ),
+          onSignedOut: () {},
+          onAccountGone: () async => released++,
+          eraseThisPhone: () async {
+            if (eraseFails) throw StateError('disk');
+            erased++;
+          },
+        ),
+      );
+      if (keep) {
+        await tester.tap(find.byType(Switch));
+        await tester.pumpAndSettle();
+      }
+      await arm(tester);
+      await tester.tap(find.byType(DestructiveButton));
+      await tester.pumpAndSettle();
+      return (erased: erased, released: released);
+    }
+
+    testWidgets('is offered, on by default, and erased with the account', (
+      WidgetTester tester,
+    ) async {
+      // Somebody deleting their account has asked for their data to go, and
+      // the copy on the phone is the part they are least likely to think of.
+      final done = await deleteOffering(tester);
+
+      expect(done.erased, 1);
+      expect(find.text('Your data is deleted'), findsOneWidget);
+      expect(
+        find.text("This phone's copy has been erased too."),
+        findsOneWidget,
+      );
+
+      // Erasing already left the phone unclaimed: nothing to release.
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+      await tester.pumpAndSettle();
+      expect(done.released, 0);
+    });
+
+    testWidgets('kept, the title says only the servers were cleared', (
+      WidgetTester tester,
+    ) async {
+      final done = await deleteOffering(tester, keep: true);
+
+      expect(done.erased, 0);
+      expect(find.text('Deleted from our servers'), findsOneWidget);
+      expect(find.text('Your data is deleted'), findsNothing);
+      expect(
+        find.textContaining('Your sessions are still on this phone'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an erase that failed is not called an erase', (
+      WidgetTester tester,
+    ) async {
+      await deleteOffering(tester, eraseFails: true);
+
+      expect(find.text('Deleted from our servers'), findsOneWidget);
+      expect(
+        find.textContaining("This phone's copy could not be erased"),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('with no eraser, the phone is said to be untouched', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, deleter: FakeAccountDeleter());
+
+      expect(find.byType(Switch), findsNothing);
+      expect(
+        find.textContaining('What is on this phone is not touched'),
+        findsOneWidget,
+      );
+    });
   });
 
   group('reaching it', () {
@@ -332,7 +430,7 @@ void main() {
       expect(find.text('Delete account'), findsOneWidget);
       // The row says a choice is coming, so it does not read as the single
       // irreversible thing it could have been.
-      expect(find.text('This app only, or your whole profile'), findsOneWidget);
+      expect(find.text('This app only, or your whole account'), findsOneWidget);
 
       await tester.tap(find.text('Delete account'));
       await tester.pumpAndSettle();

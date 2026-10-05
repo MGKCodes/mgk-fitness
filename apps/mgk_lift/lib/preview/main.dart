@@ -31,6 +31,7 @@ import '../src/features/legal/domain/legal_copy.dart';
 import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
+import '../src/features/legal/presentation/medical_disclaimer_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
@@ -228,6 +229,18 @@ class PreviewApp extends StatelessWidget {
         offers: _storeOffers,
         auth: _signedInAuth(),
         platform: TargetPlatform.iOS,
+      ),
+      // The same screen on an Android phone: the renewal terms and the
+      // notes name Google Play and the Google Play account, never an Apple
+      // ID. Every store word on the paywall follows the phone.
+      'sales-android': (_) => SalesScreen(
+        flow: PurchaseFlow(
+          purchases: FakePurchases(offers: _storeOffers),
+          gate: EntitlementGate(source: FakeEntitlements(Entitlement.none)),
+        ),
+        offers: _storeOffers,
+        auth: _signedInAuth(),
+        platform: TargetPlatform.android,
       ),
       // Signed out, the offer is the same; choosing a tier asks for the
       // account on the way to the store.
@@ -585,11 +598,15 @@ class PreviewApp extends StatelessWidget {
         source: FakePhotoSource(null),
         now: previewNow,
       ),
+      // Signed out as the app has it, with somewhere to sign in: without
+      // onSignIn the profile card is a build with no server, and reads "Not
+      // signed in" with no way in.
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
         restAlerts: FakeRestAlerts(isAllowed: false),
+        onSignIn: () {},
       ),
       // The two states that matter: signed out with training that exists in
       // one place, and signed in with everything up to date.
@@ -613,6 +630,8 @@ class PreviewApp extends StatelessWidget {
         planLabel: 'Subscribed',
         backup: _backup(),
         onSyncNow: () {},
+        // Subscribed, so the store's page is offered (5 October 2026).
+        onManageSubscription: () {},
         onRestorePurchases: () async {},
         onSignOut: () {},
         auth: _signedInAuth(),
@@ -633,11 +652,11 @@ class PreviewApp extends StatelessWidget {
         ),
         onSignIn: () {},
       ),
-      'account-synced': (_) => SettingsScreen(
-        initial: const UnitPreferences(),
-        store: InMemoryUnitPreferences(),
-        now: previewNow,
-        isSignedIn: true,
+      // The index says where backup stands in a word; the sentence is on the
+      // account screen, so that is what these two draw.
+      'account-synced': (_) => AccountScreen(
+        email: 'matt@example.com',
+        planLabel: 'Free',
         backup: _backup(
           pending: SyncPending(
             workouts: 0,
@@ -645,15 +664,16 @@ class PreviewApp extends StatelessWidget {
           ),
         ),
         onSyncNow: () {},
+        onRestorePurchases: () async {},
+        onSignOut: () {},
+        now: previewNow,
       ),
       // What a refusal looks like where it is listed in full, beside a run
       // that failed and will try again.
-      'account-problems': (_) => SettingsScreen(
-        initial: const UnitPreferences(),
-        store: InMemoryUnitPreferences(),
-        now: previewNow,
-        isSignedIn: true,
+      'account-problems': (_) => AccountScreen(
         email: 'matt@example.com',
+        onSignOut: () {},
+        now: previewNow,
         backup: _backup(
           state: BackupState.failed,
           pending: const SyncPending(
@@ -945,6 +965,14 @@ class PreviewApp extends StatelessWidget {
       // space.
       'sign-in-email': (_) =>
           SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
+      // The same form as the sales screen opens it, for somebody subscribing:
+      // starting on making an account.
+      'sign-in-create': (_) => SignInScreen(
+        auth: FakeAuth(),
+        pendingWorkouts: 9,
+        emailFirst: true,
+        initialSignUp: true,
+      ),
       'credits': (_) => const CreditsScreen(),
 
       // ---- Privacy, legal and leaving --------------------------------------
@@ -971,10 +999,22 @@ class PreviewApp extends StatelessWidget {
       // it is entered. The done state is deliberately not addressable: it
       // exists only after a typed phrase and a tap, and a harness entry that
       // faked it would be a photograph of a state the code cannot reach.
+      // Asked once on a phone, before the coach answers anything or builds a
+      // plan (5 October 2026, as Run's coach asks it).
+      'coach-disclaimer': (_) =>
+          MedicalDisclaimerScreen(onAcknowledge: () {}, onDecline: () {}),
       'delete-account': (_) => DeleteAccountScreen(
         auth: _signedInAuth(),
         deleter: FakeAccountDeleter(),
         onSignedOut: () {},
+        // The app always has an eraser to offer, so the screen is shown with
+        // the switch it has. Nothing here erases anything: the done state is
+        // not addressable.
+        eraseThisPhone: () async {},
+        // A subscriber, as Run's board draws its own: the case where the
+        // screen has the most to say.
+        onManageSubscription: () {},
+        platform: TargetPlatform.iOS,
       ),
       // `coach-mark` used to sit here, and was character-for-character the same
       // shell as `track-coach` — two entries, one screen, two frames on the
@@ -1008,10 +1048,24 @@ class PreviewApp extends StatelessWidget {
         ? defined
         : Uri.base.queryParameters['screen'];
 
+    // `?safe=59,34`: the bands a phone keeps for itself, top and bottom, in
+    // points. A browser keeps none, so without this every screen lays out into
+    // the strip where a store picture draws the status bar over it
+    // (tool/capture_store_screens.mjs).
+    final safe = _safeArea(Uri.base.queryParameters['safe']);
+
     return MaterialApp(
       title: 'Lift — preview',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      builder: safe == null
+          ? null
+          : (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(padding: safe, viewPadding: safe),
+              child: child!,
+            ),
       // The index is always the root and a named screen is *pushed* onto it,
       // which matters more than it looks.
       //
@@ -1029,6 +1083,13 @@ class PreviewApp extends StatelessWidget {
       home: _Harness(screens: screens, initial: key),
     );
   }
+}
+
+/// `"59,34"` as a top and a bottom inset, or null for anything else.
+EdgeInsets? _safeArea(String? value) {
+  final parts = value?.split(',').map(double.tryParse).toList();
+  if (parts == null || parts.length != 2 || parts.contains(null)) return null;
+  return EdgeInsets.only(top: parts[0]!, bottom: parts[1]!);
 }
 
 /// The index, with a named screen pushed on top of it.
@@ -1295,20 +1356,19 @@ Widget _sheetOf({
         scrim: ScrimStrength.balanced,
         opacity: 0.5,
       ),
-      // The modal barrier, at the strength CoachSheet.show uses. Dimmed rather
-      // than blacked out: seeing the surface you came from is the difference
-      // between a sheet and a screen.
-      const ColoredBox(color: Color(0x66000000), child: SizedBox.expand()),
+      // The modal barrier, at the strength showCoachSheet uses (45%). Dimmed
+      // rather than blacked out: seeing the surface you came from is the
+      // difference between a sheet and a screen.
+      const ColoredBox(color: Color(0x73000000), child: SizedBox.expand()),
+      // The frame sizes itself to 0.88 of what it is given, as it does in
+      // the app's modal route.
       Align(
         alignment: Alignment.bottomCenter,
-        child: FractionallySizedBox(
-          heightFactor: 0.88,
-          child: CoachSheet(
-            coach: coach,
-            transcript: transcript,
-            opener: opener,
-            massUnit: massUnit,
-          ),
+        child: CoachSheet(
+          coach: coach,
+          transcript: transcript,
+          opener: opener,
+          massUnit: massUnit,
         ),
       ),
     ],

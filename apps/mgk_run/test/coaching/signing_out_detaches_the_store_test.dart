@@ -157,7 +157,7 @@ void main() {
       final auth = await pumpPaywall(tester, purchases);
       expect(auth.isSignedIn, isFalse);
 
-      await tester.tap(find.text('Subscribe').first);
+      await tester.tap(find.textContaining('Subscribe ·'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Sign in first'), findsOneWidget);
 
@@ -196,7 +196,7 @@ void main() {
         FakePurchases(restoreOutcome: PurchaseOutcome.notIdentified),
       );
 
-      await tester.tap(find.text('Restore purchases'));
+      await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
 
       expect(

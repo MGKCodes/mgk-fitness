@@ -486,26 +486,13 @@ String dayLabel(DateTime at, DateTime now) {
   return '${at.day} ${monthShortName(at.month)}';
 }
 
-/// The three-dot "coach is typing" bubble shown while a turn is in flight.
-class TypingBubble extends StatefulWidget {
+/// The coach composing a reply while a turn is in flight: the suite's orb and
+/// "Thinking…", as Lift's coach waits, beside the mark that starts each of the
+/// coach's turns here.
+///
+/// Three dots until 4 October 2026, when both apps' coaches took the orb.
+class TypingBubble extends StatelessWidget {
   const TypingBubble({super.key});
-
-  @override
-  State<TypingBubble> createState() => _TypingBubbleState();
-}
-
-class _TypingBubbleState extends State<TypingBubble>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1000),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -514,33 +501,17 @@ class _TypingBubbleState extends State<TypingBubble>
       child: Row(
         children: <Widget>[
           const SizedBox(width: 30, child: CoachMark()),
-          AnimatedBuilder(
-            animation: _anim,
-            builder: (context, _) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                for (var i = 0; i < 3; i++)
-                  Padding(
-                    padding: EdgeInsets.only(right: i == 2 ? 0 : 6),
-                    child: Opacity(
-                      opacity: 0.3 + 0.7 * _dotPhase(i),
-                      child: const CircleAvatar(
-                        radius: 3,
-                        backgroundColor: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          const CoachOrb(),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            'Thinking…',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
           ),
         ],
       ),
     );
-  }
-
-  double _dotPhase(int i) {
-    final t = (_anim.value - i * 0.2) % 1.0;
-    return t < 0.5 ? t * 2 : (1 - t) * 2;
   }
 }
 

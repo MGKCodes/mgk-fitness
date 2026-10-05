@@ -52,7 +52,7 @@ class HistoryScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         flexibleSpace: const GlassSurface.bar(child: SizedBox.expand()),
         leading: AppIconButton(
-          icon: Icons.arrow_back,
+          icon: backIcon(context),
           tooltip: 'Back',
           onPressed: () => Navigator.of(context).maybePop(),
         ),

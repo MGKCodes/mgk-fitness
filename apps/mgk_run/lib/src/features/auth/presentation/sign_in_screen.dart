@@ -1,14 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/brand.dart';
 import '../../../core/config/app_config.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import '../../../dev/dev_persona.dart';
 import '../../../dev/dev_persona_controls.dart';
+import '../../legal/domain/legal_urls.dart';
+import '../../legal/presentation/privacy_policy_screen.dart';
 import '../data/auth_repository.dart';
 
 /// Sign in or sign up: with Apple, with Google, or with an email and password.
@@ -17,6 +22,13 @@ import '../data/auth_repository.dart';
 /// either on the phone, and the same account Lift signs into. Google is only
 /// offered beside Apple (App Store guideline 4.8), and the two are drawn with
 /// equal weight.
+///
+/// **Laid out as Lift's sign-in is (1.0.1).** The photograph above, at full
+/// strength, and everything to read and press below it, on the dark the
+/// photograph fades into: which app this is and whose account, the three ways
+/// in, and the terms and privacy line at the foot. It was the welcome's
+/// photograph dimmed to a third under content centred on the screen, which
+/// read as a different screen from Lift's for the same account.
 ///
 /// **The email form is a second step, behind "Continue with email"**, as it is
 /// in Lift. With the three choices and the form on one screen, Password and the
@@ -93,6 +105,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool _sendingReset = false;
 
+  /// Whether the password is hidden. The eye beside it shows it, as on Lift.
+  bool _obscure = true;
+
   /// Whether the email form is showing, rather than the three ways in.
   bool _withEmail = false;
 
@@ -114,7 +129,12 @@ class _SignInScreenState extends State<SignInScreen> {
     if (_busy || _asking != null) return;
     // Intent, not outcome, and before the call — see [SignInScreen
     // .onSignUpIntent]. Apple and Google do both without saying which, so the
-    // half of the screen the runner chose is the only answer there is.
+    // answer is how the screen was opened: a sign-in from the welcome's "I
+    // already have an account". The choices carried a sign-in/sign-up switch
+    // until 1.0.1; it is on the email form only now, as on Lift. Taken for a
+    // returning runner, somebody new meets the coach's introduction, which
+    // they skipped by choosing that door anyway; the other way round, a
+    // returning runner's restore would have waited for the next launch.
     widget.onSignUpIntent?.call(_isSignUp);
     setState(() {
       _asking = provider;
@@ -282,267 +302,276 @@ class _SignInScreenState extends State<SignInScreen> {
               backgroundColor: Colors.transparent,
               leading: BackButton(onPressed: widget.onBack),
             ),
-      // The same photograph the welcome screen sits on. Without it the brand
-      // evaporated at the first tap: a full-bleed monochrome entry point handed
-      // straight over to a bare form on a flat background, which read as a
-      // different app.
+      // A photograph at full strength above, fading to the base where the
+      // choices are, the way Lift's sign-in draws its own. The night road,
+      // which the summary uses too: dark and backlit, as Lift's is. The
+      // welcome's foggy path was tried first and came out a flat grey. Its
+      // runner sits behind the heading; a photograph made for this screen, as
+      // Lift's was, would put the runner above it.
       extendBodyBehindAppBar: true,
-      body: PhotoBackdrop(
-        image: 'assets/images/backgrounds/onboarding.jpg',
-        opacity: 0.34,
-        scrim: ScrimStrength.grounded,
+      backgroundColor: AppColors.bg,
+      body: PhotoBackdrop.hero(
+        image: 'assets/images/backgrounds/summary.jpg',
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              // Anchored to the bottom, as Lift's is: with the keyboard up, the
+              // field being typed in and its button stay in view and the head
+              // is what scrolls away.
+              reverse: true,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.xxl + AppSpacing.xl,
+                AppSpacing.xl,
+                AppSpacing.lg,
+              ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // **Never the app's name.** What is being made here
-                      // is not an account for this app - it is the profile
-                      // that works across every app in the suite, and heading
-                      // the screen with one app's name says the opposite of
-                      // that to the person who already has one from Lift.
-                      Text(
-                        '$kPlatformName Profile',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      // The words arrive; the form does not.
-                      //
-                      // This is the first screen anybody sees and it appeared
-                      // in a single frame. Only the parts nobody types into are
-                      // choreographed: staggering the fields themselves would
-                      // put movement under a cursor and risk fighting autofill
-                      // and focus for the sake of a flourish on the one screen
-                      // that should feel most solid.
-                      Entrance(
-                        child: Text(
-                          _isSignUp ? 'Create your account' : 'Welcome back',
-                          style: theme.textTheme.bodyLarge,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Said on both halves of the screen, not just sign-up.
-                      // Someone signing in may be arriving from Lift with a
-                      // profile they did not know reached this far, and that
-                      // is worth telling them at the moment they are wondering
-                      // whether their details will work.
-                      Entrance(
-                        child: Text(
-                          'One profile for every $kPlatformName app. The same '
-                          'sign-in works in Lift and in anything else we make, '
-                          'so you only set this up once.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      // Signing up and signing in are not the same act, and the
-                      // screen used to tell them apart by one word. Someone
-                      // signing in already knows what they are buying; someone
-                      // signing up is deciding, and had two fields and a button
-                      // to decide from.
-                      //
-                      // On the choice, not on the form: by the time somebody is
-                      // typing an address they have decided.
-                      if (_isSignUp && !_withEmail) ...<Widget>[
-                        const SizedBox(height: 20),
-                        const Entrance(index: 1, child: _WhatYouGet()),
-                      ],
-                      const SizedBox(height: 32),
-                      if (!_withEmail) ...<Widget>[
-                        ProviderSignInButton.apple(
-                          busy: _asking == SignInProvider.apple,
-                          onPressed: _busy || _asking != null
-                              ? null
-                              : () => _withProvider(SignInProvider.apple),
-                        ),
-                        const SizedBox(height: 12),
-                        ProviderSignInButton.google(
-                          busy: _asking == SignInProvider.google,
-                          onPressed: _busy || _asking != null
-                              ? null
-                              : () => _withProvider(SignInProvider.google),
-                        ),
-                        const SizedBox(height: 12),
-                        AppOutlinedButton(
-                          label: 'Continue with email',
-                          icon: Icons.mail_outline,
-                          expand: true,
-                          onPressed: _busy || _asking != null
-                              ? null
-                              : () => _showEmail(true),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          // O2. Apple's relay address is a different address,
-                          // so there is nothing to join it to an existing
-                          // account by.
-                          'Choosing Hide My Email with Apple starts a separate '
-                          'account.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiary,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ] else ...<Widget>[
-                        // First, and only when signing up. The coach's whole
-                        // pitch is that it is *yours*, and it had no idea what
-                        // to call you — so the first thing it ever said was
-                        // addressed to nobody. Optional on purpose: a runner
-                        // who would rather not say gets a coach that simply
-                        // does not use a name, which is better than a required
-                        // field between them and the app.
-                        // Only when the coach has not already asked. Asking a
-                        // second time would undo the point of asking in the
-                        // conversation at all.
-                        if (_isSignUp && widget.introName == null) ...<Widget>[
-                          TextFormField(
-                            controller: _nameController,
-                            textCapitalization: TextCapitalization.words,
-                            autofillHints: const [AutofillHints.givenName],
-                            decoration: const InputDecoration(
-                              labelText: 'First name (optional)',
-                              border: OutlineInputBorder(),
+                constraints: BoxConstraints(
+                  minHeight:
+                      constraints.maxHeight -
+                      AppSpacing.xxl -
+                      AppSpacing.xl -
+                      AppSpacing.lg,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Which app this is, then whose account: the suite's
+                          // head, shared with Lift. The account is one account, so
+                          // both apps say so in the same words, each under its own
+                          // icon.
+                          // On the choices it says both, as Lift's does: Apple
+                          // and Google sign in or make an account without being
+                          // told which. The email form says which it is doing.
+                          ProfileHeader(
+                            line: !_withEmail
+                                ? 'Sign in or create your account'
+                                : _isSignUp
+                                ? 'Create your account'
+                                : 'Welcome back',
+                            otherApp: 'Lift',
+                            app: const AppIdentity(
+                              icon: AssetImage(
+                                'assets/images/brand/app_icon.png',
+                              ),
+                              name: kAppName,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          // No list of what an account gives, as Lift's has none:
+                          // the head says what the account is, and the welcome has
+                          // already made the promise.
+                          const SizedBox(height: AppSpacing.xl),
+                          if (!_withEmail) ...<Widget>[
+                            ProviderSignInButton.apple(
+                              busy: _asking == SignInProvider.apple,
+                              onPressed: _busy || _asking != null
+                                  ? null
+                                  : () => _withProvider(SignInProvider.apple),
+                            ),
+                            const SizedBox(height: 12),
+                            ProviderSignInButton.google(
+                              busy: _asking == SignInProvider.google,
+                              onPressed: _busy || _asking != null
+                                  ? null
+                                  : () => _withProvider(SignInProvider.google),
+                            ),
+                            const SizedBox(height: 12),
+                            AppOutlinedButton(
+                              label: 'Continue with email',
+                              icon: Icons.mail_outline,
+                              expand: true,
+                              onPressed: _busy || _asking != null
+                                  ? null
+                                  : () => _showEmail(true),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              // O2. Apple's relay address is a different address,
+                              // so there is nothing to join it to an existing
+                              // account by.
+                              'Choosing Hide My Email with Apple starts a separate '
+                              'account.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textTertiary,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ] else ...<Widget>[
+                            // First, and only when signing up. The coach's whole
+                            // pitch is that it is *yours*, and it had no idea what
+                            // to call you — so the first thing it ever said was
+                            // addressed to nobody. Optional on purpose: a runner
+                            // who would rather not say gets a coach that simply
+                            // does not use a name, which is better than a required
+                            // field between them and the app.
+                            // Only when the coach has not already asked. Asking a
+                            // second time would undo the point of asking in the
+                            // conversation at all.
+                            if (_isSignUp &&
+                                widget.introName == null) ...<Widget>[
+                              TextFormField(
+                                controller: _nameController,
+                                textCapitalization: TextCapitalization.words,
+                                autofillHints: const [AutofillHints.givenName],
+                                decoration: const InputDecoration(
+                                  labelText: 'First name (optional)',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email],
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (v) => (v == null || !v.contains('@'))
+                                  ? 'Enter a valid email'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscure,
+                              autofillHints: const [AutofillHints.password],
+                              // A way to see what was typed, as on Lift.
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                border: const OutlineInputBorder(),
+                                suffixIcon: AppIconButton(
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
+                                  icon: _obscure
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  tooltip: _obscure
+                                      ? 'Show password'
+                                      : 'Hide password',
+                                ),
+                              ),
+                              // Eight, as Lift asks and the reset page does: it
+                              // is one account. Only when making one. Refusing a
+                              // short password at sign-in would lock out anybody
+                              // who chose one while Run still asked for six.
+                              validator: (v) {
+                                final String value = v ?? '';
+                                if (value.isEmpty) {
+                                  return 'Enter your password.';
+                                }
+                                if (_isSignUp && value.length < 8) {
+                                  return 'Use at least 8 characters.';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                          if (_message != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _message!,
+                              style: TextStyle(color: theme.colorScheme.error),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                          if (_notice != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _notice!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                          if (_withEmail) ...<Widget>[
+                            const SizedBox(height: 24),
+                            PrimaryButton(
+                              label: _isSignUp ? 'Sign up' : 'Sign in',
+                              onPressed: _submit,
+                              busy: _busy,
+                            ),
+                            // Signing in only: somebody making an account has no
+                            // password to forget. The link opens a page on the
+                            // site, not the app, so it works from a laptop's inbox
+                            // too.
+                            if (!_isSignUp)
+                              AppTextButton(
+                                label: 'Forgot your password?',
+                                onPressed: _busy || _sendingReset
+                                    ? null
+                                    : _resetPassword,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.textSecondary,
+                                ),
+                              ),
+                            // On the email form only, as on Lift: the choices
+                            // above it do both.
+                            AppTextButton(
+                              label: _isSignUp
+                                  ? 'Have an account? Sign in'
+                                  : 'New here? Create an account',
+                              onPressed: _busy || _asking != null
+                                  ? null
+                                  : () => setState(() {
+                                      _isSignUp = !_isSignUp;
+                                      _message = null;
+                                      _notice = null;
+                                    }),
+                            ),
+                          ],
+                          if (_withEmail)
+                            AppTextButton(
+                              label: 'Other ways to sign in',
+                              onPressed: _busy ? null : () => _showEmail(false),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                              ),
+                            ),
+                          if (kDebugMode &&
+                              widget.devAccounts.isNotEmpty) ...<Widget>[
+                            _DevSignIn(
+                              accounts: widget.devAccounts,
+                              busy: _busy,
+                              onSelected: (account) {
+                                // Signing in plainly means the real account: drop a
+                                // persona left on from an earlier session, or the
+                                // runner's own data would silently stay hidden.
+                                setDevPersona(null);
+                                unawaited(_quickSignIn(account));
+                              },
+                            ),
+                            // The same sign-in, entered as a seeded runner. Uses the
+                            // first configured account because the persona decides
+                            // what is on screen — the account only gets us past auth.
+                            DevPersonaButtons(
+                              busy: _busy,
+                              onSelected: (persona) {
+                                setDevPersona(persona);
+                                unawaited(
+                                  _quickSignIn(widget.devAccounts.first),
+                                );
+                              },
+                            ),
+                          ],
+                          // Required wherever an account can be made, and shown on
+                          // every step, as Lift shows it: somebody signing in on a
+                          // new phone is accepting the same terms.
+                          const SizedBox(height: AppSpacing.xl),
+                          const _LegalLinks(),
                         ],
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (v) => (v == null || !v.contains('@'))
-                              ? 'Enter a valid email'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          autofillHints: const [AutofillHints.password],
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
-                            border: OutlineInputBorder(),
-                          ),
-                          // Eight, as Lift asks and the reset page does: it
-                          // is one account. Only when making one. Refusing a
-                          // short password at sign-in would lock out anybody
-                          // who chose one while Run still asked for six.
-                          validator: (v) {
-                            final String value = v ?? '';
-                            if (value.isEmpty) return 'Enter your password.';
-                            if (_isSignUp && value.length < 8) {
-                              return 'Use at least 8 characters.';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                      if (_message != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _message!,
-                          style: TextStyle(color: theme.colorScheme.error),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      if (_notice != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _notice!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      if (_withEmail) ...<Widget>[
-                        const SizedBox(height: 24),
-                        PrimaryButton(
-                          label: _isSignUp ? 'Sign up' : 'Sign in',
-                          onPressed: _submit,
-                          busy: _busy,
-                        ),
-                        // Signing in only: somebody making an account has no
-                        // password to forget. The link opens a page on the
-                        // site, not the app, so it works from a laptop's inbox
-                        // too.
-                        if (!_isSignUp)
-                          AppTextButton(
-                            label: 'Forgot your password?',
-                            onPressed: _busy || _sendingReset
-                                ? null
-                                : _resetPassword,
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.textSecondary,
-                            ),
-                          ),
-                      ] else
-                        const SizedBox(height: 8),
-                      AppTextButton(
-                        label: _isSignUp
-                            ? 'Have an account? Sign in'
-                            : 'New here? Create an account',
-                        onPressed: _busy || _asking != null
-                            ? null
-                            : () => setState(() {
-                                _isSignUp = !_isSignUp;
-                                _message = null;
-                                _notice = null;
-                              }),
                       ),
-                      if (_withEmail)
-                        AppTextButton(
-                          label: 'Other ways to sign in',
-                          onPressed: _busy ? null : () => _showEmail(false),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                          ),
-                        ),
-                      if (kDebugMode &&
-                          widget.devAccounts.isNotEmpty) ...<Widget>[
-                        _DevSignIn(
-                          accounts: widget.devAccounts,
-                          busy: _busy,
-                          onSelected: (account) {
-                            // Signing in plainly means the real account: drop a
-                            // persona left on from an earlier session, or the
-                            // runner's own data would silently stay hidden.
-                            setDevPersona(null);
-                            unawaited(_quickSignIn(account));
-                          },
-                        ),
-                        // The same sign-in, entered as a seeded runner. Uses the
-                        // first configured account because the persona decides
-                        // what is on screen — the account only gets us past auth.
-                        DevPersonaButtons(
-                          busy: _busy,
-                          onSelected: (persona) {
-                            setDevPersona(persona);
-                            unawaited(_quickSignIn(widget.devAccounts.first));
-                          },
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -612,60 +641,69 @@ String _messageFor(Object error) {
   return 'Something went wrong. Try again.';
 }
 
-/// What signing up is actually for, on the screen where someone is deciding.
+/// The terms and privacy links at the foot of the sign-in, as Lift's sign-in
+/// has them.
 ///
-/// Three facts rather than three adjectives. The welcome screen makes the
-/// promise ("Every run, coached"); this is the part that says what arrives
-/// after the password, which is the question a stranger is actually holding
-/// when they look at an empty email field.
-///
-/// **These describe the free account and nothing else** (ADR-0019). The first
-/// line used to promise "a plan built round the days you can run", which is now
-/// the paid thing behind the plan gate — so the one screen where somebody is
-/// deciding whether to sign up was promising the one thing signing up does not
-/// give them. A plan is sold at the gate, by the coach, where the price is also
-/// said. It is not sold here.
-class _WhatYouGet extends StatelessWidget {
-  const _WhatYouGet();
+/// One sentence with two tappable halves rather than two more buttons under
+/// the choices. Apple wants the documents reachable where an account is made,
+/// and a person wants to know what they are agreeing to. The privacy policy
+/// opens in the app; the terms open on the site, as Privacy & legal opens them.
+class _LegalLinks extends StatefulWidget {
+  const _LegalLinks();
 
-  static const List<(IconData, String)> _lines = <(IconData, String)>[
-    (Icons.play_circle_outline, 'Every run tracked, and every run kept'),
-    // The coach is the paid half (ADR-0030): what an account gives is the
-    // way to subscribe to it, not the coach.
-    (
-      Icons.forum_outlined,
-      'With a subscription, a coach that answers questions about your running',
-    ),
-    (Icons.phone_iphone, 'Your runs on your phone, backed up only if you say'),
-  ];
+  @override
+  State<_LegalLinks> createState() => _LegalLinksState();
+}
+
+class _LegalLinksState extends State<_LegalLinks> {
+  late final TapGestureRecognizer _terms = TapGestureRecognizer()
+    ..onTap = _openTerms;
+  late final TapGestureRecognizer _privacy = TapGestureRecognizer()
+    ..onTap = () => Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()),
+    );
+
+  Future<void> _openTerms() async {
+    final Uri uri = Uri.parse(kTermsOfUseUrl);
+    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    if (!mounted) return;
+    // Says where they are when the browser will not open.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open the terms. They are at $uri')),
+    );
+  }
+
+  @override
+  void dispose() {
+    _terms.dispose();
+    _privacy.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        for (final (icon, text) in _lines)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Icon(icon, size: 18, color: AppColors.textSecondary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
+    final base = theme.textTheme.bodySmall?.copyWith(
+      color: AppColors.textTertiary,
+      height: 1.4,
+    );
+    final link = base?.copyWith(
+      color: AppColors.textSecondary,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.textTertiary,
+    );
+    return Text.rich(
+      TextSpan(
+        children: <InlineSpan>[
+          const TextSpan(text: 'By continuing you agree to the '),
+          TextSpan(text: 'terms of use', style: link, recognizer: _terms),
+          const TextSpan(text: ' and the '),
+          TextSpan(text: 'privacy policy', style: link, recognizer: _privacy),
+          const TextSpan(text: '.'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      style: base,
     );
   }
 }

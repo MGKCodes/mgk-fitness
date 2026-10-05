@@ -40,3 +40,7 @@ const String kProductName = '$kPlatformName: $kAppName';
 /// under `web/` name it too, and `legal_copy_test.dart` holds the three
 /// together.
 const String kSupportEmail = 'lift@mgkfitness.mgkcodes.com';
+
+/// Lift's support page on the suite's site, which both store listings point
+/// at. Settings opens it, as Run's Settings opens Run's.
+const String kSupportUrl = 'https://mgkfitness.mgkcodes.com/lift/support';

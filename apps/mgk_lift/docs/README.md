@@ -71,10 +71,11 @@ stays one place.
   `tool/screen_board.json` disagree about which screens exist.
 - Set `previous`, `since` and the `first` tags in the JSON for a round that
   adds screens.
-- **One plate is timing-sensitive.** `session-summary-pb` shows the coach's
+- **Two plates are timing-sensitive.** `session-summary-pb` shows the coach's
   bubble, which is on screen for under three seconds, and a capture that lands
-  late photographs the screen without it. Compare that plate with the published
-  one before republishing.
+  late photographs the screen without it. `track-backup-failed` shows a pill
+  that arrives after the first frame, and version 18 was published without it.
+  Compare both with the published ones before republishing.
 
 ## Decisions
 

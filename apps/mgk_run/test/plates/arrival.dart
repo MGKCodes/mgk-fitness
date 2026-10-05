@@ -275,6 +275,20 @@ void main() {
     );
   });
 
+  testWidgets('and its email form, which starts on signing in', (tester) async {
+    await plate(
+      tester,
+      'arrive-sign-in-email',
+      cold(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await tester.pumpAndSettle();
+        await tapText(tester, 'I already have an account');
+        await tapText(tester, 'Continue with email');
+      },
+    );
+  });
+
   // --- Act two: asking for a plan --------------------------------------------
   //
   // A separate moment, reached from the Plan tab rather than from sign-up. The

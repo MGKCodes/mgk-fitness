@@ -20,11 +20,13 @@ const LegalDocument privacyPolicy = LegalDocument(
       heading: 'What we collect',
       bullets: <String>[
         'Account data — your email address and an account identifier. If you '
-            'sign in with Apple or Google, that is what they pass us too: an '
-            'email address and an identifier, and nothing else. We do not ask '
-            "either for your name or photograph. With Apple's Hide My Email, "
-            'the address is one Apple forwards to yours, and we never see the '
-            'real one.',
+            'sign in with Apple or Google, that is what we ask them for: an '
+            'email address and an identifier. We do not ask either for your '
+            'name or photograph, though Google may send your name and a link '
+            'to your profile picture anyway; if it does, they are kept with '
+            "your login and the app does not use them. With Apple's Hide My "
+            'Email, the address is one Apple forwards to yours, and we never '
+            'see the real one.',
         'Training data — the sessions you log: exercise names, sets, reps, '
             'weight, set type, and for cardio work its duration and distance. '
             'Session and exercise notes are free text you wrote, so they hold '
@@ -166,7 +168,8 @@ const LegalDocument privacyPolicy = LegalDocument(
             'and withdraw consent. Delete account removes every record we hold '
             'for you — your sessions, exercises and sets, your plans, your '
             'progress photos, your coach conversations and your usage '
-            'records. Your phone keeps its own copy until you uninstall.',
+            "records. It erases this phone's copy too, unless you choose to "
+            'keep it; a copy you keep stays until you uninstall the app.',
         'Deletion asks how much, because your login is your $kPlatformName '
             'account and it is shared with $kPlatformName: Run. Delete this '
             'app only, and we erase everything this app holds, your progress '
@@ -207,6 +210,60 @@ const LegalDocument privacyPolicy = LegalDocument(
   footnote: 'Controller: MGKCodes Ltd. We note the date this policy changes.',
 );
 
+/// The terms' "Not medical advice", sentence for sentence. Held once so the
+/// terms and the [medicalDisclaimer] cannot say different things.
+const String _notMedicalAdvice =
+    'The app provides general fitness information and generates '
+    'strength-training plans. It is not medical advice and is not a '
+    'substitute for professional medical care.';
+
+const List<String> _medicalCautions = <String>[
+  'Consult a physician before starting any training programme, '
+      'especially if you have a heart condition, injury, are pregnant, '
+      'or have any medical concern.',
+  'Stop and seek medical attention if you experience chest pain, '
+      'dizziness, shortness of breath, or any unusual pain during or '
+      'after exercise.',
+  'Plans are generated from the information you provide and general '
+      'principles. They cannot account for your full medical history and '
+      'may not be appropriate for you.',
+  'Loads, volumes and estimates shown in the app are guidance, not '
+      'measurements.',
+  'You are responsible for training within your own limits and for your '
+      'own safety.',
+];
+
+const String _ownRisk =
+    'By using the app you acknowledge that you exercise at your own risk '
+    'and that MGKCodes Ltd is not liable for injury or health issues '
+    'arising from use of the app.';
+
+/// The medical disclaimer: accepted once, on this phone, before the coach or
+/// a plan is first used, and readable any time from Privacy & legal
+/// (5 October 2026, as Run's coach has always asked).
+///
+/// **No new legal wording.** Every sentence is the terms' own: their "Not
+/// medical advice" section, the line from "The coach is a language model"
+/// about not relying on it for anything medical, and the acknowledgement that
+/// follows. The terms are where the wording lives (`docs/terms-of-use.md`);
+/// this is the same wording, put in front of the lifter at the point the
+/// coach could be asked about a sore shoulder.
+const LegalDocument medicalDisclaimer = LegalDocument(
+  title: 'Medical disclaimer',
+  lead: _notMedicalAdvice,
+  sections: <LegalSection>[
+    LegalSection(
+      bullets: <String>[
+        ..._medicalCautions,
+        'The coach is powered by a third-party AI model and can be wrong. '
+            'Treat it as a knowledgeable training partner rather than an '
+            'authority, and do not rely on it for anything medical.',
+      ],
+    ),
+  ],
+  footnote: _ownRisk,
+);
+
 /// `docs/terms-of-use.md`. Required to be linked wherever an account can be
 /// created, which is why the sign-in screen carries it as well as Settings.
 const LegalDocument termsOfUse = LegalDocument(
@@ -218,34 +275,10 @@ const LegalDocument termsOfUse = LegalDocument(
   sections: <LegalSection>[
     LegalSection(
       heading: 'Not medical advice',
-      paragraphs: <String>[
-        'The app provides general fitness information and generates '
-            'strength-training plans. It is not medical advice and is not a '
-            'substitute for professional medical care.',
-      ],
-      bullets: <String>[
-        'Consult a physician before starting any training programme, '
-            'especially if you have a heart condition, injury, are pregnant, '
-            'or have any medical concern.',
-        'Stop and seek medical attention if you experience chest pain, '
-            'dizziness, shortness of breath, or any unusual pain during or '
-            'after exercise.',
-        'Plans are generated from the information you provide and general '
-            'principles. They cannot account for your full medical history and '
-            'may not be appropriate for you.',
-        'Loads, volumes and estimates shown in the app are guidance, not '
-            'measurements.',
-        'You are responsible for training within your own limits and for your '
-            'own safety.',
-      ],
+      paragraphs: <String>[_notMedicalAdvice],
+      bullets: _medicalCautions,
     ),
-    LegalSection(
-      paragraphs: <String>[
-        'By using the app you acknowledge that you exercise at your own risk '
-            'and that MGKCodes Ltd is not liable for injury or health issues '
-            'arising from use of the app.',
-      ],
-    ),
+    LegalSection(paragraphs: <String>[_ownRisk]),
     LegalSection(
       heading: 'The coach is a language model',
       paragraphs: <String>[

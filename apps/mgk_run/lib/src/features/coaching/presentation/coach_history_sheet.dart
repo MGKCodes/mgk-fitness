@@ -349,14 +349,15 @@ class _PastConversationScreenState extends State<PastConversationScreen> {
   Widget _bubble(List<CoachTurn> turns, int i, DateTime now) {
     final turn = turns[i];
     final previous = i == 0 ? null : turns[i - 1];
-    final startsRun = previous == null || previous.isUser != turn.isUser;
     final crossesDay = previous != null && !_sameDay(previous.at, turn.at);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (crossesDay) DayDivider(label: dayLabel(turn.at, now)),
-        ChatBubble(text: turn.text, isUser: turn.isUser, showAvatar: startsRun),
+        // The suite's bubble, as the live sheet draws it, so a conversation
+        // read back looks like the one that was had.
+        ConversationBubble(text: turn.text, fromCoach: !turn.isUser),
       ],
     );
   }

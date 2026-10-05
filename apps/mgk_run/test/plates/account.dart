@@ -44,6 +44,7 @@ import 'package:mgk_run/src/features/settings/domain/backup_health.dart';
 import 'package:mgk_run/src/features/settings/domain/profile_photo.dart';
 import 'package:mgk_run/src/features/settings/domain/unit_settings.dart';
 import 'package:mgk_run/src/features/settings/presentation/settings_screen.dart';
+import 'package:mgk_ui/mgk_ui.dart' show DeletionChoice, DestructiveButton;
 import 'package:mgk_units/mgk_units.dart';
 
 import 'fixture.dart';
@@ -420,8 +421,10 @@ void main() {
 
   Future<void> deleteIt(WidgetTester tester, {bool keepPhone = false}) async {
     await armed(tester, keepPhone: keepPhone);
-    await into(tester, find.text('Delete my data'));
-    await tester.tap(find.text('Delete my data'));
+    // The button, not its words: since 1.0.1 the choice card above it
+    // carries the same ones.
+    await into(tester, find.byType(DestructiveButton));
+    await tester.tap(find.byType(DestructiveButton));
     await settle(tester);
   }
 
@@ -444,6 +447,23 @@ void main() {
       drive: (tester) async {
         await armed(tester);
         await into(tester, find.text('Keep my account'));
+      },
+    );
+  });
+
+  testWidgets('delete account, the whole account chosen', (tester) async {
+    // 1.0.1: the choice Lift has always offered. The card's edge turns the
+    // danger colour and the note says what becomes of Lift.
+    await plate(
+      tester,
+      'delete-account-everything',
+      deleting(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await settle(tester);
+        await into(tester, find.byKey(DeletionChoice.wideKey));
+        await tester.tap(find.byKey(DeletionChoice.wideKey));
+        await settle(tester);
       },
     );
   });
@@ -558,7 +578,9 @@ class _Deletes implements AccountDeleter {
   final AccountDeletionResult result;
 
   @override
-  Future<AccountDeletionResult> deleteAccount() async => result;
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => result;
 }
 
 /// The deletion endpoint, refusing with [message].
@@ -568,8 +590,9 @@ class _Refuses implements AccountDeleter {
   final String message;
 
   @override
-  Future<AccountDeletionResult> deleteAccount() async =>
-      throw AccountDeletionException(message);
+  Future<AccountDeletionResult> deleteAccount({
+    required DeletionScope scope,
+  }) async => throw AccountDeletionException(message);
 }
 
 /// Training on the phone, which [LocalDataGuard] asks about.

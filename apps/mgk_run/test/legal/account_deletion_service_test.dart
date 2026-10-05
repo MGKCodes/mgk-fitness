@@ -34,10 +34,18 @@ void main() {
 
   setUp(() => sent = <Map<String, Object?>>[]);
 
+  test('this app only names the app; the whole account names nothing', () {
+    // The absent `app` is not a forgotten field -- the function reads it as
+    // "everything, everywhere, and the login". Asserting the mapping is what
+    // stops somebody "tidying" the null into a default of 'run'.
+    expect(DeletionScope.runOnly.app, 'run');
+    expect(DeletionScope.everything.app, isNull);
+  });
+
   test("an Apple account's code goes with the request", () async {
     await service(
       const AppleCode(code: 'fresh', clientId: 'com.mgkcodes.fitness.run'),
-    ).deleteAccount();
+    ).deleteAccount(scope: DeletionScope.runOnly);
 
     expect(sent.single, <String, Object?>{
       'app': 'run',
@@ -49,14 +57,26 @@ void main() {
   });
 
   test('with no code, the request names the app alone', () async {
-    await service(const NoAppleCode()).deleteAccount();
+    await service(
+      const NoAppleCode(),
+    ).deleteAccount(scope: DeletionScope.runOnly);
 
     expect(sent.single, <String, Object?>{'app': 'run'});
   });
 
+  test('the whole account is asked for by naming no app', () async {
+    await service(
+      const NoAppleCode(),
+    ).deleteAccount(scope: DeletionScope.everything);
+
+    expect(sent.single, isEmpty);
+  });
+
   test("closing Apple's sheet deletes nothing, and says so", () async {
     await expectLater(
-      service(const AppleDeclined()).deleteAccount(),
+      service(
+        const AppleDeclined(),
+      ).deleteAccount(scope: DeletionScope.everything),
       throwsA(
         isA<AccountDeletionException>().having(
           (e) => e.message,

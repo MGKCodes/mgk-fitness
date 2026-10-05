@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+export 'package:mgk_ui/mgk_ui.dart' show initialsFor;
 
 /// The profile photo, which lives on this phone and nowhere else.
 ///
@@ -46,22 +46,6 @@ abstract class ProfilePhotoStore {
   Future<void> clear();
 }
 
-/// What to draw when there is no photo.
-///
-/// Initials where a name was given, and the generic mark where none was. The
-/// intro accepts any name and accepts none, so both are ordinary states rather
-/// than one being a failure of the other.
-///
-/// **At most two characters, from at most two words.** A long name reduced to
-/// four initials is unreadable in a 40px circle, and a single character is
-/// enough for most people. Non-Latin scripts fall through the same path: the
-/// first character of each of the first two words, whatever those characters
-/// are.
-String? initialsFor(String? name) {
-  final trimmed = name?.trim();
-  if (trimmed == null || trimmed.isEmpty) return null;
-  final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
-  if (words.isEmpty) return null;
-  final picked = words.take(2).map((w) => w.characters).toList();
-  return picked.map((c) => c.first).join().toUpperCase();
-}
+// What to draw when there is no photo is `initialsFor`, which moved to `mgk_ui`
+// with the avatar's fallback when Lift's Settings took the same profile card.
+// Exported from here so the photo and its fallback are still found together.

@@ -134,7 +134,12 @@ void main() {
 
     // Closing the sheet is what folds what was said into the rolling summary.
     // It no longer ends the conversation — that is the session window's job.
-    await tester.tap(find.byTooltip('Close the conversation'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(CoachTopBar),
+        matching: find.byTooltip('Close'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(first.summaries, 1);
 
