@@ -224,16 +224,41 @@ class AppStore:
         self._open_version(build, version, existing)
         return plan[:1] + ['  ready: listing, screenshots and subscriptions can go on it now']
 
+    def _draft_submission(self) -> str | None:
+        """A review submission started in App Store Connect and not yet sent
+        (its Draft Submissions panel). A first subscription is added there, and
+        the version has to go for review in the same submission."""
+        drafts = self.get('/v1/reviewSubmissions', {
+            'filter[app]': self.app_id, 'filter[platform]': 'IOS',
+            'filter[state]': 'READY_FOR_REVIEW',
+        })['data']
+        return drafts[0]['id'] if drafts else None
+
+    def _holds_version(self, submission: str, version_id: str) -> bool:
+        """Whether the version was already added to the submission (Add for
+        Review on its page), which Apple will not take twice."""
+        items = self.get(f'/v1/reviewSubmissions/{submission}/items',
+                         {'include': 'appStoreVersion'})['data']
+        for item in items:
+            linked = ((item.get('relationships') or {}).get('appStoreVersion') or {}).get('data') or {}
+            if linked.get('id') == version_id:
+                return True
+        return False
+
     def submit(self, build_number: str, whats_new: str | None, apply: bool) -> list[str]:
         """Attach the build to its version, release it automatically once
-        Apple approves it, set What's New, and send it for review."""
+        Apple approves it, set What's New, and send it for review: in the
+        draft submission started in App Store Connect when there is one, so
+        whatever was added there goes with it."""
         build, version, existing = self._build_and_version(build_number)
+        draft = self._draft_submission()
         plan = [
             f"App Store: {self.app['name']} {version} with build {build_number}",
             f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
             f'  attach build {build_number}',
             f"  What's New ({self.locale}): {'set' if whats_new else 'left as it is'}",
-            '  submit for review',
+            '  submit for review' + (', in the draft submission started in App Store Connect '
+                                     'and with everything already in it' if draft else ''),
         ]
         if not apply:
             return plan + ['  (plan only: run again with --yes to do it)']
@@ -242,22 +267,23 @@ class AppStore:
         if whats_new:
             self._localization_update(version_id, {'whatsNew': whats_new})
 
-        submission = self.post('/v1/reviewSubmissions', {
+        submission = draft or self.post('/v1/reviewSubmissions', {
             'data': {
                 'type': 'reviewSubmissions',
                 'attributes': {'platform': 'IOS'},
                 'relationships': {'app': {'data': {'type': 'apps', 'id': self.app_id}}},
             },
         })['data']['id']
-        self.post('/v1/reviewSubmissionItems', {
-            'data': {
-                'type': 'reviewSubmissionItems',
-                'relationships': {
-                    'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission}},
-                    'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}},
+        if not (draft and self._holds_version(submission, version_id)):
+            self.post('/v1/reviewSubmissionItems', {
+                'data': {
+                    'type': 'reviewSubmissionItems',
+                    'relationships': {
+                        'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission}},
+                        'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}},
+                    },
                 },
-            },
-        })
+            })
         self.patch(f'/v1/reviewSubmissions/{submission}', {
             'data': {'type': 'reviewSubmissions', 'id': submission,
                      'attributes': {'submitted': True}},
