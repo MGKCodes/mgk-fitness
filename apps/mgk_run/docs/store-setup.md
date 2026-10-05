@@ -688,7 +688,7 @@ cannot be switched off.
 | Sign-in required | **Yes**, demo account A (§9) |
 | Notes | The review notes in [app-store-listing.md](app-store-listing.md), with A and B filled in |
 | Contact information | Name, phone and email of whoever answers App Review |
-| Version release | **Manually release this version**, so approval does not publish it at whatever hour review finishes |
+| Version release | **Automatically release this version** (Matthew, 5 October 2026: updates go out as soon as they are approved; a chosen moment can come once there are users). `scripts/store/stores.py submit` sets it. 1.0.0 went in on manual release and was switched on 5 October |
 
 **At submission**, two questions:
 

@@ -41,7 +41,7 @@ Updated 2026-10-01.
 | **Suite** | 1,948 tests pass and the analyzer is clean at `6e20a70`, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
 | **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190), version 27, every plate drawn at `6e20a70`. The lock-screen readout is on no plate |
 | **For the forms** | [The submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM): every field of both consoles, ready to paste. [The store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU): the listing pictures |
-| **In review** | **Apple: submitted 2 October 2026**, 1.0.0 (29) with the subscription group and both subscriptions; Waiting for Review, manual release. **Play: submitted 2 October 2026**, build 29 on full rollout to 177 countries and the rest of the world, with the listing and every declaration; in review, and **it publishes itself on approval** (managed publishing off) |
+| **In review** | **Apple: submitted 2 October 2026**, 1.0.0 (29) with the subscription group and both subscriptions; Waiting for Review. Submitted on manual release, **switched on 5 October to release itself on approval** (`scripts/store/stores.py release-type run --automatic`, read back AFTER_APPROVAL; Matthew: updates go out once approved). **Play: submitted 2 October 2026**, build 29 on full rollout to 177 countries and the rest of the world, with the listing and every declaration; **live by 5 October** (its public page answers: `stores.py links run`) |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -184,7 +184,9 @@ passes `python tool/export_store_assets.py --check`.
 
 - [x] **App Store: submitted on 2 October 2026**, four items in one
       submission: iOS App 1.0.0 (29), the `Run Coach` group and both
-      subscriptions. Waiting for Review, on manual release.
+      subscriptions. Waiting for Review. Submitted on manual release; *since
+      5 October it releases itself on approval*, switched mid-review with
+      `scripts/store/stores.py release-type run --automatic --yes`.
 - [x] **Play: submitted on 2 October 2026**, eleven changes in one
       submission: build 29 promoted from internal to production
       ([play-setup.md](play-setup.md) §11), its countries, the listing and the
