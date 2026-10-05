@@ -35,7 +35,7 @@
     "show the photographs the 1 Oct pictures had been taken too early to load.",
     "1.0.1, 5 Oct: twenty-one plates retaken or new (L1 to L8, Y1 to Y7, C3, C4, C10 to C12,",
     "and coach-signed-out with them), drawn at d81ca3e with the suite's coach sheet, paywall and",
-    "delete screen not yet committed: re-stamp them at the commit that lands them. Y8 and Y9",
+    "delete screen not yet committed, and stamped 0ad435b, the commit that landed them. Y8 and Y9",
     "are not among them: their way in needs a planned run that Monday's fixtures lack.",
     "",
     "The board this feeds (republish to the same link, never a new one):",
@@ -279,7 +279,7 @@
     },
     "coach-answering": {
       "source": "test/plates/flows.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-consent": {
@@ -294,7 +294,7 @@
     },
     "coach-conversation": {
       "source": "test/plates/flows.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-disclaimer": {
@@ -319,17 +319,17 @@
     },
     "coach-report": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-report-failed": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-report-sent": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-resting": {
@@ -339,7 +339,7 @@
     },
     "coach-signed-out": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "coach-speaking": {
@@ -349,42 +349,42 @@
     },
     "delete-account": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-account-armed": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-account-everything": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-account-keep-phone": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-done": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-done-lift": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-done-login-stuck": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "delete-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "hero_weights": {
@@ -454,32 +454,32 @@
     },
     "paywall": {
       "source": "test/plates/flows.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-already-owned": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-android": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-offline": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-pending": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-restore-none": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-restore-sign-in-first": {
@@ -489,7 +489,7 @@
     },
     "paywall-restored": {
       "source": "test/plates/coach.dart",
-      "sha": "d81ca3e44ec26c5b71a469042f74195e287f6437",
+      "sha": "0ad435b0e392caed82bca8a0ad0b671dc684244c",
       "captured": "2026-10-05"
     },
     "paywall-sign-in-first": {
