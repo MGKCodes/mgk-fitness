@@ -24,6 +24,10 @@ API = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications'
 UPLOAD = 'https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications'
 SCOPE = 'https://www.googleapis.com/auth/androidpublisher'
 
+# Said when Play kept a committed edit for sending by hand (Play.commit).
+HELD = ('  saved, but Play would not send it for review from here: Play Console › '
+        'Publishing overview › Send changes for review')
+
 
 def _token() -> str:
     path = keys_dir() / 'play-service-account.json'
@@ -70,8 +74,20 @@ class Play:
     def discard(self, edit: str) -> None:
         call('DELETE', self._url(edit), token=self.token, expect_json=False)
 
-    def commit(self, edit: str) -> None:
-        call('POST', self._url(edit, ':commit'), token=self.token)
+    def commit(self, edit: str) -> bool:
+        """Commit the edit and send it for review. Play sometimes will not
+        send from the API ("Changes cannot be sent for review automatically",
+        while changes made in Play Console wait to be sent, for one): the edit
+        is then committed unsent, as Play's message asks, and this returns
+        False so the caller can say it waits in Publishing overview."""
+        try:
+            call('POST', self._url(edit, ':commit'), token=self.token)
+            return True
+        except StoreError as e:
+            if 'changesNotSentForReview' not in str(e):
+                raise
+        call('POST', self._url(edit, ':commit?changesNotSentForReview=true'), token=self.token)
+        return False
 
     def tracks(self, edit: str) -> list[dict]:
         return call('GET', self._url(edit, '/tracks'), token=self.token).get('tracks', [])
@@ -135,7 +151,7 @@ class Play:
             call('PUT', self._url(edit, '/tracks/production'), token=self.token,
                  body={'track': 'production', 'releases': [release]})
             try:
-                self.commit(edit)
+                sent = self.commit(edit)
             except StoreError as e:
                 if 'draft app' in str(e).lower() and not draft:
                     raise StoreError(
@@ -145,7 +161,7 @@ class Play:
                     ) from None
                 raise
             committed = True
-            return plan[:1] + ['  sent to Google for review']
+            return plan[:1] + (['  sent to Google for review'] if sent else [HELD])
         finally:
             if not committed:
                 self.discard(edit)
@@ -168,9 +184,9 @@ class Play:
                 if release is newest:
                     release['releaseNotes'] = [{'language': language, 'text': text}]
             call('PUT', self._url(edit, '/tracks/internal'), token=self.token, body=internal)
-            self.commit(edit)
+            sent = self.commit(edit)
             committed = True
-            return plan + ['  set']
+            return plan + ['  set'] + ([] if sent else [HELD])
         finally:
             if not committed:
                 self.discard(edit)
@@ -201,9 +217,9 @@ class Play:
                 return plan + ['  (plan only: run again with --yes to do it)']
             call('PATCH', self._url(edit, f'/listings/{language}'), token=self.token,
                  body={'language': language, **allowed})
-            self.commit(edit)
+            sent = self.commit(edit)
             committed = True
-            return plan + ['  updated']
+            return plan + ['  updated'] + ([] if sent else [HELD])
         finally:
             if not committed:
                 self.discard(edit)
@@ -236,9 +252,9 @@ class Play:
                 call('POST',
                      f'{UPLOAD}/{self.package}/edits/{edit}/listings/{language}/{kind}?uploadType=media',
                      token=self.token, data=file.read_bytes(), headers={'Content-Type': 'image/png'})
-            self.commit(edit)
+            sent = self.commit(edit)
             committed = True
-            return plan + ['  uploaded']
+            return plan + ['  uploaded'] + ([] if sent else [HELD])
         finally:
             if not committed:
                 self.discard(edit)

@@ -101,6 +101,12 @@ Both stores answer, or the script says which key is missing or refused.
 - **Lift's first Android release.** Play takes only a draft for an app that has
   never rolled one out: `submit lift --android --draft`, then roll it out once
   in Play Console. Every later release can go from here.
+- **Sending to Google for review, sometimes.** Play can refuse to send a
+  change for review from the API ("Changes cannot be sent for review
+  automatically"), for instance while changes made in Play Console are waiting
+  to be sent. The scripts then commit it unsent, as Play's message asks, and
+  say so: press *Send changes for review* in Play Console › Publishing
+  overview, which sends it with whatever else is waiting.
 - **Play's internal testers by email.** Play keeps those lists out of its API;
   `testers` shows only Google Groups.
 

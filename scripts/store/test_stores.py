@@ -307,6 +307,32 @@ class PlaySubmit(unittest.TestCase):
         self.assertTrue(any(u.endswith(':commit') for _, u in fake.sent))
 
 
+class PlayHeldForReview(unittest.TestCase):
+    """Play refuses to send some edits for review from the API; they are then
+    committed unsent, as its message asks, and the output says where to send them."""
+
+    def test_the_release_waits_in_publishing_overview(self):
+        fake = PlaySubmit.fake(self)
+
+        def refusing(method, url, **kwargs):
+            if url.endswith(':commit'):
+                fake.sent.append((method, url))
+                raise play.StoreError(
+                    'POST https://androidpublisher.googleapis.com/... refused (400): Changes cannot '
+                    'be sent for review automatically. Please set the query parameter '
+                    'changesNotSentForReview to true.')
+            return fake(method, url, **kwargs)
+
+        with mock.patch.object(play, '_token', return_value='t'), \
+                mock.patch.object(play, 'call', refusing), \
+                contextlib.redirect_stdout(io.StringIO()) as printed:
+            code = stores.main(['submit', 'run', '--android', '--yes'])
+        self.assertEqual(code, 0)
+        self.assertTrue(any(u.endswith(':commit?changesNotSentForReview=true') for _, u in fake.sent))
+        self.assertFalse(any(m == 'DELETE' for m, _ in fake.sent))  # committed, not thrown away
+        self.assertIn('Publishing overview', printed.getvalue())
+
+
 class PlayPictures(unittest.TestCase):
     def test_the_icon_goes_up_with_the_screenshots(self):
         fake = FakeStore({
