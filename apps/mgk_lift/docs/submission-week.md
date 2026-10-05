@@ -250,7 +250,9 @@ release:
       Drawn on 4 October with the screenshots: the mark at rest above `LIFT`,
       as the launch ends, then MGKFitness and "Log every set. Get a real
       plan.", in `apps/mgk_lift/screenshots/store/play-feature-graphic.png`.
-      The 512×512 icon exists: `design/store/play-listing-icon-512.png`.
+      The 512×512 icon, `design/store/play-listing-icon-512.png`, existed but
+      had never been uploaded: Play Console showed Lift with Android's
+      placeholder until 5 October, when `screenshots` learned to send it too.
 - [x] Listing copy *(Claude, since 5 October)*. *Uploaded 5 October* from
       [`store/listing.json`](../store/listing.json) by `stores.py listing
       lift`: the App Store's version text, the copyright, the rename to
@@ -325,7 +327,7 @@ release:
 | `INTERNET` in the release manifest | Done |
 | Subscriptions as base plans | Done 1 October; prices to confirm (step 1) |
 | Service-account access, then `publishing:` in the workflow | Access granted 1 October; build 46 published through it to internal testing, 5 October. Production permission is proved by the production submission |
-| Phone screenshots, feature graphic, 512×512 icon | Done: the pictures uploaded 5 October; the icon before |
+| Phone screenshots, feature graphic, 512×512 icon | Done: all three uploaded 5 October |
 | Short and full description | Uploaded 5 October from listing.json |
 | Content rating, target audience, ads declaration | Open; answers drafted |
 | Data safety form | Drafted |

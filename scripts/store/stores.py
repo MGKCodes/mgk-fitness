@@ -50,6 +50,11 @@ FEATURE = {
     'run': REPO / 'apps/mgk_run/screenshots/store/play-feature-graphic.png',
     'lift': REPO / 'apps/mgk_lift/screenshots/store/play-feature-graphic.png',
 }
+# Play's 512x512 listing icon, which is in git. Apple takes its icon from the build.
+ICON = {
+    'run': REPO / 'apps/mgk_run/design/store/play-listing-icon-512.png',
+    'lift': REPO / 'apps/mgk_lift/design/store/play-listing-icon-512.png',
+}
 
 
 def _platforms(args) -> tuple[bool, bool]:
@@ -171,9 +176,10 @@ def main(argv: list[str] | None = None) -> int:
                 out += AppStore(args.app).screenshots(SHOTS[args.app] / 'ios-still', args.yes)
             if android:
                 from play import Play
-                feature = FEATURE[args.app]
+                feature, icon = FEATURE[args.app], ICON[args.app]
                 out += Play(args.app).screenshots(
-                    SHOTS[args.app] / 'play-still', feature if feature.exists() else None, args.yes)
+                    SHOTS[args.app] / 'play-still', feature if feature.exists() else None,
+                    icon if icon.exists() else None, args.yes)
     except StoreError as e:
         print('\n'.join(out + [f'Stopped: {e}']))
         return 1

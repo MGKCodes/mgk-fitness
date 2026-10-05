@@ -208,9 +208,10 @@ class Play:
             if not committed:
                 self.discard(edit)
 
-    def screenshots(self, folder: Path, feature: Path | None, apply: bool) -> list[str]:
+    def screenshots(self, folder: Path, feature: Path | None, icon: Path | None,
+                    apply: bool) -> list[str]:
         """Replace the phone screenshots with the PNGs in [folder], in name
-        order, and the feature graphic when one is given."""
+        order, and the feature graphic and the 512x512 icon when given."""
         files = sorted(folder.glob('*.png'))
         if not files:
             raise StoreError(f'No PNGs in {folder}.')
@@ -219,12 +220,15 @@ class Play:
         try:
             language = self.language(edit)
             plan = [f"Google Play pictures: {self.app['name']} ({language}): {len(files)} phone screenshots"
-                    + (', the feature graphic' if feature else '')]
+                    + (', the feature graphic' if feature else '')
+                    + (', the icon' if icon else '')]
             if not apply:
                 return plan + ['  (plan only: run again with --yes to do it)']
             uploads = [('phoneScreenshots', f) for f in files]
             if feature:
                 uploads.append(('featureGraphic', feature))
+            if icon:
+                uploads.append(('icon', icon))
             for kind in {k for k, _ in uploads}:
                 call('DELETE', self._url(edit, f'/listings/{language}/{kind}'),
                      token=self.token, expect_json=False)

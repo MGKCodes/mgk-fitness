@@ -13,7 +13,7 @@ python scripts/store/stores.py test-notes  lift --ios --build 52 --notes what-to
 python scripts/store/stores.py testers     lift
 python scripts/store/stores.py add-tester  lift --email someone@example.com --group "Internal" --yes
 python scripts/store/stores.py listing     lift --yes            # text from apps/mgk_lift/store/listing.json
-python scripts/store/stores.py screenshots lift --yes            # the pictures store-shots rendered
+python scripts/store/stores.py screenshots lift --yes            # the pictures store-shots rendered, and Play's icon
 python scripts/store/stores.py release     lift --yes            # a version held for a manual release
 python scripts/store/stores.py release-type run --automatic --yes  # a version already submitted: release on approval
 ```
