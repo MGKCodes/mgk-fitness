@@ -111,6 +111,18 @@ class Play:
         finally:
             self.discard(edit)
 
+    def link(self) -> list[str]:
+        """The public Google Play page. Play's API cannot say whether an app
+        is live (a release reads `completed` while still in review), so the
+        page itself is asked: it answers 404 until the app is."""
+        url = f'https://play.google.com/store/apps/details?id={self.package}'
+        try:
+            call('GET', url, expect_json=False)
+            state = 'live'
+        except StoreError:
+            state = 'not live yet'
+        return [f"Google Play: {url} ({state})"]
+
     # --- Submitting ---------------------------------------------------------
 
     @staticmethod

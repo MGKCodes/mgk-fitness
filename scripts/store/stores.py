@@ -2,6 +2,7 @@
 """Run and Lift on the App Store and Google Play, from the terminal.
 
     python scripts/store/stores.py status      <run|lift> [--ios|--android]
+    python scripts/store/stores.py links       <run|lift> [--ios|--android]
     python scripts/store/stores.py prepare     <run|lift> --build 52 [--yes]
     python scripts/store/stores.py submit      <run|lift> --ios --build 52 [--notes FILE] [--yes]
     python scripts/store/stores.py submit      <run|lift> --android [--notes FILE] [--draft] [--yes]
@@ -71,8 +72,8 @@ def _text(path: str | None) -> str | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='stores.py', description=__doc__.split('\n\n')[0])
     parser.add_argument('command', choices=[
-        'status', 'prepare', 'submit', 'release', 'release-type', 'test-notes', 'testers',
-        'add-tester', 'listing', 'screenshots',
+        'status', 'links', 'prepare', 'submit', 'release', 'release-type', 'test-notes',
+        'testers', 'add-tester', 'listing', 'screenshots',
     ])
     parser.add_argument('app', choices=sorted(APPS))
     parser.add_argument('--ios', action='store_true')
@@ -101,6 +102,15 @@ def main(argv: list[str] | None = None) -> int:
             if android:
                 from play import Play
                 out += Play(args.app).status()
+
+        elif args.command == 'links':
+            out.append(APPS[args.app]['name'])
+            if ios:
+                from asc import AppStore
+                out += ['  ' + line for line in AppStore(args.app).link()]
+            if android:
+                from play import Play
+                out += ['  ' + line for line in Play(args.app).link()]
 
         elif args.command == 'prepare':
             if not args.build:

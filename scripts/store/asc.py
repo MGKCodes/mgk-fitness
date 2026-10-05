@@ -158,6 +158,14 @@ class AppStore:
             lines.append(f"  review submission: {s['state']} {s['submitted']}".rstrip())
         return lines
 
+    def link(self) -> list[str]:
+        """The public App Store page, and what is on sale there: the address
+        answers only once a version is."""
+        on_sale = [v for v in self.versions(limit=5)
+                   if v['state'] in ('READY_FOR_SALE', 'READY_FOR_DISTRIBUTION')]
+        state = f"on sale: {on_sale[0]['version']}" if on_sale else 'not on sale yet'
+        return [f"App Store: https://apps.apple.com/app/id{self.app_id} ({state})"]
+
     # --- Submitting ---------------------------------------------------------
 
     def _version_named(self, version: str) -> dict | None:
