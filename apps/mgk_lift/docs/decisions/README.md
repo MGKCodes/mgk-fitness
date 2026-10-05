@@ -31,3 +31,6 @@ belong to it:
   Sign in, from the redesign's R1. Track was the other screen it was written
   for, until Track was rebuilt on 1 October with the photograph as texture
   ([lift-2.0.0-track.md](../lift-2.0.0-track.md), TR7).
+- [0047 — Email first, a code to confirm, and a name on the account](../../../mgk_run/docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md):
+  how both apps sign people in from Lift 2.0.1 and Run 1.0.2, and the account
+  name both apps show. Not in 2.0.0.
