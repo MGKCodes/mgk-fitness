@@ -5,6 +5,7 @@
     python scripts/store/stores.py submit      <run|lift> --ios --build 52 [--notes FILE] [--yes]
     python scripts/store/stores.py submit      <run|lift> --android [--notes FILE] [--draft] [--yes]
     python scripts/store/stores.py release     <run|lift> [--yes]
+    python scripts/store/stores.py release-type <run|lift> --automatic|--manual [--yes]
     python scripts/store/stores.py test-notes  <run|lift> --notes FILE [--ios --build 52 | --android] [--yes]
     python scripts/store/stores.py testers     <run|lift> [--ios|--android]
     python scripts/store/stores.py add-tester  <run|lift> --email ADDRESS --group NAME [--yes]
@@ -64,8 +65,8 @@ def _text(path: str | None) -> str | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='stores.py', description=__doc__.split('\n\n')[0])
     parser.add_argument('command', choices=[
-        'status', 'submit', 'release', 'test-notes', 'testers', 'add-tester',
-        'listing', 'screenshots',
+        'status', 'submit', 'release', 'release-type', 'test-notes', 'testers',
+        'add-tester', 'listing', 'screenshots',
     ])
     parser.add_argument('app', choices=sorted(APPS))
     parser.add_argument('--ios', action='store_true')
@@ -74,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--notes', help="a text file: What's New, or what to test")
     parser.add_argument('--draft', action='store_true',
                         help='Android: send to production as a draft, for an app never rolled out')
+    parser.add_argument('--automatic', action='store_true',
+                        help='release-type: release itself once Apple approves it')
+    parser.add_argument('--manual', action='store_true',
+                        help='release-type: wait for `release` after approval')
     parser.add_argument('--email')
     parser.add_argument('--group')
     parser.add_argument('--from', dest='source', help='the listing file (default apps/<app>/store/listing.json)')
@@ -107,6 +112,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == 'release':
             from asc import AppStore
             out += AppStore(args.app).release(args.yes)
+
+        elif args.command == 'release-type':
+            if args.automatic == args.manual:
+                parser.error('release-type needs one of --automatic or --manual')
+            from asc import AppStore
+            out += AppStore(args.app).release_type(args.automatic, args.yes)
 
         elif args.command == 'test-notes':
             notes = _text(args.notes)
