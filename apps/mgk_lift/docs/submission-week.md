@@ -207,16 +207,23 @@ release:
 
 ### 4. The store pages
 
-- [ ] **Screenshots for both stores** *(Claude)*. Unblocked now that the
-      screens are settled. The capture script's viewport is fixed at 390×844;
-      run it at 430×932 and DPR 3 for 1290×2796, which is Apple's 6.9-inch
-      size and within Play's.
+- [ ] **Screenshots for both stores** *(Claude draws, Matthew approves)*.
+      Drawn on 4 October in Run's design, from Run's kit
+      ([design/store-shots](../design/store-shots/README.md)): six pictures
+      that follow Run's picture for picture, tagged free or subscription.
+      `ios-still` is 1290×2796 (Apple's 6.9-inch size), `play-still` 1080×1920,
+      both flattened, in `apps/mgk_lift/screenshots/store/listing/` (not in
+      git). The screens come from the preview harness at Run's phone sizes and
+      safe areas (`tool/capture_store_screens.mjs`).
 - [ ] **One review screenshot per subscription.** Rendered on 1 October: the
       sales screen at 1290×2796, in
       `apps/mgk_lift/screenshots/store/subscription-review-1290x2796.png`
       (not in git). *Matthew* uploads it to both App Store products, with the
       review notes in store-setup.md step 1.
 - [ ] Play's feature graphic (1024×500) *(Claude designs, Matthew approves)*.
+      Drawn on 4 October with the screenshots: the mark at rest above `LIFT`,
+      as the launch ends, then MGKFitness and "Log every set. Get a real
+      plan.", in `apps/mgk_lift/screenshots/store/play-feature-graphic.png`.
       The 512×512 icon exists: `design/store/play-listing-icon-512.png`.
 - [ ] Listing copy, pasted from [store-listing.md](store-listing.md)
       *(Matthew)*. The *What's New* text now says that Liftio's old

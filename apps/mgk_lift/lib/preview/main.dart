@@ -1048,10 +1048,24 @@ class PreviewApp extends StatelessWidget {
         ? defined
         : Uri.base.queryParameters['screen'];
 
+    // `?safe=59,34`: the bands a phone keeps for itself, top and bottom, in
+    // points. A browser keeps none, so without this every screen lays out into
+    // the strip where a store picture draws the status bar over it
+    // (tool/capture_store_screens.mjs).
+    final safe = _safeArea(Uri.base.queryParameters['safe']);
+
     return MaterialApp(
       title: 'Lift — preview',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      builder: safe == null
+          ? null
+          : (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(padding: safe, viewPadding: safe),
+              child: child!,
+            ),
       // The index is always the root and a named screen is *pushed* onto it,
       // which matters more than it looks.
       //
@@ -1069,6 +1083,13 @@ class PreviewApp extends StatelessWidget {
       home: _Harness(screens: screens, initial: key),
     );
   }
+}
+
+/// `"59,34"` as a top and a bottom inset, or null for anything else.
+EdgeInsets? _safeArea(String? value) {
+  final parts = value?.split(',').map(double.tryParse).toList();
+  if (parts == null || parts.length != 2 || parts.contains(null)) return null;
+  return EdgeInsets.only(top: parts[0]!, bottom: parts[1]!);
 }
 
 /// The index, with a named screen pushed on top of it.
