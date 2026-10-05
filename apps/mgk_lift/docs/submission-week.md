@@ -147,12 +147,12 @@ None of this waits on anything else.
       October* from `c0b7c0e`: Codemagic build `6ac3b8aea036e7e4d2ecdc68`,
       2.0.0 (46), published through the service account as a draft on
       internal testing. Two things that were expected of the first one:
-      - **It publishes as a draft**, because Lift's app has no rolled-out
-        release yet and Play refuses anything else for such an app. Testers
-        see nothing until the draft is rolled out by hand: Play Console ›
-        Testing › Internal testing. After that first rollout, change
-        `submit_as_draft` to `false` in `codemagic.yaml`, as Run's is, so
-        later builds reach testers on their own.
+      - **It publishes as a draft**, because Play treats Lift as a draft app
+        until it is first published, and refuses anything else for one.
+        Testers see nothing until the draft is rolled out by hand: Play
+        Console › Testing › Internal testing. `submit_as_draft` goes to
+        `false` once Lift is live on Google Play, not after the internal
+        rollout (5 October: that rollout did not end the draft state).
       - **If the publishing step fails on a green build**, the likeliest cause
         is the service account lacking release permission on Lift's app
         (step 1). The `.aab` is still in the build's artifacts and can be
@@ -160,10 +160,12 @@ None of this waits on anything else.
         works. Production's is proved by the production submission.
 - [x] **Roll build 46 out on internal testing** *(Matthew)*: Play Console ›
       Testing › Internal testing › the draft › Review release › Start
-      rollout. Play's API refuses this for an app that has never released.
-      Then `submit_as_draft: false` in `codemagic.yaml` *(Claude)*. *Done 5
-      October:* the internal release reads `completed`, and the workflow
-      publishes ordinary releases from the next build.
+      rollout. *Done 5 October:* the internal release reads `completed`.
+- [ ] **`submit_as_draft: false` in `codemagic.yaml`** *(Claude)*, once Lift
+      is live on Google Play. It was set on 5 October after the internal
+      rollout and put back the same day: Play still refused a production
+      release for being on a draft app, so an internal rollout does not end
+      the draft state, and a non-draft upload would fail.
 - [ ] **RevenueCat's check on Play purchases** ("package name was not found")
       clears now that build 46 is rolled out on internal testing. Look again.
 - [x] **Tag what is built.** The suite's rule is that what shipped is a tag.
@@ -281,22 +283,20 @@ release:
 
 ### 5. Submit
 
-- [ ] iOS: 2.0.0 with both subscriptions attached to the version. *Opened 5
-      October:* `stores.py prepare lift --build 45` created version 2.0.0
-      (being prepared, releases itself on approval, build 45 attached), and
-      the listing renamed it *MGKFitness: Lift*. Matthew put the subscription
-      group and both subscriptions in a draft submission in App Store Connect
-      the same day; `submit` adds the version to that draft and sends it, so
-      they go for review together (do not press Submit for Review on the
-      draft by itself). Left: App Review's login and contact, App Privacy, a
-      look at the age rating; then `stores.py submit lift --ios --build 45
-      --yes`.
-- [ ] Android: build 46 is rolled out on internal testing; once Play's setup
-      list (App content) is complete,
-      `stores.py submit lift --android --notes
-      apps/mgk_lift/store/play-release-notes.txt --yes` sends it to production
-      for everybody. A first production release is reviewed by Google, which
-      can take several days.
+- [x] iOS: 2.0.0 with both subscriptions attached to the version. *Submitted
+      5 October, 19:21*, by `stores.py submit lift --ios --build 45 --yes`:
+      version 2.0.0 (build 45) went into the draft submission Matthew had
+      started with the subscription group and both subscriptions, and the
+      whole draft was sent. Read back: WAITING_FOR_REVIEW, releases itself on
+      approval. The listing is renamed *MGKFitness: Lift* with it.
+- [ ] Android: *Sent as a draft 5 October*, by `stores.py submit lift
+      --android --draft --notes apps/mgk_lift/store/play-release-notes.txt
+      --yes`: build 46 on production, read back `draft`. Play refused a
+      non-draft release ("Only releases with status draft may be created on
+      draft app") although build 46 is rolled out on internal testing. Left:
+      *Matthew* starts the rollout in Play Console › Production, which sends
+      it and the App content forms to Google. A first production release is
+      reviewed, which can take several days.
 - [ ] When Lift goes for review, promote `develop` to `main`: `main` is what
       was submitted ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching).
       Promoting all of `develop` deploys `web/`, so check what `web/` holds
