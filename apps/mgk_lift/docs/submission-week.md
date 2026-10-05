@@ -214,12 +214,15 @@ release:
       `ios-still` is 1290×2796 (Apple's 6.9-inch size), `play-still` 1080×1920,
       both flattened, in `apps/mgk_lift/screenshots/store/listing/` (not in
       git). The screens come from the preview harness at Run's phone sizes and
-      safe areas (`tool/capture_store_screens.mjs`).
+      safe areas (`tool/capture_store_screens.mjs`). *Redrawn 5 October* on
+      the final screens: Session complete with its title bar, the shared
+      coach sheet, and the profile in Run's layout.
 - [ ] **One review screenshot per subscription.** Rendered on 1 October: the
       sales screen at 1290×2796, in
       `apps/mgk_lift/screenshots/store/subscription-review-1290x2796.png`
       (not in git). *Matthew* uploads it to both App Store products, with the
-      review notes in store-setup.md step 1.
+      review notes in store-setup.md step 1. *Redrawn 5 October* as it
+      ships: the coach's C, Coach labelled Recommended, one Subscribe button.
 - [ ] Play's feature graphic (1024×500) *(Claude designs, Matthew approves)*.
       Drawn on 4 October with the screenshots: the mark at rest above `LIFT`,
       as the launch ends, then MGKFitness and "Log every set. Get a real
