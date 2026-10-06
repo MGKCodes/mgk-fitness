@@ -1,4 +1,5 @@
 import { source, stores } from "../(landing)/links";
+import { studioScreens } from "./screens";
 
 /**
  * What this site tells mgkcodes.com about the suite.
@@ -17,6 +18,9 @@ import { source, stores } from "../(landing)/links";
  * `source` is how to work on the suite, from `links.ts` and CONTRIBUTING.md.
  * The studio's page shows it only while `open` is true, so making the
  * repository public is still the one edit to `links.ts`.
+ *
+ * `screens` (added 2026-10-06) lists every bare screen by id for any site that
+ * shows the suite; matthewkay.dev reads it. See `./screens.ts`.
  */
 export const dynamic = "force-static";
 
@@ -42,7 +46,8 @@ function status() {
     .join(", ");
 }
 
-export function GET() {
+export async function GET() {
+  const screens = await studioScreens();
   return Response.json({
     studio: 1,
     status: status(),
@@ -84,5 +89,6 @@ export function GET() {
       signOff: true,
       setup: ["flutter pub get", "flutter analyze"],
     },
+    screens,
   });
 }
