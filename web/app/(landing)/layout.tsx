@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./landing.css";
+import { Studio } from "./studio";
 
 // The apps' own typeface. `next/font` fetches it when the site is built and
 // serves it from this domain, so a visitor's browser never calls a font host.
@@ -40,7 +41,10 @@ export default function LandingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-GB" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Studio />
+      </body>
     </html>
   );
 }
