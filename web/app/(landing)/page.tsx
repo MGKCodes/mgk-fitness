@@ -3,7 +3,7 @@ import { company, disclosure } from "../company";
 import { Bar } from "./bar";
 import { Phone } from "./device";
 import { Film } from "./film";
-import { source } from "./links";
+import { availability, source } from "./links";
 import { Mark } from "./mark";
 import { Stores } from "./stores";
 import { WaitingList } from "./waiting-list";
@@ -228,7 +228,7 @@ export default function Home() {
               Run is a running tracker and training coach. Lift is a strength log
               with a coach of its own.
             </p>
-            <p className="soon">Coming to iPhone and Android</p>
+            <p className="soon">{availability()}</p>
           </Beat>
 
           {/* 14:41 is the time Run's store screens were drawn at: the coach

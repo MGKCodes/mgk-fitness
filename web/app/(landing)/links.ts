@@ -25,6 +25,31 @@ export const stores: Record<"run" | "lift", { apple?: string; google?: string }>
   },
 };
 
+/** Each app with its store pages, in the order the page names them. */
+export const apps = [
+  ["Run", stores.run],
+  ["Lift", stores.lift],
+] as const;
+
+/**
+ * Where the apps are, in a line: "Run on Google Play", or "On the App Store
+ * and Google Play" once both apps are in both. The hero says it, and
+ * mgkcodes.com reads it from `/studio.json`, so the two can never disagree.
+ */
+export function availability(): string {
+  const out = apps.filter(([, links]) => links.apple || links.google);
+  if (out.length === 0) return "Coming to iPhone and Android";
+  if (out.length === apps.length && out.every(([, links]) => links.apple && links.google)) {
+    return "On the App Store and Google Play";
+  }
+  return out
+    .map(([name, links]) => {
+      const where = [links.apple && "the App Store", links.google && "Google Play"].filter(Boolean);
+      return `${name} on ${where.join(" and ")}`;
+    })
+    .join(", ");
+}
+
 /**
  * The suite's accounts elsewhere, which sit in the bar as their marks. One
  * with no address is shown greyed and is not a link. Give it a `url` and it is
