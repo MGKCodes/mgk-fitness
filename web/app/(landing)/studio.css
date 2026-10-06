@@ -1,0 +1,59 @@
+/* This page as mgkcodes.com builds it (studio.tsx). "blank" is the empty
+   drawing board; "sketch" draws the page on it in hairlines, a line under
+   each run of words and a dashed edge round each box, piece by piece; "page"
+   brings the page's own colours back. Nothing here applies unless that page
+   has asked. */
+
+html:is([data-studio="blank"], [data-studio="sketch"]) {
+  background:
+    linear-gradient(to right, rgb(74 122 184 / 0.11) 1px, transparent 1px) -1px -1px / 48px 48px,
+    linear-gradient(to bottom, rgb(74 122 184 / 0.11) 1px, transparent 1px) -1px -1px / 48px 48px,
+    #0a0e16 !important;
+}
+
+html:is([data-studio="blank"], [data-studio="sketch"]) body,
+html:is([data-studio="blank"], [data-studio="sketch"]) body * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  outline: none !important;
+  text-decoration: underline 1px transparent !important;
+  text-underline-offset: 0.22em !important;
+  transition:
+    text-decoration-color 0.3s ease,
+    outline-color 0.3s ease !important;
+  transition-delay: var(--studio-at, 0ms) !important;
+}
+
+html:is([data-studio="blank"], [data-studio="sketch"]) body [data-studio-box] {
+  outline: 1px dashed transparent !important;
+  outline-offset: -1px !important;
+}
+
+html:is([data-studio="blank"], [data-studio="sketch"]) body :is(img, video, canvas, picture, svg),
+html:is([data-studio="blank"], [data-studio="sketch"]) body *::before,
+html:is([data-studio="blank"], [data-studio="sketch"]) body *::after {
+  opacity: 0 !important;
+}
+
+html[data-studio="sketch"] body * {
+  text-decoration-color: rgb(91 138 203 / 0.75) !important;
+}
+
+html[data-studio="sketch"] body [data-studio-box] {
+  outline-color: rgb(91 138 203 / 0.5) !important;
+}
+
+/* Back to the page: its own colours fade in. */
+html[data-studio="page"] body,
+html[data-studio="page"] body * {
+  transition:
+    color 0.6s ease,
+    -webkit-text-fill-color 0.6s ease,
+    background-color 0.6s ease,
+    border-color 0.6s ease,
+    opacity 0.6s ease !important;
+}
