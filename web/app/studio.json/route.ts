@@ -1,4 +1,4 @@
-import { source, stores } from "../(landing)/links";
+import { apps, availability, source } from "../(landing)/links";
 
 /**
  * What this site tells mgkcodes.com about the suite.
@@ -20,33 +20,13 @@ import { source, stores } from "../(landing)/links";
  */
 export const dynamic = "force-static";
 
-const APPS = [
-  ["Run", stores.run],
-  ["Lift", stores.lift],
-] as const;
-
-const first = (store: "apple" | "google") => APPS.map(([, links]) => links[store]).find(Boolean);
-
-/** "Run on Google Play", or "On the App Store and Google Play" once both apps are in both. */
-function status() {
-  const out = APPS.filter(([, links]) => links.apple || links.google);
-  if (out.length === 0) return "Coming to iPhone and Android";
-  if (out.length === APPS.length && out.every(([, links]) => links.apple && links.google)) {
-    return "On the App Store and Google Play";
-  }
-  return out
-    .map(([name, links]) => {
-      const where = [links.apple && "the App Store", links.google && "Google Play"].filter(Boolean);
-      return `${name} on ${where.join(" and ")}`;
-    })
-    .join(", ");
-}
+const first = (store: "apple" | "google") => apps.map(([, links]) => links[store]).find(Boolean);
 
 export function GET() {
   return Response.json({
     studio: 1,
-    status: status(),
-    live: APPS.some(([, links]) => links.apple || links.google),
+    status: availability(),
+    live: apps.some(([, links]) => links.apple || links.google),
     stores: [
       { platform: "iPhone", store: "App Store", href: first("apple") },
       { platform: "Android", store: "Google Play", href: first("google") },
