@@ -1,4 +1,4 @@
-import { stores } from "../(landing)/links";
+import { source, stores } from "../(landing)/links";
 
 /**
  * What this site tells mgkcodes.com about the suite.
@@ -13,6 +13,10 @@ import { stores } from "../(landing)/links";
  * a line of state, the stores, and the app's screens with the first one's
  * source, abridged, which the studio's page types out while it builds the
  * phone.
+ *
+ * `source` is how to work on the suite, from `links.ts` and CONTRIBUTING.md.
+ * The studio's page shows it only while `open` is true, so making the
+ * repository public is still the one edit to `links.ts`.
  */
 export const dynamic = "force-static";
 
@@ -69,6 +73,16 @@ export function GET() {
         "  ),",
         ")",
       ],
+    },
+    source: {
+      open: source.open,
+      repository: source.repository,
+      contributing: source.contributing,
+      license: "AGPL-3.0",
+      // CONTRIBUTING.md: work happens on develop, and every commit is signed off.
+      branch: "develop",
+      signOff: true,
+      setup: ["flutter pub get", "flutter analyze"],
     },
   });
 }
