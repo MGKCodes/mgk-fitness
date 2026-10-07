@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is 1.0.1
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
 
+### Added
+
+- Settings › About says the app is open source. *Source code* (AGPL-3.0)
+  opens Run's code in the public repository, and *Report a problem* opens an
+  email to support with the app and its version already written in, for
+  anybody who wants to tell us something is wrong without going near the
+  code. Lift's Settings has the same two rows.
+
 ### Changed
 
 - The sign-in screen says which app it is and whose account: Run's icon and

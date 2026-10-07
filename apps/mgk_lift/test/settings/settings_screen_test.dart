@@ -213,11 +213,52 @@ void main() {
       double top(String label) => tester.getTopLeft(find.text(label)).dy;
       expect(top('PREFERENCES'), lessThan(top('YOUR DATA')));
       expect(top('YOUR DATA'), lessThan(top('ABOUT')));
-      expect(find.text('MGKFitness: Lift 2.0.0 · MGKCodes'), findsOneWidget);
+      expect(find.text('MGKFitness: Lift 2.0.1 · MGKCodes'), findsOneWidget);
 
       await tester.tap(find.text('Support'));
       await tester.pumpAndSettle();
       expect(opened.toString(), 'https://mgkfitness.mgkcodes.com/lift/support');
+    });
+
+    testWidgets('says the app is open source, and a problem is one email', (
+      WidgetTester tester,
+    ) async {
+      // Two ways in, for two kinds of people: the code for whoever will read
+      // it, and an email for everybody who will not.
+      final List<Uri> opened = <Uri>[];
+      await pumpTall(
+        tester,
+        SettingsScreen(
+          initial: const UnitPreferences(),
+          store: InMemoryUnitPreferences(),
+          openUrl: (url) async {
+            opened.add(url);
+            return true;
+          },
+        ),
+      );
+
+      double top(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(top('Support'), lessThan(top('Report a problem')));
+      expect(top('Report a problem'), lessThan(top('Source code')));
+      expect(top('Source code'), lessThan(top('Privacy & legal')));
+      expect(find.text('AGPL-3.0'), findsOneWidget);
+
+      await tester.tap(find.text('Report a problem'));
+      await tester.pumpAndSettle();
+      expect(opened.last.scheme, 'mailto');
+      expect(opened.last.path, 'lift@mgkfitness.mgkcodes.com');
+      expect(
+        opened.last.queryParameters['subject'],
+        'A problem with MGKFitness: Lift 2.0.1',
+      );
+
+      await tester.tap(find.text('Source code'));
+      await tester.pumpAndSettle();
+      expect(
+        opened.last.toString(),
+        'https://github.com/MGKCodes/mgk-fitness/tree/main/apps/mgk_lift',
+      );
     });
 
     testWidgets('the account and the units fit a 375pt phone unscrolled', (
