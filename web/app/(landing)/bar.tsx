@@ -57,8 +57,8 @@ function glide(to: number) {
 }
 
 /**
- * The bar: the suite's name, its two apps, its accounts elsewhere and the
- * waiting list.
+ * The bar: the suite's name, its two apps, its accounts elsewhere and where
+ * to get the apps.
  *
  * Run and Lift are places in the film, not pages, so their links scroll the
  * film to where each app arrives. They are ordinary links to `#run` and
@@ -95,9 +95,9 @@ export function Bar() {
         ))}
       </div>
       {/* Said in one word where the bar has no room for two. */}
-      <a className="pill" href="#waiting-list" aria-label="Waiting list">
-        <span className="wide">Waiting list</span>
-        <span className="narrow">Join</span>
+      <a className="pill" href="#get" aria-label="Get the apps">
+        <span className="wide">Get the apps</span>
+        <span className="narrow">Get</span>
       </a>
     </header>
   );

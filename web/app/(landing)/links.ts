@@ -1,11 +1,11 @@
 /**
  * Where things are, once they exist.
  *
- * The page is written before either app is in a store and before the
- * repository is public, so it has to say "soon" about both without a link
- * that goes nowhere. Each thing here is shown as coming until it is given an
- * address, and as a link from then on. Going live is an edit to this file and
- * nothing else.
+ * The page was written before either app was in a store and before the
+ * repository was public, so it says "soon" about what is not out yet without
+ * a link that goes nowhere. Each thing here is shown as coming until it is
+ * given an address, and as a link from then on. Going live is an edit to this
+ * file and nothing else.
  */
 
 /**
@@ -21,7 +21,7 @@ export const stores: Record<"run" | "lift", { apple?: string; google?: string }>
   lift: {
     // Liftio 1.4.0's page until 2.0.0 is approved, so held until then.
     // apple: "https://apps.apple.com/app/id6759969740",
-    // google: "https://play.google.com/store/apps/details?id=com.mgkcodes.liftio", // 2.0.0 in review
+    google: "https://play.google.com/store/apps/details?id=com.mgkcodes.liftio",
   },
 };
 
@@ -32,16 +32,21 @@ export const apps = [
 ] as const;
 
 /**
- * Where the apps are, in a line: "Run on Google Play", or "On the App Store
- * and Google Play" once both apps are in both. The hero says it, and
- * mgkcodes.com reads it from `/studio.json`, so the two can never disagree.
+ * Where the apps are, in a line: "Run on Google Play", "On Google Play.
+ * Coming soon to the App Store." once both apps are in the same store, or
+ * "On the App Store and Google Play" once both are in both. The hero says it,
+ * and mgkcodes.com reads it from `/studio.json`, so the two can never
+ * disagree.
  */
 export function availability(): string {
   const out = apps.filter(([, links]) => links.apple || links.google);
   if (out.length === 0) return "Coming to iPhone and Android";
-  if (out.length === apps.length && out.every(([, links]) => links.apple && links.google)) {
-    return "On the App Store and Google Play";
-  }
+  const inAll = (store: "apple" | "google") => apps.every(([, links]) => links[store]);
+  if (inAll("apple") && inAll("google")) return "On the App Store and Google Play";
+  // Both apps in one store and neither in the other: said once, not per app.
+  const inNone = (store: "apple" | "google") => apps.every(([, links]) => !links[store]);
+  if (inAll("google") && inNone("apple")) return "On Google Play. Coming soon to the App Store.";
+  if (inAll("apple") && inNone("google")) return "On the App Store. Coming soon to Google Play.";
   return out
     .map(([name, links]) => {
       const where = [links.apple && "the App Store", links.google && "Google Play"].filter(Boolean);
@@ -54,10 +59,11 @@ export function availability(): string {
  * The suite's accounts elsewhere, which sit in the bar as their marks. One
  * with no address is shown greyed and is not a link. Give it a `url` and it is
  * one. One that is not going to happen is taken out of the list, and is then
- * not shown at all.
+ * not shown at all. `handle` is the name it goes by there, which the page
+ * writes out where somebody might want to type it.
  */
-export const social: { name: "Instagram" | "TikTok"; url?: string }[] = [
-  { name: "Instagram" },
+export const social: { name: "Instagram" | "TikTok"; url?: string; handle?: string }[] = [
+  { name: "Instagram", url: "https://www.instagram.com/mgkfitness.app/", handle: "@mgkfitness.app" },
   { name: "TikTok" },
 ];
 
