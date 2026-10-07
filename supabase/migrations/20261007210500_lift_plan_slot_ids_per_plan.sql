@@ -12,8 +12,9 @@
 -- wired), and the next read of the plan returns the stored ids, so the app
 -- holding the unprefixed ones until then costs nothing.
 --
--- NOT YET APPLIED (2026-10-07): apply_migration came back "declined", the
--- Supabase MCP's confirmation for a `drop`. Paste into the SQL editor.
+-- Applied 2026-10-07 through the SQL editor (apply_migration declined it, the
+-- Supabase MCP's confirmation for a `drop`), and recorded in
+-- schema_migrations by hand under this file's version.
 
 create or replace function lift.plan_slot_id_per_plan()
 returns trigger
