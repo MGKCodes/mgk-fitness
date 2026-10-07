@@ -208,10 +208,14 @@ workflows:
     # Unlike the release workflows, this one is meant to run without being
     # asked. A check you have to trigger is a check you skip on the day you are
     # in a hurry, which is the day you needed it.
+    #
+    # **Pushes only, not pull requests**, since the repository is public. A
+    # pull request from a fork brings its own copy of this file, which could
+    # name a group of secrets and run anything on our machines. Run the checks
+    # on a contributor's change by merging it to a branch here first.
     triggering:
       events:
         - push
-        - pull_request
       branch_patterns:
         - pattern: '*'
           include: true

@@ -210,9 +210,9 @@ and run.
          with a CNAME can have no MX records, so it is now `A 76.76.21.21` (DNS
          only; the pages were checked through that address before the switch
          and again after it). The subdomain is added in Cloudflare Email
-         Routing, `run@` forwards to `mgkcodes@gmail.com` beside `hello@`, and
+         Routing, `run@` forwards to the studio's inbox beside `hello@`, and
          a test from outside arrived in the inbox, not spam. Receive-only:
-         replies go out from `mgkcodes@gmail.com`, which is also true of
+         replies go out from that inbox, which is also true of
          `hello@`. Every Run-facing `hello@mgkcodes.com` moved in build 27: the
          app, the policy and terms (both re-dated 30 September), the generated
          pages, `/run/support`, `/run/delete-account` and the Play contact

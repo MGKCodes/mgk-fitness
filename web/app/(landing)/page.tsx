@@ -387,12 +387,68 @@ export default function Home() {
           {/* Said in the present only once it is true. Until the repository is
               public the code cannot be read, whatever its licence says. */}
           {source.open ? (
-            <p>
-              Run and Lift are open source, under the AGPL. The code that records
-              your training and talks to the coach is there to be read, questioned
-              and improved, and contributions are encouraged: an idea, a bug, a fix,
-              a feature.
-            </p>
+            <>
+              <p>
+                Run and Lift are open source, under the AGPL. The code that records
+                your training and talks to the coach is there to be read, questioned
+                and improved, and contributions are encouraged: an idea, a bug, a fix,
+                a feature.
+              </p>
+              {/* How it works, each point something the repository itself
+                  says: README.md, CONTRIBUTING.md, SECURITY.md and NOTICE.md. */}
+              <ul className="facts">
+                <li>
+                  <h3>All of it, readable</h3>
+                  <p>
+                    Both apps, the design system they share, the database and the
+                    coach&rsquo;s server code are in one public repository. What the
+                    apps do with your training is there to check.
+                  </p>
+                </li>
+                <li>
+                  <h3>The same code as the stores</h3>
+                  <p>
+                    What you download is built from this repository, and every
+                    build sent to the stores is tagged with the commit it came
+                    from, so you can read exactly what you are running.
+                  </p>
+                </li>
+                <li>
+                  <h3>The licence</h3>
+                  <p>
+                    <a href={source.licence}>AGPL-3.0</a>: read it, run it, change it,
+                    share it. Run a changed version for other people, over the
+                    internet too, and you share your changes as well. This website
+                    and the exercise drawings have licences of their own.
+                  </p>
+                </li>
+                <li>
+                  <h3>Contributing</h3>
+                  <p>
+                    <a href={source.issues}>Open an issue</a> for a bug or an idea.
+                    To send a change, fork the repository, branch from develop and
+                    open a pull request, signed off. Every change is read before it
+                    is merged.
+                  </p>
+                </li>
+                <li>
+                  <h3>Security, privately</h3>
+                  <p>
+                    Found a way to see somebody else&rsquo;s data? Tell us through the
+                    repository&rsquo;s <a href={source.security}>Security tab</a>, not
+                    in an issue.
+                  </p>
+                </li>
+                <li>
+                  <h3>Run it yourself</h3>
+                  <p>
+                    The apps and the whole backend run on your own machine, with
+                    Flutter, Docker and the Supabase CLI.{" "}
+                    <a href={source.readme}>The README</a> says how.
+                  </p>
+                </li>
+              </ul>
+            </>
           ) : (
             <p>
               Run and Lift are going open source, under the AGPL. The code that
@@ -409,7 +465,7 @@ export default function Home() {
             />
             <Source to={source.run} title="Run" note="The running app" />
             <Source to={source.lift} title="Lift" note="The strength app" />
-            <Source to={source.contributing} title="Contribute" note="How to send a change" />
+            <Source to={source.contributing} title="Contribute" note="How to send a change, and the rules" />
           </div>
           {!source.open && (
             <p className="small">The repository opens to everybody soon.</p>

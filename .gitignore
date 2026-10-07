@@ -98,6 +98,23 @@ coverage/
 **/*service_role*
 **/*.p8
 
+# Signing material and private keys, wherever they land. The Android rules
+# above cover the keystore's usual path; these cover the day it is somewhere
+# else, and Apple's certificates and keys exported for a build machine.
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/id_rsa*
+**/id_ed25519*
+# The App Store Connect key's settings (`scripts/store/` reads them from the
+# home folder), and Firebase's per-app files, which this suite does not use.
+**/asc.json
+**/google-services.json
+**/GoogleService-Info.plist
+
 # Session handoff — a working artifact, not a repo doc. It carries pricing
 # strategy and go-to-market notes, and this repo is going public. Track it
 # deliberately or not at all; don't let `git add -A` decide.

@@ -1,11 +1,26 @@
 # Going public
 
-The repository is private and is about to be made public. This is what was
-checked before that, what it found, and what is left for the day itself.
+The repository is being made public. This is what was checked before that,
+what it found, and what was done on the day.
 
-**When:** on or before Sunday 11 October 2026. Matthew plans to announce the
-project that day, and said on 2 October that the week before it is for getting
-the repository ready.
+**When:** 7 October 2026, ahead of Sunday 11 October, when Matthew announces
+the project. He said on 2 October that the week before it was for getting the
+repository ready, and on 7 October to go ahead.
+
+## Checked again on 7 October
+
+- **`gitleaks` over every ref: 644 commits, one finding**, the same demo key as
+  before (below). Nothing new since 2 October.
+- **Every file name ever committed, on every ref** (716 commits): no `.env`,
+  keystore, `.p8`, `.p12`, `.pem`, `key.properties`, `google-services.json`,
+  service account or `app_config.json`. Only the two `key.properties.example`
+  templates.
+- **The second scan** (key shapes over every added line) was not repeated.
+  `gitleaks` covers the same providers, and GitHub's secret scanning runs over
+  the whole history once the repository is public.
+- **The addresses below were decided**: replaced in the current files, kept in
+  the history.
+- **The waiting list came down from the website the same morning**, empty.
 
 Checked on 2 October 2026, with `develop` at `82e7b3c`. **Redo the two scans
 if the flip is more than a few days later**: they describe the history as it
@@ -59,13 +74,25 @@ the whole remedy.
 
 Worth a decision each, because none can be taken back afterwards:
 
-- **Three personal or studio addresses in the documents.**
-  `mgkcodes@gmail.com` (in `apps/mgk_run/docs/history/app-store-1.0.0-record.md`
-  and `apps/mgk_lift/docs/store-setup.md`), `mgkcodes+sandbox@gmail.com` (in
-  Lift's `store-setup.md`) and `mattkay02@gmail.com` (in Run's
+- **Decided 7 October: the personal, test and review addresses are replaced in
+  the current files; the history keeps them.** Matthew's personal address, the
+  studio's Gmail, the sandbox tester and the two App Review accounts now appear
+  by role (*the studio's inbox*, `<address A>`), with the real ones in App
+  Store Connect, Play Console and the password manager. Rewriting history to
+  remove them was not worth it: they are addresses, not credentials, and
+  every tag would change. Public addresses stay as they are: `hello@mgkcodes.com`
+  and the apps' support addresses. `dev@`, `a@`, `b@` and the like are test
+  data.
+
+  As it stood before the decision:
+
+- **Three personal or studio addresses in the documents**: the studio's
+  Gmail (in `apps/mgk_run/docs/history/app-store-1.0.0-record.md` and
+  `apps/mgk_lift/docs/store-setup.md`), its sandbox tester (in Lift's
+  `store-setup.md`) and Matthew's personal Gmail (in Run's
   `testflight-1.0.0-test-sheet.md` and `history/release-1.0.0.md`). Leave them,
-  or replace them with `hello@mgkcodes.com` before the flip. After it they are
-  in the history either way.
+  or replace them before the flip. After it they are in the history either
+  way.
 - **The App Review accounts' addresses**, in both apps' store documents. Their
   passwords are not in the repository, and nothing that pairs an account with a
   password was found.
@@ -104,8 +131,18 @@ both finds nothing.
 
 Run's [`after-1.0.0.md`](../apps/mgk_run/docs/after-1.0.0.md) has carried a
 table headed *Before the repository goes public* since the review of
-29 September. It was written before this page and the two do not yet agree, so
-read both on the day:
+29 September. Where each item stood on 7 October:
+
+| Item | 7 October |
+|---|---|
+| Pull requests from forks reaching Codemagic | **Changed:** `checks` is triggered by pushes only. A fork's copy of `codemagic.yaml` is still the fork's to write, so whether Codemagic builds a fork's pull request at all is a setting in Codemagic, for Matthew to check |
+| `checks` has never run | Open. Not a reason to stay private |
+| `.gitignore` gaps | **Closed:** keystores anywhere, `.p12`, `.pfx`, `.pem`, `.key`, SSH keys, `asc.json` and Firebase's files |
+| `codemagic-build.sh` builds any branch | Open. Only collaborators can push a branch, so a stranger cannot use it |
+| No Content-Security-Policy on `web/` | Open |
+| The demo key in `supabase/knowledge/sync.ts` | Explained above and in `SECURITY.md` |
+
+What it said before, kept because the two documents disagreed on one point:
 
 - It says **pull requests from forks can reach Codemagic secrets**; this page
   says the `checks` workflow holds none. Both can be true, since the release
@@ -168,6 +205,8 @@ list's one door, and the table has no other.
   [`SECURITY.md`](../SECURITY.md) says how.
 
 ## On the day
+
+Done on 7 October, in this order, unless marked otherwise.
 
 1. Redo the two scans if any time has passed. The first is
    `gitleaks git --redact --log-opts="--all" .`

@@ -1041,3 +1041,15 @@ a.store:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Links inside the open-source points: white, so they read as links on silver. */
+.open .facts a {
+  color: var(--white);
+  text-underline-offset: 2px;
+}
+
+/* Six points: three across on a wide screen, two even rows. */
+.open .facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  margin-bottom: clamp(3rem, 9svh, 5rem);
+}

@@ -71,15 +71,19 @@ export const social: { name: "Instagram" | "TikTok"; url?: string; handle?: stri
  * The source. Run and Lift are AGPL and live in one repository, with the
  * backend they share.
  *
- * **`open` is false because the repository is private today**, and a link to a
- * private repository is a 404 for everybody but its owner. Making it public
- * waits on its history being cleared of secrets (`apps/mgk_run/docs/roadmap.md`).
- * Set this to true the day it is public, not before.
+ * **`open` was false while the repository was private**, since a link to a
+ * private repository is a 404 for everybody but its owner. It went public on
+ * 7 October 2026, after its history was scanned for secrets
+ * (`docs/going-public.md`).
  */
 export const source = {
-  open: false,
+  open: true,
   repository: "https://github.com/MGKCodes/mgk-fitness",
   run: "https://github.com/MGKCodes/mgk-fitness/tree/main/apps/mgk_run",
   lift: "https://github.com/MGKCodes/mgk-fitness/tree/main/apps/mgk_lift",
   contributing: "https://github.com/MGKCodes/mgk-fitness/blob/main/CONTRIBUTING.md",
+  readme: "https://github.com/MGKCodes/mgk-fitness#getting-started",
+  licence: "https://github.com/MGKCodes/mgk-fitness/blob/main/LICENSE",
+  issues: "https://github.com/MGKCodes/mgk-fitness/issues",
+  security: "https://github.com/MGKCodes/mgk-fitness/security",
 };
