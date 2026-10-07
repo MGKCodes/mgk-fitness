@@ -135,7 +135,7 @@ table headed *Before the repository goes public* since the review of
 
 | Item | 7 October |
 |---|---|
-| Pull requests from forks reaching Codemagic | **Changed:** `checks` is triggered by pushes only. A fork's copy of `codemagic.yaml` is still the fork's to write, so whether Codemagic builds a fork's pull request at all is a setting in Codemagic, for Matthew to check |
+| Pull requests from forks reaching Codemagic | **Closed.** Codemagic has no webhook on this repository (GitHub lists none, and Codemagic's Webhooks tab has never had a delivery), so no GitHub event starts a build: every build is started through the API or by hand. `checks` is also triggered by pushes only. Pressing *Update webhook* in Codemagic would undo this, since a pull request is built from the source branch's `codemagic.yaml`, a fork's own |
 | `checks` has never run | Open. Not a reason to stay private |
 | `.gitignore` gaps | **Closed:** keystores anywhere, `.p12`, `.pfx`, `.pem`, `.key`, SSH keys, `asc.json` and Firebase's files |
 | `codemagic-build.sh` builds any branch | Open. Only collaborators can push a branch, so a stranger cannot use it |
@@ -220,9 +220,12 @@ it were followed from outside and all answered.
   vulnerability reporting and protecting `main` and `develop` are set by hand
   in the repository's Settings.
 - **Step 8: done.**
-- **Also Matthew's:** whether Codemagic builds pull requests from forks (its
-  app settings), and whether the old remote branch `feat/studio-screens`
-  should go.
+- **Codemagic and forks: settled the same day.** It has no webhook, so
+  nothing from GitHub starts a build (Run's list, above).
+- **Step 5 done by Matthew the same day**: secret scanning, push protection
+  and private vulnerability reporting on, and `main` and `develop` protected
+  against force-pushes and deletion. `feat/studio-screens` stays: it is
+  Matthew's open pull request #1.
 
 The steps as they were planned:
 
