@@ -206,7 +206,25 @@ list's one door, and the table has no other.
 
 ## On the day
 
-Done on 7 October, in this order, unless marked otherwise.
+Done on 7 October, in this order, unless marked otherwise. **The repository
+went public that morning** (`main` at `8eff9d2`), and the site's eight links to
+it were followed from outside and all answered.
+
+- **Steps 1 to 4, 6 and 7: done.** Step 3 had nothing to promote: `main` and
+  `develop` already held the same files outside the apps, since Lift's
+  promotion on 5 October, so it became bringing those files up to date. Vercel's
+  fork protection was read as on (step 6). `develop` was pushed the same
+  morning, so a contributor branches from today's.
+- **Step 5: Matthew's.** The settings change was refused to Claude by the
+  permission check, so secret scanning, push protection, private
+  vulnerability reporting and protecting `main` and `develop` are set by hand
+  in the repository's Settings.
+- **Step 8: done.**
+- **Also Matthew's:** whether Codemagic builds pull requests from forks (its
+  app settings), and whether the old remote branch `feat/studio-screens`
+  should go.
+
+The steps as they were planned:
 
 1. Redo the two scans if any time has passed. The first is
    `gitleaks git --redact --log-opts="--all" .`
