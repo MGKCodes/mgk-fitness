@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../domain/plan_intake.dart';
 import '../domain/standing_plan.dart';
 import '../domain/standing_plan_store.dart';
 
@@ -87,8 +88,8 @@ class CachedStandingPlanStore implements StandingPlanStore {
   }
 
   @override
-  Future<StandingPlan> replace(StandingPlan plan) async {
-    final saved = await _remote.replace(plan);
+  Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async {
+    final saved = await _remote.replace(plan, intake: intake);
     await _cache.write(jsonEncode(planToJson(saved)));
     return saved;
   }

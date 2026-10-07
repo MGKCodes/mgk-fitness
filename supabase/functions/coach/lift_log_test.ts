@@ -9,7 +9,12 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
-import { LiftLog, renderLiftLog } from "./lift_log.ts";
+import {
+  LiftLog,
+  readLiftPlan,
+  renderLiftLog,
+  renderLiftPlan,
+} from "./lift_log.ts";
 
 function session(
   name: string,
@@ -172,4 +177,80 @@ Deno.test("a failed log read answers without the log rather than refusing", () =
     assertEquals(a, "");
     assertEquals(b, "");
   });
+});
+
+// ---- the active plan -------------------------------------------------------
+
+Deno.test("the plan reads as its name, its days and what they said", () => {
+  const out = renderLiftPlan([{
+    split: "Upper / Lower",
+    day_order: ["Upper", "Lower", "Upper", "Lower"],
+    available_weekdays: [1, 2, 4, 5],
+    goal: "Bench 100kg",
+    equipment: "A full gym",
+    injury_notes: "Left shoulder, no overhead pressing",
+  }]);
+  assertEquals(
+    out,
+    "Plan: Upper / Lower on Mon, Tue, Thu, Fri (Upper, Lower, Upper, Lower)\n" +
+      "Training for: Bench 100kg\n" +
+      "Trains with: A full gym\n" +
+      "Working around: Left shoulder, no overhead pressing",
+  );
+});
+
+Deno.test("a declined answer is left out, not printed as null", () => {
+  const out = renderLiftPlan([{
+    split: "Full body",
+    day_order: [],
+    available_weekdays: [1, 3, 5],
+    goal: null,
+    equipment: null,
+    injury_notes: null,
+  }]);
+  assertEquals(out, "Plan: Full body on Mon, Wed, Fri");
+});
+
+Deno.test("no plan is nothing at all", () => {
+  assertEquals(renderLiftPlan([]), "");
+  assertEquals(renderLiftPlan(null), "");
+});
+
+Deno.test("the plan is read as the caller, active only", async () => {
+  let seen: Request | undefined;
+  const fake = (input: RequestInfo | URL, init?: RequestInit) => {
+    seen = new Request(input, init);
+    return Promise.resolve(
+      new Response(JSON.stringify([{ split: "Push / Pull / Legs" }])),
+    );
+  };
+  const out = await readLiftPlan(
+    "https://x.supabase.co",
+    "anon",
+    "Bearer user-jwt",
+    fake as typeof fetch,
+  );
+  assertEquals(out, "Plan: Push / Pull / Legs");
+  assert(seen);
+  assertEquals(seen.headers.get("Authorization"), "Bearer user-jwt");
+  assertEquals(seen.headers.get("Accept-Profile"), "lift");
+  assert(seen.url.includes("status=eq.active"));
+});
+
+Deno.test("a plan that will not load is no plan, not a refused turn", async () => {
+  const fake = () => Promise.resolve(new Response("nope", { status: 500 }));
+  assertEquals(
+    await readLiftPlan("https://x", "anon", "Bearer t", fake as typeof fetch),
+    "",
+  );
+});
+
+Deno.test("nothing to work around is not read back as a constraint", () => {
+  for (const none of ["none", "Nothing to work around", "No", "n/a"]) {
+    assertEquals(
+      renderLiftPlan([{ split: "Full body", injury_notes: none }]),
+      "Plan: Full body",
+      none,
+    );
+  }
 });

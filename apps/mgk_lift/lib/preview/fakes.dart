@@ -6,6 +6,7 @@ import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/coach_planner.dart';
+import '../src/features/planning/domain/intake_flow.dart';
 import '../src/features/planning/domain/plan_proposal.dart';
 import '../src/features/tracking/domain/session.dart';
 import '../src/features/tracking/domain/session_recorder.dart';
@@ -442,7 +443,7 @@ class FakePlanner implements CoachPlanner {
 
   @override
   Future<IntakeTurn> intake({
-    required PlanIntake known,
+    required IntakeProgress progress,
     required List<PlannerTurn> history,
   }) async {
     _maybeFail();

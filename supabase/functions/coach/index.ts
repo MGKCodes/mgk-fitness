@@ -58,7 +58,7 @@ import {
 } from "./surfaces.ts";
 import { UsageStore } from "./usage_store.ts";
 import { EntitlementStore, tierFor } from "./entitlements.ts";
-import { LiftLog } from "./lift_log.ts";
+import { LiftLog, readLiftPlan } from "./lift_log.ts";
 import {
   CoachMemory,
   EMPTY_MEMORY,
@@ -488,12 +488,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (surfaceName === "lift_chat" && memoryStore) {
     // In parallel: the log and the memory are independent reads, and this is on
     // the path of every turn.
-    const [brief, loaded] = await Promise.all([
+    const [brief, loaded, plan] = await Promise.all([
       new LiftLog(supabaseUrl, anonKey).recent(authHeader),
       memoryStore.read("lift", conversation),
+      readLiftPlan(supabaseUrl, anonKey, authHeader),
     ]);
     memory = loaded;
     body.brief = brief;
+    // Overwritten like the brief: what the plan says is read as the caller,
+    // never taken from the request.
+    body.plan = plan;
     body.memory = memory.summary;
     body.history = memory.turns;
   }

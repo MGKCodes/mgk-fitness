@@ -45,6 +45,7 @@ class StandingPlanSurface extends StatefulWidget {
     this.movedDay,
     this.onSwap,
     this.onChangeSplit,
+    this.isBuilding = false,
   });
 
   final StandingPlan plan;
@@ -69,6 +70,10 @@ class StandingPlanSurface extends StatefulWidget {
   /// them; it changes when they ask. Those are different things, and the second
   /// one needs a door.
   final VoidCallback? onChangeSplit;
+
+  /// A replacement is being built. The door stays on screen and says so,
+  /// rather than vanishing for the minute the coach takes.
+  final bool isBuilding;
 
   @override
   State<StandingPlanSurface> createState() => _StandingPlanSurfaceState();
@@ -185,7 +190,13 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
               ),
             ),
 
-            if (widget.onChangeSplit != null) ...<Widget>[
+            if (widget.isBuilding) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              const AppOutlinedButton(
+                label: 'Building your new plan…',
+                onPressed: null,
+              ),
+            ] else if (widget.onChangeSplit != null) ...<Widget>[
               const SizedBox(height: AppSpacing.lg),
               AppOutlinedButton(
                 label: 'Change the split',

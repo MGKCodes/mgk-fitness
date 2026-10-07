@@ -52,15 +52,17 @@ class SupabaseCoach implements CoachService {
           // unavailable, which is what it is.
           .timeout(requestTimeout);
 
+      // An answer that arrived and cannot be used is the server's fault, not
+      // the signal's: the request got there and back.
       final data = res.data;
       if (data is Map && data['reply'] is String) {
         final reply = data['reply'] as String;
         if (reply.trim().isEmpty) {
-          throw const CoachException(CoachFailure.unavailable);
+          throw const CoachException(CoachFailure.serverError);
         }
         return reply;
       }
-      throw const CoachException(CoachFailure.unavailable);
+      throw const CoachException(CoachFailure.serverError);
     } on FunctionException catch (e) {
       throw CoachException(_map(e));
     } on CoachException {
@@ -81,11 +83,14 @@ class SupabaseCoach implements CoachService {
   /// 429 covers both a rate limit and the rolling spend cap. They are one thing
   /// to a lifter — come back later — and the function distinguishes them in the
   /// body for when that stops being true.
+  ///
+  /// Any other status means the function answered, so it is the server's
+  /// fault, not the signal's. Only no answer at all is [CoachFailure.unavailable].
   static CoachFailure _map(FunctionException e) => switch (e.status) {
     401 => CoachFailure.signedOut,
     402 => CoachFailure.notEntitled,
     429 => CoachFailure.limitReached,
-    _ => CoachFailure.unavailable,
+    _ => CoachFailure.serverError,
   };
 }
 

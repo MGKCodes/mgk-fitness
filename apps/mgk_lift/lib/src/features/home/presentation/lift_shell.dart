@@ -368,6 +368,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   late final MovedDayStore _movedDays = widget.movedDays ?? InMemoryMovedDay();
   bool _buildingPlan = false;
 
+  /// What the lifter answered for a plan that then failed to build or save.
+  ///
+  /// **Kept so the next attempt does not start from nothing.** A failure used
+  /// to throw every answer away, so trying again meant the whole conversation
+  /// again — which, while every save was failing, was every attempt. Held for
+  /// this run of the app only; a plan that does save keeps its answers in
+  /// `lift.plans`.
+  PlanIntake? _unbuiltIntake;
+
   /// Whether the coach is switched on. Held here rather than in Settings
   /// because it governs the mark floating over every surface and whether
   /// Plan can build anything — both of which outlive the screen that
@@ -430,6 +439,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
         setState(() {
+          // Answers kept from a failed build belong to whoever gave them: a
+          // goal and an injury are not to be offered to the next account.
+          if (account?.id != _account?.id) _unbuiltIntake = null;
           _account = account;
           if (account == null) {
             _mayUse = null;
@@ -855,7 +867,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   plan: _plan,
                   today: widget.today,
                   unit: _units.mass,
-                  onBuildPlan: _canPlan ? _buildPlan : null,
+                  onBuildPlan: _canPlan && !_buildingPlan ? _buildPlan : null,
+                  isBuilding: _buildingPlan,
                   // So the note under a disabled button names the real
                   // reason. Only when a planner exists: with no server
                   // the connection line is the true one.
@@ -1126,11 +1139,14 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// it too. Without this the coach could be off and Plan would still send
   /// the intake answers — including the injury notes — to OpenRouter, which
   /// is exactly what the switch promises it does not do.
+  ///
+  /// **Not false while a plan is building.** It was, and Plan reads a missing
+  /// build action as "no connection", so the minute a plan took to build was
+  /// spent telling the lifter their signal had failed. Building is its own
+  /// state now ([PlanSurface.isBuilding]); the button is withheld where it is
+  /// passed.
   bool get _canPlan =>
-      _useCoach &&
-      widget.planner != null &&
-      widget.plans != null &&
-      !_buildingPlan;
+      _useCoach && widget.planner != null && widget.plans != null;
 
   Future<void> _refreshPlan() async {
     final plans = widget.plans;
@@ -1155,6 +1171,18 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     // A plan is the coach's too, and asks about injuries on the way.
     if (!await _acceptedDisclaimer() || !mounted) return;
 
+    // A previous attempt's answers, when it failed after the intake: the
+    // conversation opens complete, with "Build my plan" showing, rather than
+    // asking it all again. Anything still unanswered in it was declined --
+    // the intake does not finish otherwise -- and is kept declined.
+    final previous = _unbuiltIntake;
+    final seeded = previous == null
+        ? const IntakeProgress()
+        : IntakeProgress(
+            plan: previous,
+            declined: IntakeProgress(plan: previous).unsettled.toSet(),
+          );
+
     final intake = await Navigator.of(context).push<PlanIntake>(
       MaterialPageRoute<PlanIntake>(
         builder: (_) => PlanIntakeScreen(
@@ -1164,13 +1192,20 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           // at once and led with the goal — which is the field with the least
           // leverage over the block, and the flow orders by leverage on
           // purpose. See planning/domain/intake_flow.dart.
-          opener: IntakeField.days.question,
+          opener: previous == null
+              ? IntakeField.days.question
+              : 'I still have your answers from last time. Tap Build my plan '
+                    'to try again, or tell me what has changed.',
+          initialKnown: seeded,
         ),
       ),
     );
     if (intake == null || !mounted) return;
 
-    setState(() => _buildingPlan = true);
+    setState(() {
+      _buildingPlan = true;
+      _unbuiltIntake = intake;
+    });
     try {
       final equipment = Equipment.fromAnswer(intake.equipment ?? '');
       final built =
@@ -1190,15 +1225,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           ).build(
             id: 'plan-${DateTime.now().millisecondsSinceEpoch}',
             intake: intake,
-            // What they said, or a sensible week if they declined. Days is the one
-            // question the intake will not let somebody skip, so this is a
-            // belt-and-braces default rather than a real case.
-            weekdays: intake.availableWeekdays ?? const <int>[1, 2, 4, 5],
+            // What they named, or their day count spread across the week. This
+            // was a fixed four-day week whenever no weekday was named, which
+            // is every time somebody taps "3 days".
+            weekdays: intake.weekdaysOrDefault,
             catalogue: catalogueFor(equipment),
             equipment: equipment,
           );
 
-      await plans.replace(built.plan);
+      await plans.replace(built.plan, intake: intake);
       if (!mounted) return;
 
       // **No separate review screen.** Reviewing a block made sense when four
@@ -1210,7 +1245,26 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       setState(() {
         _plan = built.plan;
         _index = _planTab;
+        // Kept after a template, so "Change the split" retries with the same
+        // answers rather than asking them all again.
+        _unbuiltIntake = built.fromCoach ? null : intake;
       });
+
+      // The fallback is a good week and a worse product: it knows nothing
+      // about this person's history. It used to arrive in silence, so
+      // somebody given a template had no reason to think another go might
+      // give them the coach's plan instead -- and "another go" is only the
+      // advice when another go could work.
+      if (!built.fromCoach) {
+        AppToast.show(context, switch (built.coachFailure) {
+          PlanFailure.limitReached =>
+            "You have used today's coaching, so this is a standard week for "
+                "your days. Change the split tomorrow for the coach's own.",
+          _ =>
+            'Your coach could not write this one, so it is a standard week '
+                'for your days. Change the split to try again.',
+        });
+      }
     } on PlanException catch (e) {
       if (!mounted) return;
       AppToast.show(context, e.failure.message);

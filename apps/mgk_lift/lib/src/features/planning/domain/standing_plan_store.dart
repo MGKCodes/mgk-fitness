@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 import 'coach_planner.dart';
+import 'plan_intake.dart';
 import 'standing_plan.dart';
 
 /// Where a standing plan is kept.
@@ -30,7 +31,17 @@ abstract interface class StandingPlanStore {
   ///
   /// The plan being replaced becomes `superseded` rather than disappearing:
   /// "I do not like this split" should not erase what somebody has run.
-  Future<StandingPlan> replace(StandingPlan plan);
+  ///
+  /// [intake] is what the lifter told the coach to get this plan — goal, kit,
+  /// what they are working around. Kept with the plan, because it was asked
+  /// once and is what the coach should still know the next time it is talked
+  /// to. Before 2026-10-07 nothing kept it: the columns existed and every
+  /// answer was dropped the moment the plan was built.
+  ///
+  /// **All or nothing.** A plan with no slots is not a smaller plan; it is a
+  /// Plan tab with a name and no sessions. Either the new plan is live with
+  /// every slot, or the old one still is.
+  Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake});
 
   /// What a finished session did to one slot.
   ///
@@ -59,9 +70,13 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
   @override
   Future<StandingPlan?> active() async => _plan;
 
+  /// What the last [replace] was told, so a test can assert it was kept.
+  PlanIntake? intake;
+
   @override
-  Future<StandingPlan> replace(StandingPlan plan) async {
+  Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async {
     calls.add('replace:${plan.id}');
+    this.intake = intake;
     return _plan = plan;
   }
 

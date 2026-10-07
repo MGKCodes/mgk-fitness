@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/planning/data/cached_standing_plan_store.dart';
 import 'package:mgk_lift/src/features/planning/domain/coach_planner.dart';
+import 'package:mgk_lift/src/features/planning/domain/plan_intake.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan.dart';
 import 'package:mgk_lift/src/features/planning/domain/standing_plan_store.dart';
 
@@ -50,7 +51,8 @@ class _Remote implements StandingPlanStore {
   }
 
   @override
-  Future<StandingPlan> replace(StandingPlan p) async => live = p;
+  Future<StandingPlan> replace(StandingPlan p, {PlanIntake? intake}) async =>
+      live = p;
 
   @override
   Future<void> recordResult(

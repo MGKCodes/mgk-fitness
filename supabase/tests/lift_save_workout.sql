@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(17);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values ('aaaaaaaa-5a5e-0000-0000-000000000001',
@@ -172,6 +172,33 @@ select is(
   (select is_template from lift.workouts where id = 't1'),
   true,
   'and the owner''s workout is untouched'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- Every set type the app records
+--
+-- The column allowed 'working' and 'warmup'; the app records four. A session
+-- with a drop set or a set to failure was refused whole and set aside on the
+-- phone, so the backup quietly skipped exactly the sessions somebody had
+-- pushed hardest in.
+-- ---------------------------------------------------------------------------
+
+select pg_temp.as_lifter('aaaaaaaa-5a5e-0000-0000-000000000001');
+select lives_ok(
+  $$select lift.save_workout(
+      jsonb_set(
+        jsonb_set(public.pgtap_session('d1', 2),
+                  '{exercises,0,sets,0,set_type}', '"dropset"'),
+        '{exercises,0,sets,1,set_type}', '"failure"'))$$,
+  'a session with a drop set and a set to failure saves'
+);
+reset role;
+select is(
+  (select array_agg(set_type order by set_number)
+     from lift.sets where exercise_id = 'd1:e'),
+  array['dropset', 'failure'],
+  'and keeps both types'
 );
 
 select * from finish();

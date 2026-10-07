@@ -76,6 +76,97 @@ export class LiftLog {
 }
 
 /**
+ * What the active plan's row is read for: its name and days, and what the
+ * lifter said when it was built.
+ */
+const PLAN_SELECT =
+  "split,day_order,available_weekdays,goal,equipment,injury_notes";
+
+/**
+ * The caller's active plan, rendered, or "" when there is none.
+ *
+ * **Why the chat coach reads it.** The intake asks somebody their goal, their
+ * kit and what hurts, and until 2026-10-07 every answer was dropped the moment
+ * the plan was built -- so the coach that then answered "my shoulder is sore"
+ * had never heard about the shoulder they described ten minutes earlier. The
+ * app now keeps those answers on the plan; this is how the coach hears them.
+ *
+ * Same rules as [LiftLog.recent]: as the caller, so RLS decides, and a failed
+ * read is an absent plan rather than a refused turn.
+ */
+export async function readLiftPlan(
+  baseUrl: string,
+  anonKey: string,
+  authHeader: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<string> {
+  try {
+    const url = `${baseUrl}/rest/v1/plans?select=${PLAN_SELECT}` +
+      `&status=eq.active&limit=1`;
+    const res = await fetchFn(url, {
+      headers: {
+        "Accept-Profile": "lift",
+        "apikey": anonKey,
+        "Authorization": authHeader,
+      },
+      signal: AbortSignal.timeout(READ_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.error("coach lift plan read failed", res.status);
+      return "";
+    }
+    return renderLiftPlan(await res.json().catch(() => null));
+  } catch (e) {
+    console.error("coach lift plan read error", String(e));
+    return "";
+  }
+}
+
+const WEEKDAYS = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** The ways "no injuries" arrives: the intake's sentinel and the option. */
+const NOTHING_TO_WORK_AROUND =
+  /^(none|nothing|no|n\/a|nothing to work around|no injuries)\.?$/i;
+
+/**
+ * The plan as a few short lines. A line is left out when its answer is, so a
+ * declined question reads as not said rather than as "null".
+ */
+export function renderLiftPlan(payload: unknown): string {
+  const row = Array.isArray(payload) ? payload[0] : null;
+  if (typeof row !== "object" || row === null) return "";
+  const p = row as Record<string, unknown>;
+
+  const days = asList(p.available_weekdays)
+    .map((d) => (typeof d === "number" ? WEEKDAYS[d] ?? "" : ""))
+    .filter((d) => d !== "");
+  const order = asList(p.day_order).filter((d): d is string =>
+    typeof d === "string" && d !== ""
+  );
+
+  const lines: string[] = [];
+  const name = str(p.split);
+  if (name) {
+    const on = days.length ? ` on ${days.join(", ")}` : "";
+    const shape = order.length ? ` (${order.join(", ")})` : "";
+    lines.push(`Plan: ${name}${on}${shape}`);
+  }
+  if (str(p.goal)) lines.push(`Training for: ${str(p.goal)}`);
+  if (str(p.equipment)) lines.push(`Trains with: ${str(p.equipment)}`);
+  // "none" is what the intake records for nothing to work around, so it is
+  // not asked again. Read back as a constraint it would be one nobody has.
+  const injuries = str(p.injury_notes).trim();
+  if (injuries && !NOTHING_TO_WORK_AROUND.test(injuries)) {
+    lines.push(`Working around: ${injuries}`);
+  }
+  return lines.join("\n");
+}
+
+function asList(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+/**
  * Flattens the log into prose.
  *
  * **Working sets only, and no warm-ups** — the same definition of "counts" the
