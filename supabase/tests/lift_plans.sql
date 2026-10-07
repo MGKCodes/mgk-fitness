@@ -16,7 +16,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(12);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values ('dddddddd-0000-0000-0000-000000000004',
@@ -107,6 +107,37 @@ select throws_ok(
   '23514',
   null,
   'a logged top set cannot weigh nothing'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- What the app writes
+--
+-- SupabaseStandingPlanStore writes sets and reps on every slot. For seven weeks
+-- they were columns the app had and the database did not, and every plan save
+-- in production failed on them while every Dart test passed against a fake. A
+-- column the app writes is asserted here, where the real schema is.
+-- ---------------------------------------------------------------------------
+
+select has_column('lift', 'plan_slots', 'sets', 'a slot stores its sets');
+select has_column('lift', 'plan_slots', 'reps', 'a slot stores its reps');
+
+select lives_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, is_main, sets, reps)
+    values ('slot-6', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 2, 'lunge', 'Dumbbell Walking Lunge', false, 3, 12)$$,
+  'a slot is written the way the app writes it'
+);
+
+select throws_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, sets, reps)
+    values ('slot-7', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 3, 'calves', 'Standing Calf Raise', 0, 10)$$,
+  '23514',
+  null,
+  'a slot of no sets is not a prescription'
 );
 
 
