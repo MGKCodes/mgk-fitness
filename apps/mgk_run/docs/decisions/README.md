@@ -16,7 +16,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0002](0002-no-strava-integration.md) | No Strava integration | Accepted |
 | [0003](0003-llm-generates-validator-enforces.md) | LLM generates, validator enforces | Accepted |
 | [0004](0004-offline-first-local-source-of-truth.md) | Offline-first; local is source of truth for live runs | Accepted |
-| [0005](0005-license-agpl.md) | AGPL-3.0 license with DCO | Accepted |
+| [0005](0005-license-agpl.md) | AGPL-3.0 license with DCO | Amended by [0048](0048-contributions-come-in-under-an-app-store-permission.md) |
 | [0006](0006-in-run-audio-deferred.md) | In-run audio cues deferred to post-v1 | Accepted |
 | [0007](0007-secrets-via-backend-proxy.md) | AI calls via a server-side proxy | Accepted |
 | [0008](0008-shared-supabase-platform.md) | Shared Supabase project (Runio + Liftio platform) | Accepted |
@@ -59,3 +59,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0045](0045-the-runs-figures-on-the-lock-screen.md) | A run's figures are on the lock screen, drawn natively | Accepted |
 | [0046](0046-a-version-is-submitted-once.md) | A version is submitted once, and `main` is what was submitted | Accepted |
 | [0047](0047-email-first-a-code-to-confirm-a-name-on-the-account.md) | Email first, a code to confirm, and a name on the account | Accepted |
+| [0048](0048-contributions-come-in-under-an-app-store-permission.md) | Contributions come in under an app store permission | Accepted |

@@ -181,9 +181,14 @@ share it. If you run a modified version for other people, including over a
 network, you have to publish your changes under the same licence.
 
 That's deliberate: this project is meant to be read, and the licence keeps it
-that way. It follows the Signal precedent for App Store distribution: sole
-copyright holder, so the binaries in the stores and the source here can
-coexist.
+that way.
+
+**With one additional permission, for app stores**
+([`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)). App stores attach terms of
+their own that the AGPL would not otherwise allow. The permission lets anybody
+ship this code, or their own version of it, through an app store, as long as
+they publish its full source. Contributions come in under it too, so the apps
+in the stores can carry everybody's changes. Nothing else in the AGPL changes.
 
 **`web/` is not.** The website is proprietary, all rights reserved, under its
 own [`web/LICENSE`](web/LICENSE). Copyleft was chosen to stop somebody reskinning
