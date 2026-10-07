@@ -205,6 +205,12 @@ class PlanBuilder {
     Set<String> avoidRoles,
   ) {
     final split = TrainingSplit.forDays(weekdays.length);
+    final template = PlanTemplate.slotsFor(
+      split: split,
+      days: weekdays.length,
+      equipment: equipment,
+      avoid: avoidRoles,
+    );
     return StandingPlan(
       id: id,
       name: split.name,
@@ -212,12 +218,26 @@ class PlanBuilder {
       rationale: split.why,
       weekdays: weekdays,
       startedAt: now ?? DateTime.now(),
-      slots: PlanTemplate.slotsFor(
-        split: split,
-        days: weekdays.length,
-        equipment: equipment,
-        avoid: avoidRoles,
-      ),
+      // **Prefixed with the plan.** The template names a slot by its day and
+      // role -- `upper-horizontal-press` -- which is unique within one plan and
+      // nowhere else, while `lift.plan_slots` keys on the id alone, across
+      // every plan and every lifter. So the second template plan saved
+      // anywhere collided with the first and its whole week was refused. The
+      // coach's slots were always `$id-$i-$j` (see [_hydrate]).
+      slots: <String, List<MovementSlot>>{
+        for (final day in template.entries)
+          day.key: <MovementSlot>[
+            for (final s in day.value)
+              MovementSlot(
+                id: '$id-${s.id}',
+                role: s.role,
+                movement: s.movement,
+                isMain: s.isMain,
+                sets: s.sets,
+                reps: s.reps,
+              ),
+          ],
+      },
     );
   }
 }

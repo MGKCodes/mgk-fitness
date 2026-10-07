@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/coach_planner.dart';
+import '../domain/plan_intake.dart';
 import '../domain/standing_plan.dart';
 import '../domain/standing_plan_store.dart';
 
@@ -25,6 +26,10 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
 
   @override
   Future<StandingPlan?> active() async {
+    // Signed out has no plan. Asking anyway is a 401 that reads as "no
+    // signal", and the cached store answers that with the last plan on the
+    // phone, which may be somebody else's.
+    if (_client.auth.currentUser == null) return null;
     try {
       final rows = await _lift
           .from('plans')
@@ -58,22 +63,22 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
   }
 
   @override
-  Future<StandingPlan> replace(StandingPlan plan) async {
+  Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async {
     final userId = _userId;
-    try {
-      // Supersede first, then insert. The other order trips the partial unique
-      // index on (user_id) where status = 'active' -- which is the index doing
-      // its job, but it would surface as a write failure rather than as the
-      // plan being replaced.
-      await _lift
-          .from('plans')
-          .update(<String, Object?>{'status': 'superseded'})
-          .eq('status', 'active');
 
+    // **Draft, slots, then live** -- so nothing is half-replaced.
+    //
+    // This used to supersede the old plan, insert the new one as active, and
+    // only then write its slots. When the slots failed -- which they did, every
+    // time, for seven weeks, on columns the database did not have -- the lifter
+    // was left with a live plan holding nothing, and their old one superseded.
+    // A draft is invisible to [active], so until the last step the old plan is
+    // still the plan.
+    try {
       await _lift.from('plans').insert(<String, Object?>{
         'id': plan.id,
         'user_id': userId,
-        'status': 'active',
+        'status': 'draft',
         'split': plan.name,
         'day_order': plan.dayOrder,
         'rationale': plan.rationale,
@@ -83,8 +88,21 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
             .toIso8601String()
             .split('T')
             .first,
+        // What they told the coach. The columns have been here since the
+        // block model; nothing wrote them, so every answer was lost the moment
+        // the plan was built.
+        if (intake != null) ...<String, Object?>{
+          'goal': intake.goal,
+          'equipment': intake.equipment,
+          'injury_notes': intake.injuryNotes,
+          'intake': intake.toJson(),
+        },
       });
+    } on Object catch (e) {
+      throw PlanException(_writeFailure(e));
+    }
 
+    try {
       final rows = <Map<String, Object?>>[
         for (final day in plan.slots.entries)
           for (final (i, s) in day.value.indexed)
@@ -106,13 +124,41 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
       ];
       if (rows.isNotEmpty) await _lift.from('plan_slots').insert(rows);
 
+      // Supersede, then promote. The other order trips the partial unique
+      // index on (user_id) where status = 'active' -- the index doing its job,
+      // surfacing as a write failure rather than as the plan being replaced.
+      await _lift
+          .from('plans')
+          .update(<String, Object?>{'status': 'superseded'})
+          .eq('status', 'active');
+      await _lift
+          .from('plans')
+          .update(<String, Object?>{'status': 'active'})
+          .eq('id', plan.id);
+
       return plan;
-    } on PlanException {
-      rethrow;
-    } on Object {
-      throw const PlanException(PlanFailure.unavailable);
+    } on Object catch (e) {
+      // Best effort. A draft is harmless -- [active] never reads one -- but a
+      // draft nobody will finish is clutter in somebody's history.
+      try {
+        await _lift.from('plans').delete().eq('id', plan.id);
+      } on Object {
+        // Nothing to add: the failure that matters is the one being thrown.
+      }
+      throw PlanException(_writeFailure(e));
     }
   }
+
+  /// A refusal from the database, or no answer at all.
+  ///
+  /// **Kept apart on purpose.** Both used to read "Could not reach your
+  /// coach", which is how a schema fault spent seven weeks looking like bad
+  /// signal: nobody checks a column when the app says check your connection.
+  static PlanFailure _writeFailure(Object e) => switch (e) {
+    PlanException(:final failure) => failure,
+    PostgrestException() => PlanFailure.notSaved,
+    _ => PlanFailure.unavailable,
+  };
 
   @override
   Future<void> recordResult(

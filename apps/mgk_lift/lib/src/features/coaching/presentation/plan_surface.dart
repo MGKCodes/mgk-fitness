@@ -30,6 +30,7 @@ class PlanSurface extends StatelessWidget {
   const PlanSurface({
     super.key,
     this.onBuildPlan,
+    this.isBuilding = false,
     this.coachIsOff = false,
     this.onSubscribe,
     this.onRestore,
@@ -46,6 +47,15 @@ class PlanSurface extends StatelessWidget {
   /// Starts the coach conversation that produces a plan. Null when the coach is
   /// unreachable — no backend wired up, or no connection.
   final VoidCallback? onBuildPlan;
+
+  /// A plan is being built right now: the intake is done and the coach is
+  /// writing the week.
+  ///
+  /// **Said, not inferred from a null button.** The button is disabled while
+  /// a build runs, and this surface used to read every disabled button as
+  /// "your coach needs a connection" — so for the minute a plan took, the
+  /// lifter was told their signal had failed while it was working perfectly.
+  final bool isBuilding;
 
   /// Why [onBuildPlan] is null, when the reason is the lifter rather than
   /// the network.
@@ -136,6 +146,7 @@ class PlanSurface extends StatelessWidget {
         movedDay: movedDay,
         onSwap: onSwapSlot,
         onChangeSplit: onBuildPlan,
+        isBuilding: isBuilding,
       );
     }
 
@@ -235,8 +246,20 @@ class PlanSurface extends StatelessWidget {
         isLast: true,
       ),
       const SizedBox(height: AppSpacing.xl),
-      PrimaryButton(label: 'Build a plan', onPressed: onBuildPlan),
-      if (onBuildPlan == null) ...<Widget>[
+      if (isBuilding) ...<Widget>[
+        const PrimaryButton(label: 'Building your plan…', onPressed: null),
+        const SizedBox(height: AppSpacing.md),
+        const LinearProgressIndicator(),
+        const SizedBox(height: AppSpacing.sm),
+        const _Note(
+          text:
+              'Your coach is putting the week together. It can take a '
+              'minute, and you can carry on using the app.',
+        ),
+      ] else ...<Widget>[
+        PrimaryButton(label: 'Build a plan', onPressed: onBuildPlan),
+      ],
+      if (!isBuilding && onBuildPlan == null) ...<Widget>[
         const SizedBox(height: AppSpacing.sm),
         _Note(
           text: coachIsOff

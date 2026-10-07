@@ -299,12 +299,53 @@ enum Equipment {
     Equipment.bodyweight => const <String>{'Bodyweight'},
   };
 
-  static Equipment fromAnswer(String answer) => switch (answer.toLowerCase()) {
-    'a full gym' => Equipment.fullGym,
-    'home, with weights' => Equipment.homeWeights,
-    'minimal kit' => Equipment.minimalKit,
-    _ => Equipment.bodyweight,
-  };
+  /// What the coach extracted, in the lifter's words, read as a kit.
+  ///
+  /// **It is free text, not the option that was tapped.** The intake stores
+  /// what the coach heard — "full gym", "dumbbells at home", "a rack in my
+  /// garage" — and this used to match only the four option labels exactly,
+  /// sending everything else, a declined answer included, to bodyweight. So a
+  /// lifter who typed "commercial gym" was planned from press-ups.
+  ///
+  /// **Unknown reads as a full gym**, because the two mistakes are not the
+  /// same size. A catalogue that is too wide offers a machine somebody lacks,
+  /// and the swap sheet fixes that in one tap mid-session; one that is too
+  /// narrow builds the whole week from the wrong movements. The coach is still
+  /// given their own words beside the catalogue.
+  static Equipment fromAnswer(String answer) {
+    final a = answer.toLowerCase().trim();
+    bool has(List<String> words) => words.any(a.contains);
+
+    // The option labels first, so a tapped answer is never reinterpreted.
+    switch (a) {
+      case 'a full gym':
+        return Equipment.fullGym;
+      case 'home, with weights':
+        return Equipment.homeWeights;
+      case 'minimal kit':
+        return Equipment.minimalKit;
+      case 'bodyweight only':
+        return Equipment.bodyweight;
+    }
+    if (has(const <String>[
+      'bodyweight',
+      'body weight',
+      'no equipment',
+      'no kit',
+      'calisthenics',
+    ])) {
+      return Equipment.bodyweight;
+    }
+    // Before "gym": a home gym is a home setup, whatever it is called.
+    if (has(const <String>['home', 'garage'])) return Equipment.homeWeights;
+    if (has(const <String>['gym', 'barbell', 'rack', 'machine', 'cable'])) {
+      return Equipment.fullGym;
+    }
+    if (has(const <String>['minimal', 'band', 'kettlebell', 'dumbbell'])) {
+      return Equipment.minimalKit;
+    }
+    return Equipment.fullGym;
+  }
 }
 
 /// The movement names a lifter can actually use, for the coach to choose from.

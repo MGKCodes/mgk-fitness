@@ -19,7 +19,7 @@ class _Planner implements CoachPlanner {
 
   @override
   Future<IntakeTurn> intake({
-    required PlanIntake known,
+    required IntakeProgress progress,
     required List<PlannerTurn> history,
   }) async => IntakeTurn(reply: reply, extracted: extract);
 

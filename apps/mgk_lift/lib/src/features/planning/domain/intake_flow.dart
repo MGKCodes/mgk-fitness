@@ -44,11 +44,16 @@ enum IntakeField {
   goal;
 
   /// What the coach says when it needs this.
+  ///
+  /// Days invites the weekdays without asking for them separately: somebody
+  /// who already knows says "Mon, Wed, Fri" and answers both, and everybody
+  /// else taps a count and gets it spread across the week
+  /// ([PlanIntake.weekdaysOrDefault]).
   String get question => switch (this) {
     days =>
       'How many days a week can you actually train? Be honest rather '
           'than optimistic — I would rather build four you keep than six you do '
-          'not.',
+          'not. If you know which days, tell me those.',
     equipment => 'What do you have to train with?',
     injuries =>
       'Anything I should train around? An injury, a movement that hurts, '
@@ -109,6 +114,12 @@ enum IntakeField {
     ...options,
     if (skip case final String s when !options.contains(s)) s,
   ];
+
+  /// The field a coach turn says it is asking about ([IntakeTurn.asking]), or
+  /// null for anything else — "done", nothing, or a name this build does not
+  /// know.
+  static IntakeField? named(String? name) =>
+      name == null ? null : IntakeField.values.asNameMap()[name];
 }
 
 /// What has been learned so far.
@@ -148,12 +159,14 @@ class IntakeProgress {
   }
 
   /// The first field still unknown, or null when there is nothing left to ask.
-  IntakeField? get next {
-    for (final f in IntakeField.values) {
-      if (!has(f)) return f;
-    }
-    return null;
-  }
+  IntakeField? get next => unsettled.firstOrNull;
+
+  /// Every field still unknown, in the order they are asked. Sent to the coach
+  /// with each turn, with [declined], so it asks in this order too.
+  List<IntakeField> get unsettled => <IntakeField>[
+    for (final f in IntakeField.values)
+      if (!has(f)) f,
+  ];
 
   /// How many are settled, for the bar in the screen's chrome. Counts answers
   /// rather than position, so answering three in one sentence moves it three.

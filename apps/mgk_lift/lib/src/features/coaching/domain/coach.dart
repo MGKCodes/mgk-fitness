@@ -123,8 +123,14 @@ enum CoachFailure {
   /// Today's allowance is spent.
   limitReached,
 
-  /// No network, or the model is down. **The one the app must handle best** —
-  /// it is the normal case in a gym basement, and it is not the lifter's fault.
+  /// The server answered with an error of its own: the model's reply was
+  /// unusable, or something behind the function failed. Not the lifter's
+  /// connection, so not described as one.
+  serverError,
+
+  /// No answer at all: no network, or a request that ran out of time. **The
+  /// one the app must handle best** — it is the normal case in a gym basement,
+  /// and it is not the lifter's fault.
   unavailable;
 
   String get message => switch (this) {
@@ -132,6 +138,8 @@ enum CoachFailure {
     notEntitled => 'Coaching is part of the paid plan.',
     limitReached =>
       'That is all the coaching for today. It resets in the morning.',
+    serverError =>
+      'Something went wrong on our side, not yours. Try again in a minute.',
     unavailable => 'Could not reach your coach. Tracking works without one.',
   };
 }

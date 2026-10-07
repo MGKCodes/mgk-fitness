@@ -81,11 +81,14 @@ class SupabaseCoach implements CoachService {
   /// 429 covers both a rate limit and the rolling spend cap. They are one thing
   /// to a lifter — come back later — and the function distinguishes them in the
   /// body for when that stops being true.
+  ///
+  /// Any other status means the function answered, so it is the server's
+  /// fault, not the signal's. Only no answer at all is [CoachFailure.unavailable].
   static CoachFailure _map(FunctionException e) => switch (e.status) {
     401 => CoachFailure.signedOut,
     402 => CoachFailure.notEntitled,
     429 => CoachFailure.limitReached,
-    _ => CoachFailure.unavailable,
+    _ => CoachFailure.serverError,
   };
 }
 
