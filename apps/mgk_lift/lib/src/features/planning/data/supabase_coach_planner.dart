@@ -33,11 +33,12 @@ class SupabaseCoachPlanner implements CoachPlanner {
     final data = await _invoke(<String, Object?>{
       'surface': 'lift_intake',
       'slots': progress.plan.toJson(),
-      // In the order the screen asks them, by IntakeField name. The coach is
-      // told to ask the first of these still open after the lifter's latest
-      // message, which is the same rule IntakeProgress.next applies, so the
-      // question and the options under it are about the same thing.
-      'missing': <String>[for (final f in progress.unsettled) f.name],
+      // By IntakeField name. What is still open is not sent: the coach works
+      // it out from `slots` after reading the lifter's latest message, in the
+      // order its own instructions give, which is IntakeField's order (pinned
+      // by `LIFT_INTAKE_FIELDS` in surfaces.ts). The `missing` list sent here
+      // until 2026-10-07 was in a different order, and following it is what
+      // made the coach ask one thing above options for another.
       'declined': <String>[for (final f in progress.declined) f.name],
       'history': <Map<String, Object?>>[
         for (final turn in history)
@@ -133,7 +134,8 @@ class SupabaseCoachPlanner implements CoachPlanner {
       final data = res.data;
       if (data is Map<String, Object?>) return data;
       if (data is Map) return data.cast<String, Object?>();
-      throw const PlanException(PlanFailure.unavailable);
+      // It answered, with something unusable: the server's fault.
+      throw const PlanException(PlanFailure.serverError);
     } on FunctionException catch (e) {
       throw PlanException(_map(e));
     } on PlanException {

@@ -313,7 +313,21 @@ enum Equipment {
   /// narrow builds the whole week from the wrong movements. The coach is still
   /// given their own words beside the catalogue.
   static Equipment fromAnswer(String answer) {
-    final a = answer.toLowerCase().trim();
+    var a = answer.toLowerCase().trim();
+
+    // "Nothing" and "none" are answers, and they mean no kit.
+    if (RegExp(r'^(none|nothing|no kit|no equipment)\b').hasMatch(a)) {
+      return Equipment.bodyweight;
+    }
+    // **What they do NOT have is struck out before anything is matched.** "No
+    // gym, just dumbbells" contains "gym", and reading it as one built a week
+    // of barbells and cables for somebody who said the opposite.
+    final without = RegExp(
+      r"\b(no|not|without|don'?t have|do not have)( an?| any)? "
+      r'(gym|machines?|barbells?|racks?|cables?)\b',
+    );
+    final noGym = without.allMatches(a).any((m) => m.group(3) == 'gym');
+    a = a.replaceAll(without, ' ');
     bool has(List<String> words) => words.any(a.contains);
 
     // The option labels first, so a tapped answer is never reinterpreted.
@@ -344,7 +358,8 @@ enum Equipment {
     if (has(const <String>['minimal', 'band', 'kettlebell', 'dumbbell'])) {
       return Equipment.minimalKit;
     }
-    return Equipment.fullGym;
+    // "No gym" and nothing else named: the kit they have is themselves.
+    return noGym ? Equipment.bodyweight : Equipment.fullGym;
   }
 }
 

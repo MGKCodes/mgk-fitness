@@ -439,6 +439,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
         setState(() {
+          // Answers kept from a failed build belong to whoever gave them: a
+          // goal and an injury are not to be offered to the next account.
+          if (account?.id != _account?.id) _unbuiltIntake = null;
           _account = account;
           if (account == null) {
             _mayUse = null;
@@ -1177,10 +1180,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         ? const IntakeProgress()
         : IntakeProgress(
             plan: previous,
-            declined: <IntakeField>{
-              for (final f in IntakeField.values)
-                if (!IntakeProgress(plan: previous).has(f)) f,
-            },
+            declined: IntakeProgress(plan: previous).unsettled.toSet(),
           );
 
     final intake = await Navigator.of(context).push<PlanIntake>(
@@ -1245,19 +1245,25 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       setState(() {
         _plan = built.plan;
         _index = _planTab;
-        _unbuiltIntake = null;
+        // Kept after a template, so "Change the split" retries with the same
+        // answers rather than asking them all again.
+        _unbuiltIntake = built.fromCoach ? null : intake;
       });
 
       // The fallback is a good week and a worse product: it knows nothing
       // about this person's history. It used to arrive in silence, so
       // somebody given a template had no reason to think another go might
-      // give them the coach's plan instead.
+      // give them the coach's plan instead -- and "another go" is only the
+      // advice when another go could work.
       if (!built.fromCoach) {
-        AppToast.show(
-          context,
-          'Your coach could not write this one, so it is a standard week for '
-          'your days. Change the split to try again.',
-        );
+        AppToast.show(context, switch (built.coachFailure) {
+          PlanFailure.limitReached =>
+            "You have used today's coaching, so this is a standard week for "
+                "your days. Change the split tomorrow for the coach's own.",
+          _ =>
+            'Your coach could not write this one, so it is a standard week '
+                'for your days. Change the split to try again.',
+        });
       }
     } on PlanException catch (e) {
       if (!mounted) return;

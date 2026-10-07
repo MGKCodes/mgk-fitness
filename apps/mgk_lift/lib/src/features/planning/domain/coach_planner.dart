@@ -78,8 +78,8 @@ enum PlanFailure {
       'Your coach could not put a week together that fits. Try again, or '
           'tell it more about what you can do.',
     notSaved =>
-      'Your plan was built but could not be saved. Your answers are kept: '
-          'tap Build a plan to try again.',
+      'Your plan was built but could not be saved. Your answers are kept, '
+          'so trying again is one tap.',
     serverError =>
       'Something went wrong on our side, not yours. Try again in a minute.',
     unavailable => 'Could not reach your coach. Tracking works without one.',

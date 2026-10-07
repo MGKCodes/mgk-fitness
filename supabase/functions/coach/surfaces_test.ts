@@ -1393,3 +1393,18 @@ Deno.test("lift chat is told the plan and what was said to build it", () => {
   const none = systemOf(liftChatMessages({ message: "Hello" }));
   assert(!none.includes("what they told you when it was built"));
 });
+
+Deno.test("lift plan is told the weekdays it is writing for", () => {
+  // LIFT_PLAN_INSTRUCTIONS says "in the same order as the weekdays provided"
+  // and, until 2026-10-07, none were: the coach guessed the count.
+  const system = systemOf(liftPlanMessages({
+    weekdays: [1, 3, 5, 9, "x"],
+    profile: {},
+    catalogue: "Barbell Back Squat",
+  }));
+  assertStringIncludes(
+    system,
+    "Their training days, in order (write exactly 3, one per day): " +
+      "Monday, Wednesday, Friday",
+  );
+});

@@ -8,21 +8,15 @@ import '../domain/standing_plan_store.dart';
 /// The standing plan, in `lift.plans` and `lift.plan_slots`.
 ///
 /// Two tables, both scoped by RLS to the caller — `own_plans` and
-/// `own_plan_slots` — so nothing here filters by user for safety. The
-/// `user_id` in the writes is there because the column is `not null` and the
-/// policy checks it, not because it is the security boundary.
+/// `own_plan_slots` — so nothing here filters by user for safety. A plan is
+/// written by `lift.replace_plan`, which runs as the caller and takes
+/// `user_id` from the session rather than from anything sent.
 class SupabaseStandingPlanStore implements StandingPlanStore {
   SupabaseStandingPlanStore(this._client);
 
   final SupabaseClient _client;
 
   SupabaseQuerySchema get _lift => _client.schema('lift');
-
-  String get _userId {
-    final id = _client.auth.currentUser?.id;
-    if (id == null) throw const PlanException(PlanFailure.signedOut);
-    return id;
-  }
 
   @override
   Future<StandingPlan?> active() async {
@@ -64,98 +58,79 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
 
   @override
   Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async {
-    final userId = _userId;
-
-    // **Draft, slots, then live** -- so nothing is half-replaced.
-    //
-    // This used to supersede the old plan, insert the new one as active, and
-    // only then write its slots. When the slots failed -- which they did, every
-    // time, for seven weeks, on columns the database did not have -- the lifter
-    // was left with a live plan holding nothing, and their old one superseded.
-    // A draft is invisible to [active], so until the last step the old plan is
-    // still the plan.
-    try {
-      await _lift.from('plans').insert(<String, Object?>{
-        'id': plan.id,
-        'user_id': userId,
-        'status': 'draft',
-        'split': plan.name,
-        'day_order': plan.dayOrder,
-        'rationale': plan.rationale,
-        'days_per_week': plan.weekdays.length,
-        'available_weekdays': plan.weekdays,
-        'started_at': (plan.startedAt ?? DateTime.now())
-            .toIso8601String()
-            .split('T')
-            .first,
-        // What they told the coach. The columns have been here since the
-        // block model; nothing wrote them, so every answer was lost the moment
-        // the plan was built.
-        if (intake != null) ...<String, Object?>{
-          'goal': intake.goal,
-          'equipment': intake.equipment,
-          'injury_notes': intake.injuryNotes,
-          'intake': intake.toJson(),
-        },
-      });
-    } on Object catch (e) {
-      throw PlanException(_writeFailure(e));
+    if (_client.auth.currentUser == null) {
+      throw const PlanException(PlanFailure.signedOut);
     }
 
+    // **One call, one transaction** (`lift.replace_plan`, 20261007201224).
+    //
+    // This was three requests: supersede the live plan, insert the new one,
+    // insert its slots. When the slots failed -- which they did, every time,
+    // for seven weeks, on columns the database did not have -- the lifter was
+    // left with a live plan holding nothing and their old one superseded. The
+    // function supersedes, inserts and writes every slot, or does none of it.
+    // `user_id` is the caller's, set by the function; RLS still applies.
+    final rows = <Map<String, Object?>>[
+      for (final day in plan.slots.entries)
+        for (final (i, s) in day.value.indexed)
+          <String, Object?>{
+            'id': s.id,
+            'day': day.key,
+            'sort_order': i,
+            'role': s.role,
+            'movement': s.movement,
+            'is_main': s.isMain,
+            'sets': s.sets,
+            'reps': s.reps,
+            'sessions_at_same_top': s.sessionsAtSameTop,
+            'last_top_kg': s.lastTopKg,
+            'last_top_reps': s.lastTopReps,
+          },
+    ];
+
     try {
-      final rows = <Map<String, Object?>>[
-        for (final day in plan.slots.entries)
-          for (final (i, s) in day.value.indexed)
-            <String, Object?>{
-              'id': s.id,
-              'plan_id': plan.id,
-              'user_id': userId,
-              'day': day.key,
-              'sort_order': i,
-              'role': s.role,
-              'movement': s.movement,
-              'is_main': s.isMain,
-              'sets': s.sets,
-              'reps': s.reps,
-              'sessions_at_same_top': s.sessionsAtSameTop,
-              'last_top_kg': s.lastTopKg,
-              'last_top_reps': s.lastTopReps,
+      await _lift.rpc(
+        'replace_plan',
+        params: <String, Object?>{
+          'plan': <String, Object?>{
+            'id': plan.id,
+            'split': plan.name,
+            'day_order': plan.dayOrder,
+            'rationale': plan.rationale,
+            'days_per_week': plan.weekdays.length,
+            'available_weekdays': plan.weekdays,
+            'started_at': (plan.startedAt ?? DateTime.now())
+                .toIso8601String()
+                .split('T')
+                .first,
+            // What they told the coach, kept with the plan it produced.
+            if (intake != null) ...<String, Object?>{
+              'goal': intake.goal,
+              'equipment': intake.equipment,
+              'injury_notes': intake.injuryNotes,
+              'intake': intake.toJson(),
             },
-      ];
-      if (rows.isNotEmpty) await _lift.from('plan_slots').insert(rows);
-
-      // Supersede, then promote. The other order trips the partial unique
-      // index on (user_id) where status = 'active' -- the index doing its job,
-      // surfacing as a write failure rather than as the plan being replaced.
-      await _lift
-          .from('plans')
-          .update(<String, Object?>{'status': 'superseded'})
-          .eq('status', 'active');
-      await _lift
-          .from('plans')
-          .update(<String, Object?>{'status': 'active'})
-          .eq('id', plan.id);
-
+          },
+          'slots': rows,
+        },
+      );
       return plan;
     } on Object catch (e) {
-      // Best effort. A draft is harmless -- [active] never reads one -- but a
-      // draft nobody will finish is clutter in somebody's history.
-      try {
-        await _lift.from('plans').delete().eq('id', plan.id);
-      } on Object {
-        // Nothing to add: the failure that matters is the one being thrown.
-      }
       throw PlanException(_writeFailure(e));
     }
   }
 
-  /// A refusal from the database, or no answer at all.
+  /// A refusal from the database, an expired session, or no answer at all.
   ///
-  /// **Kept apart on purpose.** Both used to read "Could not reach your
+  /// **Kept apart on purpose.** All three used to read "Could not reach your
   /// coach", which is how a schema fault spent seven weeks looking like bad
   /// signal: nobody checks a column when the app says check your connection.
   static PlanFailure _writeFailure(Object e) => switch (e) {
     PlanException(:final failure) => failure,
+    // A session that has run out, or a caller the function does not know.
+    PostgrestException(:final code)
+        when code == '42501' || code == 'PGRST301' || code == 'PGRST302' =>
+      PlanFailure.signedOut,
     PostgrestException() => PlanFailure.notSaved,
     _ => PlanFailure.unavailable,
   };

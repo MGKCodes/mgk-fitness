@@ -244,3 +244,13 @@ Deno.test("a plan that will not load is no plan, not a refused turn", async () =
     "",
   );
 });
+
+Deno.test("nothing to work around is not read back as a constraint", () => {
+  for (const none of ["none", "Nothing to work around", "No", "n/a"]) {
+    assertEquals(
+      renderLiftPlan([{ split: "Full body", injury_notes: none }]),
+      "Plan: Full body",
+      none,
+    );
+  }
+});

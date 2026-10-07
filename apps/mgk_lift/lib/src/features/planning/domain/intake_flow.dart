@@ -161,8 +161,7 @@ class IntakeProgress {
   /// The first field still unknown, or null when there is nothing left to ask.
   IntakeField? get next => unsettled.firstOrNull;
 
-  /// Every field still unknown, in the order they are asked. Sent to the coach
-  /// with each turn, with [declined], so it asks in this order too.
+  /// Every field still unknown, in the order they are asked.
   List<IntakeField> get unsettled => <IntakeField>[
     for (final f in IntakeField.values)
       if (!has(f)) f,

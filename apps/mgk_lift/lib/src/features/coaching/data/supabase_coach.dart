@@ -52,15 +52,17 @@ class SupabaseCoach implements CoachService {
           // unavailable, which is what it is.
           .timeout(requestTimeout);
 
+      // An answer that arrived and cannot be used is the server's fault, not
+      // the signal's: the request got there and back.
       final data = res.data;
       if (data is Map && data['reply'] is String) {
         final reply = data['reply'] as String;
         if (reply.trim().isEmpty) {
-          throw const CoachException(CoachFailure.unavailable);
+          throw const CoachException(CoachFailure.serverError);
         }
         return reply;
       }
-      throw const CoachException(CoachFailure.unavailable);
+      throw const CoachException(CoachFailure.serverError);
     } on FunctionException catch (e) {
       throw CoachException(_map(e));
     } on CoachException {

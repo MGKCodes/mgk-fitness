@@ -16,7 +16,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(16);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values ('dddddddd-0000-0000-0000-000000000004',
@@ -165,6 +165,57 @@ select is(
   0,
   'deleting a plan takes its slots with it'
 );
+
+
+
+-- ---------------------------------------------------------------------------
+-- One call replaces a plan whole (lift.replace_plan)
+--
+-- Three separate requests left a live plan with no slots whenever the slots
+-- failed. The function is all of it or none, and runs as the caller.
+-- ---------------------------------------------------------------------------
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"dddddddd-0000-0000-0000-000000000004","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+
+select lives_ok(
+  $$select lift.replace_plan(
+      '{"id":"plan-r","split":"Full body","day_order":["A","B","A"],
+        "days_per_week":3,"available_weekdays":[1,3,5],
+        "goal":"Build muscle","injury_notes":"left shoulder"}'::jsonb,
+      '[{"id":"plan-r-0","day":"A","sort_order":0,"role":"squat",
+         "movement":"Barbell Back Squat","is_main":true,"sets":4,"reps":6}]'
+        ::jsonb)$$,
+  'a plan and its slots are written in one call'
+);
+
+select is(
+  (select status || ':' || injury_notes from lift.plans where id = 'plan-r'),
+  'active:left shoulder',
+  'live, and keeping what the lifter said to get it'
+);
+
+select throws_ok(
+  $$select lift.replace_plan(
+      '{"id":"plan-s","days_per_week":3,"available_weekdays":[1,3,5]}'::jsonb,
+      '[{"id":"plan-s-0","day":"A","sort_order":0,"role":"r",
+         "movement":"m","sets":0}]'::jsonb)$$,
+  '23514',
+  null,
+  'a refused slot refuses the whole plan'
+);
+
+select is(
+  (select status from lift.plans where id = 'plan-r'),
+  'active',
+  'and the plan before it is still the live one'
+);
+
+reset role;
 
 select * from finish();
 rollback;

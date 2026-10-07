@@ -1987,6 +1987,24 @@ const LIFT_PLAN_SCHEMA = {
   },
 } as const;
 
+const WEEKDAY_NAMES = [
+  "",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+/** The client's weekdays (1 = Monday) as names, dropping anything else. */
+export function trainingDays(raw: unknown): string[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7)
+    .map((d) => WEEKDAY_NAMES[d]);
+}
+
 export function liftPlanMessages(body: Body): Message[] {
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const brief = text(body.brief, MAX_BRIEF_CHARS);
@@ -1996,6 +2014,7 @@ export function liftPlanMessages(body: Body): Message[] {
   // fine: the rules above are the part that is checked.
   const guidance = text(body.guidance, MAX_BRIEF_CHARS);
   const catalogue = text(body.catalogue, 24000);
+  const days = trainingDays(body.weekdays);
 
   const system = `${LIFT_PERSONA}
 
@@ -2005,6 +2024,16 @@ ${LIFT_PLAN_INSTRUCTIONS}
     `Today is ${today(body)}.
 
 ` +
+    // The instructions say "in the same order as the weekdays provided", and
+    // until 2026-10-07 none were: the app sent them and this never put them in
+    // the prompt, so the coach guessed how many days to write and which were
+    // back to back. A count that does not match is a PlanShape retry.
+    (days.length
+      ? `Their training days, in order (write exactly ${days.length}, one ` +
+        `per day): ${days.join(", ")}
+
+`
+      : "") +
     (guidance
       ? `House guidance:
 ${guidance}

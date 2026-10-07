@@ -124,6 +124,10 @@ export async function readLiftPlan(
 
 const WEEKDAYS = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** The ways "no injuries" arrives: the intake's sentinel and the option. */
+const NOTHING_TO_WORK_AROUND =
+  /^(none|nothing|no|n\/a|nothing to work around|no injuries)\.?$/i;
+
 /**
  * The plan as a few short lines. A line is left out when its answer is, so a
  * declined question reads as not said rather than as "null".
@@ -149,8 +153,11 @@ export function renderLiftPlan(payload: unknown): string {
   }
   if (str(p.goal)) lines.push(`Training for: ${str(p.goal)}`);
   if (str(p.equipment)) lines.push(`Trains with: ${str(p.equipment)}`);
-  if (str(p.injury_notes)) {
-    lines.push(`Working around: ${str(p.injury_notes)}`);
+  // "none" is what the intake records for nothing to work around, so it is
+  // not asked again. Read back as a constraint it would be one nobody has.
+  const injuries = str(p.injury_notes).trim();
+  if (injuries && !NOTHING_TO_WORK_AROUND.test(injuries)) {
+    lines.push(`Working around: ${injuries}`);
   }
   return lines.join("\n");
 }

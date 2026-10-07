@@ -272,4 +272,52 @@ void main() {
     expect(PlanFailure.notSaved.message, isNot(contains('reach')));
     expect(PlanFailure.serverError.message, contains('our side'));
   });
+
+  group('found in review', () {
+    test('a changed count beats the days named before it', () {
+      // "Mon, Wed, Fri", then "actually four": a merge never clears the
+      // three days, and four is the later answer.
+      expect(
+        const PlanIntake(
+          daysPerWeek: 4,
+          availableWeekdays: <int>[1, 3, 5],
+        ).weekdaysOrDefault,
+        <int>[1, 2, 4, 5],
+      );
+    });
+
+    test('what they do not have is not read as what they have', () {
+      expect(
+        Equipment.fromAnswer('No gym, just dumbbells'),
+        Equipment.minimalKit,
+      );
+      expect(Equipment.fromAnswer('no gym'), Equipment.bodyweight);
+      expect(Equipment.fromAnswer('none'), Equipment.bodyweight);
+      expect(Equipment.fromAnswer('nothing really'), Equipment.bodyweight);
+      expect(
+        Equipment.fromAnswer('a rack and barbell but no machines'),
+        Equipment.fullGym,
+      );
+    });
+
+    test('a fallback says why the coach was not asked', () async {
+      final built =
+          await PlanBuilder(
+            propose:
+                ({
+                  required PlanIntake intake,
+                  required List<int> weekdays,
+                  required List<String> catalogue,
+                  List<String> violations = const <String>[],
+                }) => throw const PlanException(PlanFailure.limitReached),
+          ).build(
+            id: 'p',
+            intake: const PlanIntake(),
+            weekdays: const <int>[1, 3, 5],
+            catalogue: const <String>[],
+          );
+      expect(built.fromCoach, isFalse);
+      expect(built.coachFailure, PlanFailure.limitReached);
+    });
+  });
 }

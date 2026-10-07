@@ -38,13 +38,21 @@ class PlanIntake {
   /// Named days are cleaned on the way through — deduplicated, kept to 1–7,
   /// in week order — because they come from a model's reading of prose, and
   /// `lift.plans` refuses a plan of no days or more than seven.
+  ///
+  /// **The count wins when the two disagree.** Named days only last as long as
+  /// nobody changes their mind: somebody who said "Mon, Wed, Fri" and then
+  /// "actually four" has a count of four and, since a merge never clears a
+  /// field, the three days still on file. Four is the later answer.
   List<int> get weekdaysOrDefault {
     final named = <int>{
       for (final d in availableWeekdays ?? const <int>[])
         if (d >= 1 && d <= 7) d,
     }.toList()..sort();
-    if (named.isNotEmpty) return named;
-    return spreadWeekdays(daysPerWeek ?? 4);
+    final count = daysPerWeek;
+    if (named.isNotEmpty && (count == null || count == named.length)) {
+      return named;
+    }
+    return spreadWeekdays(count ?? 4);
   }
 
   /// [days] training days laid out with rest between them where the week
