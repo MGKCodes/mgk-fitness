@@ -3,6 +3,10 @@
 Thanks for looking. This is a real project rather than a demo, so the bar is the
 bar — but the rules are short and the reasoning is written down.
 
+Everybody taking part, in issues, pull requests and anywhere else the project
+lives, follows the [Code of Conduct](CODE_OF_CONDUCT.md). Problems with somebody's
+behaviour go to hello@mgkcodes.com.
+
 ## Before a big change
 
 Open an issue first. A pull request that redesigns something is harder to accept
