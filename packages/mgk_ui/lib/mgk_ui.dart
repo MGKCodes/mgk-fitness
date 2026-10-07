@@ -9,6 +9,7 @@
 library;
 
 export 'src/brand/app_brand.dart';
+export 'src/brand/open_source.dart';
 export 'src/copy/store_wording.dart';
 export 'src/motion/app_haptics.dart';
 export 'src/motion/app_motion.dart';

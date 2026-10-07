@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
@@ -23,10 +24,11 @@ import 'credits_screen.dart';
 
 /// The shipped version, shown at the foot of Settings.
 ///
-/// **Keep it in step with `version:` in pubspec.yaml.** Dart cannot read the
-/// pubspec at runtime without a plugin, and a wrong version in a bug report is
-/// worse than none.
-const String kAppVersion = '2.0.0';
+/// **Keep it in step with `version:` in pubspec.yaml**, which
+/// `legal_screen_test.dart` holds it to. Dart cannot read the pubspec at
+/// runtime without a plugin, and a wrong version in a bug report is worse than
+/// none: *Report a problem* writes it into every report.
+const String kAppVersion = '2.0.1';
 
 /// Everything about the app rather than about the training: who is signed in,
 /// how weights read, where backup stands, what the app says about itself.
@@ -292,6 +294,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// An email to support with the app and the version already in it, for the
+  /// lifter who has found something wrong and will never open GitHub.
+  Future<void> _reportProblem() async {
+    final Uri uri = problemReportUri(
+      to: kSupportEmail,
+      product: kProductName,
+      version: widget.version,
+      system: '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+    );
+    final open = widget.openUrl ?? (Uri url) => launchUrl(url);
+    if (await open(uri)) return;
+    if (!mounted) return;
+    // No mail app on the phone. The address is the whole of what they need.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No email app opened. Write to $kSupportEmail'),
+      ),
+    );
+  }
+
+  /// The app's code, in the public repository.
+  Future<void> _openSource() async {
+    final Uri uri = sourceCodeUri('mgk_lift');
+    final open =
+        widget.openUrl ??
+        (Uri url) => launchUrl(url, mode: LaunchMode.externalApplication);
+    if (await open(uri)) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open the code. It is at $uri')),
+    );
+  }
+
   Future<void> _pickMass() async {
     final picked = await showChoiceSheet<MassUnit>(
       context,
@@ -524,6 +559,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'About',
                       children: <Widget>[
                         SettingsRow(title: 'Support', onTap: _openSupport),
+                        SettingsRow(
+                          title: 'Report a problem',
+                          onTap: _reportProblem,
+                        ),
+                        // Open source: the row says the licence, and opens the
+                        // app's code for anybody who wants to read it.
+                        SettingsRow(
+                          title: 'Source code',
+                          value: kSourceLicence,
+                          onTap: _openSource,
+                        ),
                         SettingsRow(
                           title: 'Privacy & legal',
                           onTap: () => Navigator.of(context).push(
