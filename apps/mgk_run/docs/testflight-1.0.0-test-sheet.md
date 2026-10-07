@@ -171,8 +171,8 @@ unless somebody switched it off.
 **Confirmation is on.** Test 2 and Test 3 need addresses you can open. A
 plus-address on your own mailbox works (`you+run2@…`, `you+run3@…`).
 
-`run.runs` holds the 23 August runs under `mattkay02@gmail.com`, one character
-from the other address on this project. Sign into that one for A3 and say which
+`run.runs` holds the 23 August runs under the owner's personal account, not
+the studio's, and the two addresses are easy to confuse. Sign into that one for A3 and say which
 you used.
 
 **4. Grant yourself a row for sections D and R** (not I, which needs no row),

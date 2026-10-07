@@ -299,9 +299,9 @@ A free GPS running tracker (no account needed) with an optional AI running coach
 DEMO ACCOUNTS
 On the first screen, tap "I already have an account", then "Continue with email".
 A - coach already unlocked. Please review the coach with this account, and please do not make a purchase on it:
-review.subscribed@mgkfitness.mgkcodes.com / [PASSWORD_A]
+[ADDRESS_A] / [PASSWORD_A]
 B - no subscription. Please use this one to test the purchase with your sandbox Apple ID:
-review.free@mgkfitness.mgkcodes.com / [PASSWORD_B]
+[ADDRESS_B] / [PASSWORD_B]
 If you test account deletion, please use B, so that A stays available.
 
 THE PAID HALF

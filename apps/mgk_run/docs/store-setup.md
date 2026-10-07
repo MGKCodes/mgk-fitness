@@ -512,10 +512,11 @@ row names no store.
 
 - [x] **Both accounts created, 2026-09-30**, through the ordinary sign-up
       endpoint (email confirmation is off, so neither address needs a mailbox):
-      **A** `review.subscribed@mgkfitness.mgkcodes.com`, **B**
-      `review.free@mgkfitness.mgkcodes.com`. Passwords were handed to the owner
-      for App Store Connect and Play's App access form and are not in this
-      repository. Neither is a person's account.
+      **A**, with the coach granted, and **B**, with no subscription. Their
+      addresses and passwords were handed to the owner for App Store Connect
+      and Play's App access form, where they can be read, and are not in this
+      repository. Neither is a person's account. In the SQL below, put A's
+      and B's addresses where it says `<address A>` and `<address B>`.
 
       **Do not sign in as either on your own phone.** Its training is yours, so
       the app would show *"This phone has another account's training on it"*
@@ -531,7 +532,7 @@ row names no store.
         (user_id, app, product, status, platform, expires_at, event_ms)
       select id, 'run', 'premium', 'active', null, null, 9999999999999
       from auth.users
-      where email = 'review.subscribed@mgkfitness.mgkcodes.com'
+      where email = '<address A>'
       on conflict (user_id, app) do update
         set product = 'premium', status = 'active', platform = null,
             expires_at = null, event_ms = 9999999999999, updated_at = now();
@@ -556,13 +557,12 @@ row names no store.
       select u.email, e.product, e.status, e.platform, e.expires_at, e.event_ms
       from auth.users u
       left join core.entitlements e on e.user_id = u.id and e.app = 'run'
-      where u.email in ('review.subscribed@mgkfitness.mgkcodes.com',
-                  'review.free@mgkfitness.mgkcodes.com');
+      where u.email in ('<address A>', '<address B>');
 
       delete from core.entitlements
       where app = 'run'
         and user_id = (select id from auth.users
-                       where email = 'review.free@mgkfitness.mgkcodes.com');
+                       where email = '<address B>');
       ```
 
 - [ ] **Check both on that phone, then withdraw the AI permission on both.**

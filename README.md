@@ -1,71 +1,81 @@
-# mgk-fitness
+# MGKFitness
 
-**A fitness suite where the apps actually talk to each other.** Track a run in
-one app, and the other one knows. Log a workout, and the coach factors it in.
+**Run and Lift: a running app and a strength app on one account, both open
+source.** Run tracks your runs and builds you a training plan. Lift logs your
+sets and rests. Tracking is free in both; an AI coach is the part you pay for.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B.svg)](https://flutter.dev)
 [![Backend: Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E.svg)](https://supabase.com)
-[![Status: pre-release](https://img.shields.io/badge/Status-pre--release-orange.svg)](#status)
+[![Status: on Google Play](https://img.shields.io/badge/Status-on%20Google%20Play-3DDC84.svg)](#status)
 
-> An open-source project by [MGKCodes](https://mgkcodes.com).
+> An open-source project by [MGKCodes](https://mgkcodes.com) ·
+> [mgkfitness.mgkcodes.com](https://mgkfitness.mgkcodes.com) ·
+> [@mgkfitness.app](https://www.instagram.com/mgkfitness.app/) on Instagram
 
 ---
 
 ## The idea
 
-Most fitness apps are islands. You run in one, lift in another, and neither has
-any idea the other exists — so the training load you're actually carrying is
-something only you can see, by holding two apps in your head at once.
+Most fitness apps are islands. You run in one, lift in another, and neither
+knows the other exists, so the training you are actually carrying is something
+only you can see.
 
-These apps run **fully independently**. You can use one and never know the other
-exists. But if you use two, you notice they talk: Lift can see you ran on
-Tuesday, and the coach reasons about your whole week rather than a third of it.
+Run and Lift are built as one suite. **What is true today:** one account signs
+into both, both are built from one design system, and both keep your training in
+one database. **What comes next:** each app showing the other's training, so
+Lift knows you ran on Tuesday and the coach plans around your whole week. The
+database is already shaped for it (`core.activities`, below); neither app reads
+it yet.
 
-That cross-talk is the product. It is also the thing that is free, always —
-[see below](#pricing).
+Either app works on its own. You never have to install the second one.
 
 ## Status
 
-**Pre-release, and honest about it.** The database and the shared packages are
-built and verified; the apps are at very different stages.
+As of 7 October 2026.
 
-| App | Package | State |
+| App | Package | Where it is |
 |---|---|---|
-| **Run** | `apps/mgk_run` | 1.0.0 submitted to the App Store and Google Play on 2 October 2026, and in review. Tracking, plans, and the AI coach. |
-| **Lift** | `apps/mgk_lift` | A shell. Being rewritten in Flutter from a React Native app that is live today. |
-| **Eat** | — | An idea. Deliberately not built. The structure makes adding it cheap; that is the whole claim. |
+| **Run** | `apps/mgk_run` | 1.0.0 on [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run). In review on the App Store. Tracking, plans and the AI coach. |
+| **Lift** | `apps/mgk_lift` | 2.0.0 on [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.liftio). In review on the App Store, where it replaces Liftio 1.4.0. Logging, a rest timer, plans and the AI coach. |
+| **Eat** | — | An idea, deliberately not built. The structure makes adding a third app cheap; that is the claim. |
 
-Run's [screen board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190) and its [store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU) are the two pages its
-release is worked from; both are private to the owner's account, and
-[Run's README](apps/mgk_run/README.md) says what each is.
+The suite is called MGKFitness and the apps Run and Lift
+([docs/naming.md](docs/naming.md)). Package names (`mgk_run`, `mgk_lift`) and
+bundle IDs are brand-neutral on purpose.
 
-The suite name is not final. Apps are referred to as **Run** and **Lift**;
-package names (`mgk_run`, `mgk_lift`) and bundle IDs
-(`com.mgkcodes.fitness.run`) are brand-neutral on purpose, so renaming the suite
-costs nothing but display strings.
+**What is in the stores is built from this repository**, and every build is
+tagged on the commit it was built from (`run/build-29`, `lift/build-45`), so the
+code behind any version you have installed can be read exactly. `main` moves
+when an app goes to review; work in progress is on `develop`.
 
 ## What's in here
 
 ```
 mgk-fitness/
-├─ pubspec.yaml            workspace root — one lockfile for the whole tree
+├─ pubspec.yaml            workspace root: one lockfile for the whole tree
 ├─ apps/
-│  ├─ mgk_run/             running: tracking, plans, coach
-│  └─ mgk_lift/            lifting (rewrite in progress)
+│  ├─ mgk_run/             running: tracking, plans, the coach
+│  └─ mgk_lift/            strength: logging, rest timer, plans, the coach
 ├─ packages/
-│  └─ mgk_ui/              the design system: tokens, motion, components
+│  ├─ mgk_ui/              the design system: tokens, motion, components
+│  ├─ mgk_auth/            the one account both apps sign into
+│  └─ mgk_units/           metric storage, km/mi at display
 ├─ supabase/
-│  ├─ migrations/          the schema — this repo is the source of truth
-│  ├─ functions/           Edge Functions: coach, delete-account, daily-ai-summary
+│  ├─ migrations/          the schema; this repository is the source of truth
+│  ├─ functions/           Edge Functions: coach, delete-account, revenuecat, daily-ai-summary
 │  └─ tests/               pgTAP assertions against the real catalog
-├─ web/                    mgkfitness.mgkcodes.com — NOT AGPL, see NOTICE.md
+├─ scripts/store/          submits and releases both apps on both stores
+├─ web/                    mgkfitness.mgkcodes.com (NOT AGPL, see NOTICE.md)
 └─ docs/
    ├─ architecture.md      how the suite fits together
    └─ database.md          the schema, and why it looks like that
 ```
 
-It's a **native pub workspace**, not Melos — Dart 3.11 added glob support to the
+Each app has its own `README.md`, `CHANGELOG.md` and `docs/decisions/` (the
+ADRs: what was decided, what was weighed against it, and why).
+
+It's a **native pub workspace**, not Melos: Dart 3.11 added glob support to the
 `workspace:` field, which was Melos's last remaining advantage here. One
 `flutter pub get` resolves everything.
 
@@ -82,11 +92,19 @@ flutter pub get          # resolves every package in the workspace at once
 flutter analyze          # should be clean
 ```
 
-Run an app:
+Each app reads its settings from `config/app_config.json`, which is never
+committed. Copy `config/app_config.example.json` beside it and fill in your own
+Supabase project's address and publishable key (a local one from
+`supabase start` works). Without it the app opens on a screen that says it is
+not configured, rather than crashing.
 
 ```sh
-cd apps/mgk_run && flutter run
+cd apps/mgk_run
+flutter run --dart-define-from-file=config/app_config.json
 ```
+
+Generated code is not committed either. In an app, after a fresh clone:
+`dart run build_runner build --delete-conflicting-outputs`.
 
 ### The database, locally
 
@@ -99,13 +117,13 @@ supabase test db         # pgTAP schema contract tests
 ```
 
 `supabase db reset` is the one that matters. It rebuilds the database from
-`supabase/migrations/` alone — so if it works, the repo genuinely describes the
-schema, rather than merely claiming to.
+`supabase/migrations/` alone, so if it works, the repository genuinely describes
+the schema rather than merely claiming to.
 
 ### Tests
 
 ```sh
-flutter test                                   # from any app directory
+flutter test                                   # from any app or package
 supabase test db                               # schema invariants
 deno test --allow-net --allow-env supabase/functions/coach/
 ```
@@ -114,55 +132,66 @@ deno test --allow-net --allow-env supabase/functions/coach/
 
 Four Postgres schemas, one per domain: `core` (the person and the platform),
 `coach` (the AI, app-agnostic), `lift`, and `run`. Apps read only what they own,
-plus `core`. The load-bearing table is `core.activities` — one row per training
+plus `core`. The load-bearing table is `core.activities`: one row per training
 event whatever produced it, maintained by triggers rather than by clients, which
-is what makes "Lift shows your runs" a single query instead of an integration.
-RLS is the security boundary, not secrecy: the anon key ships in every binary
-and is meant to.
+is what will make "Lift shows your runs" a single query instead of an
+integration. Row-level security is the security boundary, not secrecy: the
+publishable key ships in every binary and is meant to. Every AI call goes app →
+Edge Function → provider, so no provider key is ever in an app.
 
 The longer version is in [docs/architecture.md](docs/architecture.md), and the
-schema rationale — including what was wrong with the old one — is in
+schema rationale, including what was wrong with the old one, is in
 [docs/database.md](docs/database.md).
 
 ## Pricing
 
-Per-app, never cross-app. You pay separately for Lift and Run.
+Per app, never across apps. Run and Lift each have their own subscription.
 
-| Tier | Price | What you get |
+| Tier | Price (UK) | What you get |
 |---|---|---|
-| Free | — | Full tracking. Log runs, log workouts, keep your history. |
-| Paid | £1/mo | The AI coach and plan generation. |
-| Premium | £3/mo | More chat, higher limits. |
+| Free | — | Full tracking. Log runs, log workouts, keep your history. No account needed to start. |
+| Coach | £0.99 a month | A training plan, adjusted every week, and a coach to ask. |
+| Premium Coach | £2.99 a month | The same coach, with far more room to talk. |
+
+No free trial. The stores set the price in other countries.
 
 Two rules that won't change:
 
 - **Tracking is never paywalled.** If you just want to log training, that's free
   and complete.
-- **Cross-app visibility is free.** A Lift user seeing their runs is the point
-  of the suite, not an upsell.
+- **Seeing one app's training in the other will be free.** A Lift user seeing
+  their runs is the point of the suite, not an upsell.
 
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Commits need
-a [DCO](https://developercertificate.org/) sign-off (`git commit -s`).
+Contributions are welcome: a bug, an idea, a fix, a feature. Fork the
+repository, branch from `develop`, and open a pull request into `develop`.
+Commits need a [DCO](https://developercertificate.org/) sign-off
+(`git commit -s`). For anything big, open an issue first.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rest, including the rules a change
+can't break.
+
+Found a way to read or change somebody else's data? Please don't open an issue:
+[SECURITY.md](SECURITY.md) says how to tell us privately.
 
 ## Licence
 
-The **code** is [AGPL-3.0](LICENSE). If you run a modified version as a network
-service, you have to publish your changes.
+The **code** is [AGPL-3.0](LICENSE). You can read it, run it, change it and
+share it. If you run a modified version for other people, including over a
+network, you have to publish your changes under the same licence.
 
-That's deliberate: this is a portfolio project meant to be read, and the licence
-keeps it that way. It follows the Signal precedent for App Store distribution —
-sole copyright holder, so the binaries on the store and the source here can
+That's deliberate: this project is meant to be read, and the licence keeps it
+that way. It follows the Signal precedent for App Store distribution: sole
+copyright holder, so the binaries in the stores and the source here can
 coexist.
 
 **`web/` is not.** The website is proprietary, all rights reserved, under its
 own [`web/LICENSE`](web/LICENSE). Copyleft was chosen to stop somebody reskinning
 the *apps*; applied to marketing pages it would do the opposite, and AGPL's
 section 13 would oblige us to offer source to every visitor. Visible, not
-reusable, exactly like `getliftio.com`.
+reusable.
 
-**Assets are licensed separately** — see [NOTICE.md](NOTICE.md). In particular
+**Assets are licensed separately**: see [NOTICE.md](NOTICE.md). In particular
 the exercise illustrations in `apps/mgk_lift/assets/exercises/` are
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), adapted from
 the [Everkinetic](https://github.com/everkinetic/data) dataset by Greg Priday.
