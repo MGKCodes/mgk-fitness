@@ -11,6 +11,28 @@ if the answer is no.
 
 Small fixes — a bug, a doc gap, a broken example — just send them.
 
+## Sending a change from outside
+
+The repository is public, so anybody can read it, fork it and propose a change.
+Only the maintainer merges, and nothing reaches the apps in the stores without
+going through a release.
+
+1. **Fork** the repository and clone your fork.
+2. **Branch from `develop`**, not `main`. `main` is what was last submitted to
+   the stores and only moves at a release.
+3. **Make the change**, with its tests, to the definition of done below.
+4. **Sign off every commit** (`git commit -s`, see *Sign your commits*).
+5. **Open a pull request into `develop`.** Say what it does for somebody using
+   the app, and how you checked it.
+
+The maintainer runs the checks on a change once it has been read, rather than
+on every pull request as it opens, because a fork's copy of `codemagic.yaml`
+could ask our build machines for anything. Run `flutter analyze` and the tests
+yourself before you send it; that is what will be run.
+
+Bugs and ideas are welcome as issues, without code. A security problem is not:
+see [SECURITY.md](SECURITY.md).
+
 ## Branching
 
 Two long-lived branches, and nothing else:

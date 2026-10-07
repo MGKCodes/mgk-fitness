@@ -10,7 +10,7 @@ The plan to take `apps/mgk_run` from "records a run" to "somebody can hold it",
 written against the first real field test.
 
 Written 2026-08-24, from a 10 km run recorded on 23 Aug under
-`mattkay02@gmail.com` alongside Strava as a control. Screenshots in
+the owner's personal account alongside Strava as a control. Screenshots in
 `attachments/`. Tick items as they land; when something is settled differently
 from how it is written here, change the item and say why — the reasoning is
 worth more than the checkbox, which is the lesson [roadmap.md](../roadmap.md)

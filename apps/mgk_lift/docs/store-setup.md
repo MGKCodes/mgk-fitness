@@ -95,7 +95,7 @@ the existing subscription group (the one holding `liftio_monthly`).
       step 3 asks for it). Per app: Run's is not Lift's.
 - [x] A **sandbox tester**: Users and Access › Sandbox › Testers. Do not sign
       into iCloud with it; iOS asks for it at the moment of purchase. *One was
-      already there, `mgkcodes+sandbox@gmail.com`, last used in March: clear its
+      already there, the studio's own, last used in March: clear its
       purchase history before the sandbox pass.*
 
 App Store Connect now shows **Prepare for Submission** on a new product whether
@@ -236,7 +236,7 @@ Supabase's own mailer sends only to members of the Supabase team, so no user
 got a confirmation or a reset.
 
 - [x] **A sender: SMTP2GO's free plan** (1,000 a month, 200 a day), on its
-      **EU** region, account under `mgkcodes@gmail.com`. Resend is the
+      **EU** region, account under the studio's Google address. Resend is the
       favoured provider, but a second Resend team is paid and Frunt's account
       is never used; the move to Resend Pro comes when volume nears 1,000
       emails a month, and is only a change of SMTP details here.
@@ -339,8 +339,8 @@ Frunt's**, so both apps now have their own, and `codemagic.yaml` points at them.
 new one.*
 
 - [x] Google Auth Platform › **Branding**: app name `MGKFitness`, support email
-      and developer contact `mgkcodes@gmail.com` (the dropdown only offers the
-      Google account's own addresses). **No logo**: a logo sends the app to
+      and developer contact the studio's Google address (the dropdown only
+      offers the Google account's own addresses). **No logo**: a logo sends the app to
       Google for verification, which takes days. Home, privacy and terms links
       are Run's pages (`https://mgkfitness.mgkcodes.com`, `/run/privacy`,
       `/run/terms`), the only live ones at the time. **Still to do: Lift's
