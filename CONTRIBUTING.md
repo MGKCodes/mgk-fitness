@@ -21,7 +21,9 @@ going through a release.
 2. **Branch from `develop`**, not `main`. `main` is what was last submitted to
    the stores and only moves at a release.
 3. **Make the change**, with its tests, to the definition of done below.
-4. **Sign off every commit** (`git commit -s`, see *Sign your commits*).
+4. **Sign off every commit** (`git commit -s`, see *Sign your commits*). The
+   sign-off says your change comes in under the project's licence: the AGPL with
+   its app store permission.
 5. **Open a pull request into `develop`.** Say what it does for somebody using
    the app, and how you checked it.
 
@@ -134,8 +136,12 @@ git commit -s -m "fix(run): stop the split timer drifting on resume"
 ```
 
 That adds a `Signed-off-by:` line, which is you asserting you have the right to
-submit the code under this project's licence. No CLA, no copyright assignment —
-just the DCO.
+submit the code under this project's licence: **AGPL-3.0 with the additional
+permission in [`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)**, which lets the
+code be shipped through app stores as long as its full source is published. No
+CLA, no copyright assignment: just the DCO.
+[Run ADR-0048](apps/mgk_run/docs/decisions/0048-contributions-come-in-under-an-app-store-permission.md)
+says why a permission everybody has, rather than an agreement everybody signs.
 
 Forgot on the last commit: `git commit --amend -s --no-edit`.
 
@@ -233,4 +239,9 @@ README.
 
 ## Licence
 
-Contributions are licensed under [AGPL-3.0](LICENSE), same as the project.
+Contributions are licensed under [AGPL-3.0](LICENSE) with the additional
+permission in [`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md), the same as the
+rest of the code. That permission is what lets the apps, with your change in
+them, go on being shipped through the App Store and Google Play, and it lets
+anybody else ship their own version the same way, as long as they publish its
+source.
