@@ -1247,10 +1247,16 @@ export function liftChatMessages(body: Body): Message[] {
   const brief = text(body.brief, MAX_BRIEF_CHARS);
   const memory = text(body.memory, MAX_MEMORY_CHARS);
   const message = text(body.message, MAX_MESSAGE_CHARS);
+  // Read server-side from `lift.plans` (index.ts), never taken from the client.
+  const plan = text(body.plan, MAX_BRIEF_CHARS);
 
   const system = `${LIFT_PERSONA}\n\n${LIFT_CHAT_INSTRUCTIONS}\n\n` +
     `Today is ${weekdayName(body)}.\n\n` +
     (memory ? `${LIFT_MEMORY_INSTRUCTIONS}\n\n${memory}\n\n` : "") +
+    (plan
+      ? `Their current plan, and what they told you when it was built:\n` +
+        `${plan}\n\n`
+      : "") +
     `Recent training (most recent first):\n${
       brief || "(no sessions logged yet)"
     }`;
@@ -1382,21 +1388,19 @@ export function liftSummariseMessages(body: Body): Message[] {
 // different coaches.
 
 const LIFT_INTAKE_INSTRUCTIONS =
-  `You are running the conversation that sets up a lifter's training block. Your
+  `You are running the conversation that sets up a lifter's training plan. Your
 job is to gather what a plan needs, one question at a time.
 
-What a plan needs:
-- what they are training for, in their own words
-- how many days a week they can train, and WHICH days
-- what they have to train with: a full gym, a rack and a barbell, dumbbells at
-  home, machines only
-- anything that hurts, or that they have been told to avoid
-- roughly how long they want the block to be, if they have a view
+What a plan needs, in the order you ask for it:
+1. days: how many days a week they can train (and which days, if they say)
+2. equipment: what they have to train with
+3. injuries: anything that hurts, or that they have been told to avoid
+4. goal: what they are training for, in their own words
 
-Ask which weekdays, not just how many. A block is laid out on named days, so
-"four days" alone cannot be turned into a week. If they do not mind which, say
-so by listing the days you propose. That is one question and not two: the days
-they name give you the count too.
+The app shows tap-to-answer options under your question, chosen from what you
+say you are asking, so the order matters. After reading their latest message,
+ask about the FIRST of these that is still unknown, skipping anything they
+declined. Put its name in "asking". When none is left, set "asking" to "done".
 
 Rules:
 - Ask exactly ONE question per turn. Acknowledge what they just told you, then
@@ -1405,25 +1409,48 @@ Rules:
   reading four questions answers the first and forgets the other three.
 - If they answer several things at once, capture all of them and skip ahead.
   Never re-ask for something you already have.
+- "Prefer not to say" is an answer. Do not ask about that thing again.
+- Do not ask which weekdays as a question of its own. If they name days,
+  capture them; if they do not, the app spreads their days across the week.
 - Do NOT judge whether an answer is plausible, and do not talk them out of a
   goal. Extract what they said; a separate step checks the numbers.
 - Weekdays are 1=Monday through 7=Sunday.
 - In "extracted", return every field on every turn. Use null for anything not
-  yet known.
+  yet known. If they have nothing to work around, set injury_notes to "none"
+  rather than null, so it is not asked again.
 - Do not discuss what will be in the sessions. You are finding out what they can
   do, not deciding what they will do — that comes next, and promising specifics
   here is how a plan disappoints before it exists.
-- When you have what you need, say so and tell them the next screen shows the
-  block for them to look over.`;
+- When you have what you need, say so in one sentence and tell them to tap
+  "Build my plan". There is no other screen to look over first.`;
+
+/// The questions the app asks, in its order, by the names of Dart's
+/// `IntakeField`. **The same order and the same names**, because the app hangs
+/// tap-to-answer options under whichever of these the coach says it asked: a
+/// coach working from a different list asked about one thing above options
+/// for another, which is what a lifter met on 2026-10-07.
+export const LIFT_INTAKE_FIELDS = [
+  "days",
+  "equipment",
+  "injuries",
+  "goal",
+] as const;
 
 const LIFT_INTAKE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["reply", "extracted"],
+  required: ["reply", "asking", "extracted"],
   properties: {
     reply: {
       type: "string",
       description: "The coach's conversational reply to the lifter.",
+    },
+    asking: {
+      type: "string",
+      enum: [...LIFT_INTAKE_FIELDS, "done"],
+      description:
+        "Which question the reply asks, or 'done' when it asks none because " +
+        "everything needed is known or declined.",
     },
     extracted: {
       type: "object",
@@ -1457,7 +1484,8 @@ const LIFT_INTAKE_SCHEMA = {
         ),
         injury_notes: nullable(
           "string",
-          "Anything that hurts or that they avoid, in their words.",
+          "Anything that hurts or that they avoid, in their words. 'none' " +
+            "when they have nothing to work around.",
         ),
       },
     },
@@ -1466,12 +1494,25 @@ const LIFT_INTAKE_SCHEMA = {
 
 export function liftIntakeMessages(body: Body): Message[] {
   const slots = (body.slots as Record<string, unknown>) ?? {};
-  const missing = (body.missing as string[]) ?? [];
+  // Only names this file knows: the list is the client's, and it goes into a
+  // prompt. Builds before 2026-10-07 send none, and their "Prefer not to say"
+  // still reaches the model through the transcript.
+  const declined = (Array.isArray(body.declined) ? body.declined : [])
+    .filter((d): d is string =>
+      (LIFT_INTAKE_FIELDS as readonly string[]).includes(d as string)
+    );
 
+  // `body.missing` is no longer read. Older builds send one in a different
+  // order (goal first) with a field nobody is asked (`which weekdays`), and
+  // following it is what made the coach ask about one thing above options for
+  // another. The order is the instructions' own, and the model applies it to
+  // what is known after the lifter's latest message rather than before it.
   const system = `${LIFT_PERSONA}\n\nToday is ${today(body)}.\n\n` +
     `${LIFT_INTAKE_INSTRUCTIONS}\n\n` +
     `Already known, do not re-ask: ${JSON.stringify(slots)}\n` +
-    `Still missing: ${missing.length ? missing.join(", ") : "nothing"}`;
+    `Declined, do not ask again: ${
+      declined.length ? declined.join(", ") : "nothing"
+    }`;
 
   const turns = conversation(body.history, MAX_LIFT_HISTORY_TURNS);
   return [
