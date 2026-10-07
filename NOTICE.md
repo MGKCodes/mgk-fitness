@@ -2,8 +2,10 @@
 
 Third-party material in this repository, and one unresolved question about it.
 
-The code is [AGPL-3.0](LICENSE), **except `web/`**. This file covers the
-exceptions: one directory of our own code, one typeface, and 522 illustrations.
+The code is [AGPL-3.0](LICENSE), with an additional permission for app stores
+([`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)), **except `web/`**. This file
+covers the exceptions: one directory of our own code, one typeface, and 522
+illustrations.
 
 ---
 
@@ -130,6 +132,10 @@ otherwise:
 - **The Liftio app itself** has no credits surface; the Everkinetic block was
   removed from its Settings and About screens in `bc5c788` and never replaced.
 
-Note also that this repository's README justifies AGPL-3.0 distribution on the
-grounds of sole copyright holding. That reasoning is about the code and is
-unaffected — these files are licensed separately and always were.
+Note also that the code's app store permission
+([`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)) is granted by its copyright
+holders, and so covers the code only. These files are licensed separately and
+always were: the permission does not reach them, and whether shipping them
+through the App Store sits with CC BY-SA 4.0's clause against downstream
+restrictions is a question for legal review
+([Run ADR-0048](apps/mgk_run/docs/decisions/0048-contributions-come-in-under-an-app-store-permission.md)).
