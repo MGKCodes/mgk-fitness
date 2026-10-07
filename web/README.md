@@ -41,11 +41,11 @@ stills are on it and the camera moves between them, on a wide screen and an
 upright one, with two faults that are known and left for now; and it is not
 indexed.
 
-Its waiting list writes to `core.waiting_list` through one function,
-`core.join_waiting_list`, with the publishable key. The migration
-`20261002140000_core_waiting_list.sql` says why it is shaped that way. Things
-that are not live yet, the store links and the public repository, are turned
-on in [`app/(landing)/links.ts`](app/(landing)/links.ts).
+It had a waiting list until 7 October 2026, when both apps were on Google
+Play; nobody had joined it, and the form came down. `core.waiting_list` and
+`core.join_waiting_list` are still in the database and nothing calls them.
+Things that are not live yet, the App Store links and the public repository,
+are turned on in [`app/(landing)/links.ts`](app/(landing)/links.ts).
 
 ## The suite's mark
 
@@ -146,8 +146,8 @@ password is changed.
 
 It needs the project's two **public** values, the same two every copy of the
 apps carries: its address and its publishable key. They are written into
-[`app/supabase.ts`](app/supabase.ts) as defaults, which the waiting list uses
-too, so Vercel needs no settings. [`app/company.ts`](app/company.ts) is the
+[`app/supabase.ts`](app/supabase.ts) as defaults, which the password page uses,
+so Vercel needs no settings. [`app/company.ts`](app/company.ts) is the
 same idea for who the company is: its number and registered office, read by
 both footers and the privacy notice.
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` still
@@ -197,7 +197,6 @@ fine to anybody signed in to the team.
 
 - A landing film without faults. Two of its moves have one that is known and
   left for now. See [`design/landing/README.md`](design/landing/README.md).
-- Anything that emails the waiting list. It is only collected.
 - Tailwind and a lint config. The landing page is one stylesheet; neither has
   earned its place yet.
 - Anything that needs a secret. If a contact form arrives, its key lives in

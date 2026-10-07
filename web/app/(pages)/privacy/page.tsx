@@ -4,7 +4,7 @@ import { company, disclosure } from "../../company";
 export const metadata: Metadata = {
   title: "Privacy on this website",
   description:
-    "What mgkfitness.mgkcodes.com collects: an email address if you join the waiting list, and nothing else. No cookies and no analytics.",
+    "What mgkfitness.mgkcodes.com collects: nothing it asks you for. No cookies and no analytics.",
 };
 
 // The website's own privacy notice. The apps' policies are generated from each
@@ -19,15 +19,14 @@ export const metadata: Metadata = {
 // - The site sets no cookie, uses no browser storage and loads nothing from a
 //   third party: nothing in `app/` touches `document.cookie`, local or session
 //   storage, and the font is served from this domain by `next/font`.
-// - The waiting list is `core.waiting_list`. It keeps the address, a source and
-//   a time, and is written only through `core.join_waiting_list`, which cannot
-//   be made to say whether an address is on it.
 // - The Supabase project is in eu-west-1, as both apps' policies say.
 //
-// **Two sentences here are promises, not descriptions**, and somebody has to
-// keep them: the list is deleted once both apps are live and people have been
-// told, and this page names whoever sends that email before it is sent.
-// Nothing sends it yet.
+// **The waiting list was taken down on 7 October 2026**, once both apps were
+// on Google Play. `core.waiting_list` was read that day and held no address,
+// so the promises this page made about it (delete the list once people had
+// been told, and name whoever sends that email first) had nobody to keep them
+// for. The table and `core.join_waiting_list` are still in the database; the
+// site no longer calls them.
 //
 // If the site starts to collect anything else, it is said here first.
 export default function PrivacyPage() {
@@ -37,12 +36,11 @@ export default function PrivacyPage() {
       <h1>Privacy on this website</h1>
       <p className="lede">
         This is mgkfitness.mgkcodes.com, the website for MGKFitness: Run and
-        MGKFitness: Lift. It sets no cookies and runs no analytics. The one thing
-        it asks you for is an email address, and only if you join the waiting
-        list.
+        MGKFitness: Lift. It sets no cookies, runs no analytics and asks you for
+        nothing.
       </p>
       <p>
-        <strong>Last updated:</strong> 2 October 2026 · <strong>Controller:</strong>{" "}
+        <strong>Last updated:</strong> 7 October 2026 · <strong>Controller:</strong>{" "}
         {company.name} · <strong>Contact:</strong>{" "}
         <a href={`mailto:${company.email}`}>{company.email}</a>
       </p>
@@ -58,38 +56,6 @@ export default function PrivacyPage() {
         </p>
       </div>
 
-      <h2>The waiting list</h2>
-      <p>If you give us your email address on the home page, we keep:</p>
-      <ul>
-        <li>the address;</li>
-        <li>when you gave it;</li>
-        <li>that you gave it on this website.</li>
-      </ul>
-      <p>
-        We use it for one thing: to tell you when Run and Lift are in the App
-        Store and on Google Play. We do not add you to anything else, and we do
-        not sell it or pass it to anybody for their own use.
-      </p>
-      <p>
-        <strong>You asked to be told, so the basis is your consent</strong>, and
-        you can take it back at any time. Email{" "}
-        <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a> and we will
-        remove your address.
-      </p>
-      <p>
-        We keep the list until both apps are in the stores and we have told you
-        so. Then we delete it.
-      </p>
-      <p>
-        It is stored in our database at Supabase, in eu-west-1 (Ireland). The
-        form can add an address and cannot read the list back, so nobody can use
-        it to find out whether you are on it.
-      </p>
-      <p>
-        Nothing sends email to the list yet. Before anything does, this page
-        will name the provider that sends it.
-      </p>
-
       <h2>What the site receives when you visit</h2>
       <ul>
         <li>
@@ -99,9 +65,9 @@ export default function PrivacyPage() {
           States, so this may be handled outside the UK.
         </li>
         <li>
-          <strong>Supabase</strong> receives the same when you send the waiting
-          list form or set a new password, because for those two things your
-          browser talks to our database directly.
+          <strong>Supabase</strong> receives the same when you set a new
+          password here, because for that your browser talks to our sign-in
+          service directly.
         </li>
       </ul>
       <p>
@@ -124,9 +90,9 @@ export default function PrivacyPage() {
 
       <h2>Your rights</h2>
       <p>
-        Under UK GDPR you can ask to see what we hold about you, have it
-        corrected or deleted, and withdraw consent. For the waiting list that is
-        one email to <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a>.
+        Under UK GDPR you can ask to see what we hold about you, and have it
+        corrected or deleted. One email to{" "}
+        <a href="mailto:hello@mgkcodes.com">hello@mgkcodes.com</a> is enough.
       </p>
       <p>
         If you think we have handled your data wrongly, you can complain to the
@@ -145,6 +111,10 @@ export default function PrivacyPage() {
       <p>
         We will update this page when the site changes, and change the date at
         the top.
+      </p>
+      <p>
+        On 7 October 2026 the waiting list came down, because both apps are now
+        on Google Play. Nobody had joined it, so no address from it is held.
       </p>
 
       <h2>Contact</h2>

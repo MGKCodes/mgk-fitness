@@ -188,11 +188,6 @@ else.
 
 ## Not built yet
 
-- **Anything that emails the waiting list.** The form saves an address, says
-  what it is for and how to come off, and links to the website's privacy
-  notice at `/privacy`. Nothing sends the email yet, and the notice promises
-  to name whoever does before it is sent, and to delete the list once both
-  apps are live.
 - **Each app showing the other's training.** The page marks it as coming,
   and it is planned. `core.activities` holds every run and workout so that it
   can be done, and neither app reads it yet, so nothing on the page says that

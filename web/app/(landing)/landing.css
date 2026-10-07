@@ -60,8 +60,7 @@ input:focus-visible {
 /* What a thing costs, or what it is: the apps' own small capitals. */
 .tag,
 .soon,
-.terms dt,
-.list label {
+.terms dt {
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -115,7 +114,7 @@ input:focus-visible {
   height: 1.125rem;
 }
 
-/* Run and Lift: places in the film, to the right with the waiting list. */
+/* Run and Lift: places in the film, to the right with where to get them. */
 .bar nav {
   display: flex;
   gap: clamp(1.1rem, 2.4vw, 2.25rem);
@@ -213,8 +212,7 @@ a.social:hover {
   }
 }
 
-.pill,
-.list button {
+.pill {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -954,17 +952,17 @@ a.store:hover {
   border-color: var(--white);
 }
 
-/* ── The waiting list ────────────────────────────────────────────────────── */
-.waiting {
+/* ── Getting the apps ────────────────────────────────────────────────────── */
+.download {
   padding: 16svh var(--edge) 16svh;
 }
 
-/* Where each app will be got from, under the form that stands in for them. */
+/* Each app with its two stores. */
 .get {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
   gap: 3rem var(--edge);
-  margin-top: clamp(4rem, 13svh, 8rem);
+  margin-top: clamp(3rem, 9svh, 6rem);
 }
 
 .get > div {
@@ -979,63 +977,14 @@ a.store:hover {
   letter-spacing: -0.02em;
 }
 
-/* The field no person fills. Off the page, not `display: none`, which the
-   things it is for have learnt to skip. */
-.trap {
-  position: absolute;
-  left: -200vw;
-}
-
-.field input[aria-invalid="true"] {
-  border-color: var(--white);
-}
-
-.list button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.waiting h2 {
-  max-width: 13ch;
-  margin-bottom: 2.5rem;
-  text-wrap: balance;
-}
-
-.list {
-  max-width: 34rem;
-}
-
-.list label {
-  display: block;
-  margin-bottom: 0.7rem;
+/* Where the suite is followed, written out so it can be typed. */
+.follow {
+  margin-top: clamp(3rem, 9svh, 5rem);
   color: var(--dim);
 }
 
-.field {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
-.field input {
-  flex: 1 1 14rem;
-  min-height: 44px;
-  padding: 0 1.1rem;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.06);
+.follow a {
   color: var(--white);
-  font: inherit;
-}
-
-.field input::placeholder {
-  color: var(--dim);
-}
-
-.note {
-  margin-top: 0.9rem;
-  font-size: 0.875rem;
-  color: var(--dim);
 }
 
 /* ── The foot ────────────────────────────────────────────────────────────── */
@@ -1087,7 +1036,7 @@ a.store:hover {
 }
 
 .foot p a,
-.note a {
+.follow a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;

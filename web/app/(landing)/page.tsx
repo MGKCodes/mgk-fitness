@@ -3,10 +3,12 @@ import { company, disclosure } from "../company";
 import { Bar } from "./bar";
 import { Phone } from "./device";
 import { Film } from "./film";
-import { availability, source } from "./links";
+import { availability, social, source } from "./links";
 import { Mark } from "./mark";
 import { Stores } from "./stores";
-import { WaitingList } from "./waiting-list";
+
+/** The suite's Instagram, once it has an address in `links.ts`. */
+const instagram = social.find((account) => account.name === "Instagram" && account.url);
 
 /** Words or a screen laid over the film for the shots from `from` to `to`. */
 function Beat({
@@ -400,6 +402,11 @@ export default function Home() {
             </p>
           )}
           <div className="repos">
+            <Source
+              to={source.repository}
+              title="MGKFitness"
+              note="Both apps, the parts they share, and the backend"
+            />
             <Source to={source.run} title="Run" note="The running app" />
             <Source to={source.lift} title="Lift" note="The strength app" />
             <Source to={source.contributing} title="Contribute" note="How to send a change" />
@@ -409,11 +416,10 @@ export default function Home() {
           )}
         </section>
 
-        <section className="waiting" id="waiting-list">
-          <h2>Get an email when Run and Lift are live.</h2>
-          <WaitingList />
-          {/* Where the apps will be got from. Held for the store links, which
-              `links.ts` turns on. */}
+        {/* Where the apps are got from. Each store's button is held, as
+            "Coming soon", until `links.ts` gives it an address. */}
+        <section className="download" id="get">
+          <h2>Get Run and Lift.</h2>
           <dl className="get">
             <div>
               <dt>Run</dt>
@@ -428,6 +434,14 @@ export default function Home() {
               </dd>
             </div>
           </dl>
+          {instagram && (
+            <p className="follow">
+              Follow along on Instagram:{" "}
+              <a href={instagram.url} target="_blank" rel="noopener">
+                {instagram.handle}
+              </a>
+            </p>
+          )}
         </section>
       </main>
 
@@ -451,6 +465,11 @@ export default function Home() {
         <nav aria-label="MGKFitness">
           <h3>MGKFitness</h3>
           <a href="/privacy">Privacy on this website</a>
+          {instagram && (
+            <a href={instagram.url} target="_blank" rel="noopener">
+              Instagram {instagram.handle}
+            </a>
+          )}
           {source.open && <a href={source.repository}>Source on GitHub</a>}
           <p>
             Made by {company.name}.{" "}
