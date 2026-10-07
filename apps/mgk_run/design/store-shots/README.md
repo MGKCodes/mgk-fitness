@@ -41,8 +41,10 @@ when the choice was made.
 
 - **The six pictures, their order and their words:** [`src/shots.ts`](src/shots.ts).
   Every line there is checked against "What the app may not claim" in the
-  listing doc, and each picture is tagged free or subscription, because three
-  of the six show the coach and both stores want that said.
+  listing doc. The three that show the coach are tagged as the subscription,
+  because both stores want that said; the other three carry no tag. **No
+  picture says "Free"**: Apple counts it as a price (guideline 2.3.7), and
+  Lift 2.0.0 was rejected for it on 7 October 2026.
 - **The status bar's clock:** nobody sets it. Home's greeting follows the real
   clock when the screens are drawn, so `store.dart` writes a time that agrees
   with it to `clock.json` beside the screens, and `render.sh` passes it in.
