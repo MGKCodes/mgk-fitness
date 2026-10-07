@@ -171,6 +171,8 @@ Commits need a [DCO](https://developercertificate.org/) sign-off
 [CONTRIBUTING.md](CONTRIBUTING.md) has the rest, including the rules a change
 can't break.
 
+Everybody taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 Found a way to read or change somebody else's data? Please don't open an issue:
 [SECURITY.md](SECURITY.md) says how to tell us privately.
 
