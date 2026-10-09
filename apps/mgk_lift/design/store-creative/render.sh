@@ -33,7 +33,9 @@ cp "$fonts"/Inter-{Black,ExtraBold,Bold,SemiBold,Medium,Regular}.ttf public/
 rm -rf public/screens
 cp -r "$store/screens" public/screens
 
-names="${@:-header-name header-launch header-between-sets search universal}"
+# Chosen 2026-10-09: the launch film and the search picture. The others are
+# drawn only when named.
+names="${@:-header-launch search}"
 for n in $names; do
   if [ "$n" = "header-between-sets" ] || [ "$n" = "header-launch" ]; then
     rm -f "out/$n.mp4"
