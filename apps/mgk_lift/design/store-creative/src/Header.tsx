@@ -120,7 +120,11 @@ export const HeaderLaunch: React.FC = () => {
   if (!ready) return null;
   const t = frame / FPS;
   const s = t - 0.4;
-  const K = 3.4;
+  // Sized for a phone, where the whole header can be shown at a few hundred
+  // points wide: as large as the stack goes with every part of it, mark to
+  // line, still inside the safe box. The gaps under the word are tighter than
+  // the launch's, which has a whole phone screen to sit in.
+  const K = 3.9;
   const cx = W / 2;
   const out = Easing.bezier(0.16, 1, 0.3, 1);
   const inOut = Easing.bezier(0.65, 0, 0.35, 1);
@@ -141,9 +145,9 @@ export const HeaderLaunch: React.FC = () => {
   const markH = inkHeight(small);
   const space = 20 * K;
   const caption = 10 * K;
-  const captionGap = 22 * K;
-  const line = 50;
-  const lineGap = 56;
+  const captionGap = 14 * K;
+  const line = 66;
+  const lineGap = 36;
   // Centred so the whole block, mark to the line under it, sits in the safe box.
   const lockH = markH + space + cap;
   const blockH = lockH + captionGap + caption + lineGap + line;
