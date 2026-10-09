@@ -511,9 +511,9 @@ Deno.test("an upstream figure that is null, absent or nonsense is ignored", () =
   }
 });
 
-Deno.test("is_byok is not what decides whether the upstream cost counts", () => {
-  // Deliberately ungated. Counting a call twice trips the cap early; trusting a
-  // flag that went missing would let a real call through as free.
+Deno.test("a BYOK call whose flag went missing is still never free", () => {
+  // Without `is_byok` the larger figure is taken, so a call OpenRouter billed
+  // to our own key still costs what the provider charged.
   const usage = usageFromResponse({
     prompt_tokens: 10,
     completion_tokens: 5,
@@ -521,6 +521,22 @@ Deno.test("is_byok is not what decides whether the upstream cost counts", () => 
     cost_details: { upstream_inference_cost: 0.0004 },
   }, ACCOUNTING);
   assertEquals(usage.costCredits, 0.0004);
+});
+
+Deno.test("an ordinary call reporting its own cost upstream is counted once", () => {
+  // What the 2026-10-09 probe saw on every call OpenRouter served on its own
+  // credits: `is_byok` false and the upstream figure equal to `cost`. Adding
+  // them priced each call twice; the figure must be the cost alone.
+  const usage = usageFromResponse({
+    prompt_tokens: 914,
+    completion_tokens: 835,
+    total_tokens: 1749,
+    cost: 0.0005089,
+    is_byok: false,
+    cost_details: { upstream_inference_cost: 0.0005089 },
+  }, ACCOUNTING);
+  assertEquals(usage.costCredits, 0.0005089);
+  assertEquals(usage.costEstimated, false);
 });
 
 Deno.test("an upstream cost with no cost beside it is estimated, never free", () => {
