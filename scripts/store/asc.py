@@ -73,10 +73,13 @@ TAKES = 'universal.png, or header and search as .png, .mp4, .mov or .m4v'
 
 # An asset's states: still processing, ready to place, and (for one already in
 # the library) worth reusing rather than uploading again.
-PROCESSING = {'AWAITING_UPLOAD', 'UPLOAD_COMPLETE'}
+# `COMPLETE` is not in Apple's guide, which says UPLOAD_COMPLETE, but it is what
+# a video reported between the commit and PREPARE_FOR_SUBMISSION on 2026-10-09
+# (Lift's header film), with no spec matched yet. So it is still processing.
+PROCESSING = {'AWAITING_UPLOAD', 'UPLOAD_COMPLETE', 'COMPLETE'}
 READY = {'PREPARE_FOR_SUBMISSION', 'READY_FOR_REVIEW', 'WAITING_FOR_REVIEW', 'IN_REVIEW',
          'ACCEPTED', 'APPROVED'}
-REUSABLE = READY | {'UPLOAD_COMPLETE'}
+REUSABLE = READY | {'UPLOAD_COMPLETE', 'COMPLETE'}
 POLL_SECONDS = 5
 POLL_LIMIT = 15 * 60
 
