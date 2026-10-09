@@ -10,9 +10,11 @@ import base64
 import contextlib
 import io
 import json
+import struct
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -385,6 +387,169 @@ class PlayPictures(unittest.TestCase):
         posted = [u for m, u in fake.sent if m == 'POST']
         self.assertTrue(any('/listings/en-GB/icon?' in u for u in posted))
         self.assertFalse(any('/featureGraphic?' in u for u in posted))
+
+
+def _png(path: Path, width: int, height: int, colour: int = 2) -> None:
+    """Enough of a PNG for the size check: its header and an empty image."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+    path.write_bytes(b'\x89PNG\r\n\x1a\n'
+                     + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, colour, 0, 0, 0))
+                     + chunk(b'IDAT', zlib.compress(b'')) + chunk(b'IEND', b''))
+
+
+OPEN = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 'PREPARE_FOR_SUBMISSION'}}
+LIVE = {'id': 'V1', 'attributes': {'versionString': '2.0.0', 'appVersionState': 'READY_FOR_DISTRIBUTION'}}
+
+
+def asset_answers(versions, spec='UNI', placed=None, included=None, library=None):
+    return {
+        ('GET', '/v1/apps?'): {'data': [{'id': 'A1', 'attributes': {'primaryLocale': 'en-GB'}}]},
+        ('GET', '/appStoreVersions?'): {'data': versions},
+        ('GET', '/placements'): {'data': placed or [], 'included': included or []},
+        ('GET', '/appStoreVersionLocalizations'): {
+            'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
+        ('GET', '/assetLibrary'): {'data': {'type': 'appAssetLibraries', 'id': 'LIB'}},
+        ('GET', '/appAssetLibraries/LIB/images'): {'data': library or []},
+        ('POST', '/v1/appAssetLibraryImages'): {'data': {'id': 'IMG1', 'attributes': {
+            'state': 'AWAITING_UPLOAD', 'uploadOperations': [{
+                'method': 'PUT', 'url': 'https://upload.example/IMG1', 'offset': 0, 'length': 10,
+                'requestHeaders': [{'name': 'Content-Type', 'value': 'image/png'}]}]}}},
+        ('GET', '/v1/appAssetLibraryImages/'): {'data': {'id': 'IMG1', 'attributes': {
+            'state': 'PREPARE_FOR_SUBMISSION', 'specId': spec}}},
+        ('GET', '/v1/appAssetLibraryRefData'): {'data': [{'attributes': {
+            'placementTypes': [
+                {'placementTypeId': 'PRODUCT_PAGE_HEADER_ASSET', 'specMappings': [
+                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'HDR']}]},
+                {'placementTypeId': 'APP_STORE_SEARCH_RESULTS_ASSET', 'specMappings': [
+                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'SRCH']}]},
+            ],
+            'imageSpecs': [{'specId': 'UNI', 'shortName': 'i5244x2950a0'},
+                           {'specId': 'HDR', 'shortName': 'i3840x1646a0'},
+                           {'specId': 'SRCH', 'shortName': 'i3x2w1920~3840a0'}],
+            'videoSpecs': [],
+        }}]},
+    }
+
+
+class AppleAssets(unittest.TestCase):
+    """The product page header and search results asset: checked on disk
+    first, uploaded once, placed on every localization of the open version."""
+
+    def run_assets(self, pictures, *flags, answers=None):
+        sent = []
+        fake = FakeStore(answers or asset_answers([OPEN, LIVE]))
+
+        def recording(method, url, **kwargs):
+            sent.append((method, url, kwargs))
+            return fake(method, url, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder:
+            for name, (width, height) in pictures.items():
+                _png(Path(folder) / name, width, height)
+            with mock.patch.object(asc, '_token', return_value='t') as token, \
+                    mock.patch.object(asc, 'call', recording), \
+                    contextlib.redirect_stdout(io.StringIO()) as printed:
+                code = stores.main(['assets', 'lift', '--from', folder, *flags])
+        return code, sent, printed.getvalue(), token
+
+    @staticmethod
+    def writes(sent):
+        return [(m, u, k) for m, u, k in sent if m != 'GET']
+
+    def test_without_yes_it_only_plans(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)})
+        self.assertEqual(code, 0)
+        self.assertEqual(self.writes(sent), [])
+        self.assertIn('universal.png (5244x2950): product page header and search results; upload it',
+                      printed)
+        self.assertIn('on version 2.0.1 (PREPARE_FOR_SUBMISSION), in en-GB', printed)
+        self.assertIn('--yes', printed)
+
+    def test_universal_fills_both_placements(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes')
+        self.assertEqual(code, 0, printed)
+        writes = self.writes(sent)
+        reserved = [k['body'] for m, u, k in writes if u.endswith('/v1/appAssetLibraryImages')]
+        self.assertEqual(len(reserved), 1)  # one upload for both
+        self.assertEqual(reserved[0]['data']['attributes']['category'], 'CREATIVE_ASSETS')
+        put = [k for m, u, k in writes if m == 'PUT']
+        self.assertNotIn('token', put[0])  # the upload URL takes no key
+        commit = [k['body'] for m, u, k in writes if m == 'PATCH']
+        self.assertEqual(commit[0]['data']['attributes'], {'uploaded': True})
+        placed = [k['body']['data'] for m, u, k in writes if u.endswith('/v1/appAssetLibraryPlacements')]
+        self.assertEqual({p['attributes']['placementType'] for p in placed},
+                         {'PRODUCT_PAGE_HEADER_ASSET', 'APP_STORE_SEARCH_RESULTS_ASSET'})
+        for p in placed:
+            self.assertEqual(p['attributes']['placementGroup'], 'DEFAULT_PROFILE')
+            self.assertEqual(p['relationships']['image']['data']['id'], 'IMG1')
+            self.assertEqual(p['relationships']['appStoreVersionLocalization']['data']['id'], 'L1')
+
+    def test_header_with_universal_is_refused_before_anything_is_called(self):
+        code, sent, printed, token = self.run_assets(
+            {'universal.png': (5244, 2950), 'header.png': (3840, 1646)}, '--yes')
+        self.assertEqual(code, 1)
+        self.assertIn('universal.png fills both placements, so header.png cannot go with it', printed)
+        self.assertEqual(sent, [])
+        token.assert_not_called()
+
+    def test_a_wrong_size_is_refused_with_the_size_expected(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2949)}, '--yes')
+        self.assertEqual(code, 1)
+        self.assertIn('universal.png is 5244x2949: it has to be 5244x2950 (16:9).', printed)
+        self.assertEqual(sent, [])
+
+    def test_no_version_open_means_upload_only(self):
+        answers = asset_answers([LIVE])
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, answers=answers)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.writes(sent), [])
+        self.assertIn('the placements wait for prepare', printed)
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertFalse(any('Placements' in u for u in urls))
+        self.assertIn('uploaded only', printed)
+
+    def test_what_is_placed_now_is_deleted_before_the_new_one_is_created(self):
+        answers = asset_answers(
+            [OPEN, LIVE], spec='HDR',
+            placed=[{'id': 'OLD', 'attributes': {'placementType': 'PRODUCT_PAGE_HEADER_ASSET',
+                                                 'mediaType': 'IMAGE'},
+                     'relationships': {'image': {'data': {'type': 'appAssetLibraryImages', 'id': 'IMG0'}}}}],
+            included=[{'type': 'appAssetLibraryImages', 'id': 'IMG0',
+                       'attributes': {'fileName': 'old-header.png'}}])
+        code, sent, printed, _ = self.run_assets({'header.png': (3840, 1646)}, answers=answers)
+        self.assertIn('en-GB: product page header: delete the one there now (old-header.png), '
+                      'then place header.png', printed)
+        code, sent, printed, _ = self.run_assets({'header.png': (3840, 1646)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        order = [(m, u.split('/v1/')[-1]) for m, u, k in self.writes(sent)]
+        deleted = order.index(('DELETE', 'appAssetLibraryPlacements/OLD'))
+        created = order.index(('POST', 'appAssetLibraryPlacements'))
+        self.assertLess(deleted, created)
+        self.assertEqual(sum(1 for o in order if o[1].startswith('appAssetLibraryPlacements')), 2)
+
+    def test_an_asset_already_in_the_library_is_placed_not_uploaded_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            _png(Path(folder) / 'universal.png', 5244, 2950)
+            size = (Path(folder) / 'universal.png').stat().st_size
+        answers = asset_answers([OPEN, LIVE], library=[{'id': 'IMG1', 'attributes': {
+            'fileName': 'universal.png', 'fileSize': size, 'state': 'APPROVED'}}])
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertFalse(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertEqual(sum(1 for u in urls if u.endswith('/v1/appAssetLibraryPlacements')), 2)
+
+    def test_a_version_in_review_is_refused(self):
+        waiting = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 'WAITING_FOR_REVIEW'}}
+        code, sent, printed, _ = self.run_assets(
+            {'universal.png': (5244, 2950)}, '--yes', answers=asset_answers([waiting, LIVE]))
+        self.assertEqual(code, 1)
+        self.assertEqual(self.writes(sent), [])
+        self.assertIn('2.0.1 is WAITING_FOR_REVIEW', printed)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 """App Store Connect, for Run and Lift: status, submission, release,
-TestFlight notes and testers, listing text and screenshots.
+TestFlight notes and testers, listing text, screenshots and the creative
+assets (product page header and search results asset).
 
 The key is an App Store Connect API team key (App Manager), saved outside the
 repository as `asc.json` ({"issuer_id": ..., "key_id": ...}) beside its
@@ -10,8 +11,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import struct
+import subprocess
 import time
 import urllib.parse
+from fractions import Fraction
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -30,6 +35,52 @@ EDITABLE = {
 
 # The 6.9-inch and 6.7-inch iPhones, which is the 1290x2796 the kit draws.
 IPHONE_SCREENSHOTS = 'APP_IPHONE_67'
+
+# A version that is out: on sale, or replaced by a newer one. Any other state
+# not in EDITABLE is a version on its way (waiting for review, in review,
+# approved and not yet released), which nothing here may touch.
+DONE = {
+    'READY_FOR_SALE',
+    'READY_FOR_DISTRIBUTION',
+    'REPLACED_WITH_NEW_VERSION',
+    'REMOVED_FROM_SALE',
+    'DEVELOPER_REMOVED_FROM_SALE',
+}
+
+# --- Creative assets ---------------------------------------------------------
+# The product page header and the search results asset, which go on a version
+# through the App Asset Library: a file is uploaded to the app's library once,
+# then placed on each of the version's localizations. One of each per version.
+# The sizes are Apple's reference data (GET /v1/appAssetLibraryRefData) as
+# read on 9 October 2026; the uploads are checked against it again after
+# processing, so a change on Apple's side stops the run rather than slipping by.
+HEADER = 'PRODUCT_PAGE_HEADER_ASSET'
+SEARCH = 'APP_STORE_SEARCH_RESULTS_ASSET'
+PLACE = {HEADER: 'product page header', SEARCH: 'search results'}
+GROUP = 'DEFAULT_PROFILE'
+VIDEOS = ('.mp4', '.mov', '.m4v')
+KIND = {'image': 'appAssetLibraryImages', 'video': 'appAssetLibraryVideos'}
+MAX_BYTES = 500 * 1024 * 1024
+
+# What each file fills, and the size it has to be.
+ROLES = {
+    'universal': ((HEADER, SEARCH), '5244x2950 (16:9)', lambda w, h: (w, h) == (5244, 2950)),
+    'header': ((HEADER,), '3840x1646 (21:9)', lambda w, h: (w, h) == (3840, 1646)),
+    'search': ((SEARCH,), '3:2, from 1920x1280 to 3840x2560',
+               lambda w, h: 2 * w == 3 * h and 1920 <= w <= 3840),
+}
+TAKES = 'universal.png, or header and search as .png, .mp4, .mov or .m4v'
+
+# An asset's states: still processing, ready to place, and (for one already in
+# the library) worth reusing rather than uploading again.
+PROCESSING = {'AWAITING_UPLOAD', 'UPLOAD_COMPLETE'}
+READY = {'PREPARE_FOR_SUBMISSION', 'READY_FOR_REVIEW', 'WAITING_FOR_REVIEW', 'IN_REVIEW',
+         'ACCEPTED', 'APPROVED'}
+REUSABLE = READY | {'UPLOAD_COMPLETE'}
+POLL_SECONDS = 5
+POLL_LIMIT = 15 * 60
+
+PNG_COLOURS = {0: 'greyscale', 3: 'a palette', 4: 'greyscale with alpha', 6: 'RGBA'}
 
 
 def _token() -> str:
@@ -56,6 +107,124 @@ def _token() -> str:
 
 def _state(attributes: dict) -> str:
     return attributes.get('appVersionState') or attributes.get('appStoreState') or '?'
+
+
+def _say(line: str) -> None:
+    """A step as it happens, so a long upload is not silent."""
+    print(line, flush=True)
+
+
+def _png_size(path: Path) -> tuple[int, int]:
+    """Width and height from the PNG's IHDR. Refuses alpha: Apple takes RGB
+    only (colour type 2), and no transparent colour (tRNS) either."""
+    with path.open('rb') as source:
+        if source.read(8) != b'\x89PNG\r\n\x1a\n':
+            raise StoreError(f'{path.name} is not a PNG.')
+        length, kind = struct.unpack('>I4s', source.read(8))
+        if kind != b'IHDR' or length < 13:
+            raise StoreError(f'{path.name} has no PNG header (IHDR).')
+        width, height, _depth, colour = struct.unpack('>IIBB', source.read(10))
+        if colour != 2:
+            raise StoreError(
+                f'{path.name} is {PNG_COLOURS.get(colour, f"PNG colour type {colour}")}: the App '
+                'Store takes RGB with no alpha (PNG colour type 2). Flatten it and save it as RGB.')
+        source.seek(length - 10 + 4, 1)  # the rest of IHDR, and its CRC
+        while True:
+            head = source.read(8)
+            if len(head) < 8:
+                break
+            length, kind = struct.unpack('>I4s', head)
+            if kind == b'IDAT':
+                break
+            if kind == b'tRNS':
+                raise StoreError(f'{path.name} has a transparent colour (a tRNS chunk): '
+                                 'the App Store takes no alpha. Save it again without one.')
+            source.seek(length + 4, 1)
+    return width, height
+
+
+def _video_facts(path: Path) -> tuple[int, int, Fraction, float]:
+    """Width, height, frame rate and length, from ffprobe."""
+    probe = shutil.which('ffprobe')
+    if not probe:
+        raise StoreError(
+            f'ffprobe is not on PATH, and {path.name} has to be checked (size, frame rate, '
+            'length) before it is uploaded. Install FFmpeg, then run again.')
+    done = subprocess.run(
+        [probe, '-v', 'error', '-select_streams', 'v:0',
+         '-show_entries', 'stream=width,height,r_frame_rate:format=duration',
+         '-of', 'json', str(path)],
+        capture_output=True, text=True)
+    if done.returncode != 0:
+        raise StoreError(f'ffprobe could not read {path.name}: {done.stderr.strip()[:300]}')
+    facts = json.loads(done.stdout or '{}')
+    streams = facts.get('streams') or []
+    if not streams:
+        raise StoreError(f'{path.name} has no video stream.')
+    stream = streams[0]
+    try:
+        fps = Fraction(stream['r_frame_rate'])
+    except (KeyError, ValueError, ZeroDivisionError):
+        raise StoreError(f'ffprobe gave no frame rate for {path.name}.') from None
+    return int(stream['width']), int(stream['height']), fps, float(facts['format']['duration'])
+
+
+def creative_files(folder: Path) -> list[dict]:
+    """The creative assets in [folder], each checked on disk before anything is
+    called: universal.png fills both placements; header.* and search.* (.png,
+    or a video) fill one each. Anything else in the folder is refused by name,
+    so nothing is quietly left behind."""
+    if not folder.is_dir():
+        raise StoreError(f'No folder at {folder}. It takes {TAKES}.')
+    found: dict[str, Path] = {}
+    unknown: list[str] = []
+    for entry in sorted(folder.iterdir()):
+        role, suffix = entry.stem, entry.suffix
+        known = entry.is_file() and role in ROLES and (
+            suffix == '.png' or (suffix in VIDEOS and role != 'universal'))
+        if not known:
+            unknown.append(entry.name)
+        elif role in found:
+            raise StoreError(f'{found[role].name} and {entry.name} both fill the same place: keep one.')
+        else:
+            found[role] = entry
+    if unknown:
+        raise StoreError(f'{folder} holds what assets does not take: {", ".join(unknown)}. '
+                         f'It takes {TAKES}; move anything else out.')
+    if not found:
+        raise StoreError(f'Nothing in {folder}. It takes {TAKES}.')
+    if 'universal' in found and len(found) > 1:
+        others = ', '.join(p.name for r, p in found.items() if r != 'universal')
+        raise StoreError(f'universal.png fills both placements, so {others} cannot go with it: '
+                         'keep universal.png, or header and search.')
+
+    files = []
+    for role in ('universal', 'header', 'search'):
+        if role not in found:
+            continue
+        path = found[role]
+        fills, expected, fits = ROLES[role]
+        size = path.stat().st_size
+        if size > MAX_BYTES:
+            raise StoreError(f'{path.name} is {size // (1024 * 1024)} MB: Apple takes up to 500 MB.')
+        if path.suffix == '.png':
+            kind = 'image'
+            width, height = _png_size(path)
+        else:
+            kind = 'video'
+            width, height, fps, seconds = _video_facts(path)
+        if not fits(width, height):
+            raise StoreError(f'{path.name} is {width}x{height}: it has to be {expected}.')
+        facts = f'{width}x{height}'
+        if kind == 'video':
+            if fps not in (30, 60):
+                raise StoreError(f'{path.name} runs at {float(fps):g} fps: Apple takes exactly 30 or 60.')
+            if not 15 <= seconds <= 30:
+                raise StoreError(f'{path.name} is {seconds:.1f} s long: keep it from 15 to 30 s.')
+            facts += f', {int(fps)} fps, {seconds:.1f} s'
+        files.append({'path': path, 'name': path.name, 'size': size, 'kind': kind,
+                      'fills': fills, 'facts': facts})
+    return files
 
 
 class AppStore:
@@ -532,3 +701,213 @@ class AppStore:
                                         'sourceFileChecksum': hashlib.md5(data).hexdigest()}},
             })
         return plan + ['  uploaded: Apple processes them in a few minutes']
+
+    # --- Creative assets ----------------------------------------------------
+
+    def _version_for_assets(self) -> dict | None:
+        """The version open for changes, or None when every version is out.
+        Refuses a version on its way to the store: waiting for review, in
+        review, or approved and not yet released."""
+        versions = self.versions(limit=5)
+        for v in versions:
+            if v['state'] in EDITABLE:
+                return v
+        for v in versions:
+            if v['state'] not in DONE:
+                raise StoreError(
+                    f"{self.app['name']} {v['version']} is {v['state']}. Nothing is placed on a "
+                    'version waiting for review, in review or approved, and nothing was uploaded: '
+                    'run again once the next version is open (prepare).')
+        return None
+
+    def _in_library(self, library: str, kind: str) -> list[dict]:
+        return self.get(f'/v1/appAssetLibraries/{library}/{kind}s', {
+            'filter[category]': 'CREATIVE_ASSETS', 'limit': 200,
+        })['data']
+
+    @staticmethod
+    def _reusable(assets: list[dict], file: dict) -> dict | None:
+        """An asset already in the library with the file's name and size, ready
+        or still processing: placed again rather than uploaded again."""
+        same = [a for a in assets
+                if a['attributes'].get('fileName') == file['name']
+                and a['attributes'].get('fileSize') == file['size']
+                and a['attributes'].get('state') in REUSABLE]
+        same.sort(key=lambda a: a['attributes'].get('state') not in READY)
+        return same[0] if same else None
+
+    def _placed(self, localization: str) -> dict[str, list[dict]]:
+        """The header and search results placements on a localization now, by
+        type, each with the asset it shows."""
+        res = self.get(f'/v1/appStoreVersionLocalizations/{localization}/placements', {
+            'filter[placementType]': f'{HEADER},{SEARCH}', 'include': 'image,video', 'limit': 200,
+        })
+        names = {i['id']: (i.get('attributes') or {}).get('fileName') for i in res.get('included') or []}
+        placed: dict[str, list[dict]] = {}
+        for p in res['data']:
+            attributes = p.get('attributes') or {}
+            links = p.get('relationships') or {}
+            asset = ((links.get('image') or {}).get('data')
+                     or (links.get('video') or {}).get('data') or {}).get('id')
+            shown = names.get(asset) or (attributes.get('mediaType') or 'asset').lower()
+            placed.setdefault(attributes.get('placementType'), []).append(
+                {'id': p['id'], 'asset': asset, 'label': f'the one there now ({shown})'})
+        return placed
+
+    def _upload(self, library: str, file: dict) -> str:
+        """Reserve, send the parts, commit. Returns the asset's id."""
+        kind = KIND[file['kind']]
+        reserved = self.post(f'/v1/{kind}', {
+            'data': {
+                'type': kind,
+                'attributes': {'fileName': file['name'], 'fileSize': file['size'],
+                               'category': 'CREATIVE_ASSETS'},
+                'relationships': {'assetLibrary': {'data': {'type': 'appAssetLibraries', 'id': library}}},
+            },
+        })['data']
+        operations = reserved['attributes'].get('uploadOperations') or []
+        parts = len(operations)
+        _say(f"  {file['name']}: reserved in the Asset Library, sending it in "
+             f"{parts} part{'' if parts == 1 else 's'}")
+        with file['path'].open('rb') as source:
+            for op in operations:
+                source.seek(op['offset'])
+                part = source.read(op['length'])
+                headers = {h['name']: h['value'] for h in op.get('requestHeaders') or []}
+                call(op['method'], op['url'], data=part, headers=headers, expect_json=False)
+        self.patch(f"/v1/{kind}/{reserved['id']}", {
+            'data': {'type': kind, 'id': reserved['id'], 'attributes': {'uploaded': True}},
+        })
+        _say(f"  {file['name']}: uploaded; Apple is processing it")
+        return reserved['id']
+
+    def _processed(self, file: dict, asset: str) -> str:
+        """Wait until Apple has processed the asset. Returns its spec id."""
+        kind = KIND[file['kind']]
+        waited = 0
+        while True:
+            attributes = self.get(f'/v1/{kind}/{asset}')['data']['attributes']
+            state = attributes.get('state')
+            if state in READY:
+                return attributes.get('specId')
+            if state == 'FAILED':
+                details = '; '.join(d.get('description') or d.get('code') or ''
+                                    for d in attributes.get('stateDetails') or []) or 'no reason given'
+                raise StoreError(f"Apple could not process {file['name']} ({details}). It stays in "
+                                 'the Asset Library as FAILED; fix the file and run again.')
+            if state not in PROCESSING:
+                raise StoreError(f"{file['name']} is {state} in the Asset Library, not ready to place.")
+            if waited >= POLL_LIMIT:
+                raise StoreError(f"{file['name']} is still processing after {POLL_LIMIT // 60} minutes. "
+                                 'Run again later: the upload is reused, not sent twice.')
+            time.sleep(POLL_SECONDS)
+            waited += POLL_SECONDS
+
+    def _specs(self) -> tuple[dict[str, set[str]], dict[str, str]]:
+        """From Apple's reference data: the specs each placement type takes in
+        its group, and each spec's short name."""
+        data = self.get('/v1/appAssetLibraryRefData')['data']
+        ref = data[0]['attributes'] if data else {}
+        takes = {
+            t.get('placementTypeId'): {s for m in t.get('specMappings') or []
+                                       if m.get('placementGroupId') == GROUP for s in m.get('specs') or []}
+            for t in ref.get('placementTypes') or []
+        }
+        names = {s['specId']: s.get('shortName') or s['specId']
+                 for s in (ref.get('imageSpecs') or []) + (ref.get('videoSpecs') or [])}
+        return takes, names
+
+    @staticmethod
+    def _check_spec(file: dict, spec: str | None, takes: dict, names: dict) -> None:
+        """Apple matches each upload to a spec. Stop unless it is one that every
+        placement the file is meant for takes."""
+        for placement in file['fills']:
+            if spec not in takes.get(placement, set()):
+                wanted = ', '.join(names.get(s, s) for s in sorted(takes.get(placement, set())))
+                raise StoreError(
+                    f"Apple matched {file['name']} to spec {names.get(spec, spec)}, which the "
+                    f"{PLACE[placement]} placement does not take ({wanted or 'none listed'}). "
+                    'Nothing placed.')
+        _say(f"  {file['name']}: ready, matched to {names.get(spec, spec)}")
+
+    def assets(self, files: list[dict], source: str, apply: bool) -> list[str]:
+        """Upload the creative assets to the app's Asset Library (once: a file
+        already there with the same name and size is reused), then place them
+        on every localization of the version open for changes, replacing what
+        is there. With no version open, they are only uploaded."""
+        version = self._version_for_assets()
+        library = self.get(f'/v1/apps/{self.app_id}/assetLibrary')['data']['id']
+        kinds = {f['kind'] for f in files}
+        held = {kind: self._in_library(library, kind) for kind in kinds}
+        reuse = {f['name']: self._reusable(held[f['kind']], f) for f in files}
+
+        plan = [f"App Store creative assets: {self.app['name']}, from {source}"]
+        for f in files:
+            where = ' and '.join(PLACE[p] for p in f['fills'])
+            how = 'in the Asset Library already, reused' if reuse[f['name']] else 'upload it'
+            plan.append(f"  {f['name']} ({f['facts']}): {where}; {how}")
+
+        steps: list[tuple[str, str, str, dict, list[dict]]] = []
+        if version is None:
+            plan.append('  no version is open for changes: the files can go to the Asset Library '
+                        'now, and the placements wait for prepare (then run assets again)')
+        else:
+            locs = self.get(f"/v1/appStoreVersions/{version['id']}/appStoreVersionLocalizations")['data']
+            if not locs:
+                raise StoreError(f"{self.app['name']} {version['version']} has no localizations.")
+            plan.append(f"  on version {version['version']} ({version['state']}), in "
+                        + ', '.join(l['attributes'].get('locale') or '?' for l in locs) + ':')
+            for loc in locs:
+                locale = loc['attributes'].get('locale') or '?'
+                placed = self._placed(loc['id'])
+                for f in files:
+                    reused = reuse[f['name']]
+                    for placement in f['fills']:
+                        old = placed.get(placement, [])
+                        if reused and [o['asset'] for o in old] == [reused['id']]:
+                            plan.append(f"    {locale}: {PLACE[placement]}: {f['name']} is there "
+                                        'already, left as it is')
+                            continue
+                        gone = ''.join(f"delete {o['label']}, then " for o in old)
+                        plan.append(f"    {locale}: {PLACE[placement]}: {gone}place {f['name']}")
+                        steps.append((loc['id'], locale, placement, f, old))
+        if not apply:
+            return plan + ['  (plan only: run again with --yes to do it)']
+
+        for line in plan:
+            _say(line)
+        takes, names = self._specs()
+        ready: dict[str, str] = {}
+        for f in files:
+            reused = reuse[f['name']]
+            if reused:
+                _say(f"  {f['name']}: in the Asset Library already "
+                     f"({reused['attributes'].get('state')}), reused")
+                asset = reused['id']
+            else:
+                asset = self._upload(library, f)
+            self._check_spec(f, self._processed(f, asset), takes, names)
+            ready[f['name']] = asset
+
+        # Every asset is ready before any placement is touched, so a failed
+        # upload never leaves a localization with its old placement deleted.
+        for localization, locale, placement, f, old in steps:
+            for o in old:
+                self.delete(f"/v1/appAssetLibraryPlacements/{o['id']}")
+                _say(f"  {locale}: {PLACE[placement]}: deleted {o['label']}")
+            self.post('/v1/appAssetLibraryPlacements', {
+                'data': {
+                    'type': 'appAssetLibraryPlacements',
+                    'attributes': {'placementType': placement, 'placementGroup': GROUP},
+                    'relationships': {
+                        f['kind']: {'data': {'type': KIND[f['kind']], 'id': ready[f['name']]}},
+                        'appStoreVersionLocalization': {
+                            'data': {'type': 'appStoreVersionLocalizations', 'id': localization}},
+                    },
+                },
+            })
+            _say(f"  {locale}: {PLACE[placement]}: placed {f['name']}")
+        if version is None:
+            return ['  uploaded only: no version is open, so nothing was placed. Run prepare, '
+                    'then assets again; the uploads are reused.']
+        return [f"  done: they go out with {version['version']} when it is submitted"]

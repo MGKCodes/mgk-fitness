@@ -13,6 +13,7 @@
     python scripts/store/stores.py add-tester  <run|lift> --email ADDRESS --group NAME [--yes]
     python scripts/store/stores.py listing     <run|lift> [--ios|--android] [--from FILE] [--yes]
     python scripts/store/stores.py screenshots <run|lift> [--ios|--android] [--yes]
+    python scripts/store/stores.py assets      <run|lift> [--from DIR] [--yes]
 
 **Nothing changes without --yes.** Without it every command prints what it
 would do and stops, so a plan can be read before a store is touched.
@@ -56,6 +57,12 @@ ICON = {
     'run': REPO / 'apps/mgk_run/design/store/play-listing-icon-512.png',
     'lift': REPO / 'apps/mgk_lift/design/store/play-listing-icon-512.png',
 }
+# The App Store's creative assets (product page header, search results asset):
+# universal.png, or header.* and search.*. Not in git.
+CREATIVE = {
+    'run': REPO / 'store-assets/derived/creative',
+    'lift': REPO / 'apps/mgk_lift/screenshots/store/creative',
+}
 
 
 def _platforms(args) -> tuple[bool, bool]:
@@ -69,11 +76,19 @@ def _text(path: str | None) -> str | None:
     return Path(path).read_text(encoding='utf-8').strip() if path else None
 
 
+def _shown(path: Path) -> str:
+    """A folder as the plan names it: from the repository root when it is inside."""
+    try:
+        return path.resolve().relative_to(REPO).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='stores.py', description=__doc__.split('\n\n')[0])
     parser.add_argument('command', choices=[
         'status', 'links', 'prepare', 'submit', 'release', 'release-type', 'test-notes',
-        'testers', 'add-tester', 'listing', 'screenshots',
+        'testers', 'add-tester', 'listing', 'screenshots', 'assets',
     ])
     parser.add_argument('app', choices=sorted(APPS))
     parser.add_argument('--ios', action='store_true')
@@ -88,7 +103,9 @@ def main(argv: list[str] | None = None) -> int:
                         help='release-type: wait for `release` after approval')
     parser.add_argument('--email')
     parser.add_argument('--group')
-    parser.add_argument('--from', dest='source', help='the listing file (default apps/<app>/store/listing.json)')
+    parser.add_argument('--from', dest='source',
+                        help='listing: the listing file (default apps/<app>/store/listing.json); '
+                             'assets: the folder of creative assets')
     parser.add_argument('--yes', action='store_true', help='do it, rather than show the plan')
     args = parser.parse_args(argv)
     ios, android = _platforms(args)
@@ -190,6 +207,15 @@ def main(argv: list[str] | None = None) -> int:
                 out += Play(args.app).screenshots(
                     SHOTS[args.app] / 'play-still', feature if feature.exists() else None,
                     icon if icon.exists() else None, args.yes)
+
+        elif args.command == 'assets':
+            if args.android:
+                parser.error('assets is for the App Store only: Google Play has no product page '
+                             'header or search results asset')
+            from asc import AppStore, creative_files
+            folder = Path(args.source) if args.source else CREATIVE[args.app]
+            files = creative_files(folder)  # checked on disk before any call
+            out += AppStore(args.app).assets(files, _shown(folder), args.yes)
     except StoreError as e:
         print('\n'.join(out + [f'Stopped: {e}']))
         return 1
