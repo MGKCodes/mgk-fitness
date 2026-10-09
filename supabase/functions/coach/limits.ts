@@ -593,12 +593,18 @@ export const ZERO_USAGE: RecordedUsage = {
  * nearly free, and a per-user cap that sees free calls is a cap that never
  * binds — on the dearest models this function has ever routed to.
  *
- * So the recorded figure is `cost + upstream_inference_cost` whenever the
- * upstream figure is a finite positive number. It is added whenever present,
- * deliberately NOT gated on `is_byok`: if OpenRouter ever reported an
- * upstream figure on a call it also billed in full, the cap would count that
- * call twice and trip early, which is the safe way to be wrong. Gating on the
- * flag would make a missing or renamed `is_byok` a free call, which is not.
+ * **But OpenRouter fills the upstream figure in on its own calls too.** Its
+ * docs say the field is for BYOK only; the model probe on 2026-10-09 found
+ * every non-BYOK call (`is_byok: false`, served on OpenRouter's credits)
+ * reporting `upstream_inference_cost` equal to `cost`. Adding the two would
+ * record every ordinary call at twice its price, today's Gemini calls
+ * included, and the per-user caps would bind at half their size.
+ *
+ * So the two are added only when `is_byok` is true: then `cost` is
+ * OpenRouter's fee and the upstream figure is the provider's charge, two real
+ * payments. Otherwise the recorded figure is the larger of the two, which is
+ * `cost` on an ordinary call and the provider's charge on a BYOK call whose
+ * flag went missing. Counted once either way, and never recorded as free.
  *
  * An upstream figure with no `cost` beside it is a real charge with
  * OpenRouter's fee missing, so it is not a billed total: the row is flagged
@@ -634,7 +640,9 @@ export function usageFromResponse(
       promptTokens,
       completionTokens,
       totalTokens,
-      costCredits: Math.max(0, reportedCost) + upstream,
+      costCredits: u.is_byok === true
+        ? Math.max(0, reportedCost) + upstream
+        : Math.max(0, reportedCost, upstream),
       costEstimated: false,
     };
   }

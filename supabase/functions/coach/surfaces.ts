@@ -193,11 +193,31 @@ function text(value: unknown, maxChars: number): string {
 
 // Each nullable slot: the model returns null for anything it does not have, and
 // Dart treats null as "no change".
+//
+// A slot limited to a list of values is written as `anyOf` [the list, null],
+// not as `type: [type, "null"]` with null in its enum. Both mean the same, but
+// Claude's structured output refuses the second ("Enum value 'outdoor' does not
+// match declared type", the model probe on 2026-10-09, which failed intake and
+// log_run on every Claude model), and Gemini takes either. The enum is passed
+// with or without its null; the null branch is added here either way.
 const nullable = (
   type: string,
   description: string,
   extra: Record<string, unknown> = {},
-) => ({ type: [type, "null"], description, ...extra });
+) => {
+  const { enum: values, ...rest } = extra;
+  if (Array.isArray(values)) {
+    return {
+      anyOf: [
+        { type, enum: values.filter((v) => v !== null) },
+        { type: "null" },
+      ],
+      description,
+      ...rest,
+    };
+  }
+  return { type: [type, "null"], description, ...extra };
+};
 
 // ---- chat -------------------------------------------------------------------
 
