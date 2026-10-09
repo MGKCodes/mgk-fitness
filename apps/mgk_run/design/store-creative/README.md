@@ -6,14 +6,15 @@ picture shown in search instead of screenshots. Both appear on iOS and iPadOS
 27 and later. Drawn in [Remotion](https://www.remotion.dev) from the app's own
 screens, type and mark, with the store-shots kit (`../store-shots`).
 
-**Not chosen yet** (drafted 9 October 2026). The three options are on the
-review page; when one is picked, write it here with the date and make
-`render.sh` draw only that one by default.
+**B was chosen on 9 October 2026**: the Slipstream header film, with A's
+search picture. `render.sh` draws those two by default; the others are kept as
+source and drawn only when named. Lift's header was then redrawn to match, as
+its own launch looped (`apps/mgk_lift/design/store-creative`).
 
 | Option | Files | The idea |
 |---|---|---|
 | **A · The name, then the app** | `header-name` + `search` | Header: `RUN »` at rest, as on Play's feature graphic. Search: "Track every run." over three screens |
-| **B · Slipstream, looped** | `header-slipstream` (film) + `search` | Header: the launch animation chosen on 1 October (`../launch-films`), same beats and curves, then at rest; it fades back to the start so the loop has no jump |
+| **B · Slipstream, looped** (chosen) | `header-slipstream` (film) + `search` | Header: the launch animation chosen on 1 October (`../launch-films`), same beats and curves, then at rest; it fades back to the start so the loop has no jump |
 | **C · One picture** | `universal` | One 16:9 picture App Store Connect crops for both places |
 
 ## Rendering

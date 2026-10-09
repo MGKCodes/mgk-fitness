@@ -32,7 +32,9 @@ cp "$fonts"/Inter-{Black,ExtraBold,Bold,SemiBold,Medium,Regular}.ttf public/
 rm -rf public/screens
 cp -r "$store/screens" public/screens
 
-names="${@:-header-name header-slipstream search universal}"
+# B, chosen 2026-10-09: the Slipstream film and the search picture. The
+# others are drawn only when named.
+names="${@:-header-slipstream search}"
 for n in $names; do
   if [ "$n" = "header-slipstream" ]; then
     rm -f "out/$n.mp4"
