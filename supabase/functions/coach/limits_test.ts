@@ -427,6 +427,128 @@ Deno.test("a negative reported cost is floored at zero", () => {
   assertEquals(usage.costCredits, 0);
 });
 
+// ---- usage accounting under BYOK -------------------------------------------
+//
+// With our own provider key in OpenRouter, `cost` is only OpenRouter's fee and
+// the provider's charge arrives as `cost_details.upstream_inference_cost`. The
+// failure these are written against is the quiet one: every Claude call
+// recorded as free, and a spend cap that never binds.
+
+Deno.test("a call that is not BYOK is recorded exactly as before", () => {
+  // OpenRouter reports the upstream figure as 0 or null when it billed the
+  // call itself, and `cost` is then the whole charge. Nothing may change here,
+  // or the switch would re-price every Gemini call already on the books.
+  for (const upstream of [0, null]) {
+    const usage = usageFromResponse({
+      prompt_tokens: 1200,
+      completion_tokens: 800,
+      total_tokens: 2000,
+      cost: 0.00123,
+      is_byok: false,
+      cost_details: { upstream_inference_cost: upstream },
+    }, ACCOUNTING);
+    assertEquals(usage.costCredits, 0.00123);
+    assertEquals(usage.costEstimated, false);
+  }
+});
+
+Deno.test("a BYOK call is charged what the provider billed, not OpenRouter's fee", () => {
+  const usage = usageFromResponse({
+    prompt_tokens: 1500,
+    completion_tokens: 400,
+    total_tokens: 1900,
+    cost: 0,
+    is_byok: true,
+    cost_details: { upstream_inference_cost: 0.0004 },
+  }, ACCOUNTING);
+  assertEquals(usage.costCredits, 0.0004);
+  assertEquals(usage.costEstimated, false);
+});
+
+Deno.test("a BYOK fee and the provider's charge are added together", () => {
+  // Both are real money leaving the account, one to each party.
+  const usage = usageFromResponse({
+    prompt_tokens: 1500,
+    completion_tokens: 400,
+    cost: 0.00002,
+    is_byok: true,
+    cost_details: { upstream_inference_cost: 0.0004 },
+  }, ACCOUNTING);
+  assertAlmostEquals(usage.costCredits, 0.00042, 1e-12);
+  assertEquals(usage.costEstimated, false);
+});
+
+Deno.test("an upstream figure that is null, absent or nonsense is ignored", () => {
+  // A junk figure can neither buy back budget (negative) nor poison the sum.
+  for (
+    const details of [
+      { upstream_inference_cost: null },
+      { upstream_inference_cost: -0.5 },
+      { upstream_inference_cost: Number.NaN },
+      { upstream_inference_cost: Number.POSITIVE_INFINITY },
+      { upstream_inference_cost: "0.0004" },
+      {},
+      null,
+      "nope",
+      undefined,
+    ]
+  ) {
+    const usage = usageFromResponse(
+      {
+        prompt_tokens: 10,
+        completion_tokens: 5,
+        cost: 0.001,
+        cost_details: details,
+      },
+      ACCOUNTING,
+    );
+    assertEquals(
+      usage.costCredits,
+      0.001,
+      `${JSON.stringify(details)} must not change the cost`,
+    );
+    assertEquals(usage.costEstimated, false);
+  }
+});
+
+Deno.test("is_byok is not what decides whether the upstream cost counts", () => {
+  // Deliberately ungated. Counting a call twice trips the cap early; trusting a
+  // flag that went missing would let a real call through as free.
+  const usage = usageFromResponse({
+    prompt_tokens: 10,
+    completion_tokens: 5,
+    cost: 0,
+    cost_details: { upstream_inference_cost: 0.0004 },
+  }, ACCOUNTING);
+  assertEquals(usage.costCredits, 0.0004);
+});
+
+Deno.test("an upstream cost with no cost beside it is estimated, never free", () => {
+  // The provider's charge is real, but OpenRouter's fee is missing, so the row
+  // is not a billed total. It is never recorded below what the provider took.
+  const usage = usageFromResponse({
+    prompt_tokens: 100,
+    completion_tokens: 50,
+    is_byok: true,
+    cost_details: { upstream_inference_cost: 0.0004 },
+  }, ACCOUNTING);
+  // The token estimate is 150 / 1M * 2 = 0.0003, below what was billed.
+  assertEquals(usage.costCredits, 0.0004);
+  assertEquals(usage.costEstimated, true);
+});
+
+Deno.test("an upstream cost with no cost never undercuts the token estimate", () => {
+  // The other way round: a tiny upstream figure on a big call must not price it
+  // below what a missing `cost` was charged at before BYOK existed.
+  const usage = usageFromResponse({
+    prompt_tokens: 400_000,
+    completion_tokens: 100_000,
+    cost_details: { upstream_inference_cost: 0.0004 },
+  }, ACCOUNTING);
+  assertAlmostEquals(usage.costCredits, 1.0, 1e-9); // 0.5M * 2 credits/M
+  assertEquals(usage.costEstimated, true);
+});
+
 // ---- the shipped defaults are sane ----------------------------------------
 
 Deno.test("the shipped defaults permit a real onboarding conversation", () => {

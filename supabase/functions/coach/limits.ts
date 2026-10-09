@@ -581,6 +581,30 @@ export const ZERO_USAGE: RecordedUsage = {
  * in the cap. We estimate from tokens, and if even tokens are missing we
  * assume the surface spent its whole `max_tokens` budget. Both cases are
  * flagged `costEstimated`.
+ *
+ * ## Bring your own key
+ *
+ * **Under BYOK, `cost` is not what the call cost.** With a provider key held
+ * in OpenRouter (our own Anthropic key, for the Claude models), the provider
+ * bills that key directly and `cost` is only OpenRouter's fee on top — often
+ * 0. What the provider charged arrives separately, as
+ * `cost_details.upstream_inference_cost`, populated only on BYOK requests (0
+ * or null otherwise). Reading `cost` alone would record every Claude call as
+ * nearly free, and a per-user cap that sees free calls is a cap that never
+ * binds — on the dearest models this function has ever routed to.
+ *
+ * So the recorded figure is `cost + upstream_inference_cost` whenever the
+ * upstream figure is a finite positive number. It is added whenever present,
+ * deliberately NOT gated on `is_byok`: if OpenRouter ever reported an
+ * upstream figure on a call it also billed in full, the cap would count that
+ * call twice and trip early, which is the safe way to be wrong. Gating on the
+ * flag would make a missing or renamed `is_byok` a free call, which is not.
+ *
+ * An upstream figure with no `cost` beside it is a real charge with
+ * OpenRouter's fee missing, so it is not a billed total: the row is flagged
+ * `costEstimated`, and the figure is the larger of the upstream cost and the
+ * token estimate above. Never less than the provider actually charged, and
+ * never less than a missing `cost` was charged at before BYOK existed.
  */
 export function usageFromResponse(
   usage: unknown,
@@ -600,13 +624,17 @@ export function usageFromResponse(
     ? reportedTotal
     : promptTokens + completionTokens;
 
+  // What the provider billed our own key, on a BYOK request. Zero when absent,
+  // null, negative or not a number — a junk figure cannot buy back budget.
+  const upstream = upstreamCost(u.cost_details);
+
   const reportedCost = u.cost;
   if (typeof reportedCost === "number" && Number.isFinite(reportedCost)) {
     return {
       promptTokens,
       completionTokens,
       totalTokens,
-      costCredits: Math.max(0, reportedCost),
+      costCredits: Math.max(0, reportedCost) + upstream,
       costEstimated: false,
     };
   }
@@ -619,9 +647,18 @@ export function usageFromResponse(
     promptTokens,
     completionTokens,
     totalTokens,
-    costCredits: (billableTokens / 1_000_000) * rate,
+    costCredits: Math.max(upstream, (billableTokens / 1_000_000) * rate),
     costEstimated: true,
   };
+}
+
+/** `cost_details.upstream_inference_cost` when it is a real charge, else 0. */
+function upstreamCost(details: unknown): number {
+  if (typeof details !== "object" || details === null) return 0;
+  const value = (details as Record<string, unknown>).upstream_inference_cost;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : 0;
 }
 
 function count(value: unknown): number {
