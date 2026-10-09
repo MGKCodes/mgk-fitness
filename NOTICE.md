@@ -30,10 +30,6 @@ interacts with the software *over a network* be offered its source. A website
 is the literal case that clause was written for, so an AGPL `web/` would owe a
 source offer to every visitor. That is a real obligation attached to no benefit.
 
-The same split already exists across the studio: `getliftio.com` is a public
-repository serving a live site under an all-rights-reserved licence. Visible,
-not reusable. `web/` matches it.
-
 **The generated legal pages under `web/public/` are a special case.** They are
 rendered from `apps/mgk_run/docs/`, which is AGPL, and their text is a published
 legal document rather than a creative work anybody would want to copy. Nothing
@@ -120,17 +116,18 @@ copies of 14 of those renamed during a later library consolidation, and 4
 (`treadmill-1/2`, `bike-1/2`) have **no determined origin** — they match no
 Everkinetic filename and no record of their creation survives.
 
-### Still outstanding elsewhere
+### Outside this repository
 
-This repository is settled. Two things outside it are not, and both still say
-otherwise:
+Settled since Lift 2.0.0 replaced Liftio on the same App Store listing. Lift's
+terms say the illustrations are used under their own licences, and its
+Settings › Credits screen gives the Everkinetic attribution under CC BY-SA 4.0.
+getliftio.com, which carried the old clause, was retired on 2026-10-09 and
+redirects to Lift's terms.
 
-- **Liftio's terms of service §8.2**, and the same clause on **getliftio.com** —
-  *"Exercise illustrations used in the App are AI-generated and owned by MGKCodes
-  Ltd. All rights reserved."* That sentence describes the same files and needs
-  to match this notice.
-- **The Liftio app itself** has no credits surface; the Everkinetic block was
-  removed from its Settings and About screens in `bc5c788` and never replaced.
+One copy cannot be corrected: an install of Liftio 1.4.0 that never updates.
+Its terms of service §8.2 still say *"Exercise illustrations used in the App
+are AI-generated and owned by MGKCodes Ltd. All rights reserved."*, and it has
+no credits screen (the Everkinetic block was removed in `bc5c788`).
 
 Note also that the code's app store permission
 ([`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md)) is granted by its copyright
