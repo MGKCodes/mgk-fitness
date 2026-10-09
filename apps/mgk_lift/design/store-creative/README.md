@@ -6,15 +6,18 @@ picture shown in search instead of screenshots. Both appear on iOS and iPadOS
 27 and later. Drawn in [Remotion](https://www.remotion.dev) from the app's own
 screens, type and mark, with the store-shots kit (`../store-shots`).
 
-**Not chosen yet** (drafted 9 October 2026). The three options are on the
-review page; when one is picked, write it here with the date and make
-`render.sh` draw only that one by default.
+**Proposed on 9 October 2026, to match Run's choice:** `header-launch`, the
+launch looped as a header film, with A's search picture. Run's B (Slipstream
+looped) was chosen that day, and Lift's header follows it with Lift's own
+launch rather than the rest clock. Once it is confirmed, write it here and make
+`render.sh` draw only those two by default.
 
 | Option | Files | The idea |
 |---|---|---|
 | **A · The name, then the app** | `header-name` + `search` | Header: the launch's last frame, the mark above LIFT. Search: "Log every set." over three screens |
 | **B · Between sets** | `header-between-sets` (film) + `search` | Header: the rest dock at poster size, running in real time from 0:10 to REST OVER and on past zero, as the app does |
 | **C · One picture** | `universal` | One 16:9 picture App Store Connect crops for both places |
+| **The launch, looped** (proposed) | `header-launch` (film) + `search` | Header: lib/src/core/launch/launch_curtain.dart, beat for beat. The mark dips, drives up and lifts LIFT into place, then rests; it fades back to the start so the loop has no jump |
 
 ## Rendering
 

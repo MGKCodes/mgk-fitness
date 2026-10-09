@@ -33,9 +33,9 @@ cp "$fonts"/Inter-{Black,ExtraBold,Bold,SemiBold,Medium,Regular}.ttf public/
 rm -rf public/screens
 cp -r "$store/screens" public/screens
 
-names="${@:-header-name header-between-sets search universal}"
+names="${@:-header-name header-launch header-between-sets search universal}"
 for n in $names; do
-  if [ "$n" = "header-between-sets" ]; then
+  if [ "$n" = "header-between-sets" ] || [ "$n" = "header-launch" ]; then
     rm -f "out/$n.mp4"
     npx remotion render src/index.ts "$n" "out/$n.mp4" --codec=h264 --crf=16 --pixel-format=yuv420p --log=error --port="$port"
     test -s "out/$n.mp4"

@@ -1,6 +1,6 @@
 import React from 'react';
 import {Composition} from 'remotion';
-import {HeaderBetweenSets, HeaderName} from './Header';
+import {HeaderBetweenSets, HeaderLaunch, HeaderName} from './Header';
 import {Search} from './Search';
 import {Universal} from './Universal';
 import {FILM_SECONDS, FPS, SPEC} from './spec';
@@ -12,6 +12,8 @@ import {FILM_SECONDS, FPS, SPEC} from './spec';
  * - B · `header-between-sets` + `search`: the header moves, the search
  *   result is A's.
  * - C · `universal`: one picture for both placements.
+ * - `header-launch` + `search`: the launch, looped, as Run's header plays
+ *   Slipstream. Drawn on 2026-10-09 after Run's B was chosen, to match it.
  */
 export const Root: React.FC = () => (
   <>
@@ -19,6 +21,14 @@ export const Root: React.FC = () => (
     <Composition
       id="header-between-sets"
       component={HeaderBetweenSets}
+      durationInFrames={FILM_SECONDS * FPS}
+      fps={FPS}
+      width={SPEC.header.w}
+      height={SPEC.header.h}
+    />
+    <Composition
+      id="header-launch"
+      component={HeaderLaunch}
       durationInFrames={FILM_SECONDS * FPS}
       fps={FPS}
       width={SPEC.header.w}

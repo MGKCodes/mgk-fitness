@@ -100,6 +100,227 @@ const Centred: React.FC<{
 );
 
 /**
+ * The launch, looped: what Lift plays when it opens, on the header, as Run's
+ * header plays Slipstream. Ported beat for beat from
+ * lib/src/core/launch/launch_curtain.dart (LaunchTimeline, LaunchMarkPainter):
+ * the mark stands, dips and draws in on itself (0.2 to 0.56 s), drives up
+ * (to 1.02 s), and LIFT rises from under its own baseline a beat behind it
+ * while the air falls past either side; MGKFITNESS comes in from 1.0 s. All
+ * of it is in the painter's points, multiplied by [K].
+ *
+ * Started 0.4 s in, so the first frame holds. Then it rests, with the air
+ * falling now and again, and before the fifteen seconds are out the lockup
+ * fades and the big mark comes back to the middle, which is the first frame,
+ * so the loop has no jump. The curtain lift is left out: there is no app
+ * underneath to uncover.
+ */
+export const HeaderLaunch: React.FC = () => {
+  const ready = useFonts();
+  const frame = useCurrentFrame();
+  if (!ready) return null;
+  const t = frame / FPS;
+  const s = t - 0.4;
+  const K = 3.4;
+  const cx = W / 2;
+  const out = Easing.bezier(0.16, 1, 0.3, 1);
+  const inOut = Easing.bezier(0.65, 0, 0.35, 1);
+  const seg = (x: number, a: number, b: number, curve: (n: number) => number = inOut) =>
+    interpolate(x, [a, b], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: curve});
+  const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
+  const inkHeight = (m: number) => {
+    const g = markOf(m);
+    return g.gap + g.lean + g.stroke;
+  };
+
+  // The lockup, as the painter lays it out: mark, a space, the word under it.
+  const SIZE = 60 * K;
+  const TRACK = 3 * K;
+  const cap = 0.727 * SIZE;
+  const small = 112 * K;
+  const big = 150 * K;
+  const markH = inkHeight(small);
+  const space = 20 * K;
+  const caption = 10 * K;
+  const captionGap = 22 * K;
+  const line = 50;
+  const lineGap = 56;
+  // Centred so the whole block, mark to the line under it, sits in the safe box.
+  const lockH = markH + space + cap;
+  const blockH = lockH + captionGap + caption + lineGap + line;
+  const top = safe.y + (safe.h - blockH) / 2;
+  const cy = top + lockH / 2;
+  const home = top + markH / 2;
+  const baselineY = top + lockH;
+
+  // The three beats.
+  const dip = seg(s, 0.2, 0.56);
+  const drive = seg(s, 0.56, 1.02, out);
+  const m = lerp(big, small, dip);
+  const low = cy + 30 * K;
+  const up = (amount: number) => lerp(low, home, amount);
+  const markY = drive > 0 ? up(drive) : lerp(cy, low, dip);
+  const spread = lerp(lerp(1, 0.72, dip), 1, seg(s, 0.56, 0.9, out));
+  const before = up(seg(s, 0.59, 1.05, out));
+  const speed = Math.abs(up(drive) - before);
+
+  // The word, rising a beat behind the mark. Nothing before the drive.
+  const risen = seg(s, 0.62, 1.1, out);
+  const named = seg(s, 1.0, 1.4, out);
+  const lined = seg(s, 1.3, 1.8, out);
+
+  // The end: the lockup fades, then the big mark returns to the middle.
+  const gone = seg(t, FILM_SECONDS - 1.4, FILM_SECONDS - 0.8);
+  const back = seg(t, FILM_SECONDS - 0.8, FILM_SECONDS - 1 / FPS);
+  const ending = t > FILM_SECONDS - 1.4;
+
+  // The air: the launch's six lines once, then a few every so often, falling
+  // slowly enough to follow. Lanes either side of the name, never across it.
+  const launchAir = [
+    {x: -96, len: 54, at: 0.58, o: 0.22},
+    {x: 104, len: 96, at: 0.63, o: 0.14},
+    {x: -128, len: 72, at: 0.6, o: 0.2},
+    {x: 136, len: 120, at: 0.66, o: 0.12},
+    {x: 160, len: 40, at: 0.7, o: 0.18},
+    {x: -156, len: 30, at: 0.72, o: 0.14},
+  ].map((l) => ({...l, dur: 0.42, curve: out}));
+  const lanes = [-112, 148, -236, 288, -300, 210];
+  const laterAir = [3.2, 5.9, 8.4, 10.8].flatMap((at, j) =>
+    lanes.slice(j % 3, (j % 3) + 2 + (j % 2)).map((x, i) => ({
+      x,
+      len: 50 + 30 * ((i + j) % 3),
+      at: at + i * 0.35,
+      o: 0.1 + 0.03 * ((i + j) % 2),
+      dur: 1.5,
+      curve: Easing.linear,
+    })),
+  );
+  const air = [...launchAir, ...laterAir].map((l, i) => {
+    const p = seg(s, l.at, l.at + l.dur, Easing.linear);
+    if (p <= 0 || p >= 1) return null;
+    const y = lerp(cy - 200 * K, cy + 170 * K, l.curve(p));
+    const fade = Math.sin(Math.PI * p);
+    const x = cx + l.x * K;
+    return (
+      <line
+        key={i}
+        x1={x}
+        x2={x}
+        y1={y}
+        y2={y - l.len * K * (0.4 + 0.6 * fade)}
+        stroke={C.white}
+        strokeWidth={1.25 * K}
+        strokeLinecap="round"
+        opacity={l.o * fade * (1 - gone)}
+      />
+    );
+  });
+
+  // The two chevrons, their ink centred on (x, y), drawn in by [sp].
+  const LaunchMark: React.FC<{y: number; size: number; sp: number; opacity: number}> = ({y, size, sp, opacity}) => {
+    const g = markOf(size);
+    const gap = g.gap * sp;
+    const base = y + g.lean / 2;
+    return (
+      <g opacity={opacity}>
+        {[0, 1].map((i) => {
+          const yy = base + gap / 2 - i * gap;
+          return (
+            <polyline
+              key={i}
+              points={`${cx - g.half},${yy} ${cx},${yy - g.lean} ${cx + g.half},${yy}`}
+              fill="none"
+              stroke={i === 0 ? C.silver : C.white}
+              strokeWidth={g.stroke}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        })}
+      </g>
+    );
+  };
+
+  // Inter's alphabetic baseline sits 0.974 of the size below the top of a 1.22 line.
+  const baseline = 0.974 * SIZE;
+  const wordTop = baselineY - baseline;
+  const glow = lerp(seg(s, 0.4, 1.1, out), 0, back);
+
+  return (
+    <AbsoluteFill style={{background: C.bg, fontFamily: 'Inter', color: C.white}}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          opacity: glow,
+          background: 'radial-gradient(115% 62% at 50% 16%, rgba(58,58,58,0.55) 0%, rgba(58,58,58,0) 62%)',
+        }}
+      />
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
+        {air}
+      </svg>
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: wordTop,
+          // The floor it comes up through: just under the baseline.
+          height: baseline + 1.5 * K,
+          overflow: 'hidden',
+          opacity: 1 - gone,
+        }}
+      >
+        <div
+          style={{
+            transform: `translateY(${(1 - risen) * (cap + 6 * K)}px)`,
+            textAlign: 'center',
+            fontWeight: 800,
+            fontSize: SIZE,
+            lineHeight: 1.22,
+            letterSpacing: TRACK,
+            paddingLeft: TRACK,
+            whiteSpace: 'nowrap',
+            visibility: risen > 0 ? 'visible' : 'hidden',
+            willChange: 'transform',
+          }}
+        >
+          {WORDS.name}
+        </div>
+      </div>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
+        {!ending
+          ? [3, 2, 1].map((ghost) => {
+              const o = Math.min(0.28, speed / (36 * K)) / ghost;
+              return o < 0.004 ? null : (
+                <LaunchMark key={ghost} y={markY + speed * ghost * 0.9} size={m} sp={spread} opacity={o} />
+              );
+            })
+          : null}
+        {!ending ? <LaunchMark y={markY} size={m} sp={spread} opacity={1} /> : null}
+        {ending ? (
+          <>
+            <LaunchMark y={home} size={small} sp={1} opacity={1 - gone} />
+            <LaunchMark y={cy} size={big} sp={1} opacity={back} />
+          </>
+        ) : null}
+      </svg>
+      <Centred
+        top={baselineY + captionGap + lerp(6 * K, 0, named)}
+        size={caption}
+        weight={600}
+        track={4.2 * K}
+        color={APP.textSecondary}
+      >
+        <span style={{opacity: 0.88 * named * (1 - gone)}}>{WORDS.suite}</span>
+      </Centred>
+      <Centred top={baselineY + captionGap + caption + lineGap} size={line} weight={500} track={0.4} color={C.silver}>
+        <span style={{opacity: lined * (1 - gone)}}>{WORDS.line}</span>
+      </Centred>
+    </AbsoluteFill>
+  );
+};
+
+/**
  * B · Between sets. The rest dock at the foot of a session, at poster size,
  * running in real time: RESTING with the last ten seconds going, the ring
  * emptying, then REST OVER in the app's green and the clock counting on past
