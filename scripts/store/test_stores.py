@@ -72,7 +72,7 @@ class FakeStore:
         self.sent.append((method, url))
         for (m, fragment), answer in self.answers.items():
             if m == method and fragment in url:
-                return answer
+                return answer.resolve() if hasattr(answer, 'resolve') else answer
         return None
 
     def writes(self):
@@ -439,6 +439,16 @@ def asset_answers(versions, spec='UNI', placed=None, included=None, library=None
     }
 
 
+class _Next:
+    """An answer that changes on each request: the next one from [states]."""
+
+    def __init__(self, states):
+        self.states = states
+
+    def resolve(self):
+        return next(self.states)
+
+
 class AppleAssets(unittest.TestCase):
     """The product page header and search results asset: checked on disk
     first, uploaded once, placed on every localization of the open version."""
@@ -590,6 +600,19 @@ class AppleAssets(unittest.TestCase):
             {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:30')
         self.assertEqual(code, 1)
         self.assertIn('runs 00 to 29', printed)
+
+    def test_a_video_reporting_complete_is_still_processing(self):
+        # Seen live: COMPLETE between the commit and PREPARE_FOR_SUBMISSION.
+        answers = asset_answers([OPEN, LIVE])
+        answers[('GET', '/v1/appAssetLibraryVideos/')] = {'data': {'id': 'VID1', 'attributes': {
+            'state': 'COMPLETE', 'specId': None}}}
+        ready = {'data': {'id': 'VID1', 'attributes': {'state': 'PREPARE_FOR_SUBMISSION', 'specId': 'HV'}}}
+        states = iter([answers[('GET', '/v1/appAssetLibraryVideos/')], ready])
+        answers[('GET', '/v1/appAssetLibraryVideos/')] = _Next(states)
+        with mock.patch.object(asc.time, 'sleep'):
+            code, sent, printed, _ = self.run_assets({'header.mp4': (3840, 1646)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        self.assertIn('header.mp4: ready', printed)
 
     def test_a_reused_video_gets_its_opening_still_changed(self):
         with tempfile.TemporaryDirectory() as folder:
