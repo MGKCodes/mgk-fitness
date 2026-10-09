@@ -23,7 +23,12 @@ const E = {
  * word at 60, the mark at 92 sitting 13 after it, MGKFITNESS at 10 under. All
  * in points, multiplied by [k] here to fill Apple's safe box.
  */
-const K = 5.4;
+// Sized for a phone, where the whole header can be shown at a few hundred
+// points wide: the lockup and its line fill the safe box. MGKFITNESS sits 38
+// points under the name's centre line here, not the launch's 46, so the line
+// under it still fits inside the box.
+const K = 7.0;
+const CAPTION_DROP = 38;
 const lockup = () => {
   const SIZE = 60 * K;
   const TRACK = 3 * K;
@@ -34,11 +39,11 @@ const lockup = () => {
   const lockW = wordW + space + g.width;
   const left = (W - lockW) / 2;
   const caption = 10 * K;
-  const line = 50;
-  const lineGap = 56;
+  const line = 68;
+  const lineGap = 50;
   // Centre the whole block, the capitals' top to the line's foot, on the safe box.
   const halfCap = (0.727 * SIZE) / 2;
-  const blockH = halfCap + 46 * K + caption + lineGap + line;
+  const blockH = halfCap + CAPTION_DROP * K + caption + lineGap + line;
   const cy = safe.y + (safe.h - blockH) / 2 + halfCap;
   return {SIZE, TRACK, wordW, small, g, space, left, markHome: left + wordW + space + g.width / 2, cy, caption, line, lineGap};
 };
@@ -94,8 +99,8 @@ const Words: React.FC<{cy: number; opacity?: number; reveal?: number}> = ({cy, o
 
 const Under: React.FC<{cy: number; caption: number; line: number}> = ({cy, caption, line}) => {
   const L = lockup();
-  // Slipstream's Caption sits 46 points under the name's centre line.
-  const top = cy + 46 * K;
+  // Slipstream's Caption sits 46 points under the name's centre line; here 38.
+  const top = cy + CAPTION_DROP * K;
   return (
     <>
       <div

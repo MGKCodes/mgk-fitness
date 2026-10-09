@@ -19,19 +19,22 @@ const {w: W, h: H, safe} = SPEC.search;
 export const Search: React.FC = () => {
   const ready = useFonts();
   if (!ready) return null;
-  const HEAD = 180;
-  const SUB = 92;
+  // Read on a phone at a few hundred points wide, so set large.
+  const HEAD = 230;
+  const SUB = 128;
   const [head, sub] = WORDS.search;
   const subW = widthOf(sub, SUB, '600');
-  const sub2 = subW > safe.w ? Math.floor((SUB * safe.w) / subW) : SUB;
+  // Fitted with a margin inside the box, so a crop on its edge misses the letters.
+  const room = safe.w - 120;
+  const sub2 = subW > room ? Math.floor((SUB * room) / subW) : SUB;
   const textTop = safe.y + 12;
   const phonesTop = textTop + HEAD * 1.06 + 30 + sub2 * 1.2 + 110;
 
-  const hero = 700;
-  const side = 610;
+  const hero = 760;
+  const side = 650;
   const fHero = frameOf('iphone', hero);
   const fSide = frameOf('iphone', side);
-  const gap = 70;
+  const gap = 60;
   const rowW = fHero.width + 2 * fSide.width + 2 * gap;
   const x0 = (W - rowW) / 2;
   const phones = [
