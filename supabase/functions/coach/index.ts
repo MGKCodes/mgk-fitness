@@ -51,7 +51,8 @@ import {
   type App,
   type Body,
   modelFor,
-  PROVIDER_ROUTING,
+  providerRequest,
+  reasoningFor,
   SURFACES,
   type SurfaceSpec,
   type Tier,
@@ -176,23 +177,21 @@ async function callProvider(opts: {
         "HTTP-Referer": opts.attribution.referer,
         "X-Title": opts.attribution.title,
       },
-      body: JSON.stringify({
+      // Built in surfaces.ts so a test can see it: the routing flags (schema
+      // enforcement, the no-training rule, fallback across providers) and
+      // whether `reasoning` is sent at all — see `providerRequest`.
+      body: JSON.stringify(providerRequest({
         model: opts.model,
-        max_tokens: surface.maxTokens,
-        messages: surface.messages(opts.body),
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: surface.name,
-            strict: true,
-            schema: surface.schema,
-          },
-        },
-        // Schema enforcement, the no-training rule, and fallback across
-        // providers. Defined in surfaces.ts so a test can assert it — see
-        // PROVIDER_ROUTING.
-        provider: PROVIDER_ROUTING,
-      }),
+        surface,
+        body: opts.body,
+        // From COACH_REASONING, per model, and undefined — no field at all —
+        // for any model it does not name, which is the Gemini deployment as it
+        // stands. Opt-in because `require_parameters: true` means a model
+        // whose endpoints do not support `reasoning` would fail to route
+        // rather than ignore it. Read here rather than by the caller so the
+        // memory rewrite in `regenerate` gets the same rule for free.
+        reasoning: reasoningFor(opts.model, (k) => Deno.env.get(k)),
+      })),
       // Aborting throws, which lands in the catch below and is already handled
       // as an unreachable upstream. A timeout and a refused connection are the
       // same thing from here: no answer, and the budget still spent.

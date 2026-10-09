@@ -31,11 +31,15 @@ import {
   logRunMessages,
   modelFor,
   PROVIDER_ROUTING,
+  providerRequest,
+  REASONING_EFFORTS,
+  reasoningFor,
   renderSessionInProgress,
   RUN_PERSONA,
   setGoalMessages,
   summariseMessages,
   SURFACES,
+  type SurfaceSpec,
   tierFrom,
 } from "./surfaces.ts";
 import { SURFACE_NAMES } from "./limits.ts";
@@ -1253,6 +1257,163 @@ Deno.test("routing carries nothing beyond the flags it is meant to", () => {
     "data_collection",
     "require_parameters",
   ]);
+});
+
+// ---- reasoning control ------------------------------------------------------
+//
+// Opt-in per model, because `require_parameters: true` would refuse to route a
+// model whose endpoints do not support the field. So the tests are mostly about
+// what sends NOTHING — and the one that matters most is that the Gemini
+// deployment's request does not change by a byte.
+
+const HAIKU = "anthropic/claude-haiku-5.5";
+const SONNET = "anthropic/claude-sonnet-5.5";
+const GEMINI = "google/gemini-3.6-flash-lite";
+
+Deno.test("with COACH_REASONING unset or blank, no model is sent reasoning", () => {
+  const unset: Record<string, string>[] = [
+    {},
+    { COACH_REASONING: "" },
+    { COACH_REASONING: "  " },
+  ];
+  for (const vars of unset) {
+    const get = env(vars);
+    for (const model of [HAIKU, SONNET, GEMINI]) {
+      assertEquals(reasoningFor(model, get), undefined);
+    }
+  }
+});
+
+Deno.test("COACH_REASONING is read as model=effort pairs, spaces and all", () => {
+  const get = env({
+    COACH_REASONING: ` ${HAIKU} = none ,${SONNET}=low , `,
+  });
+  assertEquals(reasoningFor(HAIKU, get), { effort: "none", exclude: true });
+  assertEquals(reasoningFor(SONNET, get), { effort: "low", exclude: true });
+});
+
+Deno.test("a model the secret does not name is sent no reasoning", () => {
+  const get = env({ COACH_REASONING: `${HAIKU}=none,${SONNET}=low` });
+  assertEquals(reasoningFor(GEMINI, get), undefined);
+  // Verbatim, never a prefix or substring: a near-miss is a different model.
+  assertEquals(reasoningFor("anthropic/claude-haiku-5", get), undefined);
+  assertEquals(reasoningFor(`${HAIKU}:beta`, get), undefined);
+});
+
+Deno.test("an effort word OpenRouter does not take is ignored, not guessed at", () => {
+  for (const effort of ["off", "None", "disabled", "0", "", "low medium"]) {
+    const get = env({ COACH_REASONING: `${HAIKU}=${effort}` });
+    assertEquals(
+      reasoningFor(HAIKU, get),
+      undefined,
+      `"${effort}" must not be sent`,
+    );
+  }
+  // Ignoring a bad entry leaves the rest of the secret working, including a
+  // later valid entry for the same model.
+  const get = env({
+    COACH_REASONING: `${HAIKU}=off,${SONNET}=low,${HAIKU}=none`,
+  });
+  assertEquals(reasoningFor(SONNET, get), { effort: "low", exclude: true });
+  assertEquals(reasoningFor(HAIKU, get), { effort: "none", exclude: true });
+});
+
+Deno.test("an entry that is not exactly one model=effort is ignored", () => {
+  for (const entry of [HAIKU, `${HAIKU}=none=low`, "=none", `${HAIKU}=`]) {
+    const get = env({ COACH_REASONING: entry });
+    assertEquals(
+      reasoningFor(HAIKU, get),
+      undefined,
+      `"${entry}" must be ignored`,
+    );
+  }
+});
+
+Deno.test("every effort OpenRouter accepts can be configured", () => {
+  for (const effort of REASONING_EFFORTS) {
+    const get = env({ COACH_REASONING: `${HAIKU}=${effort}` });
+    assertEquals(reasoningFor(HAIKU, get), { effort, exclude: true });
+  }
+});
+
+// A surface whose messages do not depend on the clock, so the request it makes
+// can be compared byte for byte with one written out by hand.
+const FIXED_SURFACE: SurfaceSpec = {
+  ...SURFACES.chat,
+  messages: () => [
+    { role: "system", content: "persona" },
+    { role: "user", content: "can we move Thursday" },
+  ],
+};
+
+Deno.test("an unconfigured model's request is byte for byte what it always was", () => {
+  // The body index.ts sent before `reasoning` existed, written out the way it
+  // was inline there. The Gemini deployment must not change by a byte when this
+  // ships with COACH_REASONING unset.
+  const before = JSON.stringify({
+    model: GEMINI,
+    max_tokens: FIXED_SURFACE.maxTokens,
+    messages: FIXED_SURFACE.messages({}),
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: FIXED_SURFACE.name,
+        strict: true,
+        schema: FIXED_SURFACE.schema,
+      },
+    },
+    provider: PROVIDER_ROUTING,
+  });
+  const after = JSON.stringify(providerRequest({
+    model: GEMINI,
+    surface: FIXED_SURFACE,
+    body: {},
+    reasoning: reasoningFor(GEMINI, env({ COACH_MODEL: GEMINI })),
+  }));
+  assertEquals(after, before);
+});
+
+Deno.test("no surface sends reasoning to a model COACH_REASONING does not name", () => {
+  const configs: Record<string, string>[] = [
+    { COACH_MODEL: GEMINI },
+    { COACH_MODEL: GEMINI, COACH_REASONING: `${HAIKU}=none,${SONNET}=low` },
+  ];
+  for (const vars of configs) {
+    const get = env(vars);
+    for (const name of SURFACE_NAMES) {
+      const request = providerRequest({
+        model: GEMINI,
+        surface: SURFACES[name],
+        body: {},
+        reasoning: reasoningFor(GEMINI, get),
+      });
+      assert(!("reasoning" in request), `${name} must not send reasoning`);
+      assertEquals(Object.keys(request), [
+        "model",
+        "max_tokens",
+        "messages",
+        "response_format",
+        "provider",
+      ]);
+    }
+  }
+});
+
+Deno.test("a configured model is sent its effort, and keeps every routing flag", () => {
+  const get = env({ COACH_REASONING: `${HAIKU}=none` });
+  for (const name of SURFACE_NAMES) {
+    const request = providerRequest({
+      model: HAIKU,
+      surface: SURFACES[name],
+      body: {},
+      reasoning: reasoningFor(HAIKU, get),
+    });
+    assertEquals(request.reasoning, { effort: "none", exclude: true });
+    // The privacy flag rides on the same request; adding a field must never
+    // be the change that drops it.
+    assertEquals(request.provider, PROVIDER_ROUTING);
+    assertEquals(request.max_tokens, SURFACES[name].maxTokens);
+  }
 });
 
 // ---- lift_plan --------------------------------------------------------------

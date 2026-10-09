@@ -1863,6 +1863,76 @@ export const PROVIDER_ROUTING = {
   allow_fallbacks: true,
 } as const;
 
+// ---- the request body -------------------------------------------------------
+
+/**
+ * Every effort word OpenRouter's `reasoning` parameter accepts. `"none"` turns
+ * thinking off.
+ */
+export const REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type ReasoningEffort = typeof REASONING_EFFORTS[number];
+
+/** What is sent as `reasoning`, on the requests that send anything. */
+export interface Reasoning {
+  effort: ReasoningEffort;
+  /** Keeps the reasoning text out of the response. It is still billed. */
+  exclude: true;
+}
+
+/**
+ * The body POSTed to OpenRouter for one call.
+ *
+ * Built here rather than inline in index.ts for the reason PROVIDER_ROUTING
+ * is: index.ts cannot be imported, so a body assembled there is a body no test
+ * can see. Two things depend on seeing it — that the routing flags ride on
+ * every request, and that a model with no `COACH_REASONING` entry gets exactly
+ * the request it got before the field existed. tool/probe_models.ts builds its
+ * requests through this too, so what the probe measures is what production
+ * sends.
+ *
+ * `reasoning` is appended LAST and only when defined, so with the secret unset
+ * — the Gemini deployment as it stands — the body serialises byte for byte as
+ * it did before. There is a test that holds exactly that.
+ */
+export function providerRequest(opts: {
+  model: string;
+  surface: SurfaceSpec;
+  body: Body;
+  reasoning?: Reasoning;
+}): Record<string, unknown> {
+  const { model, surface, body, reasoning } = opts;
+  return {
+    model,
+    max_tokens: surface.maxTokens,
+    messages: surface.messages(body),
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: surface.name,
+        strict: true,
+        schema: surface.schema,
+      },
+    },
+    // Schema enforcement, the no-training rule, and fallback across providers.
+    // See PROVIDER_ROUTING above.
+    provider: PROVIDER_ROUTING,
+    // Only for a model COACH_REASONING names — see `reasoningFor`. Never by
+    // default: with `require_parameters: true`, a request that carries it is
+    // routed ONLY to endpoints that support it, so on a model whose endpoints
+    // do not it would fail to route rather than be ignored.
+    ...(reasoning ? { reasoning } : {}),
+  };
+}
+
 // ---- the registry -----------------------------------------------------------
 
 // Typed against the `Surface` union, so a surface added to the limiter without
@@ -2352,4 +2422,66 @@ export function allowedOverride(
 
   const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
   return allowed.includes(wanted) ? wanted : undefined;
+}
+
+/**
+ * How hard a model may think before it answers — or `undefined`, which sends
+ * no `reasoning` field at all and leaves the request exactly as it was.
+ *
+ * **Why it exists.** The Claude models think by default, the thinking is
+ * billed as output, and on OpenRouter `max_tokens` covers the reasoning and the
+ * visible answer TOGETHER. With budgets of 256 to 1024 tokens, thinking can
+ * spend the whole allowance before the answer starts: `finish_reason`
+ * "length", and an empty or truncated JSON object that lands as
+ * `coach_malformed` — what looks like a model failing its schema and is really
+ * a budget spent on something nobody reads.
+ *
+ * **Why it is configuration, and per model.** `COACH_REASONING` is a
+ * comma-separated list of `model=effort` pairs:
+ *
+ *     anthropic/claude-haiku-5.5=none,anthropic/claude-sonnet-5.5=low
+ *
+ * What each model accepts differs and is not known in advance. Sonnet's native
+ * API rejects plainly disabled thinking, and whether OpenRouter's "none" maps
+ * onto something it will take is exactly the question tool/probe_models.ts is
+ * there to answer. Hard-coding a guess here would turn a wrong guess into a
+ * release; a secret turns it into a `secrets set`.
+ *
+ * **Why it is opt-in rather than a default.** `PROVIDER_ROUTING` sets
+ * `require_parameters: true`, so a request carrying `reasoning` routes only to
+ * endpoints that support it. Sent to a model whose endpoints do not, it would
+ * not be ignored — the request would fail to route at all. So a model with no
+ * entry gets no field, which is today's Gemini deployment.
+ *
+ * Every way the secret can be wrong falls back to sending nothing: unset or
+ * blank, no entry for this model, an entry that is not exactly one
+ * `model=effort`, or an effort that is not one of REASONING_EFFORTS. The model
+ * is matched verbatim, the way COACH_MODEL_ALLOWLIST is, and the first valid
+ * entry for a model wins.
+ *
+ * `exclude: true` keeps the reasoning text out of the response. Nothing here
+ * reads it, and it would be the model working through somebody's injury notes
+ * in a payload this function has no use for. It is still billed as output, and
+ * the `cost` OpenRouter reports includes it.
+ */
+export function reasoningFor(
+  model: string,
+  get: (key: string) => string | undefined,
+): Reasoning | undefined {
+  const raw = get("COACH_REASONING")?.trim();
+  if (!raw) return undefined;
+  const wanted = model.trim();
+  if (!wanted) return undefined;
+
+  for (const entry of raw.split(",")) {
+    const parts = entry.split("=");
+    if (parts.length !== 2) continue;
+    const id = parts[0].trim();
+    const effort = parts[1].trim();
+    if (id !== wanted) continue;
+    if ((REASONING_EFFORTS as readonly string[]).includes(effort)) {
+      return { effort: effort as ReasoningEffort, exclude: true };
+    }
+  }
+  return undefined;
 }
