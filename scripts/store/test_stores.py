@@ -402,7 +402,7 @@ OPEN = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 
 LIVE = {'id': 'V1', 'attributes': {'versionString': '2.0.0', 'appVersionState': 'READY_FOR_DISTRIBUTION'}}
 
 
-def asset_answers(versions, spec='UNI', placed=None, included=None, library=None):
+def asset_answers(versions, spec='UNI', placed=None, included=None, library=None, videos=None):
     return {
         ('GET', '/v1/apps?'): {'data': [{'id': 'A1', 'attributes': {'primaryLocale': 'en-GB'}}]},
         ('GET', '/appStoreVersions?'): {'data': versions},
@@ -411,6 +411,13 @@ def asset_answers(versions, spec='UNI', placed=None, included=None, library=None
             'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
         ('GET', '/assetLibrary'): {'data': {'type': 'appAssetLibraries', 'id': 'LIB'}},
         ('GET', '/appAssetLibraries/LIB/images'): {'data': library or []},
+        ('GET', '/appAssetLibraries/LIB/videos'): {'data': videos or []},
+        ('POST', '/v1/appAssetLibraryVideos'): {'data': {'id': 'VID1', 'attributes': {
+            'state': 'AWAITING_UPLOAD', 'uploadOperations': [{
+                'method': 'PUT', 'url': 'https://upload.example/VID1', 'offset': 0, 'length': 10,
+                'requestHeaders': [{'name': 'Content-Type', 'value': 'video/mp4'}]}]}}},
+        ('GET', '/v1/appAssetLibraryVideos/'): {'data': {'id': 'VID1', 'attributes': {
+            'state': 'PREPARE_FOR_SUBMISSION', 'specId': 'HV'}}},
         ('POST', '/v1/appAssetLibraryImages'): {'data': {'id': 'IMG1', 'attributes': {
             'state': 'AWAITING_UPLOAD', 'uploadOperations': [{
                 'method': 'PUT', 'url': 'https://upload.example/IMG1', 'offset': 0, 'length': 10,
@@ -420,14 +427,14 @@ def asset_answers(versions, spec='UNI', placed=None, included=None, library=None
         ('GET', '/v1/appAssetLibraryRefData'): {'data': [{'attributes': {
             'placementTypes': [
                 {'placementTypeId': 'PRODUCT_PAGE_HEADER_ASSET', 'specMappings': [
-                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'HDR']}]},
+                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'HDR', 'HV']}]},
                 {'placementTypeId': 'APP_STORE_SEARCH_RESULTS_ASSET', 'specMappings': [
                     {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'SRCH']}]},
             ],
             'imageSpecs': [{'specId': 'UNI', 'shortName': 'i5244x2950a0'},
                            {'specId': 'HDR', 'shortName': 'i3840x1646a0'},
                            {'specId': 'SRCH', 'shortName': 'i3x2w1920~3840a0'}],
-            'videoSpecs': [],
+            'videoSpecs': [{'specId': 'HV', 'shortName': 'v3840x1646f30~60t15~30'}],
         }}]},
     }
 
@@ -446,8 +453,14 @@ class AppleAssets(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as folder:
             for name, (width, height) in pictures.items():
-                _png(Path(folder) / name, width, height)
-            with mock.patch.object(asc, '_token', return_value='t') as token, \
+                if name.endswith('.mp4'):
+                    # Not a real film: ffprobe is stood in for below.
+                    (Path(folder) / name).write_bytes(b'0' * 64)
+                else:
+                    _png(Path(folder) / name, width, height)
+            film = mock.patch.object(
+                asc, '_video_facts', return_value=(3840, 1646, asc.Fraction(30), 15.0))
+            with film, mock.patch.object(asc, '_token', return_value='t') as token, \
                     mock.patch.object(asc, 'call', recording), \
                     contextlib.redirect_stdout(io.StringIO()) as printed:
                 code = stores.main(['assets', 'lift', '--from', folder, *flags])
@@ -543,13 +556,56 @@ class AppleAssets(unittest.TestCase):
         self.assertFalse(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
         self.assertEqual(sum(1 for u in urls if u.endswith('/v1/appAssetLibraryPlacements')), 2)
 
-    def test_a_version_in_review_is_refused(self):
+    def test_a_version_in_review_gets_nothing_placed_and_the_files_still_upload(self):
+        # The Asset Library does not touch a version, so a version waiting on
+        # Apple holds nothing back but its own placements.
         waiting = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 'WAITING_FOR_REVIEW'}}
         code, sent, printed, _ = self.run_assets(
             {'universal.png': (5244, 2950)}, '--yes', answers=asset_answers([waiting, LIVE]))
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertFalse(any('Placements' in u for u in urls))
+        self.assertIn('2.0.1 is WAITING_FOR_REVIEW: nothing is placed on it', printed)
+
+    def test_a_videos_opening_still_is_set_when_it_is_reserved(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:00', '--yes')
+        self.assertEqual(code, 0, printed)
+        reserve = [k for m, u, k in self.writes(sent) if u.endswith('/v1/appAssetLibraryVideos')]
+        self.assertEqual(len(reserve), 1)
+        attributes = reserve[0]['body']['data']['attributes']
+        self.assertEqual(attributes['previewFrameTimeCode'], '00:00:05:00')
+        self.assertIn('opening still 00:00:05:00', printed)
+
+    def test_an_opening_still_past_the_end_is_refused_before_anything_is_sent(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:20:00', '--yes')
         self.assertEqual(code, 1)
-        self.assertEqual(self.writes(sent), [])
-        self.assertIn('2.0.1 is WAITING_FOR_REVIEW', printed)
+        self.assertEqual(sent, [])
+        self.assertIn('past the end of header.mp4', printed)
+
+    def test_an_opening_still_frame_must_fit_the_frame_rate(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:30')
+        self.assertEqual(code, 1)
+        self.assertIn('runs 00 to 29', printed)
+
+    def test_a_reused_video_gets_its_opening_still_changed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / 'header.mp4').write_bytes(b'0' * 64)
+            size = (Path(folder) / 'header.mp4').stat().st_size
+        answers = asset_answers([OPEN, LIVE], videos=[{'id': 'VID9', 'attributes': {
+            'fileName': 'header.mp4', 'fileSize': size, 'state': 'PREPARE_FOR_SUBMISSION',
+            'previewFrameTimeCode': '00:00:00:00'}}])
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:00', '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        patches = [(u, k) for m, u, k in self.writes(sent) if m == 'PATCH']
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryVideos/VID9')
+                            and k['body']['data']['attributes'] == {'previewFrameTimeCode': '00:00:05:00'}
+                            for u, k in patches), patches)
+        self.assertFalse(any(u.endswith('/v1/appAssetLibraryVideos') for m, u, k in self.writes(sent)))
 
 
 if __name__ == '__main__':

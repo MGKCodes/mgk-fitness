@@ -64,7 +64,14 @@ which has to be on PATH). A placement cannot be changed, so one already there
 is deleted and made again. A file already in the library with the same name
 and size is placed again rather than uploaded twice. With no version open,
 `--yes` only uploads: run `prepare`, then `assets` again. A version waiting
-for review, in review or approved is never touched.
+for review, in review or approved gets nothing placed on it, but the files
+still upload, since the Asset Library does not touch a version.
+
+`--poster HH:MM:SS:FF` sets a video's opening still, the frame shown before
+it plays (`--poster 00:00:05:00` for the header films, which rest on the name
+by then). It is checked against each video's length and frame rate before
+anything is sent, set when the video is reserved, and changed in place on a
+video already in the library.
 
 ## The keys
 

@@ -222,9 +222,37 @@ def creative_files(folder: Path) -> list[dict]:
             if not 15 <= seconds <= 30:
                 raise StoreError(f'{path.name} is {seconds:.1f} s long: keep it from 15 to 30 s.')
             facts += f', {int(fps)} fps, {seconds:.1f} s'
-        files.append({'path': path, 'name': path.name, 'size': size, 'kind': kind,
-                      'fills': fills, 'facts': facts})
+        entry = {'path': path, 'name': path.name, 'size': size, 'kind': kind,
+                 'fills': fills, 'facts': facts}
+        if kind == 'video':
+            entry.update(fps=int(fps), seconds=seconds)
+        files.append(entry)
     return files
+
+
+def check_poster(poster: str | None, files: list[dict]) -> str | None:
+    """The opening still, as App Store Connect takes it: HH:MM:SS:FF, the
+    frame shown before a video plays. Checked against every video in the
+    folder before anything is sent, so a time past the end stops here rather
+    than as a processing failure on Apple's side."""
+    if poster is None:
+        return None
+    videos = [f for f in files if f['kind'] == 'video']
+    if not videos:
+        raise StoreError('--poster is for a video, and this folder has none.')
+    parts = poster.split(':')
+    if len(parts) != 4 or not all(p.isdigit() and len(p) == 2 for p in parts):
+        raise StoreError(f'--poster {poster} is not HH:MM:SS:FF, e.g. 00:00:05:00.')
+    hours, minutes, seconds, frame = (int(p) for p in parts)
+    for f in videos:
+        if frame >= f['fps']:
+            raise StoreError(f"--poster {poster}: {f['name']} has {f['fps']} frames a second, "
+                             f"so the last part runs 00 to {f['fps'] - 1:02d}.")
+        at = hours * 3600 + minutes * 60 + seconds + frame / f['fps']
+        if at >= f['seconds']:
+            raise StoreError(f"--poster {poster} is past the end of {f['name']} "
+                             f"({f['seconds']:.1f} s).")
+    return poster
 
 
 class AppStore:
@@ -704,21 +732,21 @@ class AppStore:
 
     # --- Creative assets ----------------------------------------------------
 
-    def _version_for_assets(self) -> dict | None:
-        """The version open for changes, or None when every version is out.
-        Refuses a version on its way to the store: waiting for review, in
-        review, or approved and not yet released."""
+    def _version_for_assets(self) -> tuple[dict | None, str | None]:
+        """The version open for changes, or None when there is none, with a
+        note when the reason is a version on its way to the store (waiting for
+        review, in review, or approved and not yet released). Nothing is ever
+        placed on one of those. The files can still go to the Asset Library,
+        which does not touch a version, ready to place once the next one is
+        open."""
         versions = self.versions(limit=5)
         for v in versions:
             if v['state'] in EDITABLE:
-                return v
+                return v, None
         for v in versions:
             if v['state'] not in DONE:
-                raise StoreError(
-                    f"{self.app['name']} {v['version']} is {v['state']}. Nothing is placed on a "
-                    'version waiting for review, in review or approved, and nothing was uploaded: '
-                    'run again once the next version is open (prepare).')
-        return None
+                return None, f"{self.app['name']} {v['version']} is {v['state']}: nothing is placed on it"
+        return None, None
 
     def _in_library(self, library: str, kind: str) -> list[dict]:
         return self.get(f'/v1/appAssetLibraries/{library}/{kind}s', {
@@ -754,14 +782,18 @@ class AppStore:
                 {'id': p['id'], 'asset': asset, 'label': f'the one there now ({shown})'})
         return placed
 
-    def _upload(self, library: str, file: dict) -> str:
-        """Reserve, send the parts, commit. Returns the asset's id."""
+    def _upload(self, library: str, file: dict, poster: str | None = None) -> str:
+        """Reserve, send the parts, commit. Returns the asset's id. A video's
+        opening still is set on the reservation, as Apple's guide does it."""
         kind = KIND[file['kind']]
+        attributes = {'fileName': file['name'], 'fileSize': file['size'],
+                      'category': 'CREATIVE_ASSETS'}
+        if file['kind'] == 'video' and poster:
+            attributes['previewFrameTimeCode'] = poster
         reserved = self.post(f'/v1/{kind}', {
             'data': {
                 'type': kind,
-                'attributes': {'fileName': file['name'], 'fileSize': file['size'],
-                               'category': 'CREATIVE_ASSETS'},
+                'attributes': attributes,
                 'relationships': {'assetLibrary': {'data': {'type': 'appAssetLibraries', 'id': library}}},
             },
         })['data']
@@ -830,12 +862,14 @@ class AppStore:
                     'Nothing placed.')
         _say(f"  {file['name']}: ready, matched to {names.get(spec, spec)}")
 
-    def assets(self, files: list[dict], source: str, apply: bool) -> list[str]:
+    def assets(self, files: list[dict], source: str, apply: bool,
+               poster: str | None = None) -> list[str]:
         """Upload the creative assets to the app's Asset Library (once: a file
         already there with the same name and size is reused), then place them
         on every localization of the version open for changes, replacing what
-        is there. With no version open, they are only uploaded."""
-        version = self._version_for_assets()
+        is there. With no version open, they are only uploaded. [poster] is a
+        video's opening still, HH:MM:SS:FF, already checked by check_poster."""
+        version, held_back = self._version_for_assets()
         library = self.get(f'/v1/apps/{self.app_id}/assetLibrary')['data']['id']
         kinds = {f['kind'] for f in files}
         held = {kind: self._in_library(library, kind) for kind in kinds}
@@ -845,10 +879,16 @@ class AppStore:
         for f in files:
             where = ' and '.join(PLACE[p] for p in f['fills'])
             how = 'in the Asset Library already, reused' if reuse[f['name']] else 'upload it'
+            if f['kind'] == 'video' and poster:
+                was = (reuse[f['name']] or {}).get('attributes', {}).get('previewFrameTimeCode')
+                how += (f', opening still {poster}' if was in (None, poster)
+                        else f', opening still changed from {was} to {poster}')
             plan.append(f"  {f['name']} ({f['facts']}): {where}; {how}")
 
         steps: list[tuple[str, str, str, dict, list[dict]]] = []
         if version is None:
+            if held_back:
+                plan.append(f'  {held_back}')
             plan.append('  no version is open for changes: the files can go to the Asset Library '
                         'now, and the placements wait for prepare (then run assets again)')
         else:
@@ -884,8 +924,15 @@ class AppStore:
                 _say(f"  {f['name']}: in the Asset Library already "
                      f"({reused['attributes'].get('state')}), reused")
                 asset = reused['id']
+                if f['kind'] == 'video' and poster and \
+                        reused['attributes'].get('previewFrameTimeCode') != poster:
+                    self.patch(f"/v1/{KIND['video']}/{asset}", {
+                        'data': {'type': KIND['video'], 'id': asset,
+                                 'attributes': {'previewFrameTimeCode': poster}},
+                    })
+                    _say(f"  {f['name']}: opening still set to {poster}")
             else:
-                asset = self._upload(library, f)
+                asset = self._upload(library, f, poster)
             self._check_spec(f, self._processed(f, asset), takes, names)
             ready[f['name']] = asset
 

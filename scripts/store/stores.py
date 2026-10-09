@@ -13,7 +13,7 @@
     python scripts/store/stores.py add-tester  <run|lift> --email ADDRESS --group NAME [--yes]
     python scripts/store/stores.py listing     <run|lift> [--ios|--android] [--from FILE] [--yes]
     python scripts/store/stores.py screenshots <run|lift> [--ios|--android] [--yes]
-    python scripts/store/stores.py assets      <run|lift> [--from DIR] [--yes]
+    python scripts/store/stores.py assets      <run|lift> [--from DIR] [--poster HH:MM:SS:FF] [--yes]
 
 **Nothing changes without --yes.** Without it every command prints what it
 would do and stops, so a plan can be read before a store is touched.
@@ -106,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--from', dest='source',
                         help='listing: the listing file (default apps/<app>/store/listing.json); '
                              'assets: the folder of creative assets')
+    parser.add_argument('--poster', help='assets: the frame shown before a video plays, '
+                                         'HH:MM:SS:FF (e.g. 00:00:05:00)')
     parser.add_argument('--yes', action='store_true', help='do it, rather than show the plan')
     args = parser.parse_args(argv)
     ios, android = _platforms(args)
@@ -212,10 +214,11 @@ def main(argv: list[str] | None = None) -> int:
             if args.android:
                 parser.error('assets is for the App Store only: Google Play has no product page '
                              'header or search results asset')
-            from asc import AppStore, creative_files
+            from asc import AppStore, check_poster, creative_files
             folder = Path(args.source) if args.source else CREATIVE[args.app]
             files = creative_files(folder)  # checked on disk before any call
-            out += AppStore(args.app).assets(files, _shown(folder), args.yes)
+            poster = check_poster(args.poster, files)
+            out += AppStore(args.app).assets(files, _shown(folder), args.yes, poster)
     except StoreError as e:
         print('\n'.join(out + [f'Stopped: {e}']))
         return 1
