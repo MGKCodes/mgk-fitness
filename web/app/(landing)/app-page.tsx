@@ -1,62 +1,102 @@
 import type { CSSProperties } from "react";
 import { Bar } from "./bar";
-import { type App, apps, facts, help, questions, reasons, steps, terms } from "./content";
+import { type App, apps, facts, help, pages, questions, reasons, type Screen, terms } from "./content";
 import { Phone } from "./device";
 import { Foot } from "./foot";
 import { Mark } from "./mark";
+import type { Key } from "./storyboard";
 import { Stores } from "./stores";
 
 /** A screen that is simply shown, outside the film. */
 const always = { "--in": -1 } as CSSProperties;
 
-/** Each app's phone, as the film draws it: its screen size, its clock, and Lift's bare captures. */
-const phone: Record<App, { size: [number, number]; time: string; bare?: { ground: string } }> = {
-  run: { size: [1290, 2796], time: "14:41" },
-  lift: { size: [1170, 2532], time: "19:04", bare: { ground: "#1f1f1f" } },
-};
+/** The store pictures' screens, the size they were drawn at. */
+const size: [number, number] = [1290, 2796];
 
 /**
- * One app's own page: what it does, screen by screen; what is free and what
- * the coach adds; why the coach; what it shares with the other app; and the
- * questions people ask, folded away until they are wanted.
+ * One of the film's stills, laid behind what is over it: the wide still on a
+ * wide screen and the tall one on an upright screen, as the film itself does.
+ * It says nothing a reader needs, so it has no words of its own.
+ */
+function Still({ at, first }: { at: Key; first?: boolean }) {
+  return (
+    <picture className="still">
+      <source media="(max-aspect-ratio: 1 / 1)" srcSet={`/film/tall/keys/${at}-940.webp`} />
+      <img
+        src={`/film/wide/keys/${at}-1920.webp`}
+        srcSet={`/film/wide/keys/${at}-960.webp 960w, /film/wide/keys/${at}-1920.webp 1920w`}
+        sizes="100vw"
+        alt=""
+        loading={first ? "eager" : "lazy"}
+        fetchPriority={first ? "high" : "auto"}
+        decoding="async"
+      />
+    </picture>
+  );
+}
+
+/** A phone showing one screen, standing still. */
+function Shows({ screen, time, lazy }: { screen: Screen; time: string; lazy?: boolean }) {
+  return <Phone screens={[{ ...screen, style: always }]} size={size} time={time} lazy={lazy} />;
+}
+
+/**
+ * One app's own page. Its head stands in the app's place in the film, with
+ * the app's home screen; then what it does, screen by screen, each on its own
+ * stage; one line over another of the film's stills; what is free and what
+ * the coach adds; why the coach; the other app; and the questions people
+ * ask, folded away until they are wanted.
  */
 export function AppPage({ app }: { app: App }) {
-  const { name, what, coachScreen, coachAlt } = apps[app];
+  const { name, what } = apps[app];
+  const page = pages[app];
   const other: App = app === "run" ? "lift" : "run";
-  const p = phone[app];
 
   return (
     <>
       <Bar />
 
-      <main className={`page ${app}`}>
-        <header className="page-head">
-          <h1>
-            {name.toUpperCase()}
-            <Mark of={app} />
-          </h1>
-          <p className="lede">{what}</p>
-          <Stores app={app} />
+      <main className={`page app-page ${app}`}>
+        <header className="hero">
+          <Still at={page.still} first />
+          <div className="words">
+            <h1>
+              {name.toUpperCase()}
+              <Mark of={app} />
+            </h1>
+            <p className="lede">{what}</p>
+            <Stores app={app} />
+          </div>
+          <div className="lead">
+            <Shows screen={page.head} time={page.time} />
+          </div>
         </header>
 
-        <section className="does">
+        <section className="features">
           <span className="tag">What it does</span>
-          <ul className="screens">
-            {steps[app].map((step) => (
-              <li key={step.screen}>
-                <Phone
-                  screens={[{ src: `/screens/${step.screen}.png`, alt: step.alt, style: always }]}
-                  size={p.size}
-                  time={p.time}
-                  bare={p.bare}
-                />
-                <span className="tag">{step.tag}</span>
-                <p>
-                  {step.lines[0]} <span>{step.lines[1]}</span>
-                </p>
+          <ul>
+            {page.features.map((feature) => (
+              <li key={feature.src}>
+                <div className="plinth">
+                  <Shows screen={feature} time={page.time} lazy />
+                </div>
+                <div className="words">
+                  <span className="tag">{feature.tag}</span>
+                  <h3>
+                    {feature.lines[0]} <span>{feature.lines[1]}</span>
+                  </h3>
+                  <p>{feature.more}</p>
+                </div>
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="interlude">
+          <Still at={page.interlude.still} />
+          <p>
+            {page.interlude.line[0]} <span>{page.interlude.line[1]}</span>
+          </p>
         </section>
 
         <section className="terms">
@@ -72,7 +112,7 @@ export function AppPage({ app }: { app: App }) {
                 ))}
               </ul>
             </div>
-            <div>
+            <div className="paid">
               <h3>
                 The coach <span className="tag">Subscription</span>
               </h3>
@@ -106,7 +146,7 @@ export function AppPage({ app }: { app: App }) {
               ))}
             </ol>
             <div className="pair">
-              <Phone screens={[{ src: `/screens/${coachScreen}.png`, alt: coachAlt, style: always }]} size={p.size} time={p.time} bare={p.bare} />
+              <Shows screen={page.coach} time={page.time} lazy />
             </div>
           </div>
           <p className="small">The coach is an AI model, not a person, and it is not medical advice.</p>
@@ -128,8 +168,15 @@ export function AppPage({ app }: { app: App }) {
               </li>
             ))}
           </ul>
-          <a className="more" href={`/${other}`}>
-            {apps[other].name}: {apps[other].what.replace(/\.$/, "")} <span aria-hidden="true">→</span>
+          <a className={`other ${other}`} href={`/${other}`}>
+            <Still at={pages[other].still} />
+            <b>
+              {apps[other].name.toUpperCase()}
+              <Mark of={other} />
+            </b>
+            <span>
+              {apps[other].what} <span aria-hidden="true">→</span>
+            </span>
           </a>
         </section>
 
