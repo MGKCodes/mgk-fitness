@@ -1,9 +1,10 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { social } from "./links";
 import { Mark } from "./mark";
 import { Social } from "./social";
+import { StoreGlyph, Stores } from "./stores";
 
 // How long the page takes to travel one screen of film going down, in
 // milliseconds. The film is played by scrolling, so this is its playing speed
@@ -57,6 +58,46 @@ function glide(to: number) {
 }
 
 /**
+ * Where to get the apps, from anywhere on the page: the two stores' marks,
+ * which open each app's badges. A <details>, so it opens with no JavaScript;
+ * the script only closes it on a click elsewhere or Escape.
+ */
+function Get() {
+  const menu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (event: Event) => {
+      const open = menu.current;
+      if (!open?.open) return;
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !open.contains(event.target as Node)) {
+        open.open = false;
+      }
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+
+  return (
+    <details className="getmenu" ref={menu}>
+      <summary className="pill" aria-label="Get the apps">
+        <StoreGlyph store="App Store" />
+        <StoreGlyph store="Google Play" />
+        <span className="wide">Get the apps</span>
+      </summary>
+      <div className="panel">
+        <p>Run</p>
+        <Stores app="run" />
+        <p>Lift</p>
+        <Stores app="lift" />
+      </div>
+    </details>
+  );
+}
+
+/**
  * The bar: the suite's name, its two apps, its accounts elsewhere and where
  * to get the apps.
  *
@@ -94,11 +135,7 @@ export function Bar() {
           <Social key={account.name} {...account} />
         ))}
       </div>
-      {/* Said in one word where the bar has no room for two. */}
-      <a className="pill" href="#get" aria-label="Get the apps">
-        <span className="wide">Get the apps</span>
-        <span className="narrow">Get</span>
-      </a>
+      <Get />
     </header>
   );
 }
