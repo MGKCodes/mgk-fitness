@@ -1299,41 +1299,6 @@ a.store:hover {
   margin-top: 1rem;
 }
 
-/* What an app does: its three screens, side by side, each with its words. */
-.screens {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 3.5rem var(--edge);
-  margin-top: clamp(2.5rem, 7svh, 4.5rem);
-}
-
-.screens li {
-  display: grid;
-  justify-items: start;
-  align-content: start;
-  gap: 1rem;
-}
-
-.screens .phone {
-  --tall: min(62svh, 34rem);
-  position: relative;
-  inset: auto;
-  margin: 0 0 0.75rem;
-  transform: none;
-}
-
-.screens p {
-  font-size: clamp(1.35rem, 2vw, 1.9rem);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-}
-
-.screens p span {
-  display: block;
-  color: var(--silver);
-}
-
 /* Free and the coach, as lists now rather than the old page's terms. */
 .terms ul {
   margin-top: 1rem;
@@ -1575,9 +1540,353 @@ code {
   width: 100%;
 }
 
-/* On a phone the screens are the point of the section, so they are larger. */
-@media (max-width: 760px) {
-  .screens .phone {
-    --tall: min(80svh, 34rem);
+/* ── An app's page ───────────────────────────────────────────────────────── */
+/* The film's stills behind the head, one line and the other app, shaded the
+   way the film shades them; the store pictures' screens on stages of their
+   own between. */
+.still {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.still img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.still::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* The head: the app's place in the film, its name low on the left where the
+   frame is darkest, and its home screen standing on the right, rising out of
+   the still into the page. */
+.app-page .hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--edge);
+  min-height: min(100svh, 62rem);
+  padding: 7rem var(--edge) 0;
+}
+
+.hero .still::after {
+  background:
+    linear-gradient(rgb(26 26 26 / 0.7), rgb(26 26 26 / 0) 28%),
+    linear-gradient(0deg, var(--bg), rgb(26 26 26 / 0.6) 26%, rgb(26 26 26 / 0) 58%),
+    linear-gradient(90deg, rgb(26 26 26 / 0.6), rgb(26 26 26 / 0) 60%);
+}
+
+.hero .words {
+  display: grid;
+  justify-items: start;
+  gap: clamp(1rem, 2.4svh, 1.6rem);
+  padding-bottom: clamp(4rem, 14svh, 9rem);
+}
+
+.hero h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+  font-size: clamp(4.5rem, 14vw, 14rem);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.025em;
+}
+
+.hero .lede {
+  max-width: 22ch;
+  font-size: clamp(1.25rem, 2.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--silver);
+}
+
+.app-page .phone {
+  position: relative;
+  inset: auto;
+  margin: 0;
+  transform: none;
+}
+
+.lead .phone {
+  --tall: min(80svh, 48rem);
+  margin-bottom: calc(-0.1 * var(--tall));
+}
+
+/* What it does: each screen on a stage of its own, lit from above, its words
+   beside it, the two sides taking turns down the page. */
+.features {
+  position: relative;
+}
+
+.features ul {
+  display: grid;
+  gap: clamp(4rem, 12svh, 8rem);
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+}
+
+.features li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 7rem);
+}
+
+.features li:nth-child(even) .plinth {
+  order: 2;
+}
+
+.plinth {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding: clamp(2.5rem, 6svh, 4.5rem) 1rem;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: 2rem;
+  background:
+    radial-gradient(55% 50% at 50% 38%, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 72%),
+    linear-gradient(180deg, #242424, #141414);
+}
+
+/* The red strip the film runs along, from the track into the weight room,
+   under each phone: the one colour the page has, and it is the film's. */
+.plinth::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  height: 46%;
+  background: linear-gradient(0deg, rgb(140 52 46 / 0.55), rgb(140 52 46 / 0));
+  clip-path: polygon(22% 100%, 78% 100%, 58% 0, 42% 0);
+}
+
+.plinth .phone {
+  --tall: min(72svh, 42rem);
+}
+
+.features .words {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+  max-width: 32rem;
+}
+
+.features h3 {
+  font-size: clamp(2rem, 4.2vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.features h3 span {
+  display: block;
+  color: var(--silver);
+}
+
+.features .words p {
+  max-width: 40ch;
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--silver);
+}
+
+/* One line, said over the film's stills between what the app does and what
+   it costs. */
+.app-page > .interlude {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: end;
+  min-height: min(92svh, 54rem);
+  margin-top: clamp(5rem, 14svh, 10rem);
+  padding: var(--edge);
+  padding-bottom: clamp(3rem, 10svh, 6rem);
+}
+
+.interlude .still::after {
+  background:
+    linear-gradient(var(--bg), rgb(26 26 26 / 0) 30%),
+    linear-gradient(0deg, var(--bg), rgb(26 26 26 / 0.55) 35%, rgb(26 26 26 / 0) 70%);
+}
+
+.interlude p {
+  max-width: 15ch;
+  font-size: clamp(2.25rem, 5.8vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.interlude p span {
+  display: block;
+  color: var(--silver);
+}
+
+/* Free and the coach, each on a panel of its own, the coach's a shade
+   lighter. */
+.app-page .columns > div {
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border: 1px solid var(--hair);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 0.025);
+}
+
+.app-page .columns > .paid {
+  border-color: rgb(255 255 255 / 0.24);
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0) 70%),
+    rgb(255 255 255 / 0.04);
+}
+
+.app-page .terms h3 {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-page .terms li:last-child {
+  border-bottom: 0;
+}
+
+/* The coach's screen, lit the way each stage is. The light reaches past the
+   page's edge, so the section clips it there (clip, not hidden, so the phone
+   still stays in view while the reasons are read). */
+.app-page .coach {
+  overflow-x: clip;
+}
+
+.app-page .pair::before {
+  content: "";
+  position: absolute;
+  inset: -12% -30%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0));
+}
+
+.app-page .pair {
+  isolation: isolate;
+}
+
+.app-page .pair .phone {
+  --tall: min(74svh, 44rem);
+}
+
+/* The other app, as a way to its page: its place in the film and its name. */
+.other {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 1rem;
+  min-height: clamp(22rem, 58svh, 36rem);
+  margin-top: clamp(3rem, 9svh, 6rem);
+  padding: clamp(1.5rem, 4vw, 3.25rem);
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: 2rem;
+  text-decoration: none;
+}
+
+.other .still::after {
+  background:
+    linear-gradient(0deg, rgb(26 26 26 / 0.92), rgb(26 26 26 / 0.3) 55%, rgb(26 26 26 / 0.1)),
+    linear-gradient(90deg, rgb(26 26 26 / 0.5), rgb(26 26 26 / 0) 60%);
+}
+
+.other .still img {
+  transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.other:hover .still img {
+  transform: scale(1.035);
+}
+
+.other b {
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+  font-size: clamp(3.5rem, 10vw, 9rem);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.025em;
+}
+
+.other > span {
+  font-size: clamp(1.15rem, 2vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--silver);
+}
+
+.other > span span {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.other:hover > span span {
+  transform: translateX(0.3rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .other .still img,
+  .other > span span {
+    transition: none;
+  }
+}
+
+/* An upright screen has no room beside the name, so the home screen stands
+   under it, still on the still, and each stage sits over its words. */
+@media (max-width: 900px), (max-aspect-ratio: 1 / 1) {
+  .app-page .hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding-top: clamp(7rem, 22svh, 12rem);
+  }
+
+  .hero .words {
+    padding-bottom: 2.5rem;
+  }
+
+  .lead {
+    justify-self: center;
+  }
+
+  .lead .phone {
+    --tall: min(72svh, 150vw, 40rem);
+  }
+
+  .features li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .features li:nth-child(even) .plinth {
+    order: 0;
+  }
+
+  .plinth .phone {
+    --tall: min(68svh, 140vw, 38rem);
+  }
+
+  .app-page .pair {
+    position: relative;
+  }
+
+  .app-page .pair .phone {
+    --tall: min(68svh, 140vw, 38rem);
   }
 }

@@ -21,17 +21,22 @@ export type Shown = { src: string; alt: string; style: CSSProperties };
  * `bare` is for captures taken with no room left for the status bar, which is
  * Lift's today. They are fitted under it instead of behind it, on `ground`,
  * the colour their own edges are.
+ *
+ * `lazy` is for a phone further down a page, which waits to be scrolled near
+ * rather than being fetched first.
  */
 export function Phone({
   screens,
   size,
   time,
   bare,
+  lazy,
 }: {
   screens: Shown[];
   size: [number, number];
   time: string;
   bare?: { ground: string };
+  lazy?: boolean;
 }) {
   return (
     <div className="phone">
@@ -54,7 +59,7 @@ export function Phone({
             width={size[0]}
             height={size[1]}
             sizes="(max-width: 760px) 70vw, 40svh"
-            priority={i === 0}
+            priority={!lazy && i === 0}
           />
         ))}
         <span className="clock">{time}</span>
