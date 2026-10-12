@@ -19,8 +19,8 @@ export const stores: Record<"run" | "lift", { apple?: string; google?: string }>
     google: "https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run",
   },
   lift: {
-    // Liftio 1.4.0's page until 2.0.0 is approved, so held until then.
-    // apple: "https://apps.apple.com/app/id6759969740",
+    // 2.0.0 on sale since October 2026 (it replaced Liftio 1.4.0 on this page).
+    apple: "https://apps.apple.com/app/id6759969740",
     google: "https://play.google.com/store/apps/details?id=com.mgkcodes.liftio",
   },
 };

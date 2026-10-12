@@ -5,10 +5,60 @@ import { Phone } from "./device";
 import { Film } from "./film";
 import { availability, social, source } from "./links";
 import { Mark } from "./mark";
+import { SocialGlyph } from "./social";
 import { Stores } from "./stores";
 
 /** The suite's Instagram, once it has an address in `links.ts`. */
 const instagram = social.find((account) => account.name === "Instagram" && account.url);
+
+/** A post on the suite's Instagram, as the studio's posting service keeps it. */
+type Post = { id: string; title: string; cover?: string; coverAlt?: string; links: { platform: string; url: string }[] };
+
+/**
+ * The latest posts on the suite's Instagram, from the service that posts them
+ * (mgkcodes-social's `/recent?brand=mgkfitness`), so the site keeps no list of
+ * its own. Read again at most every half hour. If it can't be read the
+ * section shows the account alone, never an error.
+ */
+async function recentPosts(): Promise<Post[]> {
+  try {
+    const response = await fetch("https://social.mgkcodes.com/recent?brand=mgkfitness", { next: { revalidate: 1800 } });
+    if (!response.ok) return [];
+    const { posts } = (await response.json()) as { posts: Post[] };
+    return posts.filter((post) => post.cover && post.links.some((link) => link.platform === "instagram")).slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
+/** The suite's Instagram: its latest posts, each a way to that post, and the account. */
+async function Recent() {
+  if (!instagram) return null;
+  const posts = await recentPosts();
+  return (
+    <section className="recent" id="instagram">
+      <span className="tag">Instagram</span>
+      <h2>
+        See our recent posts. <span>One word, a picture, and something worth keeping.</span>
+      </h2>
+      {posts.length > 0 && (
+        <ul className="posts">
+          {posts.map((post) => (
+            <li key={post.id}>
+              <a href={post.links.find((link) => link.platform === "instagram")?.url} target="_blank" rel="noopener">
+                <img src={post.cover} alt={post.coverAlt ?? post.title} width={540} height={675} loading="lazy" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <a className="follow" href={instagram.url} target="_blank" rel="noopener">
+        <SocialGlyph name="Instagram" />
+        Follow {instagram.handle}
+      </a>
+    </section>
+  );
+}
 
 /** Words or a screen laid over the film for the shots from `from` to `to`. */
 function Beat({
@@ -180,6 +230,7 @@ function App({
         {app.toUpperCase()}
         <Mark of={app} />
       </h2>
+      <Stores app={app} />
       <ol className="steps">
         {steps.map((step, i) => (
           <li key={step.screen} style={during(i)}>
@@ -472,33 +523,9 @@ export default function Home() {
           )}
         </section>
 
-        {/* Where the apps are got from. Each store's button is held, as
-            "Coming soon", until `links.ts` gives it an address. */}
-        <section className="download" id="get">
-          <h2>Get Run and Lift.</h2>
-          <dl className="get">
-            <div>
-              <dt>Run</dt>
-              <dd>
-                <Stores app="run" />
-              </dd>
-            </div>
-            <div>
-              <dt>Lift</dt>
-              <dd>
-                <Stores app="lift" />
-              </dd>
-            </div>
-          </dl>
-          {instagram && (
-            <p className="follow">
-              Follow along on Instagram:{" "}
-              <a href={instagram.url} target="_blank" rel="noopener">
-                {instagram.handle}
-              </a>
-            </p>
-          )}
-        </section>
+        {/* The stores are where each app is, in the film, and in the bar
+            from anywhere on the page; so this, the end, is the account. */}
+        <Recent />
       </main>
 
       <footer className="foot">
@@ -523,7 +550,7 @@ export default function Home() {
           <a href="/privacy">Privacy on this website</a>
           {instagram && (
             <a href={instagram.url} target="_blank" rel="noopener">
-              Instagram {instagram.handle}
+              Instagram
             </a>
           )}
           {source.open && <a href={source.repository}>Source on GitHub</a>}
