@@ -127,9 +127,7 @@ class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
       final b = bests.single;
       return CoachLine(
         headline: 'New best: ${b.movement}',
-        detail:
-            '${b.weight.label(unit)} × ${b.reps}, about ${b.estimate.label(unit)} '
-            'for one. Past ${b.previous.label(unit)}.',
+        detail: bestDetail(b.set, b.beat, unit),
       );
     }
     final names = <String>[for (final b in bests) b.movement];

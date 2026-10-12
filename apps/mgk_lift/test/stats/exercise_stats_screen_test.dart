@@ -51,6 +51,7 @@ void main() {
     List<Session> log, {
     String name = _bench,
     bool catalogued = true,
+    MassUnit unit = MassUnit.kilograms,
     ValueChanged<Session>? onOpenSession,
   }) async {
     tester.view
@@ -64,6 +65,7 @@ void main() {
           name: name,
           log: log,
           catalogue: catalogued ? ExerciseLookup().find(name) : null,
+          massUnit: unit,
           now: now,
           onOpenSession: onOpenSession,
         ),
@@ -72,37 +74,75 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('the best', () {
-    // `estimateOneRepMax` is Epley capped at 12 reps and returns null above
-    // it — deliberately stricter than Liftio's 30, because a confidently wrong
-    // PB is worse than no PB. "No estimate" is a real state to render.
+  group('working weights (#3)', () {
+    // No one-rep max on show: it read as a best nobody had lifted. The
+    // estimate is turned into what to load instead.
 
-    testWidgets('carries the set it came from', (tester) async {
+    testWidgets('one per rep range, from the set behind them', (tester) async {
       await show(tester, <Session>[
         session(DateTime(2026, 8, 3), sets: <SessionSet>[done(120, 6)]),
       ]);
 
-      // Epley: 120 × (1 + 6/30).
-      expect(find.text('144 kg'), findsWidgets);
-      expect(find.text('Best set · 120 kg × 6 · 3 Aug'), findsOneWidget);
-      expect(find.text('EST. 1RM'), findsOneWidget);
+      expect(find.text('WORKING WEIGHTS'), findsOneWidget);
+      // Epley's 144 kg, a rep in reserve, down to the barbell's 2.5 kg.
+      expect(find.text('4–6 reps'), findsOneWidget);
+      expect(find.text('115–122.5 kg'), findsOneWidget);
+      expect(find.text('102.5–112.5 kg'), findsOneWidget);
+      // The range Epley is least sure of says so.
+      expect(find.text('~90–100 kg'), findsOneWidget);
+      expect(find.textContaining('120 kg × 6 on 3 Aug'), findsOneWidget);
+      expect(find.text('EST. 1RM'), findsNothing);
+      expect(find.text('144 kg'), findsNothing);
     });
 
-    testWidgets('nothing at 12 reps or fewer says so rather than going blank', (
-      tester,
-    ) async {
+    testWidgets('dumbbells step by 2 kg', (tester) async {
+      await show(tester, name: 'Dumbbell Bench Press', <Session>[
+        session(
+          DateTime(2026, 8, 3),
+          exercise: 'Dumbbell Bench Press',
+          sets: <SessionSet>[done(30, 8)],
+        ),
+      ]);
+
+      // 38 kg estimated: 30.8 and 32.6 for 4–6, down to a pair that exists.
+      expect(find.text('30–32 kg'), findsOneWidget);
+    });
+
+    testWidgets('in pounds, in pounds steps', (tester) async {
+      await show(tester, unit: MassUnit.pounds, <Session>[
+        session(
+          DateTime(2026, 8, 3),
+          sets: <SessionSet>[done(Mass.pounds(225).kilograms, 5)],
+        ),
+      ]);
+
+      // 262.5 lb estimated. 225 for four is exact, and stays 225 rather than
+      // falling a step on a rounding error.
+      expect(find.text('210–225 lb'), findsOneWidget);
+    });
+
+    testWidgets('nothing in the last six weeks hides them', (tester) async {
+      await show(tester, <Session>[
+        session(DateTime(2026, 7, 1), sets: <SessionSet>[done(120, 6)]),
+      ]);
+
+      expect(find.text('WORKING WEIGHTS'), findsNothing);
+      // What happened is all still here.
+      expect(find.text('1 Jul · Evening session'), findsOneWidget);
+      expect(find.text('120 kg'), findsOneWidget);
+    });
+
+    testWidgets('nothing at 12 reps or fewer hides them', (tester) async {
       await show(tester, <Session>[
         session(DateTime(2026, 8, 3), sets: <SessionSet>[done(60, 20)]),
       ]);
 
-      expect(find.textContaining('No estimate yet'), findsOneWidget);
+      expect(find.text('WORKING WEIGHTS'), findsNothing);
       // The session is still listed: it happened, it just has no estimate.
       expect(find.text('3 Aug · Evening session'), findsOneWidget);
     });
 
-    testWidgets('an unloaded movement produces no estimate either', (
-      tester,
-    ) async {
+    testWidgets('an unloaded movement has none either', (tester) async {
       await show(tester, name: 'Pull Up', <Session>[
         session(
           DateTime(2026, 8, 3),
@@ -111,7 +151,7 @@ void main() {
         ),
       ]);
 
-      expect(find.textContaining('No estimate yet'), findsOneWidget);
+      expect(find.text('WORKING WEIGHTS'), findsNothing);
       // Its sets are reps, as the summary says them, not "0 kg × 8".
       expect(find.text('8 reps'), findsOneWidget);
       expect(find.textContaining('0 kg'), findsNothing);
@@ -142,9 +182,10 @@ void main() {
         ),
       ]);
 
-      expect(find.text('110 kg'), findsWidgets);
-      expect(find.text('220 kg'), findsNothing);
+      // The heaviest is the working 100, and the bands come from it.
+      expect(find.text('100 kg'), findsOneWidget);
       expect(find.text('200 kg'), findsNothing);
+      expect(find.text('87.5–92.5 kg'), findsOneWidget);
     });
   });
 
@@ -180,7 +221,7 @@ void main() {
   });
 
   group('recent sessions', () {
-    testWidgets('newest first, each with its sets and its estimate', (
+    testWidgets('newest first, each with its sets and no estimate', (
       tester,
     ) async {
       await show(tester, <Session>[
@@ -200,6 +241,16 @@ void main() {
       final newer = tester.getTopLeft(find.text('10 Aug · Push again')).dy;
       expect(newer, lessThan(older));
       expect(find.text('100 kg × 5 · 105 kg × 3'), findsOneWidget);
+      // Each row's estimate used to sit at its end, unlabelled, reading as a
+      // weight lifted that day (#3). The sets are the only weights in a row.
+      final row = find.ancestor(
+        of: find.text('10 Aug · Push again'),
+        matching: find.byType(Row),
+      );
+      expect(
+        find.descendant(of: row.first, matching: find.textContaining('kg')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('open the session they came from', (tester) async {
@@ -253,7 +304,7 @@ void main() {
     await show(tester, const <Session>[]);
 
     expect(find.textContaining('Nothing logged on this yet'), findsOneWidget);
-    expect(find.text('EST. 1RM'), findsNothing);
+    expect(find.text('WORKING WEIGHTS'), findsNothing);
   });
 
   group('the history behind it', () {

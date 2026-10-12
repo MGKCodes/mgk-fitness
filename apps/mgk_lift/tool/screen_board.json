@@ -612,27 +612,21 @@
           },
           {
             "depth": 1,
-            "call": "today = TrainingStats.bestOneRepMax([session], name)",
-            "symbol": "TrainingStats.bestOneRepMax",
-            "note": "Null skips the movement entirely. Epley is capped at 12 reps, so fifteens produce nothing — which is the honest answer rather than a number invented to fill the row."
-          },
-          {
-            "depth": 2,
-            "call": "Epley: weight × (1 + reps / 30), null above 12 reps",
-            "symbol": "TrainingStats.estimateOneRepMax",
-            "note": "A fitted line, not a measurement. At 30 reps it claims a double. The old app capped at 30; this is stricter, because a confidently wrong best is worse than no best."
+            "call": "today = TrainingStats.topSet([session], name)",
+            "symbol": "TrainingStats.topSet",
+            "note": "The heaviest working set, and the most reps at that weight. Null skips the movement: bodyweight work has no weight to have beaten. A best is a weight lifted, not an estimate (#3) — in 2.0.0 it was Epley's, and a lighter set for more reps was announced as a best nobody had lifted."
           },
           {
             "depth": 1,
-            "call": "before = TrainingStats.bestOneRepMax(prior, name)",
+            "call": "before = TrainingStats.topSet(prior, name)",
             "symbol": "PersonalBest",
             "note": "Null skips too — a movement with no history is not a best, because there is nothing to have beaten. Counting it would make a first session nothing but bests, which empties the word."
           },
           {
             "depth": 1,
-            "call": "if (today <= before) skip     // strictly greater",
-            "symbol": "PersonalBest.previous",
-            "note": "Matching a best is not setting one. A session that repeats last week's top set to the kilogram should not be told it moved."
+            "call": "if (!today.beats(before)) skip     // heavier, or as heavy for more reps",
+            "symbol": "TopSet.beats",
+            "note": "Matching a best is not setting one. A session that repeats last week's top set to the kilogram should not be told it moved. Equal weights are equal within a gram, so 225 lb typed twice is the same weight."
           }
         ]
       }
@@ -645,7 +639,7 @@
       "out": "Done, or the back arrow",
       "next": "Done, or tap the mark",
       "note": "The mark says the new best, then closes.",
-      "doc": "95 × 5 estimates at about 111 kg against the 105 kg already in the log. Bests are strictly greater, and a movement with no history is not a best. The bubble says it to everyone, because bests are tracking; only the tap differs, the chat for subscribers and the offer for everyone else.",
+      "doc": "95 × 5 is heavier than anything in the log, and the bubble says the set and what it went past — no estimated max, because a best is a weight lifted (#3). Heavier, or as heavy for more reps; matching is not a best, and a movement with no history is not one either. The bubble says it to everyone, because bests are tracking; only the tap differs, the chat for subscribers and the offer for everyone else.",
       "tags": ["free"]
     },
     "session-summary-short": {
@@ -656,7 +650,7 @@
       "out": "Done, or the back arrow",
       "next": "Done",
       "note": "A first session: nothing to compare against, and nothing claimed.",
-      "doc": "Nothing in the log to compare against, and fifteens are past what Epley can estimate, so the summary claims no best and the mark says nothing. The second movement was added and never worked, which is the only case where the movement count is larger than the sets explain.",
+      "doc": "Nothing in the log to compare against, so the summary claims no best and the mark says nothing. The second movement was added and never worked, which is the only case where the movement count is larger than the sets explain.",
       "tags": ["free"]
     },
 
@@ -1461,8 +1455,8 @@
       "in": "A movement's name: in {{session}}, on {{session-summary}}, in {{session-past}}, or {{profile}} › Most trained",
       "out": "App bar back",
       "next": "Open a session it came from, {{session-past}}",
-      "note": "Its best, the estimate over time, the sessions behind it, how it is done.",
-      "doc": "Profile listed five bests and nothing behind them, and the question a best raises is \"since when?\" (R9). This answers it with a line: each session's best estimate, drawn by hand rather than with a chart library, with the set behind the best and the Epley caveat said where the number is. Its sessions open. The best is the one Profile showed, on the same rules: working sets only, nothing over 12 reps. Done right: a lifter can say whether the lift is moving, and trace the number to a session they remember.",
+      "note": "Its heaviest, what to load for each rep range, the estimate over time, the sessions behind it, how it is done.",
+      "doc": "Profile listed five bests and nothing behind them, and the question a best raises is \"since when?\" (R9). This answers it with a line: each session's best estimate, drawn by hand rather than with a chart library, with the Epley caveat said where the number is. It led with Est. 1RM until #3, a number nobody loads that read as a best they had set; the estimate now becomes Working weights instead — 4–6, 7–11 and 12–16 reps, from the best set of the last six weeks, a rep left in reserve, rounded down to what the kit loads (2.5 kg bar, 2 kg dumbbells, 5 kg stack), with the roughest range marked ~. Hidden when nothing in six weeks qualifies. Its sessions open. Done right: a lifter knows what to put on the bar today, and can trace it to a session they remember.",
       "tags": ["free", "new"]
     },
     "exercise-stats-bodyweight": {
@@ -1472,8 +1466,8 @@
       "in": "The same doors, for bodyweight work",
       "out": "App bar back",
       "next": "Its sessions",
-      "note": "No weight on the bar: no estimate, and it says why rather than going blank.",
-      "doc": "Pull-ups, dips and high-rep work are a full log with nothing for Epley to estimate from. The screen still lists every session and how it is done, and says in one line what would produce an estimate, so an empty tile reads as a rule rather than a bug.",
+      "note": "No weight on the bar: no estimate and no working weights, and the line says why rather than going blank.",
+      "doc": "Pull-ups, dips and high-rep work are a full log with nothing for Epley to estimate from. The screen still lists every session and how it is done; Working weights is left out rather than shown empty, and the chart's line says what would produce an estimate, so the absence reads as a rule rather than a bug.",
       "tags": ["free", "new"]
     },
     "session-past": {

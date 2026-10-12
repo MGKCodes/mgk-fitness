@@ -15,7 +15,7 @@ import 'session.dart';
 /// is testable without pumping one.
 ///
 /// Every figure folds over [Session.workingSets] or over
-/// [TrainingStats.bestOneRepMax] rather than restating either. That is the same
+/// [TrainingStats.topSet] rather than restating either. That is the same
 /// rule `TrainingStats` was written to enforce, and for the same reason: the
 /// session header and Profile once disagreed about whether a warm-up counted,
 /// so the same lifter saw two different volumes depending which screen they
@@ -29,7 +29,6 @@ class SessionSummary {
     required this.workingSets,
     required this.movements,
     required this.personalBests,
-    required this.hasEstimate,
   });
 
   /// Folds a finished session, comparing it against [log] to find what is new.
@@ -56,27 +55,19 @@ class SessionSummary {
 
     final bests = <PersonalBest>[];
     final seen = <String>{};
-    var hasEstimate = false;
 
     for (final exercise in session.exercises) {
       // A lifter who came back to the bench at the end has one movement in
-      // this list, not two. `bestOneRepMax` already folds every exercise of
-      // that name in the session, so the second visit would otherwise produce
-      // a duplicate row claiming the same best twice.
+      // this list, not two. `topSet` already folds every exercise of that name
+      // in the session, so the second visit would otherwise produce a
+      // duplicate row claiming the same best twice.
       if (!seen.add(exercise.name.toLowerCase())) continue;
 
-      final today = TrainingStats.bestOneRepMax(<Session>[
-        session,
-      ], exercise.name);
-
-      // No estimate is a real state, not a failure. Epley is capped at 12
-      // reps — see [TrainingStats.estimateOneRepMax] — so a movement worked
-      // for fifteens produces nothing here, and that is the honest answer
-      // rather than a number invented to fill the row.
+      // Null for bodyweight work, which has no weight to have beaten.
+      final today = TrainingStats.topSet(<Session>[session], exercise.name);
       if (today == null) continue;
-      hasEstimate = true;
 
-      final before = TrainingStats.bestOneRepMax(prior, exercise.name);
+      final before = TrainingStats.topSet(prior, exercise.name);
 
       // **A movement with no history is not a personal best.** There is
       // nothing to have beaten. Counting it would make a first session
@@ -85,20 +76,13 @@ class SessionSummary {
       // best the next time they do it and go past this.
       if (before == null) continue;
 
-      // Strictly greater. Matching a best is not setting one, and a session
-      // that repeats last week's top set to the kilogram should not be told
-      // it moved.
-      if (today.estimate.kilograms <= before.estimate.kilograms) continue;
+      // Heavier, or as heavy for more reps. Matching a best is not setting
+      // one, and a session that repeats last week's top set to the kilogram
+      // should not be told it moved.
+      if (!today.beats(before)) continue;
 
       bests.add(
-        PersonalBest(
-          movement: exercise.name,
-          estimate: today.estimate,
-          weight: today.weight,
-          reps: today.reps,
-          previous: before.estimate,
-          previousOn: before.on,
-        ),
+        PersonalBest(movement: exercise.name, set: today, beat: before),
       );
     }
 
@@ -115,7 +99,6 @@ class SessionSummary {
       // The lifter read the session in that order ninety seconds ago, and a
       // reordered list makes them find each movement again.
       personalBests: List<PersonalBest>.unmodifiable(bests),
-      hasEstimate: hasEstimate,
     );
   }
 
@@ -139,51 +122,47 @@ class SessionSummary {
   /// plainly which ones had nothing logged on them.
   final int movements;
 
-  /// Movements whose best estimated one-rep max went past everything before
-  /// this session. Empty is the ordinary case.
+  /// Movements where this session went heavier than ever before, or as heavy
+  /// for more reps. Empty is the ordinary case.
   final List<PersonalBest> personalBests;
-
-  /// Whether any set in this session could be estimated from at all.
-  ///
-  /// Separates the two silences. "Nothing beat your best" and "nothing here
-  /// can be turned into an estimate" are different facts, and a screen that
-  /// renders them identically tells a lifter who trained entirely in fifteens
-  /// that they went backwards.
-  final bool hasEstimate;
 }
 
-/// A movement whose estimated one-rep max went past its previous best in this
-/// session, and what it beat.
+/// A movement that went past its previous best in this session, and what it
+/// beat.
 ///
-/// The estimate is Epley's, which is a fitted line rather than a measurement —
-/// so anything showing this should say "estimated" rather than asserting the
-/// lifter can hit it. [weight] and [reps] are the set that actually happened,
-/// and are the honest half of the claim.
+/// **Measured on weight lifted, not on an estimate** (#3). In 2.0.0 a best was
+/// an estimated one-rep max going up, so 95 × 5 was "a new best" on a bench
+/// already done at 100 — because it estimated 111, a weight nobody had lifted. Now it is a
+/// set that actually happened: heavier than any before, or as heavy for more
+/// reps.
 @immutable
 class PersonalBest {
   const PersonalBest({
     required this.movement,
-    required this.estimate,
-    required this.weight,
-    required this.reps,
-    required this.previous,
-    required this.previousOn,
+    required this.set,
+    required this.beat,
   });
 
   final String movement;
 
-  /// This session's best estimate.
-  final Mass estimate;
+  /// This session's top set: its heaviest, and the most reps at that weight.
+  final TopSet set;
 
-  /// The set that produced it.
-  final Mass weight;
-  final int reps;
-
-  /// The estimate it beat. Never null: a movement with no history does not
+  /// The top set it beat. Never null: a movement with no history does not
   /// appear here at all — see [SessionSummary.of].
-  final Mass previous;
+  final TopSet beat;
 
-  /// When that previous best was set. Shown, because beating something from
-  /// last week and beating something from last year are different sessions.
-  final DateTime previousOn;
+  /// Went heavier, rather than doing more reps at the same weight.
+  bool get isHeavier => set.isHeavierThan(beat);
+}
+
+/// What a best says under its name: the set, then what it went past.
+///
+/// One wording for the summary and for the bubble during a session, which
+/// announce the same best and should not describe it two ways.
+String bestDetail(TopSet set, TopSet beat, MassUnit unit) {
+  final done = '${set.weight.label(unit)} × ${set.reps}';
+  return set.isHeavierThan(beat)
+      ? '$done. Your heaviest yet, past ${beat.weight.label(unit)}.'
+      : '$done. Your most reps at that weight, up from ${beat.reps}.';
 }

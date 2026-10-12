@@ -8,9 +8,16 @@ import '../../tracking/domain/exercise.dart';
 import '../../tracking/domain/session.dart';
 import '../../tracking/presentation/exercise_thumb.dart';
 import '../domain/movement_history.dart';
+import '../domain/working_weights.dart';
 
-/// One movement, over everything the log holds of it (R9): its best, how the
-/// estimate has moved, the sessions it came from, and how it is done.
+/// One movement, over everything the log holds of it (R9): its heaviest, what
+/// to load for each rep range, how the estimate has moved, the sessions it
+/// came from, and how it is done.
+///
+/// **No one-rep max on show** (#3). It led with *Est. 1RM*, a number nobody
+/// loads, next to the heaviest weight they did — so it read as a best they had
+/// set. The estimate now turns into working weights instead, and stays only as
+/// the line over time, where it is labelled for what it is.
 ///
 /// Reached by tapping a movement's name wherever one is shown — a session, its
 /// summary, a past session from the history, and Profile's most trained. It
@@ -73,11 +80,17 @@ class ExerciseStatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final history = MovementHistory.of(log, name);
-    final best = history.best;
     final heaviest = history.heaviest;
     final points = history.estimates;
     final exercise = catalogue;
     final today = now ?? DateTime.now();
+    final weights = WorkingWeights.of(
+      log,
+      name,
+      now: today,
+      unit: massUnit,
+      kit: exercise?.category,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -127,13 +140,6 @@ class ExerciseStatsScreen extends StatelessWidget {
                   children: <Widget>[
                     Expanded(
                       child: _Tile(
-                        label: 'Est. 1RM',
-                        value: best?.estimate.label(massUnit) ?? '—',
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _Tile(
                         label: 'Heaviest',
                         value: heaviest == null
                             ? '—'
@@ -149,20 +155,34 @@ class ExerciseStatsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  // The set behind the estimate, so the number can be traced
-                  // to a session the lifter remembers.
-                  best == null
-                      ? 'No estimate yet. One comes from a working set of 12 '
-                            'reps or fewer with weight on the bar.'
-                      : 'Best set · ${best.weight.label(massUnit)} × '
-                            '${best.reps} · ${_date(best.on, today)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.lg),
+
+                // Hidden, not emptied, when nothing in the last six weeks
+                // qualifies: an old best is not what somebody can load today.
+                if (weights != null) ...<Widget>[
+                  _Card(
+                    label: 'Working weights',
+                    children: <Widget>[
+                      for (final band in weights.bands)
+                        _BandRow(band: band, massUnit: massUnit),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        // The set behind the numbers, so they can be traced to
+                        // a session the lifter remembers.
+                        'A guide, not a target. Worked out from '
+                        '${weights.from.weight.label(massUnit)} × '
+                        '${weights.from.reps} on ${_date(weights.from.on, today)}, '
+                        'your best set of the last six weeks, with a rep left '
+                        'in the tank.'
+                        '${weights.bands.any((b) => b.range.isRough) ? ' The ~ range is the roughest.' : ''}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
 
                 _Card(
                   label: 'Estimated 1RM over time',
@@ -259,6 +279,50 @@ class _Tile extends StatelessWidget {
   );
 }
 
+/// One rep range and what to load for it: `7–11 reps · 70–77.5 kg`.
+class _BandRow extends StatelessWidget {
+  const _BandRow({required this.band, required this.massUnit});
+
+  final WeightBand band;
+  final MassUnit massUnit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final range = band.range;
+    final high = band.high.label(massUnit);
+    final load = band.isSingle ? high : '${_amount(band.low, massUnit)}–$high';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              '${range.min}–${range.max} reps',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          Text(
+            // Approximate where Epley is least sure, and said so on screen
+            // rather than only in a footnote.
+            range.isRough ? '~$load' : load,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// [Mass.label] without its unit, for the first number of a range, so it
+  /// reads `70–77.5 kg` rather than `70 kg–77.5 kg`.
+  static String _amount(Mass m, MassUnit unit) {
+    final v = m.displayValue(unit);
+    return v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
+  }
+}
+
 /// A section on glass: its label, then its rows.
 class _Card extends StatelessWidget {
   const _Card({required this.label, required this.children});
@@ -301,7 +365,6 @@ class _SessionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final estimate = entry.bestEstimate;
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
@@ -330,16 +393,9 @@ class _SessionRow extends StatelessWidget {
               ],
             ),
           ),
-          if (estimate != null) ...<Widget>[
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              estimate.label(massUnit),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
+          // No estimate at the end of the row (#3): unlabelled, it read as a
+          // weight lifted that day. The sets are the record; the line above
+          // is where the estimate is drawn, and says what it is.
           if (onTap != null) ...<Widget>[
             const SizedBox(width: AppSpacing.xs),
             const Icon(

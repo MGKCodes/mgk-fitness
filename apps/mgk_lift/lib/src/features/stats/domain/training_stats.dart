@@ -74,9 +74,17 @@ class TrainingStats {
 
   /// The best estimated one-rep max for a movement, and the set that produced
   /// it. Null when nothing qualifying has been lifted.
-  static OneRepMax? bestOneRepMax(List<Session> log, String exerciseName) {
+  ///
+  /// [since] leaves out sessions started before it: a working weight is worked
+  /// out from what somebody can lift now, not from a best set last spring.
+  static OneRepMax? bestOneRepMax(
+    List<Session> log,
+    String exerciseName, {
+    DateTime? since,
+  }) {
     OneRepMax? best;
     for (final session in log.where((s) => !s.isInProgress)) {
+      if (since != null && session.startedAt.isBefore(since)) continue;
       for (final exercise in session.exercises) {
         if (exercise.name.toLowerCase() != exerciseName.toLowerCase()) continue;
         for (final set in exercise.workingSets) {
@@ -97,6 +105,34 @@ class TrainingStats {
       }
     }
     return best;
+  }
+
+  /// The heaviest working set of a movement, and the most reps done at that
+  /// weight. Null when nothing with weight on it has been ticked.
+  ///
+  /// **This is what a personal best is measured against** (#3), not the
+  /// estimate. A best is a weight that went on the bar and came up, or more
+  /// reps at the heaviest one; an estimated max is a guide to what to load,
+  /// and telling somebody they set a best on a number they never lifted is
+  /// the app claiming something it does not know.
+  static TopSet? topSet(List<Session> log, String exerciseName) {
+    TopSet? top;
+    for (final session in log.where((s) => !s.isInProgress)) {
+      for (final exercise in session.exercises) {
+        if (exercise.name.toLowerCase() != exerciseName.toLowerCase()) continue;
+        for (final set in exercise.workingSets) {
+          if (set.weightKg <= 0 || set.reps < 1) continue;
+          final candidate = TopSet(
+            weight: Mass.kilograms(set.weightKg),
+            reps: set.reps,
+            on: session.startedAt,
+          );
+          // Strictly better only, so a tie keeps the first time it was done.
+          if (top == null || candidate.beats(top)) top = candidate;
+        }
+      }
+    }
+    return top;
   }
 
   /// Epley: `weight × (1 + reps / 30)`.
@@ -212,6 +248,33 @@ class OneRepMax {
   final Mass weight;
   final int reps;
   final DateTime on;
+}
+
+/// The heaviest set of a movement, and the most reps at that weight.
+@immutable
+class TopSet {
+  const TopSet({required this.weight, required this.reps, required this.on});
+
+  final Mass weight;
+  final int reps;
+
+  /// When it was first done.
+  final DateTime on;
+
+  /// Heavier than [other], or as heavy for more reps.
+  ///
+  /// **Equal weights are equal within a gram**, not to the last bit: a weight
+  /// typed in pounds is stored as its exact kilograms, and the same 225 lb
+  /// typed twice must count as the same weight.
+  bool beats(TopSet other) {
+    final d = weight.kilograms - other.weight.kilograms;
+    if (d.abs() < 0.001) return reps > other.reps;
+    return d > 0;
+  }
+
+  /// Whether it beat [other] on weight, rather than on reps at the same one.
+  bool isHeavierThan(TopSet other) =>
+      weight.kilograms - other.weight.kilograms >= 0.001;
 }
 
 /// How many sessions a movement appears in.
