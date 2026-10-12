@@ -73,7 +73,7 @@
       "lede": "The offer is the tab's own empty state rather than a wall in front of it, so what is being sold and where it will appear are the same screen. Past it: no week number, no end date, no completion. Those are marathon ideas, and \"get stronger\" has no week 12 — the week is derived from weekdays rather than scheduled into, which is why a rest day here is an answer and not a gap.",
       "racks": [
         { "title": "The offer", "screens": ["plan", "sales", "sales-android", "sales-signed-out", "plan-entitled"] },
-        { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest"] }
+        { "title": "The week it produced", "screens": ["plan-standing", "plan-standing-rest", "plan-standing-offline"] }
       ]
     },
     {
@@ -780,6 +780,17 @@
       "note": "Nothing owed, nothing behind.",
       "doc": "A rest day is an answer, not an empty state — which is the whole point of deriving the week from weekdays rather than scheduling sessions into it. Nothing is overdue, because nothing was ever booked.",
       "tags": ["paid"]
+    },
+    "plan-standing-offline": {
+      "code": "P7",
+      "title": "Plan — no signal",
+      "host": "shell",
+      "in": "Nav bar › Plan, at the gym with no signal",
+      "out": "Nav bar",
+      "next": "Go to Track; the week is all here",
+      "note": "The copy saved on the phone, said as such.",
+      "doc": "The plan is shown from the copy on the phone first and the server is asked behind it (#2), giving up after five seconds when there is a copy to show. In 2.0.0 the server came first, and on one bar of signal Track had no session until the request failed. When the server does answer, the line reads Synced just now; when it does not, it says this is the saved plan and how old it is. Done right: today's session is on Track the moment the app opens, signal or not.",
+      "tags": ["paid", "new", "first"]
     },
 
     "coach-disclaimer": {

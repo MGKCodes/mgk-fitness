@@ -4,6 +4,7 @@ import '../src/features/planning/domain/plan_intake.dart';
 import '../src/features/planning/domain/plan_builder.dart';
 import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
+import '../src/features/planning/domain/standing_plan_store.dart';
 import '../src/features/planning/domain/training_split.dart';
 import '../src/features/planning/domain/coach_planner.dart';
 import '../src/features/planning/domain/intake_flow.dart';
@@ -423,6 +424,43 @@ class FakeHistory implements SessionHistory {
     final back = _removed.remove(id);
     if (back != null) _log.add(back);
   }
+}
+
+/// A plan that says when the server last gave it, which the in-memory store
+/// cannot: nothing in it was ever on a server (#2).
+///
+/// [offline] is the gym with no signal — the copy saved on the phone, said as
+/// such. Without it, the plan has just been checked.
+class FakePlanStore implements StandingPlanStore {
+  FakePlanStore(this._plan, {required this.checkedAt, this.offline = false});
+
+  StandingPlan _plan;
+  final DateTime checkedAt;
+  final bool offline;
+
+  @override
+  Future<StandingPlan?> active() async => _plan;
+
+  @override
+  Stream<PlanRead> watch() async* {
+    yield PlanRead(
+      _plan,
+      freshness: offline ? PlanFreshness.unreachable : PlanFreshness.checked,
+      checkedAt: checkedAt,
+    );
+  }
+
+  @override
+  Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async =>
+      _plan = plan;
+
+  @override
+  Future<void> recordResult(
+    String slotId, {
+    required double topKg,
+    required int reps,
+    required bool improved,
+  }) async {}
 }
 
 /// A planner with canned answers, so the coach-backed sheets and the intake

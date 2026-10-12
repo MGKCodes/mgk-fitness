@@ -22,6 +22,16 @@ abstract interface class StandingPlanStore {
   /// The live plan, or null if there is not one.
   Future<StandingPlan?> active();
 
+  /// The live plan as this phone can show it: the copy saved here at once,
+  /// then the server's answer when it comes.
+  ///
+  /// **Saved first, server second** (#2). The plan used to be asked of the
+  /// server first, with the saved copy only as the answer to an error — and on
+  /// one bar of signal an error takes ten to thirty seconds to arrive, all of
+  /// it spent on a Track with no session on it. A store with nothing saved has
+  /// only the server's answer to give.
+  Stream<PlanRead> watch();
+
   /// Replaces whatever is live.
   ///
   /// **One live plan per person**, enforced by a partial unique index in the
@@ -69,6 +79,13 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
 
   @override
   Future<StandingPlan?> active() async => _plan;
+
+  /// One answer, with no time on it: nothing here was ever on a server, so
+  /// there is no sync to report.
+  @override
+  Stream<PlanRead> watch() async* {
+    yield PlanRead(_plan, freshness: PlanFreshness.checked);
+  }
 
   /// What the last [replace] was told, so a test can assert it was kept.
   PlanIntake? intake;
@@ -122,6 +139,34 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
       },
     );
   }
+}
+
+/// Where the plan on screen came from.
+enum PlanFreshness {
+  /// The copy saved on this phone, while the server is still being asked.
+  saved,
+
+  /// The server's answer, just now.
+  checked,
+
+  /// The copy saved on this phone, because the server did not answer.
+  unreachable,
+}
+
+/// One answer from [StandingPlanStore.watch].
+@immutable
+class PlanRead {
+  const PlanRead(this.plan, {required this.freshness, this.checkedAt});
+
+  /// The plan, or null for none — no plan on the server, or nothing saved and
+  /// no server to ask.
+  final StandingPlan? plan;
+
+  final PlanFreshness freshness;
+
+  /// When the server last gave this answer. Null when it never has on this
+  /// phone: a preview, a test, or nothing saved and no signal.
+  final DateTime? checkedAt;
 }
 
 /// Reasons a plan could not be read or written. Reuses [PlanFailure] rather

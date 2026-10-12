@@ -840,7 +840,23 @@ class PreviewApp extends StatelessWidget {
         // A Monday: Upper.
         today: DateTime(2026, 8, 17),
         isEntitled: true,
-        plans: InMemoryStandingPlanStore(_standingPlan()),
+        plans: FakePlanStore(_standingPlan(), checkedAt: DateTime(2026, 8, 17)),
+        planner: FakePlanner(),
+        initialTab: 1,
+      ),
+      // The gym with no signal (#2): the same week, from the copy saved on the
+      // phone, and saying so under the name.
+      'plan-standing-offline': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(sampleLog(previewNow)),
+        coach: FakeCoach(),
+        today: DateTime(2026, 8, 17),
+        isEntitled: true,
+        plans: FakePlanStore(
+          _standingPlan(),
+          checkedAt: DateTime(2026, 8, 16, 22),
+          offline: true,
+        ),
         planner: FakePlanner(),
         initialTab: 1,
       ),

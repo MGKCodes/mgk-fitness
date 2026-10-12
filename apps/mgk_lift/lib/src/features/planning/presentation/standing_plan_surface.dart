@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../../core/ago.dart';
 import '../domain/standing_plan.dart';
 
 /// The plan: the week at a glance, and one day open at a time.
@@ -39,6 +40,8 @@ class StandingPlanSurface extends StatefulWidget {
     super.key,
     required this.plan,
     required this.today,
+    this.checkedAt,
+    this.offline = false,
     this.massUnit = MassUnit.kilograms,
     this.onGoToTrack,
     this.onDoToday,
@@ -50,6 +53,16 @@ class StandingPlanSurface extends StatefulWidget {
 
   final StandingPlan plan;
   final DateTime today;
+
+  /// When the server last gave this plan. Null says nothing: a preview, or a
+  /// plan that never came from a server.
+  final DateTime? checkedAt;
+
+  /// The latest attempt to reach the server failed, so this is the copy saved
+  /// on the phone (#2). Said under the name, because a week read at the gym
+  /// with no signal should not pass for one just checked.
+  final bool offline;
+
   final MassUnit massUnit;
 
   /// Goes to Track, where today's session starts.
@@ -120,6 +133,17 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
                 color: AppColors.textSecondary,
               ),
             ),
+            if (_synced() case final synced?) ...<Widget>[
+              const SizedBox(height: 2),
+              Text(
+                synced,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: widget.offline
+                      ? AppColors.textSecondary
+                      : AppColors.textTertiary,
+                ),
+              ),
+            ],
 
             // ---- The week, first: this screen is the calendar --------------
             const SizedBox(height: AppSpacing.xl),
@@ -207,6 +231,18 @@ class _StandingPlanSurfaceState extends State<StandingPlanSurface> {
         ),
       ),
     );
+  }
+
+  /// The sync line, or null for none.
+  String? _synced() {
+    final at = widget.checkedAt;
+    if (widget.offline) {
+      return at == null
+          ? 'Offline. Showing the plan saved on this phone.'
+          : 'Offline. Showing the plan saved on this phone '
+                '${roughlyAgo(at, widget.today)}.';
+    }
+    return at == null ? null : 'Synced ${roughlyAgo(at, widget.today)}';
   }
 
   static String _month(DateTime d) => const <String>[
