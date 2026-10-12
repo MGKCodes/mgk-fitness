@@ -1,4 +1,5 @@
 import { stores } from "./links";
+import type { Key } from "./storyboard";
 
 /**
  * What the site says, in one place, so the film on the home page and each
@@ -64,18 +65,121 @@ export const steps: Record<App, Step[]> = {
 };
 
 /** Each app in a line, and what it is called on its own page. */
-export const apps: Record<App, { name: string; what: string; coachScreen: string; coachAlt: string }> = {
+export const apps: Record<App, { name: string; what: string }> = {
+  run: { name: "Run", what: "A running tracker and training coach." },
+  lift: { name: "Lift", what: "A strength log with a coach of its own." },
+};
+
+/** A screen as an app's page shows it, and what it does if the page says. */
+export type Screen = { src: string; alt: string };
+export type Feature = Screen & { tag: string; lines: [string, string]; more: string };
+
+/**
+ * Each app's own page, made from the six screens its store pictures are made
+ * from (Run's `test/plates/store.dart`, Lift's `tool/capture_store_screens.mjs`,
+ * copied into `public/screens/store/`), all drawn at one clock: one in the
+ * head, four with their words, and the coach's beside the case for it. The two
+ * lines on each are the store pictures' own (`design/store-shots/src/shots.ts`
+ * in each app) and the sentence under them is the listing's. `still` and
+ * `interlude.still` are the film's own stills (`public/film/`), so the
+ * pages stand in the places the film goes: Run on the track and above it,
+ * Lift in the weight room and the tunnel to it.
+ */
+export const pages: Record<
+  App,
+  { time: string; still: Key; head: Screen; features: Feature[]; coach: Screen; interlude: { still: Key; line: [string, string] } }
+> = {
   run: {
-    name: "Run",
-    what: "A running tracker and training coach.",
-    coachScreen: "run-coach",
-    coachAlt: "Run's coach, asked what a half marathon could be run in, answering from a recent 5k.",
+    time: "09:41",
+    still: "k2",
+    head: {
+      src: "/screens/store/run/1-home.png",
+      alt: "Run's home screen in the morning: today's session, 5 km slower than feels natural, ready to start, with this week's sessions and the last run.",
+    },
+    features: [
+      {
+        tag: "Free",
+        lines: ["Track every run.", "No account needed."],
+        more: "Press start and it tracks your route, your splits and your pace. It keeps recording with the screen locked and the phone in a pocket, and without a signal.",
+        src: "/screens/store/run/2-run.png",
+        alt: "Run recording a run: the route on a map, 4.28 km, 26:30 and a pace of 6:06 per km.",
+      },
+      {
+        tag: "Free",
+        lines: ["Every run, kept", "on your phone."],
+        more: "The run is written to your phone as it happens, not to a server: its route, its splits and your pace. Treadmill and manual entry cover the runs your phone did not see.",
+        src: "/screens/store/run/3-finished.png",
+        alt: "A finished run: 6.13 km in 37:42 at 6:09 per km, its route on the map, and its splits.",
+      },
+      {
+        tag: "Coach · Subscription",
+        lines: ["A real plan,", "adjusted weekly."],
+        more: "Sessions arrive about a week ahead, so the plan reflects the running you actually did. When life gets in the way, say so: the week bends around it, and nothing changes until you say yes.",
+        src: "/screens/store/run/4-plan.png",
+        alt: "Run's plan for a marathon: this week's sessions from Monday to Sunday, with today's recovery run.",
+      },
+      {
+        tag: "Free",
+        lines: ["Your year,", "at a glance."],
+        more: "Your whole log: every run, its route, its splits, your records, and your year at a glance. Kilometres or miles, your choice.",
+        src: "/screens/store/run/6-year.png",
+        alt: "Run's profile: the longest run and fastest pace, typical times, the year as a grid of days run, and the goal.",
+      },
+    ],
+    coach: {
+      src: "/screens/store/run/5-coach.png",
+      alt: "Run's coach, asked what a half marathon could be run in, answering from a recent 5k.",
+    },
+    interlude: {
+      still: "k1",
+      line: ["No feed, no followers, no leaderboards, no kudos.", "It is a training tool, not a social network."],
+    },
   },
   lift: {
-    name: "Lift",
-    what: "A strength log with a coach of its own.",
-    coachScreen: "lift-coach",
-    coachAlt: "Lift's coach saying: your bench has not moved in three weeks. Want to look at it?",
+    time: "18:41",
+    still: "k5",
+    head: {
+      src: "/screens/store/lift/track-planned.png",
+      alt: "Lift's home in the evening: today's upper session ready to start, with this week's sessions and the last one.",
+    },
+    features: [
+      {
+        tag: "Free",
+        lines: ["Log a set in one tap.", "Last time’s numbers already in."],
+        more: "Tick a set and the rest timer starts. It buzzes when rest is over, even with your phone locked, and counts on past zero so you know how long you actually rested.",
+        src: "/screens/store/lift/session-resting.png",
+        alt: "Lift during a push session: sets of bench press ticked off, and the rest timer counting down from 1:30.",
+      },
+      {
+        tag: "Free",
+        lines: ["Every session,", "kept on your phone."],
+        more: "Every set is saved on your phone the moment you tick it, with no signal needed. Every session is there to open, fix or delete, grouped by week.",
+        src: "/screens/store/lift/session-summary-pb.png",
+        alt: "A finished push session: 2345 kg in 58 minutes, what was lifted, and a new best on the bench press.",
+      },
+      {
+        tag: "Coach · Subscription",
+        lines: ["A plan built", "around your week."],
+        more: "A training plan built around your goal and the days you can train, which adjusts as you go.",
+        src: "/screens/store/lift/plan-standing.png",
+        alt: "Lift's upper and lower plan: the week's days, and today's movements with last time's numbers.",
+      },
+      {
+        tag: "Free",
+        lines: ["Your training,", "at a glance."],
+        more: "Your saved workouts, your history and your stats. Save a session as a workout and start it again with every set laid out.",
+        src: "/screens/store/lift/profile.png",
+        alt: "Lift's profile: lifetime tonnage, sessions and streak, records, the most trained movements and the year.",
+      },
+    ],
+    coach: {
+      src: "/screens/store/lift/coach-resumed.png",
+      alt: "Lift's coach explaining why a bench press has stalled, and keeping a sore shoulder in mind.",
+    },
+    interlude: {
+      still: "k4",
+      line: ["Built for the minute", "between sets."],
+    },
   },
 };
 
