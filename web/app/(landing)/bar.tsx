@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, type MouseEvent } from "react";
 import { social } from "./links";
 import { Mark } from "./mark";
@@ -98,36 +99,35 @@ function Get() {
 }
 
 /**
- * The bar: the suite's name, its two apps, its accounts elsewhere and where
- * to get the apps.
+ * The bar: the suite's name, its pages, its accounts elsewhere and where to
+ * get the apps.
  *
- * Run and Lift are places in the film, not pages, so their links scroll the
- * film to where each app arrives. They are ordinary links to `#run` and
- * `#lift` underneath, which is what they do with no JavaScript and what a
- * shared address opens on.
+ * The film is the home page, and the suite's name takes it back to its top:
+ * gliding there on the home page, and a link home from every other page. Run,
+ * Lift and the source are pages of their own.
  */
 export function Bar() {
-  function go(event: MouseEvent<HTMLAnchorElement>) {
-    const place = document.getElementById(event.currentTarget.hash.slice(1));
-    if (!place) return;
+  const home = usePathname() === "/";
+
+  function top(event: MouseEvent<HTMLAnchorElement>) {
+    if (!home) return;
     event.preventDefault();
-    history.replaceState(null, "", event.currentTarget.hash);
-    glide(place.getBoundingClientRect().top + window.scrollY);
+    history.replaceState(null, "", "/");
+    glide(0);
   }
 
   return (
     <header className="bar">
       {/* Named for the widths at which only the mark is shown. */}
-      <a className="wordmark" href="#top" onClick={go} aria-label="MGKFitness">
+      <a className="wordmark" href="/" onClick={top} aria-label="MGKFitness">
         <Mark of="suite" />
         <span>MGKFITNESS</span>
       </a>
-      <nav aria-label="On this page">
-        <a href="#run" onClick={go}>
-          Run
-        </a>
-        <a href="#lift" onClick={go}>
-          Lift
+      <nav aria-label="Pages">
+        <a href="/run">Run</a>
+        <a href="/lift">Lift</a>
+        <a className="source" href="/open-source">
+          Open source
         </a>
       </nav>
       <div className="socials">
