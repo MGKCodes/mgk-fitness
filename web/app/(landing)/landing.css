@@ -1183,3 +1183,401 @@ a.store:hover {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   margin-bottom: clamp(3rem, 9svh, 5rem);
 }
+
+/* ── Onward from the film ────────────────────────────────────────────────── */
+/* Under each app's badges in the film, and wherever a page points at another. */
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--silver);
+  text-decoration: none;
+}
+
+.more:hover {
+  color: var(--white);
+}
+
+.app .more {
+  margin-top: min(0.35rem, 0.6svh);
+}
+
+/* The home page's way on: each app's page, and the source. */
+.onward {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0 var(--edge);
+  padding: 14svh var(--edge) 0;
+}
+
+.onward a {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.5rem 0 2rem;
+  border-top: 1px solid var(--white);
+  text-decoration: none;
+}
+
+.onward b {
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.onward b span {
+  display: inline-block;
+  color: var(--silver);
+  transition: transform 0.2s;
+}
+
+.onward a:hover b span {
+  transform: translateX(0.3rem);
+}
+
+.onward a > span {
+  max-width: 30ch;
+  color: var(--silver);
+}
+
+/* ── A page of its own ───────────────────────────────────────────────────── */
+/* Each app's page and the source's: the film's type and ground, without the
+   film, and every section closer to the next. */
+.page > section {
+  padding: clamp(5rem, 14svh, 10rem) var(--edge) 0;
+}
+
+.page > section:last-child {
+  padding-bottom: clamp(5rem, 14svh, 10rem);
+}
+
+.page-head {
+  display: grid;
+  justify-items: start;
+  gap: clamp(1rem, 2.4svh, 1.6rem);
+  padding: clamp(7rem, 18svh, 11rem) var(--edge) 0;
+}
+
+/* An app's name, as the film sets it, a size down. */
+.page-head h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+  font-size: clamp(4.5rem, 15vw, 15rem);
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.025em;
+}
+
+.open-page .page-head h1 {
+  font-size: clamp(3rem, 8vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.page-head .lede {
+  max-width: 34ch;
+  font-size: clamp(1.25rem, 2.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--silver);
+}
+
+.open-page .page-head .lede {
+  max-width: 46ch;
+  font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.page-head .repos {
+  margin-top: 1rem;
+}
+
+/* What an app does: its three screens, side by side, each with its words. */
+.screens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 3.5rem var(--edge);
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+}
+
+.screens li {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 1rem;
+}
+
+.screens .phone {
+  --tall: min(62svh, 34rem);
+  position: relative;
+  inset: auto;
+  margin: 0 0 0.75rem;
+  transform: none;
+}
+
+.screens p {
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.screens p span {
+  display: block;
+  color: var(--silver);
+}
+
+/* Free and the coach, as lists now rather than the old page's terms. */
+.terms ul {
+  margin-top: 1rem;
+}
+
+.terms li {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.4;
+  color: var(--silver);
+}
+
+.page .terms .small {
+  max-width: 64ch;
+  line-height: 1.5;
+}
+
+.page .suite .more {
+  margin-top: 2.5rem;
+}
+
+/* The questions, folded away until they are wanted. */
+.answers {
+  max-width: 52rem;
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+  border-bottom: 1px solid var(--hair);
+}
+
+.answers details {
+  border-top: 1px solid var(--hair);
+}
+
+.answers summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 44px;
+  padding: 1.35rem 0;
+  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  list-style: none;
+  cursor: pointer;
+}
+
+.answers summary::-webkit-details-marker {
+  display: none;
+}
+
+.answers summary::after {
+  content: "+";
+  flex: none;
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--silver);
+  transition: transform 0.2s;
+}
+
+.answers details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.answers summary:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 4px;
+}
+
+.answers p {
+  max-width: 60ch;
+  padding: 0 0 1.6rem;
+  font-size: clamp(1rem, 1.25vw, 1.1rem);
+  line-height: 1.55;
+  color: var(--silver);
+}
+
+.answers a,
+.page .small a,
+.page .facts a,
+.how a {
+  color: var(--white);
+}
+
+/* ── The source's page ───────────────────────────────────────────────────── */
+.counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 1.5rem var(--edge);
+  width: 100%;
+  max-width: 52rem;
+  margin-top: 2rem;
+}
+
+.counts dt {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.counts dd {
+  margin-top: 0.35rem;
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* The repository's folders and what each holds. */
+.rows {
+  max-width: 60rem;
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+}
+
+.rows > div {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 0.5rem 2rem;
+  padding: 1.1rem 0;
+  border-top: 1px solid var(--hair);
+}
+
+.rows dd {
+  color: var(--silver);
+  line-height: 1.5;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.rows code {
+  color: var(--white);
+}
+
+.how {
+  max-width: 56rem;
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+  counter-reset: step;
+}
+
+.how li {
+  position: relative;
+  padding: 1.2rem 0 1.2rem 3rem;
+  border-top: 1px solid var(--hair);
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  line-height: 1.5;
+  color: var(--silver);
+  counter-increment: step;
+}
+
+.how li::before {
+  content: "0" counter(step);
+  position: absolute;
+  left: 0;
+  top: 1.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--white);
+}
+
+.rules-head {
+  margin-top: 3.5rem;
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.rules {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--silver);
+}
+
+.rules li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.rules li::before {
+  content: "";
+  flex: none;
+  width: 0.75rem;
+  height: 1px;
+  background: var(--dim);
+  transform: translateY(-0.3em);
+}
+
+.yourself pre {
+  max-width: 46rem;
+  margin-top: clamp(2rem, 6svh, 3.5rem);
+  padding: 1.4rem 1.5rem;
+  overflow-x: auto;
+  border: 1px solid var(--hair);
+  border-radius: 1rem;
+  background: rgb(0 0 0 / 0.35);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--white);
+}
+
+.page .yourself .small,
+.page .built .small {
+  max-width: 64ch;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .rows > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The bar on a phone has room for the apps and not the source; the source is
+   in the foot, and on the home page under the film. */
+@media (max-width: 560px) {
+  .bar nav .source {
+    display: none;
+  }
+}
+
+/* A page's head is one column that never grows past the screen: without this
+   its cards and counts size to their full width and push the page sideways. */
+.page-head {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.page-head > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.page-head .repos {
+  width: 100%;
+}
+
+/* On a phone the screens are the point of the section, so they are larger. */
+@media (max-width: 760px) {
+  .screens .phone {
+    --tall: min(80svh, 34rem);
+  }
+}
