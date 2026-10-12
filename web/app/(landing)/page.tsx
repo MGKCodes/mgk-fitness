@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
-import { company, disclosure } from "../company";
 import { Bar } from "./bar";
+import { apps, steps, type Step } from "./content";
 import { Phone } from "./device";
 import { Film } from "./film";
-import { availability, social, source } from "./links";
+import { Foot } from "./foot";
+import { availability, social } from "./links";
 import { Mark } from "./mark";
 import { SocialGlyph } from "./social";
 import { Stores } from "./stores";
@@ -79,135 +80,13 @@ function Beat({
   );
 }
 
-/**
- * A way into the source: a link once the repository is public, and a place
- * held for it until then. `links.ts` says which.
- */
-function Source({ to, title, note }: { to: string; title: string; note: string }) {
-  const inside = (
-    <>
-      <small>{source.open ? "On GitHub" : "Opening soon"}</small>
-      {title}
-      <span>{note}</span>
-    </>
-  );
-  return source.open ? (
-    <a className="repo" href={to}>
-      {inside}
-    </a>
-  ) : (
-    <span className="repo held">{inside}</span>
-  );
-}
-
-/** One thing an app does: what it costs, two lines about it, and the screen. */
-type Step = { tag: string; lines: [string, string]; screen: string; alt: string };
-
-// Every line here is one the store listings already make, in
-// `apps/mgk_run/docs/app-store-listing.md` and `apps/mgk_lift/docs/store-listing.md`,
-// and each says whether it is free or the subscription, as the listings must.
-// A page that promised more than the listing would be the one place the apps
-// are oversold.
-const run: Step[] = [
-  {
-    tag: "Free",
-    lines: ["Track every run.", "Free. No account."],
-    screen: "run-record",
-    alt: "Run recording a run: the route drawn on a map, 4.28 km, the time and the pace.",
-  },
-  {
-    tag: "Coach · Subscription",
-    lines: ["A real plan,", "adjusted weekly."],
-    screen: "run-plan",
-    alt: "Run's plan for a marathon: this week's sessions, day by day.",
-  },
-  {
-    tag: "AI coach · Subscription",
-    lines: ["Ask the coach", "about any run."],
-    screen: "run-coach",
-    alt: "Run's coach answering what a half marathon could be run in.",
-  },
-];
-
-const lift: Step[] = [
-  {
-    tag: "Free",
-    lines: ["Log a set in one tap.", "Last time’s numbers already in."],
-    screen: "lift-log",
-    alt: "Lift during a session: sets of bench press ticked off, the next one filled in.",
-  },
-  {
-    tag: "Free",
-    lines: ["A rest timer that buzzes", "with your phone locked."],
-    screen: "lift-rest",
-    alt: "Lift between sets: a rest timer counting down from 1:30.",
-  },
-  {
-    tag: "Coach · Subscription",
-    lines: ["A plan built around your goal", "and the days you can train."],
-    screen: "lift-plan",
-    alt: "Lift's plan: an upper and lower split across the week, with today's movements.",
-  },
-];
-
-// Why somebody would pay for the coach: what goes wrong without one, and what
-// the coach does about it. The left of each pair is a trouble a reader will
-// recognise; the right is something the listings already say the coach does,
-// so the answer is never bigger than the product. Nothing here promises a
-// result, and the prices beside it are the stores' own (Run's ADR-0029).
-const reasons: [string, string][] = [
-  [
-    "A plan off the internet was written for somebody else.",
-    "Yours is built around your goal and the days you can train.",
-  ],
-  [
-    "One missed week and the plan no longer fits.",
-    "It is adjusted every week, around what you actually did.",
-  ],
-  [
-    "Nobody to ask whether today still makes sense.",
-    "Ask the coach. It reads what you have logged, so the answer is about you.",
-  ],
-  [
-    "You open the app and have to work out what to do.",
-    "Today’s session is already there, ready to start.",
-  ],
-];
-
-// What makes the two apps one suite, each as something that is true of them.
-// The last is marked as coming because it is not built: `core.activities`
-// holds every run and workout so that each app *can* show the other's, and
-// neither app reads it yet. The page says so rather than claiming it.
-const facts: [string, string, boolean?][] = [
-  [
-    "One account",
-    "The account you make in Run is your account in Lift. Sign in to either with it.",
-  ],
-  [
-    "One design",
-    "Both are built from the same parts, so the second app already feels like the first.",
-  ],
-  [
-    "Free to track",
-    "Recording a run and logging a workout are free in both, with no account needed to start.",
-  ],
-  [
-    "One history",
-    "Your runs in Lift and your lifting in Run, at no extra cost. It is what the suite is for.",
-    true,
-  ],
-];
-
-/** A screen that is simply shown, outside the film. */
-const always = { "--in": -1 } as CSSProperties;
-
 // When each of three steps is on screen, as shares of its hold. The phone
 // takes the first fifth to arrive, so the first step is given longest.
 const turns = [0.44, 0.72];
 const during = (i: number) =>
   ({ "--in": i === 0 ? -1 : turns[i - 1], "--out": turns[i] ?? 2 }) as CSSProperties;
 
-/** An app's name at the size of the page, and three of its screens in turn. */
+/** An app's name at the size of the page, its stores, and three of its screens in turn. */
 function App({
   shot,
   app,
@@ -231,6 +110,9 @@ function App({
         <Mark of={app} />
       </h2>
       <Stores app={app} />
+      <a className="more" href={`/${app}`}>
+        More about {apps[app].name} <span aria-hidden="true">→</span>
+      </a>
       <ol className="steps">
         {steps.map((step, i) => (
           <li key={step.screen} style={during(i)}>
@@ -260,11 +142,19 @@ function App({
   );
 }
 
+/** Where the rest of the site is: each app's page, and the source. */
+const pages: [string, string, string][] = [
+  ["/run", "Run", apps.run.what],
+  ["/lift", "Lift", apps.lift.what],
+  ["/open-source", "Open source", "Every line of both apps and their backend, there to read."],
+];
+
 // One camera move, from above the track down to it, along the straight, into
 // the players' tunnel and out in the weight room under the seats. Run arrives
 // where the camera lands on the track and Lift where it comes out of the
 // tunnel. `design/landing/` has the idea and the brief for the stills;
-// `storyboard.ts` has the pacing.
+// `storyboard.ts` has the pacing. The film is the home page; what each app
+// does in full, the coach, the questions and the source are pages of their own.
 export default function Home() {
   return (
     <>
@@ -286,7 +176,7 @@ export default function Home() {
 
           {/* 14:41 is the time Run's store screens were drawn at: the coach
               screen greets the afternoon. */}
-          <App shot="track" app="run" steps={run} size={[1290, 2796]} time="14:41" />
+          <App shot="track" app="run" steps={steps.run} size={[1290, 2796]} time="14:41" />
 
           {/* What is true of the two apps today is the account. Neither shows
               the other's training yet, so the line does not say that it does. */}
@@ -301,266 +191,28 @@ export default function Home() {
           <App
             shot="room"
             app="lift"
-            steps={lift}
+            steps={steps.lift}
             size={[1170, 2532]}
             time="19:04"
             bare={{ ground: "#1f1f1f" }}
           />
         </Film>
 
-        <section className="suite">
-          <span className="tag">MGKFitness</span>
-          <h2>
-            Two apps, made as one. <span>Use either on its own, or both on one account.</span>
-          </h2>
-          <ul className="facts">
-            {facts.map(([name, what, soon]) => (
-              <li key={name}>
-                <h3>
-                  {name}
-                  {soon && <span className="tag">Coming</span>}
-                </h3>
-                <p>{what}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <nav className="onward" aria-label="More">
+          {pages.map(([href, name, line]) => (
+            <a key={href} href={href}>
+              <b>
+                {name} <span aria-hidden="true">→</span>
+              </b>
+              <span>{line}</span>
+            </a>
+          ))}
+        </nav>
 
-        <section className="coach">
-          <span className="tag">The coach &middot; &pound;0.99 a month</span>
-          <h2>
-            A personal trainer costs too much and is never free when you are.{" "}
-            <span>The coach is &pound;0.99 a month, and there whenever you train.</span>
-          </h2>
-
-          <div className="case">
-            <ol className="reasons">
-              {reasons.map(([trouble, answer]) => (
-                <li key={trouble}>
-                  <p>{trouble}</p>
-                  <p>{answer}</p>
-                </li>
-              ))}
-            </ol>
-            {/* The coach itself, in both apps, saying something only a coach
-                that has read the log could say. */}
-            <div className="pair">
-              <Phone
-                screens={[
-                  {
-                    src: "/screens/run-coach.png",
-                    alt: "Run's coach, asked what a half marathon could be run in, answering from a recent 5k.",
-                    style: always,
-                  },
-                ]}
-                size={[1290, 2796]}
-                time="14:41"
-              />
-              <Phone
-                screens={[
-                  {
-                    src: "/screens/lift-coach.png",
-                    alt: "Lift's coach saying: your bench has not moved in three weeks. Want to look at it?",
-                    style: always,
-                  },
-                ]}
-                size={[1170, 2532]}
-                time="19:04"
-                bare={{ ground: "#1f1f1f" }}
-              />
-            </div>
-          </div>
-
-          <dl className="tiers">
-            <div>
-              <dt>Coach</dt>
-              <dd>
-                <b>&pound;0.99</b> a month
-              </dd>
-              <dd>A training plan, adjusted every week, and a coach to ask.</dd>
-            </div>
-            <div>
-              <dt>Premium Coach</dt>
-              <dd>
-                <b>&pound;2.99</b> a month
-              </dd>
-              <dd>The same coach, with far more room to talk.</dd>
-            </div>
-          </dl>
-          <p className="small">
-            UK prices. Run and Lift each have their own subscription, which renews
-            monthly until you cancel it. Tracking stays free either way. The coach is
-            an AI model, not a person, and it is not medical advice.
-          </p>
-        </section>
-
-        <section className="terms">
-          <h2>
-            Tracking is free. <span>The coach is the part you pay for.</span>
-          </h2>
-          <div className="columns">
-            <div>
-              <h3>Free</h3>
-              <dl>
-                <dt>Run</dt>
-                <dd>Track every run, with no account.</dd>
-                <dd>Every run, kept on your phone.</dd>
-                <dd>Your year, at a glance.</dd>
-                <dt>Lift</dt>
-                <dd>Log a set in one tap, with last time&rsquo;s numbers already in.</dd>
-                <dd>A rest timer that buzzes with your phone locked.</dd>
-                <dd>Works with no signal, and needs no account.</dd>
-              </dl>
-            </div>
-            <div>
-              <h3>
-                The coach <span className="tag">Subscription</span>
-              </h3>
-              <dl>
-                <dt>Run</dt>
-                <dd>Know what to run today.</dd>
-                <dd>A real plan, adjusted weekly.</dd>
-                <dd>Ask the coach about any run.</dd>
-                <dt>Lift</dt>
-                <dd>A training plan built around your goal and the days you can train.</dd>
-                <dd>A coach you can talk to about your training. It reads your log.</dd>
-                <dd>Progress photos, one a week per pose.</dd>
-              </dl>
-            </div>
-          </div>
-        </section>
-
-        <section className="open">
-          <span className="tag">Open source</span>
-          <h2>
-            Built in the open. <span>Made with the people who use it.</span>
-          </h2>
-          {/* Said in the present only once it is true. Until the repository is
-              public the code cannot be read, whatever its licence says. */}
-          {source.open ? (
-            <>
-              <p>
-                Run and Lift are open source, under the AGPL. The code that records
-                your training and talks to the coach is there to be read, questioned
-                and improved, and contributions are encouraged: an idea, a bug, a fix,
-                a feature.
-              </p>
-              {/* How it works, each point something the repository itself
-                  says: README.md, CONTRIBUTING.md, SECURITY.md and NOTICE.md. */}
-              <ul className="facts">
-                <li>
-                  <h3>All of it, readable</h3>
-                  <p>
-                    Both apps, the design system they share, the database and the
-                    coach&rsquo;s server code are in one public repository. What the
-                    apps do with your training is there to check.
-                  </p>
-                </li>
-                <li>
-                  <h3>The same code as the stores</h3>
-                  <p>
-                    What you download is built from this repository, and every
-                    build sent to the stores is tagged with the commit it came
-                    from, so you can read exactly what you are running.
-                  </p>
-                </li>
-                <li>
-                  <h3>The licence</h3>
-                  <p>
-                    <a href={source.licence}>AGPL-3.0</a>: read it, run it, change it,
-                    share it. Run a changed version for other people, over the
-                    internet too, and you share your changes as well. This website
-                    and the exercise drawings have licences of their own.
-                  </p>
-                </li>
-                <li>
-                  <h3>Contributing</h3>
-                  <p>
-                    <a href={source.issues}>Open an issue</a> for a bug or an idea.
-                    To send a change, fork the repository, branch from develop and
-                    open a pull request, signed off. Every change is read before it
-                    is merged.
-                  </p>
-                </li>
-                <li>
-                  <h3>Security, privately</h3>
-                  <p>
-                    Found a way to see somebody else&rsquo;s data? Tell us through the
-                    repository&rsquo;s <a href={source.security}>Security tab</a>, not
-                    in an issue.
-                  </p>
-                </li>
-                <li>
-                  <h3>Run it yourself</h3>
-                  <p>
-                    The apps and the whole backend run on your own machine, with
-                    Flutter, Docker and the Supabase CLI.{" "}
-                    <a href={source.readme}>The README</a> says how.
-                  </p>
-                </li>
-              </ul>
-            </>
-          ) : (
-            <p>
-              Run and Lift are going open source, under the AGPL. The code that
-              records your training and talks to the coach will be there to be read,
-              questioned and improved, and contributions will be encouraged: an
-              idea, a bug, a fix, a feature.
-            </p>
-          )}
-          <div className="repos">
-            <Source
-              to={source.repository}
-              title="MGKFitness"
-              note="Both apps, the parts they share, and the backend"
-            />
-            <Source to={source.run} title="Run" note="The running app" />
-            <Source to={source.lift} title="Lift" note="The strength app" />
-            <Source to={source.contributing} title="Contribute" note="How to send a change, and the rules" />
-          </div>
-          {!source.open && (
-            <p className="small">The repository opens to everybody soon.</p>
-          )}
-        </section>
-
-        {/* The stores are where each app is, in the film, and in the bar
-            from anywhere on the page; so this, the end, is the account. */}
         <Recent />
       </main>
 
-      <footer className="foot">
-        <nav aria-label="Run">
-          <h3>Run</h3>
-          <a href="/run/privacy">Privacy policy</a>
-          <a href="/run/medical-disclaimer">Medical disclaimer</a>
-          <a href="/run/terms">Terms of use</a>
-          <a href="/run/support">Support</a>
-          <a href="/run/delete-account">Delete your account</a>
-        </nav>
-        <nav aria-label="Lift">
-          <h3>Lift</h3>
-          <a href="/lift/privacy">Privacy policy</a>
-          <a href="/lift/terms">Terms of use</a>
-          <a href="/lift/ai-disclosure">How the AI coach uses your data</a>
-          <a href="/lift/support">Support</a>
-          <a href="/lift/delete-account">Delete your account</a>
-        </nav>
-        <nav aria-label="MGKFitness">
-          <h3>MGKFitness</h3>
-          <a href="/privacy">Privacy on this website</a>
-          {instagram && (
-            <a href={instagram.url} target="_blank" rel="noopener">
-              Instagram
-            </a>
-          )}
-          {source.open && <a href={source.repository}>Source on GitHub</a>}
-          <p>
-            Made by {company.name}.{" "}
-            <a href={`mailto:${company.email}`}>{company.email}</a>
-          </p>
-        </nav>
-        <p className="registered">{disclosure}</p>
-      </footer>
+      <Foot />
     </>
   );
 }
