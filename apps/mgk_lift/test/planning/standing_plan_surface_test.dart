@@ -28,6 +28,8 @@ Future<void> pump(
   VoidCallback? onGoToTrack,
   ValueChanged<String>? onDoToday,
   String? movedDay,
+  DateTime? checkedAt,
+  bool offline = false,
 }) async {
   tester.view
     ..physicalSize = const Size(1179, 3600)
@@ -39,6 +41,8 @@ Future<void> pump(
         body: StandingPlanSurface(
           plan: ppl(),
           today: monday,
+          checkedAt: checkedAt,
+          offline: offline,
           onGoToTrack: onGoToTrack,
           onDoToday: onDoToday,
           movedDay: movedDay,
@@ -50,6 +54,34 @@ Future<void> pump(
 }
 
 void main() {
+  group('the sync line (#2)', () {
+    testWidgets('says when the server last gave the plan', (tester) async {
+      await pump(tester, checkedAt: monday.subtract(const Duration(hours: 2)));
+      expect(find.text('Synced 2h ago'), findsOneWidget);
+    });
+
+    testWidgets('says when the plan is the copy on the phone', (tester) async {
+      // The gym with no signal: the week is still here, and it says which
+      // week it is.
+      await pump(
+        tester,
+        checkedAt: monday.subtract(const Duration(hours: 2)),
+        offline: true,
+      );
+      expect(
+        find.text('Offline. Showing the plan saved on this phone 2h ago.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Synced'), findsNothing);
+    });
+
+    testWidgets('says nothing about a plan no server gave', (tester) async {
+      await pump(tester);
+      expect(find.textContaining('Synced'), findsNothing);
+      expect(find.textContaining('Offline'), findsNothing);
+    });
+  });
+
   testWidgets('nothing starts here (R8)', (tester) async {
     // Today's session starts from Track, like every session. Two front doors
     // to the same session could disagree.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../../../core/ago.dart';
 import '../domain/sync_status.dart';
 import 'backup_messages.dart';
 import 'backup_scheduler.dart';
@@ -185,7 +186,8 @@ String backupLine(BackupStatus status, {DateTime? now}) {
   final last = pending.lastSyncedAt;
   return last == null
       ? 'Nothing saved yet.'
-      : 'Everything is saved. Last checked ${_ago(last, now)}.';
+      : 'Everything is saved. Last checked '
+            '${roughlyAgo(last, now ?? DateTime.now())}.';
 }
 
 /// Where backup stands, short enough to be a row's value on the settings
@@ -210,14 +212,4 @@ String backupLine(BackupStatus status, {DateTime? now}) {
     _ when pending.lastSyncedAt == null => ('Nothing saved yet', false),
     _ => ('Up to date', false),
   };
-}
-
-/// Rough, and deliberately so. "3 minutes ago" is the answer to "did that
-/// work"; a timestamp to the second is not.
-String _ago(DateTime at, DateTime? now) {
-  final d = (now ?? DateTime.now()).difference(at);
-  if (d.inMinutes < 1) return 'just now';
-  if (d.inMinutes < 60) return '${d.inMinutes} min ago';
-  if (d.inHours < 24) return '${d.inHours}h ago';
-  return '${d.inDays}d ago';
 }

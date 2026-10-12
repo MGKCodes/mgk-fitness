@@ -36,6 +36,8 @@ class PlanSurface extends StatelessWidget {
     this.onRestore,
     this.isEntitled = false,
     this.plan,
+    this.planCheckedAt,
+    this.planOffline = false,
     this.unit = MassUnit.kilograms,
     this.today,
     this.onGoToTrack,
@@ -82,6 +84,11 @@ class PlanSurface extends StatelessWidget {
   /// The live block. Null is a real state for a paid lifter who has not built
   /// one yet, and it is what the offer-shaped "no plan" copy is for.
   final StandingPlan? plan;
+
+  /// When the server last gave [plan], and whether the latest attempt to ask
+  /// it failed. See [StandingPlanSurface.checkedAt].
+  final DateTime? planCheckedAt;
+  final bool planOffline;
 
   /// How weights are shown. The plan stores kilograms and converts at display,
   /// like everything else.
@@ -139,6 +146,8 @@ class PlanSurface extends StatelessWidget {
     if (isEntitled && live != null) {
       return StandingPlanSurface(
         plan: live,
+        checkedAt: planCheckedAt,
+        offline: planOffline,
         today: today ?? DateTime.now(),
         massUnit: unit,
         onGoToTrack: onGoToTrack,

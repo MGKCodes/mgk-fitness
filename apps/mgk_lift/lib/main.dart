@@ -225,12 +225,13 @@ class MgkLiftApp extends StatelessWidget {
             : AccountDeletionService(client: supabase),
         planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
         // With a copy on the phone, so today's planned session is on Track
-        // with no signal at the gym.
+        // with no signal at the gym — and shown before the server is asked.
         plans: supabase == null
             ? null
             : CachedStandingPlanStore(
                 remote: SupabaseStandingPlanStore(supabase),
                 cache: FilePlanCache(),
+                account: () => supabase.auth.currentUser?.id,
               ),
         // Device-local: bringing a day forward is a choice on this phone for
         // one day, not a plan edit.

@@ -56,6 +56,22 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
     }
   }
 
+  /// The server's one answer. Nothing is saved here; the app reads through
+  /// `CachedStandingPlanStore`, which is what has a copy to show first.
+  @override
+  Stream<PlanRead> watch() async* {
+    try {
+      final plan = await active();
+      yield PlanRead(
+        plan,
+        freshness: PlanFreshness.checked,
+        checkedAt: DateTime.now(),
+      );
+    } on PlanException {
+      yield const PlanRead(null, freshness: PlanFreshness.unreachable);
+    }
+  }
+
   @override
   Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async {
     if (_client.auth.currentUser == null) {

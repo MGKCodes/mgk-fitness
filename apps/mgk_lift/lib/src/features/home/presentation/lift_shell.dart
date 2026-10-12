@@ -362,6 +362,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// Plan shows the week — one load, so the two cannot disagree.
   StandingPlan? _plan;
 
+  /// When the server last gave [_plan], and whether the latest attempt to ask
+  /// it failed. Plan says both, so a lifter with no signal knows the week on
+  /// screen is the one saved on the phone.
+  DateTime? _planCheckedAt;
+  bool _planOffline = false;
+
+  /// Which [_refreshPlan] is current. See there.
+  int _planReads = 0;
+
   /// Another day's session, brought forward to today from Plan. Held here for
   /// the same reason as [_plan]: Track shows it and Plan marks it.
   String? _movedDay;
@@ -464,6 +473,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         // signing in. Runs on sign-out too: the device value is then the only
         // answer, and it should be the one on screen.
         unawaited(_loadUnits());
+        // The plan is the account's too. It used to load at launch only, so
+        // signing in showed no plan until the next launch, and signing out
+        // left the last account's week on Track.
+        unawaited(_refreshPlan());
         // Entitlements are per account, so both directions matter. Signing in
         // is when the paid half can appear; signing out is when it must stop,
         // and must stop for the *device* rather than only for this frame.
@@ -484,9 +497,13 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   /// Back in the foreground is a checkpoint — and, with no connectivity
   /// listener in the app, one of the two ways a returned connection is found.
+  /// The plan is asked for again for the same reason: launched at home and
+  /// opened again at the gym, it is the same app run.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _backup?.checkpoint();
+    if (state != AppLifecycleState.resumed) return;
+    _backup?.checkpoint();
+    unawaited(_refreshPlan());
   }
 
   /// Works out whether [account] may use the training on this phone, then lets
@@ -865,6 +882,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   onSubscribe: _flow == null ? null : _startPurchase,
                   onRestore: _flow == null ? null : _restorePurchases,
                   plan: _plan,
+                  planCheckedAt: _planCheckedAt,
+                  planOffline: _planOffline,
                   today: widget.today,
                   unit: _units.mass,
                   onBuildPlan: _canPlan && !_buildingPlan ? _buildPlan : null,
@@ -1148,13 +1167,28 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   bool get _canPlan =>
       _useCoach && widget.planner != null && widget.plans != null;
 
+  /// The saved copy at once, then the server's answer (#2).
+  ///
+  /// Runs at launch, back in the foreground, and when the account changes.
+  /// Only the newest run is listened to: one started on the way out of a
+  /// basement must not land after the one started on the way back in.
   Future<void> _refreshPlan() async {
     final plans = widget.plans;
     if (plans == null) return;
+    final run = ++_planReads;
     try {
-      final plan = await plans.active();
-      if (!mounted) return;
-      setState(() => _plan = plan);
+      await for (final read in plans.watch()) {
+        if (!mounted || run != _planReads) return;
+        setState(() {
+          _plan = read.plan;
+          _planCheckedAt = read.checkedAt;
+          // The copy shown while the server is asked says nothing new about
+          // the connection, so the last verdict stands until there is one.
+          if (read.freshness != PlanFreshness.saved) {
+            _planOffline = read.freshness == PlanFreshness.unreachable;
+          }
+        });
+      }
     } on PlanException {
       // A plan that will not load is not worth an error on the home screen.
       // Track and Plan both read a null plan as "no block", which is a state
@@ -1244,6 +1278,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       // for.
       setState(() {
         _plan = built.plan;
+        // The server has just taken it, which is as synced as it gets. And a
+        // refresh still waiting on a slow server was asked before this plan
+        // existed, so its answer is the old week: it is retired, not awaited.
+        _planCheckedAt = DateTime.now();
+        _planOffline = false;
+        _planReads++;
         _index = _planTab;
         // Kept after a template, so "Change the split" retries with the same
         // answers rather than asking them all again.
