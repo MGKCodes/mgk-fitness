@@ -952,39 +952,169 @@ a.store:hover {
   border-color: var(--white);
 }
 
-/* ── Getting the apps ────────────────────────────────────────────────────── */
-.download {
-  padding: 16svh var(--edge) 16svh;
+/* ── The stores' badges ──────────────────────────────────────────────────── */
+/* Apple's and Google's own artwork, at one height: 44px, and never under the
+   40px Apple sets as the least. */
+.badge {
+  display: inline-flex;
+  border-radius: 0.5rem;
 }
 
-/* Each app with its two stores. */
-.get {
+.badge img {
+  display: block;
+  width: auto;
+  height: 2.75rem;
+}
+
+.badge:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 3px;
+}
+
+/* A store an app is not in yet, beside a badge: the same height, dashed. */
+.stores .store.held {
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.95rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  gap: 0.05rem;
+}
+
+.stores .store.held small {
+  font-size: 0.5625rem;
+}
+
+/* Under each app's name in the film. A held store gets a ground of its own
+   there, so it reads over the film as clearly as the badges do. */
+.app .stores {
+  margin-top: clamp(1rem, 2.6svh, 1.75rem);
+}
+
+.app .store.held {
+  background: rgb(26 26 26 / 0.6);
+  color: var(--white);
+}
+
+/* A phone's bar has room for the accounts that exist and the stores' marks,
+   so an account still to come gives way there, and the marks sit closer. */
+@media (max-width: 560px) {
+  .socials .social.held {
+    display: none;
+  }
+
+  .bar .getmenu summary {
+    gap: 0.45rem;
+    padding: 0 0.85rem;
+  }
+}
+
+/* ── The bar's way to the stores ─────────────────────────────────────────── */
+.getmenu {
+  position: relative;
+}
+
+.getmenu summary {
+  gap: 0.55rem;
+  list-style: none;
+}
+
+.getmenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.getmenu summary svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+
+.getmenu summary .wide {
+  margin-left: 0.2rem;
+}
+
+.getmenu .panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 20;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: 3rem var(--edge);
-  margin-top: clamp(3rem, 9svh, 6rem);
+  gap: 0.6rem;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--edge));
+  padding: 1.1rem 1.2rem 1.25rem;
+  border: 1px solid var(--hair);
+  border-radius: 1rem;
+  background: var(--bg);
+  box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.5);
 }
 
-.get > div {
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--white);
-}
-
-.get dt {
-  margin-bottom: 1.25rem;
-  font-size: clamp(1.4rem, 2.1vw, 1.9rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* Where the suite is followed, written out so it can be typed. */
-.follow {
-  margin-top: clamp(3rem, 9svh, 5rem);
+.getmenu .panel p {
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--dim);
 }
 
-.follow a {
-  color: var(--white);
+.getmenu .panel p:first-child {
+  margin-top: 0;
+}
+
+/* ── The suite's Instagram ───────────────────────────────────────────────── */
+.recent {
+  padding: 16svh var(--edge) 16svh;
+}
+
+/* The latest posts as the profile shows them: three across, close together. */
+.posts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  max-width: 54rem;
+  margin-top: clamp(2.5rem, 7svh, 4.5rem);
+}
+
+.posts a {
+  display: block;
+}
+
+.posts img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background: var(--raised, #242424);
+  transition: opacity 0.2s;
+}
+
+.posts a:hover img {
+  opacity: 0.82;
+}
+
+.follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  margin-top: clamp(2rem, 5svh, 3rem);
+  padding: 0 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.follow svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.follow:hover {
+  border-color: var(--white);
 }
 
 /* ── The foot ────────────────────────────────────────────────────────────── */
