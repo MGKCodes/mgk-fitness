@@ -705,6 +705,84 @@ void main() {
     });
   });
 
+  group('a new best, as it happens (#3)', () {
+    /// Last week's bench, with 90 × 5 at the top.
+    final lastWeek = Session(
+      id: 'old',
+      name: 'Push',
+      startedAt: DateTime(2026, 10, 5, 18),
+      endedAt: DateTime(2026, 10, 5, 19),
+      exercises: const <SessionExercise>[
+        SessionExercise(
+          id: 'oe',
+          name: 'Barbell Bench Press',
+          orderIndex: 0,
+          sets: <SessionSet>[
+            SessionSet(
+              id: 'os',
+              setNumber: 1,
+              weightKg: 90,
+              reps: 5,
+              isCompleted: true,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    /// Opens a bench with one set of [kg] × [reps] and ticks it.
+    Future<void> tick(WidgetTester tester, double kg, int reps) async {
+      await recorder.start();
+      await recorder.addExercise('Barbell Bench Press');
+      await recorder.addSet('id-2');
+      await recorder.updateSet('id-3', reps: reps, weightKg: kg);
+      await recorder.addSet('id-2');
+      final session = (await recorder.current())!;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ActiveSessionScreen(
+            recorder: recorder,
+            session: session,
+            log: <Session>[lastWeek],
+            onOpenCoach: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.circle_outlined).first);
+      // Opened, then typed out (about 1.8 s), then held long enough to read.
+      for (var i = 0; i < 7; i++) {
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+    }
+
+    testWidgets('heavier than ever says so', (WidgetTester tester) async {
+      await tick(tester, 92.5, 3);
+      expect(find.text('New best: Barbell Bench Press'), findsOneWidget);
+      expect(
+        find.textContaining('92.5 kg × 3. Your heaviest yet, past 90 kg.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('as heavy for more reps says so', (WidgetTester tester) async {
+      await tick(tester, 90, 6);
+      expect(
+        find.textContaining('Your most reps at that weight, up from 5.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a bigger estimate at a lighter weight says nothing', (
+      WidgetTester tester,
+    ) async {
+      // 85 × 10 estimates past 90 × 5, and 2.0.0 announced it. Nothing
+      // heavier went on the bar.
+      await tick(tester, 85, 10);
+      expect(find.textContaining('New best'), findsNothing);
+    });
+  });
+
   testWidgets('volume is shown in the chosen unit', (
     WidgetTester tester,
   ) async {

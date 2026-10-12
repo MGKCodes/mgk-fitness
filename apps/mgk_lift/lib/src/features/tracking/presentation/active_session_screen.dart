@@ -17,6 +17,7 @@ import '../../stats/domain/training_stats.dart';
 import '../../sync/presentation/backup_scheduler.dart';
 import '../domain/session.dart';
 import '../domain/session_recorder.dart';
+import '../domain/session_summary.dart';
 import '../domain/workout_library.dart';
 import '../../stats/presentation/exercise_stats_screen.dart';
 import 'exercise_card.dart';
@@ -198,14 +199,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// session at most, and in practice once ever. See [_offerRestAlerts].
   bool _consideredAlerts = false;
 
-  /// Each movement's best estimated one-rep max before this session, by
-  /// lower-cased name, read from the log the first time the movement is
-  /// ticked. Null is a movement never done: nothing to beat.
-  final Map<String, Mass?> _bestBefore = <String, Mass?>{};
+  /// Each movement's top set before this session, by lower-cased name, read
+  /// from the log the first time the movement is ticked. Null is a movement
+  /// never done with weight on it: nothing to beat.
+  final Map<String, TopSet?> _bestBefore = <String, TopSet?>{};
 
   /// The best this session has already announced for each movement, so a set
   /// that only matches it says nothing.
-  final Map<String, Mass> _bestToday = <String, Mass>{};
+  final Map<String, TopSet> _bestToday = <String, TopSet>{};
 
   /// What the mark is saying, while it says it: a new best (R7). Cleared when
   /// the line has been shown.
@@ -628,37 +629,34 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// Says so when the set just ticked is a new best for its movement (R7, O3).
   ///
   /// **The same rule as the summary's**, so the two can never disagree about
-  /// what a best is: Epley, twelve reps or fewer, strictly greater than every
-  /// session before, and never on a movement with no history — a first time is
-  /// not a best, there is nothing to have beaten (see [SessionSummary.of]).
-  /// Worked out here from the log the screen already has: no network, no
-  /// model, and free for everyone, because bests are tracking.
+  /// what a best is: heavier than any set before, or as heavy for more reps,
+  /// and never on a movement with no history — a first time is not a best,
+  /// there is nothing to have beaten (see [SessionSummary.of]). Worked out here
+  /// from the log the screen already has: no network, no model, and free for
+  /// everyone, because bests are tracking.
   void _checkBest(SessionSet set) {
-    if (set.isWarmup) return;
+    if (set.isWarmup || set.weightKg <= 0 || set.reps < 1) return;
     final movement = _exerciseOf(set.id)?.name;
     if (movement == null) return;
-    final estimate = TrainingStats.estimateOneRepMax(
-      Mass.kilograms(set.weightKg),
-      set.reps,
-    );
-    if (estimate == null) return;
     final key = movement.toLowerCase();
     final before = _bestBefore.putIfAbsent(
       key,
-      () => TrainingStats.bestOneRepMax(widget.log, movement)?.estimate,
+      () => TrainingStats.topSet(widget.log, movement),
     );
     if (before == null) return;
     final bar = _bestToday[key] ?? before;
-    if (estimate.kilograms <= bar.kilograms) return;
-    _bestToday[key] = estimate;
-    final unit = widget.massUnit;
+    final done = TopSet(
+      weight: Mass.kilograms(set.weightKg),
+      reps: set.reps,
+      on: _session.startedAt,
+    );
+    if (!done.beats(bar)) return;
+    _bestToday[key] = done;
     setState(() {
       _bubbles++;
       _bubble = CoachLine(
         headline: 'New best: $movement',
-        detail:
-            '${Mass.kilograms(set.weightKg).label(unit)} × ${set.reps}, about '
-            '${estimate.label(unit)} for one. Past ${bar.label(unit)}.',
+        detail: bestDetail(done, bar, widget.massUnit),
       );
     });
   }

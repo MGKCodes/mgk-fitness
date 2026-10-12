@@ -15,6 +15,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0001](0001-liftio-is-replaced-not-relaunched.md) | Liftio is replaced, not relaunched | Accepted |
 | [0002](0002-a-coach-conversation-is-a-session.md) | A coach conversation is a session, bounded by silence | Accepted |
 | [0003](0003-exercise-illustrations-are-cc-by-sa.md) | The exercise illustrations are CC BY-SA 4.0, not first-party | Accepted |
+| [0004](0004-a-best-is-a-weight-lifted.md) | A personal best is a weight lifted, not an estimate | Accepted |
 
 ## Decisions that bind Lift but live in Run's set
 
