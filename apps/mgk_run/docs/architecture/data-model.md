@@ -187,7 +187,7 @@ it were a fact.
   most expensive of the three, because a race result is a fact the runner
   confirmed rather than one anything on the phone could recompute.
 - **A race is on the run, and is mirrored.** Schema 13 and
-  `20261013120000_run_race_on_the_run.sql` add `race_distance_m`, `race_time_s`
+  `20261013115237_run_race_on_the_run.sql` add `race_distance_m`, `race_time_s`
   and `race_name` to `runs` on both sides ([ADR-0049](../decisions/0049-a-race-is-a-run.md)),
   so a race result now survives a new phone through the run, whether or not a
   plan was behind it. The plan's own `race_time_s` above is still written when a

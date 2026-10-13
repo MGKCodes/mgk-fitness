@@ -29,7 +29,7 @@ a new phone lost it. 0027 called that the most expensive of its gaps.
 **A race is something a run is.** The run row carries it: the course distance,
 the official time when the runner gave one, and an optional name
 (`runs.race_distance_m`, `race_time_s`, `race_name`; schema 13 on the phone,
-`20261013120000_run_race_on_the_run.sql` in Postgres). Null distance is a
+`20261013115237_run_race_on_the_run.sql` in Postgres). Null distance is a
 training run.
 
 ### How a run becomes a race
