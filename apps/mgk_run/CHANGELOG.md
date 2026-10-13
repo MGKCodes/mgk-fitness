@@ -30,6 +30,10 @@ This is 1.0.1
   aimed at that day, the training behind it. The run on a plan's race day is
   marked for you, and saving its time closes the plan. Race results are
   backed up with the run.
+- **Race on the start screen.** Choose Run or Race before you set off, and a
+  race's distance. The run counts down to the finish and says what finish
+  you are on for at your pace so far, and it is marked as your race when you
+  stop. On a plan's race day it opens on Race.
 - Settings › About says the app is open source. *Source code* (AGPL-3.0)
   opens Run's code in the public repository, and *Report a problem* opens an
   email to support with the app and its version already written in, for
@@ -42,6 +46,12 @@ This is 1.0.1
   kilometre, the fastest and the slowest, and "Show all". The heart-rate
   column only appears when a split has a heart rate, so a run without one no
   longer ends every row in a dash.
+- A race counts as its own time in Profile's figures and in "Fastest … yet",
+  not the shorter stretch the phone measured inside it: a half marathon run in
+  2:00:30 no longer shows as 1:57:40.
+- Kilometre markers on a run's map no longer pile up where a route passes the
+  same spot twice. A marker that would sit on an earlier one is left out, and
+  zooming in brings it back.
 - The records card lists each record beside its own time. With several set at
   once it used to show only the shortest one's, so "Fastest 5K, 10K and Half
   marathon yet · 25:16" read as a 25-minute half marathon.

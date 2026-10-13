@@ -124,7 +124,9 @@ class RunnerStats {
       totalMeters += run.distanceMeters;
       totalDuration += run.duration;
 
-      for (final effort in run.bestEfforts) {
+      // A race counts as its own time at its distance (ADR-0049), not as the
+      // shorter stretch the phone found inside it.
+      for (final effort in run.recordEfforts) {
         final standing = bests[effort.distanceMeters];
         if (standing == null || effort.duration < standing) {
           bests[effort.distanceMeters] = effort.duration;
@@ -142,7 +144,7 @@ class RunnerStats {
       // run's own distance rather than on its trace, because the log's read
       // does not carry traces — and because this is the runner's question:
       // "I ran 10 km, where is my 10K?"
-      if (run.bestEfforts.isEmpty && run.distanceMeters >= shortestRecord) {
+      if (run.recordEfforts.isEmpty && run.distanceMeters >= shortestRecord) {
         recordless = true;
       }
 

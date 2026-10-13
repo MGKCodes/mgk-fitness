@@ -47,8 +47,17 @@ training run.
    match, and an automatic mark has nobody confirming, so a 3 km shakeout
    recorded before the race existed in the log would otherwise be filed as the
    marathon.
-3. **Before the run (not yet built).** A Race option on the start screen, so the
-   live screen can show distance left and a projected finish. Phase two.
+3. **Before the run.** The start screen offers Run or Race under the GPS line,
+   and Race takes one of the four named distances; on a block plan's race day
+   it opens on Race at the plan's distance. A race replaces the session rather
+   than sitting beside it: the live screen's third figure counts down to the
+   course (TO GO, then PAST), and the slot the pace band has on a planned run
+   shows the finish at the average pace so far, from 400 m. Both run off the
+   phone's distance, which reads long, so zero comes a little before the line
+   and the projection is a little optimistic; the start screen says so before
+   the race rather than the run apologising during it. The run is marked with
+   the chosen distance when it finishes, with no half-distance floor: the
+   runner said it was a race. Added 2026-10-13.
 
 ### The plan closes from the run, too
 
@@ -117,10 +126,14 @@ Correcting the official time on the run after the plan has closed does not
 update it. Rare, and the run is the copy that is mirrored; if Profile is ever
 moved to read the run instead, the plan column can go.
 
-**Profile's records still fold best efforts, not races.** A half marathon PB on
-Profile is the fastest 21.0975 km stretch of any trace, which for a race run is
-shorter than the course and quicker than the official time. Showing race
-results there is the obvious next step and is not done here.
+**A race counts as its own time in the records** (added 2026-10-13, the
+runner's call). Profile's Typical figures and the "Fastest … yet" comparison
+fold `RunSummary.recordEfforts`: a run's best efforts, except at the distance
+it was raced over, where the race's time stands instead (official, else the
+phone's). The fastest 21.0975 km inside a half recorded as 21.69 km is shorter
+than the course and quicker than the result, so counting it gave the runner a
+half marathon figure they never ran. A race with no route still counts at its
+distance; a race at a distance with no record changes nothing.
 
 **`RunSummaryScreen` branches on whether the run is a race.** That is the one
 branch, it is on a property of the run rather than on a plan's shape, and every

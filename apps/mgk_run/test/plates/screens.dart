@@ -21,6 +21,8 @@ import 'package:mgk_run/src/features/recording/domain/run_race.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.dart';
+import 'package:mgk_run/src/features/recording/presentation/run_start_screen.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:mgk_run/src/features/recording/presentation/route_map.dart';
 import 'package:mgk_run/src/features/recording/domain/live_metrics.dart';
 
@@ -610,6 +612,32 @@ void main() {
           await t.pump(const Duration(milliseconds: 100));
         }
       },
+    );
+  });
+
+  testWidgets('the start screen, set to race', (tester) async {
+    await plate(
+      tester,
+      'run-start-race',
+      pushed(
+        RunStartScreen(
+          onStart: () {},
+          onCancel: () {},
+          focus: const LatLng(51.5073, -0.1657),
+          locate: () async => StartFix.at(
+            RunPoint(
+              latitude: 51.5073,
+              longitude: -0.1657,
+              accuracyMeters: 5,
+              timestamp: DateTime(2026, 10, 11, 9, 25),
+            ),
+          ),
+          initialRaceMeters: 21097.5,
+          onRaceChanged: (_) {},
+        ),
+      ),
+      pixelRatio: 2,
+      drive: settle,
     );
   });
 

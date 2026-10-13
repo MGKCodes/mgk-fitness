@@ -107,7 +107,7 @@ void main() {
     expect(raceBreakdownFor(ten, 10000)!.sections, hasLength(5));
   });
 
-  test("a marathon keeps 40K to the finish as its own section", () {
+  test('a marathon keeps 40K to the finish as its own section', () {
     final marathon = <RunSplit>[
       for (var i = 1; i <= 42; i++)
         RunSplit(

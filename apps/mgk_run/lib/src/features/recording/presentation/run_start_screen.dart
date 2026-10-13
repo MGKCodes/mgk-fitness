@@ -14,6 +14,7 @@ import '../../coaching/domain/race_day.dart' show aboutRaceTime;
 import '../../coaching/domain/session_effort.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/session_labels.dart';
+import '../domain/best_effort.dart' show kRecordDistancesMeters;
 import '../domain/route_metrics.dart';
 import '../domain/run_point.dart';
 import '../../../core/config/app_config.dart';
@@ -121,6 +122,8 @@ class RunStartScreen extends StatefulWidget {
     this.focus,
     this.locate,
     this.countIn = kCountInDuration,
+    this.initialRaceMeters,
+    this.onRaceChanged,
   });
 
   /// Called once the count-in has finished and recording should begin.
@@ -163,6 +166,19 @@ class RunStartScreen extends StatefulWidget {
   /// Overridable so a widget test does not have to wait three real seconds.
   final Duration countIn;
 
+  /// The race to start on, already chosen: the plan's distance on its race
+  /// day. Null opens on an ordinary run.
+  final double? initialRaceMeters;
+
+  /// Told the race distance whenever the runner changes it, and null when they
+  /// go back to an ordinary run (ADR-0049). Null hides the choice altogether:
+  /// the caller has nowhere to record a race to.
+  ///
+  /// A callback rather than an argument to [onStart], so every existing
+  /// caller of [onStart] keeps its shape and the shell reads the choice at the
+  /// moment the count-in ends.
+  final ValueChanged<double?>? onRaceChanged;
+
   @override
   State<RunStartScreen> createState() => _RunStartScreenState();
 }
@@ -191,6 +207,17 @@ class _RunStartScreenState extends State<RunStartScreen> {
 
   /// How tall the panel is, so the map can end where it begins.
   double _panelHeight = 0;
+
+  /// The race being started, in metres, or null for an ordinary run.
+  late double? _race = widget.onRaceChanged == null
+      ? null
+      : widget.initialRaceMeters;
+
+  void _chooseRace(double? meters) {
+    if (meters == _race) return;
+    setState(() => _race = meters);
+    widget.onRaceChanged?.call(meters);
+  }
 
   @override
   void initState() {
@@ -338,6 +365,8 @@ class _RunStartScreenState extends State<RunStartScreen> {
               },
               child: _StartPanel(
                 session: widget.plannedSession,
+                race: _race,
+                onRace: widget.onRaceChanged == null ? null : _chooseRace,
                 paces: widget.paces,
                 unit: widget.unit,
                 fix: _fix,
@@ -438,9 +467,17 @@ class _StartPanel extends StatelessWidget {
     required this.fix,
     required this.bottomInset,
     required this.onStart,
+    this.race,
+    this.onRace,
   });
 
   final PlannedSession? session;
+
+  /// The race chosen, or null for an ordinary run.
+  final double? race;
+
+  /// Changes it. Null hides the choice.
+  final ValueChanged<double?>? onRace;
   final TrainingPaces? paces;
   final UnitSystem unit;
   final StartFix? fix;
@@ -470,15 +507,63 @@ class _StartPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             _GpsLine(fix: fix),
+            if (onRace != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              _RunOrRace(race: race, onRace: onRace!),
+            ],
             const SizedBox(height: AppSpacing.lg),
-            if (run == null) ..._freeRun(theme) else ..._prescribed(theme, run),
+            if (race != null)
+              ..._racing(theme, race!)
+            else if (run == null)
+              ..._freeRun(theme)
+            else
+              ..._prescribed(theme, run),
             const SizedBox(height: AppSpacing.xl),
-            PrimaryButton(label: 'Start', onPressed: onStart),
+            PrimaryButton(
+              label: race == null ? 'Start' : 'Start the race',
+              onPressed: onStart,
+            ),
           ],
         ),
       ),
     );
   }
+
+  /// A race: which distance, and what the run will do differently.
+  ///
+  /// **It says the phone reads long before the race, not during it.** The
+  /// countdown runs off the phone's distance, and a race course is measured
+  /// along the shortest line while the runner weaves round people, so zero
+  /// comes a few hundred metres before the finish. A runner told that at the
+  /// kerb reads PAST at 21.1 as expected; one who finds out at 21.1 thinks the
+  /// app is broken.
+  List<Widget> _racing(ThemeData theme, double meters) => <Widget>[
+    const SectionLabel('Race'),
+    const SizedBox(height: AppSpacing.sm),
+    Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final distance in kRecordDistancesMeters)
+          ChoiceChip(
+            label: Text(raceName(distance) ?? ''),
+            showCheckmark: false,
+            selected: meters == distance,
+            onSelected: (_) => onRace?.call(distance),
+          ),
+      ],
+    ),
+    const SizedBox(height: AppSpacing.md),
+    Text(
+      'The run counts down to the finish and says what you are on for. Your '
+      'phone reads a little long in a race, so the line usually comes just '
+      'after zero.',
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: AppColors.textSecondary,
+        height: 1.4,
+      ),
+    ),
+  ];
 
   List<Widget> _freeRun(ThemeData theme) => <Widget>[
     const SectionLabel('Free run'),
@@ -600,6 +685,40 @@ class _StartPanel extends StatelessWidget {
       ),
     ];
   }
+}
+
+/// Run or Race, the first thing chosen after the phone has found you.
+///
+/// Two chips rather than a switch: both answers are a thing the runner is
+/// about to do, and a switch reads as a setting being turned on. Race starts on
+/// the half marathon when nothing has chosen a distance yet, the distance most
+/// people race on a phone.
+class _RunOrRace extends StatelessWidget {
+  const _RunOrRace({required this.race, required this.onRace});
+
+  final double? race;
+  final ValueChanged<double?> onRace;
+
+  static const double _firstRace = 21097.5;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    children: <Widget>[
+      ChoiceChip(
+        label: const Text('Run'),
+        showCheckmark: false,
+        selected: race == null,
+        onSelected: (_) => onRace(null),
+      ),
+      ChoiceChip(
+        label: const Text('Race'),
+        showCheckmark: false,
+        selected: race != null,
+        onSelected: (_) => onRace(race ?? _firstRace),
+      ),
+    ],
+  );
 }
 
 /// "5:47–6:15 /km" as "5:47–6:15".

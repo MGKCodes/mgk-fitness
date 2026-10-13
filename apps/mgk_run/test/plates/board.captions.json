@@ -22,6 +22,7 @@
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "1.0.1, 13 Oct, later: a race can be chosen on the start screen (R31, new), and the live screen counts down to the finish and projects it (R32, R33, new). A race counts as its own time in Profile's figures. Kilometre pins no longer stack where a route passes the same spot (F9 and the other race plates).",
       "1.0.1, 13 Oct: a race has its own finish (F9 to F12, new). A run near a race distance asks whether it was one; a race leads with its official time, says where it stands among the runner's races, shows how it was run half by half and 5K by 5K, and shows the plan behind it when there was one. Every summary's splits fold to one line, and the records card puts each record beside its own time (F1 to F3); a run recovered after the app closed loses its column of dashes (F7). Only these were retaken.",
       "1.0.1, retaken on 5 Oct. The coach is the suite's sheet, Lift's design: glass over the night road where it was a solid panel, Run's icon and Coach in a frosted bar, Lift's bubbles, and three questions to tap on an empty conversation (C3, C4, C10 to C12). The paywall is the suite's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach labelled Recommended, the coach's C beside the app's name, the night road behind, and one Subscribe button naming the price (Y1 to Y7). Y8 and Y9 are still the 1 Oct pictures: their way in needs a planned run that Monday's fixtures do not have. Delete account asks how much, as Lift's does: this app's data or the whole MGKFitness account (L1 to L7, and L8, new). Only these were retaken; every other plate is as it was.",
       "1.0.1 so far, retaken on 3 Oct. The sign-in says which app it is and whose account: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile, drawn by the same piece Lift's sign-in uses, and it is laid out as Lift's: the night-road photograph at full strength above, the choices at the foot with the terms and privacy line under them, and no list of what an account gives (B8, C14, K2, K3). The switch between signing in and making an account is on the email form only, as on Lift, and the icon and name are larger. Signing in now has a row of its own, as on Lift's board: B8, the email form for signing back in (B13, new) and the one for making an account (K3). Delete account calls the login an MGKFitness account too (L1, L2, L3, L7). B1, P1 and C14 show the photograph behind them, which the 1 Oct pictures had been taken too early to load. Only these ten were retaken: every other plate is still the 1 Oct picture, because the fixtures are dated from the day a plate is drawn and a Saturday redraw would have moved plates this release has not touched.",
@@ -280,6 +281,14 @@
           "plates": [
             "R24",
             "R25"
+          ]
+        },
+        {
+          "title": "A race",
+          "plates": [
+            "R31",
+            "R32",
+            "R33"
           ]
         },
         {
@@ -2521,15 +2530,16 @@
       "job": "The finish of a race rather than a run: the time the runner will quote, how it compares with their other races, how they ran it, and the phone's own figures underneath.",
       "done": "The official time is the largest thing on the screen, with the race and its pace over the course (5:43 /km for 2:00:30 over a half), not over the phone's 21.69 km. The line under it says it is the official time and what the phone had. 'Your first half marathon.' follows; then the 5K and 10K records with their times, and no second half-marathon time beside the real one. 'How you ran it' gives both halves' paces and a pace per 5K, and the coach's line names where the pace went. No training section, because no plan was aimed at this race.",
       "files": [
-        "lib/src/features/recording/presentation/run_summary_screen.dart",
-        "lib/src/features/recording/presentation/folded_splits.dart",
-        "lib/src/features/recording/presentation/route_map.dart",
-        "lib/src/features/recording/presentation/race_parts.dart",
+        "lib/src/features/coaching/domain/race_finish.dart",
         "lib/src/features/recording/domain/race_breakdown.dart",
-        "lib/src/features/coaching/domain/race_finish.dart"
+        "lib/src/features/recording/presentation/folded_splits.dart",
+        "lib/src/features/recording/presentation/race_parts.dart",
+        "lib/src/features/recording/presentation/route_map.dart",
+        "lib/src/features/recording/presentation/run_summary_screen.dart"
       ],
       "isnew": "New in 1.0.1 (ADR-0049). Drawn from the half marathon of 11 Oct.",
-      "size": "393×1460"
+      "size": "393×1460",
+      "changed": "1.0.1, 13 Oct: kilometre pins that would sit on an earlier one are left out, so the laps of the park no longer stack 1, 9 and 15 on one spot."
     },
     "F10": {
       "file": "race-plan-day",
@@ -2539,13 +2549,13 @@
       "job": "The race a plan was aimed at, arriving: marked as the race already, waiting for the official time, with the training behind it.",
       "done": "Title 'Race complete'. The phone's time is the headline and the line under it says so, with Add for the official one. 'The training' shows the plan's name and length, its runs, distance and longest run, and a bar per week of what was actually run, ending at race week. Done at the foot.",
       "files": [
-        "lib/src/features/recording/presentation/run_summary_screen.dart",
-        "lib/src/features/recording/presentation/folded_splits.dart",
-        "lib/src/features/recording/presentation/route_map.dart",
-        "lib/src/features/recording/presentation/race_parts.dart",
-        "lib/src/features/recording/domain/race_breakdown.dart",
         "lib/src/features/coaching/domain/race_finish.dart",
-        "lib/src/features/home/presentation/home_shell.dart"
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/recording/domain/race_breakdown.dart",
+        "lib/src/features/recording/presentation/folded_splits.dart",
+        "lib/src/features/recording/presentation/race_parts.dart",
+        "lib/src/features/recording/presentation/route_map.dart",
+        "lib/src/features/recording/presentation/run_summary_screen.dart"
       ],
       "isnew": "New in 1.0.1 (ADR-0049).",
       "size": "393×1820"
@@ -2558,11 +2568,11 @@
       "job": "A run that looks like a race, not yet marked: the ordinary summary, with one quiet way to say it was.",
       "done": "The training layout, unchanged in order, with a single card under the figures: 'Was this a race?' and a line naming the half marathon. Nothing else about it is a race yet. A run of 7 km would not show the card, and a treadmill run never does.",
       "files": [
-        "lib/src/features/recording/presentation/run_summary_screen.dart",
+        "lib/src/features/coaching/domain/race_finish.dart",
         "lib/src/features/recording/presentation/folded_splits.dart",
-        "lib/src/features/recording/presentation/route_map.dart",
         "lib/src/features/recording/presentation/race_parts.dart",
-        "lib/src/features/coaching/domain/race_finish.dart"
+        "lib/src/features/recording/presentation/route_map.dart",
+        "lib/src/features/recording/presentation/run_summary_screen.dart"
       ],
       "isnew": "New in 1.0.1 (ADR-0049).",
       "size": "393×1220"
@@ -2578,6 +2588,47 @@
         "lib/src/features/recording/presentation/race_sheet.dart"
       ],
       "isnew": "New in 1.0.1 (ADR-0049)."
+    },
+    "R31": {
+      "file": "run-start-race",
+      "name": "Starting a race",
+      "how": "built",
+      "reach": "Home › Start, set to Race (on a plan's race day it opens there)",
+      "job": "Saying, before the clock starts, that this run is a race and over what distance.",
+      "done": "Run and Race under the GPS line, with Race chosen and Half marathon lit among the four distances. One paragraph says the run will count down to the finish and that the phone reads a little long, so the line comes just after zero. The button says 'Start the race'.",
+      "files": [
+        "lib/src/features/recording/presentation/run_start_screen.dart"
+      ],
+      "isnew": "New in 1.0.1 (ADR-0049)."
+    },
+    "R32": {
+      "file": "21-racing",
+      "name": "Racing",
+      "how": "built",
+      "reach": "R31 › Start the race, about twenty minutes in",
+      "job": "The live screen during a race: how far to the finish, and what finish the runner is on for.",
+      "done": "The third figure is TO GO against 21.1 km, not an average. Where a planned run has its pace band, a race has 'Finish at this pace' with a time to the second. No band, no verdict, no session brief: a race is not a prescription.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New in 1.0.1 (ADR-0049)."
+    },
+    "R33": {
+      "file": "22-racing-small",
+      "name": "Racing at 320pt",
+      "how": "built",
+      "reach": "R32 on the smallest phone",
+      "job": "The same race panel where height is shortest.",
+      "done": "The projection and Pause and Lap are all on screen without scrolling.",
+      "files": [
+        "lib/src/features/recording/presentation/recording_screen.dart",
+        "lib/src/features/recording/presentation/recording_readout.dart",
+        "lib/src/features/recording/presentation/route_map.dart"
+      ],
+      "isnew": "New in 1.0.1 (ADR-0049).",
+      "size": "320×568"
     }
   }
 }

@@ -580,10 +580,13 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
       for (final run in history)
         if (run.id == null || run.id != summary.id) run,
     ];
+    // The other runs as Profile counts them: a race at its own time rather
+    // than the stretch inside it (ADR-0049), so a training run is not denied
+    // a "fastest half" by a GPS figure the runner never ran.
     return <BestEffort>[
       for (final effort in summary.bestEfforts)
         if (others.every(
-          (run) => run.bestEfforts.every(
+          (run) => run.recordEfforts.every(
             (prior) =>
                 prior.distanceMeters != effort.distanceMeters ||
                 prior.duration > effort.duration,
