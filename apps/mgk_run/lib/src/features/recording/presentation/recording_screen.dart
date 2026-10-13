@@ -235,6 +235,7 @@ class RecordingScreen extends StatefulWidget {
     this.paces,
     this.tileUrlTemplate,
     this.attribution,
+    this.raceMeters,
   });
 
   /// The basemap and its credit. Null takes [AppConfig.current], which is what
@@ -250,6 +251,17 @@ class RecordingScreen extends StatefulWidget {
 
   /// What the plan prescribed today, when it prescribed anything.
   final PlannedSession? plannedSession;
+
+  /// The race being run, in metres, when the runner chose Race on the start
+  /// screen (ADR-0049). Null for every other run.
+  ///
+  /// **A race is not a session, and never arrives with one.** The shell hands
+  /// over one or the other: a race has no pace band to hold (the runner is
+  /// racing, not following a prescription) and its distance is the course,
+  /// exact, rather than a prescription rounded to the kilometre. What it gets
+  /// instead is the two things a racing runner looks down for: how far is
+  /// left, and what the finish will be at this pace.
+  final double? raceMeters;
 
   /// The runner's derived training zones. Null when they have no time trial to
   /// derive one from, and then the pace is simply a number with no verdict
@@ -432,6 +444,26 @@ class _RecordingScreenState extends State<RecordingScreen> {
   }
 
   Duration get _elapsed => widget.recorder.elapsed;
+
+  /// The finish time the race is on for, at the average pace so far.
+  ///
+  /// **Held back until the verdict would be** ([kVerdictWarmUpMeters], 400 m):
+  /// every run starts from a standstill, and a projection off the first
+  /// hundred metres is a pen, a crowd and a start mat, not a pace.
+  ///
+  /// Read off the phone's distance, which reads long on a race course. The
+  /// projection is therefore a little optimistic, by the same couple of per
+  /// cent the finish line comes after the countdown reaches zero; the start
+  /// screen says so before the race rather than this figure apologising for
+  /// it during one.
+  String _projectedFinish(double raceMeters) {
+    if (_distanceM < kVerdictWarmUpMeters || _elapsed == Duration.zero) {
+      return _dashes;
+    }
+    final ms = _elapsed.inMilliseconds * raceMeters / _distanceM;
+    return Duration(milliseconds: ms.round()).hoursMinutesSeconds;
+  }
+
   bool get _recording => _status == RecorderStatus.recording;
   bool get _acquiring => _recording && _points.isEmpty && _problem == null;
 
@@ -799,13 +831,20 @@ class _RecordingScreenState extends State<RecordingScreen> {
             // R19, R28). The readouts stay, reading zero, because that is
             // true; the prescription goes until there is a run to hold it.
             final session = _neverStarted ? null : widget.plannedSession;
+            // The race goes with the session for the same reason: a run that
+            // never started has no finish to project.
+            final race = _neverStarted ? null : widget.raceMeters;
+            // The projection sits where the band does and is the same height,
+            // so the detent arithmetic counts either as the band block.
+            final hasBandSlot =
+                (band != null || race != null) && _problem == null;
             final showBrief =
                 !_warmedUp &&
                 session != null &&
                 briefFitsOn(
                   height,
                   bottomInset: MediaQuery.paddingOf(context).bottom,
-                  hasBand: band != null && _problem == null,
+                  hasBand: hasBandSlot,
                   hasProblem: _problem != null,
                 );
             final collapsed = collapsedFractionFor(
@@ -815,7 +854,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
               // why there is nothing; a pace rail underneath is a second and
               // contradictory answer to the same question — the reasoning the
               // map already uses for its emptyLabel.
-              hasBand: band != null && _problem == null,
+              hasBand: hasBandSlot,
               hasProblem: _problem != null,
               hasBrief: showBrief,
             );
@@ -987,6 +1026,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   showBrief: showBrief,
                   splits: _splits,
                   session: session,
+                  raceMeters: race,
+                  projectedFinish: race == null
+                      ? _dashes
+                      : _projectedFinish(race),
                   climbMeters: climbMeters(_points),
                   laps: _laps,
                   problem: _problem,
@@ -1131,6 +1174,8 @@ class _Panel extends StatefulWidget {
     required this.splits,
     required this.session,
     required this.climbMeters,
+    this.raceMeters,
+    this.projectedFinish = '',
     required this.laps,
     required this.problem,
     required this.onAskAgain,
@@ -1176,6 +1221,12 @@ class _Panel extends StatefulWidget {
   final bool showBrief;
   final List<RunSplit> splits;
   final PlannedSession? session;
+
+  /// The race being run, when it is one — see [RecordingScreen.raceMeters].
+  final double? raceMeters;
+
+  /// The finish at this pace, or the dashes before there is one.
+  final String projectedFinish;
   final double? climbMeters;
   final List<RunSplit> laps;
   final RecorderProblem? problem;
@@ -1405,7 +1456,8 @@ class _PanelState extends State<_Panel> {
                       // seconds of a dash that is deliberately faint, is a worse
                       // screen than the one it fixes.
                       Expanded(
-                        child: widget.session == null
+                        child:
+                            widget.session == null && widget.raceMeters == null
                             ? _PaceStat(
                                 label: 'AVG ${widget.unit.paceSuffix}',
                                 value: widget.averagePace,
@@ -1420,11 +1472,18 @@ class _PanelState extends State<_Panel> {
                                   // runner is on — a `TO GO` heading over a count
                                   // going back up is the exact failure this column
                                   // already had once.
-                                  final left = _remaining(
-                                    widget.session!,
-                                    widget.distanceM,
-                                    widget.unit,
-                                  );
+                                  final race = widget.raceMeters;
+                                  final left = race != null
+                                      ? _remainingTo(
+                                          race,
+                                          widget.distanceM,
+                                          widget.unit,
+                                        )
+                                      : _remaining(
+                                          widget.session!,
+                                          widget.distanceM,
+                                          widget.unit,
+                                        );
                                   return StatBlock(
                                     label: left.label,
                                     value: left.value,
@@ -1481,6 +1540,18 @@ class _PanelState extends State<_Panel> {
                     SectionLabel(
                       widget.verdict ?? 'FINDING YOUR PACE',
                       emphasis: LabelEmphasis.stat,
+                    ),
+                  ],
+
+                  // A race's band slot: the finish at this pace. Same height as the
+                  // band block, which is what the detent reserved (`hasBandSlot`).
+                  if (widget.band == null &&
+                      widget.raceMeters != null &&
+                      widget.problem == null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.lg),
+                    _RaceProjection(
+                      value: widget.projectedFinish,
+                      absent: widget.projectedFinish == widget.dashes,
                     ),
                   ],
 
@@ -1931,13 +2002,55 @@ class _EffortBrief extends StatelessWidget {
   UnitSystem unit,
 ) {
   final prescribed = prescribedMeters(session.distanceMeters, unit);
-  final remaining = prescribed - doneM;
+  return _remainingTo(prescribed, doneM, unit);
+}
+
+/// What is left of [targetMeters], or how far past it, as the third column
+/// says it. A race's target is the course, exact: unlike a session it is not a
+/// prescription to round, and 21.0975 km is the distance to the line.
+///
+/// It goes past zero for a race too, and more often than for a session: the
+/// phone reads long on a race course, so the countdown reaches zero a few
+/// hundred metres before the finish. PAST is the honest thing to say then.
+({String label, String value}) _remainingTo(
+  double targetMeters,
+  double doneM,
+  UnitSystem unit,
+) {
+  final remaining = targetMeters - doneM;
   final past = remaining < 0;
   return (
     label: '${past ? 'PAST' : 'TO GO'} ${unit.distanceSuffix}',
     value: Distance.meters(
       remaining.abs(),
     ).inDisplayUnit(unit).toStringAsFixed(2),
+  );
+}
+
+/// The finish a race is on for, in the slot the pace band has on a planned
+/// run, and at the band block's height so the panel's computed detent holds.
+class _RaceProjection extends StatelessWidget {
+  const _RaceProjection({required this.value, required this.absent});
+
+  final String value;
+  final bool absent;
+
+  /// `_bandBlockHeight` less its leading gap.
+  static const double _height = 34 + 6 + 18;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: _height,
+    child: Center(
+      child: StatBlock(
+        label: 'FINISH AT THIS PACE',
+        value: value,
+        align: CrossAxisAlignment.center,
+        valueWeight: FontWeight.w400,
+        valueColor: absent ? AppColors.textTertiary : null,
+        shrinkToFit: true,
+      ),
+    ),
   );
 }
 

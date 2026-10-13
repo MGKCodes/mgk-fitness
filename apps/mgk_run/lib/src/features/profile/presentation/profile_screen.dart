@@ -934,7 +934,8 @@ class _Records extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Averaged from your routes, over every unbroken stretch of '
-                  'each distance inside a run — not the runs’ own times. A '
+                  'each distance inside a run — not the runs’ own times, '
+                  'except a race, which counts its official time. Any other '
                   'run without a route counts towards none of them.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textTertiary,

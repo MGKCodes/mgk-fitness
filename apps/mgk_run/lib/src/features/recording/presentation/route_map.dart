@@ -413,37 +413,51 @@ class _RouteMapState extends State<RouteMap> {
                 ],
               ),
             if (hasRoute)
-              MarkerLayer(
-                markers: <Marker>[
-                  // Under the endpoints, so a kilometre that happens to turn
-                  // over on the start line does not hide where the run began.
-                  for (final marker in _drawnMarkers) _split(marker),
-                  _endpoint(all.first, filled: false), // start (outlined)
-                  if (widget.showPosition)
-                    _position(all.last)
-                  else
-                  // The head of the line, not the end of the route.
-                  //
-                  // While the route is drawing itself these differ, and
-                  // pinning the true end would put a dot ahead of the line —
-                  // on a closed loop it hides under the start and on an
-                  // out-and-back it floats in open space, which reads as a
-                  // rendering fault rather than as an effect. Following the
-                  // head instead makes it the point being traced, and it
-                  // arrives at the real end exactly when the line does.
-                  //
-                  // **The flag waits for it.** A finish flag planted on a
-                  // moving head reads as a fault rather than as an effect, so
-                  // the dot keeps the head company through the reveal and the
-                  // flag is raised only once the line has arrived.
-                  if (widget.reveal >= 1)
-                    _finish(all.last)
-                  else
-                    _endpoint(
-                      drawn.isEmpty ? all.last : drawn.last.last,
-                      filled: true,
+              // A Builder for the camera: the kilometre pins are thinned at
+              // the zoom they are drawn at, so this rebuilds as the map moves.
+              Builder(
+                builder: (context) {
+                  final camera = MapCamera.of(context);
+                  final pins = clearOfEachOther<SplitMarker>(
+                    _drawnMarkers,
+                    (m) => camera.latLngToScreenOffset(
+                      LatLng(m.latitude, m.longitude),
                     ),
-                ],
+                    gap: _kSplitPinGap,
+                  );
+                  return MarkerLayer(
+                    markers: <Marker>[
+                      // Under the endpoints, so a kilometre that happens to turn
+                      // over on the start line does not hide where the run began.
+                      for (final marker in pins) _split(marker),
+                      _endpoint(all.first, filled: false), // start (outlined)
+                      if (widget.showPosition)
+                        _position(all.last)
+                      else
+                      // The head of the line, not the end of the route.
+                      //
+                      // While the route is drawing itself these differ, and
+                      // pinning the true end would put a dot ahead of the line —
+                      // on a closed loop it hides under the start and on an
+                      // out-and-back it floats in open space, which reads as a
+                      // rendering fault rather than as an effect. Following the
+                      // head instead makes it the point being traced, and it
+                      // arrives at the real end exactly when the line does.
+                      //
+                      // **The flag waits for it.** A finish flag planted on a
+                      // moving head reads as a fault rather than as an effect, so
+                      // the dot keeps the head company through the reveal and the
+                      // flag is raised only once the line has arrived.
+                      if (widget.reveal >= 1)
+                        _finish(all.last)
+                      else
+                        _endpoint(
+                          drawn.isEmpty ? all.last : drawn.last.last,
+                          filled: true,
+                        ),
+                    ],
+                  );
+                },
               )
             else if (widget.showPosition && widget.focus != null)
               // No route yet, but somewhere the runner is.
@@ -748,4 +762,41 @@ class FinishFlag extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// How far apart two kilometre pins' centres must be, in logical pixels, for
+/// both to be drawn: the pin's 22 px and a little air.
+const double _kSplitPinGap = 24;
+
+/// [items] with any that would sit on top of one already kept removed, keeping
+/// the earlier one.
+///
+/// **A looped course stacked its pins into an unreadable pile.** The Royal
+/// Parks half goes round the same park more than once, so kilometres 1, 9 and
+/// 15 landed on one spot and drew as a smudge of three circles where none of
+/// the numbers could be read (2026-10-11). Thinning in screen space rather than
+/// in metres is what makes it fair at every zoom: the whole route fitted to the
+/// screen shows one pin per place, and zooming in to a stretch of it brings
+/// back every pin that has room. A point-to-point route never doubles back, so
+/// it loses nothing.
+///
+/// Earlier wins because it is the one the runner reached first and the order
+/// the route was drawn in. Quadratic in the pins kept, which is at most a few
+/// dozen.
+@visibleForTesting
+List<T> clearOfEachOther<T>(
+  List<T> items,
+  Offset Function(T item) at, {
+  required double gap,
+}) {
+  final kept = <T>[];
+  final placed = <Offset>[];
+  for (final item in items) {
+    final here = at(item);
+    if (placed.every((p) => (p - here).distance >= gap)) {
+      kept.add(item);
+      placed.add(here);
+    }
+  }
+  return kept;
 }

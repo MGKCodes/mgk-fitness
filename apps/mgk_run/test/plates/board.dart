@@ -103,6 +103,31 @@ void main() {
     Future<void> Function(WidgetTester)? drive,
   }) => plate(tester, name, child, size: size, drive: drive);
 
+  // A race (ADR-0049): no session, the third figure counting down to the
+  // course, and the finish at this pace where the band would be.
+  group('a race', () {
+    Widget racing(FakeRunRecorder rec) =>
+        RecordingScreen(recorder: rec, raceMeters: 21097.5, onCancel: () {});
+
+    testWidgets('racing', (WidgetTester tester) async {
+      final FakeRunRecorder rec = recorder();
+      await shot(tester, '21-racing', racing(rec), drive: advance(400));
+      await rec.stop();
+    });
+
+    testWidgets('racing, small phone', (WidgetTester tester) async {
+      final FakeRunRecorder rec = recorder();
+      await shot(
+        tester,
+        '22-racing-small',
+        racing(rec),
+        size: kSmallPhone,
+        drive: advance(400),
+      );
+      await rec.stop();
+    });
+  });
+
   group('planned session', () {
     testWidgets('acquiring', (WidgetTester tester) async {
       final FakeRunRecorder rec = recorder(
