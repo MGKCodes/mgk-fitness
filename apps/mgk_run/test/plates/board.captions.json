@@ -1074,13 +1074,13 @@
       "how": "driven",
       "reach": "Home › Start",
       "job": "The start screen: where the runner is, whether the GPS is ready, what today's session asks for, and a Start that does not start the clock yet.",
-      "done": "A dot marks the runner in the middle of the map above the panel. The panel leads with the GPS ('GPS ready', and how close), then the session: distance and name, the pace band, about how long, the effort out of ten, and one line on how it should feel. Start is the only button. Nothing is being timed yet. (The ground is plain: a test draws no map tiles.)",
+      "done": "A dot marks the runner in the middle of the map above the panel. The panel leads with the GPS ('GPS ready', and how close), then Run or Race with Run chosen, then the session: distance and name, the pace band, about how long, the effort out of ten, and one line on how it should feel. Start is the only button. Nothing is being timed yet. (The ground is plain: a test draws no map tiles.)",
       "files": [
         "lib/src/features/recording/presentation/run_start_screen.dart",
         "lib/src/features/recording/presentation/route_map.dart"
       ],
       "isnew": "New since the September board.",
-      "changed": "Build 29: it said '6 km · easy run' over a map with nothing on it to say where the runner was. Build 27: it read '6.00 km · easy' where Home says '6 km'.",
+      "changed": "1.0.1, 13 Oct: Run or Race under the GPS line (R31 is Race chosen). Build 29: it said '6 km · easy run' over a map with nothing on it to say where the runner was. Build 27: it read '6.00 km · easy' where Home says '6 km'.",
       "note": "With no time trial there is no pace or time, only effort and feel. With no session the panel says 'Free run'. The dot follows a fix taken every three seconds; a pan parks the map and a recentre control appears."
     },
     "R25": {
