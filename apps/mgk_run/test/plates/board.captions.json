@@ -22,7 +22,7 @@
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
-      "1.0.1, 13 Oct: a race has its own finish (F9 to F12, new). A run near a race distance asks whether it was one; a race leads with its official time, says where it stands among the runner's races, shows how it was run half by half and 5K by 5K, and shows the plan behind it when there was one. Every summary's splits fold to one line, and the records card puts each record beside its own time (F1 to F3). Only these were retaken.",
+      "1.0.1, 13 Oct: a race has its own finish (F9 to F12, new). A run near a race distance asks whether it was one; a race leads with its official time, says where it stands among the runner's races, shows how it was run half by half and 5K by 5K, and shows the plan behind it when there was one. Every summary's splits fold to one line, and the records card puts each record beside its own time (F1 to F3); a run recovered after the app closed loses its column of dashes (F7). Only these were retaken.",
       "1.0.1, retaken on 5 Oct. The coach is the suite's sheet, Lift's design: glass over the night road where it was a solid panel, Run's icon and Coach in a frosted bar, Lift's bubbles, and three questions to tap on an empty conversation (C3, C4, C10 to C12). The paywall is the suite's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach labelled Recommended, the coach's C beside the app's name, the night road behind, and one Subscribe button naming the price (Y1 to Y7). Y8 and Y9 are still the 1 Oct pictures: their way in needs a planned run that Monday's fixtures do not have. Delete account asks how much, as Lift's does: this app's data or the whole MGKFitness account (L1 to L7, and L8, new). Only these were retaken; every other plate is as it was.",
       "1.0.1 so far, retaken on 3 Oct. The sign-in says which app it is and whose account: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile, drawn by the same piece Lift's sign-in uses, and it is laid out as Lift's: the night-road photograph at full strength above, the choices at the foot with the terms and privacy line under them, and no list of what an account gives (B8, C14, K2, K3). The switch between signing in and making an account is on the email form only, as on Lift, and the icon and name are larger. Signing in now has a row of its own, as on Lift's board: B8, the email form for signing back in (B13, new) and the one for making an account (K3). Delete account calls the login an MGKFitness account too (L1, L2, L3, L7). B1, P1 and C14 show the photograph behind them, which the 1 Oct pictures had been taken too early to load. Only these ten were retaken: every other plate is still the 1 Oct picture, because the fixtures are dated from the day a plate is drawn and a Saturday redraw would have moved plates this release has not touched.",
       "Build 29, from the owner's look at build 28 on TestFlight. The start screen shows where the runner is and what today's session asks for: pace, about how long, effort and how it should feel (R24, R25). 'Add a treadmill run' is a row at the foot of the This week tile, not a button under Start (H1, H2). The coach's line waits for the launch animation, opens out of the mark and is held about five seconds (C1, C6). The map's tiles are drawn at two pixels a point, which no plate can show: a test draws no tiles. Also in 29 and on no plate, because a test has no lock screen: a run's distance, time and pace are shown there while it records, as a Live Activity on the iPhone and a notification on Android.",
@@ -1516,10 +1516,11 @@
       "done": "It is in the log with its route, finished at the last fix, and never as a 0.00 km entry. The note the test sheet (C21) expects, 'Recovered automatically…', is on the summary under the numbers.",
       "files": [
         "lib/src/features/recording/presentation/run_summary_screen.dart",
-        "lib/src/features/recording/presentation/route_map.dart"
+        "lib/src/features/recording/presentation/route_map.dart",
+        "lib/src/features/recording/presentation/folded_splits.dart"
       ],
       "isnew": "Recovery is new in build 26.",
-      "changed": "Build 27: the summary showed no note; only Edit (F8) had it."
+      "changed": "Build 27: the summary showed no note; only Edit (F8) had it. 1.0.1, 13 Oct: no heart-rate column of dashes beside the splits."
     },
     "F8": {
       "file": "run-recovered-note",
@@ -2385,12 +2386,13 @@
       "file": "shell-plan-finish",
       "name": "The end of the block",
       "how": "driven",
-      "reach": "E3 › That was my time",
+      "reach": "E3 › That was my time, for a race the phone did not record",
       "job": "The plan closed out.",
       "done": "The finish time large, the block summarised in weeks, runs and distance, one line from the coach, and Done. The Plan tab is clear afterwards.",
       "files": [
         "lib/src/features/coaching/presentation/plan_finish_screen.dart"
-      ]
+      ],
+      "changed": "1.0.1, 13 Oct: when the phone recorded the race, confirming the time now opens the race's own summary (as F10, with the training section and the line about the Plan tab) instead of this screen. This one is for a race the phone sat out."
     },
     "K3": {
       "file": "account-gate-email",

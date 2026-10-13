@@ -43,6 +43,7 @@
     "morning's 21 and the six of 3 Oct, whose pictures were no longer on disk. The other 31 plates those",
     "files draw keep their 1 Oct pictures and stamps: a Monday redraw changes their weeks, not their code.",
     "H4, H5, Y8 and Y9 again not: Monday's fixtures have no planned run to reach them.",
+    "1.0.1, 13 Oct (feat/run-race-finish): a race's finish. race-summary, race-plan-day, race-offer and race-sheet are new (F9 to F12); run-complete-record and run-recovered retaken for the records card and the splits; run-complete and run-from-log redrawn pixel-identical (their splits are below the fold) and re-stamped. All at 6822be6. run-start and run-count were redrawn by the same files and kept their 1 Oct pictures: only the day moved. The other 12 screens.dart plates redrew pixel-identical and are re-stamped at 6822be6 too. Plates --stale lists only for home_shell.dart were not redrawn: that commit changed the shell's summary and race wiring, which none of them draws.",
     "",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
@@ -320,7 +321,7 @@
     },
     "coach-locked": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "coach-report": {
@@ -340,7 +341,7 @@
     },
     "coach-resting": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "coach-signed-out": {
@@ -350,7 +351,7 @@
     },
     "coach-speaking": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "delete-account": {
@@ -555,48 +556,48 @@
     },
     "plan-week": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "profile-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "profile-records-by-hand": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "profile-with-log": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "route-draw-100": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "route-draw-30": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "route-draw-65": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-01"
     },
     "run-complete": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
     },
     "run-complete-record": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
     },
     "run-count": {
       "source": "test/plates/journeys.dart",
@@ -605,8 +606,8 @@
     },
     "run-from-log": {
       "source": "test/plates/screens.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
     },
     "run-list": {
       "source": "test/plates/flows.dart",
@@ -615,8 +616,8 @@
     },
     "run-recovered": {
       "source": "test/plates/journeys.dart",
-      "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
-      "captured": "2026-10-01"
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
     },
     "run-recovered-note": {
       "source": "test/plates/journeys.dart",
@@ -715,12 +716,12 @@
     },
     "year-grid": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "year-grid-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "170ab2df77cd73b97d5ffe268543c528d0a05ef0",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
       "captured": "2026-10-05"
     },
     "account-gate-email": {
@@ -762,6 +763,26 @@
       "source": "test/plates/launch.dart",
       "sha": "6e20a70cecaa861aba22688eb45b0d4a3ad98e8e",
       "captured": "2026-10-01"
+    },
+    "race-summary": {
+      "source": "test/plates/screens.dart",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
+    },
+    "race-plan-day": {
+      "source": "test/plates/screens.dart",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
+    },
+    "race-offer": {
+      "source": "test/plates/screens.dart",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
+    },
+    "race-sheet": {
+      "source": "test/plates/screens.dart",
+      "sha": "6822be66c1e4c8b3c31c731e49a426a72315d614",
+      "captured": "2026-10-13"
     }
   }
 }
