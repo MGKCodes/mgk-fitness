@@ -30,7 +30,7 @@ void main() {
     final file = File('${dir.path}/runio.sqlite');
 
     // A genuine schema-7 shape: today's schema minus everything schema 8,
-    // 9, 10, 11 and 12 added.
+    // 9, 10, 11, 12 and 13 added.
     var db = AppDatabase(NativeDatabase(file));
     await db.allRuns(); // creates fresh, at the current schemaVersion
     await db.customStatement('DROP TABLE run_best_efforts');
@@ -42,6 +42,13 @@ void main() {
     await db.customStatement(
       'ALTER TABLE plan_sessions DROP COLUMN with_strength',
     );
+    for (final column in <String>[
+      'race_distance_m',
+      'race_time_s',
+      'race_name',
+    ]) {
+      await db.customStatement('ALTER TABLE runs DROP COLUMN $column');
+    }
     // `plans.finished_at` is deliberately left in place — standing in for
     // "schema 10's first statement already landed from an earlier
     // interrupted attempt" — so schema 8 (two plain column adds) and

@@ -20,7 +20,9 @@ runs              id, user_id, started_at, duration_s, distance_m,
                   avg_pace_s_per_km, elevation_gain_m, avg_hr, max_hr,
                   cadence, calories_est, source (gps|healthkit|manual),
                   type (outdoor|treadmill), external_id, shoe_id,
-                  rpe, notes, session_id (nullable)
+                  rpe, notes, session_id (nullable),
+                  elevation_max_m, steps,
+                  race_distance_m, race_time_s, race_name (null = training)
 
 run_points        run_id, seq, lat, lng, altitude_m, accuracy_m, timestamp
 
@@ -183,8 +185,13 @@ it were a fact.
   position as `runs.steps` and `runs.elevation_max_m`
   ([ADR-0024](../decisions/0024-elevation-is-barometric-or-absent.md)), and the
   most expensive of the three, because a race result is a fact the runner
-  confirmed rather than one anything on the phone could recompute. These are the
-  columns to add when the `run` schema next moves.
+  confirmed rather than one anything on the phone could recompute.
+- **A race is on the run, and is mirrored.** Schema 13 and
+  `20261013115237_run_race_on_the_run.sql` add `race_distance_m`, `race_time_s`
+  and `race_name` to `runs` on both sides ([ADR-0049](../decisions/0049-a-race-is-a-run.md)),
+  so a race result now survives a new phone through the run, whether or not a
+  plan was behind it. The plan's own `race_time_s` above is still written when a
+  plan closes and still local, and is now the second copy of the same time.
 - **`plan_sessions` has one row per *training* day**; a rest day is the *absence*
   of a row. `(plan_id, week_number, weekday)` is unique, so regenerating or
   adapting a week updates it in place instead of duplicating sessions. Statuses

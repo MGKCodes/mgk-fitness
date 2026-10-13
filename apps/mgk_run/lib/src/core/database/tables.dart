@@ -72,6 +72,25 @@ class Runs extends Table {
   /// by treating this moment as the run's last countable instant.
   DateTimeColumn get notCountingSince => dateTime().nullable()();
 
+  /// The race distance in metres, when the runner says this run was a race.
+  ///
+  /// **Null is a training run**, which is nearly every row. Non-null is the
+  /// whole of "this was a race": the distance of the course, never the
+  /// trace's — a half marathon whose phone read 21.69 km is stored as 21,097.5
+  /// here and keeps its 21,686 in [distanceM], so the two can be shown side
+  /// by side rather than one quietly replacing the other (ADR-0049).
+  RealColumn get raceDistanceM => real().nullable()();
+
+  /// The official finish time, in seconds, when the runner gave one.
+  ///
+  /// Null on a race means the phone's time is the only time there is. Never
+  /// written without [raceDistanceM]: an official time for a run that is not a
+  /// race would be a number with nothing to be the time *of*.
+  IntColumn get raceTimeS => integer().nullable()();
+
+  /// What the runner calls the race. Optional, and only on a race.
+  TextColumn get raceName => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

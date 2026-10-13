@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../../recording/domain/best_effort.dart';
 import '../../recording/domain/run_point.dart';
+import '../../recording/domain/run_race.dart';
 import '../../recording/domain/run_split.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/run_writer.dart';
@@ -165,7 +166,28 @@ RunSummary runSummaryFromLocal(
   points: points,
   splits: splits,
   bestEfforts: bestEfforts,
+  race: runRaceFromLocal(row),
 );
+
+/// A stored run's race, or null for a training run.
+///
+/// The distance is the whole of "this was a race"; the time and the name only
+/// mean something beside it, so a row carrying either without a distance — which
+/// [AppDatabase.setRunRace] never writes — reads as a training run rather than
+/// as half a race.
+RunRace? runRaceFromLocal(RunRow row) {
+  final meters = row.raceDistanceM;
+  if (meters == null || meters <= 0) return null;
+  final seconds = row.raceTimeS;
+  final name = row.raceName?.trim();
+  return RunRace(
+    distanceMeters: meters,
+    officialTime: seconds == null || seconds <= 0
+        ? null
+        : Duration(seconds: seconds),
+    name: name == null || name.isEmpty ? null : name,
+  );
+}
 
 /// A stored fix as the map sees it. Public for the same reason as
 /// [runSummaryFromLocal] — a swapped latitude and longitude is a mapping bug

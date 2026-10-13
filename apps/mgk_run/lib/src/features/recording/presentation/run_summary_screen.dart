@@ -4,16 +4,33 @@ import 'package:flutter/material.dart';
 
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
+import '../../coaching/domain/plan_history.dart';
+import '../../coaching/domain/prescribed_distance.dart' show raceName;
+import '../../coaching/domain/race_finish.dart';
 import '../../coaching/domain/run_note.dart';
 import '../../coaching/domain/training_plan.dart';
-import '../domain/live_metrics.dart';
-import '../../coaching/domain/prescribed_distance.dart' show raceName;
 import '../domain/best_effort.dart';
+import '../domain/live_metrics.dart';
+import '../domain/race_breakdown.dart';
 import '../domain/run_point.dart';
-import '../domain/split_marker.dart';
+import '../domain/run_race.dart';
 import '../domain/run_summary.dart';
-import 'recording_readout.dart';
+import '../domain/split_marker.dart';
+import 'folded_splits.dart';
+import 'race_parts.dart';
+import 'race_sheet.dart';
 import 'route_map.dart';
+
+/// What saving a race did, so the screen can say so.
+enum RaceSaveOutcome {
+  /// The run's race was written.
+  saved,
+
+  /// It was written, and it was the race the active plan was aimed at, so the
+  /// plan closed with it (ADR-0027, reached from the run rather than from
+  /// Home's card).
+  savedAndPlanFinished,
+}
 
 /// Post-run summary: the route, the headline distance, the stats that exist,
 /// per-split pace, and what the coach makes of the run. Absent data (no route,
@@ -29,7 +46,18 @@ import 'route_map.dart';
 /// [justFinished] is what separates the two, and it is deliberately small: the
 /// title, the date line, and a Done that has somewhere to go. Everything else
 /// is the same screen because it is the same run.
-class RunSummaryScreen extends StatelessWidget {
+///
+/// **A race is drawn differently, and that is the one branch on what the run
+/// was** (ADR-0049). A training run leads with how far; a race was decided in
+/// advance how far, so it leads with the time (the official one where the
+/// runner gave it), then where it stands among their races, how it was run,
+/// and the plan behind it. The splits fold away on both: twenty-two rows was
+/// the bottom half of a half marathon's screen.
+///
+/// Stateful only for the race. Marking a run as one, or adding the chip time a
+/// few hours later, redraws this screen in place rather than sending the
+/// runner back to the log to open it again.
+class RunSummaryScreen extends StatefulWidget {
   const RunSummaryScreen({
     super.key,
     required this.summary,
@@ -40,9 +68,25 @@ class RunSummaryScreen extends StatelessWidget {
     this.history = const <RunSummary>[],
     this.plannedSession,
     this.justFinished = false,
+    this.onSaveRace,
+    this.racePlan,
+    this.planFinished = false,
   });
 
   final RunSummary summary;
+
+  /// Writes the run's race (marked, corrected, or cleared with null) and
+  /// answers what happened, or null when it could not be saved. Null hides
+  /// every way to mark a race: a summary of seeded data has no row to write.
+  final Future<RaceSaveOutcome?> Function(RunRace? race)? onSaveRace;
+
+  /// The plan that was aimed at this run's race day, if one was. Only drawn
+  /// once the run is a race; without a plan the training section is absent.
+  final LabelledPlan? racePlan;
+
+  /// The plan behind this race closed on the way here (Home's card), so the
+  /// training section says the Plan tab is now clear.
+  final bool planFinished;
 
   /// Corrects this run's numbers. Null hides the action. The route is never
   /// touched — see `AppDatabase.updateRunDetails`.
@@ -74,14 +118,65 @@ class RunSummaryScreen extends StatelessWidget {
   final PlannedSession? plannedSession;
 
   @override
+  State<RunSummaryScreen> createState() => _RunSummaryScreenState();
+}
+
+class _RunSummaryScreenState extends State<RunSummaryScreen> {
+  /// The run as it stands now: the summary handed in, with whatever race the
+  /// runner has marked on it since.
+  late RunSummary _summary = widget.summary;
+
+  /// The plan closed because this race was marked, which the training section
+  /// says so the empty Plan tab is not a surprise.
+  late bool _planFinished = widget.planFinished;
+
+  RunSummary get summary => _summary;
+  UnitSystem get unit => widget.unit;
+  List<RunSummary> get history => widget.history;
+  bool get justFinished => widget.justFinished;
+  VoidCallback? get onDone => widget.onDone;
+  VoidCallback? get onEdit => widget.onEdit;
+  VoidCallback? get onAskCoach => widget.onAskCoach;
+
+  /// Opens the race sheet and writes what the runner says.
+  ///
+  /// The screen changes only once the write has succeeded: a race shown as
+  /// marked over a row that never took it would be the screen and the log
+  /// disagreeing about the same run, which is the failure ADR-0023 exists for.
+  Future<void> _editRace() async {
+    final save = widget.onSaveRace;
+    if (save == null) return;
+    final answer = await RaceSheet.show(context, run: _summary, unit: unit);
+    if (answer == null || !mounted) return;
+    final outcome = await save(answer.race);
+    if (!mounted) return;
+    if (outcome == null) {
+      AppToast.show(context, 'The race could not be saved. Try again.');
+      return;
+    }
+    unawaited(AppHaptics.commit());
+    setState(() {
+      _summary = _summary.withRace(answer.race);
+      if (outcome == RaceSaveOutcome.savedAndPlanFinished) {
+        _planFinished = true;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final race = summary.race;
+    if (race != null) return _buildRace(context, race);
     final theme = Theme.of(context);
     final note = RunNote.forRun(
       summary,
       history: history,
-      planned: plannedSession,
+      planned: widget.plannedSession,
       unit: unit,
     );
+    final offer = widget.onSaveRace == null
+        ? null
+        : suggestedRaceDistance(summary);
     return Scaffold(
       body: CustomScrollView(
         slivers: <Widget>[
@@ -183,6 +278,19 @@ class RunSummaryScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
                 Entrance(index: 2, child: _StatGrid(tiles: _tiles())),
+                // Under the numbers, where a runner who has just finished a
+                // half marathon is already looking, and only on a run that is
+                // near a race distance, so it is not on every Tuesday.
+                if (offer != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.md),
+                  Entrance(
+                    index: 2,
+                    child: RaceOffer(
+                      label: raceLabel(offer, unit),
+                      onTap: () => unawaited(_editRace()),
+                    ),
+                  ),
+                ],
                 // What is written on the run, under the numbers it is about.
                 //
                 // It was only ever in Edit › Notes, so a run the app finished
@@ -207,28 +315,33 @@ class RunSummaryScreen extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xxl),
                   Entrance(
                     index: 2,
-                    child: _CoachBlock(note: note, onAsk: onAskCoach),
+                    child: _CoachBlock(
+                      headline: note?.headline,
+                      detail: note?.detail,
+                      onAsk: onAskCoach,
+                    ),
                   ),
                 ],
                 if (summary.splits.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 32),
                   Entrance(
                     index: 3,
-                    child: Text(
-                      'SPLITS',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                        letterSpacing: 3,
-                      ),
-                    ),
+                    child: FoldedSplits(splits: summary.splits, unit: unit),
                   ),
-                  const SizedBox(height: 12),
-                  Entrance(
-                    index: 4,
-                    child: SplitList(
-                      splits: summary.splits,
-                      unit: unit,
-                      showHeartRate: true,
+                ],
+                // Any run can be marked, not only one near a named distance:
+                // a 15 km race or a 10-miler is still a race. Quiet and at the
+                // foot, because on most runs it is the wrong question.
+                if (offer == null &&
+                    widget.onSaveRace != null &&
+                    summary.type != 'treadmill') ...<Widget>[
+                  const SizedBox(height: AppSpacing.md),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppTextButton(
+                      label: 'Mark as a race',
+                      icon: Icons.flag_outlined,
+                      onPressed: () => unawaited(_editRace()),
                     ),
                   ),
                 ],
@@ -242,6 +355,181 @@ class RunSummaryScreen extends StatelessWidget {
                   // Arrives last, and commits when it goes: closing a finished
                   // run is the end of the thing the run was, so it is felt
                   // rather than merely acted on.
+                  Entrance(
+                    index: 5,
+                    child: PrimaryButton(
+                      label: 'Done',
+                      onPressed: () {
+                        unawaited(AppHaptics.commit());
+                        onDone!();
+                      },
+                    ),
+                  ),
+                ],
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The race layout: the time first, then what it means, how it was run, the
+  /// plan behind it, and the run's own figures underneath.
+  ///
+  /// **The order is the order a runner asks the questions in** after a race:
+  /// what was my time, is that good, where did it go right or wrong, what got
+  /// me here. The measures a training run leads with (distance, pace) are
+  /// answered by the headline already, so the grid below keeps only what the
+  /// headline does not say.
+  Widget _buildRace(BuildContext context, RunRace race) {
+    final theme = Theme.of(context);
+    final breakdown = raceBreakdownFor(summary.splits, race.distanceMeters);
+    final standing = raceStandingFor(summary, history, unit: unit);
+    final records = recordsInsideRace(_records(), race);
+    final raceNote = breakdown == null
+        ? null
+        : raceNoteFor(breakdown, unit: unit);
+    // Without a breakdown (no splits, or a recording too far from the course
+    // to measure against), the run's own note is still true and still said.
+    final runNote = raceNote == null
+        ? RunNote.forRun(summary, history: history, unit: unit)
+        : null;
+    final plan = widget.racePlan;
+    final tiles = _tiles(forRace: true);
+
+    final headline = _RaceHeadline(
+      summary: summary,
+      race: race,
+      unit: unit,
+      theme: theme,
+      justFinished: justFinished,
+    );
+
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: <Widget>[
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: AppColors.bg,
+            title: Text(justFinished ? 'Race complete' : 'Race summary'),
+            actions: <Widget>[
+              if (onEdit != null)
+                AppIconButton(
+                  icon: Icons.edit_outlined,
+                  tooltip: 'Edit run',
+                  onPressed: onEdit,
+                ),
+            ],
+          ),
+          if (summary.hasRoute)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 300,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    _DrawnRoute(
+                      points: summary.points,
+                      markers: splitMarkersFor(summary.points),
+                      animate: justFinished,
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: GlassSurface(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppRadius.sheet),
+                        ),
+                        tintOpacity: 0.14,
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                        child: headline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(<Widget>[
+                if (!summary.hasRoute) ...<Widget>[
+                  Entrance(child: headline),
+                  const SizedBox(height: 24),
+                ],
+                Entrance(
+                  index: 1,
+                  child: RaceTimeLine(
+                    run: summary,
+                    race: race,
+                    unit: unit,
+                    onEdit: widget.onSaveRace == null
+                        ? null
+                        : () => unawaited(_editRace()),
+                  ),
+                ),
+                if (standing != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.md),
+                  Entrance(
+                    index: 1,
+                    child: RaceStandingCard(standing: standing),
+                  ),
+                ],
+                if (records.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.md),
+                  Entrance(index: 1, child: _RecordBanner(records: records)),
+                ],
+                if (breakdown != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxl),
+                  Entrance(
+                    index: 2,
+                    child: RaceBreakdownCard(breakdown: breakdown, unit: unit),
+                  ),
+                ],
+                if (raceNote != null ||
+                    runNote != null ||
+                    onAskCoach != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(
+                    index: 2,
+                    child: _CoachBlock(
+                      headline: raceNote?.headline ?? runNote?.headline,
+                      detail: raceNote?.detail ?? runNote?.detail,
+                      onAsk: onAskCoach,
+                      askLabel: 'Ask your coach about this race',
+                    ),
+                  ),
+                ],
+                if (plan != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxl),
+                  Entrance(
+                    index: 3,
+                    child: RaceBuildUpSection(
+                      buildUp: buildUpFor(plan, history),
+                      unit: unit,
+                      planFinished: _planFinished,
+                    ),
+                  ),
+                ],
+                if (tiles.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxl),
+                  Entrance(index: 3, child: _StatGrid(tiles: tiles)),
+                ],
+                if (_writtenNote case final written?) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xl),
+                  Entrance(index: 3, child: _WrittenNote(text: written)),
+                ],
+                if (summary.splits.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 32),
+                  Entrance(
+                    index: 4,
+                    child: FoldedSplits(splits: summary.splits, unit: unit),
+                  ),
+                ],
+                if (onDone != null) ...<Widget>[
+                  const SizedBox(height: 32),
                   Entrance(
                     index: 5,
                     child: PrimaryButton(
@@ -311,9 +599,15 @@ class RunSummaryScreen extends StatelessWidget {
     return text == null || text.isEmpty ? null : text;
   }
 
-  List<_Tile> _tiles() {
-    final tiles = <_Tile>[_Tile('TIME', summary.duration.hoursMinutesSeconds)];
-    final pace = _avgPace();
+  ///
+  /// [forRace] drops time and pace, which a race's headline already gives
+  /// over the course distance; the phone's versions of them are in the line
+  /// under it, labelled as the phone's.
+  List<_Tile> _tiles({bool forRace = false}) {
+    final tiles = <_Tile>[
+      if (!forRace) _Tile('TIME', summary.duration.hoursMinutesSeconds),
+    ];
+    final pace = forRace ? null : _avgPace();
     if (pace != null) tiles.add(_Tile('AVG PACE', pace.format(unit)));
     // **Two elevation figures, named apart.** A bare "ELEVATION" was
     // unambiguous while it was the only one; beside a high point it is not, and
@@ -451,17 +745,26 @@ class _StatGrid extends StatelessWidget {
 /// is the acknowledgement that a runner may well have a second question about
 /// the run they are looking at, and this is the moment it is worth the most.
 class _CoachBlock extends StatelessWidget {
-  const _CoachBlock({required this.note, required this.onAsk});
+  const _CoachBlock({
+    required this.headline,
+    required this.detail,
+    required this.onAsk,
+    this.askLabel = 'Ask your coach about this run',
+  });
 
-  /// Null when there is nothing true to say about this run — which is most
+  /// Null when there is nothing true to say about this run, which is most
   /// runs. The card goes; the way in stays.
-  final RunNote? note;
+  final String? headline;
+  final String? detail;
   final VoidCallback? onAsk;
+  final String askLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final said = note;
+    final said = headline == null || detail == null
+        ? null
+        : (headline: headline!, detail: detail!);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -514,7 +817,7 @@ class _CoachBlock extends StatelessWidget {
               // "About this run", not a bare "Ask your coach": the mark
               // floating over every tab already offers a conversation, and this
               // one opens with the run on screen as its subject.
-              label: 'Ask your coach about this run',
+              label: askLabel,
               onPressed: onAsk,
             ),
           ),
@@ -613,6 +916,74 @@ class _Headline extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// A race's headline: when and what, the time in large, and the race with its
+/// pace over the course.
+///
+/// The time is the official one where the runner gave it and the phone's
+/// otherwise, and the pace is over the race distance rather than the trace's,
+/// so 2:00:30 over a half marathon reads 5:43 /km whatever the phone measured.
+class _RaceHeadline extends StatelessWidget {
+  const _RaceHeadline({
+    required this.summary,
+    required this.race,
+    required this.unit,
+    required this.theme,
+    required this.justFinished,
+  });
+
+  final RunSummary summary;
+  final RunRace race;
+  final UnitSystem unit;
+  final ThemeData theme;
+  final bool justFinished;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = race.timeFor(summary.duration);
+    final pace = Pace.secondsPerKilometer(
+      time.inSeconds / (race.distanceMeters / 1000),
+    ).format(unit);
+    final when = justFinished ? 'Just now' : _formatDate(summary.startedAt);
+    final style = theme.textTheme.displayMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          '$when  ·  ${race.name ?? 'Race'}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: AppColors.textSecondary,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Counts up on arrival, the way a training run's distance does: on a
+        // race the time is the number that was earned.
+        if (justFinished)
+          CountUp(
+            value: time.inSeconds.toDouble(),
+            format: (s) => Duration(seconds: s.round()).hoursMinutesSeconds,
+            style: style,
+          )
+        else
+          Text(time.hoursMinutesSeconds, style: style),
+        const SizedBox(height: 2),
+        Text(
+          '${raceLabel(race.distanceMeters, unit)}  ·  $pace',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
       ],
     );
   }
@@ -733,43 +1104,58 @@ class _RecordBanner extends StatelessWidget {
         ? names.single
         : '${names.take(names.length - 1).join(', ')} and ${names.last}';
 
+    final tabular = const <FontFeature>[FontFeature.tabularFigures()];
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Fastest $what yet',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  // States the rule rather than only the result. A record set
-                  // inside a longer run is otherwise surprising — somebody who
-                  // ran 12 km is not expecting to be told about a 10K.
-                  'Your fastest unbroken stretch of it, in any run so far.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // The shortest one's time. With several set at once the others are
-          // named above and read on Profile; a column of times here would be a
-          // table on a screen meant to say one thing.
           Text(
-            named.first.duration.hoursMinutesSeconds,
+            'Fastest $what yet',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 2),
+          Text(
+            // States the rule rather than only the result. A record set
+            // inside a longer run is otherwise surprising: somebody who ran
+            // 12 km is not expecting to be told about a 10K.
+            named.length == 1
+                ? 'Your fastest unbroken stretch of it, in any run so far.'
+                : 'Your fastest unbroken stretch of each, in any run so far.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // **Every record beside its own time.** This used to show only the
+          // shortest one's time, at the end of a line naming all of them, so
+          // "Fastest 5K, 10K and Half marathon yet · 25:16" read as a 25-minute
+          // half marathon. One row each is a short table, and it is the only
+          // way the time cannot be read against the wrong name.
+          for (final r in named)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: <Widget>[
+                  Text(
+                    raceName(r.distanceMeters)!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    r.duration.hoursMinutesSeconds,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: tabular,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

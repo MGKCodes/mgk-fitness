@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : this(_openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -186,6 +186,17 @@ class AppDatabase extends _$AppDatabase {
         // carries its strength days.
         await m.addColumn(planSessions, planSessions.withStrength);
       }
+      if (from < 13) {
+        // A race is something a run can be (ADR-0049): its course distance,
+        // the official time and a name. Nullable and additive, and **not
+        // backfilled**, for schema 10's reason — nothing on the phone can say
+        // which old runs were races. A run on a finished plan's race day is
+        // the one candidate, and the race screen reads that from the plan
+        // rather than this migration writing it down on the runner's behalf.
+        await m.addColumn(runs, runs.raceDistanceM);
+        await m.addColumn(runs, runs.raceTimeS);
+        await m.addColumn(runs, runs.raceName);
+      }
     }),
   );
 
@@ -318,6 +329,30 @@ class AppDatabase extends _$AppDatabase {
     RunsCompanion(
       pausedTotalS: Value(pausedTotalS),
       notCountingSince: Value(notCountingSince),
+    ),
+  );
+
+  /// Marks a run as a race, corrects the race, or — with null — says it was not
+  /// one.
+  ///
+  /// **Its own write, not part of [updateRunDetails].** The run form corrects
+  /// what was measured; this records what the run *was*, from a sheet the
+  /// runner opens on the run itself. Keeping them apart means a correction to
+  /// the distance can never clear a race by omission, and marking a race can
+  /// never touch a measured figure.
+  ///
+  /// All three columns are written every time, so clearing a race leaves no
+  /// official time or name behind on a training run.
+  Future<int> setRunRace({
+    required String runId,
+    double? distanceM,
+    int? officialTimeS,
+    String? name,
+  }) => (update(runs)..where((r) => r.id.equals(runId))).write(
+    RunsCompanion(
+      raceDistanceM: Value(distanceM),
+      raceTimeS: Value(distanceM == null ? null : officialTimeS),
+      raceName: Value(distanceM == null ? null : name),
     ),
   );
 

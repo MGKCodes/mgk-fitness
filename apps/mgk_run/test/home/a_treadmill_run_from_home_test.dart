@@ -7,6 +7,7 @@ import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
 import 'package:mgk_run/src/features/home/presentation/home_today_tile.dart';
 import 'package:mgk_run/src/features/home/presentation/home_week_tile.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_run/src/features/recording/domain/run_race.dart';
 
 class _Writer implements RunWriter {
   final List<RunDraft> added = <RunDraft>[];
@@ -22,6 +23,9 @@ class _Writer implements RunWriter {
 
   @override
   Future<void> delete(String runId) async {}
+
+  @override
+  Future<void> markRace(String runId, RunRace? race) async {}
 
   @override
   Future<RunDraft?> draftOf(String runId) async => null;

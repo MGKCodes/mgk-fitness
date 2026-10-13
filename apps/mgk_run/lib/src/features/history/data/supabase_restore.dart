@@ -331,6 +331,12 @@ class SupabaseRestore implements DataRestore {
     rpe: Value((r['rpe'] as num?)?.toInt()),
     notes: Value(r['notes'] as String?),
     sessionId: Value(r['session_id'] as String?),
+    // The race, when the run was one (ADR-0049). `select()` reads every column,
+    // so a row from before the columns existed arrives with all three null —
+    // a training run, which is what it was recorded as.
+    raceDistanceM: Value((r['race_distance_m'] as num?)?.toDouble()),
+    raceTimeS: Value((r['race_time_s'] as num?)?.toInt()),
+    raceName: Value(r['race_name'] as String?),
   );
 
   PlansCompanion _planCompanion(

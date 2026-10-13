@@ -59,10 +59,18 @@ void main() {
     );
   });
 
-  test('the two columns that were lost are on both sides', () {
+  test('the columns that were lost, and the race, are on both sides', () {
     // Named rather than left to the set comparison above, so that a change
     // which deletes both at once cannot pass by making the two sides agree.
-    for (final column in <String>['elevation_max_m', 'steps']) {
+    // The race columns are here because an official time is the one figure on
+    // a run nothing can rebuild (ADR-0049).
+    for (final column in <String>[
+      'elevation_max_m',
+      'steps',
+      'race_distance_m',
+      'race_time_s',
+      'race_name',
+    ]) {
       expect(pushed(), contains(column), reason: '$column must be mirrored');
       expect(restored(), contains(column), reason: '$column must be restored');
     }
@@ -87,11 +95,18 @@ void main() {
     // migration is applied, and this one was re-stamped on 2026-09-29 (from
     // 20260901130000) after `db push` had skipped it. A hard-coded version
     // broke the Android build that day.
-    final added = Directory('../../supabase/migrations')
+    String migration(String name) => Directory('../../supabase/migrations')
         .listSync()
         .whereType<File>()
-        .singleWhere((f) => f.path.endsWith('_run_elevation_max_and_steps.sql'))
+        .singleWhere((f) => f.path.endsWith(name))
         .readAsStringSync();
+    // Every migration that adds a column to `run.runs`. The race columns
+    // (ADR-0049) are the second set; a third goes here, by name, in the same
+    // change that adds it to the mirror.
+    final added = <String>[
+      migration('_run_elevation_max_and_steps.sql'),
+      migration('_run_race_on_the_run.sql'),
+    ].join('\n');
 
     final schema = <String>{
       ...RegExp(

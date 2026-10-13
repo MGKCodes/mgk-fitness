@@ -1,5 +1,6 @@
 import 'best_effort.dart';
 import 'run_point.dart';
+import 'run_race.dart';
 import 'run_split.dart';
 
 /// A finished run, shaped for display. All magnitudes are metric; conversion to
@@ -26,6 +27,7 @@ class RunSummary {
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
     this.bestEfforts = const <BestEffort>[],
+    this.race,
   });
 
   /// The stored run's id, when this summary came from a row.
@@ -95,5 +97,35 @@ class RunSummary {
   /// over every run. Four numbers per run is affordable where a trace is not.
   final List<BestEffort> bestEfforts;
 
+  /// The race this run was, or null for a training run — which is nearly all
+  /// of them.
+  ///
+  /// Carried by the log's read as well as a single run's, like [bestEfforts]
+  /// and for the same reason: a race screen compares this one against the
+  /// runner's earlier races at the distance, and that is a fold over the log.
+  final RunRace? race;
+
   bool get hasRoute => points.length >= 2;
+
+  /// This summary with its race replaced, for the screen that has just marked
+  /// or corrected it. Everything else is carried across untouched.
+  RunSummary withRace(RunRace? race) => RunSummary(
+    id: id,
+    startedAt: startedAt,
+    duration: duration,
+    distanceMeters: distanceMeters,
+    avgPaceSecondsPerKm: avgPaceSecondsPerKm,
+    elevationGainMeters: elevationGainMeters,
+    elevationMaxMeters: elevationMaxMeters,
+    avgHr: avgHr,
+    maxHr: maxHr,
+    caloriesEst: caloriesEst,
+    steps: steps,
+    notes: notes,
+    type: type,
+    points: points,
+    splits: splits,
+    bestEfforts: bestEfforts,
+    race: race,
+  );
 }
