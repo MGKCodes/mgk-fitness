@@ -2,11 +2,20 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/ids.dart';
+import '../../recording/domain/run_race.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/run_draft.dart';
 import '../domain/run_writer.dart';
 import 'drift_run_repository.dart';
 import 'run_backup.dart';
+
+/// The longest race the editor will store: 250 km, past every road and trail
+/// race a phone could record. Matched by the `run.runs` check constraint.
+const double kMaxRaceDistanceMeters = 250000;
+
+/// Longer than any race name anybody types, short enough that a paste of the
+/// whole results page is refused. Matched by the `run.runs` check constraint.
+const int kMaxRaceNameLength = 80;
 
 /// Adds and corrects runs — the write half of "the log is the runner's, not the
 /// device's".
@@ -135,6 +144,44 @@ class RunEditor implements RunWriter, RunDetailSource {
       }
     }
     await _db.deleteRun(runId);
+  }
+
+  /// Marks a run as a race, corrects it, or clears it.
+  ///
+  /// **Refused rather than repaired**, like every other write here. A race with
+  /// no distance, a zero official time or a name longer than anyone types is a
+  /// bug in the sheet that produced it, and storing it would put the bug on
+  /// the one figure a runner quotes for years.
+  ///
+  /// Pushed after the local write and never fatally, for [_push]'s reason. The
+  /// official time is the field this most needs to survive a lost phone, so it
+  /// goes up with the run row rather than waiting for a backfill.
+  @override
+  Future<void> markRace(String runId, RunRace? race) async {
+    if (race != null) {
+      if (!(race.distanceMeters > 0) ||
+          race.distanceMeters > kMaxRaceDistanceMeters) {
+        throw ArgumentError.value(race.distanceMeters, 'distanceMeters');
+      }
+      final official = race.officialTime;
+      if (official != null && official <= Duration.zero) {
+        throw ArgumentError.value(official, 'officialTime');
+      }
+      if ((race.name?.length ?? 0) > kMaxRaceNameLength) {
+        throw ArgumentError.value(race.name, 'name');
+      }
+    }
+    final existing = await _db.runById(runId);
+    if (existing == null) throw StateError('No run with id $runId');
+
+    final name = race?.name?.trim();
+    await _db.setRunRace(
+      runId: runId,
+      distanceM: race?.distanceMeters,
+      officialTimeS: race?.officialTime?.inSeconds,
+      name: name == null || name.isEmpty ? null : name,
+    );
+    await _push(runId);
   }
 
   /// Long enough for a slow connection, short enough that a phone with none

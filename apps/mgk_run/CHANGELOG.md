@@ -20,6 +20,16 @@ This is 1.0.1
 
 ### Added
 
+- **A race has its own finish**
+  ([ADR-0049](docs/decisions/0049-a-race-is-a-run.md)). A run near 5K, 10K,
+  half or marathon asks "Was this a race?", and any outdoor run can be marked
+  as one. A race leads with its time, official where you add it, with what
+  your phone had beside it; says whether it is your first or fastest at the
+  distance; shows how you ran it, half by half and 5K by 5K, measured against
+  the course rather than the phone's longer reading; and, when a plan was
+  aimed at that day, the training behind it. The run on a plan's race day is
+  marked for you, and saving its time closes the plan. Race results are
+  backed up with the run.
 - Settings › About says the app is open source. *Source code* (AGPL-3.0)
   opens Run's code in the public repository, and *Report a problem* opens an
   email to support with the app and its version already written in, for
@@ -28,6 +38,13 @@ This is 1.0.1
 
 ### Changed
 
+- Splits on a run with more than five fold to one line: a small chart of every
+  kilometre, the fastest and the slowest, and "Show all". The heart-rate
+  column only appears when a split has a heart rate, so a run without one no
+  longer ends every row in a dash.
+- The records card lists each record beside its own time. With several set at
+  once it used to show only the shortest one's, so "Fastest 5K, 10K and Half
+  marathon yet · 25:16" read as a 25-minute half marathon.
 - The sign-in screen says which app it is and whose account: Run's icon and
   name above *MGKFitness Account*, where it said *MGKFitness Profile*. Lift's
   sign-in draws the same head with its own icon, from one shared piece, so the

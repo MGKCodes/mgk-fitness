@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/src/features/coaching/domain/plan_builder.dart';
+import 'package:mgk_run/src/features/coaching/domain/plan_history.dart';
 import 'package:mgk_run/src/features/coaching/domain/runner_profile.dart';
 import 'package:mgk_run/src/features/coaching/domain/stored_plan.dart';
 import 'package:mgk_run/src/features/coaching/presentation/plan_screen.dart';
@@ -16,6 +17,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:mgk_run/src/features/recording/domain/best_effort.dart';
 import 'package:mgk_run/src/features/recording/domain/run_point.dart';
+import 'package:mgk_run/src/features/recording/domain/run_race.dart';
 import 'package:mgk_run/src/features/recording/domain/run_split.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.dart';
@@ -173,6 +175,112 @@ void main() {
       ),
     ],
   );
+
+  /// Sunday 11 October 2026's half marathon, as the phone recorded it: the
+  /// splits off its summary to the second, 21.69 km for a 21.0975 km course,
+  /// and 2:00:47 against a chip time of 2:00:30. The route is a stand-in loop
+  /// round a park, gone round four and a half times; a test draws no tiles.
+  const halfSplits = <int>[
+    323, 307, 309, 302, 292, 306, 339, 320, 326, 311, //
+    347, 325, 356, 346, 338, 356, 346, 349, 353, 355, 371,
+  ];
+  List<RunPoint> parkLaps() {
+    const lat = 51.5073, lng = -0.1657;
+    const fixes = 242;
+    return <RunPoint>[
+      for (var i = 0; i <= fixes; i++)
+        RunPoint(
+          latitude: lat + 0.0055 * math.sin(i / fixes * 4.6 * 2 * math.pi),
+          longitude: lng + 0.0125 * math.cos(i / fixes * 4.6 * 2 * math.pi),
+          accuracyMeters: 6,
+          timestamp: DateTime(
+            2026,
+            10,
+            11,
+            9,
+            31,
+            29,
+          ).add(Duration(seconds: i * 30)),
+        ),
+    ];
+  }
+
+  final halfMarathon = RunSummary(
+    id: 'plate-half',
+    startedAt: DateTime(2026, 10, 11, 9, 31),
+    duration: const Duration(hours: 2, minutes: 0, seconds: 47),
+    distanceMeters: 21685.8,
+    steps: 16575,
+    points: parkLaps(),
+    bestEfforts: const <BestEffort>[
+      BestEffort(
+        distanceMeters: 5000,
+        duration: Duration(minutes: 25, seconds: 16),
+      ),
+      BestEffort(
+        distanceMeters: 10000,
+        duration: Duration(minutes: 52, seconds: 4),
+      ),
+      BestEffort(
+        distanceMeters: 21097.5,
+        duration: Duration(hours: 1, minutes: 57, seconds: 40),
+      ),
+    ],
+    splits: <RunSplit>[
+      for (var i = 0; i < halfSplits.length; i++)
+        RunSplit(
+          index: i + 1,
+          distanceMeters: 1000,
+          duration: Duration(seconds: halfSplits[i]),
+        ),
+      const RunSplit(
+        index: 22,
+        distanceMeters: 685.8,
+        duration: Duration(seconds: 260),
+      ),
+    ],
+  );
+
+  /// The half as a race, with the time off the results page.
+  final raced = halfMarathon.withRace(
+    const RunRace(
+      distanceMeters: 21097.5,
+      officialTime: Duration(hours: 2, minutes: 0, seconds: 30),
+      name: 'Royal Parks Half',
+    ),
+  );
+
+  /// A twelve-week plan aimed at that Sunday, for the training section, and
+  /// the runs that would sit inside it.
+  final halfPlan = LabelledPlan(
+    record: PlanRecord(
+      id: 'plate-half-plan',
+      startDate: DateTime(2026, 7, 20),
+      weeks: 12,
+      isActive: true,
+      goalDistanceMeters: 21097.5,
+      eventDate: DateTime(2026, 10, 11),
+    ),
+    label: 'Half marathon plan',
+  );
+  final halfBlock = <RunSummary>[
+    for (var week = 0; week < 12; week++)
+      for (final (day, km) in <(int, double)>[
+        (1, 6 + week * 0.3),
+        (3, 7 + week * 0.4),
+        (6, week == 11 ? 0 : 10 + week * 0.8),
+      ])
+        if (km > 0)
+          RunSummary(
+            startedAt: DateTime(
+              2026,
+              7,
+              20,
+            ).add(Duration(days: week * 7 + day)),
+            duration: Duration(seconds: (km * 330).round()),
+            distanceMeters: km * 1000,
+          ),
+  ];
 
   /// One day of the year fixture: a distance, and a duration that belongs to it.
   ///
@@ -450,6 +558,101 @@ void main() {
       );
     });
   }
+
+  // --- A race (ADR-0049) ------------------------------------------------------
+  //
+  // Full-page plates, taller than a phone, because the question each one
+  // answers is the order of the whole screen rather than the first 852 points
+  // of it.
+
+  testWidgets('race — the half, with its official time', (tester) async {
+    await plate(
+      tester,
+      'race-summary',
+      pushed(
+        RunSummaryScreen(
+          summary: raced,
+          history: <RunSummary>[raced],
+          onEdit: () {},
+          onAskCoach: () {},
+          onSaveRace: (_) async => RaceSaveOutcome.saved,
+        ),
+      ),
+      size: const Size(393, 1460),
+      pixelRatio: 2,
+      drive: settle,
+    );
+  });
+
+  testWidgets('race — marked on plan day, no official time yet', (
+    tester,
+  ) async {
+    await plate(
+      tester,
+      'race-plan-day',
+      pushed(
+        RunSummaryScreen(
+          summary: halfMarathon.withRace(
+            const RunRace(distanceMeters: 21097.5),
+          ),
+          history: <RunSummary>[...halfBlock, halfMarathon],
+          racePlan: halfPlan,
+          justFinished: true,
+          onDone: () {},
+          onAskCoach: () {},
+          onSaveRace: (_) async => RaceSaveOutcome.savedAndPlanFinished,
+        ),
+      ),
+      size: const Size(393, 1820),
+      pixelRatio: 2,
+      drive: (t) async {
+        for (var i = 0; i < 30; i++) {
+          await t.pump(const Duration(milliseconds: 100));
+        }
+      },
+    );
+  });
+
+  testWidgets('a half not yet marked asks whether it was a race', (
+    tester,
+  ) async {
+    await plate(
+      tester,
+      'race-offer',
+      pushed(
+        RunSummaryScreen(
+          summary: halfMarathon,
+          history: <RunSummary>[halfMarathon],
+          onEdit: () {},
+          onAskCoach: () {},
+          onSaveRace: (_) async => RaceSaveOutcome.saved,
+        ),
+      ),
+      size: const Size(393, 1220),
+      pixelRatio: 2,
+      drive: settle,
+    );
+  });
+
+  testWidgets('the race sheet', (tester) async {
+    await plate(
+      tester,
+      'race-sheet',
+      pushed(
+        RunSummaryScreen(
+          summary: halfMarathon,
+          history: <RunSummary>[halfMarathon],
+          onSaveRace: (_) async => RaceSaveOutcome.saved,
+        ),
+      ),
+      pixelRatio: 2,
+      drive: (t) async {
+        await settle(t);
+        await t.tap(find.text('Was this a race?'));
+        await settle(t);
+      },
+    );
+  });
 
   testWidgets('run complete — a record set', (tester) async {
     await plate(
