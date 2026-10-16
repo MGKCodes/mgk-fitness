@@ -65,9 +65,8 @@ This is 1.0.1
   terms and privacy line under them on every step. The list of what an account
   gives is gone from the sign-up, as Lift's sign-in has none.
 - Delete account calls the login an *MGKFitness account* too, where it said
-  *MGKFitness profile*. The privacy policy's paragraph on deletion still says
-  *profile*: it changes with the published page, after 1.0.0's review, because
-  the live policy is what that review compares against the 1.0.0 binary.
+  *MGKFitness profile*. The privacy policy says *account* too, in the app and
+  on the published page, from 16 October 2026.
 - Delete account asks how much, as Lift's always has: *Delete this app's
   data*, or *Delete my whole MGKFitness account*, which erases what Lift holds
   as well and the login itself. Until now the second meant emailing us. It is
@@ -75,8 +74,8 @@ This is 1.0.1
   choice cards, login note, phone-copy switch and outcome sentences as Lift's.
   A login kept because Lift uses it no longer comes with an address to email
   for the rest, and a login that could not be removed shows the warning icon.
-  The privacy policy's deletion paragraph needs the second choice adding, with
-  *profile* above, after 1.0.0's review.
+  The privacy policy's deletion paragraph describes both choices, in Lift's
+  words, where it said to email us for the rest.
 - The paywall is the suite's, as Lift's: one screen that fits without
   scrolling, with Run's icon and name where the decision is made, three short
   benefit lines that open their detail on tap, the two tiers side by side

@@ -179,7 +179,7 @@ const LegalDocument privacyPolicy = LegalDocument(
             'they hold your Apple ID or Google account on their own terms. They '
             'pass us an email address and an identifier; we tell them nothing '
             'about your training. Choosing Hide My Email with Apple starts a '
-            'separate profile, because the address Apple gives us is not one '
+            'separate account, because the address Apple gives us is not one '
             'any other account uses. On an iPhone, deleting an account made '
             'with Apple asks Apple to confirm first, so that when the login '
             'goes we can also end the app’s access to your Apple ID.',
@@ -274,12 +274,16 @@ const LegalDocument privacyPolicy = LegalDocument(
             'data and nothing you wrote, and they are pruned after 31 days '
             'regardless. And your login survives if our lifting app still '
             'holds data on it.',
-        'Your login is your $kPlatformName profile, shared with '
-            '$kPlatformName: Lift. If the profile holds no data from Lift, '
-            'deletion removes the profile itself. If it does, we delete '
-            'everything this app holds and keep only the profile, so your '
-            'data in Lift survives — email run@mgkfitness.mgkcodes.com to '
-            'remove the profile as well.',
+        'Deletion asks how much, because your login is your $kPlatformName '
+            'account and it is shared with our lifting app $kPlatformName: '
+            'Lift. Delete this app only, and we erase everything this app '
+            'holds; your account survives so Lift keeps working. Delete your '
+            'whole account, and everything Lift holds goes too, along with the '
+            'login itself.',
+        'One thing the narrow choice cannot promise: if Lift holds no data, '
+            'there is nothing left for the account to be for, so it is removed '
+            'as well. We tell you which happened rather than leaving you to '
+            'find out.',
       ],
     ),
     LegalSection(
