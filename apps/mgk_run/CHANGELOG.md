@@ -97,6 +97,16 @@ This is 1.0.1
   is said under the message it belongs to rather than above the field, and
   the close button is called *Close*.
 
+### Fixed
+
+- Signing in with Apple no longer leads to "What should I call you?". The
+  coach's first conversation skips the name for an Apple account, and the
+  coach goes without one unless you add it in Settings. App Review rejected
+  1.0.0 for asking (guideline 4, 16 October 2026).
+- Signing in after meeting the coach no longer plays the whole conversation
+  again on the next launch. The meeting is recorded against the account, and
+  the name you gave the coach goes to it if it has none.
+
 ## [1.0.0] — submitted 2026-10-02, build 29
 
 Submitted to the App Store and Google Play on 2 October 2026, both from

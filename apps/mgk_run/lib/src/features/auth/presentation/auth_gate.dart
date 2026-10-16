@@ -292,6 +292,24 @@ class _AuthGateState extends State<AuthGate> {
     } catch (_) {}
   }
 
+  /// Records against the account an intro this install had before signing in.
+  ///
+  /// The name the phone was told goes to the profile only when the profile
+  /// has none: a name set in Lift, or in Settings on another phone, is newer
+  /// than one typed into this intro before there was an account. Fails
+  /// quietly, as [_introFinished] does: losing it costs one more check.
+  Future<void> _recordMet(AuthRepository auth) async {
+    try {
+      await auth.markCoachMet();
+      final local = _localName;
+      if (auth.currentName == null &&
+          local != null &&
+          local.trim().isNotEmpty) {
+        await auth.updateName(local);
+      }
+    } catch (_) {}
+  }
+
   /// What to call this runner, from whichever home has it.
   ///
   /// **The account first, the install second.** A profile name travels between
@@ -395,15 +413,34 @@ class _AuthGateState extends State<AuthGate> {
         // No account steps: they have a profile. Just the coach, and the
         // permissions this install has never been asked for.
         if (!_justSignedUp && !_metCoachThisSession && !auth.hasMetCoach) {
-          _drewShell = false;
-          return IntroScreen(
-            // What the profile already knows. The name is shared across the
-            // suite, so somebody arriving from Lift is not asked for it twice.
-            initial: IntroAnswers(name: auth.currentName),
-            requestPermission:
-                widget.requestPermission ?? requestIntroPermission,
-            onFinished: (name) => unawaited(_introFinished(auth, name)),
-          );
+          if (_introDone == null) {
+            // A frame or two at launch while the marker is read, for the
+            // reason the signed-out branch gives.
+            return const Scaffold(body: SizedBox.shrink());
+          }
+          if (_introDone == true) {
+            // **This install has already had the conversation.** The runner
+            // met the coach before they had an account, and signed in later
+            // for a plan or a backup. Nothing recorded that against the new
+            // account, so the next launch played the intro again - and for
+            // an Apple account, asked the name after Sign in with Apple, which
+            // is what App Review rejected 1.0.0 for. Recorded now, once.
+            _metCoachThisSession = true;
+            unawaited(_recordMet(auth));
+          } else {
+            _drewShell = false;
+            return IntroScreen(
+              // What the profile already knows, or what this phone was told.
+              // The name is shared across the suite, so somebody arriving
+              // from Lift is not asked for it twice.
+              initial: IntroAnswers(name: _name(auth)),
+              // Never after Sign in with Apple; see `signedInWithApple`.
+              askName: !auth.signedInWithApple,
+              requestPermission:
+                  widget.requestPermission ?? requestIntroPermission,
+              onFinished: (name) => unawaited(_introFinished(auth, name)),
+            );
+          }
         }
         _drewShell = true;
         return _shell(auth);

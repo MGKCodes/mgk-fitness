@@ -198,6 +198,28 @@ class AuthRepository {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  /// Whether this account signs in with Apple.
+  ///
+  /// **Apple has already been asked who this is, so the app may not ask
+  /// again.** App Review rejected 1.0.0 under guideline 4 because the intro
+  /// asked "What should I call you?" straight after Sign in with Apple: the
+  /// rule is that a name or an email Apple's sheet could have supplied is never
+  /// asked for afterwards. The sheet is asked for email only (O1, see
+  /// `ProviderSignIn`), so an Apple account simply goes without a name unless
+  /// the runner gives one in Settings, where nothing prompts for it.
+  ///
+  /// Either record answers: `identities` is what the deletion's revocation
+  /// reads, and `providers` is there on a session restored without them.
+  bool get signedInWithApple {
+    final user = _client.auth.currentUser;
+    if (user == null) return false;
+    if (user.identities?.any((i) => i.provider == 'apple') ?? false) {
+      return true;
+    }
+    final providers = user.appMetadata['providers'];
+    return providers is List && providers.contains('apple');
+  }
+
   /// Changes what the coach calls this runner.
   ///
   /// The intro accepts **any** name, on the grounds that a name is not a format
