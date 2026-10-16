@@ -45,6 +45,16 @@ Connect before review (a first subscription always does):
    into that draft and the whole draft is sent, so nothing in it is split off.
    Don't press Submit for Review on such a draft by hand first.
 
+**After a rejection that needs a new binary,** the build carries the next
+version number (a version is submitted once), but Apple keeps one version
+open at a time, so the rejected one is still open under the old number.
+`prepare` and `submit` rename it to the build's number rather than create a
+second, and the plan says so. `submit` stops while App Review's submission is
+in Unresolved Issues: run `prepare --build N` to attach the new build, then
+resubmit that submission in App Store Connect, which keeps everything in it
+(its subscriptions included). Run 1.0.0 went back as 1.0.1 this way on
+16 October 2026.
+
 **Creative assets** (`assets`, App Store only): the product page header and
 the search results asset. Each file is uploaded once to the app's Asset
 Library, then placed on every localization of the version open for changes.

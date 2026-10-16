@@ -67,9 +67,11 @@ class FakeStore:
     def __init__(self, answers):
         self.answers = answers
         self.sent: list[tuple[str, str]] = []
+        self.bodies: list[tuple[str, str, dict | None]] = []
 
     def __call__(self, method, url, **kwargs):
         self.sent.append((method, url))
+        self.bodies.append((method, url, kwargs.get('body')))
         for (m, fragment), answer in self.answers.items():
             if m == method and fragment in url:
                 return answer.resolve() if hasattr(answer, 'resolve') else answer
@@ -89,6 +91,8 @@ APPLE = {
     ('GET', '/appStoreVersions?'): {'data': []},
     ('POST', '/v1/appStoreVersions'): {'data': {'id': 'V1'}},
     ('POST', '/v1/reviewSubmissions'): {'data': {'id': 'R1'}},
+    # Ahead of the general answer below, which a test swaps for a draft.
+    ('GET', 'UNRESOLVED_ISSUES'): {'data': []},
     ('GET', '/v1/reviewSubmissions?'): {'data': []},
     ('GET', '/appStoreVersionLocalizations'): {
         'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
@@ -142,10 +146,31 @@ class AppleSubmit(unittest.TestCase):
         self.assertFalse(any(u.endswith('/v1/reviewSubmissionItems') for _, u in fake.sent))
         self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/D1') for m, u in fake.sent))
 
+    def test_a_submission_with_unresolved_issues_is_resubmitted_in_the_console(self):
+        # Run 1.0.0's rejection, 16 October 2026: a second submission would be
+        # refused, and cancelling the first drops its subscriptions.
+        answers = dict(APPLE)
+        answers[('GET', 'UNRESOLVED_ISSUES')] = {'data': [{'id': 'U1'}]}
+        code, fake, printed = self.run_submit('--yes', answers=answers)
+        self.assertEqual(code, 1)
+        self.assertEqual(fake.writes(), [])
+        self.assertIn('U1 has unresolved issues', printed)
+        self.assertIn('Resubmit', printed)
+
+
+def with_open_version(number: str, state: str) -> dict:
+    """APPLE, with no version under the build's number and one open under
+    another. The versionString lookup is listed first so it answers before
+    the general one."""
+    answers = {('GET', 'versionString'): {'data': []}, **APPLE}
+    answers[('GET', '/appStoreVersions?')] = {'data': [
+        {'id': 'V0', 'attributes': {'versionString': number, 'appVersionState': state}}]}
+    return answers
+
 
 class ApplePrepare(unittest.TestCase):
-    def run_prepare(self, *flags):
-        fake = FakeStore(APPLE)
+    def run_prepare(self, *flags, answers=None):
+        fake = FakeStore(answers or APPLE)
         with mock.patch.object(asc, '_token', return_value='t'), \
                 mock.patch.object(asc, 'call', fake), \
                 contextlib.redirect_stdout(io.StringIO()) as printed:
@@ -165,6 +190,33 @@ class ApplePrepare(unittest.TestCase):
         self.assertIn(('POST', 'https://api.appstoreconnect.apple.com/v1/appStoreVersions'), writes)
         self.assertTrue(any(u.endswith('/v1/appStoreVersions/V1/relationships/build') for _, u in writes))
         self.assertFalse(any('reviewSubmission' in u for _, u in writes))
+
+    def test_a_rejected_version_takes_the_new_number(self):
+        # Apple keeps one version open: Run's rejected 1.0.0 went back as 1.0.1.
+        answers = with_open_version('1.9.9', 'REJECTED')
+        code, fake, printed = self.run_prepare(answers=answers)
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.writes(), [])
+        self.assertIn('rename version 1.9.9 to 2.0.0', printed)
+
+        code, fake, _ = self.run_prepare('--yes', answers=answers)
+        self.assertEqual(code, 0)
+        self.assertNotIn(('POST', 'https://api.appstoreconnect.apple.com/v1/appStoreVersions'),
+                         fake.writes())
+        renames = [b for m, u, b in fake.bodies
+                   if m == 'PATCH' and u.endswith('/v1/appStoreVersions/V0')]
+        self.assertEqual(renames[0]['data']['attributes'],
+                         {'releaseType': 'AFTER_APPROVAL', 'versionString': '2.0.0'})
+        self.assertTrue(any(u.endswith('/v1/appStoreVersions/V0/relationships/build')
+                            for _, u in fake.writes()))
+
+    def test_a_version_on_its_way_is_not_renamed(self):
+        # Waiting for review is not open for changes: a new version is asked
+        # for, and Apple's refusal says why.
+        code, fake, printed = self.run_prepare(
+            answers=with_open_version('1.9.9', 'WAITING_FOR_REVIEW'))
+        self.assertEqual(code, 0)
+        self.assertIn('create version 2.0.0', printed)
 
 
 class AppleListing(unittest.TestCase):

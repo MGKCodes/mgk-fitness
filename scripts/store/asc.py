@@ -375,9 +375,25 @@ class AppStore:
         )['data']
         return data[0] if data else None
 
+    def _version_to_rename(self) -> dict | None:
+        """The version open for changes, under another number, if there is one.
+
+        Apple keeps one version open at a time, so a build of the next number
+        cannot have a version of its own while that one is open: it takes the
+        new number instead. Run 1.0.0 was rejected under guideline 4 on
+        16 October 2026 and went back as 1.0.1, because a version is submitted
+        once (ADR-0046) and the fix needed a new binary.
+        """
+        for v in self.versions(limit=10):
+            if v['state'] in EDITABLE:
+                return v
+        return None
+
     def _build_and_version(self, build_number: str) -> tuple[dict, str, dict | None]:
-        """The build, its version string, and that version if it exists. Refuses
-        a build still processing and a version that can no longer change."""
+        """The build, its version string, and the version it goes on, if one
+        exists: `{'id', 'from'}`, where `from` is the number an open version
+        is renamed from, or None when it already has the build's. Refuses a
+        build still processing and a version that can no longer change."""
         found = self.builds(limit=1, number=build_number)
         if not found:
             raise StoreError(f'No build {build_number} for {self.app["name"]}.')
@@ -391,16 +407,37 @@ class AppStore:
                 f'Version {version} is {_state(existing["attributes"])}: '
                 'it cannot be changed or submitted again (a version is submitted once).'
             )
-        return build, version, existing
+        if existing:
+            return build, version, {'id': existing['id'], 'from': None}
+        open_now = self._version_to_rename()
+        if open_now:
+            return build, version, {'id': open_now['id'], 'from': open_now['version']}
+        return build, version, None
+
+    @staticmethod
+    def _opening(version: str, existing: dict | None) -> str:
+        """The plan's line for the version a build goes on."""
+        if existing is None:
+            what = f'create version {version}'
+        elif existing['from']:
+            what = (f"rename version {existing['from']} to {version} "
+                    '(the one open for changes; Apple keeps one at a time)')
+        else:
+            what = f'use version {version}'
+        return f'  {what}; release automatically on approval'
 
     def _open_version(self, build: dict, version: str, existing: dict | None) -> str:
-        """Create the version, or take the one open for changes; set it to
-        release itself on approval; attach the build. Returns its id."""
+        """Create the version, or take the one open for changes, renamed to
+        the build's number if it has another; set it to release itself on
+        approval; attach the build. Returns its id."""
         if existing:
             version_id = existing['id']
+            attributes = {'releaseType': 'AFTER_APPROVAL'}
+            if existing['from']:
+                attributes['versionString'] = version
             self.patch(f'/v1/appStoreVersions/{version_id}', {
                 'data': {'type': 'appStoreVersions', 'id': version_id,
-                         'attributes': {'releaseType': 'AFTER_APPROVAL'}},
+                         'attributes': attributes},
             })
         else:
             version_id = self.post('/v1/appStoreVersions', {
@@ -423,7 +460,7 @@ class AppStore:
         build, version, existing = self._build_and_version(build_number)
         plan = [
             f"App Store: {self.app['name']} {version} with build {build_number}",
-            f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
+            self._opening(version, existing),
             f'  attach build {build_number}',
             '  not sent for review: submit does that',
         ]
@@ -458,11 +495,25 @@ class AppStore:
         Apple approves it, set What's New, and send it for review: in the
         draft submission started in App Store Connect when there is one, so
         whatever was added there goes with it."""
+        unresolved = self.get('/v1/reviewSubmissions', {
+            'filter[app]': self.app_id, 'filter[platform]': 'IOS',
+            'filter[state]': 'UNRESOLVED_ISSUES',
+        })['data']
+        if unresolved:
+            # A second submission would be refused while this one is open, and
+            # cancelling it drops the subscriptions in it back to the version
+            # page (Run, 7 October 2026). App Store Connect resubmits it whole.
+            raise StoreError(
+                f"Review submission {unresolved[0]['id']} has unresolved issues from "
+                'App Review. Use prepare to attach the new build, then resubmit that '
+                'submission in App Store Connect (App Review, the submission, Resubmit '
+                'to App Review), which keeps everything in it.'
+            )
         build, version, existing = self._build_and_version(build_number)
         draft = self._draft_submission()
         plan = [
             f"App Store: {self.app['name']} {version} with build {build_number}",
-            f"  {'use' if existing else 'create'} version {version}; release automatically on approval",
+            self._opening(version, existing),
             f'  attach build {build_number}',
             f"  What's New ({self.locale}): {'set' if whats_new else 'left as it is'}",
             '  submit for review' + (', in the draft submission started in App Store Connect '
