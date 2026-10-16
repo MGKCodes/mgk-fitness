@@ -18,12 +18,18 @@ class FakeAuthRepository extends AuthRepository {
     String? email,
     String? name,
     this.metCoach = true,
+    bool apple = false,
   }) : _signedIn = signedIn,
        _email = email,
        _name = name,
+       _apple = apple,
        super();
 
   bool _signedIn;
+
+  /// Whether the account in hand came through Apple. Set by [signInWithApple],
+  /// or up front for a test that starts signed in.
+  bool _apple;
   String? _email;
   String? _name;
   final StreamController<AuthChange> _changes =
@@ -149,6 +155,7 @@ class FakeAuthRepository extends AuthRepository {
     if (providerOutcome != ProviderOutcome.signedIn) return providerOutcome;
     _email = email;
     _signedIn = true;
+    _apple = provider == 'apple';
     _changes.add(AuthChange.signedIn);
     await ensureProfileBestEffort();
     return ProviderOutcome.signedIn;
@@ -156,6 +163,9 @@ class FakeAuthRepository extends AuthRepository {
 
   @override
   String? get currentName => _name;
+
+  @override
+  bool get signedInWithApple => _signedIn && _apple;
 
   /// Whether the opening conversation has been had. Settable, so a test can
   /// stand up a runner who is signed in and has never seen it - which is what
@@ -187,6 +197,7 @@ class FakeAuthRepository extends AuthRepository {
   Future<void> signOut() async {
     _signedIn = false;
     _email = null;
+    _apple = false;
     _changes.add(AuthChange.signedOut);
   }
 
