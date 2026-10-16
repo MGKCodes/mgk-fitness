@@ -15,8 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This is 1.0.1
+This is 1.0.2
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+## [1.0.1] — submitted 2026-10-16, build 31
+
+1.0.0 (build 29) was rejected by App Review on 16 October 2026 (guideline 4,
+Sign in with Apple), and never released on the App Store; it is live on
+Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
 
 ### Added
 

@@ -1,0 +1,3 @@
+Race mode. Choose Run or Race before you set off: a race counts down to the finish and says what time you are on for. Afterwards it gets a finish of its own: your official time, whether it is your first or fastest at the distance, and how you ran it, 5K by 5K. Races count as their own time in your records.
+
+Also: splits fold into a chart with your fastest and slowest, kilometre markers keep clear of each other, and the coach and sign-in share Lift's design.
