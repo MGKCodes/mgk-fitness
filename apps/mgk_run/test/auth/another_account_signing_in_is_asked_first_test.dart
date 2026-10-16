@@ -10,6 +10,7 @@ import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_ui/mgk_ui.dart';
+import 'package:mgk_run/src/features/recording/domain/run_race.dart';
 
 /// **A second account signing in got the first account's training.**
 ///
@@ -270,4 +271,7 @@ class _CountingWriter implements RunWriter {
 
   @override
   Future<void> delete(String runId) async {}
+
+  @override
+  Future<void> markRace(String runId, RunRace? race) async {}
 }

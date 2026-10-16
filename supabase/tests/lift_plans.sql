@@ -16,7 +16,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(16);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values ('dddddddd-0000-0000-0000-000000000004',
@@ -111,6 +111,37 @@ select throws_ok(
 
 
 -- ---------------------------------------------------------------------------
+-- What the app writes
+--
+-- SupabaseStandingPlanStore writes sets and reps on every slot. For seven weeks
+-- they were columns the app had and the database did not, and every plan save
+-- in production failed on them while every Dart test passed against a fake. A
+-- column the app writes is asserted here, where the real schema is.
+-- ---------------------------------------------------------------------------
+
+select has_column('lift', 'plan_slots', 'sets', 'a slot stores its sets');
+select has_column('lift', 'plan_slots', 'reps', 'a slot stores its reps');
+
+select lives_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, is_main, sets, reps)
+    values ('slot-6', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 2, 'lunge', 'Dumbbell Walking Lunge', false, 3, 12)$$,
+  'a slot is written the way the app writes it'
+);
+
+select throws_ok(
+  $$insert into lift.plan_slots (id, plan_id, user_id, day, sort_order,
+                                 role, movement, sets, reps)
+    values ('slot-7', 'plan-1', 'dddddddd-0000-0000-0000-000000000004',
+            'Lower', 3, 'calves', 'Standing Calf Raise', 0, 10)$$,
+  '23514',
+  null,
+  'a slot of no sets is not a prescription'
+);
+
+
+-- ---------------------------------------------------------------------------
 -- Slots belong to their plan
 -- ---------------------------------------------------------------------------
 
@@ -134,6 +165,57 @@ select is(
   0,
   'deleting a plan takes its slots with it'
 );
+
+
+
+-- ---------------------------------------------------------------------------
+-- One call replaces a plan whole (lift.replace_plan)
+--
+-- Three separate requests left a live plan with no slots whenever the slots
+-- failed. The function is all of it or none, and runs as the caller.
+-- ---------------------------------------------------------------------------
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"dddddddd-0000-0000-0000-000000000004","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+
+select lives_ok(
+  $$select lift.replace_plan(
+      '{"id":"plan-r","split":"Full body","day_order":["A","B","A"],
+        "days_per_week":3,"available_weekdays":[1,3,5],
+        "goal":"Build muscle","injury_notes":"left shoulder"}'::jsonb,
+      '[{"id":"plan-r-0","day":"A","sort_order":0,"role":"squat",
+         "movement":"Barbell Back Squat","is_main":true,"sets":4,"reps":6}]'
+        ::jsonb)$$,
+  'a plan and its slots are written in one call'
+);
+
+select is(
+  (select status || ':' || injury_notes from lift.plans where id = 'plan-r'),
+  'active:left shoulder',
+  'live, and keeping what the lifter said to get it'
+);
+
+select throws_ok(
+  $$select lift.replace_plan(
+      '{"id":"plan-s","days_per_week":3,"available_weekdays":[1,3,5]}'::jsonb,
+      '[{"id":"plan-s-0","day":"A","sort_order":0,"role":"r",
+         "movement":"m","sets":0}]'::jsonb)$$,
+  '23514',
+  null,
+  'a refused slot refuses the whole plan'
+);
+
+select is(
+  (select status from lift.plans where id = 'plan-r'),
+  'active',
+  'and the plan before it is still the live one'
+);
+
+reset role;
 
 select * from finish();
 rollback;

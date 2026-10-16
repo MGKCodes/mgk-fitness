@@ -46,6 +46,7 @@ class IntroScreen extends StatefulWidget {
     this.onFinished,
     this.onBack,
     this.initial = const IntroAnswers(),
+    this.askName = true,
     this.requestPermission = requestIntroPermission,
   });
 
@@ -63,6 +64,12 @@ class IntroScreen extends StatefulWidget {
   /// gate's state, but this widget is rebuilt fresh and its own step counter
   /// began again.
   final IntroAnswers initial;
+
+  /// Whether the name may be asked at all. False for an account that signed in
+  /// with Apple, which may not be asked for a name afterwards (App Review,
+  /// guideline 4): the step is skipped as it is for a name already known, and
+  /// the coach goes without one unless [initial] carries it.
+  final bool askName;
 
   /// Back to the welcome screen.
   final VoidCallback? onBack;
@@ -82,14 +89,15 @@ class _IntroScreenState extends State<IntroScreen> {
   late IntroStep _step = IntroStep.greeting;
   late String? _answeredName = widget.initial.name;
 
-  /// The name was known before a word was said.
+  /// The name is not asked: it was known before a word was said, or it may not
+  /// be asked at all ([IntroScreen.askName]).
   ///
-  /// True for a runner arriving from Lift: the name lives on the shared
+  /// Known for a runner arriving from Lift: the name lives on the shared
   /// profile, so asking for it again would be this whole bug in miniature -
   /// treating a fact that belongs to the profile as one that belongs to this
   /// app. The step is skipped, and the transcript does not pretend to have
   /// asked.
-  late final bool _knewName = widget.initial.name != null;
+  late final bool _skipsName = widget.initial.name != null || !widget.askName;
 
   /// Which permission is on screen. Only meaningful at [IntroStep.permissions].
   int _permissionIndex = 0;
@@ -428,9 +436,9 @@ class _IntroScreenState extends State<IntroScreen> {
       Said(introPrompt(IntroStep.greeting)),
       Said(introWhoIAm),
       Said(introHowItWorks),
-      if (!_knewName && reached >= IntroStep.name.index)
+      if (!_skipsName && reached >= IntroStep.name.index)
         Said(introPrompt(IntroStep.name)),
-      if (!_knewName && _answeredName != null) Replied(_answeredName!),
+      if (!_skipsName && _answeredName != null) Replied(_answeredName!),
       if (reached >= IntroStep.permissions.index) ...<Widget>[
         Said(introPrompt(IntroStep.permissions, name: _answeredName)),
         ..._permissionTranscript(),
@@ -467,7 +475,7 @@ class _IntroScreenState extends State<IntroScreen> {
   Widget _answer(ThemeData theme) => switch (_step) {
     IntroStep.greeting => PrimaryButton(
       label: 'Sounds good',
-      onPressed: _knewName ? _afterName : () => _advance(IntroStep.name),
+      onPressed: _skipsName ? _afterName : () => _advance(IntroStep.name),
     ),
 
     IntroStep.name => Row(

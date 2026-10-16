@@ -48,3 +48,7 @@ const String kTermsOfUseUrl = 'https://mgkfitness.mgkcodes.com/run/terms';
 /// backup was failing had no route to anybody. Settings' About group is that
 /// route.
 const String kSupportUrl = 'https://mgkfitness.mgkcodes.com/run/support';
+
+/// Where a runner writes to us. Settings' *Report a problem* opens an email to
+/// it, and the policy, the terms and the deletion screen name it too.
+const String kSupportEmail = 'run@mgkfitness.mgkcodes.com';

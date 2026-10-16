@@ -217,6 +217,28 @@ void main() {
     expect(version, findsOneWidget);
   });
 
+  testWidgets('About says the app is open source, and offers a problem report', (
+    tester,
+  ) async {
+    // Two ways in, for two kinds of people: the code for whoever will read it,
+    // and an email for everybody who will not. What each opens is held by
+    // mgk_ui's open_source_test; this holds that both are here, in order.
+    await pump(tester);
+
+    final about = find.text('Report a problem');
+    await tester.scrollUntilVisible(
+      about,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    double top(String label) => tester.getTopLeft(find.text(label)).dy;
+    expect(top('Support'), lessThan(top('Report a problem')));
+    expect(top('Report a problem'), lessThan(top('Source code')));
+    expect(top('Source code'), lessThan(top('Privacy & legal')));
+    expect(find.text('AGPL-3.0'), findsOneWidget);
+  });
+
   /// **The screen is an index, and its order is the argument.**
   ///
   /// It was four bands of rows with a sentence under each, plus three

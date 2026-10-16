@@ -348,6 +348,14 @@ void main() {
       await upgrading.customStatement(
         'ALTER TABLE plan_sessions DROP COLUMN with_strength',
       );
+      // And schema 13's, the race on the run (ADR-0049).
+      for (final column in <String>[
+        'race_distance_m',
+        'race_time_s',
+        'race_name',
+      ]) {
+        await upgrading.customStatement('ALTER TABLE runs DROP COLUMN $column');
+      }
       await upgrading.customStatement('PRAGMA user_version = 8');
       await upgrading.close();
 

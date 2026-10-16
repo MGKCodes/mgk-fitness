@@ -1,3 +1,4 @@
+import '../../recording/domain/run_race.dart';
 import '../../recording/domain/run_summary.dart';
 import 'run_draft.dart';
 
@@ -33,6 +34,13 @@ abstract interface class RunWriter {
   /// Throws [RunDeleteFailed] and removes **nothing** when the backup's copy
   /// could not be removed.
   Future<void> delete(String runId);
+
+  /// Records that a run was a race, corrects the race, or — with null — says
+  /// it was not one (ADR-0049). Nothing the phone measured is touched.
+  ///
+  /// Throws [ArgumentError] for a race no runner could have run, and
+  /// [StateError] when there is no such run.
+  Future<void> markRace(String runId, RunRace? race);
 }
 
 /// The backup could not be reached, so the run was left where it is.

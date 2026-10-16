@@ -63,6 +63,7 @@ and slots into the same `SURFACES` table.
 | `coach_memory.ts` | The rolling memory and the transcript: read, appended and replaced as the caller.       |
 | `usage_store.ts`  | The durable counters in Postgres, behind an injectable `fetch`.                         |
 | `*_test.ts`       | Deno tests for every pure module and every failure mapping.                             |
+| `tool/`           | Not deployed. `probe_models.ts` checks a model on every surface before a switch.        |
 
 The prompts live in `surfaces.ts` rather than in `index.ts` because `index.ts`
 calls `Deno.serve` at load: anything defined there could only be tested through
@@ -341,9 +342,23 @@ be a hole straight through the cap). It is estimated from `total_tokens` at
 the surface spent its whole `max_tokens` budget. Estimated rows are flagged
 `cost_estimated` so a spend figure is never mistaken for a billed amount.
 
+**Under bring-your-own-key (BYOK), `cost` is only OpenRouter's fee.** With our
+own Anthropic key held in OpenRouter, Anthropic bills that key directly, `cost`
+is OpenRouter's cut on top (often 0), and what Anthropic charged arrives
+separately as `usage.cost_details.upstream_inference_cost`. Read alone, `cost`
+would record every Claude call as nearly free and the cap would never bind. So
+the recorded figure is `cost + upstream_inference_cost` whenever the upstream
+figure is a positive number. It is not gated on `is_byok`: counting a call twice
+trips the cap early, which is the safe way to be wrong, while trusting a flag
+that went missing would let a real call through as free. An upstream figure with
+no `cost` beside it is recorded as the larger of it and the token estimate, and
+flagged `cost_estimated`. See `usageFromResponse` in `limits.ts`.
+
 Set a **hard credit limit on the OpenRouter key** as well. The per-user cap
 bounds one user; the key's own limit bounds everything, including a bug in this
-function.
+function. **Under BYOK that limit only bounds OpenRouter's fees** — the model
+spend goes to the Anthropic key — so set a monthly spend limit on the Anthropic
+side too.
 
 ### Privacy
 
@@ -473,6 +488,100 @@ table keyed by surface was considered and dropped — `modelFor` already routes 
 surface and by tier, so the table would buy a per-request read and a second
 place for the configuration to be wrong.
 
+### Thinking: `COACH_REASONING`
+
+Optional, per model, and only for models that think by default:
+
+```sh
+supabase secrets set COACH_REASONING='anthropic/claude-haiku-5.5=none,anthropic/claude-sonnet-5.5=low'
+```
+
+Comma-separated `model=effort` pairs, sent as OpenRouter's
+`reasoning: {effort, exclude: true}`. The efforts are `none` (thinking off),
+`minimal`, `low`, `medium`, `high`, `xhigh` and `max`. It exists because
+thinking is billed as output and on OpenRouter `max_tokens` covers the thinking
+and the answer together: on surfaces with 256 to 1024 tokens, a model that
+thinks can spend the whole budget before it answers, and that comes back as
+`finish_reason: "length"` and a `coach_malformed` 502.
+
+**A model with no entry is sent no `reasoning` field at all** — unset, blank, a
+model it does not name, or an effort word that is not on the list. That is the
+request every surface sent before the secret existed, byte for byte, and a test
+holds it. It is opt-in rather than a default because `PROVIDER_ROUTING` sets
+`require_parameters: true`: a request carrying `reasoning` only routes to
+endpoints that support it, so on a model whose endpoints do not, it would fail
+to route rather than be ignored. See `reasoningFor` in `surfaces.ts`.
+
+`exclude: true` keeps the thinking text out of the response. It is still billed,
+and the cost OpenRouter reports includes it.
+
+### Claude through OpenRouter, on our own Anthropic key
+
+The planned configuration: Haiku 5.5 on every surface, Sonnet 5.5 for the Sharp
+tier's human-facing surfaces. The Anthropic key goes into OpenRouter's BYOK
+(integrations) settings, never into Supabase; `OPENROUTER_API_KEY` stays the
+OpenRouter key it already is. Prices on 2026-10-09, per million tokens in / out:
+Haiku $0.10 / $0.50, Sonnet $2 / $10.
+
+**Run the probe first** (below). Then, in this order — `COACH_REASONING` first,
+because it does nothing until a Claude model is named, so setting it first
+leaves no window in which Haiku thinks on a 256-token budget:
+
+```sh
+# Thinking off for Haiku. The Sonnet value is TO CONFIRM WITH THE PROBE: its
+# native API rejects plainly disabled thinking, so "none" may not be accepted.
+supabase secrets set COACH_REASONING='anthropic/claude-haiku-5.5=none,anthropic/claude-sonnet-5.5=low'
+supabase secrets set COACH_MODEL='anthropic/claude-haiku-5.5'
+supabase secrets set COACH_CHAT_MODEL='anthropic/claude-haiku-5.5'
+supabase secrets set COACH_CHAT_MODEL_SHARP='anthropic/claude-sonnet-5.5'
+```
+
+`supabase secrets list` shows digests, not values, so write down the current
+model ids before switching. Going back is `secrets set` with the old ids, and
+`supabase secrets unset` for any of the three that was not set before.
+`COACH_REASONING` can stay — it names no Gemini model.
+
+### The probe
+
+`tool/probe_models.ts` calls each model on every surface with **sample** bodies
+(invented, never anybody's data), built by the same `providerRequest`,
+`PROVIDER_ROUTING` and `reasoningFor` production uses, with `COACH_REASONING`
+read from your shell. It reads the OpenRouter key from
+`~/.mgk-fitness/openrouter.key` (or the file named by `OPENROUTER_KEY_FILE`) and
+never prints it. Without `--yes` it prints the plan and the worst-case cost —
+about $0.23 for both Claude models on all fourteen surfaces — and calls nothing.
+
+```powershell
+cd supabase/functions/coach
+$env:COACH_REASONING = 'anthropic/claude-haiku-5.5=none,anthropic/claude-sonnet-5.5=low'
+# the plan only
+deno run --allow-env --allow-read tool/probe_models.ts anthropic/claude-haiku-5.5 anthropic/claude-sonnet-5.5
+# the calls
+deno run --allow-env --allow-read --allow-net=openrouter.ai tool/probe_models.ts anthropic/claude-haiku-5.5 anthropic/claude-sonnet-5.5 --yes
+```
+
+`--only=chat,lift_chat` narrows the surfaces, which keeps a rerun cheap. One
+line per call: HTTP status, the provider that served it, `finish_reason`,
+whether the content parsed as JSON, has the schema's required keys and passes
+the shape check production applies (`valid=`), prompt / completion / reasoning
+tokens, `cost`, `upstream_inference_cost`, `is_byok`, what the spend cap would
+record, and latency. An OpenRouter error body is printed, capped at 300
+characters. What to look for:
+
+- **Every line `valid=yes`.** Anything else is a 502 a person would see.
+- **A 404 saying no endpoints were found** means the model cannot route under
+  `PROVIDER_ROUTING` — the data policy, or an endpoint that does not support a
+  parameter we send, `reasoning` included. Rerun with that model's
+  `COACH_REASONING` entry removed to tell which.
+- **`length`, or a large `think=` on a small surface** — thinking is eating the
+  budget. Lower that model's effort.
+- **Sonnet:** try `=none` first; if it errors or still thinks, `minimal`, then
+  `low`. Whatever passes is the value for the secret above.
+- **`byok=true` with `upstream` above 0**, and `recorded` matching
+  `cost + upstream`: the cap sees what the call really cost. A call with
+  `byok=false` was billed to OpenRouter credits instead (another provider, or
+  OpenRouter's own capacity); the cap counts that correctly too.
+
 Optional, for tuning the ceilings without a code change. Each falls back to its
 default if unset, unparseable, zero or negative — a typo can never become "no
 limit":
@@ -530,7 +639,7 @@ deno test          # 170 tests: thresholds, window boundaries, retry-after,
                    # is rewritten, the four stores' failure mappings, and what
                    # each surface sends and will accept back
 deno check index.ts surfaces.ts limits.ts usage_store.ts entitlements.ts \
-           lift_log.ts coach_memory.ts
+           lift_log.ts coach_memory.ts tool/probe_models.ts
 deno lint
 deno fmt .         # --check in CI
 ```

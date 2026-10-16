@@ -15,6 +15,7 @@ python scripts/store/stores.py testers     lift
 python scripts/store/stores.py add-tester  lift --email someone@example.com --group "Internal" --yes
 python scripts/store/stores.py listing     lift --yes            # text from apps/mgk_lift/store/listing.json
 python scripts/store/stores.py screenshots lift --yes            # the pictures store-shots rendered, and Play's icon
+python scripts/store/stores.py assets      lift --yes            # App Store product page header and search results asset
 python scripts/store/stores.py release     lift --yes            # a version held for a manual release
 python scripts/store/stores.py release-type run --automatic --yes  # a version already submitted: release on approval
 ```
@@ -36,13 +37,51 @@ Connect before review (a first subscription always does):
 1. `prepare --build N` creates the version, set to release on approval, with
    the build attached. It also opens the app information (name, subtitle, age
    rating) for changes.
-2. `listing` and `screenshots` fill it from the repository.
+2. `listing`, `screenshots` and `assets` fill it from the repository.
 3. In App Store Connect: what the API cannot do (below).
 4. `submit --ios --build N` sends it for review, using the version as it is.
    If a draft submission was started in App Store Connect (its Draft
    Submissions panel, where a first subscription is added), the version goes
    into that draft and the whole draft is sent, so nothing in it is split off.
    Don't press Submit for Review on such a draft by hand first.
+
+**After a rejection that needs a new binary,** the build carries the next
+version number (a version is submitted once), but Apple keeps one version
+open at a time, so the rejected one is still open under the old number.
+`prepare` and `submit` rename it to the build's number rather than create a
+second, and the plan says so. `submit` stops while App Review's submission is
+in Unresolved Issues: run `prepare --build N` to attach the new build, then
+resubmit that submission in App Store Connect, which keeps everything in it
+(its subscriptions included). Run 1.0.0 went back as 1.0.1 this way on
+16 October 2026.
+
+**Creative assets** (`assets`, App Store only): the product page header and
+the search results asset. Each file is uploaded once to the app's Asset
+Library, then placed on every localization of the version open for changes.
+The files go by name, in `apps/mgk_lift/screenshots/store/creative/` for Lift
+and `store-assets/derived/creative/` for Run (neither in git), or `--from DIR`:
+
+- `universal.png`, 5244x2950: fills both.
+- `header.png`, 3840x1646, or `header.mp4` (`.mov`, `.m4v`) at that size: the
+  product page header.
+- `search.png`, 3:2 from 1920x1280 to 3840x2560, or `search.mp4` at that
+  size: the search results asset.
+
+`universal.png` goes alone, and anything else in the folder stops the run.
+Every file is checked before anything is sent: images RGB with no alpha,
+videos exactly 30 or 60 fps and 15 to 30 seconds long (read with `ffprobe`,
+which has to be on PATH). A placement cannot be changed, so one already there
+is deleted and made again. A file already in the library with the same name
+and size is placed again rather than uploaded twice. With no version open,
+`--yes` only uploads: run `prepare`, then `assets` again. A version waiting
+for review, in review or approved gets nothing placed on it, but the files
+still upload, since the Asset Library does not touch a version.
+
+`--poster HH:MM:SS:FF` sets a video's opening still, the frame shown before
+it plays (`--poster 00:00:05:00` for the header films, which rest on the name
+by then). It is checked against each video's length and frame rate before
+anything is sent, set when the video is reserved, and changed in place on a
+video already in the library.
 
 ## The keys
 

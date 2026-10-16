@@ -525,7 +525,16 @@ void main() {
         await shot(
           tester,
           '5-coach',
-          plateApp(db, store, runs, chatClient: const StoreCoach()),
+          // Over the Plan tab. The coach sheet is 0.88 of the screen since
+          // 1.0.1, and over Home it cut the greeting in half on the Android
+          // phone ("Af"); the Plan bar sits wholly above it.
+          plateApp(
+            db,
+            store,
+            runs,
+            initialTab: 1,
+            chatClient: const StoreCoach(),
+          ),
           drive: (t) async {
             await rest(t);
             await t.tap(find.byType(CoachMarkGlyph));

@@ -39,8 +39,9 @@ import '../domain/unit_settings.dart';
 ///
 /// A committed constant rather than a read of the bundle: the app takes no
 /// dependency it does not need, and the preview harness has no bundle to read.
-/// **Keep it in step with `version:` in pubspec.yaml.**
-const String kAppVersion = '1.0.0';
+/// **Keep it in step with `version:` in pubspec.yaml**, which
+/// `app_version_test.dart` holds it to.
+const String kAppVersion = '1.0.1';
 
 /// Settings: **everything about the app rather than about the running.**
 ///
@@ -287,6 +288,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // worse than a long one — the same reasoning as LegalScreen's terms row.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Could not open support. It is at $uri')),
+    );
+  }
+
+  /// An email to support with the app and the version already in it, for the
+  /// runner who has found something wrong and will never open GitHub.
+  Future<void> _reportProblem() async {
+    final Uri uri = problemReportUri(
+      to: kSupportEmail,
+      product: kProductName,
+      version: widget.appVersion,
+      system: '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+    );
+    if (await launchUrl(uri)) return;
+    if (!mounted) return;
+    // No mail app on the phone. The address is the whole of what they need.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No email app opened. Write to $kSupportEmail'),
+      ),
+    );
+  }
+
+  /// The app's code, in the public repository.
+  Future<void> _openSource() async {
+    final Uri uri = sourceCodeUri('mgk_run');
+    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open the code. It is at $uri')),
     );
   }
 
@@ -871,6 +901,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'About',
                       children: <Widget>[
                         SettingsRow(title: 'Support', onTap: _openSupport),
+                        SettingsRow(
+                          title: 'Report a problem',
+                          onTap: _reportProblem,
+                        ),
+                        // Open source: the row says the licence, and opens the
+                        // app's code for anybody who wants to read it.
+                        SettingsRow(
+                          title: 'Source code',
+                          value: kSourceLicence,
+                          onTap: _openSource,
+                        ),
                         SettingsRow(
                           title: 'Privacy & legal',
                           onTap: () => Navigator.of(context).push(

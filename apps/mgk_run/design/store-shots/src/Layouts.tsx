@@ -24,6 +24,8 @@ const Tag: React.FC<{text: string; size: number; align: 'center' | 'left'}> = ({
       fontWeight: 700,
       fontSize: size,
       lineHeight: 1,
+      // An empty tag keeps its line, so the headline under it does not move.
+      minHeight: size,
       letterSpacing: size * 0.22,
       // Tracking is added after each letter; this takes the last one's back
       // off so a centred line is centred on its ink.

@@ -10,9 +10,11 @@ import base64
 import contextlib
 import io
 import json
+import struct
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -65,12 +67,14 @@ class FakeStore:
     def __init__(self, answers):
         self.answers = answers
         self.sent: list[tuple[str, str]] = []
+        self.bodies: list[tuple[str, str, dict | None]] = []
 
     def __call__(self, method, url, **kwargs):
         self.sent.append((method, url))
+        self.bodies.append((method, url, kwargs.get('body')))
         for (m, fragment), answer in self.answers.items():
             if m == method and fragment in url:
-                return answer
+                return answer.resolve() if hasattr(answer, 'resolve') else answer
         return None
 
     def writes(self):
@@ -87,6 +91,8 @@ APPLE = {
     ('GET', '/appStoreVersions?'): {'data': []},
     ('POST', '/v1/appStoreVersions'): {'data': {'id': 'V1'}},
     ('POST', '/v1/reviewSubmissions'): {'data': {'id': 'R1'}},
+    # Ahead of the general answer below, which a test swaps for a draft.
+    ('GET', 'UNRESOLVED_ISSUES'): {'data': []},
     ('GET', '/v1/reviewSubmissions?'): {'data': []},
     ('GET', '/appStoreVersionLocalizations'): {
         'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
@@ -140,10 +146,31 @@ class AppleSubmit(unittest.TestCase):
         self.assertFalse(any(u.endswith('/v1/reviewSubmissionItems') for _, u in fake.sent))
         self.assertTrue(any(m == 'PATCH' and u.endswith('/v1/reviewSubmissions/D1') for m, u in fake.sent))
 
+    def test_a_submission_with_unresolved_issues_is_resubmitted_in_the_console(self):
+        # Run 1.0.0's rejection, 16 October 2026: a second submission would be
+        # refused, and cancelling the first drops its subscriptions.
+        answers = dict(APPLE)
+        answers[('GET', 'UNRESOLVED_ISSUES')] = {'data': [{'id': 'U1'}]}
+        code, fake, printed = self.run_submit('--yes', answers=answers)
+        self.assertEqual(code, 1)
+        self.assertEqual(fake.writes(), [])
+        self.assertIn('U1 has unresolved issues', printed)
+        self.assertIn('Resubmit', printed)
+
+
+def with_open_version(number: str, state: str) -> dict:
+    """APPLE, with no version under the build's number and one open under
+    another. The versionString lookup is listed first so it answers before
+    the general one."""
+    answers = {('GET', 'versionString'): {'data': []}, **APPLE}
+    answers[('GET', '/appStoreVersions?')] = {'data': [
+        {'id': 'V0', 'attributes': {'versionString': number, 'appVersionState': state}}]}
+    return answers
+
 
 class ApplePrepare(unittest.TestCase):
-    def run_prepare(self, *flags):
-        fake = FakeStore(APPLE)
+    def run_prepare(self, *flags, answers=None):
+        fake = FakeStore(answers or APPLE)
         with mock.patch.object(asc, '_token', return_value='t'), \
                 mock.patch.object(asc, 'call', fake), \
                 contextlib.redirect_stdout(io.StringIO()) as printed:
@@ -163,6 +190,33 @@ class ApplePrepare(unittest.TestCase):
         self.assertIn(('POST', 'https://api.appstoreconnect.apple.com/v1/appStoreVersions'), writes)
         self.assertTrue(any(u.endswith('/v1/appStoreVersions/V1/relationships/build') for _, u in writes))
         self.assertFalse(any('reviewSubmission' in u for _, u in writes))
+
+    def test_a_rejected_version_takes_the_new_number(self):
+        # Apple keeps one version open: Run's rejected 1.0.0 went back as 1.0.1.
+        answers = with_open_version('1.9.9', 'REJECTED')
+        code, fake, printed = self.run_prepare(answers=answers)
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.writes(), [])
+        self.assertIn('rename version 1.9.9 to 2.0.0', printed)
+
+        code, fake, _ = self.run_prepare('--yes', answers=answers)
+        self.assertEqual(code, 0)
+        self.assertNotIn(('POST', 'https://api.appstoreconnect.apple.com/v1/appStoreVersions'),
+                         fake.writes())
+        renames = [b for m, u, b in fake.bodies
+                   if m == 'PATCH' and u.endswith('/v1/appStoreVersions/V0')]
+        self.assertEqual(renames[0]['data']['attributes'],
+                         {'releaseType': 'AFTER_APPROVAL', 'versionString': '2.0.0'})
+        self.assertTrue(any(u.endswith('/v1/appStoreVersions/V0/relationships/build')
+                            for _, u in fake.writes()))
+
+    def test_a_version_on_its_way_is_not_renamed(self):
+        # Waiting for review is not open for changes: a new version is asked
+        # for, and Apple's refusal says why.
+        code, fake, printed = self.run_prepare(
+            answers=with_open_version('1.9.9', 'WAITING_FOR_REVIEW'))
+        self.assertEqual(code, 0)
+        self.assertIn('create version 2.0.0', printed)
 
 
 class AppleListing(unittest.TestCase):
@@ -385,6 +439,248 @@ class PlayPictures(unittest.TestCase):
         posted = [u for m, u in fake.sent if m == 'POST']
         self.assertTrue(any('/listings/en-GB/icon?' in u for u in posted))
         self.assertFalse(any('/featureGraphic?' in u for u in posted))
+
+
+def _png(path: Path, width: int, height: int, colour: int = 2) -> None:
+    """Enough of a PNG for the size check: its header and an empty image."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+    path.write_bytes(b'\x89PNG\r\n\x1a\n'
+                     + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, colour, 0, 0, 0))
+                     + chunk(b'IDAT', zlib.compress(b'')) + chunk(b'IEND', b''))
+
+
+OPEN = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 'PREPARE_FOR_SUBMISSION'}}
+LIVE = {'id': 'V1', 'attributes': {'versionString': '2.0.0', 'appVersionState': 'READY_FOR_DISTRIBUTION'}}
+
+
+def asset_answers(versions, spec='UNI', placed=None, included=None, library=None, videos=None):
+    return {
+        ('GET', '/v1/apps?'): {'data': [{'id': 'A1', 'attributes': {'primaryLocale': 'en-GB'}}]},
+        ('GET', '/appStoreVersions?'): {'data': versions},
+        ('GET', '/placements'): {'data': placed or [], 'included': included or []},
+        ('GET', '/appStoreVersionLocalizations'): {
+            'data': [{'id': 'L1', 'attributes': {'locale': 'en-GB'}}]},
+        ('GET', '/assetLibrary'): {'data': {'type': 'appAssetLibraries', 'id': 'LIB'}},
+        ('GET', '/appAssetLibraries/LIB/images'): {'data': library or []},
+        ('GET', '/appAssetLibraries/LIB/videos'): {'data': videos or []},
+        ('POST', '/v1/appAssetLibraryVideos'): {'data': {'id': 'VID1', 'attributes': {
+            'state': 'AWAITING_UPLOAD', 'uploadOperations': [{
+                'method': 'PUT', 'url': 'https://upload.example/VID1', 'offset': 0, 'length': 10,
+                'requestHeaders': [{'name': 'Content-Type', 'value': 'video/mp4'}]}]}}},
+        ('GET', '/v1/appAssetLibraryVideos/'): {'data': {'id': 'VID1', 'attributes': {
+            'state': 'PREPARE_FOR_SUBMISSION', 'specId': 'HV'}}},
+        ('POST', '/v1/appAssetLibraryImages'): {'data': {'id': 'IMG1', 'attributes': {
+            'state': 'AWAITING_UPLOAD', 'uploadOperations': [{
+                'method': 'PUT', 'url': 'https://upload.example/IMG1', 'offset': 0, 'length': 10,
+                'requestHeaders': [{'name': 'Content-Type', 'value': 'image/png'}]}]}}},
+        ('GET', '/v1/appAssetLibraryImages/'): {'data': {'id': 'IMG1', 'attributes': {
+            'state': 'PREPARE_FOR_SUBMISSION', 'specId': spec}}},
+        ('GET', '/v1/appAssetLibraryRefData'): {'data': [{'attributes': {
+            'placementTypes': [
+                {'placementTypeId': 'PRODUCT_PAGE_HEADER_ASSET', 'specMappings': [
+                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'HDR', 'HV']}]},
+                {'placementTypeId': 'APP_STORE_SEARCH_RESULTS_ASSET', 'specMappings': [
+                    {'placementGroupId': 'DEFAULT_PROFILE', 'specs': ['UNI', 'SRCH']}]},
+            ],
+            'imageSpecs': [{'specId': 'UNI', 'shortName': 'i5244x2950a0'},
+                           {'specId': 'HDR', 'shortName': 'i3840x1646a0'},
+                           {'specId': 'SRCH', 'shortName': 'i3x2w1920~3840a0'}],
+            'videoSpecs': [{'specId': 'HV', 'shortName': 'v3840x1646f30~60t15~30'}],
+        }}]},
+    }
+
+
+class _Next:
+    """An answer that changes on each request: the next one from [states]."""
+
+    def __init__(self, states):
+        self.states = states
+
+    def resolve(self):
+        return next(self.states)
+
+
+class AppleAssets(unittest.TestCase):
+    """The product page header and search results asset: checked on disk
+    first, uploaded once, placed on every localization of the open version."""
+
+    def run_assets(self, pictures, *flags, answers=None):
+        sent = []
+        fake = FakeStore(answers or asset_answers([OPEN, LIVE]))
+
+        def recording(method, url, **kwargs):
+            sent.append((method, url, kwargs))
+            return fake(method, url, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder:
+            for name, (width, height) in pictures.items():
+                if name.endswith('.mp4'):
+                    # Not a real film: ffprobe is stood in for below.
+                    (Path(folder) / name).write_bytes(b'0' * 64)
+                else:
+                    _png(Path(folder) / name, width, height)
+            film = mock.patch.object(
+                asc, '_video_facts', return_value=(3840, 1646, asc.Fraction(30), 15.0))
+            with film, mock.patch.object(asc, '_token', return_value='t') as token, \
+                    mock.patch.object(asc, 'call', recording), \
+                    contextlib.redirect_stdout(io.StringIO()) as printed:
+                code = stores.main(['assets', 'lift', '--from', folder, *flags])
+        return code, sent, printed.getvalue(), token
+
+    @staticmethod
+    def writes(sent):
+        return [(m, u, k) for m, u, k in sent if m != 'GET']
+
+    def test_without_yes_it_only_plans(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)})
+        self.assertEqual(code, 0)
+        self.assertEqual(self.writes(sent), [])
+        self.assertIn('universal.png (5244x2950): product page header and search results; upload it',
+                      printed)
+        self.assertIn('on version 2.0.1 (PREPARE_FOR_SUBMISSION), in en-GB', printed)
+        self.assertIn('--yes', printed)
+
+    def test_universal_fills_both_placements(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes')
+        self.assertEqual(code, 0, printed)
+        writes = self.writes(sent)
+        reserved = [k['body'] for m, u, k in writes if u.endswith('/v1/appAssetLibraryImages')]
+        self.assertEqual(len(reserved), 1)  # one upload for both
+        self.assertEqual(reserved[0]['data']['attributes']['category'], 'CREATIVE_ASSETS')
+        put = [k for m, u, k in writes if m == 'PUT']
+        self.assertNotIn('token', put[0])  # the upload URL takes no key
+        commit = [k['body'] for m, u, k in writes if m == 'PATCH']
+        self.assertEqual(commit[0]['data']['attributes'], {'uploaded': True})
+        placed = [k['body']['data'] for m, u, k in writes if u.endswith('/v1/appAssetLibraryPlacements')]
+        self.assertEqual({p['attributes']['placementType'] for p in placed},
+                         {'PRODUCT_PAGE_HEADER_ASSET', 'APP_STORE_SEARCH_RESULTS_ASSET'})
+        for p in placed:
+            self.assertEqual(p['attributes']['placementGroup'], 'DEFAULT_PROFILE')
+            self.assertEqual(p['relationships']['image']['data']['id'], 'IMG1')
+            self.assertEqual(p['relationships']['appStoreVersionLocalization']['data']['id'], 'L1')
+
+    def test_header_with_universal_is_refused_before_anything_is_called(self):
+        code, sent, printed, token = self.run_assets(
+            {'universal.png': (5244, 2950), 'header.png': (3840, 1646)}, '--yes')
+        self.assertEqual(code, 1)
+        self.assertIn('universal.png fills both placements, so header.png cannot go with it', printed)
+        self.assertEqual(sent, [])
+        token.assert_not_called()
+
+    def test_a_wrong_size_is_refused_with_the_size_expected(self):
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2949)}, '--yes')
+        self.assertEqual(code, 1)
+        self.assertIn('universal.png is 5244x2949: it has to be 5244x2950 (16:9).', printed)
+        self.assertEqual(sent, [])
+
+    def test_no_version_open_means_upload_only(self):
+        answers = asset_answers([LIVE])
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, answers=answers)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.writes(sent), [])
+        self.assertIn('the placements wait for prepare', printed)
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertFalse(any('Placements' in u for u in urls))
+        self.assertIn('uploaded only', printed)
+
+    def test_what_is_placed_now_is_deleted_before_the_new_one_is_created(self):
+        answers = asset_answers(
+            [OPEN, LIVE], spec='HDR',
+            placed=[{'id': 'OLD', 'attributes': {'placementType': 'PRODUCT_PAGE_HEADER_ASSET',
+                                                 'mediaType': 'IMAGE'},
+                     'relationships': {'image': {'data': {'type': 'appAssetLibraryImages', 'id': 'IMG0'}}}}],
+            included=[{'type': 'appAssetLibraryImages', 'id': 'IMG0',
+                       'attributes': {'fileName': 'old-header.png'}}])
+        code, sent, printed, _ = self.run_assets({'header.png': (3840, 1646)}, answers=answers)
+        self.assertIn('en-GB: product page header: delete the one there now (old-header.png), '
+                      'then place header.png', printed)
+        code, sent, printed, _ = self.run_assets({'header.png': (3840, 1646)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        order = [(m, u.split('/v1/')[-1]) for m, u, k in self.writes(sent)]
+        deleted = order.index(('DELETE', 'appAssetLibraryPlacements/OLD'))
+        created = order.index(('POST', 'appAssetLibraryPlacements'))
+        self.assertLess(deleted, created)
+        self.assertEqual(sum(1 for o in order if o[1].startswith('appAssetLibraryPlacements')), 2)
+
+    def test_an_asset_already_in_the_library_is_placed_not_uploaded_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            _png(Path(folder) / 'universal.png', 5244, 2950)
+            size = (Path(folder) / 'universal.png').stat().st_size
+        answers = asset_answers([OPEN, LIVE], library=[{'id': 'IMG1', 'attributes': {
+            'fileName': 'universal.png', 'fileSize': size, 'state': 'APPROVED'}}])
+        code, sent, printed, _ = self.run_assets({'universal.png': (5244, 2950)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertFalse(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertEqual(sum(1 for u in urls if u.endswith('/v1/appAssetLibraryPlacements')), 2)
+
+    def test_a_version_in_review_gets_nothing_placed_and_the_files_still_upload(self):
+        # The Asset Library does not touch a version, so a version waiting on
+        # Apple holds nothing back but its own placements.
+        waiting = {'id': 'V2', 'attributes': {'versionString': '2.0.1', 'appVersionState': 'WAITING_FOR_REVIEW'}}
+        code, sent, printed, _ = self.run_assets(
+            {'universal.png': (5244, 2950)}, '--yes', answers=asset_answers([waiting, LIVE]))
+        self.assertEqual(code, 0, printed)
+        urls = [u for m, u, k in self.writes(sent)]
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryImages') for u in urls))
+        self.assertFalse(any('Placements' in u for u in urls))
+        self.assertIn('2.0.1 is WAITING_FOR_REVIEW: nothing is placed on it', printed)
+
+    def test_a_videos_opening_still_is_set_when_it_is_reserved(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:00', '--yes')
+        self.assertEqual(code, 0, printed)
+        reserve = [k for m, u, k in self.writes(sent) if u.endswith('/v1/appAssetLibraryVideos')]
+        self.assertEqual(len(reserve), 1)
+        attributes = reserve[0]['body']['data']['attributes']
+        self.assertEqual(attributes['previewFrameTimeCode'], '00:00:05:00')
+        self.assertIn('opening still 00:00:05:00', printed)
+
+    def test_an_opening_still_past_the_end_is_refused_before_anything_is_sent(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:20:00', '--yes')
+        self.assertEqual(code, 1)
+        self.assertEqual(sent, [])
+        self.assertIn('past the end of header.mp4', printed)
+
+    def test_an_opening_still_frame_must_fit_the_frame_rate(self):
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:30')
+        self.assertEqual(code, 1)
+        self.assertIn('runs 00 to 29', printed)
+
+    def test_a_video_reporting_complete_is_still_processing(self):
+        # Seen live: COMPLETE between the commit and PREPARE_FOR_SUBMISSION.
+        answers = asset_answers([OPEN, LIVE])
+        answers[('GET', '/v1/appAssetLibraryVideos/')] = {'data': {'id': 'VID1', 'attributes': {
+            'state': 'COMPLETE', 'specId': None}}}
+        ready = {'data': {'id': 'VID1', 'attributes': {'state': 'PREPARE_FOR_SUBMISSION', 'specId': 'HV'}}}
+        states = iter([answers[('GET', '/v1/appAssetLibraryVideos/')], ready])
+        answers[('GET', '/v1/appAssetLibraryVideos/')] = _Next(states)
+        with mock.patch.object(asc.time, 'sleep'):
+            code, sent, printed, _ = self.run_assets({'header.mp4': (3840, 1646)}, '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        self.assertIn('header.mp4: ready', printed)
+
+    def test_a_reused_video_gets_its_opening_still_changed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / 'header.mp4').write_bytes(b'0' * 64)
+            size = (Path(folder) / 'header.mp4').stat().st_size
+        answers = asset_answers([OPEN, LIVE], videos=[{'id': 'VID9', 'attributes': {
+            'fileName': 'header.mp4', 'fileSize': size, 'state': 'PREPARE_FOR_SUBMISSION',
+            'previewFrameTimeCode': '00:00:00:00'}}])
+        code, sent, printed, _ = self.run_assets(
+            {'header.mp4': (3840, 1646)}, '--poster', '00:00:05:00', '--yes', answers=answers)
+        self.assertEqual(code, 0, printed)
+        patches = [(u, k) for m, u, k in self.writes(sent) if m == 'PATCH']
+        self.assertTrue(any(u.endswith('/v1/appAssetLibraryVideos/VID9')
+                            and k['body']['data']['attributes'] == {'previewFrameTimeCode': '00:00:05:00'}
+                            for u, k in patches), patches)
+        self.assertFalse(any(u.endswith('/v1/appAssetLibraryVideos') for m, u, k in self.writes(sent)))
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # 0027 — A plan ends on race day, and the runner says how
 
-**Status:** Accepted
+**Status:** Accepted. The "Only a block has any of this" section, and where the result is kept, are superseded by [ADR-0049](0049-a-race-is-a-run.md): a race is now a property of the run, with or without a plan.
 
 ## Context
 

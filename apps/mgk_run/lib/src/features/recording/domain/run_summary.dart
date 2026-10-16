@@ -1,5 +1,6 @@
 import 'best_effort.dart';
 import 'run_point.dart';
+import 'run_race.dart';
 import 'run_split.dart';
 
 /// A finished run, shaped for display. All magnitudes are metric; conversion to
@@ -26,6 +27,7 @@ class RunSummary {
     this.points = const <RunPoint>[],
     this.splits = const <RunSplit>[],
     this.bestEfforts = const <BestEffort>[],
+    this.race,
   });
 
   /// The stored run's id, when this summary came from a row.
@@ -95,5 +97,67 @@ class RunSummary {
   /// over every run. Four numbers per run is affordable where a trace is not.
   final List<BestEffort> bestEfforts;
 
+  /// The race this run was, or null for a training run — which is nearly all
+  /// of them.
+  ///
+  /// Carried by the log's read as well as a single run's, like [bestEfforts]
+  /// and for the same reason: a race screen compares this one against the
+  /// runner's earlier races at the distance, and that is a fold over the log.
+  final RunRace? race;
+
   bool get hasRoute => points.length >= 2;
+
+  /// The efforts this run contributes to the runner's records: its
+  /// [bestEfforts], except at the distance it was raced over, where the race
+  /// counts as its own time.
+  ///
+  /// **A race's GPS stretch is not its time.** The phone reads long on a race
+  /// course, so the fastest 21.0975 km inside a half recorded as 21.69 km is
+  /// shorter than the course and quicker than the result: Sunday's was 1:57:40
+  /// against a chip time of 2:00:30. Counting it would make the runner's half
+  /// marathon figure a number they never ran. The official time is used where
+  /// they gave one, the phone's whole-run time where they did not
+  /// ([RunRace.timeFor]) — both are times for the course (ADR-0049).
+  ///
+  /// A race at a distance with no record (a 10-miler) changes nothing, and a
+  /// race with no trace — typed in, or recorded on a watch — still counts at
+  /// its distance, which is the one way a runner with no route gets a figure.
+  List<BestEffort> get recordEfforts {
+    final raced = race;
+    if (raced == null) return bestEfforts;
+    double? at;
+    for (final meters in kRecordDistancesMeters) {
+      // Fifty metres, the tolerance `raceName` names a distance by, so a half
+      // entered as 21,097.5 and one typed as 21.1 km are the same record.
+      if ((raced.distanceMeters - meters).abs() <= 50) at = meters;
+    }
+    if (at == null) return bestEfforts;
+    return <BestEffort>[
+      for (final effort in bestEfforts)
+        if (effort.distanceMeters != at) effort,
+      BestEffort(distanceMeters: at, duration: raced.timeFor(duration)),
+    ]..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+  }
+
+  /// This summary with its race replaced, for the screen that has just marked
+  /// or corrected it. Everything else is carried across untouched.
+  RunSummary withRace(RunRace? race) => RunSummary(
+    id: id,
+    startedAt: startedAt,
+    duration: duration,
+    distanceMeters: distanceMeters,
+    avgPaceSecondsPerKm: avgPaceSecondsPerKm,
+    elevationGainMeters: elevationGainMeters,
+    elevationMaxMeters: elevationMaxMeters,
+    avgHr: avgHr,
+    maxHr: maxHr,
+    caloriesEst: caloriesEst,
+    steps: steps,
+    notes: notes,
+    type: type,
+    points: points,
+    splits: splits,
+    bestEfforts: bestEfforts,
+    race: race,
+  );
 }

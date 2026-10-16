@@ -300,6 +300,11 @@ RaceResult? raceResultFor(
   final goalMeters = profile.goalDistanceMeters!;
   final run = raceRunOn(runs, profile.eventDate!);
 
+  // A time the runner already gave on the run itself (ADR-0049) is a time they
+  // entered, and it is what the card should open on, rather than the phone's
+  // figure they have already corrected once.
+  entered ??= run?.race?.officialTime;
+
   if (entered != null) {
     final watch = run?.duration;
     return RaceResult(

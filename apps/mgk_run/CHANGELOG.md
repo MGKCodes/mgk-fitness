@@ -15,11 +15,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This is 1.0.1
+This is 1.0.2
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+## [1.0.1] — submitted 2026-10-16, build 31
+
+1.0.0 (build 29) was rejected by App Review on 16 October 2026 (guideline 4,
+Sign in with Apple), and never released on the App Store; it is live on
+Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
+
+### Added
+
+- **A race has its own finish**
+  ([ADR-0049](docs/decisions/0049-a-race-is-a-run.md)). A run near 5K, 10K,
+  half or marathon asks "Was this a race?", and any outdoor run can be marked
+  as one. A race leads with its time, official where you add it, with what
+  your phone had beside it; says whether it is your first or fastest at the
+  distance; shows how you ran it, half by half and 5K by 5K, measured against
+  the course rather than the phone's longer reading; and, when a plan was
+  aimed at that day, the training behind it. The run on a plan's race day is
+  marked for you, and saving its time closes the plan. Race results are
+  backed up with the run.
+- **Race on the start screen.** Choose Run or Race before you set off, and a
+  race's distance. The run counts down to the finish and says what finish
+  you are on for at your pace so far, and it is marked as your race when you
+  stop. On a plan's race day it opens on Race.
+- Settings › About says the app is open source. *Source code* (AGPL-3.0)
+  opens Run's code in the public repository, and *Report a problem* opens an
+  email to support with the app and its version already written in, for
+  anybody who wants to tell us something is wrong without going near the
+  code. Lift's Settings has the same two rows.
 
 ### Changed
 
+- Splits on a run with more than five fold to one line: a small chart of every
+  kilometre, the fastest and the slowest, and "Show all". The heart-rate
+  column only appears when a split has a heart rate, so a run without one no
+  longer ends every row in a dash.
+- A race counts as its own time in Profile's figures and in "Fastest … yet",
+  not the shorter stretch the phone measured inside it: a half marathon run in
+  2:00:30 no longer shows as 1:57:40.
+- Kilometre markers on a run's map no longer pile up where a route passes the
+  same spot twice. A marker that would sit on an earlier one is left out, and
+  zooming in brings it back.
+- The records card lists each record beside its own time. With several set at
+  once it used to show only the shortest one's, so "Fastest 5K, 10K and Half
+  marathon yet · 25:16" read as a 25-minute half marathon.
 - The sign-in screen says which app it is and whose account: Run's icon and
   name above *MGKFitness Account*, where it said *MGKFitness Profile*. Lift's
   sign-in draws the same head with its own icon, from one shared piece, so the
@@ -30,9 +71,8 @@ This is 1.0.1
   terms and privacy line under them on every step. The list of what an account
   gives is gone from the sign-up, as Lift's sign-in has none.
 - Delete account calls the login an *MGKFitness account* too, where it said
-  *MGKFitness profile*. The privacy policy's paragraph on deletion still says
-  *profile*: it changes with the published page, after 1.0.0's review, because
-  the live policy is what that review compares against the 1.0.0 binary.
+  *MGKFitness profile*. The privacy policy says *account* too, in the app and
+  on the published page, from 16 October 2026.
 - Delete account asks how much, as Lift's always has: *Delete this app's
   data*, or *Delete my whole MGKFitness account*, which erases what Lift holds
   as well and the login itself. Until now the second meant emailing us. It is
@@ -40,8 +80,8 @@ This is 1.0.1
   choice cards, login note, phone-copy switch and outcome sentences as Lift's.
   A login kept because Lift uses it no longer comes with an address to email
   for the rest, and a login that could not be removed shows the warning icon.
-  The privacy policy's deletion paragraph needs the second choice adding, with
-  *profile* above, after 1.0.0's review.
+  The privacy policy's deletion paragraph describes both choices, in Lift's
+  words, where it said to email us for the rest.
 - The paywall is the suite's, as Lift's: one screen that fits without
   scrolling, with Run's icon and name where the decision is made, three short
   benefit lines that open their detail on tap, the two tiers side by side
@@ -61,6 +101,16 @@ This is 1.0.1
   are centred under a lead line. Holding a reply still reports it, an error
   is said under the message it belongs to rather than above the field, and
   the close button is called *Close*.
+
+### Fixed
+
+- Signing in with Apple no longer leads to "What should I call you?". The
+  coach's first conversation skips the name for an Apple account, and the
+  coach goes without one unless you add it in Settings. App Review rejected
+  1.0.0 for asking (guideline 4, 16 October 2026).
+- Signing in after meeting the coach no longer plays the whole conversation
+  again on the next launch. The meeting is recorded against the account, and
+  the name you gave the coach goes to it if it has none.
 
 ## [1.0.0] — submitted 2026-10-02, build 29
 

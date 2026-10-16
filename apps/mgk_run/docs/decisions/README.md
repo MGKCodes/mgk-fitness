@@ -38,7 +38,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0024](0024-elevation-is-barometric-or-absent.md) | Elevation is barometric or absent | Accepted |
 | [0025](0025-a-coach-conversation-is-a-session.md) | A coach conversation is a session, bounded by silence | Accepted |
 | [0026](0026-a-record-is-a-window-in-a-trace.md) | A record is a window in a trace, not a run's own time | Accepted |
-| [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted |
+| [0027](0027-a-plan-ends-on-race-day.md) | A plan ends on race day, and the runner says how | Accepted; partly superseded by 0049 |
 | [0028](0028-revenuecat-is-the-purchase-path.md) | RevenueCat is the purchase path, and the webhook is the truth | Accepted |
 | [0029](0029-what-a-tier-costs-and-buys.md) | What a tier costs, and what it buys | Amended in part by [0030](0030-the-coach-is-the-paid-half.md) and [0038](0038-premium-buys-more-coaching-not-a-different-model.md) |
 | [0030](0030-the-coach-is-the-paid-half.md) | The coach is the paid half, on both apps | Amended in part by [0032](0032-identity-is-an-event-and-the-tier-is-re-read.md) |
@@ -60,3 +60,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0046](0046-a-version-is-submitted-once.md) | A version is submitted once, and `main` is what was submitted | Accepted |
 | [0047](0047-email-first-a-code-to-confirm-a-name-on-the-account.md) | Email first, a code to confirm, and a name on the account | Accepted |
 | [0048](0048-contributions-come-in-under-an-app-store-permission.md) | Contributions come in under an app store permission | Accepted |
+| [0049](0049-a-race-is-a-run.md) | A race is a run, with or without a plan | Accepted |

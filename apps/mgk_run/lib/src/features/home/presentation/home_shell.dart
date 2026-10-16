@@ -28,6 +28,7 @@ import '../../coaching/domain/coach_brief.dart';
 import '../../coaching/domain/coach_note.dart';
 import '../../coaching/domain/plan_shape.dart';
 import '../../coaching/domain/race_day.dart';
+import '../../coaching/domain/race_finish.dart';
 import '../../../core/launch/launch_curtain.dart';
 import '../../coaching/domain/readiness.dart';
 import '../../coaching/domain/training_history.dart';
@@ -75,6 +76,7 @@ import '../../history/presentation/run_form_screen.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../settings/data/backup_eraser.dart';
 import '../../recording/presentation/run_start_screen.dart';
+import '../../recording/domain/run_race.dart';
 import '../../recording/presentation/run_summary_screen.dart';
 
 /// How long Home's coach takes to say its line, start to finish.
@@ -835,6 +837,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final result = answer.closure == PlanClosure.raced
         ? raceResultFor(plan, _allRuns, entered: answer.time)
         : null;
+
+    // **The race lands on the run as well** (ADR-0049), so the run in the log
+    // is the race with its official time rather than an ordinary 42.6 km, and
+    // the finish is the race's own screen: the time, how it was run and the
+    // block behind it, in one place. Best effort, like the backup: the plan is
+    // already closed, and a race that failed to mark is still a plan finished.
+    final raced = answer.closure == PlanClosure.raced
+        ? raceRunOn(_allRuns, plan.profile.eventDate!)
+        : null;
+    final editor = widget.runEditor;
+    if (raced != null && raced.id != null && editor != null) {
+      final time = answer.time;
+      final race = RunRace(
+        distanceMeters: plan.profile.goalDistanceMeters!,
+        officialTime: time == null || time == raced.duration ? null : time,
+        name: raced.race?.name,
+      );
+      try {
+        await editor.markRace(raced.id!, race);
+        await _refreshHome();
+        if (!mounted) return;
+        await _openSummary(raced.withRace(race), planFinished: true);
+        return;
+      } catch (_) {
+        // Falls through to the plan's own finish screen, which needs no run.
+      }
+    }
 
     await _refreshHome();
     if (!mounted) return;
@@ -1786,6 +1815,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ? _thisWeek?.runOn(DateTime.now().weekday)
         : null;
     final profile = _planProfile;
+    // **Race day starts on Race** (ADR-0049). The plan already knows the
+    // distance, and a runner at the start line of the thing sixteen weeks were
+    // aimed at should not have to find a chip to say so. Every other day opens
+    // on an ordinary run, and the runner chooses.
+    final RaceOutlook? outlook = _todayView?.race;
+    final double? raceToday = outlook != null && outlook.daysAway == 0
+        ? outlook.distanceMeters
+        : null;
+    // What the start screen last said; read when the count-in ends and again
+    // when the run is finished.
+    double? race = raceToday;
     // Asked here, while the runner is looking at the screen, rather than when
     // recording starts and the phone is on its way into a pocket.
     final LiveRunReadout? readout = widget.liveReadout;
@@ -1806,6 +1846,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               // target on this screen is the one the run will be held to.
               paces: profile == null ? null : pacesFor(profile),
               locate: widget.startLocator,
+              initialRaceMeters: raceToday,
+              // Only where a race can be written down afterwards: a build with
+              // no editor would show a race it then forgets.
+              onRaceChanged: widget.runEditor == null
+                  ? null
+                  : (meters) => race = meters,
               onCancel: () => Navigator.of(routeContext).pop(false),
               // **Pushed and forwarded, not replaced.** `pushReplacement`
               // completes the *replaced* route's future the moment it happens,
@@ -1821,7 +1867,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                         // screen opened.
                         builder: (recordContext) => _recordingScreen(
                           recordContext,
-                          session,
+                          // A race replaces the session rather than sitting
+                          // beside it: there is no band to hold in a race.
+                          race == null ? session : null,
                           // The same recorder, also telling the lock screen
                           // how the run is going.
                           readout == null
@@ -1831,6 +1879,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                                   readout,
                                   unit: _unit,
                                 ),
+                          raceMeters: race,
                         ),
                       ),
                     );
@@ -1845,7 +1894,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         // already knows about the run behind it.
         .then((finished) async {
           await _refreshHome();
-          if (finished == true && mounted) await _showFinishedRun(openedAt);
+          if (finished == true && mounted) {
+            await _showFinishedRun(openedAt, raceMeters: race);
+          }
         });
   }
 
@@ -1858,8 +1909,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget _recordingScreen(
     BuildContext routeContext,
     PlannedSession? session,
-    RunRecorder recorder,
-  ) {
+    RunRecorder recorder, {
+    double? raceMeters,
+  }) {
     final profile = _planProfile;
     return RecordingScreen(
       recorder: recorder,
@@ -1869,6 +1921,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // with no plan at all — and then the block is simply absent rather than
       // an empty one.
       plannedSession: session,
+      raceMeters: raceMeters,
       // The coach's numbers, so the screen can say whether the runner is inside
       // the band today's session asked for. Derived in Dart from the profile's
       // time trial and null without one, which the screen renders as no verdict
@@ -1898,7 +1951,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// Silent when there is nothing to show. A recorder that never started —
   /// permission refused, location off — finishes without a run, and there is no
   /// summary to open for a run that did not happen.
-  Future<void> _showFinishedRun(DateTime openedAt) async {
+  Future<void> _showFinishedRun(DateTime openedAt, {double? raceMeters}) async {
     final reads = _runDetails;
     RunSummary? run;
     if (reads != null) {
@@ -1914,8 +1967,108 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // not the run that was recorded on it.
     run ??= _allRuns.where((r) => !r.startedAt.isBefore(openedAt)).firstOrNull;
     if (run == null || !mounted) return;
+    run = raceMeters == null
+        ? await _markPlanRace(run)
+        : await _markRace(run, raceMeters);
+    if (!mounted) return;
     await _openSummary(run, justFinished: true);
   }
+
+  /// The run just finished, marked as the race the runner chose on the start
+  /// screen (ADR-0049).
+  ///
+  /// The runner said so before they set off, so there is nothing to infer and
+  /// no half-distance floor to apply: a race abandoned at 8 km is still the
+  /// race they started, and the race screen says what the phone recorded.
+  /// Marking it as not a race is one tap on that screen if it was a mistake.
+  /// No official time, which comes out later. Any failure leaves the run as
+  /// it was.
+  Future<RunSummary> _markRace(RunSummary run, double meters) async {
+    final editor = widget.runEditor;
+    final id = run.id;
+    if (editor == null || id == null || run.race != null) return run;
+    final race = RunRace(distanceMeters: meters);
+    try {
+      await editor.markRace(id, race);
+    } catch (_) {
+      return run;
+    }
+    unawaited(_refreshHome());
+    return run.withRace(race);
+  }
+
+  /// The run just finished, marked as the race when it is the race the plan
+  /// was aimed at (ADR-0049).
+  ///
+  /// **Marked, not closed.** The distance is the plan's goal and there is no
+  /// official time yet: that comes out hours later, and the runner adds it on
+  /// the race screen or answers Home's card, either of which closes the plan.
+  /// Arriving at the finish to a screen that already knows it was the race is
+  /// the whole point; filing a result nobody has confirmed is not.
+  ///
+  /// Any failure leaves the run as it was. It is still a run, and the
+  /// runner can mark it themselves from the same screen.
+  Future<RunSummary> _markPlanRace(RunSummary run) async {
+    final editor = widget.runEditor;
+    final id = run.id;
+    if (editor == null || id == null || run.race != null) return run;
+    final plan = await _loadedPlan();
+    if (plan == null || !isPlanRaceRun(plan, run, _allRuns)) return run;
+    final race = RunRace(distanceMeters: plan.profile.goalDistanceMeters!);
+    try {
+      await editor.markRace(id, race);
+    } catch (_) {
+      return run;
+    }
+    unawaited(_refreshHome());
+    return run.withRace(race);
+  }
+
+  /// Writes a run's race from its summary screen, and closes the plan when it
+  /// was the plan's race.
+  ///
+  /// **Saving the sheet on the plan's race is the runner answering Home's
+  /// card**, from the screen they are already on. ADR-0027 closes a plan when
+  /// the runner says how the race went, and the sheet is exactly that: a time
+  /// they confirmed (official, or the phone's left as it was). Asking again
+  /// the next morning would be the app not listening.
+  ///
+  /// Clearing a race never reopens a plan. A plan closed in error is a
+  /// conversation, not a toggle, and the closure was the runner's own answer.
+  Future<RaceSaveOutcome?> _saveRace(RunSummary run, RunRace? race) async {
+    final editor = widget.runEditor;
+    final id = run.id;
+    if (editor == null || id == null) return null;
+    try {
+      await editor.markRace(id, race);
+    } catch (_) {
+      return null;
+    }
+    var outcome = RaceSaveOutcome.saved;
+    if (race != null) {
+      final plan = await _loadedPlan();
+      if (plan != null && isPlanRaceRun(plan, run, _allRuns)) {
+        try {
+          await _plans.finish(
+            plan,
+            closure: PlanClosure.raced,
+            raceTime: race.timeFor(run.duration),
+          );
+          outcome = RaceSaveOutcome.savedAndPlanFinished;
+        } on PlanStoreException {
+          // The race is saved; the plan stays open and Home keeps asking.
+        }
+      }
+    }
+    await _refreshHome();
+    return outcome;
+  }
+
+  /// The plan aimed at [run]'s day, for the race screen's training section.
+  /// History is local and cheap; a store that cannot answer leaves the
+  /// section out rather than the screen.
+  Future<LabelledPlan?> _planBehind(RunSummary run) async =>
+      planBehindRace(await _plans.history(), run);
 
   /// Takes a question from Profile to the coach.
 
@@ -1928,14 +2081,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   ///
   /// One method for both, because it is one screen: the difference is
   /// [RunSummaryScreen.justFinished] and what there is to do afterwards.
-  Future<void> _openSummary(RunSummary run, {bool justFinished = false}) async {
+  Future<void> _openSummary(
+    RunSummary run, {
+    bool justFinished = false,
+    bool planFinished = false,
+  }) async {
     // The trace, when it is not already loaded. A run opened from the log has
     // only ever been a summary — `fetchRuns` reads the columns and leaves the
     // thousands of trace rows alone, which is right for a list — so the map on
     // the screen below had nothing to draw. Loaded on the way in rather than
     // inside the screen, so the route is there in the first frame instead of
     // appearing under the reader a moment later.
-    final full = run.hasRoute ? run : await _withTrace(run);
+    final loaded = run.hasRoute ? run : await _withTrace(run);
+    // The trace read comes from the row, and the row may hold a race the
+    // caller marked a moment ago; what the caller handed in wins.
+    final full = run.race == null ? loaded : loaded.withRace(run.race);
+    final racePlan = await _planBehind(full);
     if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -1944,6 +2105,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           unit: _unit,
           history: _allRuns,
           justFinished: justFinished,
+          racePlan: racePlan,
+          planFinished: planFinished,
+          // Only for a row: seeded data and a run in progress have nowhere to
+          // write a race to, the rule [onEdit] below already follows.
+          onSaveRace: widget.runEditor == null || full.id == null
+              ? null
+              : (race) => _saveRace(full, race),
           // What was asked for on the day, so the coach's note can say whether
           // this was the session. Only on the run just finished: an older run
           // needs the week it fell in, and only this week's is loaded.

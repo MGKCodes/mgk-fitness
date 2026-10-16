@@ -5,6 +5,7 @@ import 'package:mgk_units/mgk_units.dart';
 import 'package:mgk_run/src/features/history/domain/run_draft.dart';
 import 'package:mgk_run/src/features/history/domain/run_writer.dart';
 import 'package:mgk_run/src/features/history/presentation/run_form_screen.dart';
+import 'package:mgk_run/src/features/recording/domain/run_race.dart';
 
 /// Add a run by hand (screen board S6). It opened with "How far did you go?"
 /// and "How long did it take?" in red under two fields nobody had touched yet,
@@ -315,4 +316,7 @@ class _Writer implements RunWriter {
     if (offline) throw const RunDeleteFailed();
     deleted.add(runId);
   }
+
+  @override
+  Future<void> markRace(String runId, RunRace? race) async {}
 }

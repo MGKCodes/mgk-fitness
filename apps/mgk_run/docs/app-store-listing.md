@@ -342,20 +342,27 @@ in search, so they carry the subtitle between them: tracking, then the plan.
 
 | # | The screen | Tag | Headline | Screen file |
 |---|---|---|---|---|
-| 1 | A run in progress, **outdoors, map drawn** | Free | Track every run. Free. No account. | `2-run` |
+| 1 | A run in progress, **outdoors, map drawn** | none | Track every run. No account needed. | `2-run` |
 | 2 | Home: a plan, and today's session | Coach · Subscription | Know what to run today. | `1-home` |
-| 3 | A finished run: route, time, pace, splits | Free | Every run, kept on your phone. | `3-finished` |
+| 3 | A finished run: route, time, pace, splits | none | Every run, kept on your phone. | `3-finished` |
 | 4 | The plan: the race, this week, *Adjust this week* | Coach · Subscription | A real plan, adjusted weekly. | `4-plan` |
 | 5 | The coach answering | AI coach · Subscription | Ask the coach about any run. | `5-coach` |
-| 6 | A year of running, on the profile | Free | Your year, at a glance. | `6-year` |
+| 6 | A year of running, on the profile | none | Your year, at a glance. | `6-year` |
 
 **The words live in
 [`design/store-shots/src/shots.ts`](../design/store-shots/src/shots.ts).** This
 table is a copy for reading; that file is what is rendered.
 
-**Every picture is tagged free or subscription.** Three of the six show the
+**The three coach pictures are tagged as the subscription.** They show the
 coach, and App Review guideline 2.3.2 asks a listing to make clear which of the
-things it shows need a purchase.
+things it shows need a purchase. The other three carry no tag.
+
+**No picture says "Free".** Apple counts it as a price, which guideline 2.3.7
+keeps out of screenshots. Lift 2.0.0 was rejected for these same words on 7
+October 2026, and Run 1.0.0, which had them too, was taken out of review the
+same day and sent back with the pictures above (build 29 unchanged, screens
+drawn from `3baf30c`, whose app code is build 29's). The description may still
+say what is free.
 
 **Changed on 2026-10-01, with build 29.** The run moved ahead of Home, so the
 first two pictures follow the subtitle. Picture 4 was "a week of the plan,

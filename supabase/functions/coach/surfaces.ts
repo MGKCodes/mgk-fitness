@@ -193,11 +193,31 @@ function text(value: unknown, maxChars: number): string {
 
 // Each nullable slot: the model returns null for anything it does not have, and
 // Dart treats null as "no change".
+//
+// A slot limited to a list of values is written as `anyOf` [the list, null],
+// not as `type: [type, "null"]` with null in its enum. Both mean the same, but
+// Claude's structured output refuses the second ("Enum value 'outdoor' does not
+// match declared type", the model probe on 2026-10-09, which failed intake and
+// log_run on every Claude model), and Gemini takes either. The enum is passed
+// with or without its null; the null branch is added here either way.
 const nullable = (
   type: string,
   description: string,
   extra: Record<string, unknown> = {},
-) => ({ type: [type, "null"], description, ...extra });
+) => {
+  const { enum: values, ...rest } = extra;
+  if (Array.isArray(values)) {
+    return {
+      anyOf: [
+        { type, enum: values.filter((v) => v !== null) },
+        { type: "null" },
+      ],
+      description,
+      ...rest,
+    };
+  }
+  return { type: [type, "null"], description, ...extra };
+};
 
 // ---- chat -------------------------------------------------------------------
 
@@ -1247,10 +1267,16 @@ export function liftChatMessages(body: Body): Message[] {
   const brief = text(body.brief, MAX_BRIEF_CHARS);
   const memory = text(body.memory, MAX_MEMORY_CHARS);
   const message = text(body.message, MAX_MESSAGE_CHARS);
+  // Read server-side from `lift.plans` (index.ts), never taken from the client.
+  const plan = text(body.plan, MAX_BRIEF_CHARS);
 
   const system = `${LIFT_PERSONA}\n\n${LIFT_CHAT_INSTRUCTIONS}\n\n` +
     `Today is ${weekdayName(body)}.\n\n` +
     (memory ? `${LIFT_MEMORY_INSTRUCTIONS}\n\n${memory}\n\n` : "") +
+    (plan
+      ? `Their current plan, and what they told you when it was built:\n` +
+        `${plan}\n\n`
+      : "") +
     `Recent training (most recent first):\n${
       brief || "(no sessions logged yet)"
     }`;
@@ -1382,21 +1408,19 @@ export function liftSummariseMessages(body: Body): Message[] {
 // different coaches.
 
 const LIFT_INTAKE_INSTRUCTIONS =
-  `You are running the conversation that sets up a lifter's training block. Your
+  `You are running the conversation that sets up a lifter's training plan. Your
 job is to gather what a plan needs, one question at a time.
 
-What a plan needs:
-- what they are training for, in their own words
-- how many days a week they can train, and WHICH days
-- what they have to train with: a full gym, a rack and a barbell, dumbbells at
-  home, machines only
-- anything that hurts, or that they have been told to avoid
-- roughly how long they want the block to be, if they have a view
+What a plan needs, in the order you ask for it:
+1. days: how many days a week they can train (and which days, if they say)
+2. equipment: what they have to train with
+3. injuries: anything that hurts, or that they have been told to avoid
+4. goal: what they are training for, in their own words
 
-Ask which weekdays, not just how many. A block is laid out on named days, so
-"four days" alone cannot be turned into a week. If they do not mind which, say
-so by listing the days you propose. That is one question and not two: the days
-they name give you the count too.
+The app shows tap-to-answer options under your question, chosen from what you
+say you are asking, so the order matters. After reading their latest message,
+ask about the FIRST of these that is still unknown, skipping anything they
+declined. Put its name in "asking". When none is left, set "asking" to "done".
 
 Rules:
 - Ask exactly ONE question per turn. Acknowledge what they just told you, then
@@ -1405,25 +1429,48 @@ Rules:
   reading four questions answers the first and forgets the other three.
 - If they answer several things at once, capture all of them and skip ahead.
   Never re-ask for something you already have.
+- "Prefer not to say" is an answer. Do not ask about that thing again.
+- Do not ask which weekdays as a question of its own. If they name days,
+  capture them; if they do not, the app spreads their days across the week.
 - Do NOT judge whether an answer is plausible, and do not talk them out of a
   goal. Extract what they said; a separate step checks the numbers.
 - Weekdays are 1=Monday through 7=Sunday.
 - In "extracted", return every field on every turn. Use null for anything not
-  yet known.
+  yet known. If they have nothing to work around, set injury_notes to "none"
+  rather than null, so it is not asked again.
 - Do not discuss what will be in the sessions. You are finding out what they can
   do, not deciding what they will do — that comes next, and promising specifics
   here is how a plan disappoints before it exists.
-- When you have what you need, say so and tell them the next screen shows the
-  block for them to look over.`;
+- When you have what you need, say so in one sentence and tell them to tap
+  "Build my plan". There is no other screen to look over first.`;
+
+/// The questions the app asks, in its order, by the names of Dart's
+/// `IntakeField`. **The same order and the same names**, because the app hangs
+/// tap-to-answer options under whichever of these the coach says it asked: a
+/// coach working from a different list asked about one thing above options
+/// for another, which is what a lifter met on 2026-10-07.
+export const LIFT_INTAKE_FIELDS = [
+  "days",
+  "equipment",
+  "injuries",
+  "goal",
+] as const;
 
 const LIFT_INTAKE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["reply", "extracted"],
+  required: ["reply", "asking", "extracted"],
   properties: {
     reply: {
       type: "string",
       description: "The coach's conversational reply to the lifter.",
+    },
+    asking: {
+      type: "string",
+      enum: [...LIFT_INTAKE_FIELDS, "done"],
+      description:
+        "Which question the reply asks, or 'done' when it asks none because " +
+        "everything needed is known or declined.",
     },
     extracted: {
       type: "object",
@@ -1457,7 +1504,8 @@ const LIFT_INTAKE_SCHEMA = {
         ),
         injury_notes: nullable(
           "string",
-          "Anything that hurts or that they avoid, in their words.",
+          "Anything that hurts or that they avoid, in their words. 'none' " +
+            "when they have nothing to work around.",
         ),
       },
     },
@@ -1466,12 +1514,25 @@ const LIFT_INTAKE_SCHEMA = {
 
 export function liftIntakeMessages(body: Body): Message[] {
   const slots = (body.slots as Record<string, unknown>) ?? {};
-  const missing = (body.missing as string[]) ?? [];
+  // Only names this file knows: the list is the client's, and it goes into a
+  // prompt. Builds before 2026-10-07 send none, and their "Prefer not to say"
+  // still reaches the model through the transcript.
+  const declined = (Array.isArray(body.declined) ? body.declined : [])
+    .filter((d): d is string =>
+      (LIFT_INTAKE_FIELDS as readonly string[]).includes(d as string)
+    );
 
+  // `body.missing` is no longer read. Older builds send one in a different
+  // order (goal first) with a field nobody is asked (`which weekdays`), and
+  // following it is what made the coach ask about one thing above options for
+  // another. The order is the instructions' own, and the model applies it to
+  // what is known after the lifter's latest message rather than before it.
   const system = `${LIFT_PERSONA}\n\nToday is ${today(body)}.\n\n` +
     `${LIFT_INTAKE_INSTRUCTIONS}\n\n` +
     `Already known, do not re-ask: ${JSON.stringify(slots)}\n` +
-    `Still missing: ${missing.length ? missing.join(", ") : "nothing"}`;
+    `Declined, do not ask again: ${
+      declined.length ? declined.join(", ") : "nothing"
+    }`;
 
   const turns = conversation(body.history, MAX_LIFT_HISTORY_TURNS);
   return [
@@ -1822,6 +1883,76 @@ export const PROVIDER_ROUTING = {
   allow_fallbacks: true,
 } as const;
 
+// ---- the request body -------------------------------------------------------
+
+/**
+ * Every effort word OpenRouter's `reasoning` parameter accepts. `"none"` turns
+ * thinking off.
+ */
+export const REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type ReasoningEffort = typeof REASONING_EFFORTS[number];
+
+/** What is sent as `reasoning`, on the requests that send anything. */
+export interface Reasoning {
+  effort: ReasoningEffort;
+  /** Keeps the reasoning text out of the response. It is still billed. */
+  exclude: true;
+}
+
+/**
+ * The body POSTed to OpenRouter for one call.
+ *
+ * Built here rather than inline in index.ts for the reason PROVIDER_ROUTING
+ * is: index.ts cannot be imported, so a body assembled there is a body no test
+ * can see. Two things depend on seeing it — that the routing flags ride on
+ * every request, and that a model with no `COACH_REASONING` entry gets exactly
+ * the request it got before the field existed. tool/probe_models.ts builds its
+ * requests through this too, so what the probe measures is what production
+ * sends.
+ *
+ * `reasoning` is appended LAST and only when defined, so with the secret unset
+ * — the Gemini deployment as it stands — the body serialises byte for byte as
+ * it did before. There is a test that holds exactly that.
+ */
+export function providerRequest(opts: {
+  model: string;
+  surface: SurfaceSpec;
+  body: Body;
+  reasoning?: Reasoning;
+}): Record<string, unknown> {
+  const { model, surface, body, reasoning } = opts;
+  return {
+    model,
+    max_tokens: surface.maxTokens,
+    messages: surface.messages(body),
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: surface.name,
+        strict: true,
+        schema: surface.schema,
+      },
+    },
+    // Schema enforcement, the no-training rule, and fallback across providers.
+    // See PROVIDER_ROUTING above.
+    provider: PROVIDER_ROUTING,
+    // Only for a model COACH_REASONING names — see `reasoningFor`. Never by
+    // default: with `require_parameters: true`, a request that carries it is
+    // routed ONLY to endpoints that support it, so on a model whose endpoints
+    // do not it would fail to route rather than be ignored.
+    ...(reasoning ? { reasoning } : {}),
+  };
+}
+
 // ---- the registry -----------------------------------------------------------
 
 // Typed against the `Surface` union, so a surface added to the limiter without
@@ -1946,6 +2077,24 @@ const LIFT_PLAN_SCHEMA = {
   },
 } as const;
 
+const WEEKDAY_NAMES = [
+  "",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+/** The client's weekdays (1 = Monday) as names, dropping anything else. */
+export function trainingDays(raw: unknown): string[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7)
+    .map((d) => WEEKDAY_NAMES[d]);
+}
+
 export function liftPlanMessages(body: Body): Message[] {
   const profile = (body.profile as Record<string, unknown>) ?? {};
   const brief = text(body.brief, MAX_BRIEF_CHARS);
@@ -1955,6 +2104,7 @@ export function liftPlanMessages(body: Body): Message[] {
   // fine: the rules above are the part that is checked.
   const guidance = text(body.guidance, MAX_BRIEF_CHARS);
   const catalogue = text(body.catalogue, 24000);
+  const days = trainingDays(body.weekdays);
 
   const system = `${LIFT_PERSONA}
 
@@ -1964,6 +2114,16 @@ ${LIFT_PLAN_INSTRUCTIONS}
     `Today is ${today(body)}.
 
 ` +
+    // The instructions say "in the same order as the weekdays provided", and
+    // until 2026-10-07 none were: the app sent them and this never put them in
+    // the prompt, so the coach guessed how many days to write and which were
+    // back to back. A count that does not match is a PlanShape retry.
+    (days.length
+      ? `Their training days, in order (write exactly ${days.length}, one ` +
+        `per day): ${days.join(", ")}
+
+`
+      : "") +
     (guidance
       ? `House guidance:
 ${guidance}
@@ -2282,4 +2442,66 @@ export function allowedOverride(
 
   const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
   return allowed.includes(wanted) ? wanted : undefined;
+}
+
+/**
+ * How hard a model may think before it answers — or `undefined`, which sends
+ * no `reasoning` field at all and leaves the request exactly as it was.
+ *
+ * **Why it exists.** The Claude models think by default, the thinking is
+ * billed as output, and on OpenRouter `max_tokens` covers the reasoning and the
+ * visible answer TOGETHER. With budgets of 256 to 1024 tokens, thinking can
+ * spend the whole allowance before the answer starts: `finish_reason`
+ * "length", and an empty or truncated JSON object that lands as
+ * `coach_malformed` — what looks like a model failing its schema and is really
+ * a budget spent on something nobody reads.
+ *
+ * **Why it is configuration, and per model.** `COACH_REASONING` is a
+ * comma-separated list of `model=effort` pairs:
+ *
+ *     anthropic/claude-haiku-5.5=none,anthropic/claude-sonnet-5.5=low
+ *
+ * What each model accepts differs and is not known in advance. Sonnet's native
+ * API rejects plainly disabled thinking, and whether OpenRouter's "none" maps
+ * onto something it will take is exactly the question tool/probe_models.ts is
+ * there to answer. Hard-coding a guess here would turn a wrong guess into a
+ * release; a secret turns it into a `secrets set`.
+ *
+ * **Why it is opt-in rather than a default.** `PROVIDER_ROUTING` sets
+ * `require_parameters: true`, so a request carrying `reasoning` routes only to
+ * endpoints that support it. Sent to a model whose endpoints do not, it would
+ * not be ignored — the request would fail to route at all. So a model with no
+ * entry gets no field, which is today's Gemini deployment.
+ *
+ * Every way the secret can be wrong falls back to sending nothing: unset or
+ * blank, no entry for this model, an entry that is not exactly one
+ * `model=effort`, or an effort that is not one of REASONING_EFFORTS. The model
+ * is matched verbatim, the way COACH_MODEL_ALLOWLIST is, and the first valid
+ * entry for a model wins.
+ *
+ * `exclude: true` keeps the reasoning text out of the response. Nothing here
+ * reads it, and it would be the model working through somebody's injury notes
+ * in a payload this function has no use for. It is still billed as output, and
+ * the `cost` OpenRouter reports includes it.
+ */
+export function reasoningFor(
+  model: string,
+  get: (key: string) => string | undefined,
+): Reasoning | undefined {
+  const raw = get("COACH_REASONING")?.trim();
+  if (!raw) return undefined;
+  const wanted = model.trim();
+  if (!wanted) return undefined;
+
+  for (const entry of raw.split(",")) {
+    const parts = entry.split("=");
+    if (parts.length !== 2) continue;
+    const id = parts[0].trim();
+    const effort = parts[1].trim();
+    if (id !== wanted) continue;
+    if ((REASONING_EFFORTS as readonly string[]).includes(effort)) {
+      return { effort: effort as ReasoningEffort, exclude: true };
+    }
+  }
+  return undefined;
 }

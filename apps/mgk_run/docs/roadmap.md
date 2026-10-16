@@ -85,7 +85,8 @@ The four items it named, and where they stand:
   (live since 2026-09-03).
 - **Medical disclaimer surfaced at onboarding.** Done: `CoachFlow` gates the
   onboarding conversation on it.
-- **Git history scrubbed of secrets before the repo goes public.** Still open,
-  and deliberately **not** on the App Store critical path — it is a prerequisite
-  for making the repo public, not for shipping the app, and conflating the two
-  adds a hard job to the release for no store benefit.
+- **Git history scrubbed of secrets before the repo goes public.** Done: the
+  history was scanned on 2 and again on 7 October 2026 and held no secret, and
+  the repository went public on 7 October ([`docs/going-public.md`](../../../docs/going-public.md)).
+  It was kept off the App Store critical path on purpose: a prerequisite for
+  making the repo public, not for shipping the app.

@@ -213,6 +213,14 @@ workflows:
     # pull request from a fork brings its own copy of this file, which could
     # name a group of secrets and run anything on our machines. Run the checks
     # on a contributor's change by merging it to a branch here first.
+    #
+    # **And today nothing triggers it at all: the app has no webhook** (read
+    # 7 October 2026: GitHub lists none on the repository, and Codemagic's
+    # Webhooks tab shows no delivery ever). Every build starts from
+    # `scripts/codemagic-build.sh` or the Start new build button. **Do not
+    # press "Update webhook" in Codemagic without deciding about forks first**:
+    # it switches automatic builds on for every event, and Codemagic builds a
+    # pull request from the source branch's copy of this file, a fork's own.
     triggering:
       events:
         - push

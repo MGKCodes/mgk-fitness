@@ -581,6 +581,36 @@ export const ZERO_USAGE: RecordedUsage = {
  * in the cap. We estimate from tokens, and if even tokens are missing we
  * assume the surface spent its whole `max_tokens` budget. Both cases are
  * flagged `costEstimated`.
+ *
+ * ## Bring your own key
+ *
+ * **Under BYOK, `cost` is not what the call cost.** With a provider key held
+ * in OpenRouter (our own Anthropic key, for the Claude models), the provider
+ * bills that key directly and `cost` is only OpenRouter's fee on top — often
+ * 0. What the provider charged arrives separately, as
+ * `cost_details.upstream_inference_cost`, populated only on BYOK requests (0
+ * or null otherwise). Reading `cost` alone would record every Claude call as
+ * nearly free, and a per-user cap that sees free calls is a cap that never
+ * binds — on the dearest models this function has ever routed to.
+ *
+ * **But OpenRouter fills the upstream figure in on its own calls too.** Its
+ * docs say the field is for BYOK only; the model probe on 2026-10-09 found
+ * every non-BYOK call (`is_byok: false`, served on OpenRouter's credits)
+ * reporting `upstream_inference_cost` equal to `cost`. Adding the two would
+ * record every ordinary call at twice its price, today's Gemini calls
+ * included, and the per-user caps would bind at half their size.
+ *
+ * So the two are added only when `is_byok` is true: then `cost` is
+ * OpenRouter's fee and the upstream figure is the provider's charge, two real
+ * payments. Otherwise the recorded figure is the larger of the two, which is
+ * `cost` on an ordinary call and the provider's charge on a BYOK call whose
+ * flag went missing. Counted once either way, and never recorded as free.
+ *
+ * An upstream figure with no `cost` beside it is a real charge with
+ * OpenRouter's fee missing, so it is not a billed total: the row is flagged
+ * `costEstimated`, and the figure is the larger of the upstream cost and the
+ * token estimate above. Never less than the provider actually charged, and
+ * never less than a missing `cost` was charged at before BYOK existed.
  */
 export function usageFromResponse(
   usage: unknown,
@@ -600,13 +630,19 @@ export function usageFromResponse(
     ? reportedTotal
     : promptTokens + completionTokens;
 
+  // What the provider billed our own key, on a BYOK request. Zero when absent,
+  // null, negative or not a number — a junk figure cannot buy back budget.
+  const upstream = upstreamCost(u.cost_details);
+
   const reportedCost = u.cost;
   if (typeof reportedCost === "number" && Number.isFinite(reportedCost)) {
     return {
       promptTokens,
       completionTokens,
       totalTokens,
-      costCredits: Math.max(0, reportedCost),
+      costCredits: u.is_byok === true
+        ? Math.max(0, reportedCost) + upstream
+        : Math.max(0, reportedCost, upstream),
       costEstimated: false,
     };
   }
@@ -619,9 +655,18 @@ export function usageFromResponse(
     promptTokens,
     completionTokens,
     totalTokens,
-    costCredits: (billableTokens / 1_000_000) * rate,
+    costCredits: Math.max(upstream, (billableTokens / 1_000_000) * rate),
     costEstimated: true,
   };
+}
+
+/** `cost_details.upstream_inference_cost` when it is a real charge, else 0. */
+function upstreamCost(details: unknown): number {
+  if (typeof details !== "object" || details === null) return 0;
+  const value = (details as Record<string, unknown>).upstream_inference_cost;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : 0;
 }
 
 function count(value: unknown): number {
