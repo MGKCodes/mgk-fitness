@@ -574,6 +574,24 @@ void main() {
         expect(auth.lastReplacement, goodNewPassword);
       });
 
+      testWidgets('and is signed in by the code even when that password '
+          'cannot be written', (tester) async {
+        // The code proved the inbox and the session is there, so it is a
+        // sign-in: only the first password still works, and Forgot your
+        // password? is the way to a new one.
+        final auth = FakeAuthRepository()..replacementFails = true;
+        final authenticated = await pumpScreen(tester, auth);
+
+        await createAccountByEmail(
+          tester,
+          address: FakeAuthRepository.unconfirmedAddress,
+        );
+
+        expect(auth.isSignedIn, isTrue);
+        expect(authenticated(), 1);
+        expect(find.textContaining('did not go through'), findsNothing);
+      });
+
       testWidgets('a wrong code says so, and the code can be typed again', (
         tester,
       ) async {

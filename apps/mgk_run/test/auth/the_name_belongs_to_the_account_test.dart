@@ -209,10 +209,25 @@ void main() {
     expect(written(), <String, Object?>{'display_name': 'Alex'});
     expect(auth.currentName, 'Alex');
 
-    // Blank clears it rather than storing blank.
+    // Blank clears it, written as empty so the key stays and says so.
     await auth.updateName('  ');
-    expect(written(), <String, Object?>{'display_name': null});
+    expect(written(), <String, Object?>{'display_name': ''});
+    expect(auth.currentName, isNull);
   });
+
+  test(
+    'a name cleared on purpose is never refilled from the old one',
+    () async {
+      // The key is there and empty: "no name", chosen. The old `name` under it
+      // is neither read nor copied back over the choice.
+      user = userJson(metadata: {'display_name': '', 'name': 'Sam'});
+      final auth = await signedIn();
+
+      expect(auth.currentName, isNull);
+      await auth.keepNameBestEffort();
+      expect(sent, isEmpty);
+    },
+  );
 
   group('whether the account is new is read from the account', () {
     test('made at the sign-in that just happened', () async {

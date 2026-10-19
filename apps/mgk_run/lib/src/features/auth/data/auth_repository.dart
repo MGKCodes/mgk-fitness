@@ -185,8 +185,10 @@ class AuthRepository {
   /// belongs to the account"). Run kept it under `name` until then, which
   /// Supabase overwrites with Google's profile on every Google sign-in, so a
   /// runner who chose "Sam" and later used Google would have been called
-  /// whatever Google holds. [displayNameOf] reads `display_name` first, and the
-  /// old `name` only on an account Google has never touched.
+  /// whatever Google holds. [displayNameOf] takes `display_name` as the answer
+  /// whenever the key is there, empty meaning cleared, and reads the old
+  /// `name` only on an account that has never had one and that Google has
+  /// never touched.
   String? get currentName => displayNameOf(currentUser);
 
   /// The first name Google gave this account, to start the coach's question
@@ -232,9 +234,7 @@ class AuthRepository {
       final legacy = legacyNameToCopy(currentUser);
       if (legacy == null) return;
       await _auth
-          .updateUser(
-            UserAttributes(data: <String, dynamic>{kDisplayNameKey: legacy}),
-          )
+          .updateUser(UserAttributes(data: displayNameData(legacy)))
           .timeout(timeout);
     } catch (_) {
       // Deliberately silent; see above.
@@ -242,13 +242,13 @@ class AuthRepository {
   }
 
   /// The old `name` to copy to `display_name`, or null when there is nothing
-  /// to copy: no account, a `display_name` already, a Google identity (whose
-  /// `name` is Google's), or no old name at all.
+  /// to copy: no account, a `display_name` key already (**empty included**, a
+  /// name cleared on purpose, which must never be refilled from underneath),
+  /// a Google identity (whose `name` is Google's), or no old name at all.
   @visibleForTesting
   static String? legacyNameToCopy(User? user) {
-    final chosen = user?.userMetadata?[kDisplayNameKey];
-    if (chosen is String && chosen.trim().isNotEmpty) return null;
-    // With no display_name, this is exactly the old name, and only where
+    if (hasDisplayNameKey(user)) return null;
+    // With no display_name key, this is exactly the old name, and only where
     // Google has never written over it.
     return displayNameOf(user);
   }
@@ -284,19 +284,17 @@ class AuthRepository {
   /// `name` is left alone, because Google rewrites it and Run 1.0.1 and earlier
   /// still read it.
   ///
-  /// An empty or whitespace-only name **clears** it rather than storing blank,
-  /// so "I would rather you did not use a name" is a reachable answer. Every
-  /// reader already treats null as "say nothing" — [currentName] returns null
-  /// for blank, and `CoachBrief.write` omits the mention entirely.
+  /// An empty or whitespace-only name **clears** it, so "I would rather you
+  /// did not use a name" is a reachable answer. Every reader already treats
+  /// null as "say nothing" — [currentName] returns null for blank, and
+  /// `CoachBrief.write` omits the mention entirely.
+  ///
+  /// **Cleared is written as empty, not removed** ([displayNameData], shared
+  /// with Lift). The key staying is what says "no name, on purpose": with it
+  /// gone, [displayNameOf] would fall back to the old `name` underneath, and
+  /// [keepNameBestEffort] would copy that back, undoing the clear.
   Future<void> updateName(String? name) async {
-    final trimmed = name?.trim();
-    await _auth.updateUser(
-      UserAttributes(
-        data: <String, dynamic>{
-          kDisplayNameKey: trimmed == null || trimmed.isEmpty ? null : trimmed,
-        },
-      ),
-    );
+    await _auth.updateUser(UserAttributes(data: displayNameData(name)));
   }
 
   /// The metadata key recording that this app's coach has been met.

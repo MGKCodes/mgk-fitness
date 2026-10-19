@@ -96,6 +96,11 @@ class FakeAuthRepository extends AuthRepository {
   /// How many addresses were looked up.
   int lookups = 0;
 
+  /// Whether writing the password typed this time over an unconfirmed
+  /// address's first one fails once the code has signed it in. The account is
+  /// signed in all the same; only the first password still works.
+  bool replacementFails = false;
+
   @override
   EmailSignIn emailSignIn() => _FakeEmailSignIn(this);
 
@@ -331,7 +336,7 @@ class _FakeEmailSignIn extends EmailSignIn {
   }
 
   @override
-  Future<void> confirm({
+  Future<bool> confirm({
     required String email,
     required String code,
     String? replacePassword,
@@ -344,6 +349,9 @@ class _FakeEmailSignIn extends EmailSignIn {
       throw const EmailSignInException(EmailFailure.codeRefused);
     }
     _repo._arrive(email.trim(), made: true);
+    // Signed in either way, as the real one is: a replacement that does not
+    // land keeps the first password and is no failure of the code.
+    return replacePassword == null || !_repo.replacementFails;
   }
 
   @override
