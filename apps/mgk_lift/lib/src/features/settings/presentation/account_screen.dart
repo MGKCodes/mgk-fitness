@@ -7,6 +7,7 @@ import '../../legal/domain/account_deleter.dart';
 import '../../legal/presentation/delete_account_screen.dart';
 import '../../sync/presentation/backup_card.dart';
 import '../../sync/presentation/backup_scheduler.dart';
+import 'account_name_sheet.dart';
 
 /// The account, as a profile: who it is, where its backup stands, what it is
 /// paying for, and the two ways out of it.
@@ -19,13 +20,21 @@ import '../../sync/presentation/backup_scheduler.dart';
 /// some of them for good, are a screen further in rather than rows on the page
 /// opened most.
 ///
-/// Lift keeps no photograph of anybody (O1) and asks no name, so the circle
-/// holds the address's first letter and the address stands where Run's has a
-/// name.
-class AccountScreen extends StatelessWidget {
+/// **Headed by the account's name, when it has one** (Run's ADR-0047): the
+/// MGKFitness account's name, the one Run shows too, with the address under
+/// it and its initials in the circle. Lift keeps no photograph of anybody
+/// (O1). With no name the address stands in its place and the circle holds
+/// its first letter, as it did until 2.0.1.
+///
+/// **The name is given or changed here**, on the *Name* row, which nothing
+/// prompts towards: it is how an Apple account, which is never asked, or
+/// somebody who skipped the question, gives one. Lift's coach does not use
+/// it.
+class AccountScreen extends StatefulWidget {
   const AccountScreen({
     super.key,
     required this.email,
+    this.name,
     this.backup,
     this.planLabel,
     this.onSyncNow,
@@ -41,6 +50,11 @@ class AccountScreen extends StatelessWidget {
   });
 
   final String? email;
+
+  /// The account's name when the screen opened, or null for none. Changed
+  /// here, the screen shows the new one at once.
+  final String? name;
+
   final ValueListenable<BackupStatus>? backup;
 
   /// `Subscribed`, `Free`, or null when this build sells nothing.
@@ -65,7 +79,32 @@ class AccountScreen extends StatelessWidget {
   final DateTime? now;
 
   @override
+  State<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends State<AccountScreen> {
+  late String? _name = widget.name;
+
+  /// *Name*: the sheet, and afterwards whatever the account now says, which
+  /// is what Run will show too.
+  Future<void> _rename(AuthService auth) async {
+    final saved = await showAccountNameSheet(
+      context,
+      current: _name,
+      save: auth.updateName,
+    );
+    if (saved != true || !mounted) return;
+    setState(() => _name = auth.current?.name);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final email = widget.email;
+    final backup = widget.backup;
+    final planLabel = widget.planLabel;
+    final onSignOut = widget.onSignOut;
+    final onManageSubscription = widget.onManageSubscription;
+    final onRestorePurchases = widget.onRestorePurchases;
     final theme = Theme.of(context);
     final dim = theme.textTheme.bodySmall?.copyWith(
       color: AppColors.textTertiary,
@@ -73,13 +112,14 @@ class AccountScreen extends StatelessWidget {
     );
     Widget card(BackupStatus status) => BackupCard(
       status: status,
-      onSyncNow: onSyncNow,
-      onSignIn: onSignIn,
-      now: now,
+      onSyncNow: widget.onSyncNow,
+      onSignIn: widget.onSignIn,
+      now: widget.now,
     );
-    final service = auth;
-    final delete = deleter;
+    final service = widget.auth;
+    final delete = widget.deleter;
     final address = email?.trim() ?? '';
+    final name = _name;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Account')),
@@ -98,22 +138,46 @@ class AccountScreen extends StatelessWidget {
               child: Column(
                 children: <Widget>[
                   InitialsAvatar(
-                    initials: address.isEmpty
+                    initials: name != null
+                        ? initialsFor(name)
+                        : address.isEmpty
                         ? null
                         : address.characters.first.toUpperCase(),
                     size: 96,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    address.isEmpty ? 'Signed in' : address,
+                    name ?? (address.isEmpty ? 'Signed in' : address),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  // The address under a name, as confirmation: it is still
+                  // what somebody signed in as the wrong account notices.
+                  if (name != null && address.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(address, style: dim, textAlign: TextAlign.center),
+                  ],
                 ],
               ),
             ),
+
+            // Shown with nothing in it only where it can be changed: a build
+            // with no server has no account to name.
+            if (service != null || name != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.xl),
+              SettingsGroup(
+                label: 'Profile',
+                children: <Widget>[
+                  SettingsRow(
+                    title: 'Name',
+                    value: name ?? 'Not set',
+                    onTap: service == null ? null : () => _rename(service),
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.xl),
             const Padding(
@@ -148,7 +212,7 @@ class AccountScreen extends StatelessWidget {
                   if (onRestorePurchases != null)
                     SettingsRow(
                       title: 'Restore purchases',
-                      onTap: () => onRestorePurchases!(),
+                      onTap: () => onRestorePurchases(),
                     ),
                 ],
               ),
@@ -161,7 +225,7 @@ class AccountScreen extends StatelessWidget {
                 expand: true,
                 onPressed: () {
                   Navigator.of(context).pop();
-                  onSignOut!();
+                  onSignOut();
                 },
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -178,8 +242,8 @@ class AccountScreen extends StatelessWidget {
                     builder: (_) => DeleteAccountScreen(
                       auth: service,
                       deleter: delete,
-                      onAccountGone: onAccountGone,
-                      eraseThisPhone: eraseThisPhone,
+                      onAccountGone: widget.onAccountGone,
+                      eraseThisPhone: widget.eraseThisPhone,
                       onManageSubscription: onManageSubscription,
                     ),
                   ),
