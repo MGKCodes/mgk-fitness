@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:mgk_auth/mgk_auth.dart'
+    show AccountStatus, EmailSignInFlow, EmailStep, PasswordCheck;
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../../core/brand.dart';
@@ -29,10 +31,24 @@ import '../domain/account.dart';
 /// MGKFitness Account, the same one Run signs into. It used to read "Sign in", with nothing to say
 /// whose account it was, which app it was for, or that Run's would work.
 ///
-/// **One screen for signing in and for making an account.** Apple and Google
-/// do both without being told which; the email form toggles, as it always has,
-/// because its fields are identical and two screens would mean a "wrong
-/// screen" dead end for anybody who tapped the wrong entry point.
+/// **The address first, and the lookup decides what comes next** (Run's
+/// ADR-0047, from 2.0.1). *Continue with email* asks for the address alone;
+/// `mgk_auth`'s [EmailSignInFlow] looks it up and moves to *Welcome back*,
+/// *This address signs in with Apple* (or Google), or *Create your account*
+/// and a 6-digit code. Nobody has to know before they type whether they are
+/// signing in or signing up, which is what the two-mode form and its switch
+/// asked of them until 2.0.0. The steps are `mgk_ui`'s [EmailSignInSteps],
+/// drawn and worded as Run's are; this screen owns the flow and decides only
+/// what happens once somebody is signed in.
+///
+/// **A new account is asked, once, what to call its owner** ([AccountNameStep],
+/// in place of the form): after an account made with an address, or with
+/// Google, which starts it filled in with Google's first name. **Never after
+/// Apple**, by any route, the browser's on Android included: App Review
+/// rejected Run 1.0.0 for asking after Sign in with Apple, though the question
+/// could be skipped (guideline 4, 16 October 2026). Skipping writes nothing,
+/// and the name can be given later on the account screen. A returning account
+/// is not asked.
 ///
 /// **Opened on purpose, and only for two things:** to sign in and back up,
 /// from Settings, or to have an account for a subscription to belong to, from
@@ -41,14 +57,15 @@ import '../domain/account.dart';
 /// need an account to track your training", which on a screen somebody had
 /// just asked for read as a contradiction: it is gone.
 ///
-/// Pops with true once somebody is signed in.
+/// Pops with true once somebody is signed in, after the name step when there
+/// is one.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({
     super.key,
     required this.auth,
     this.pendingWorkouts = 0,
     this.emailFirst = false,
-    this.initialSignUp = false,
+    this.clock = DateTime.now,
   });
 
   final AuthService auth;
@@ -57,32 +74,29 @@ class SignInScreen extends StatefulWidget {
   /// because it is the true one and it is specific.
   final int pendingWorkouts;
 
-  /// Opens on the email form rather than the three choices.
+  /// Opens on the address rather than the three choices, with *Other ways to
+  /// sign in* under it.
   final bool emailFirst;
 
-  /// Whether the email form starts on making an account rather than signing
-  /// back in, as Run's sign-in decides it: by why the person came. Somebody
-  /// subscribing from the sales screen is more likely new than returning;
-  /// somebody who tapped Sign in in Settings is the reverse. Either way one
-  /// tap switches. Apple and Google do both, so the choices do not change.
-  final bool initialSignUp;
+  /// Now, for the wait before another code can be sent. A board draws a fixed
+  /// moment with it.
+  final DateTime Function() clock;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
-enum _Provider { apple, google }
-
 class _SignInScreenState extends State<SignInScreen> {
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _password = TextEditingController();
-  final GlobalKey<FormState> _form = GlobalKey<FormState>();
+  /// The email path: which step, the address, what is said, and the wait for
+  /// another code. Owned here; its workings and its words are shared with
+  /// Run's screen.
+  late final EmailSignInFlow _flow = EmailSignInFlow(
+    api: widget.auth.emailSignIn,
+    clock: widget.clock,
+  )..addListener(_redraw);
 
   late bool _withEmail = widget.emailFirst;
-  late bool _creating = widget.initialSignUp;
-  bool _busy = false;
-  _Provider? _asking;
-  bool _obscure = true;
+  SignInProvider? _asking;
   String? _error;
   String? _notice;
 
@@ -95,22 +109,48 @@ class _SignInScreenState extends State<SignInScreen> {
   /// screen, or the second would close whatever was under it.
   bool _done = false;
 
-  bool get _anyBusy => _busy || _asking != null;
+  /// One of this screen's own sign-in calls is running. **The stream waits
+  /// for it**: the stream reports the account before the call has returned,
+  /// and only the call knows whether the account is new (a code that checked
+  /// out made one; a password signed into one). Left to the stream, a new
+  /// account would be closed past its name step.
+  bool _calling = false;
+
+  /// The stream reported an account while [_calling] or [_asking]: the
+  /// sign-in happened, whatever the call goes on to say about what came after
+  /// it.
+  bool _arrivedDuringCall = false;
+
+  /// On the name step, with what it starts filled in with. Null on every
+  /// other step, and once it is set nothing else may close the screen but
+  /// the step's own answer.
+  _Naming? _naming;
+  bool _savingName = false;
+  String? _nameError;
+
+  /// The name has failed to save once and been said so. The next press goes
+  /// on, whatever the server says: a name is never worth being stuck for.
+  bool _nameFailed = false;
+
+  bool get _anyBusy => _flow.busy || _asking != null || _savingName;
 
   @override
   void initState() {
     super.initState();
-    _arrivals = widget.auth.changes.listen((account) {
-      if (account != null) _finish();
-    });
+    _arrivals = widget.auth.changes.listen(_arrived);
   }
 
   @override
   void dispose() {
     unawaited(_arrivals?.cancel());
-    _email.dispose();
-    _password.dispose();
+    _flow
+      ..removeListener(_redraw)
+      ..dispose();
     super.dispose();
+  }
+
+  void _redraw() {
+    if (mounted) setState(() {});
   }
 
   void _finish() {
@@ -119,8 +159,36 @@ class _SignInScreenState extends State<SignInScreen> {
     Navigator.of(context).pop(true);
   }
 
-  Future<void> _withProvider(_Provider provider) async {
-    if (_anyBusy) return;
+  /// An account on the stream. Acted on only when nothing of this screen's is
+  /// running, which in practice is Apple's browser sign-in on Android: its
+  /// call returned [ProviderOutcome.continuing] long before, so whether the
+  /// account is new is read from the account, and an Apple account is never
+  /// asked its name there either.
+  void _arrived(Account? account) {
+    if (account == null || _done || _naming != null) return;
+    if (_calling || _asking != null) {
+      _arrivedDuringCall = true;
+      return;
+    }
+    _signedIn(isNew: widget.auth.isNewAccount);
+  }
+
+  /// Somebody is signed in. A new account that cannot sign in with Apple is
+  /// asked its name; everybody else is done.
+  void _signedIn({required bool isNew}) {
+    if (_done || _naming != null || !mounted) return;
+    if (!isNew || widget.auth.signsInWithApple) return _finish();
+    setState(() {
+      _naming = _Naming(widget.auth.googleFirstName);
+      _error = null;
+      _notice = null;
+    });
+  }
+
+  Future<void> _withProvider(SignInProvider provider) async {
+    if (_anyBusy || _naming != null) return;
+    _flow.clearMessages();
+    _arrivedDuringCall = false;
     setState(() {
       _asking = provider;
       _error = null;
@@ -128,13 +196,16 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     try {
       final outcome = switch (provider) {
-        _Provider.apple => await widget.auth.signInWithApple(),
-        _Provider.google => await widget.auth.signInWithGoogle(),
+        SignInProvider.apple => await widget.auth.signInWithApple(),
+        SignInProvider.google => await widget.auth.signInWithGoogle(),
       };
       if (!mounted) return;
       switch (outcome) {
         case ProviderOutcome.signedIn:
-          _finish();
+          setState(() => _asking = null);
+          // Apple and Google make an account or sign into one without saying
+          // which, so the account says.
+          _signedIn(isNew: widget.auth.isNewAccount);
         case ProviderOutcome.cancelled:
           // Closing Apple's or Google's sheet is a choice, not a failure, and
           // a message would read as one.
@@ -154,69 +225,100 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  Future<void> _submit() async {
-    if (_anyBusy || !(_form.currentState?.validate() ?? false)) return;
+  /// One step of the email path that can sign somebody in, run so the stream
+  /// waits for it ([_calling]).
+  ///
+  /// [madeAccount] is what a success means: a code that checked out, or an
+  /// account the project signed in at once, made one; a password signed into
+  /// one. **A sign-in the stream saw still counts when the call then failed**:
+  /// a code can check out and the password typed for an unconfirmed address
+  /// fail to replace the first one (the same password twice is refused), and
+  /// the account is signed in all the same. Stopping there would leave a
+  /// signed-in lifter in front of a code that no longer works.
+  Future<void> _emailCall(
+    Future<bool> Function() call, {
+    required bool madeAccount,
+  }) async {
+    if (_calling || _anyBusy) return;
+    _clearOwnMessages();
+    _calling = true;
+    _arrivedDuringCall = false;
+    bool ok;
+    try {
+      ok = await call();
+    } finally {
+      _calling = false;
+    }
+    if (!mounted) return;
+    if (ok || (_arrivedDuringCall && widget.auth.current != null)) {
+      _signedIn(isNew: madeAccount);
+    }
+  }
+
+  /// What the screen said itself, about Apple or Google, goes as soon as the
+  /// email path is used: the flow says its own.
+  void _clearOwnMessages() {
+    if (_error == null && _notice == null) return;
     setState(() {
-      _busy = true;
       _error = null;
       _notice = null;
     });
-
-    try {
-      if (_creating) {
-        await widget.auth.signUp(email: _email.text, password: _password.text);
-      } else {
-        await widget.auth.signIn(email: _email.text, password: _password.text);
-      }
-      _finish();
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        // Confirmation is not a failure, it is the next step, and colouring it
-        // like an error would read as "your account was not created".
-        if (e.failure == AuthFailure.needsConfirmation) {
-          _notice = e.failure.message;
-        } else {
-          _error = e.failure.message;
-        }
-      });
-    }
   }
 
-  Future<void> _resetPassword() async {
-    final email = _email.text.trim();
-    if (email.isEmpty) {
-      setState(() => _error = 'Enter your email first.');
-      return;
-    }
-    await widget.auth.sendPasswordReset(email);
-    if (!mounted) return;
+  void _showEmail(bool show) {
+    _flow.clearMessages();
     setState(() {
+      _withEmail = show;
       _error = null;
-      // Says the same thing whether or not the address has an account. The
-      // alternative is a way for anybody to find out who is registered here.
-      _notice = 'If that address has an account, a reset link is on its way.';
+      _notice = null;
     });
   }
 
-  void _showEmail(bool show) => setState(() {
-    _withEmail = show;
-    _error = null;
-    _notice = null;
-  });
+  /// The name step's answer. Skipping, or leaving it blank, writes nothing.
+  Future<void> _named(String? name) async {
+    if (_savingName || _done) return;
+    if (name == null) return _finish();
+    setState(() {
+      _savingName = true;
+      _nameError = null;
+    });
+    try {
+      await widget.auth.updateName(name);
+      if (!mounted) return;
+      _finish();
+    } on AuthException {
+      if (!mounted) return;
+      // Said once, then out of the way: the account is made and signed in,
+      // and the name can be given on the account screen whenever.
+      if (_nameFailed) return _finish();
+      setState(() {
+        _savingName = false;
+        _nameFailed = true;
+        _nameError =
+            'Your name did not save. You can add it later in Settings.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final top = MediaQuery.paddingOf(context).top;
+    final naming = _naming != null;
 
     // Backing out mid-request would leave the lifter on Track not knowing
     // whether they are signed in — the request completes either way, and the
     // stream that reports it fires into a disposed screen. Two seconds of a
     // disabled arrow is the cheaper confusion.
+    //
+    // **On the name step, back is Skip.** The account is made and signed in
+    // by then, so leaving has to say so: closing with nothing would tell the
+    // sales screen there is no account, and the purchase would not go on.
     return PopScope(
-      canPop: !_anyBusy,
+      canPop: !_anyBusy && !naming,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && naming && !_savingName) _finish();
+      },
       child: Scaffold(
         backgroundColor: AppColors.bg,
         body: PhotoBackdrop.hero(
@@ -274,30 +376,15 @@ class _SignInScreenState extends State<SignInScreen> {
                             duration: AppMotion.base,
                             curve: AppMotion.standard,
                             alignment: Alignment.bottomCenter,
-                            child: _withEmail
-                                ? _emailForm(theme)
+                            child: naming
+                                ? _nameStep()
+                                : _withEmail
+                                ? _emailSteps()
                                 : _choices(theme),
                           ),
-                          if (_error != null) ...<Widget>[
-                            const SizedBox(height: AppSpacing.md),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.danger,
-                              ),
-                            ),
-                          ],
-                          if (_notice != null) ...<Widget>[
-                            const SizedBox(height: AppSpacing.md),
-                            Text(
-                              _notice!,
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
+                          // The email path and the name step say their own;
+                          // these are Apple's and Google's, on the choices.
+                          if (!naming && !_withEmail) ..._messages(theme),
                           // Required wherever an account can be created, and
                           // this screen is the only place it can be. Shown on
                           // every step: somebody signing in on a new phone is
@@ -319,6 +406,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   tooltip: 'Back',
                   onPressed: _anyBusy
                       ? null
+                      : naming
+                      ? _finish
                       : () => Navigator.of(context).maybePop(),
                 ),
               ),
@@ -333,35 +422,74 @@ class _SignInScreenState extends State<SignInScreen> {
   ///
   /// On the choices it says both, because Apple and Google do both without
   /// being told which, and "Sign in" alone reads as a door for people who
-  /// already have an account.
+  /// already have an account. On the email path it is the step's own line,
+  /// which Run's screen uses too; the name step is the last of making the
+  /// account.
   String get _line {
+    if (_naming != null) return EmailStage.create.headline;
     if (!_withEmail) return 'Sign in or create your account';
-    return _creating ? 'Create your account' : 'Welcome back';
+    return _stage.headline;
   }
+
+  EmailStage get _stage => switch (_flow.step) {
+    EmailStep.address => EmailStage.address,
+    EmailStep.password => EmailStage.password,
+    EmailStep.provider => EmailStage.provider,
+    EmailStep.create => EmailStage.create,
+    EmailStep.code => EmailStage.code,
+  };
 
   /// The one fact worth adding, or null when there is none: sessions that
   /// exist in a single place. That is state the person may not have, not an
-  /// argument for the account. Signing in with an email gets nothing more:
-  /// somebody with an account knows what it does.
+  /// argument for the account. *Welcome back* and *This address signs in
+  /// with Apple* get nothing more, because somebody with an account knows
+  /// what it does; nor does the name step, which comes after the account
+  /// that backs them up.
   String? _pending() {
     final n = widget.pendingWorkouts;
-    if (n == 0 || (_withEmail && !_creating)) return null;
+    if (n == 0 || _naming != null) return null;
+    if (_withEmail &&
+        (_flow.step == EmailStep.password ||
+            _flow.step == EmailStep.provider)) {
+      return null;
+    }
     return '$n session${n == 1 ? '' : 's'} ${n == 1 ? 'is' : 'are'} on this '
         'phone only.';
   }
+
+  List<Widget> _messages(ThemeData theme) => <Widget>[
+    if (_error != null) ...<Widget>[
+      const SizedBox(height: AppSpacing.md),
+      Text(
+        _error!,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodySmall?.copyWith(color: AppColors.danger),
+      ),
+    ],
+    if (_notice != null) ...<Widget>[
+      const SizedBox(height: AppSpacing.md),
+      Text(
+        _notice!,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+    ],
+  ];
 
   Widget _choices(ThemeData theme) => Column(
     key: const ValueKey<String>('choices'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
       ProviderSignInButton.apple(
-        busy: _asking == _Provider.apple,
-        onPressed: _anyBusy ? null : () => _withProvider(_Provider.apple),
+        busy: _asking == SignInProvider.apple,
+        onPressed: _anyBusy ? null : () => _withProvider(SignInProvider.apple),
       ),
       const SizedBox(height: AppSpacing.md),
       ProviderSignInButton.google(
-        busy: _asking == _Provider.google,
-        onPressed: _anyBusy ? null : () => _withProvider(_Provider.google),
+        busy: _asking == SignInProvider.google,
+        onPressed: _anyBusy ? null : () => _withProvider(SignInProvider.google),
       ),
       const SizedBox(height: AppSpacing.md),
       AppOutlinedButton(
@@ -384,100 +512,89 @@ class _SignInScreenState extends State<SignInScreen> {
     ],
   );
 
-  Widget _emailForm(ThemeData theme) => Form(
-    key: _form,
-    child: Column(
-      key: const ValueKey<String>('email'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        TextFormField(
-          controller: _email,
-          enabled: !_busy,
-          keyboardType: TextInputType.emailAddress,
-          autocorrect: false,
-          autofillHints: const <String>[AutofillHints.email],
-          decoration: const InputDecoration(labelText: 'Email'),
-          validator: (v) {
-            final value = v?.trim() ?? '';
-            if (value.isEmpty) return 'Enter your email.';
-            // Deliberately loose. A strict pattern rejects valid addresses,
-            // and the server is the real arbiter.
-            if (!value.contains('@') || !value.contains('.')) {
-              return 'That does not look like an email address.';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: AppSpacing.md),
-        TextFormField(
-          controller: _password,
-          enabled: !_busy,
-          obscureText: _obscure,
-          autofillHints: <String>[
-            _creating ? AutofillHints.newPassword : AutofillHints.password,
-          ],
-          decoration: InputDecoration(
-            labelText: 'Password',
-            suffixIcon: AppIconButton(
-              onPressed: () => setState(() => _obscure = !_obscure),
-              icon: _obscure
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              tooltip: _obscure ? 'Show password' : 'Hide password',
-            ),
-          ),
-          onFieldSubmitted: (_) => _submit(),
-          validator: (v) {
-            final value = v ?? '';
-            if (value.isEmpty) return 'Enter your password.';
-            // Only enforced when creating. Refusing a short password at
-            // sign-in would lock out anybody who made one before the rule
-            // existed.
-            if (_creating && value.length < 8) {
-              return 'Use at least 8 characters.';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        // Busy in place: a disabled button on a slow connection reads as "you
-        // did something wrong" rather than "waiting".
-        PrimaryButton(
-          label: _creating ? 'Sign up' : 'Sign in',
-          busy: _busy,
-          onPressed: _submit,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        // Signing in only: somebody making an account has no password to
-        // forget.
-        if (!_creating)
-          AppTextButton(
-            label: 'Forgot your password?',
-            onPressed: _busy ? null : _resetPassword,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-            ),
-          ),
-        AppTextButton(
-          label: _creating
-              ? 'Have an account? Sign in'
-              : 'New here? Create an account',
-          onPressed: _busy
-              ? null
-              : () => setState(() {
-                  _creating = !_creating;
-                  _error = null;
-                  _notice = null;
-                }),
-        ),
-        AppTextButton(
-          label: 'Other ways to sign in',
-          onPressed: _busy ? null : () => _showEmail(false),
-          style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-        ),
-      ],
+  /// The provider an address signs in with, on *This address signs in
+  /// with…*. Apple until the lookup has said otherwise.
+  SignInProvider get _addressProvider => _flow.status == AccountStatus.google
+      ? SignInProvider.google
+      : SignInProvider.apple;
+
+  Widget _emailSteps() => KeyedSubtree(
+    key: const ValueKey<String>('email'),
+    child: EmailSignInSteps(
+      stage: _stage,
+      email: _flow.email,
+      provider: _addressProvider,
+      busy: _flow.busy,
+      providerBusy: _asking != null,
+      // Apple's or Google's own failure, from *This address signs in with…*,
+      // in the place the flow says its own.
+      error: _flow.error ?? _error,
+      notice: _flow.notice ?? _notice,
+      resendAt: _flow.resendAt,
+      clock: widget.clock,
+      suggest: _flow.suggestionFor,
+      requirements: _requirements,
+      onAddress: (typed) {
+        _clearOwnMessages();
+        unawaited(_flow.submitAddress(typed));
+      },
+      onPassword: (password) => unawaited(
+        _emailCall(() => _flow.signIn(password), madeAccount: false),
+      ),
+      onForgotPassword: () {
+        _clearOwnMessages();
+        unawaited(_flow.forgotPassword());
+      },
+      onProvider: () => unawaited(_withProvider(_addressProvider)),
+      onSetPassword: () {
+        _clearOwnMessages();
+        unawaited(_flow.setPasswordInstead());
+      },
+      onCreate: (password) => unawaited(
+        _emailCall(() => _flow.createAccount(password), madeAccount: true),
+      ),
+      onCode: (code) =>
+          unawaited(_emailCall(() => _flow.confirm(code), madeAccount: true)),
+      onResend: () {
+        _clearOwnMessages();
+        unawaited(_flow.resend());
+      },
+      onChangeAddress: () {
+        _clearOwnMessages();
+        _flow.changeAddress();
+      },
+      onOtherWays: () => _showEmail(false),
     ),
   );
+
+  /// The password rule, part by part, in the words Run's screen uses.
+  static List<PasswordRequirement> _requirements(String password) {
+    final check = PasswordCheck.of(password);
+    return <PasswordRequirement>[
+      PasswordRequirement('8 characters', met: check.longEnough),
+      PasswordRequirement('a number', met: check.hasNumber),
+      PasswordRequirement('a symbol', met: check.hasSymbol),
+    ];
+  }
+
+  Widget _nameStep() => KeyedSubtree(
+    key: const ValueKey<String>('name'),
+    child: AccountNameStep(
+      initial: _naming?.prefill,
+      busy: _savingName,
+      error: _nameError,
+      onDone: (name) => unawaited(_named(name)),
+    ),
+  );
+}
+
+/// The name step, and what it starts filled in with: Google's first name for
+/// an account made with Google, nothing for one made with an address.
+@immutable
+class _Naming {
+  const _Naming(this.prefill);
+
+  final String? prefill;
 }
 
 /// The terms and privacy links under the sign-in form.

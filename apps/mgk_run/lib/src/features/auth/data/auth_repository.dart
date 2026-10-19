@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:mgk_auth/mgk_auth.dart';
+import 'package:mgk_auth/mgk_auth.dart' as account show accountIsNew;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'provider_ids.dart';
@@ -34,7 +36,12 @@ enum AuthChange {
 /// [AuthRepository] does not require Supabase to be initialised — which keeps
 /// widgets that hold one testable without a live backend.
 class AuthRepository {
-  const AuthRepository({this.timeout = const Duration(seconds: 20)});
+  const AuthRepository({
+    this.timeout = const Duration(seconds: 20),
+    GoTrueClient Function()? auth,
+    FunctionsClient Function()? functions,
+  }) : _authOverride = auth,
+       _functionsOverride = functions;
 
   /// How long one call on the auth path may take before it counts as failed.
   ///
@@ -55,10 +62,18 @@ class AuthRepository {
   /// reported instead of waited on.
   final Duration timeout;
 
-  SupabaseClient get _client => Supabase.instance.client;
+  /// The auth and functions clients to use in place of the app's, for a test
+  /// that answers them from a fake server. Null in the app, which reads
+  /// `Supabase.instance` on every call so that constructing this needs nothing
+  /// initialised.
+  final GoTrueClient Function()? _authOverride;
+  final FunctionsClient Function()? _functionsOverride;
 
-  Session? get currentSession => _client.auth.currentSession;
-  User? get currentUser => _client.auth.currentUser;
+  SupabaseClient get _client => Supabase.instance.client;
+  GoTrueClient get _auth => _authOverride?.call() ?? _client.auth;
+
+  Session? get currentSession => _auth.currentSession;
+  User? get currentUser => _auth.currentUser;
 
   /// Whether a user is currently signed in. The routing seam the app depends
   /// on, so widgets decide auth state without importing Supabase's [Session].
@@ -66,7 +81,7 @@ class AuthRepository {
 
   /// The signed-in user's email, or null when signed out. Exposed so widgets
   /// display identity without importing Supabase's [User] type.
-  String? get currentEmail => _client.auth.currentUser?.email;
+  String? get currentEmail => currentUser?.email;
 
   /// Who is signed in, as an opaque id, or null when nobody is.
   ///
@@ -86,7 +101,7 @@ class AuthRepository {
   /// it as a default argument). A `distinct()` here would also be wrong for two
   /// subscribers, which is exactly what the app has — [AuthGate] routes on it
   /// and `HomeShell` restores on it, and they must not share a filter.
-  Stream<AuthChange> authChanges() => _client.auth.onAuthStateChange
+  Stream<AuthChange> authChanges() => _auth.onAuthStateChange
       .map(_classify)
       .where((AuthChange? change) => change != null)
       .cast<AuthChange>();
@@ -131,71 +146,111 @@ class AuthRepository {
   ProviderSignIn _providers() =>
       ProviderSignIn(ids: runProviderIds, timeout: timeout);
 
+  /// The email path: the address first, then the step it leads to (ADR-0047).
+  ///
+  /// Made per call, as [_providers] is, and handed to the screen's
+  /// `EmailSignInFlow`, which decides the steps. Kept behind this seam so a
+  /// test and the preview can answer it without a server.
+  ///
+  /// **It replaces `signUp`, and the reset that never said whether it went.**
+  /// The lookup tells the screen whether an address has an account before a
+  /// password is typed, so a wrong password is called one and *Forgot your
+  /// password?* says where the link went. The two-mode form, which had to keep
+  /// that secret, kept it only on screen: the server's sign-up answer already
+  /// gave it away to anybody holding the public key.
+  EmailSignIn emailSignIn() => EmailSignIn(
+    auth: _authOverride,
+    functions: _functionsOverride,
+    timeout: timeout,
+  );
+
+  /// Signs in with an address and a password, straight past the lookup.
+  ///
+  /// **Only the debug quick sign-in uses this**, for seeded accounts it already
+  /// knows have a password. The screen's email path goes through
+  /// [emailSignIn], which looks the address up first.
   Future<void> signIn({required String email, required String password}) async {
-    await _client.auth
+    await _auth
         .signInWithPassword(email: email, password: password)
         .timeout(timeout);
     await ensureProfileBestEffort();
-  }
-
-  /// Sends a reset email, and says nothing about whether it went.
-  ///
-  /// Reporting failure for an unknown address would be a way to find out who
-  /// has an account, so the screen says "if that address has an account" either
-  /// way. The link lands on mgkfitness.mgkcodes.com/reset-password: the email
-  /// template names the page, so no redirect is passed from here.
-  Future<void> sendPasswordReset(String email) async {
-    try {
-      await _client.auth.resetPasswordForEmail(email.trim()).timeout(timeout);
-    } on Object {
-      // Deliberately swallowed; see above.
-    }
-  }
-
-  /// Returns true if a session was created (email confirmation disabled), or
-  /// false if the user must confirm their email before signing in.
-  ///
-  /// **The answer is about the session, and nothing else.** It used to be about
-  /// the session *and* the `core.profiles` row, because the profile write was
-  /// awaited into the result — see [ensureProfileBestEffort] for why that made
-  /// a created account report itself as a failure.
-  ///
-  /// [name] is what the coach calls them. It goes into **auth user metadata**
-  /// rather than a column: `public.profiles` is the shared MGKCodes identity
-  /// table that Liftio reads too, so a name column there is a migration against
-  /// a schema this app does not own. Metadata travels with the account, needs no
-  /// migration, and arrives with the session on every device.
-  Future<bool> signUp({
-    required String email,
-    required String password,
-    String? name,
-  }) async {
-    final trimmed = name?.trim();
-    final response = await _client.auth
-        .signUp(
-          email: email,
-          password: password,
-          data: trimmed == null || trimmed.isEmpty
-              ? null
-              : <String, dynamic>{'name': trimmed},
-        )
-        .timeout(timeout);
-    if (response.session != null) {
-      await ensureProfileBestEffort();
-      return true;
-    }
-    return false;
   }
 
   /// What the coach calls this runner, or null where they never said.
   ///
   /// Read from the session rather than a table, so it is available offline and
   /// costs no round trip.
-  String? get currentName {
-    final value = _client.auth.currentUser?.userMetadata?['name'];
-    if (value is! String) return null;
-    final trimmed = value.trim();
-    return trimmed.isEmpty ? null : trimmed;
+  ///
+  /// **The account's name, `display_name`, since 1.0.2** (ADR-0047, "The name
+  /// belongs to the account"). Run kept it under `name` until then, which
+  /// Supabase overwrites with Google's profile on every Google sign-in, so a
+  /// runner who chose "Sam" and later used Google would have been called
+  /// whatever Google holds. [displayNameOf] takes `display_name` as the answer
+  /// whenever the key is there, empty meaning cleared, and reads the old
+  /// `name` only on an account that has never had one and that Google has
+  /// never touched.
+  String? get currentName => displayNameOf(currentUser);
+
+  /// The first name Google gave this account, to start the coach's question
+  /// filled in, or null for anything but a Google account.
+  ///
+  /// **Offered, never kept on its own.** The intro puts it in the field and the
+  /// runner sends it, changes it or clears it; nothing writes it to the account
+  /// unless they send it. Nobody has to use the name their provider holds.
+  String? get googleFirstName => googleFirstNameOf(currentUser);
+
+  /// Whether the account in hand was made by the sign-in that just happened.
+  ///
+  /// **Read from the account, for every way in** (ADR-0047, point 7), where it
+  /// used to be guessed from which half of the form was showing. Apple and
+  /// Google make an account or sign into one without saying which, and Apple's
+  /// browser flow on Android finishes after its call has returned, so the
+  /// screen could only ever say what the runner meant to do.
+  ///
+  /// It stays true until the account next signs in, which can be days: a
+  /// session restored at launch is not a sign-in. `AuthGate` asks it only about
+  /// a sign-in it watched happen, for that reason.
+  bool get accountIsNew => account.accountIsNew(currentUser);
+
+  /// Copies the name Run kept under `name` to `display_name`, once, where the
+  /// account has no `display_name` yet. Fails quietly.
+  ///
+  /// **Before Google can take it.** [currentName] already reads the old key on
+  /// an account with no Google identity, so nothing on screen changes. What
+  /// changes is what happens next: the first time such an account signs in
+  /// with Google, Supabase writes Google's profile over `name`, and from then
+  /// on [displayNameOf] rightly ignores it. Copied now, the runner's own choice
+  /// survives that. The old key is left where it is: Run 1.0.1 and earlier
+  /// still read it, and they share the account.
+  ///
+  /// Once only because of what it checks: after one copy the account has a
+  /// `display_name`, and this does nothing again. Best effort for the reason
+  /// [ensureProfileBestEffort] gives: the next launch tries again.
+  Future<void> keepNameBestEffort() async {
+    try {
+      // Inside the catch too: reading the session needs Supabase, and a
+      // copy that cannot even look must still not throw at a caller that
+      // fired it and moved on.
+      final legacy = legacyNameToCopy(currentUser);
+      if (legacy == null) return;
+      await _auth
+          .updateUser(UserAttributes(data: displayNameData(legacy)))
+          .timeout(timeout);
+    } catch (_) {
+      // Deliberately silent; see above.
+    }
+  }
+
+  /// The old `name` to copy to `display_name`, or null when there is nothing
+  /// to copy: no account, a `display_name` key already (**empty included**, a
+  /// name cleared on purpose, which must never be refilled from underneath),
+  /// a Google identity (whose `name` is Google's), or no old name at all.
+  @visibleForTesting
+  static String? legacyNameToCopy(User? user) {
+    if (hasDisplayNameKey(user)) return null;
+    // With no display_name key, this is exactly the old name, and only where
+    // Google has never written over it.
+    return displayNameOf(user);
   }
 
   /// Whether this account signs in with Apple.
@@ -208,17 +263,10 @@ class AuthRepository {
   /// `ProviderSignIn`), so an Apple account simply goes without a name unless
   /// the runner gives one in Settings, where nothing prompts for it.
   ///
-  /// Either record answers: `identities` is what the deletion's revocation
-  /// reads, and `providers` is there on a session restored without them.
-  bool get signedInWithApple {
-    final user = _client.auth.currentUser;
-    if (user == null) return false;
-    if (user.identities?.any((i) => i.provider == 'apple') ?? false) {
-      return true;
-    }
-    final providers = user.appMetadata['providers'];
-    return providers is List && providers.contains('apple');
-  }
+  /// Either record answers, as [hasIdentity] says: `identities` is what the
+  /// deletion's revocation reads, and `providers` is there on a session
+  /// restored without them.
+  bool get signedInWithApple => hasIdentity(currentUser, 'apple');
 
   /// Changes what the coach calls this runner.
   ///
@@ -230,23 +278,23 @@ class AuthRepository {
   /// intake" pointed at a screen that edits `IntakeSlots`, which has no name in
   /// it. This is that path, finally built.
   ///
-  /// Writes to auth metadata, the same place [signUp] puts it, so it travels
-  /// with the account and needs no migration against the `public.profiles`
-  /// table Liftio shares.
+  /// Writes to auth metadata, so it travels with the account and needs no
+  /// migration against the `public.profiles` table Liftio shares. Under
+  /// `display_name` since 1.0.2, the account's name in both apps; the old
+  /// `name` is left alone, because Google rewrites it and Run 1.0.1 and earlier
+  /// still read it.
   ///
-  /// An empty or whitespace-only name **clears** it rather than storing blank,
-  /// so "I would rather you did not use a name" is a reachable answer. Every
-  /// reader already treats null as "say nothing" — [currentName] returns null
-  /// for blank, and `CoachBrief.write` omits the mention entirely.
+  /// An empty or whitespace-only name **clears** it, so "I would rather you
+  /// did not use a name" is a reachable answer. Every reader already treats
+  /// null as "say nothing" — [currentName] returns null for blank, and
+  /// `CoachBrief.write` omits the mention entirely.
+  ///
+  /// **Cleared is written as empty, not removed** ([displayNameData], shared
+  /// with Lift). The key staying is what says "no name, on purpose": with it
+  /// gone, [displayNameOf] would fall back to the old `name` underneath, and
+  /// [keepNameBestEffort] would copy that back, undoing the clear.
   Future<void> updateName(String? name) async {
-    final trimmed = name?.trim();
-    await _client.auth.updateUser(
-      UserAttributes(
-        data: <String, dynamic>{
-          'name': trimmed == null || trimmed.isEmpty ? null : trimmed,
-        },
-      ),
-    );
+    await _auth.updateUser(UserAttributes(data: displayNameData(name)));
   }
 
   /// The metadata key recording that this app's coach has been met.
@@ -267,18 +315,17 @@ class AuthRepository {
   /// and the OS can revoke them behind the app's back, so the only honest
   /// source is the OS, asked every time. This records one fact: the conversation
   /// happened.
-  bool get hasMetCoach =>
-      _client.auth.currentUser?.userMetadata?[_metCoachKey] == true;
+  bool get hasMetCoach => currentUser?.userMetadata?[_metCoachKey] == true;
 
   /// Records that the conversation happened.
   Future<void> markCoachMet() async {
-    await _client.auth.updateUser(
+    await _auth.updateUser(
       UserAttributes(data: <String, dynamic>{_metCoachKey: true}),
     );
   }
 
   Future<void> signOut() async {
-    await _client.auth.signOut();
+    await _auth.signOut();
     // After, not before: leaving is what matters, and a Google account left
     // remembered only means the next "Continue with Google" skips the chooser.
     await _providers().forget();
@@ -303,7 +350,7 @@ class AuthRepository {
   /// Needs the session, so it runs before signing out. Bounded like every
   /// other call on the auth path.
   Future<void> clearRunMetadata() async {
-    await _client.auth
+    await _auth
         .updateUser(
           UserAttributes(
             data: <String, dynamic>{for (final key in _runKeys) key: null},
@@ -315,7 +362,7 @@ class AuthRepository {
   /// Ensures a row in the shared `public.profiles` table for the signed-in
   /// user — the shared identity across the MGKCodes fitness apps.
   Future<void> ensureProfile() async {
-    final user = _client.auth.currentUser;
+    final user = currentUser;
     if (user == null) return;
     await _client
         .schema('core')
@@ -325,13 +372,15 @@ class AuthRepository {
   }
 
   /// [ensureProfile] with its failure absorbed — the only shape the sign-in and
-  /// sign-up paths may use it in.
+  /// sign-up paths may use it in. The email path's too: the sign-in screen
+  /// calls it once the flow has a session.
   ///
   /// **An account that exists is not a failure, whatever happened next.**
   /// [ensureProfile] is a second write, to a different schema, after gotrue has
   /// already created the account and issued the session; a connection that dies
   /// between the two is enough to fail it on its own. Awaited into the result,
-  /// that threw straight past [signUp]'s `return true` and out to the screen,
+  /// that threw straight past the old `signUp`'s `return true` and out to the
+  /// screen,
   /// which told the runner their sign-up had gone wrong. It had not — and
   /// because `onAuthenticated` never fired, the gate they signed up from never
   /// dismissed either, so the obvious response was to fill the form in again

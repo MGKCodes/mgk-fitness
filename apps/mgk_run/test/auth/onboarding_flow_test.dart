@@ -213,7 +213,7 @@ void main() {
 
     expect(await intro.readName(), 'Sam');
     expect(
-      auth.lastName,
+      auth.currentName,
       isNull,
       reason: 'nothing signed up, so nothing was written to a profile',
     );
@@ -242,12 +242,13 @@ void main() {
 
     await tester.tap(find.text('I already have an account'));
     await tester.pumpAndSettle();
-    // The form is the second step since build 27.
+    // The email path is the second step since build 27, and asks for the
+    // address alone since 1.0.2 (ADR-0047).
     await tester.tap(find.text('Continue with email'));
     await tester.pumpAndSettle();
 
-    expect(find.text('First name (optional)'), findsNothing);
-    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.textContaining('name'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
     // And no pitch: a returning runner is not deciding.
     expect(find.text('Every run tracked, and every run kept'), findsNothing);
   });

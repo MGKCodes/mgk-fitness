@@ -85,7 +85,12 @@ def webp(path: str) -> tuple[bytes, int, int]:
 def stale(captions: dict, state: dict) -> int:
     head = git('rev-parse', 'HEAD')
     prefix = git('rev-parse', '--show-prefix')  # e.g. apps/mgk_run/
-    watched = (prefix + 'lib/', 'packages/mgk_ui/lib/', prefix + 'test/plates/')
+    watched = (
+        prefix + 'lib/',
+        'packages/mgk_ui/lib/',
+        'packages/mgk_auth/lib/',
+        prefix + 'test/plates/',
+    )
     records = state.get('plates', {})
 
     changed_since: dict[str, set[str]] = {}
@@ -103,7 +108,13 @@ def stale(captions: dict, state: dict) -> int:
             names = git('diff', '--name-only', f'{sha}..{head}').splitlines()
             changed_since[sha] = {n for n in names if n.startswith(watched)}
         changed = changed_since[sha]
-        own = {prefix + rec['source']} | {prefix + f for f in plate.get('files', [])}
+        # A caption's `files` are the app's own, relative to it, except the
+        # shared packages, which are named from the repository's root: putting
+        # the app's path in front of `packages/...` meant they never matched.
+        own = {prefix + rec['source']} | {
+            f if f.startswith('packages/') else prefix + f
+            for f in plate.get('files', [])
+        }
         hits = sorted(changed & own)
         if hits:
             direct.append((code, plate['name'], hits))

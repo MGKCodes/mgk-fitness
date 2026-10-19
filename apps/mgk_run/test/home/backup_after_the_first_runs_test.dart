@@ -8,6 +8,8 @@ import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../auth/email_path.dart';
+
 /// **The prompt the account removal left owing.**
 ///
 /// Taking the sign-in wall down meant a runner could record for months with
@@ -135,23 +137,8 @@ void main() {
       await tester.tap(find.text('Back them up'));
       await tester.pumpAndSettle();
 
-      // The form is the second step since build 27.
-      await tester.tap(find.text('Continue with email'));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
-        'sam@example.com',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
-        'hunter2222',
-      );
-      await tester.tap(find.widgetWithText(PrimaryButton, 'Sign up'));
-      // Fixed pumps: a submitting `PrimaryButton` draws an indeterminate
-      // spinner, and settle never returns on a screen showing one.
+      await createAccountByEmail(tester);
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
 
       expect(await consent.read(), BackupConsent.granted);
     });

@@ -51,6 +51,7 @@ class SettingsScreen extends StatefulWidget {
     this.backup,
     this.isSignedIn = false,
     this.email,
+    this.name,
     this.onSignOut,
     this.onSyncNow,
     this.onSignIn,
@@ -109,6 +110,11 @@ class SettingsScreen extends StatefulWidget {
 
   /// Shown in the account row. Null when signed out.
   final String? email;
+
+  /// The account's name, the suite's one (Run's ADR-0047), or null for none.
+  /// The card leads with it where there is one, and the address goes under
+  /// it.
+  final String? name;
 
   final VoidCallback? onSignOut;
   final VoidCallback? onSyncNow;
@@ -170,6 +176,10 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late UnitPreferences _prefs = widget.initial;
 
+  /// The name on the card. Read again from the account when the account
+  /// screen, where it is changed, closes.
+  late String? _name = widget.name;
+
   /// Whether rest alerts are allowed. Null until the first answer.
   bool? _alertsAllowed;
 
@@ -225,9 +235,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = false);
   }
 
-  /// Who this is, as Run's Settings shows it: a face, the address, and what
-  /// they pay for. Lift keeps no photograph of anybody (O1) and asks no name,
-  /// so the circle holds the address's first letter.
+  /// Who this is, as Run's Settings shows it: a face, a name, and what they
+  /// pay for. Lift keeps no photograph of anybody (O1), so the circle holds
+  /// the name's initials, or the address's first letter for an account with
+  /// no name, which then stands where the name would.
   ///
   /// Signed out, the card is the way in, and its note is the one fact worth
   /// stating unprompted: what exists on this phone only. It states that and
@@ -242,12 +253,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     final email = widget.email;
+    final name = _name;
     return ProfileCard(
-      avatar: InitialsAvatar(initials: _initial(email), size: 64),
-      // The address, when there is one. Naming the account is also how
-      // somebody signed in as the wrong address finds out before they wonder
-      // where their training went.
-      title: email ?? 'Signed in',
+      avatar: InitialsAvatar(
+        initials: name != null ? initialsFor(name) : _initial(email),
+        size: 64,
+      ),
+      // The name, or the address when there is none. The address stays under
+      // a name, because naming the account is also how somebody signed in as
+      // the wrong address finds out before they wonder where their training
+      // went.
+      title: name ?? email ?? 'Signed in',
+      email: name == null ? null : email,
       plan: widget.planLabel,
       onTap: _openAccount,
     );
@@ -258,26 +275,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return e.isEmpty ? null : e.characters.first.toUpperCase();
   }
 
-  /// Backup, sign out, restore and delete: one tap behind the card (19).
-  Future<void> _openAccount() => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => AccountScreen(
-        email: widget.email,
-        backup: widget.backup,
-        planLabel: widget.planLabel,
-        onSyncNow: widget.onSyncNow,
-        onSignIn: widget.onSignIn,
-        onRestorePurchases: widget.onRestorePurchases,
-        onSignOut: widget.onSignOut,
-        auth: widget.auth,
-        deleter: widget.deleter,
-        onAccountGone: widget.onAccountGone,
-        eraseThisPhone: widget.eraseThisPhone,
-        onManageSubscription: widget.onManageSubscription,
-        now: widget.now,
+  /// Backup, the name, sign out, restore and delete: one tap behind the card
+  /// (19). The card takes the name back from the account when it closes, in
+  /// case it was changed there.
+  Future<void> _openAccount() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AccountScreen(
+          email: widget.email,
+          name: _name,
+          backup: widget.backup,
+          planLabel: widget.planLabel,
+          onSyncNow: widget.onSyncNow,
+          onSignIn: widget.onSignIn,
+          onRestorePurchases: widget.onRestorePurchases,
+          onSignOut: widget.onSignOut,
+          auth: widget.auth,
+          deleter: widget.deleter,
+          onAccountGone: widget.onAccountGone,
+          eraseThisPhone: widget.eraseThisPhone,
+          onManageSubscription: widget.onManageSubscription,
+          now: widget.now,
+        ),
       ),
-    ),
-  );
+    );
+    final account = widget.auth?.current;
+    if (!mounted || account == null) return;
+    setState(() => _name = account.name);
+  }
 
   /// The support page, which both store listings point at.
   Future<void> _openSupport() async {

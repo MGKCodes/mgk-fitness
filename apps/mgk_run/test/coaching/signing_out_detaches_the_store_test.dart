@@ -11,6 +11,8 @@ import 'package:mgk_run/src/features/coaching/presentation/purchase_screen.dart'
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import '../auth/email_path.dart';
+
 /// **Signing out never logged out of RevenueCat.**
 ///
 /// Nothing called `Purchases.logOut`, `RevenueCatPurchases` never cleared the
@@ -165,23 +167,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SignInScreen), findsOneWidget);
 
-      // The form is the second step since build 27.
-      await tester.tap(find.text('Continue with email'));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
-        'a@example.com',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
-        'password',
-      );
-      await tester.tap(find.widgetWithText(PrimaryButton, 'Sign in'));
-      // Fixed pumps: a submitting PrimaryButton draws a spinner that never
-      // settles.
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await signInByEmail(tester);
       await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(SignInScreen), findsNothing, reason: 'it closed');
