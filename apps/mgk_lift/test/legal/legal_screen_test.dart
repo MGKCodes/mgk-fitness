@@ -9,6 +9,7 @@ import 'package:mgk_lift/src/features/legal/presentation/legal_document_screen.d
 import 'package:mgk_lift/src/features/legal/presentation/legal_screen.dart';
 import 'package:mgk_lift/src/features/settings/domain/unit_preferences.dart';
 import 'package:mgk_lift/src/features/settings/presentation/settings_screen.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 
 Future<void> pumpTall(WidgetTester tester, Widget child) async {
   tester.view.physicalSize = const Size(1080, 4200);
@@ -125,10 +126,15 @@ void main() {
 
       await tester.tap(find.text('Continue with email'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('New here? Create an account'));
+      // An address with no account: the lookup leads to making one.
+      await tester.enterText(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+        'sam@example.com',
+      );
+      await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sign up'), findsWidgets);
+      expect(find.text('Create account'), findsWidgets);
       expect(find.textContaining('By continuing you agree'), findsOneWidget);
     });
   });

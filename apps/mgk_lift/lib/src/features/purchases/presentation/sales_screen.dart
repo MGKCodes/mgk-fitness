@@ -122,14 +122,12 @@ class _SalesScreenState extends State<SalesScreen> {
     });
     // Signed out, the account comes first: Apple, Google or email, on the
     // screen built for it. Nothing is charged until it exists. The email
-    // form starts on making one: somebody subscribing is more likely new than
-    // returning, and it is one tap to sign in instead.
+    // path no longer starts on making one for somebody subscribing: it asks
+    // for the address, and the lookup says whether they are new (ADR-0047).
     final auth = widget.auth;
     if (auth != null && auth.current == null) {
       final signedIn = await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(
-          builder: (_) => SignInScreen(auth: auth, initialSignUp: true),
-        ),
+        MaterialPageRoute<bool>(builder: (_) => SignInScreen(auth: auth)),
       );
       if (!mounted) return;
       final account = auth.current;

@@ -999,6 +999,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
+          name: _account?.name,
           // On the profile card. Only in a build that can sell: with no
           // store there is no plan to have or not have.
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
@@ -1034,6 +1035,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       MaterialPageRoute<void>(
         builder: (_) => AccountScreen(
           email: account.email,
+          name: account.name,
           backup: _backup?.status,
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
           onSyncNow: _backup == null ? null : _syncNow,
