@@ -225,9 +225,12 @@ class AuthRepository {
   /// `display_name`, and this does nothing again. Best effort for the reason
   /// [ensureProfileBestEffort] gives: the next launch tries again.
   Future<void> keepNameBestEffort() async {
-    final legacy = legacyNameToCopy(currentUser);
-    if (legacy == null) return;
     try {
+      // Inside the catch too: reading the session needs Supabase, and a
+      // copy that cannot even look must still not throw at a caller that
+      // fired it and moved on.
+      final legacy = legacyNameToCopy(currentUser);
+      if (legacy == null) return;
       await _auth
           .updateUser(
             UserAttributes(data: <String, dynamic>{kDisplayNameKey: legacy}),

@@ -192,6 +192,12 @@ void main() {
       await expectLater(auth.keepNameBestEffort(), completes);
       expect(sent, hasLength(1), reason: 'tried, and tried again next launch');
     });
+
+    test('and without even a client to ask, says nothing', () async {
+      // Fired and forgotten from the shell, so it must not throw even where
+      // reading the session does: here, with no Supabase initialised.
+      await expectLater(const AuthRepository().keepNameBestEffort(), completes);
+    });
   });
 
   test('a new name is written to display_name only', () async {
