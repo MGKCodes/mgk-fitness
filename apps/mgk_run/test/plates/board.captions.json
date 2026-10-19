@@ -16,13 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen of 1.0.1",
-    "eyebrow": "apps/mgk_run · 1.0.1 (build 31), on the App Store and Google Play since 19 Oct, redrawn that day at 4a03dc8",
-    "build": "31 · 1.0.1+31, on both stores since 19 Oct; develop is 1.0.2",
+    "title": "MGKFitness: Run, every screen of 1.0.1, and 1.0.2 so far",
+    "eyebrow": "apps/mgk_run · 1.0.1 (build 31) on both stores since 19 Oct, with what develop holds for 1.0.2: the email path, address first",
+    "build": "31 · 1.0.1+31 on both stores; develop is 1.0.2+32, not submitted",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. It is the reference for what is live: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
-      "1.0.2 so far, 20 Oct, on feat/efs-run and not on the stores yet: signing in with email asks for the address first (ADR-0047). Nine new plates, B14 to B22: the address, Did you mean, no signal at the lookup, Welcome back, a wrong password, an address made with Apple, Create your account with the password rule ticked as it is typed, the 6-digit code with its wait for another, and a refused code. The two-mode email form is retired from both ways into it (B13, K3). B8, C14 and K2 were redrawn at e5ee058, and again at 08dd210 after the shared fixes, and came out identical: the choices do not change, only what is behind the third button. A new account by any way in now meets the coach, whose question is the name step (B3), with Google's first name typed in for a Google account; nothing is asked after Apple.",
+      "1.0.2 so far, 20 Oct, on develop and not on the stores yet: signing in with email asks for the address first (ADR-0047). Nine new plates, B14 to B22: the address, Did you mean, no signal at the lookup, Welcome back, a wrong password, an address made with Apple, Create your account with the password rule ticked as it is typed, the 6-digit code with its wait for another, and a refused code. The two-mode email form is retired from both ways into it (B13, K3). B8, C14 and K2 were redrawn at e5ee058, and again at 08dd210 after the shared fixes, and came out identical: the choices do not change, only what is behind the third button. A new account by any way in now meets the coach, whose question is the name step (B3), with Google's first name typed in for a Google account; nothing is asked after Apple.",
       "1.0.1 as released, redrawn 19 Oct at 4a03dc8, the day Run went on sale on the App Store. Every plate was redrawn and 112 came out identical. Settings gains Report a problem (an email to support with the app and version written in) and Source code (AGPL-3.0, the public repository) under About, and shows 1.0.1 at its foot (T1, T3). Home's three states now show 'Add a treadmill run' as a row on the This week tile, as build 29 made it; the board still had their pictures from before (H1, H2, H3). Not redrawable on a Monday, so still their earlier pictures: H4, H5, Y8 and Y9 (no planned run), H6 (a plan built that day starts that day) and the race plates E1, E2, E4, E6 and E7, whose fixture assumes a plan ending this Sunday. E1 still shows the treadmill button under Start, and E2 lacks 1.0.1's 'Add your result' under 'Start the race'. Also in 1.0.1 and on no plate: after Sign in with Apple the coach's first conversation no longer asks what to call you (App Review, guideline 4, 16 Oct), and signing in after meeting the coach no longer plays the conversation again.",
       "1.0.1, 13 Oct, later: a race can be chosen on the start screen (R31, new), and the live screen counts down to the finish and projects it (R32, R33, new). A race counts as its own time in Profile's figures. Kilometre pins no longer stack where a route passes the same spot (F9 and the other race plates).",
       "1.0.1, 13 Oct: a race has its own finish (F9 to F12, new). A run near a race distance asks whether it was one; a race leads with its official time, says where it stands among the runner's races, shows how it was run half by half and 5K by 5K, and shows the plan behind it when there was one. Every summary's splits fold to one line, and the records card puts each record beside its own time (F1 to F3); a run recovered after the app closed loses its column of dashes (F7). Only these were retaken.",
@@ -846,7 +846,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B15": {
       "file": "arrive-email-typo",
@@ -860,7 +860,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B22": {
       "file": "arrive-email-offline",
@@ -874,7 +874,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B16": {
       "file": "arrive-email-password",
@@ -888,7 +888,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B17": {
       "file": "arrive-email-wrong-password",
@@ -902,7 +902,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B18": {
       "file": "arrive-email-apple",
@@ -916,7 +916,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B19": {
       "file": "arrive-email-create",
@@ -930,7 +930,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B20": {
       "file": "arrive-email-code",
@@ -944,7 +944,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "B21": {
       "file": "arrive-email-code-refused",
@@ -958,7 +958,7 @@
         "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
         "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
       ],
-      "isnew": "New in 1.0.2 (ADR-0047), on feat/efs-run; not on the stores yet."
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "H2": {
       "file": "home-no-plan",
