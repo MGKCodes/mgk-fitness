@@ -41,6 +41,7 @@ export 'src/widgets/floating_nav_bar.dart';
 export 'src/widgets/glass_surface.dart';
 export 'src/widgets/glow_backdrop.dart';
 export 'src/widgets/hero_numeral.dart';
+export 'src/widgets/email_sign_in_steps.dart';
 export 'src/widgets/pace_band_meter.dart';
 export 'src/widgets/photo_backdrop.dart';
 export 'src/widgets/primary_button.dart';
