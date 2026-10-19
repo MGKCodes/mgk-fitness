@@ -31,6 +31,7 @@ void main() {
     WidgetTester tester, {
     bool paced = true,
     IntroAnswers initial = const IntroAnswers(),
+    String? suggestedName,
     void Function(String? name)? onFinished,
   }) async {
     await tester.binding.setSurfaceSize(const Size(420, 1400));
@@ -46,6 +47,7 @@ void main() {
             data: MediaQuery.of(context).copyWith(disableAnimations: !paced),
             child: IntroScreen(
               initial: initial,
+              suggestedName: suggestedName,
               onFinished: onFinished,
               requestPermission: (_) async => true,
             ),
@@ -250,5 +252,40 @@ void main() {
       find.text(introPermissionsFor(defaultTargetPlatform).first.cta),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a suggested name is asked about, already typed in', (
+    tester,
+  ) async {
+    // Google's first name, for a Google account (ADR-0047). A name in
+    // `initial` is one the runner chose, so the question is skipped; a
+    // suggestion is somebody else's record of them, so it is still asked, and
+    // sending it unchanged is a choice the runner made.
+    String? finished = 'not yet';
+    await pumpIntro(
+      tester,
+      paced: false,
+      suggestedName: 'Matthew',
+      onFinished: (name) => finished = name,
+    );
+    await tester.tap(find.text('Sounds good'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(introPrompt(IntroStep.name)), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      'Matthew',
+    );
+    expect(find.text('Matthew'), findsOneWidget, reason: 'only in the field');
+
+    await tester.tap(find.byTooltip('Continue'));
+    await tester.pumpAndSettle();
+    for (final permission in introPermissionsFor(defaultTargetPlatform)) {
+      await tester.tap(find.text(permission.cta));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+    expect(finished, 'Matthew');
   });
 }

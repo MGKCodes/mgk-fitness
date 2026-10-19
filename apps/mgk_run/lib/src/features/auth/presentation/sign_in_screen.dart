@@ -16,7 +16,7 @@ import '../../legal/domain/legal_urls.dart';
 import '../../legal/presentation/privacy_policy_screen.dart';
 import '../data/auth_repository.dart';
 
-/// Sign in or sign up: with Apple, with Google, or with an email and password.
+/// Sign in or sign up: with Apple, with Google, or with an email address.
 ///
 /// **Apple and Google first (R10).** One tap and no password for anybody with
 /// either on the phone, and the same account Lift signs into. Google is only
@@ -30,34 +30,39 @@ import '../data/auth_repository.dart';
 /// photograph dimmed to a third under content centred on the screen, which
 /// read as a different screen from Lift's for the same account.
 ///
-/// **The email form is a second step, behind "Continue with email"**, as it is
-/// in Lift. With the three choices and the form on one screen, Password and the
+/// **The email path is a second step, behind "Continue with email"**, as it is
+/// in Lift. With the three choices and a form on one screen, Password and the
 /// button that submits it were below the bottom of a 393pt phone (board C14 and
 /// K2): the screen asked for an account and hid the way to finish making one.
+///
+/// **The address first (ADR-0047, 1.0.2).** The email path asks for the
+/// address alone and looks it up, and the step after it is the one that
+/// address needs: *Welcome back* and its password, *This address signs in with
+/// Apple* (or Google), or *Create your account* and then a 6-digit code from
+/// the email. It replaces a form with two modes and a switch between them,
+/// which made people decide whether they were signing in or signing up before
+/// they had typed anything, and which this screen then reported upwards as a
+/// guess about whether the account was new. Nothing is guessed now: `AuthGate`
+/// reads that from the account.
+///
+/// **The steps are the suite's, not this screen's.** Which step comes next and
+/// what each failure is called live in `mgk_auth`'s [EmailSignInFlow], and
+/// `mgk_ui`'s [EmailSignInSteps] draws them, so Lift's sign-in says the same
+/// thing in the same words. What this screen decides is everything around
+/// them: the head, the providers, the debug sign-in, and what happens once
+/// somebody is signed in.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({
     super.key,
     this.auth = const AuthRepository(),
-    this.initialSignUp = false,
     this.onBack,
-    this.onSignUpIntent,
     this.onAuthenticated,
-    this.introName,
     this.devAccounts = const <DevAccount>[],
+    this.clock,
   });
 
   final AuthRepository auth;
-  final bool initialSignUp;
   final VoidCallback? onBack;
-
-  /// Reports whether this screen is about to create an account, rather than
-  /// sign back into one.
-  ///
-  /// **Intent, not outcome, and raised before the call rather than after it.**
-  /// `signUp` publishes the auth change before it returns, so a gate that waited
-  /// for the result learned about it one rebuild too late — the shell was
-  /// already built, and `startOnboarding` is read once in `initState`.
-  final ValueChanged<bool>? onSignUpIntent;
 
   /// There is now a session. **Only a screen that was *pushed* needs this.**
   ///
@@ -73,49 +78,53 @@ class SignInScreen extends StatefulWidget {
   /// Null keeps the flow behaviour, which needs no dismissal.
   final VoidCallback? onAuthenticated;
 
-  /// The name the coach already asked for, so the form does not ask again.
-  /// Null when the runner skipped it or is signing back in.
-  final String? introName;
-
   /// Pre-seeded developer accounts for one-tap sign in. Rendered **only in
   /// debug builds** (see [build]); empty in release and in normal use.
   final List<DevAccount> devAccounts;
+
+  /// Now, for the wait before another code can be sent. Null is the real time.
+  /// A board draws a fixed moment with it, so its countdown reads the same
+  /// every time the plate is drawn.
+  final DateTime Function()? clock;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final _nameController = TextEditingController(
-    text: widget.introName ?? '',
-  );
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  /// The email path: its step, the address, what it is saying and whether a
+  /// request is running. Owned here and drawn by [EmailSignInSteps].
+  late final EmailSignInFlow _flow = EmailSignInFlow(
+    api: widget.auth.emailSignIn(),
+    clock: widget.clock,
+  )..addListener(_flowChanged);
 
-  late bool _isSignUp = widget.initialSignUp;
+  void _flowChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The debug quick sign-in is running.
   bool _busy = false;
+
+  /// What went wrong with Apple, Google or the debug sign-in. The email path
+  /// says its own failures through [_flow].
   String? _message;
 
-  /// The next step rather than a failure: a confirmation to go and look for,
-  /// a reset on its way. Said in the quiet colour, because in the error colour
-  /// "Check your email to confirm your account" read as the account not being
-  /// made.
+  /// The next step rather than a failure: Apple's browser on Android, which
+  /// finishes the sign-in elsewhere. Said in the quiet colour.
   String? _notice;
 
-  bool _sendingReset = false;
-
-  /// Whether the password is hidden. The eye beside it shows it, as on Lift.
-  bool _obscure = true;
-
-  /// Whether the email form is showing, rather than the three ways in.
+  /// Whether the email path is showing, rather than the three ways in.
   bool _withEmail = false;
 
-  void _showEmail(bool show) => setState(() {
-    _withEmail = show;
-    _message = null;
-    _notice = null;
-  });
+  void _showEmail(bool show) {
+    _flow.clearMessages();
+    setState(() {
+      _withEmail = show;
+      _message = null;
+      _notice = null;
+    });
+  }
 
   /// Which provider's sheet is up, if any.
   SignInProvider? _asking;
@@ -125,17 +134,19 @@ class _SignInScreenState extends State<SignInScreen> {
   /// does; the flow is swapped out by the same stream on its own.
   StreamSubscription<AuthChange>? _arrivals;
 
+  /// Whether anything on the screen is running, so nothing else starts.
+  bool get _working => _busy || _asking != null || _flow.busy;
+
+  /// Signs in with Apple or Google: from the three choices, and from the email
+  /// path's *This address signs in with Apple* (or Google).
+  ///
+  /// **Says nothing about whether the account is new.** It used to report the
+  /// screen's guess before the call, because Apple and Google make an account
+  /// or sign into one without saying which. The account says which now
+  /// (`AuthRepository.accountIsNew`), and `AuthGate` asks it.
   Future<void> _withProvider(SignInProvider provider) async {
-    if (_busy || _asking != null) return;
-    // Intent, not outcome, and before the call — see [SignInScreen
-    // .onSignUpIntent]. Apple and Google do both without saying which, so the
-    // answer is how the screen was opened: a sign-in from the welcome's "I
-    // already have an account". The choices carried a sign-in/sign-up switch
-    // until 1.0.1; it is on the email form only now, as on Lift. Taken for a
-    // returning runner, somebody new meets the coach's introduction, which
-    // they skipped by choosing that door anyway; the other way round, a
-    // returning runner's restore would have waited for the next launch.
-    widget.onSignUpIntent?.call(_isSignUp);
+    if (_working) return;
+    _flow.clearMessages();
     setState(() {
       _asking = provider;
       _message = null;
@@ -150,9 +161,8 @@ class _SignInScreenState extends State<SignInScreen> {
         case ProviderOutcome.signedIn:
           widget.onAuthenticated?.call();
         case ProviderOutcome.cancelled:
-          // No session, so the claim above is taken back rather than left to
-          // fire on a later sign-in.
-          widget.onSignUpIntent?.call(false);
+          // They closed the sheet. Nothing went wrong, so nothing is said.
+          break;
         case ProviderOutcome.continuing:
           await _arrivals?.cancel();
           _arrivals = widget.auth.authChanges().listen((change) {
@@ -165,111 +175,62 @@ class _SignInScreenState extends State<SignInScreen> {
           }
       }
     } catch (error) {
-      widget.onSignUpIntent?.call(false);
       if (mounted) setState(() => _message = _messageFor(error));
     } finally {
       if (mounted) setState(() => _asking = null);
     }
   }
 
+  /// Finishes the email path once a step has signed somebody in: signing in
+  /// with a password, the code that confirms a new address, or (with
+  /// confirmation off) making the account.
+  ///
+  /// The profile row first, as every other sign-in writes it, and never in
+  /// the way: a row that does not land is the next launch's to write (see
+  /// `AuthRepository.ensureProfileBestEffort`), not a reason to say an account
+  /// that exists has failed. Then the gate that raised this screen, if one
+  /// did.
+  Future<void> _finish(Future<bool> step) async {
+    if (!await step) return;
+    await widget.auth.ensureProfileBestEffort();
+    widget.onAuthenticated?.call();
+  }
+
+  /// The password rule as the checklist under *Choose a password*, part by
+  /// part, in the order [PasswordCheck] states it.
+  static List<PasswordRequirement> _requirements(String password) {
+    final check = PasswordCheck.of(password);
+    return <PasswordRequirement>[
+      PasswordRequirement('8 characters', met: check.longEnough),
+      PasswordRequirement('a number', met: check.hasNumber),
+      PasswordRequirement('a symbol', met: check.hasSymbol),
+    ];
+  }
+
+  /// The flow's step as the steps widget draws it: the same five, one decided
+  /// in `mgk_auth` and one drawn in `mgk_ui`, so neither package needs the
+  /// other.
+  static EmailStage _stageOf(EmailStep step) => switch (step) {
+    EmailStep.address => EmailStage.address,
+    EmailStep.password => EmailStage.password,
+    EmailStep.provider => EmailStage.provider,
+    EmailStep.create => EmailStage.create,
+    EmailStep.code => EmailStage.code,
+  };
+
   @override
   void dispose() {
     unawaited(_arrivals?.cancel());
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
+    _flow.removeListener(_flowChanged);
+    // A request still running reports back to the flow when it ends, and a
+    // disposed notifier throws when told. Left to the collector instead: it
+    // holds nothing once nobody listens.
+    if (!_flow.busy) _flow.dispose();
     super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _busy = true;
-      _message = null;
-      _notice = null;
-    });
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-    try {
-      if (_isSignUp) {
-        widget.onSignUpIntent?.call(true);
-        final signedIn = await widget.auth.signUp(
-          email: email,
-          password: password,
-          name: _nameController.text,
-        );
-        if (!signedIn) {
-          // No session, so no shell will be built from this — take the claim
-          // back rather than leave it to fire on a later sign-in.
-          widget.onSignUpIntent?.call(false);
-          if (mounted) {
-            setState(
-              () => _notice = 'Check your email to confirm your account.',
-            );
-          }
-        } else {
-          // A session exists. A pushed gate dismisses itself here; the flow
-          // passes nothing and is swapped out by the auth stream instead.
-          widget.onAuthenticated?.call();
-        }
-      } else {
-        // Signing *in*, whatever was claimed earlier on this screen. Apple on
-        // Android leaves the claim standing while its browser is open, and
-        // somebody who gives up on that and signs in with their email instead
-        // must not arrive as a new runner.
-        widget.onSignUpIntent?.call(false);
-        await widget.auth.signIn(email: email, password: password);
-        widget.onAuthenticated?.call();
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          // Signing in before following the link is the next step, not a
-          // failure, and with confirmation on it is what a new runner does
-          // first. The server's own words are "Email not confirmed", in the
-          // error colour, which read as the account not having been made.
-          if (_awaitingConfirmation(error)) {
-            _notice = 'Check your email and follow the link, then sign in.';
-          } else {
-            _message = _messageFor(error);
-          }
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
-  Future<void> _resetPassword() async {
-    final email = _emailController.text.trim();
-    if (!email.contains('@')) {
-      setState(() {
-        _notice = null;
-        _message = 'Enter your email first.';
-      });
-      return;
-    }
-    setState(() => _sendingReset = true);
-    await widget.auth.sendPasswordReset(email);
-    if (!mounted) return;
-    setState(() {
-      _sendingReset = false;
-      _message = null;
-      // The same words whether or not the address has an account: anything
-      // else is a way for anybody to find out who is registered.
-      _notice = 'If that address has an account, a reset link is on its way.';
-    });
   }
 
   /// One-tap sign in as a pre-seeded developer account (debug builds only).
   Future<void> _quickSignIn(DevAccount account) async {
-    // Signing *in*, whatever the screen was showing. Without this the sign-up
-    // intent set by "Get started" survived, so every dev and persona entry
-    // arrived at Home with `startOnboarding` still true and got the coach flow
-    // pushed over an account that has been onboarded for weeks.
-    widget.onSignUpIntent?.call(false);
     setState(() {
       _busy = true;
       _message = null;
@@ -295,6 +256,7 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final stage = _stageOf(_flow.step);
     return Scaffold(
       appBar: widget.onBack == null
           ? null
@@ -337,145 +299,67 @@ class _SignInScreenState extends State<SignInScreen> {
                   alignment: Alignment.bottomCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Which app this is, then whose account: the suite's
-                          // head, shared with Lift. The account is one account, so
-                          // both apps say so in the same words, each under its own
-                          // icon.
-                          // On the choices it says both, as Lift's does: Apple
-                          // and Google sign in or make an account without being
-                          // told which. The email form says which it is doing.
-                          ProfileHeader(
-                            line: !_withEmail
-                                ? 'Sign in or create your account'
-                                : _isSignUp
-                                ? 'Create your account'
-                                : 'Welcome back',
-                            otherApp: 'Lift',
-                            app: const AppIdentity(
-                              icon: AssetImage(
-                                'assets/images/brand/app_icon.png',
-                              ),
-                              name: kAppName,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Which app this is, then whose account: the suite's
+                        // head, shared with Lift. The account is one account,
+                        // so both apps say so in the same words, each under its
+                        // own icon.
+                        // On the choices and the address it says both, as
+                        // Lift's does: nothing yet says which this is. Once
+                        // the address has been looked up, the step says.
+                        ProfileHeader(
+                          line: _withEmail
+                              ? stage.headline
+                              : 'Sign in or create your account',
+                          otherApp: 'Lift',
+                          app: const AppIdentity(
+                            icon: AssetImage(
+                              'assets/images/brand/app_icon.png',
                             ),
+                            name: kAppName,
                           ),
-                          // No list of what an account gives, as Lift's has none:
-                          // the head says what the account is, and the welcome has
-                          // already made the promise.
-                          const SizedBox(height: AppSpacing.xl),
-                          if (!_withEmail) ...<Widget>[
-                            ProviderSignInButton.apple(
-                              busy: _asking == SignInProvider.apple,
-                              onPressed: _busy || _asking != null
-                                  ? null
-                                  : () => _withProvider(SignInProvider.apple),
+                        ),
+                        // No list of what an account gives, as Lift's has none:
+                        // the head says what the account is, and the welcome
+                        // has already made the promise.
+                        const SizedBox(height: AppSpacing.xl),
+                        if (!_withEmail) ...<Widget>[
+                          ProviderSignInButton.apple(
+                            busy: _asking == SignInProvider.apple,
+                            onPressed: _working
+                                ? null
+                                : () => _withProvider(SignInProvider.apple),
+                          ),
+                          const SizedBox(height: 12),
+                          ProviderSignInButton.google(
+                            busy: _asking == SignInProvider.google,
+                            onPressed: _working
+                                ? null
+                                : () => _withProvider(SignInProvider.google),
+                          ),
+                          const SizedBox(height: 12),
+                          AppOutlinedButton(
+                            label: 'Continue with email',
+                            icon: Icons.mail_outline,
+                            expand: true,
+                            onPressed: _working ? null : () => _showEmail(true),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            // O2. Apple's relay address is a different address,
+                            // so there is nothing to join it to an existing
+                            // account by, and the lookup cannot see it coming.
+                            'Choosing Hide My Email with Apple starts a separate '
+                            'account.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textTertiary,
+                              height: 1.4,
                             ),
-                            const SizedBox(height: 12),
-                            ProviderSignInButton.google(
-                              busy: _asking == SignInProvider.google,
-                              onPressed: _busy || _asking != null
-                                  ? null
-                                  : () => _withProvider(SignInProvider.google),
-                            ),
-                            const SizedBox(height: 12),
-                            AppOutlinedButton(
-                              label: 'Continue with email',
-                              icon: Icons.mail_outline,
-                              expand: true,
-                              onPressed: _busy || _asking != null
-                                  ? null
-                                  : () => _showEmail(true),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              // O2. Apple's relay address is a different address,
-                              // so there is nothing to join it to an existing
-                              // account by.
-                              'Choosing Hide My Email with Apple starts a separate '
-                              'account.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textTertiary,
-                                height: 1.4,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ] else ...<Widget>[
-                            // First, and only when signing up. The coach's whole
-                            // pitch is that it is *yours*, and it had no idea what
-                            // to call you — so the first thing it ever said was
-                            // addressed to nobody. Optional on purpose: a runner
-                            // who would rather not say gets a coach that simply
-                            // does not use a name, which is better than a required
-                            // field between them and the app.
-                            // Only when the coach has not already asked. Asking a
-                            // second time would undo the point of asking in the
-                            // conversation at all.
-                            if (_isSignUp &&
-                                widget.introName == null) ...<Widget>[
-                              TextFormField(
-                                controller: _nameController,
-                                textCapitalization: TextCapitalization.words,
-                                autofillHints: const [AutofillHints.givenName],
-                                decoration: const InputDecoration(
-                                  labelText: 'First name (optional)',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              autofillHints: const [AutofillHints.email],
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (v) => (v == null || !v.contains('@'))
-                                  ? 'Enter a valid email'
-                                  : null,
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscure,
-                              autofillHints: const [AutofillHints.password],
-                              // A way to see what was typed, as on Lift.
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: AppIconButton(
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
-                                  icon: _obscure
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                  tooltip: _obscure
-                                      ? 'Show password'
-                                      : 'Hide password',
-                                ),
-                              ),
-                              // Eight, as Lift asks and the reset page does: it
-                              // is one account. Only when making one. Refusing a
-                              // short password at sign-in would lock out anybody
-                              // who chose one while Run still asked for six.
-                              validator: (v) {
-                                final String value = v ?? '';
-                                if (value.isEmpty) {
-                                  return 'Enter your password.';
-                                }
-                                if (_isSignUp && value.length < 8) {
-                                  return 'Use at least 8 characters.';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
+                            textAlign: TextAlign.center,
+                          ),
                           if (_message != null) ...[
                             const SizedBox(height: 16),
                             Text(
@@ -494,83 +378,79 @@ class _SignInScreenState extends State<SignInScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ],
-                          if (_withEmail) ...<Widget>[
-                            const SizedBox(height: 24),
-                            PrimaryButton(
-                              label: _isSignUp ? 'Sign up' : 'Sign in',
-                              onPressed: _submit,
-                              busy: _busy,
-                            ),
-                            // Signing in only: somebody making an account has no
-                            // password to forget. The link opens a page on the
-                            // site, not the app, so it works from a laptop's inbox
-                            // too.
-                            if (!_isSignUp)
-                              AppTextButton(
-                                label: 'Forgot your password?',
-                                onPressed: _busy || _sendingReset
-                                    ? null
-                                    : _resetPassword,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.textSecondary,
-                                ),
-                              ),
-                            // On the email form only, as on Lift: the choices
-                            // above it do both.
-                            AppTextButton(
-                              label: _isSignUp
-                                  ? 'Have an account? Sign in'
-                                  : 'New here? Create an account',
-                              onPressed: _busy || _asking != null
-                                  ? null
-                                  : () => setState(() {
-                                      _isSignUp = !_isSignUp;
-                                      _message = null;
-                                      _notice = null;
-                                    }),
-                            ),
-                          ],
-                          if (_withEmail)
-                            AppTextButton(
-                              label: 'Other ways to sign in',
-                              onPressed: _busy ? null : () => _showEmail(false),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
+                        ] else
+                          EmailSignInSteps(
+                            stage: stage,
+                            email: _flow.email,
+                            provider: _flow.status == AccountStatus.google
+                                ? SignInProvider.google
+                                : SignInProvider.apple,
+                            busy: _flow.busy || _busy,
+                            providerBusy: _asking != null,
+                            // The provider's and the debug sign-in's failures
+                            // are said where the step says its own.
+                            error: _flow.error ?? _message,
+                            notice: _flow.notice ?? _notice,
+                            resendAt: _flow.resendAt,
+                            clock: widget.clock ?? DateTime.now,
+                            suggest: _flow.suggestionFor,
+                            requirements: _requirements,
+                            onAddress: (typed) =>
+                                unawaited(_flow.submitAddress(typed)),
+                            onPassword: (password) =>
+                                unawaited(_finish(_flow.signIn(password))),
+                            onForgotPassword: () =>
+                                unawaited(_flow.forgotPassword()),
+                            onProvider: () => unawaited(
+                              _withProvider(
+                                _flow.status == AccountStatus.google
+                                    ? SignInProvider.google
+                                    : SignInProvider.apple,
                               ),
                             ),
-                          if (kDebugMode &&
-                              widget.devAccounts.isNotEmpty) ...<Widget>[
-                            _DevSignIn(
-                              accounts: widget.devAccounts,
-                              busy: _busy,
-                              onSelected: (account) {
-                                // Signing in plainly means the real account: drop a
-                                // persona left on from an earlier session, or the
-                                // runner's own data would silently stay hidden.
-                                setDevPersona(null);
-                                unawaited(_quickSignIn(account));
-                              },
+                            onSetPassword: () =>
+                                unawaited(_flow.setPasswordInstead()),
+                            onCreate: (password) => unawaited(
+                              _finish(_flow.createAccount(password)),
                             ),
-                            // The same sign-in, entered as a seeded runner. Uses the
-                            // first configured account because the persona decides
-                            // what is on screen — the account only gets us past auth.
-                            DevPersonaButtons(
-                              busy: _busy,
-                              onSelected: (persona) {
-                                setDevPersona(persona);
-                                unawaited(
-                                  _quickSignIn(widget.devAccounts.first),
-                                );
-                              },
-                            ),
-                          ],
-                          // Required wherever an account can be made, and shown on
-                          // every step, as Lift shows it: somebody signing in on a
-                          // new phone is accepting the same terms.
-                          const SizedBox(height: AppSpacing.xl),
-                          const _LegalLinks(),
+                            onCode: (code) =>
+                                unawaited(_finish(_flow.confirm(code))),
+                            onResend: () => unawaited(_flow.resend()),
+                            onChangeAddress: _flow.changeAddress,
+                            onOtherWays: () => _showEmail(false),
+                          ),
+                        if (kDebugMode &&
+                            widget.devAccounts.isNotEmpty) ...<Widget>[
+                          _DevSignIn(
+                            accounts: widget.devAccounts,
+                            busy: _working,
+                            onSelected: (account) {
+                              // Signing in plainly means the real account: drop
+                              // a persona left on from an earlier session, or
+                              // the runner's own data would silently stay
+                              // hidden.
+                              setDevPersona(null);
+                              unawaited(_quickSignIn(account));
+                            },
+                          ),
+                          // The same sign-in, entered as a seeded runner. Uses
+                          // the first configured account because the persona
+                          // decides what is on screen — the account only gets
+                          // us past auth.
+                          DevPersonaButtons(
+                            busy: _working,
+                            onSelected: (persona) {
+                              setDevPersona(persona);
+                              unawaited(_quickSignIn(widget.devAccounts.first));
+                            },
+                          ),
                         ],
-                      ),
+                        // Required wherever an account can be made, and shown
+                        // on every step, as Lift shows it: somebody signing in
+                        // on a new phone is accepting the same terms.
+                        const SizedBox(height: AppSpacing.xl),
+                        const _LegalLinks(),
+                      ],
                     ),
                   ),
                 ),
@@ -583,15 +463,8 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 }
 
-/// Whether the server refused a sign-in because the address is unconfirmed.
-///
-/// Matched on the message as Lift does: gotrue's code for it has changed
-/// between versions, and the words have not.
-bool _awaitingConfirmation(Object error) =>
-    error is AuthException &&
-    error.message.toLowerCase().contains('not confirmed');
-
-/// What to print when authenticating fails.
+/// What to print when Apple, Google or the debug sign-in fails. The email path
+/// has its own words, the suite's, in `EmailSignInFlow`.
 ///
 /// **A dead connection earns its own sentence.** This screen used to print
 /// `AuthException.message` and collapse everything else into "Something went
@@ -605,18 +478,17 @@ bool _awaitingConfirmation(Object error) =>
 /// that ordering is why this function exists at all. gotrue does not let a
 /// socket error out raw: it wraps every failed fetch in an `AuthException`
 /// whose `message` is the underlying error's `toString()`. So the branch that
-/// prints the server's own words — right for a wrong password, and the reason
-/// it is kept — was one line away from showing `ClientException with
-/// SocketException: Failed host lookup ...` to somebody who had simply left the
-/// radio off.
+/// prints the server's own words was one line away from showing
+/// `ClientException with SocketException: Failed host lookup ...` to somebody
+/// who had simply left the radio off.
 ///
 /// Those two types are the whole reachable set, which is worth saying because
 /// the instinct here is to reach for `dart:io`. A raw `SocketException` or
 /// `ClientException` cannot arrive: gotrue wraps its own, and the
-/// `core.profiles` write that goes out through postgrest is now best-effort
-/// inside [AuthRepository.ensureProfileBestEffort], so it throws nothing at
-/// this screen. [TimeoutException] is what [AuthRepository.timeout] raises when
-/// a call blows its deadline. Importing `dart:io` for a case that cannot happen
+/// `core.profiles` write that goes out through postgrest is best-effort inside
+/// [AuthRepository.ensureProfileBestEffort], so it throws nothing at this
+/// screen. [TimeoutException] is what [AuthRepository.timeout] raises when a
+/// call blows its deadline. Importing `dart:io` for a case that cannot happen
 /// would drag this screen out of the web preview harness's import graph for
 /// nothing.
 ///
@@ -635,8 +507,8 @@ String _messageFor(Object error) {
     return 'We could not reach the server. Check your connection and try '
         'again.';
   }
-  // A real answer from the server — wrong password, weak password, an address
-  // already registered — said in its own words rather than a paraphrase.
+  // A real answer from the server to the debug sign-in, said in its own words
+  // rather than a paraphrase.
   if (error is AuthException) return error.message;
   return 'Something went wrong. Try again.';
 }

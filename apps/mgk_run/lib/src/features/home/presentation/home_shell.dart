@@ -288,6 +288,10 @@ class HomeShell extends StatefulWidget {
   /// with a working run tracker, and a plan is something they go and ask for
   /// (ADR-0019). What this still decides is that there is nothing on the server
   /// worth restoring, because the account was made seconds ago.
+  ///
+  /// **Read from the account since 1.0.2** (ADR-0047): `AuthGate` passes
+  /// `AuthRepository.accountIsNew` for a sign-in it watched happen, by any way
+  /// in. It used to be what the sign-in screen said the runner meant to do.
   final bool justSignedUp;
 
   @override
@@ -448,6 +452,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Best-effort: ensure the shared profile row exists (covers a restored
     // session, not just a fresh sign-in).
     unawaited(widget.auth.ensureProfile());
+    // And the name Run kept under `name` copied to `display_name`, once,
+    // before a Google sign-in can write over it (ADR-0047). A restored
+    // session is the ordinary case: everybody updating to 1.0.2 is signed in.
+    unawaited(widget.auth.keepNameBestEffort());
     unawaited(_loadUnit());
     if (_index == _profileTab) unawaited(_loadBackupState());
     unawaited(_restoreThenLoad());
@@ -480,6 +488,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _lastAuthUserId = id;
           unawaited(_refreshAccess());
           unawaited(_identifyForPurchases());
+          // A returning account signing in on this phone may still have its
+          // name only under the old key; see `keepNameBestEffort`.
+          unawaited(widget.auth.keepNameBestEffort());
           // Signing in is the moment a restore becomes possible: before it
           // there is no user to attribute rows to, and the runner's history is
           // sitting on the server behind an id the app did not have.
@@ -2241,10 +2252,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (widget.auth.isSignedIn) return true;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
+        // No name and no "sign up" half to open on. The email path asks for
+        // the address and finds out from it whether this makes an account,
+        // and the name the coach was told before there was one goes to the
+        // account on the way back (`AuthGate._recordMet`).
         builder: (routeContext) => SignInScreen(
           auth: widget.auth,
-          initialSignUp: true,
-          introName: _runnerName,
           onBack: () => Navigator.of(routeContext).maybePop(),
           // **Nothing else would dismiss this.** In the signed-out flow the
           // sign-in screen is a state of `AuthGate` and a session swaps the

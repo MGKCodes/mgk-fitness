@@ -8,6 +8,8 @@ import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
+import 'email_path.dart';
+
 /// **An account is not the price of using this app.**
 ///
 /// Everything used to sit behind one: `AuthGate` returned the signed-out flow
@@ -95,10 +97,11 @@ void main() {
   /// about the *store*, so the suite was entirely satisfied while the app still
   /// forgot the name on the way to the first screen it is used on.
   ///
-  /// Asserted where a runner would actually notice. Sign-up hides its name
-  /// field when the coach has already asked, so a name that arrived is a form
-  /// with no name on it — and one that got lost is a runner being asked their
-  /// name twice in five minutes.
+  /// Asserted where a runner would actually notice. The email path has no
+  /// name field at all since 1.0.2 (ADR-0047): the coach asked in the intro,
+  /// and the name it was told goes to the account once there is one. One that
+  /// got lost is a runner whose new account does not know what the coach has
+  /// been calling them.
   testWidgets('and reaches the screens that use it', (tester) async {
     final auth = FakeAuthRepository();
     await pumpApp(
@@ -113,12 +116,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SignInScreen), findsOneWidget);
-    // The form is the second step since build 27.
-    await tester.tap(find.text('Continue with email'));
-    await tester.pumpAndSettle();
-
+    await openEmail(tester);
+    await submitAddress(tester, newAddress);
     expect(
-      find.widgetWithText(TextFormField, 'First name (optional)'),
+      find.textContaining('name'),
       findsNothing,
       reason:
           'the coach asked in the intro; asking again loses the point of '
@@ -127,21 +128,12 @@ void main() {
 
     // And it travels onto the account being made, rather than being dropped at
     // the door of the one screen that could still have carried it.
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'sam@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'hunter2222',
-    );
-    await tester.tap(find.widgetWithText(PrimaryButton, 'Sign up'));
-    // Fixed pumps, not `pumpAndSettle`: a submitting `PrimaryButton` draws an
-    // indeterminate spinner, and settle never returns on a screen showing one.
+    await submitPassword(tester, goodNewPassword, label: 'Create account');
+    await enterCode(tester, FakeAuthRepository.rightCode);
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
 
-    expect(auth.lastName, 'Sam');
+    expect(auth.isSignedIn, isTrue);
+    expect(auth.currentName, 'Sam');
   });
 
   /// **The second gate, which the change that built the first left owing.**
@@ -231,23 +223,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SignInScreen), findsOneWidget);
 
-    // The form is the second step since build 27.
-    await tester.tap(find.text('Continue with email'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'sam@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'hunter2222',
-    );
-    await tester.tap(find.widgetWithText(PrimaryButton, 'Sign up'));
-    // Fixed pumps: a submitting `PrimaryButton` draws an indeterminate spinner,
-    // and settle never returns on a screen showing one.
+    await createAccountByEmail(tester);
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
 
     expect(auth.isSignedIn, isTrue);
     expect(

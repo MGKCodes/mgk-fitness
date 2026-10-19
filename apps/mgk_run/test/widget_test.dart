@@ -15,18 +15,19 @@ void main() {
     expect(find.text('Configuration missing'), findsOneWidget);
   });
 
-  testWidgets('sign-in screen renders email, password, and submit', (
+  testWidgets('sign-in screen renders the address and continue', (
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: SignInScreen()));
-    // Apple, Google and email are offered first; the form is the second step.
+    // Apple, Google and email are offered first; the email path is the second
+    // step, and asks for the address before anything else (ADR-0047).
     await tester.tap(find.text('Continue with email'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.byType(TextField), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
+    expect(find.text('Password'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Continue'), findsOneWidget);
   });
 
   testWidgets('welcome screen renders wordmark and CTA', (tester) async {
