@@ -210,26 +210,52 @@ have shipped it.
       and the email that sets a password; and the rule for a new password
       (22 tests). Both apps analyse clean against them.
 
-**Left, in order:**
+**Done, 20 October 2026, and on `develop`** (not in any store build yet):
 
-- [ ] Run's sign-in screen, email first, over `EmailSignIn`: the address, then
-      *Welcome back*, *This address signs in with Apple/Google*, or *Create
-      your account* and the code. It replaces the two-mode form and
-      `onSignUpIntent`; whether an account is new is read from the account.
-- [ ] Lift's sign-in screen, the same.
-- [ ] The name step after a new account (not after Apple), stored as
-      `display_name`, and Run's `name` copied across once. Both profiles show it.
-- [ ] The edge cases above, each with a test: a typo with "Did you mean …?",
-      *Resend* after 60 seconds, offline at the lookup.
-- [ ] Both screen boards: the new steps drawn, the old form retired.
-- [ ] The comments, documents and test-sheet rows that promise an address is
-      never revealed.
+- [x] Both sign-in screens, email first: `EmailSignInFlow` (the steps and
+      their words, shared) drawn by `mgk_ui`'s `EmailSignInSteps`. The
+      two-mode form and Run's `onSignUpIntent` are gone.
+- [x] **Whether an account is new is read from the account** (`accountIsNew`).
+      Run treats only a sign-in its gate watched happen as new: a session
+      restored at launch is not a sign-in, and reading the account alone would
+      have skipped the restore on every launch for days after signing up.
+- [x] The name, stored as `display_name` (`displayNameData`; a cleared name is
+      written empty, so it stays cleared). **Lift** asks it in a step after a
+      new email or Google account, prefilled with Google's first name, never
+      after Apple, and shows and edits it on Settings and the account screen.
+      **Run's step is its coach's question**, which already met a new account
+      and already skipped Apple: it now starts filled in with Google's first
+      name (`suggestedName`), which can be kept, changed or cleared. Run's
+      legacy `name` is copied across once, only to an account that has never
+      had a `display_name`.
+- [x] The edge cases, each with a test: "Did you mean …?", *Resend* after 60
+      seconds, offline at the lookup, a refused code, a password that the
+      replacement could not write (still signed in).
+- [x] The confirmation email carries the code (`supabase/templates`).
+- [x] Run's board: nine new plates, B14 to B22; B13 and K3 retired. Lift's
+      board waits for its move to plate tests, the way Run's is drawn (the
+      owner, 20 October); its S3 and S4 describe the old form until then.
+- [x] The comments, documents and test-sheet rows that promised an address is
+      never revealed, in both apps.
+
+**Left:**
+
+- [ ] Check on an iPhone that the password step offers to save the new
+      password: the steps have no username field beside it.
 
 **Held for the owner, because each changes production:**
 
-- [ ] Apply the migration (renamed to the version the project stamps), then
-      deploy `account-lookup`. Safe early: nothing calls it.
-- [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the confirmation
-      email carries `{{ .Token }}` beside its link, the server's minimum
+- [ ] **Before any build from `develop` reaches a tester:** apply the migration
+      (renamed to the version the project stamps), then deploy
+      `account-lookup`; and paste the new confirmation email
+      (`supabase/templates/confirmation.html`). Without the first, every email
+      sign-in stops at "No connection"; without the second, a new account
+      waits for a code its email does not carry. Both are safe for the builds
+      on the stores, which never call the one and still use the link in the
+      other.
+- [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
       password goes to 8, the reset page checks the rule, and both privacy
-      policies change.
+      policies change (an optional name the person chooses, Google's first
+      name offered as a suggestion, a code as well as a link, and an address
+      looked up to choose the next step). Both store forms' Name rows with
+      them.
