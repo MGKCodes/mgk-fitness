@@ -117,6 +117,18 @@ def button(href, label):
             </table>"""
 
 
+def code_box(token):
+    # The code typed into the app (ADR-0047). Large, spaced and in its own
+    # box, so it reads at a glance and Mail can offer it above the keyboard.
+    return f"""            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="rule" align="center" style="border:1px solid {L['rule']};border-radius:14px;padding:18px 12px;">
+                  <span class="ink" style="font-family:{FONT};font-size:32px;line-height:38px;font-weight:700;letter-spacing:10px;color:{L['ink']};">{token}</span>
+                </td>
+              </tr>
+            </table>"""
+
+
 def fallback(href):
     return f"""            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
@@ -142,14 +154,19 @@ templates = {
         ]),
         "Sent by MGKFitness, the account behind Lift and Run, because somebody asked for it with this address.",
     ),
+    # The code first, for Lift 2.0.1 and Run 1.0.2 onwards, which ask for it
+    # in the app; the link stays for every earlier version, which knows only
+    # the link (ADR-0047, "A code confirms a new address").
     "confirmation.html": frame(
         "Confirm your email",
-        "One tap to finish setting up your account for Lift and Run.",
+        "{{ .Token }} is your code to finish setting up your account for Lift and Run.",
         "\n".join([
             h1("Confirm your email"),
-            p(f"Tap below to confirm {email()} and finish setting up the account you use in Lift and Run."),
+            p(f"Enter this code in the app to confirm {email()} and finish setting up the account you use in Lift and Run.", bottom=20),
+            code_box("{{ .Token }}"),
+            p("Or tap below to confirm, then go back to the app and sign in.", bottom=20, top=28),
             button(confirm_link, "Confirm my email"),
-            p("Then go back to the app and sign in. If you did not sign up, ignore this email: the address will not be confirmed.", bottom=0, size=15, line=22, top=28),
+            p("The code works once. If you did not sign up, ignore this email: the address will not be confirmed.", bottom=0, size=15, line=22, top=28),
             fallback(confirm_link),
         ]),
         "Sent by MGKFitness, the account behind Lift and Run, because somebody signed up with this address.",

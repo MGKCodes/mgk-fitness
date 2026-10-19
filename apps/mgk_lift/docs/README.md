@@ -43,6 +43,45 @@ number:
   front page, *Your workouts* reworked, and the launch. It replaces the
   redesign's Track (R1, R12 and the workouts row).
 
+## In 2.0.1
+
+What the next release changes for somebody using the app, written as it is
+built. Lift has no `CHANGELOG.md`, so until it has one this list is where a
+change a lifter would notice is recorded.
+
+- **Signing in with an email asks for the address first** (Run's
+  [ADR-0047](../../mgk_run/docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md)).
+  A lookup leads to *Welcome back*, *This address signs in with Apple* (or
+  Google), or *Create your account*: a password of at least 8 characters with
+  a number and a symbol, then a 6-digit code typed into the app. A wrong
+  password is called a wrong password, and *Forgot your password?* names the
+  address. The two-mode form and its switch are gone, and so is the rule that
+  signing in never says whether an address has an account.
+- **A name on the account.** Asked once after a new account made with an
+  address or with Google, which starts it filled in with Google's first name;
+  never after Apple. Shown on Settings and the account screen, and given,
+  changed or cleared there. It is the suite's one name, so Run shows the same.
+  Lift's coach does not use it (the ADR's open question).
+
+**On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
+changes production or a published document (the ADR's *Build*, held for the
+owner): the confirmation email carries the code beside its link, the server's
+minimum password goes to 8, the reset page checks the rule, and
+`account-lookup` is deployed if it is not already. Lift's own documents change
+the same day, not before, since 2.0.0 is live with them:
+
+- [privacy-policy.md](privacy-policy.md), and its copy in the app
+  (`legal_copy.dart`, held to it by `legal_copy_test.dart`) and on the site:
+  *Account data* gains the first name a person chooses to give, and says
+  Google's first name is offered as a suggestion rather than "not used";
+  SMTP2GO sends a code as well as a link to confirm an address; and *Your
+  account* says an address is looked up to show the right next step.
+- [store-listing.md](store-listing.md): the Name rows in App Privacy and Data
+  safety become the name somebody gives, optional, for the app's function,
+  rather than only what Google may send.
+- [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md) is 2.0.0's;
+  its rows B5 to B8 say what changes.
+
 ## History
 
 - **[history/](history/)** — frozen on 1 October 2026, when they described a

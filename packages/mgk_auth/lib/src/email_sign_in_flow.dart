@@ -149,22 +149,40 @@ class EmailSignInFlow extends ChangeNotifier {
   }
 
   /// Checks the code, which signs the new account in. True once signed in.
+  ///
+  /// For an address that was [AccountStatus.unconfirmed], the password typed
+  /// this time is written once the code checks out. If that write fails the
+  /// account is still signed in, so this is still true, and
+  /// [firstPasswordKept] says the password it was first made with is the one
+  /// that works.
   Future<bool> confirm(String code) async {
     final digits = code.replaceAll(RegExp(r'\s'), '');
     if (!RegExp(r'^\d{6}$').hasMatch(digits)) {
       _say(error: 'The code is the 6 digits in the email.');
       return false;
     }
-    final ok = await _run(
-      () => _api.confirm(
+    var replaced = true;
+    final ok = await _run(() async {
+      replaced = await _api.confirm(
         email: _email,
         code: digits,
         replacePassword: _replacement,
-      ),
-    );
-    if (ok) _replacement = null;
+      );
+    });
+    if (ok) {
+      _firstPasswordKept = !replaced;
+      _replacement = null;
+    }
     return ok;
   }
+
+  bool _firstPasswordKept = false;
+
+  /// After [confirm] signed an unconfirmed address in: true when the password
+  /// typed this time could not be written, so the one the account was first
+  /// made with still works. A screen may say so; *Forgot your password?* is
+  /// the way to a new one either way.
+  bool get firstPasswordKept => _firstPasswordKept;
 
   /// Sends another code, once [canResend].
   Future<void> resend() async {

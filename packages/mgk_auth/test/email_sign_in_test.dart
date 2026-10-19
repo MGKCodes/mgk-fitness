@@ -205,17 +205,55 @@ void main() {
       () async {
         auth['/verify'] = (200, _session());
         auth['/user'] = (200, _user());
-        await client().confirm(
+        final replaced = await client().confirm(
           email: 'you@example.com',
           code: '123456',
           replacePassword: 'Newer1!pass',
         );
+        expect(replaced, isTrue);
         expect(sent.map((r) => r.url.path), <String>[
           '/auth/v1/verify',
           '/auth/v1/user',
         ]);
         expect(sent.last.method, 'PUT');
         expect(body(sent.last)['password'], 'Newer1!pass');
+      },
+    );
+
+    test('the same password typed again is not a failure', () async {
+      auth['/verify'] = (200, _session());
+      auth['/user'] = (
+        422,
+        <String, Object?>{
+          'error_code': 'same_password',
+          'msg': 'New password should be different from the old password.',
+        },
+      );
+      expect(
+        await client().confirm(
+          email: 'you@example.com',
+          code: '123456',
+          replacePassword: 'Password1!',
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'a replacement that fails leaves the account signed in, not an error',
+      () async {
+        auth['/verify'] = (200, _session());
+        auth['/user'] = (503, <String, Object?>{'msg': 'down'});
+        final email = client();
+        expect(
+          await email.confirm(
+            email: 'you@example.com',
+            code: '123456',
+            replacePassword: 'Newer1!pass',
+          ),
+          isFalse,
+          reason: 'the first password still works',
+        );
       },
     );
 

@@ -313,7 +313,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.identified, isNull);
 
-    await auth.signIn(email: 'next@mgkcodes.com', password: 'x');
+    auth.arrive('next@mgkcodes.com');
     await tester.pumpAndSettle();
     expect(store.identified, 'fake-user');
   });

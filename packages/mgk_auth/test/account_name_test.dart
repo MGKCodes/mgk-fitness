@@ -51,6 +51,27 @@ void main() {
       );
     });
 
+    test(
+      "a name cleared to empty stays cleared, whatever Run's old name was",
+      () {
+        expect(
+          displayNameOf(_user(metadata: {'display_name': '', 'name': 'Sammy'})),
+          isNull,
+        );
+        expect(
+          hasDisplayNameKey(_user(metadata: {'display_name': ''})),
+          isTrue,
+        );
+        expect(hasDisplayNameKey(_user(metadata: {'name': 'Sammy'})), isFalse);
+      },
+    );
+
+    test('clearing writes empty, not null, so the key stays', () {
+      expect(displayNameData('  Sam '), {'display_name': 'Sam'});
+      expect(displayNameData(null), {'display_name': ''});
+      expect(displayNameData('   '), {'display_name': ''});
+    });
+
     test('blank is no name', () {
       expect(displayNameOf(_user(metadata: {'display_name': '  '})), isNull);
       expect(displayNameOf(null), isNull);
