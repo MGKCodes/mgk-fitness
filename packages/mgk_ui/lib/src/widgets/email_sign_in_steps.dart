@@ -418,7 +418,8 @@ class _EmailSignInStepsState extends State<EmailSignInSteps> {
           letterSpacing: 8,
           fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         ),
-        decoration: const InputDecoration(counterText: '', hintText: '000000'),
+        // No hint: a centred cursor sat in the middle of one.
+        decoration: const InputDecoration(counterText: ''),
         onChanged: (value) {
           // The sixth digit is the press: a code pasted or filled from Mail
           // goes without a second tap.

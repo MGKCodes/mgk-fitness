@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 
@@ -270,7 +272,30 @@ void main() {
     expect(api.calls.where((c) => c.startsWith('signIn')), hasLength(1));
   });
 
+  test('a request that outlives its screen finishes quietly', () async {
+    final gate = Completer<void>();
+    final slow = _SlowApi(gate.future);
+    final flow = EmailSignInFlow(api: slow);
+    final lookup = flow.submitAddress('you@example.com');
+    flow.dispose();
+    gate.complete();
+    await expectLater(lookup, completes);
+  });
+
   test('suggestions come from the shared rule', () {
     expect(flow.suggestionFor('you@gmial.com'), 'you@gmail.com');
   });
+}
+
+/// A server that answers the lookup only when told to.
+class _SlowApi extends _FakeApi {
+  _SlowApi(this._answer);
+
+  final Future<void> _answer;
+
+  @override
+  Future<AccountStatus> lookup(String email) async {
+    await _answer;
+    return AccountStatus.password;
+  }
 }

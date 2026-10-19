@@ -258,6 +258,23 @@ class EmailSignInFlow extends ChangeNotifier {
     }
   }
 
+  bool _disposed = false;
+
+  /// **A request can outlive its screen.** Somebody who closes the sign-in
+  /// while a lookup is in flight leaves this to finish on its own, and its
+  /// last word would otherwise be a notification to a disposed notifier,
+  /// which throws. So a disposed flow finishes quietly.
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   void _say({String? error, String? notice}) {
     _error = error;
     _notice = notice;

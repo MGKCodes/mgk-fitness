@@ -221,11 +221,11 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   void dispose() {
     unawaited(_arrivals?.cancel());
-    _flow.removeListener(_flowChanged);
-    // A request still running reports back to the flow when it ends, and a
-    // disposed notifier throws when told. Left to the collector instead: it
-    // holds nothing once nobody listens.
-    if (!_flow.busy) _flow.dispose();
+    // A request still running finishes quietly: the flow says nothing once
+    // it is disposed.
+    _flow
+      ..removeListener(_flowChanged)
+      ..dispose();
     super.dispose();
   }
 
