@@ -977,18 +977,18 @@ class PreviewApp extends StatelessWidget {
       ),
       // Apple, Google and email, on the photograph (R1, R10).
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
-      // One tap in: the email form, as it always was, under the same headline
-      // space.
+      // One tap in: the email path's first step, the address alone (Run's
+      // ADR-0047, from 2.0.1).
       'sign-in-email': (_) =>
           SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
-      // The same form as the sales screen opens it, for somebody subscribing:
-      // starting on making an account.
-      'sign-in-create': (_) => SignInScreen(
-        auth: FakeAuth(),
-        pendingWorkouts: 9,
-        emailFirst: true,
-        initialSignUp: true,
-      ),
+      // **The same screen as `sign-in-email` since 2.0.1, kept only so the
+      // web board's words and this harness still name the same screens.**
+      // It drew the two-mode form started on making an account, as the sales
+      // screen opened it; that form is gone, and the address comes first for
+      // everybody. The email path's later steps are drawn by plate tests when
+      // Lift's board moves to them, and this entry goes with that move.
+      'sign-in-create': (_) =>
+          SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
       'credits': (_) => const CreditsScreen(),
 
       // ---- Privacy, legal and leaving --------------------------------------
