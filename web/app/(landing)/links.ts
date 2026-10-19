@@ -15,7 +15,8 @@
  */
 export const stores: Record<"run" | "lift", { apple?: string; google?: string }> = {
   run: {
-    // apple: "https://apps.apple.com/app/id6800052303", // 1.0.0 in review
+    // 1.0.1 on sale since 19 October 2026 (1.0.0 went on Play only).
+    apple: "https://apps.apple.com/app/id6800052303",
     google: "https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run",
   },
   lift: {
