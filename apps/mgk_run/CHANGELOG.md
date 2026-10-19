@@ -18,6 +18,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is 1.0.2
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
 
+### Changed
+
+- **Signing in with email asks for the address first**
+  ([ADR-0047](docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md)).
+  *Continue with email* takes the address alone, then shows the one step it
+  needs: *Welcome back* and the password, *This address signs in with Apple*
+  (or Google) with that button, or *Create your account*. A new account's
+  password needs 8 characters, a number and a symbol, ticked off as it is
+  typed, and the account is confirmed with a 6-digit code from the email,
+  typed into the app. There is no sign-in or sign-up switch to choose first.
+  A wrong password is called a wrong password, *Forgot your password?* says
+  which address the link went to, a likely typo gets *Did you mean …?*, and
+  no connection keeps what was typed. The address is on every step, with
+  *Change*.
+- **The name is the account's.** The email form no longer asks for one: a new
+  account meets the coach, who asks what to call you, with your first name
+  from Google already typed in for a Google account and nothing asked after
+  Sign in with Apple. It is kept as the account's `display_name`, which Google
+  cannot overwrite, and the name Run kept before is copied across once.
+
 ## [1.0.1] — released 2026-10-19, build 31
 
 Submitted to both stores on 16 October 2026 from `1acf955` (tag
