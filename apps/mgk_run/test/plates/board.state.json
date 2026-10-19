@@ -48,6 +48,7 @@
     "",
     "1.0.1 as released, 19 Oct (a Monday, at 4a03dc8 on develop; Run 1.0.1 went on sale on the App Store that day): every plate redrawn. 112 came out pixel-identical and are re-stamped. Taken new and re-stamped (their own code had moved): settings and settings-no-account (About gains Report a problem and Source code, the foot reads 1.0.1), home-with-plan, home-no-plan and home-first-launch (the treadmill row on the week tile; their 1 Oct pictures still had build 28's button under Start), and arrive-home, run-list and run-delete, whose only change was the dates. Restored to their earlier pictures and stamps, because only the day moved: add-run, coach-gate, coach-gate-after-consent, keep-runs-safe, paywall-store, plan-block, plan-calendar, plan-confirm, plan-near-race-confirm, run-count, run-edit, run-recovered, run-start, settings-backup, shell-plan, shell-plan-not-started. Kept on their 1 Oct pictures although --stale lists them, because a Monday cannot draw them: home-plan-not-started (a plan built today starts today), and the race plates shell-race-run-up, shell-race-day, shell-race-after, plan-race-week and week-race-week (the fixture's plan ends the Sunday before, so race week and race day come out wrong); last-run-subscribed, last-run-free, paywall-sign-in-first and paywall-restore-sign-in-first failed to draw (no planned run). Redraw those on another weekday.",
     "1.0.2 so far, 20 Oct (a Tuesday, on feat/efs-run, not merged): the email path, address first (ADR-0047). arrival.dart redrawn at e5ee058, the commit that added its plates, and coach-signed-out with it. New and stamped there: arrive-email, arrive-email-typo, arrive-email-offline, arrive-email-password, arrive-email-wrong-password, arrive-email-apple, arrive-email-create, arrive-email-code and arrive-email-code-refused (B14 to B22); the two code plates are built with a clock that stands still. Pixel-identical and re-stamped: arrive-sign-in, account-gate and coach-signed-out (B8, K2, C14, whose code changed), the intro plates and the plan plates arrival.dart draws. Restored to their 19 Oct pictures and stamps, because only the day moved: arrive-home, keep-runs-safe, plan-confirm, plan-near-race-confirm and plan-reveal. arrive-sign-in-email and account-gate-email are gone with the form (B13 and K3 retired). Plates --stale lists only for home_shell.dart or auth_gate.dart were not redrawn: the shell change is a best-effort name copy and the sign-in it pushes, which none of them draws.",
+    "1.0.2, 20 Oct, later: feat/email-first-sign-in merged in (9e91d15: confirm answers whether the password was replaced, and a cleared name stays cleared) and Run adapted at 08dd210. arrival.dart and coach-signed-out redrawn there: every plate stamped e5ee058 came out identical and is re-stamped 08dd210; the five that move with the day are again restored to 19 Oct.",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
   ],
@@ -209,7 +210,7 @@
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "account-google-play": {
@@ -244,12 +245,12 @@
     },
     "arrive-greeting": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-health": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-home": {
@@ -259,27 +260,27 @@
     },
     "arrive-name": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-permission": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-permission-allowed": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "coach-answering": {
@@ -344,7 +345,7 @@
     },
     "coach-signed-out": {
       "source": "test/plates/coach.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "coach-speaking": {
@@ -524,17 +525,17 @@
     },
     "plan-disclaimer": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "plan-intake": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "plan-near-race": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "plan-near-race-confirm": {
@@ -549,7 +550,7 @@
     },
     "plan-shape": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "plan-week": {
@@ -794,47 +795,47 @@
     },
     "arrive-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-typo": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-offline": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-password": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-wrong-password": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-apple": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-create": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-code": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     },
     "arrive-email-code-refused": {
       "source": "test/plates/arrival.dart",
-      "sha": "e5ee05825f1740111d1c85236eeca6a389fd1b39",
+      "sha": "08dd210aa002499468519416eb32c02c23a4e9a0",
       "captured": "2026-10-20"
     }
   }
