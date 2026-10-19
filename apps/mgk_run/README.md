@@ -4,16 +4,21 @@
 goal, and have a coach that adapts when life gets in the way. Part of the
 [mgk-fitness](../../README.md) suite.
 
-[![Status: in review](https://img.shields.io/badge/Status-1.0.0%20in%20review-blue.svg)](docs/app-store-1.0.0.md)
+[![Status: live](https://img.shields.io/badge/Status-1.0.1%20live-brightgreen.svg)](docs/app-store-1.0.0.md)
 [![Platforms: iOS and Android](https://img.shields.io/badge/Platforms-iOS%20%7C%20Android-lightgrey.svg)](#)
 [![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B.svg)](https://flutter.dev)
 
 ## Status
 
-**1.0.0 was submitted to the App Store and Google Play on 2 October 2026**, and
-is with both reviewers. Tracking, plan generation and the coach all run, and
-the coach is sold as a subscription through both stores. `main` holds what was
-submitted and `develop` is the next version
+**1.0.1 is on the [App Store](https://apps.apple.com/app/id6800052303) and
+[Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run).**
+Apple approved it on 19 October 2026, with both coach subscriptions, and it
+released itself the same minute; Play published it on 16 October. 1.0.0 went
+to both stores on 2 October: Play had it live by 5 October, and App Review
+rejected it on 16 October, so 1.0.1 is the first version on the App Store.
+Tracking, plan generation and the coach all run, and the coach is sold as a
+subscription through both stores. `main` holds what was submitted and
+`develop` is the next version, 1.0.2
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)). Which build
 is where, and what is left, is in
 [`docs/app-store-1.0.0.md`](docs/app-store-1.0.0.md), and only there: a build

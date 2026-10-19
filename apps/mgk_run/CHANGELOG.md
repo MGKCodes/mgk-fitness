@@ -18,11 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is 1.0.2
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
 
-## [1.0.1] — submitted 2026-10-16, build 31
+## [1.0.1] — released 2026-10-19, build 31
+
+Submitted to both stores on 16 October 2026 from `1acf955` (tag
+`run/build-31`). Google Play published it the same day. App Review approved
+it on 19 October, with the *Run Coach* group and both subscriptions in the
+same submission, and it released itself at 19:45 UTC.
 
 1.0.0 (build 29) was rejected by App Review on 16 October 2026 (guideline 4,
-Sign in with Apple), and never released on the App Store; it is live on
-Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
+Sign in with Apple), and never released on the App Store; it was live on
+Google Play from 5 October. 1.0.1 is the first version on the App Store and
+the second on Play.
 
 ### Added
 
@@ -115,8 +121,9 @@ Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
 ## [1.0.0] — submitted 2026-10-02, build 29
 
 Submitted to the App Store and Google Play on 2 October 2026, both from
-`9204036` (tag `run/build-29`). Not yet approved by either as this is written;
-the date here is the submission's.
+`9204036` (tag `run/build-29`); the date here is the submission's. Google Play
+had it live by 5 October. App Review rejected it on 16 October (guideline 4),
+so it never went on sale on the App Store: 1.0.1 replaced it there.
 
 It is the first version, so everything the app does is listed under it.
 

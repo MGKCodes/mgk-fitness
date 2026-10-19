@@ -4,6 +4,13 @@ The plan for submitting Run 1.0.0 to the App Store and Google Play, from one
 commit with one build number
 ([ADR-0039](decisions/0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md)).
 
+> **Done, 19 October 2026: Run is on both stores.** 1.0.1 (build 31) is on
+> sale on the App Store and Google Play. Apple rejected 1.0.0 (build 29) on
+> 16 October and 1.0.1 replaced it
+> ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)). What is still
+> unticked below is phone work and one note for Lift; none of it stands
+> between Run and a store any more.
+
 **This page carries the state, and nothing else.** One table and one ordered
 checklist. It was 1,168 lines on 1 October 2026, with three builds of history
 around about fifteen live items, and it had started to contradict itself. The
@@ -29,19 +36,19 @@ written. It stays because a dozen documents link to it.
 
 ## Where we are
 
-Updated 2026-10-01.
+Updated 2026-10-19 for the stores, the builds and the branches. A row that
+gives its own date was read on that date.
 
 | | |
 |---|---|
-| **On testers' phones** | **1.0.0 (29) on both**: TestFlight and Play internal, each built from `9204036` on 1 October. Tagged `run/build-29`; build 27 is `run/build-27` |
-| **Release candidate** | **Build 29**, `9204036`, **and the build being submitted**: the owner used it on the iPhone on 2 October, lock-screen readout included, and is happy with it |
-| **Built from** | `develop`, at `9204036`. **`main` was promoted on 2 October and holds what was submitted; `develop` is 1.0.1** ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)) |
+| **On sale** | **App Store: 1.0.1 (31) since 19 October 2026.** Approved in submission `7156a611` (sent 16 October with four items: the version, the `Run Coach` group and both subscriptions) and released by itself at 19:45 UTC, since it was set to release on approval. 1.0.0 (29) was rejected there on 16 October (guideline 4) and never released. **Google Play: 1.0.1 (31) since 16 October**, on full rollout; 1.0.0 (29) was live by 5 October. `scripts/store/stores.py status run` and `links run` read both |
+| **On testers' phones** | **1.0.1 (31) on both**: TestFlight and Play internal, built by Codemagic on 16 October. Tagged `run/build-31` on `1acf955`; Android's was rebuilt from `main` after its first publish failed ([`.store-release.md`](../../../.store-release.md)). 1.0.0 is `run/build-29` |
+| **Built from** | **`main` holds Run 1.0.1** (`30c2160`, promoted on 16 October with everything but `apps/mgk_lift`); `develop` is 1.0.2 ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)) |
 | **Backend in production** | `coach` v31, `revenuecat` v10, `delete-account` v18 (with Apple's token revocation), migrations through `20260929183008`. Read off the project on 2026-10-01 |
 | **Accounts** | Email confirmation is on, mail goes through SMTP2GO, and Apple and Google sign-in are configured for the suite ([store-setup.md](store-setup.md) §11) |
 | **Suite** | 1,948 tests pass and the analyzer is clean at `6e20a70`, with the three `live` tests excluded. Lift's 860 and the shared package's 93 pass against the changed coach reveal. This is the only place the count is written |
 | **Screens** | [The board](https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190): version 27, every plate drawn at `6e20a70`, was 1.0.0's. Since 5 October it shows 1.0.1 (version 33): 72 plates drawn at `170ab2d`, the rest on their 1 October pictures, H4, H5, Y8 and Y9 among them until a weekday other than Monday (`test/plates/board.state.json` says which is which). The lock-screen readout is on no plate |
 | **For the forms** | [The submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM): every field of both consoles, ready to paste. [The store shots](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU): the listing pictures |
-| **In review** | **Apple: submitted 2 October 2026**, 1.0.0 (29) with the subscription group and both subscriptions; Waiting for Review. Submitted on manual release, **switched on 5 October to release itself on approval** (`scripts/store/stores.py release-type run --automatic`, read back AFTER_APPROVAL; Matthew: updates go out once approved). **Play: submitted 2 October 2026**, build 29 on full rollout to 177 countries and the rest of the world, with the listing and every declaration; **live by 5 October** (its public page answers: `stores.py links run`) |
 | **On a phone** | No full test sitting since build 13. Two purchases are recorded, Coach on Android (11 Sep) and one on TestFlight (30 Sep); sections G and P of the sheet have never been run through |
 
 ---
@@ -176,9 +183,10 @@ passes `python tool/export_store_assets.py --check`.
 - [x] **Play's feature graphic** (1024 × 500) and **its 512 icon with alpha**.
 - [x] **The design is Still**, chosen by the owner on 2 October from
       [the gallery](https://claude.ai/artifact/KmRop4oC1KrHb2UdHykJbU).
-- [ ] **Upload:** `ios-still` to App Store Connect; `play-still`, the feature
-      graphic and the icon to Play Console. The files are in `Downloads`, and
-      [the submission sheet](https://claude.ai/artifact/Y2zLyeNxVuTrJTfHUn7tqM) says which goes where.
+- [x] **Upload:** `ios-still` to App Store Connect; `play-still`, the feature
+      graphic and the icon to Play Console. *Done through
+      `stores.py screenshots run`: the App Store's redrawn without "Free" on
+      7 October, and both stores' drawn again from 1.0.1 on 16 October.*
 
 ### 6. Submit
 
@@ -197,15 +205,19 @@ passes `python tool/export_store_assets.py --check`.
 - [x] **`develop` promoted to `main`** on the day of the submission, and
       `develop` moved to `1.0.1+30`
       ([ADR-0046](decisions/0046-a-version-is-submitted-once.md)).
-- [ ] **When Apple approves**, press release in App Store Connect. Play
-      publishes itself.
-- [ ] **If either store rejects it:** a form, a picture or a description is
+- [x] **If either store rejects it:** a form, a picture or a description is
       fixed in the console and resubmitted with build 29. Anything that needs a
-      new binary goes out as `1.0.1`, from `develop`.
+      new binary goes out as `1.0.1`, from `develop`. *Apple rejected 1.0.0 on
+      16 October (guideline 4: the coach asked for a name after Sign in with
+      Apple). The fix was code, so 1.0.1 (31) went from `develop` the same
+      day, resubmitted in the same submission, which kept the subscriptions.*
+- [x] **When Apple approves**, press release in App Store Connect. Play
+      publishes itself. *Nothing to press: the version released itself on
+      approval, 19 October, and Play published 1.0.1 on 16 October.*
 
 ---
 
-## Rules that hold until it is live
+## Rules that hold for every release
 
 Each of these was got wrong once. The reasoning is in the record or the ADR.
 
