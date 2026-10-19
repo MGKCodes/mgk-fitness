@@ -235,7 +235,7 @@ class _FakeEmailSignIn implements EmailSignIn {
   }
 
   @override
-  Future<void> confirm({
+  Future<bool> confirm({
     required String email,
     required String code,
     String? replacePassword,
@@ -248,6 +248,7 @@ class _FakeEmailSignIn implements EmailSignIn {
       _auth.emailCalls.add('replace password');
     }
     _auth._finish(email, via: 'email', isNew: true);
+    return true;
   }
 
   @override

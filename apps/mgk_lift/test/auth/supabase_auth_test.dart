@@ -127,14 +127,21 @@ void main() {
     expect(auth.current?.name, 'Sam');
   });
 
-  test('a blank name clears it rather than storing nothing', () async {
-    user = _user(metadata: <String, Object?>{'display_name': 'Sam'});
-    final auth = await signedIn();
-    await auth.updateName('   ');
+  test(
+    'a blank name clears it, and Run\'s old name does not come back',
+    () async {
+      // An account that still holds the `name` Run wrote before 1.0.2.
+      user = _user(
+        metadata: <String, Object?>{'display_name': 'Sam', 'name': 'Sammy'},
+      );
+      final auth = await signedIn();
+      await auth.updateName('   ');
 
-    expect(written(), <String, Object?>{'display_name': null});
-    expect(auth.current?.name, isNull);
-  });
+      // Empty, not null: the key stays and says "no name".
+      expect(written(), <String, Object?>{'display_name': ''});
+      expect(auth.current?.name, isNull);
+    },
+  );
 
   test('a name that does not reach the server says so', () async {
     final auth = await signedIn();

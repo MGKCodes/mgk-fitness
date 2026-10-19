@@ -40,15 +40,21 @@ class _FakeApi implements EmailSignIn {
     return createSignsIn;
   }
 
+  /// Whether a replacement password is written, when one is asked for.
+  bool replacementWrites = true;
+
   @override
-  Future<void> confirm({
+  Future<bool> confirm({
     required String email,
     required String code,
     String? replacePassword,
   }) async {
     calls.add('confirm $code');
     await _maybeFail();
+    if (replacePassword == null) return true;
+    if (!replacementWrites) return false;
     replacedWith = replacePassword;
+    return true;
   }
 
   @override
@@ -213,6 +219,19 @@ void main() {
       await flow.createAccount('Newer1!pass');
       expect(await flow.confirm('123456'), isTrue);
       expect(api.replacedWith, 'Newer1!pass');
+    },
+  );
+
+  test(
+    'a replacement that fails still signs in, and says the first password works',
+    () async {
+      api.status = AccountStatus.unconfirmed;
+      api.replacementWrites = false;
+      await flow.submitAddress('you@example.com');
+      await flow.createAccount('Newer1!pass');
+      expect(await flow.confirm('123456'), isTrue);
+      expect(flow.firstPasswordKept, isTrue);
+      expect(flow.error, isNull);
     },
   );
 

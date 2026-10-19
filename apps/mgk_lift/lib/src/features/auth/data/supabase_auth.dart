@@ -84,21 +84,16 @@ class SupabaseAuth implements AuthService {
   /// Writes [kDisplayNameKey] and nothing else: `name` is Google's, rewritten
   /// on every Google sign-in, and Run 1.0.1 still reads it for its coach.
   ///
-  /// **A null value removes the key**, which is how Supabase merges metadata,
-  /// so a cleared name leaves no empty string behind. Bounded like every call
-  /// on the auth path, so a dead connection is reported rather than waited on.
+  /// **A cleared name is written as empty, not null** ([displayNameData]), so
+  /// the key stays and says "no name": an account still holding Run's
+  /// pre-1.0.2 `name` would otherwise show that name again the moment this one
+  /// was cleared. Bounded like every call on the auth path, so a dead
+  /// connection is reported rather than waited on.
   @override
   Future<void> updateName(String? name) async {
-    final trimmed = name?.trim() ?? '';
     try {
       await _client.auth
-          .updateUser(
-            sb.UserAttributes(
-              data: <String, Object?>{
-                kDisplayNameKey: trimmed.isEmpty ? null : trimmed,
-              },
-            ),
-          )
+          .updateUser(sb.UserAttributes(data: displayNameData(name)))
           .timeout(const Duration(seconds: 20));
     } on Object {
       throw const AuthException(AuthFailure.unavailable);

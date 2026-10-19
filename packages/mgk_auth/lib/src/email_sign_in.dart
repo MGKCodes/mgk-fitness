@@ -161,7 +161,18 @@ class EmailSignIn {
   /// was [AccountStatus.unconfirmed]. It is written only after the code has
   /// proved the inbox: never before, because writing a password to a brand-new
   /// account sends the "password changed" notice to everybody who signs up.
-  Future<void> confirm({
+  ///
+  /// Returns whether the account now has the password typed this time: true
+  /// when there was nothing to replace, or it was replaced, or it was the same
+  /// one all along (Supabase's `same_password`, which somebody re-typing their
+  /// first password will meet). False when the code signed the account in but
+  /// the replacement failed, so the first password still works.
+  ///
+  /// **Signed in is the outcome that counts, so that failure never throws.**
+  /// It did: the code had verified, the session was there, and the screen said
+  /// "That did not go through" to somebody who was in. Only a refused code, or
+  /// no connection for the code itself, is a failure of this call.
+  Future<bool> confirm({
     required String email,
     required String code,
     String? replacePassword,
@@ -174,10 +185,16 @@ class EmailSignIn {
       ),
       onCode: EmailFailure.codeRefused,
     );
-    if (replacePassword != null) {
-      await _call(
-        () => _auth().updateUser(UserAttributes(password: replacePassword)),
-      );
+    if (replacePassword == null) return true;
+    try {
+      await _auth()
+          .updateUser(UserAttributes(password: replacePassword))
+          .timeout(timeout);
+      return true;
+    } on AuthException catch (e) {
+      return e.code == ErrorCode.samePassword.code;
+    } on Object {
+      return false;
     }
   }
 

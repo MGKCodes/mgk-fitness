@@ -17,16 +17,36 @@ const String kDisplayNameKey = 'display_name';
 
 /// The account's name, or null where it has none.
 ///
-/// [kDisplayNameKey] first. Failing that, the `name` Run used to write, but
-/// only on an account with no Google identity: on one with, `name` is
-/// whatever Google last sent, which the runner never chose.
+/// **[kDisplayNameKey] is the answer whenever it is there, empty included.**
+/// Only an account that has never had one falls back to the `name` Run used to
+/// write, and only with no Google identity: on one with, `name` is whatever
+/// Google last sent, which the runner never chose. A name cleared in either
+/// app is written as empty ([displayNameData]), so clearing it cannot bring
+/// back Run's pre-1.0.2 name from underneath.
 String? displayNameOf(User? user) {
   final metadata = user?.userMetadata;
-  final chosen = _trimmed(metadata?[kDisplayNameKey]);
-  if (chosen != null) return chosen;
+  if (metadata != null && metadata.containsKey(kDisplayNameKey)) {
+    return _trimmed(metadata[kDisplayNameKey]);
+  }
   if (hasIdentity(user, 'google')) return null;
   return _trimmed(metadata?['name']);
 }
+
+/// The metadata to write for [name]: trimmed, or empty to clear it.
+///
+/// Empty rather than null, so the key stays and says "no name" (see
+/// [displayNameOf]); a null may be taken as removing the key, and then the
+/// legacy `name` under it would answer again. Both apps write the name with
+/// this, so they cannot disagree about what clearing means.
+Map<String, Object?> displayNameData(String? name) => <String, Object?>{
+  kDisplayNameKey: name?.trim() ?? '',
+};
+
+/// Whether the account has ever had a name written to [kDisplayNameKey],
+/// empty included. Run's one-time copy of its legacy `name` runs only when
+/// this is false.
+bool hasDisplayNameKey(User? user) =>
+    user?.userMetadata?.containsKey(kDisplayNameKey) ?? false;
 
 /// Whether [user] can sign in with [provider] (`apple`, `google`, `email`).
 ///
