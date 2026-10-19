@@ -9,20 +9,20 @@ import '../data/intro_permission_requester.dart';
 import '../domain/intro_permission.dart';
 import '../domain/intro_script.dart';
 
-/// What the intro gathered, handed to sign-up.
+/// What the intro already knows before a word is said.
 ///
 /// Only a name now. It used to carry the plan shape as well, which then had to
 /// survive the widget swap from the signed-out flow to the shell — see
 /// `shape_question.dart` for why that question moved to the plan flow instead
-/// (ADR-0019).
+/// (ADR-0019). It also said whether the answers came from the conversation, so
+/// the email form could tell signing up from signing in; the email path looks
+/// the address up instead (ADR-0047), and nothing asks that any more.
 class IntroAnswers {
-  const IntroAnswers({this.name, this.isFromIntro = false});
+  const IntroAnswers({this.name});
 
-  /// Whether these came from the conversation rather than from nothing. The
-  /// form uses it to decide whether it is creating an account or signing back
-  /// into one, which a null name alone cannot say — the name is optional.
-  final bool isFromIntro;
-
+  /// A name that is **known**, so the question is not asked: the account's,
+  /// or the one this phone was told. A name that is only a guess, such as the
+  /// one Google holds, is [IntroScreen.suggestedName] instead.
   final String? name;
 }
 
@@ -47,6 +47,7 @@ class IntroScreen extends StatefulWidget {
     this.onBack,
     this.initial = const IntroAnswers(),
     this.askName = true,
+    this.suggestedName,
     this.requestPermission = requestIntroPermission,
   });
 
@@ -71,6 +72,21 @@ class IntroScreen extends StatefulWidget {
   /// the coach goes without one unless [initial] carries it.
   final bool askName;
 
+  /// What the name field starts with when the question is asked: the first
+  /// name Google gave a Google account (ADR-0047, "With Google it starts
+  /// filled in").
+  ///
+  /// **Asked, not assumed**, which is why this is not [initial]. A name in
+  /// [initial] is one the runner already chose, so the question is skipped. A
+  /// suggestion is somebody else's record of them, so the question is still
+  /// asked, with the field filled in: sent as it is, changed, or cleared to go
+  /// without a name. Nobody has to use the name their provider holds, and
+  /// skipping the question would have made them.
+  ///
+  /// Nothing here when [askName] is false: after Sign in with Apple the
+  /// question is not asked at all, filled in or not.
+  final String? suggestedName;
+
   /// Back to the welcome screen.
   final VoidCallback? onBack;
 
@@ -83,7 +99,7 @@ class IntroScreen extends StatefulWidget {
 }
 
 class _IntroScreenState extends State<IntroScreen> {
-  final _name = TextEditingController();
+  late final _name = TextEditingController(text: widget.suggestedName ?? '');
   final _scroll = ScrollController();
 
   late IntroStep _step = IntroStep.greeting;

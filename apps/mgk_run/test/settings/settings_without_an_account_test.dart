@@ -351,7 +351,7 @@ void main() {
         auth: auth,
         consent: store,
         ensureAccount: () async {
-          await auth.signUp(email: 'sam@example.com', password: 'hunter2222');
+          await auth.signIn(email: 'sam@example.com', password: 'hunter2222');
           return true;
         },
       );

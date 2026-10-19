@@ -128,12 +128,22 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  /// Whether the session on screen was reached by creating an account.
+  /// Whether this gate has drawn the app signed out since it started, so that
+  /// any session it now holds is one it watched arrive.
   ///
-  /// Held here because it is the only place that sees both sides of the swap:
-  /// the sign-up happens in a subtree that the auth stream then replaces, so
-  /// the fact would otherwise be gone by the time the shell exists.
-  bool _justSignedUp = false;
+  /// **Whether an account is new is read from the account** (ADR-0047), and
+  /// the account says so for longer than the moment matters: it was made
+  /// within minutes of its latest sign-in, and a session restored at launch is
+  /// not a sign-in, so a runner who made an account on Monday and never signed
+  /// out still reads as new on Friday. Asked then, the shell would skip the
+  /// restore, the launch backfill and the backup question on every launch
+  /// until they next signed in. Asked only about a sign-in seen here, it means
+  /// what it says: the account was made just now.
+  ///
+  /// It replaces `onSignUpIntent`, which guessed the same fact from which half
+  /// of the email form was showing, and could not see Apple and Google decide
+  /// it for themselves.
+  bool _sawSignedOut = false;
 
   /// Set the moment the signed-in conversation finishes, so the shell arrives
   /// without waiting on the round trip that records it.
@@ -329,6 +339,7 @@ class _AuthGateState extends State<AuthGate> {
       stream: _authChanges,
       builder: (context, _) {
         if (!auth.isSignedIn) {
+          _sawSignedOut = true;
           // Signed out, so the next sign-in -- whoever it is -- is checked
           // afresh. The guard remembers its answer, so this costs nothing when
           // it is the same account again.
@@ -359,7 +370,6 @@ class _AuthGateState extends State<AuthGate> {
             return _SignedOutFlow(
               auth: auth,
               devAccounts: accounts,
-              onSignUpIntent: (v) => _justSignedUp = v,
               requestPermission: widget.requestPermission,
               onIntroFinished: (name) => unawaited(_introFinished(auth, name)),
             );
@@ -412,7 +422,15 @@ class _AuthGateState extends State<AuthGate> {
         //
         // No account steps: they have a profile. Just the coach, and the
         // permissions this install has never been asked for.
-        if (!_justSignedUp && !_metCoachThisSession && !auth.hasMetCoach) {
+        //
+        // **And a brand-new account meets it too** (ADR-0047). This used to
+        // skip it for an account made on the sign-in form, from the days when
+        // the intro came before the form and had already been had. The intro
+        // ends without an account now, so an account made at the sign-in has
+        // never met the coach, and the coach's question is the account's name
+        // step: Run asks what to call somebody once, in the conversation, and
+        // shows no separate step.
+        if (!_metCoachThisSession && !auth.hasMetCoach) {
           if (_introDone == null) {
             // A frame or two at launch while the marker is read, for the
             // reason the signed-out branch gives.
@@ -436,6 +454,9 @@ class _AuthGateState extends State<AuthGate> {
               initial: IntroAnswers(name: _name(auth)),
               // Never after Sign in with Apple; see `signedInWithApple`.
               askName: !auth.signedInWithApple,
+              // Google's first name, in the field and still asked about: a
+              // known name skips the question, a provider's guess does not.
+              suggestedName: auth.googleFirstName,
               requestPermission:
                   widget.requestPermission ?? requestIntroPermission,
               onFinished: (name) => unawaited(_introFinished(auth, name)),
@@ -453,7 +474,8 @@ class _AuthGateState extends State<AuthGate> {
     // shell exactly as before; see [_generation].
     key: ValueKey<int>(_generation),
     localData: widget.localData,
-    justSignedUp: _justSignedUp,
+    // Made by a sign-in this gate watched happen; see [_sawSignedOut].
+    justSignedUp: _sawSignedOut && auth.isSignedIn && auth.accountIsNew,
     auth: auth,
     // **The wire the last change built both ends of and never joined.**
     // `IntroStore` gained a name and `HomeShell` gained the parameter to take
@@ -501,7 +523,6 @@ class _SignedOutFlow extends StatefulWidget {
     required this.auth,
     required this.devAccounts,
     required this.onIntroFinished,
-    this.onSignUpIntent,
     this.requestPermission,
   });
 
@@ -510,10 +531,6 @@ class _SignedOutFlow extends StatefulWidget {
 
   /// Forwarded to the intro. Null keeps the real OS dialogs.
   final Future<bool> Function(IntroPermission permission)? requestPermission;
-
-  /// Reports whether the screen below is creating an account, so the gate above
-  /// can tell a brand-new runner apart from a returning one.
-  final ValueChanged<bool>? onSignUpIntent;
 
   /// The conversation ended. The gate above records it and swaps in the shell.
   final void Function(String? name) onIntroFinished;
@@ -533,28 +550,16 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
   /// they already have an account: somebody signing back in wants a form their
   /// password manager recognises rather than a conversation they have had
   /// before. Creating an account is still reachable from inside that screen,
-  /// and from the two places in the app that need one.
+  /// whose email path finds out which it is from the address, and from the two
+  /// places in the app that need one.
   _Signed _at = _Signed.welcome;
 
-  /// What the intro conversation gathered, carried into the form and then into
-  /// the coach's first real turn.
-  IntroAnswers _answers = const IntroAnswers();
-
-  void _open({required bool signUp}) {
-    setState(() {
-      _at = signUp ? _Signed.intro : _Signed.form;
-      if (signUp) _answers = const IntroAnswers();
-    });
-    // **Deliberately does not claim a sign-up.** `signUp: true` opens the
-    // *intro*, which since ADR-0019 ends on Home with nothing signed in -- so
-    // announcing one here set `_justSignedUp` for any runner who merely tapped
-    // "Get started", and nothing ever cleared it. `HomeShell` reads that flag
-    // to decide there is nothing on the server worth restoring, so the whole
-    // session then skipped both the restore and the launch backfill, whoever
-    // signed in afterwards. `SignInScreen` already reports this accurately --
-    // it claims a sign-up before calling `signUp` and takes the claim back when
-    // no session comes of it -- and it is now the only thing that reports it.
-  }
+  /// **Claims nothing about a sign-up.** Opening the intro used to announce
+  /// one, which told the shell there was nothing on the server to restore for
+  /// whoever signed in afterwards. Whether an account is new is read from the
+  /// account now (ADR-0047), so there is no claim to make or to take back.
+  void _open({required bool signUp}) =>
+      setState(() => _at = signUp ? _Signed.intro : _Signed.form);
 
   @override
   Widget build(BuildContext context) {
@@ -584,7 +589,6 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
         // repository to sign up against - the path a runner arriving from Lift
         // has always taken. Every new runner takes it now.
         child: IntroScreen(
-          initial: _answers,
           requestPermission: widget.requestPermission ?? requestIntroPermission,
           onBack: () => setState(() => _at = _Signed.welcome),
           onFinished: widget.onIntroFinished,
@@ -600,21 +604,13 @@ class _SignedOutFlowState extends State<_SignedOutFlow> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        setState(
-          () => _at = _answers.isFromIntro ? _Signed.intro : _Signed.welcome,
-        );
+        setState(() => _at = _Signed.welcome);
       },
       child: SignInScreen(
         auth: widget.auth,
-        initialSignUp: _answers.isFromIntro,
-        // Back to the conversation rather than past it — the answers are still
-        // there, and a runner who wants to change one should not have to start
-        // from the welcome screen.
-        onBack: () => setState(
-          () => _at = _answers.isFromIntro ? _Signed.intro : _Signed.welcome,
-        ),
-        onSignUpIntent: widget.onSignUpIntent,
-        introName: _answers.name,
+        // Back to the welcome, the only way here: the intro ends on Home, not
+        // on this screen.
+        onBack: () => setState(() => _at = _Signed.welcome),
         devAccounts: widget.devAccounts,
       ),
     );

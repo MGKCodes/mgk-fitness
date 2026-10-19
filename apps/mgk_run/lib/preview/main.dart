@@ -81,7 +81,7 @@ import 'package:mgk_run/src/features/recording/presentation/run_summary_screen.d
 ///
 /// It is **URL-driven**: append `?screen=<key>` to the URL. There are two kinds
 /// of entry, and they don't overlap:
-///  - **Isolated screens** (`welcome`, `signin`, `signup`, `home`) render one
+///  - **Isolated screens** (`welcome`, `signin`, `home`) render one
 ///    screen for a quick visual/design check. No navigation, no backend.
 ///  - **`app`** mounts the *real* [AuthGate] flow against a fake backend, so
 ///    the whole welcome → sign-in → home path — including the debug
@@ -154,17 +154,19 @@ const String _devAttribution = '© OpenStreetMap contributors © CARTO';
 final Map<String, WidgetBuilder> _screens = <String, WidgetBuilder>{
   // Isolated single screens — visual checks only.
   'welcome': (_) => WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
-  'signin': (context) =>
-      SignInScreen(onBack: () => Navigator.of(context).maybePop()),
+  // Against the fake, so the email path answers offline: its addresses are
+  // on `FakeAuthRepository` (sam@example.com has a password, apple@ and
+  // google@example.com sign in with those, anything else is new, and the code
+  // is 123456). There is no `signup` screen any more: the address decides.
+  'signin': (context) => SignInScreen(
+    auth: FakeAuthRepository(),
+    onBack: () => Navigator.of(context).maybePop(),
+  ),
   // `onBack` supplied, because SignInScreen only draws its app bar -- and so
   // its back button -- when it has somewhere to go. AuthGate always passes one;
   // a preview that did not made a screen with a perfectly good back control
   // look like a dead end, which is the same way this harness misled the exit
   // sweep once already.
-  'signup': (context) => SignInScreen(
-    initialSignUp: true,
-    onBack: () => Navigator.of(context).maybePop(),
-  ),
   'home': (_) => HomeShell(
     aiConsent: InMemoryAiConsentStore(),
     auth: FakeAuthRepository(signedIn: true, email: _fakeEmail),

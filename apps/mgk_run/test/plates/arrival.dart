@@ -34,7 +34,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
+import 'package:mgk_auth/mgk_auth.dart' show EmailFailure;
 import 'package:mgk_run/src/features/auth/presentation/auth_gate.dart';
+import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/data/plan_repository.dart';
 import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
@@ -49,6 +51,7 @@ import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
+import 'package:mgk_ui/mgk_ui.dart' show EmailSignInSteps;
 
 import 'fixture.dart';
 import 'plate.dart';
@@ -64,8 +67,10 @@ void main() {
   /// [requestPermission] answers yes without a system dialog, which is the only
   /// part of this that is faked. The consent store is in memory so the plate
   /// does not write a file into the repository every time the board is built.
-  Widget cold() => AuthGate(
-    auth: FakeAuthRepository(),
+  /// [auth] answers the email path by address (see `FakeAuthRepository`), so
+  /// every step of it is reached by typing what a runner would.
+  Widget cold({FakeAuthRepository? auth}) => AuthGate(
+    auth: auth ?? FakeAuthRepository(),
     // In memory, not the real marker file. The gate reads this before it draws
     // anything, and a plate that waits on a filesystem the test framework does
     // not have would render a blank frame and call it the welcome screen.
@@ -275,16 +280,186 @@ void main() {
     );
   });
 
-  testWidgets('and its email form, which starts on signing in', (tester) async {
+  // --- The email path (ADR-0047): the address first ------------------------
+  //
+  // One screen of steps behind "Continue with email", drawn once here for
+  // every way into it: the welcome's "I already have an account", the coach
+  // and a plan (C14), and backup (K2) all raise the same screen.
+
+  /// To the address, from the welcome.
+  Future<void> toTheAddress(WidgetTester tester) async {
+    await tester.pumpAndSettle();
+    await tapText(tester, 'I already have an account');
+    await tapText(tester, 'Continue with email');
+  }
+
+  /// Types [address] and, unless [send] is false, presses Continue.
+  Future<void> typeAddress(
+    WidgetTester tester,
+    String address, {
+    bool send = true,
+  }) async {
+    await tester.enterText(find.byKey(EmailSignInSteps.emailFieldKey), address);
+    await tester.pumpAndSettle();
+    if (send) await tapText(tester, 'Continue');
+  }
+
+  /// Types [password] into whichever step asks for one.
+  Future<void> typePassword(WidgetTester tester, String password) async {
+    await tester.enterText(
+      find.byKey(EmailSignInSteps.passwordFieldKey),
+      password,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the email path asks for the address first', (tester) async {
     await plate(
       tester,
-      'arrive-sign-in-email',
+      'arrive-email',
+      cold(),
+      pixelRatio: 2,
+      drive: toTheAddress,
+    );
+  });
+
+  testWidgets('and offers a fix for a likely typo', (tester) async {
+    await plate(
+      tester,
+      'arrive-email-typo',
       cold(),
       pixelRatio: 2,
       drive: (tester) async {
-        await tester.pumpAndSettle();
-        await tapText(tester, 'I already have an account');
-        await tapText(tester, 'Continue with email');
+        await toTheAddress(tester);
+        await typeAddress(tester, 'sam@gmial.com', send: false);
+      },
+    );
+  });
+
+  testWidgets('and with no signal keeps what was typed', (tester) async {
+    await plate(
+      tester,
+      'arrive-email-offline',
+      cold(auth: FakeAuthRepository()..emailFailure = EmailFailure.unavailable),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheAddress(tester);
+        await typeAddress(tester, FakeAuthRepository.passwordAddress);
+      },
+    );
+  });
+
+  testWidgets('an address with a password is welcomed back', (tester) async {
+    await plate(
+      tester,
+      'arrive-email-password',
+      cold(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheAddress(tester);
+        await typeAddress(tester, FakeAuthRepository.passwordAddress);
+      },
+    );
+  });
+
+  testWidgets('and a wrong password is called one', (tester) async {
+    await plate(
+      tester,
+      'arrive-email-wrong-password',
+      cold(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheAddress(tester);
+        await typeAddress(tester, FakeAuthRepository.passwordAddress);
+        await typePassword(tester, 'hunter-22');
+        await tapText(tester, 'Sign in');
+      },
+    );
+  });
+
+  testWidgets('an address made with Apple is offered Apple', (tester) async {
+    await plate(
+      tester,
+      'arrive-email-apple',
+      cold(),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheAddress(tester);
+        await typeAddress(tester, FakeAuthRepository.appleAddress);
+      },
+    );
+  });
+
+  testWidgets(
+    'a new address makes an account, the rule ticked as it is typed',
+    (tester) async {
+      await plate(
+        tester,
+        'arrive-email-create',
+        cold(),
+        pixelRatio: 2,
+        drive: (tester) async {
+          await toTheAddress(tester);
+          await typeAddress(tester, 'alex@example.com');
+          // Eight characters and a number, and no symbol yet.
+          await typePassword(tester, 'hunter22');
+        },
+      );
+    },
+  );
+
+  /// The sign-in on its own, as the welcome's "I already have an account"
+  /// opens it, with a clock that only moves when told to: the wait for another
+  /// code is a countdown, and drawn against the real time it would read
+  /// differently every time the board is built.
+  Widget signInAt(DateTime Function() clock) =>
+      SignInScreen(auth: FakeAuthRepository(), clock: clock, onBack: () {});
+
+  /// From the address to the code, for a new address. Fixed pumps from the
+  /// code on: its countdown ticks every second until it reaches zero.
+  Future<void> toTheCode(WidgetTester tester) async {
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Continue with email');
+    await typeAddress(tester, 'alex@example.com');
+    await typePassword(tester, 'Hunter-2222');
+    await tester.tap(find.text('Create account'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  testWidgets('then the code from the email, and a wait for another', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 10, 20, 9);
+    await plate(
+      tester,
+      'arrive-email-code',
+      signInAt(() => now),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheCode(tester);
+        now = now.add(const Duration(seconds: 18));
+        await tester.pump(const Duration(seconds: 1));
+      },
+    );
+  });
+
+  testWidgets('and a code that is wrong or old is said to be', (tester) async {
+    var now = DateTime(2026, 10, 20, 9);
+    await plate(
+      tester,
+      'arrive-email-code-refused',
+      signInAt(() => now),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await toTheCode(tester);
+        now = now.add(const Duration(seconds: 29));
+        await tester.enterText(
+          find.byKey(EmailSignInSteps.codeFieldKey),
+          '482915',
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
       },
     );
   });
@@ -483,7 +658,7 @@ void main() {
     );
   });
 
-  testWidgets('and the sign-up it raises, which already knows the name', (
+  testWidgets('and the sign-up it raises, which asks for no name', (
     tester,
   ) async {
     await plate(
@@ -495,23 +670,6 @@ void main() {
         await settle(tester);
         await settle(tester);
         await tester.tap(find.text('Back them up'));
-        await settle(tester);
-      },
-    );
-  });
-
-  testWidgets('and the email form behind its third button', (tester) async {
-    await plate(
-      tester,
-      'account-gate-email',
-      settledIn(),
-      pixelRatio: 2,
-      drive: (tester) async {
-        await settle(tester);
-        await settle(tester);
-        await tester.tap(find.text('Back them up'));
-        await settle(tester);
-        await tester.tap(find.text('Continue with email'));
         await settle(tester);
       },
     );
