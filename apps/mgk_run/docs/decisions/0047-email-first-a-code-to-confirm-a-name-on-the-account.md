@@ -254,11 +254,11 @@ have shipped it.
       and checked from outside with a made-up address: `new`, 200; not an
       address, 400; a GET, 405; the CORS preflight, 200. No real account was
       looked up.
-- [ ] **Before any build from `develop` reaches a tester:** paste the new
-      confirmation email (`supabase/templates/confirmation.html`) into
-      Authentication › Emails › Confirm sign up. Without it, a new account
-      waits for a code its email does not carry. Safe for the builds on the
-      stores, which still use the link it keeps.
+- [x] The new confirmation email, with the code above the link, pasted into
+      Authentication › Emails › Confirm sign up by the owner on 20 October
+      2026. Not yet seen in an inbox: the first sign-up from a build of
+      `develop` is that check (the code above the button, the link still
+      working, and the code in the notification's preview).
 - [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
       password goes to 8, the reset page checks the rule, and both privacy
       policies change (an optional name the person chooses, Google's first
