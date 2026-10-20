@@ -199,7 +199,7 @@ have shipped it.
 **Done, 19 October 2026:**
 
 - [x] `core.account_facts(email)`, the facts about one address for the service
-      role only (`supabase/migrations/20261019220000_core_account_facts.sql`),
+      role only (`supabase/migrations/20261020000311_core_account_facts.sql`),
       with its database test (`supabase/tests/account_facts.sql`). *The test is
       written and has not run: there was no local database that day.*
 - [x] The `account-lookup` Edge Function, which turns those facts into `new`,
@@ -245,9 +245,12 @@ have shipped it.
 
 **Held for the owner, because each changes production:**
 
-- [ ] **Before any build from `develop` reaches a tester:** apply the migration
-      (renamed to the version the project stamps), then deploy
-      `account-lookup`; and paste the new confirmation email
+- [x] The migration, applied to production on 20 October 2026 and stamped
+      `20261020000311` (the file renamed to match). Read back from the
+      catalog: security definer, `search_path` pinned, execute granted to
+      `service_role` alone.
+- [ ] **Before any build from `develop` reaches a tester:** deploy
+      `account-lookup`, and paste the new confirmation email
       (`supabase/templates/confirmation.html`). Without the first, every email
       sign-in stops at "No connection"; without the second, a new account
       waits for a code its email does not carry. Both are safe for the builds
