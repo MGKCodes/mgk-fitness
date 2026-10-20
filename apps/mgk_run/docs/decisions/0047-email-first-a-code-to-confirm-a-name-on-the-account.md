@@ -249,13 +249,16 @@ have shipped it.
       `20261020000311` (the file renamed to match). Read back from the
       catalog: security definer, `search_path` pinned, execute granted to
       `service_role` alone.
-- [ ] **Before any build from `develop` reaches a tester:** deploy
-      `account-lookup`, and paste the new confirmation email
-      (`supabase/templates/confirmation.html`). Without the first, every email
-      sign-in stops at "No connection"; without the second, a new account
-      waits for a code its email does not carry. Both are safe for the builds
-      on the stores, which never call the one and still use the link in the
-      other.
+- [x] `account-lookup` deployed on 20 October 2026
+      (`npx supabase functions deploy account-lookup --use-api --no-verify-jwt`)
+      and checked from outside with a made-up address: `new`, 200; not an
+      address, 400; a GET, 405; the CORS preflight, 200. No real account was
+      looked up.
+- [ ] **Before any build from `develop` reaches a tester:** paste the new
+      confirmation email (`supabase/templates/confirmation.html`) into
+      Authentication › Emails › Confirm sign up. Without it, a new account
+      waits for a code its email does not carry. Safe for the builds on the
+      stores, which still use the link it keeps.
 - [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
       password goes to 8, the reset page checks the rule, and both privacy
       policies change (an optional name the person chooses, Google's first
