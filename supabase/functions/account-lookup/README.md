@@ -23,7 +23,7 @@ app (signed out)  ─▶  account-lookup  ─▶  core.account_facts(email)
 
 The decision is `statusOf` in [`status.ts`](status.ts), tested in
 [`status_test.ts`](status_test.ts) (`deno test`). The facts it decides from come
-from `core.account_facts`, migration `20261019220000_core_account_facts.sql`,
+from `core.account_facts`, migration `20261020000311_core_account_facts.sql`,
 tested in [`supabase/tests/account_facts.sql`](../../tests/account_facts.sql)
 (`supabase test db`).
 
