@@ -70,6 +70,14 @@ const nextConfig: NextConfig = {
   // not loop back on the rules above.
   async redirects() {
     return [
+      // The short link in the Instagram bio. The studio's social Worker counts
+      // the click for its desk, then sends the visitor back to the home page
+      // with the platform in utm_source. Temporary, so the code can move.
+      {
+        source: "/ig",
+        destination: "https://social.mgkcodes.com/go/fit-ig",
+        permanent: false,
+      },
       {
         source: "/run/privacy-policy.html",
         destination: "/run/privacy",
