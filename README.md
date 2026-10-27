@@ -63,7 +63,7 @@ mgk-fitness/
 │  └─ mgk_units/           metric storage, km/mi at display
 ├─ supabase/
 │  ├─ migrations/          the schema; this repository is the source of truth
-│  ├─ functions/           Edge Functions: coach, delete-account, revenuecat, daily-ai-summary
+│  ├─ functions/           Edge Functions: coach, delete-account, revenuecat, account-lookup
 │  └─ tests/               pgTAP assertions against the real catalog
 ├─ scripts/store/          submits and releases both apps on both stores
 ├─ web/                    mgkfitness.mgkcodes.com (NOT AGPL, see NOTICE.md)

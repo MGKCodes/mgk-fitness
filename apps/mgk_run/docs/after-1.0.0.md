@@ -132,8 +132,8 @@ a promise to ship by then.
 | Item | Revisit |
 |---|---|
 | **Per-field clamps on coach requests, and a reserve-before-spend limiter.** The request size is capped as a whole, and a request is counted after it has spent, so requests arriving together can pass a ceiling together | 2026-10-15 |
-| **`daily-ai-summary`** is a legacy Liftio function that is still deployed, and any signed-in user can make it spend. Recommended: undeploy it. Never redeploy it from `main` | 2026-10-06 |
-| **The coach does not check the AI consent itself.** The app refuses to send without it; the Edge Function should refuse too (ADR-0036) | 2026-10-31 |
+| **`daily-ai-summary`** left the repository on 27 Oct: Lift 2.0 replaced the Liftio build it served (8 Oct), which was its own README's condition for deleting it. Undeploy it from production (`supabase functions delete daily-ai-summary`); `lift.ai_summary_requests` stays until a migration drops it | 2026-10-27 |
+| **The coach checks Run's AI consent itself** from 27 Oct (ADR-0036, amendment). **Lift's is not checked**: its coach switch is on the phone and on by default. Lift's next release asks for an explicit yes, keeps it on the account as `lift_ai_consent`, and turns the check on for Lift. Run's next build should answer `consent_required` with the consent sheet | Lift 2.0.1 |
 | **Premium's sharper model**, chosen by bake-off, if Premium subscribers cancel at the first renewal without nearing Coach's ceiling (ADR-0038) | 2026-11-15 |
 
 ### Data, deletion and retention
