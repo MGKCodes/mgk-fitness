@@ -37,9 +37,12 @@ typedef FirstRunApp =
 /// launch after the update every existing lifter would read as new. Anybody
 /// this phone already knows is let through and marked seen without a word: a
 /// session restored at launch, or any training already on the phone. The
-/// welcome is shown only on positive evidence of a new install (nothing
-/// recorded, nothing logged, nobody signed in), so a check that fails or
-/// takes too long opens the app rather than the welcome. A gate in front of
+/// welcome is shown only on positive evidence of a new install: Lift's
+/// database did not exist before this launch ([newInstall]), or nothing is
+/// recorded, nothing logged and nobody signed in. A check that fails or takes
+/// too long opens the app rather than the welcome. [newInstall] is what keeps
+/// that from costing a new lifter the welcome on a slow first launch, where
+/// reading the database for training can outlast [readBudget]. A gate in front of
 /// the app that guesses wrong in that direction costs a walkthrough somebody
 /// can still play from Settings; guessing wrong in the other would stand a
 /// welcome screen in front of somebody's training.
@@ -56,6 +59,7 @@ class FirstRunGate extends StatefulWidget {
     required this.app,
     this.auth,
     this.hasTraining,
+    this.newInstall = false,
     this.readBudget = const Duration(seconds: 3),
   });
 
@@ -77,6 +81,13 @@ class FirstRunGate extends StatefulWidget {
   /// database, which holds none. Asked only when the store says the
   /// walkthrough has not been seen, which after the first launch is never.
   final Future<bool> Function()? hasTraining;
+
+  /// Lift had never run on this phone before this launch: its database file
+  /// did not exist when the app started. Such a phone holds no training, so
+  /// [hasTraining] is not asked, and a store that cannot answer in time reads
+  /// as "not seen" rather than "seen". A session restored at launch still
+  /// counts as somebody known (a phone restored from a backup can carry one).
+  final bool newInstall;
 
   /// How long a launch waits on either answer before opening the app.
   ///
@@ -136,14 +147,17 @@ class _FirstRunGateState extends State<FirstRunGate> {
     setState(() => _at = known || restored ? _Arrival.app : _Arrival.welcome);
   }
 
-  /// The store's answer, or "seen" when it has none to give.
-  Future<bool> _seen() => _ask(widget.store.hasSeen, otherwise: true);
+  /// The store's answer, or "seen" when it has none to give, except on a new
+  /// install, where there is nothing it could have seen.
+  Future<bool> _seen() =>
+      _ask(widget.store.hasSeen, otherwise: !widget.newInstall);
 
   /// Whether this phone was in use before the first open existed: an account
   /// signed in, or training on it. Either answers for an upgrader; a phone
   /// that cannot say answers yes, for the reason on [FirstRunGate].
   Future<bool> _usedBefore() async {
     if (widget.auth?.current != null) return true;
+    if (widget.newInstall) return false;
     final check = widget.hasTraining;
     if (check == null) return false;
     return _ask(check, otherwise: true);

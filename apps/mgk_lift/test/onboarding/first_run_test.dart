@@ -48,6 +48,7 @@ void main() {
     Future<bool> Function()? hasTraining,
     FirstRunApp? app,
     Duration readBudget = const Duration(seconds: 3),
+    bool newInstall = false,
   }) async {
     tall(tester);
     await tester.pumpWidget(
@@ -57,6 +58,7 @@ void main() {
           auth: auth,
           hasTraining: hasTraining,
           readBudget: readBudget,
+          newInstall: newInstall,
           app:
               app ??
               ({required walkthrough, required onWalkthroughEnded}) => Scaffold(
@@ -380,6 +382,65 @@ void main() {
 
       expect(welcome(), findsNothing);
       expect(find.text('the app'), findsOneWidget);
+    });
+  });
+
+  /// **A new install is told by its database file, not by reading it**
+  /// (29 October 2026). On the emulator's first launch of a debug build the
+  /// training read ran past the budget, the gate took that as an upgrader, and
+  /// a brand-new phone opened on Track with the walkthrough marked seen.
+  group('a phone whose database did not exist before this launch', () {
+    testWidgets('meets the welcome however slow the training read is', (
+      tester,
+    ) async {
+      var asked = 0;
+      await gate(
+        tester,
+        InMemoryIntroStore(),
+        newInstall: true,
+        hasTraining: () {
+          asked++;
+          return Completer<bool>().future;
+        },
+      );
+
+      expect(welcome(), findsOneWidget);
+      expect(asked, 0, reason: 'nothing to read on a phone with no database');
+    });
+
+    testWidgets('meets it when the store never answers, too', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FirstRunGate(
+            store: _SilentStore(),
+            newInstall: true,
+            readBudget: const Duration(seconds: 2),
+            app: ({required walkthrough, required onWalkthroughEnded}) =>
+                const Text('the app'),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+
+      expect(welcome(), findsOneWidget);
+      expect(find.text('the app'), findsNothing);
+    });
+
+    testWidgets('but a session restored at launch is still somebody known', (
+      tester,
+    ) async {
+      final store = InMemoryIntroStore();
+      final auth = FakeAuth(
+        account: const Account(id: 'u', email: 'a@b.com'),
+      );
+      addTearDown(auth.dispose);
+      await gate(tester, store, auth: auth, newInstall: true);
+
+      expect(welcome(), findsNothing);
+      expect(find.text('the app'), findsOneWidget);
+      expect(await store.hasSeen(), isTrue);
     });
   });
 }
