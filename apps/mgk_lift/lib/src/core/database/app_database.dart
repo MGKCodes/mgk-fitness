@@ -150,11 +150,32 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
+const String _fileName = 'mgk_lift.sqlite';
+
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
-    return NativeDatabase.createInBackground(
-      File(p.join(dir.path, 'mgk_lift.sqlite')),
-    );
+    return NativeDatabase.createInBackground(File(p.join(dir.path, _fileName)));
   });
+}
+
+/// Whether this phone held Lift's database before this launch.
+///
+/// **The one fact that says "new install" without reading anything.** [open]
+/// is lazy: the file is made by the first query, so asked before anything
+/// queries it, a missing file means Lift has never run here. Every phone that
+/// ever ran Lift has one, 2.0.0 included. The first open (ADR-0006) needs the
+/// answer before the database is warm: reading it for training can take
+/// seconds on a slow first launch, and a check that runs out of time cannot
+/// tell a new phone from an upgraded one.
+///
+/// Anything it cannot read answers true, which sends the first open down its
+/// careful path rather than claiming a phone is new.
+Future<bool> liftDatabaseExists() async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    return await File(p.join(dir.path, _fileName)).exists();
+  } on Object {
+    return true;
+  }
 }
