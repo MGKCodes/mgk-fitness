@@ -51,24 +51,3 @@ class ScriptedLine extends StatelessWidget {
     ),
   );
 }
-
-/// The coach's small round C, beside a line it said.
-///
-/// The same letter as the floating mark ([CoachButton]) and set the same way
-/// ([CoachLetter]), so the coach has one mark at every size: the coach is
-/// called Coach, and the C is its name rather than a picture of a chatbot.
-class CoachAvatar extends StatelessWidget {
-  const CoachAvatar({super.key});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 22,
-    height: 22,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: AppColors.primary.withValues(alpha: 0.16),
-      shape: BoxShape.circle,
-    ),
-    child: const CoachLetter(size: 12),
-  );
-}

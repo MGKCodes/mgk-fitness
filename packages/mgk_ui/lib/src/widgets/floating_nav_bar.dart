@@ -4,6 +4,7 @@ import '../motion/app_motion.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import 'glass_surface.dart';
+import 'walkthrough.dart';
 
 /// One destination on a [FloatingNavBar].
 ///
@@ -16,11 +17,17 @@ class NavPillDestination {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    this.walkthroughId,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+
+  /// What a walkthrough calls this tab, to light it ([WalkthroughTarget]).
+  /// Null for an app with no walkthrough, and nothing changes: the tab is
+  /// only registered under a [WalkthroughScope].
+  final Object? walkthroughId;
 }
 
 /// The height a [FloatingNavBar] occupies, before the safe-area inset.
@@ -104,11 +111,14 @@ class FloatingNavBar extends StatelessWidget {
               children: <Widget>[
                 for (var i = 0; i < count; i++)
                   Expanded(
-                    child: _Tab(
-                      destination: destinations[i],
-                      selected: i == selectedIndex,
-                      duration: duration,
-                      onTap: () => onSelected(i),
+                    child: WalkthroughTarget(
+                      id: destinations[i].walkthroughId,
+                      child: _Tab(
+                        destination: destinations[i],
+                        selected: i == selectedIndex,
+                        duration: duration,
+                        onTap: () => onSelected(i),
+                      ),
                     ),
                   ),
               ],
