@@ -75,6 +75,26 @@ def _redact(url: str) -> str:
     return f'{parts.scheme}://{parts.netloc}{parts.path}'
 
 
+def _apple_error(error: dict) -> str:
+    """One of Apple's errors, with the reasons it attaches.
+
+    **The reasons are the useful part.** A refused review submission says only
+    "This resource cannot be reviewed, please check associated errors to see
+    why"; what is actually wrong is in `meta.associatedErrors`, keyed by the
+    resource it belongs to. On 29 October 2026 that was an age rating question
+    Lift had never answered ('socialMedia'), and leaving it out of the message
+    cost fifteen minutes of resubmitting while it looked like processing.
+    """
+    said = ' '.join(str(error.get(k)) for k in ('title', 'detail') if error.get(k))
+    associated = (error.get('meta') or {}).get('associatedErrors') or {}
+    reasons = [
+        str(item.get('detail') or item.get('code'))
+        for items in associated.values() if isinstance(items, list)
+        for item in items if isinstance(item, dict)
+    ]
+    return said + (f" ({'; '.join(reasons)})" if reasons else '')
+
+
 def _summarise(detail: str) -> str:
     """The store's own words for what went wrong, without the noise."""
     try:
@@ -82,10 +102,7 @@ def _summarise(detail: str) -> str:
     except ValueError:
         return detail.strip()[:500]
     if isinstance(body.get('errors'), list):  # Apple
-        return '; '.join(
-            ' '.join(str(e.get(k)) for k in ('title', 'detail') if e.get(k))
-            for e in body['errors']
-        )
+        return '; '.join(_apple_error(e) for e in body['errors'])
     if isinstance(body.get('error'), dict):  # Google
         return str(body['error'].get('message') or body['error'])
     if 'error_description' in body:  # Google's token endpoint
