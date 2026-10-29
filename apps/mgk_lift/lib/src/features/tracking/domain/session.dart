@@ -145,6 +145,23 @@ class Session {
     ),
   );
 
+  /// This session with one movement moved to [toIndex], sets and all;
+  /// positions renumber.
+  ///
+  /// The recorder's rule exactly (`SessionRecorder.moveExercise`): [toIndex] is
+  /// where the movement lands once it has been taken out, clamped to the list.
+  /// The screen needs it on its own copy first because a dropped card has to
+  /// stay where it was dropped — the list would otherwise draw it back in its
+  /// old place for as long as the write takes.
+  Session withExerciseMoved(String exerciseId, int toIndex) {
+    final list = <SessionExercise>[...exercises];
+    final from = list.indexWhere((e) => e.id == exerciseId);
+    if (from < 0) return this;
+    final moved = list.removeAt(from);
+    list.insert(toIndex.clamp(0, list.length), moved);
+    return withExercises(_positioned(list));
+  }
+
   static List<SessionExercise> _positioned(List<SessionExercise> list) =>
       <SessionExercise>[
         for (var i = 0; i < list.length; i++) list[i].atPosition(i),

@@ -55,7 +55,6 @@ import '../src/features/purchases/domain/purchases.dart';
 import '../src/features/purchases/presentation/sales_screen.dart';
 import '../src/features/tracking/domain/rest_alerts.dart';
 import '../src/features/tracking/domain/session.dart';
-import '../src/features/tracking/presentation/reorder_sheet.dart';
 import '../src/features/stats/presentation/exercise_stats_screen.dart';
 import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
@@ -362,11 +361,6 @@ class PreviewApp extends StatelessWidget {
           lookup: ExerciseLookup(),
           replacing: 'Cable Fly',
         ),
-      ),
-      'reorder-sheet': (_) => _SheetHost(
-        behind: _runningSessionScreen(),
-        open: (context) =>
-            ReorderSheet.show(context, exercises: _longSession().exercises),
       ),
       // The editor, reached from a row's "…" → Edit.
       'workout-editor': (_) => WorkoutEditorScreen(
@@ -2041,9 +2035,9 @@ class _SheetHostState extends State<_SheetHost> {
 }
 
 /// The session screen a sheet opens over: a session in progress, which is
-/// what the exercise picker, the reorder sheet and the swap sheet are reached
-/// from. Named here rather than written out at each call site, so the ground
-/// under every sheet screenshot is identical.
+/// what the exercise picker and the swap sheet are reached from. Named here
+/// rather than written out at each call site, so the ground under every sheet
+/// screenshot is identical.
 Widget _runningSessionScreen() {
   final session = _openSession();
   return ActiveSessionScreen(

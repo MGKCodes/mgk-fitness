@@ -10,6 +10,7 @@ import '../domain/exercise.dart';
 import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import 'exercise_thumb.dart';
+import 'hold_to_move.dart';
 
 /// Which of a set's two numbers a field edits.
 enum SetField { weight, reps }
@@ -41,6 +42,24 @@ enum SetField { weight, reps }
 /// is the record of what you did, which is all a finished movement owes you; the
 /// space goes to the one you are on. Tapping it opens it again, because
 /// "finished" is the app's guess and the lifter may want another set.
+///
+/// ## Holding it to move it
+///
+/// Given a [reorderIndex], the card can be held and dragged to a new place in
+/// the session. **What is held is the picture and the name**, not the whole
+/// card — and on a folded card, the whole line.
+///
+/// The rest of an open card already answers a finger in every way a finger
+/// can touch it: a tap focuses a number, a swipe removes a set, holding a
+/// set's label opens its menu, and every icon shows its name when held. A
+/// card that lifted from any of those would either fight them or win against
+/// a lifter resting a thumb on a number while deciding what to type — the
+/// reason the reorder used to live in a sheet of its own. The header has none
+/// of that: one tap, to the movement's stats, and nothing held. It is also
+/// where the name is, which is the thing being moved.
+///
+/// Held, an open card folds to its header for as long as it is carried
+/// ([isHeld]); [HoldToMove] says why it has to.
 class ExerciseCard extends StatelessWidget {
   const ExerciseCard({
     super.key,
@@ -61,7 +80,20 @@ class ExerciseCard extends StatelessWidget {
     this.isCollapsed = false,
     this.onToggleCollapsed,
     this.onOpenStats,
+    this.reorderIndex,
+    this.isHeld = false,
+    this.onHeld,
+    this.onLetGo,
   });
+
+  /// The space under a card, inside it: the gap to the next one in the list.
+  ///
+  /// A finished, folded card sits closer to its neighbours than an open one
+  /// (a held one keeps an open card's gap). Named here, and used by both, so
+  /// the lift of a dragged card can stop its shadow at the card's edge rather
+  /// than in the gap (see `liftedWhileDragged`).
+  static double gapBelow({required bool collapsed}) =>
+      collapsed ? AppSpacing.sm : AppSpacing.md;
 
   final SessionExercise exercise;
 
@@ -131,6 +163,49 @@ class ExerciseCard extends StatelessWidget {
   /// open card: on a folded one, a tap unfolds it.
   final VoidCallback? onOpenStats;
 
+  /// This card's place in the reorderable list it sits in, which makes it
+  /// something that can be held and dragged — see *Holding it to move it*.
+  ///
+  /// **Null leaves nothing to hold**, which is what a session of one movement
+  /// passes: there is no other place for it to go, and a card that lifts and
+  /// buzzes only to land where it was is a gesture that does nothing.
+  final int? reorderIndex;
+
+  /// Held to be moved: an open card folds to its header — the picture, the
+  /// name and the icons — until it has landed. A finished one is already a
+  /// line and does not change.
+  ///
+  /// **Its own header, not a line drawn for the purpose.** The header is
+  /// under the finger that is holding it, and the press it is showing (it
+  /// settles under a finger, like every control here) answers that finger
+  /// when it lifts. Swapped for another widget mid-press, that answer went to
+  /// a widget no longer on screen. Taking the sets away below it keeps the
+  /// header the same one throughout.
+  final bool isHeld;
+
+  /// Told when a hold has lasted, and when the finger has gone — see
+  /// [HoldToMove]. The screen owns [isHeld], so it decides both.
+  final VoidCallback? onHeld;
+  final VoidCallback? onLetGo;
+
+  /// [child] as the place this card is held, when it can be.
+  ///
+  /// Nothing here speaks to a screen reader: the list gives every card Move
+  /// up, Move down, Move to the start and Move to the end, which is the way
+  /// to reorder without a hold.
+  Widget _holdable(Widget child) {
+    final index = reorderIndex;
+    if (index == null) return child;
+    return HoldToMove(
+      index: index,
+      onHeld: onHeld ?? () {},
+      onLetGo: onLetGo ?? () {},
+      // Held anywhere in the area, not only on the ink: a short name leaves
+      // most of the header blank, and blank is where a thumb lands.
+      child: ColoredBox(color: Colors.transparent, child: child),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -141,9 +216,9 @@ class ExerciseCard extends StatelessWidget {
         exercise: exercise,
         massUnit: massUnit,
         onTap: onToggleCollapsed,
+        holdable: _holdable,
       );
     }
-
     // The set a lifter is about to do: the first one not yet ticked. It is the
     // loud row — see [SetRow.isNext].
     final next = exercise.sets
@@ -152,7 +227,7 @@ class ExerciseCard extends StatelessWidget {
         .firstOrNull;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: EdgeInsets.only(bottom: gapBelow(collapsed: false)),
       child: AppCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,53 +235,58 @@ class ExerciseCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
+                // The picture and the name, and not the icons beside them:
+                // each icon shows its name when held, and a hold that did two
+                // things would do whichever won the race.
                 Expanded(
-                  child: _Opens(
-                    onTap: onOpenStats,
-                    label: exercise.name,
-                    child: Row(
-                      children: <Widget>[
-                        ExerciseThumb(asset: catalogue?.startImage),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Text(
-                                exercise.name,
-                                style: theme.textTheme.titleMedium,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                // The best line available: what it trains,
-                                // or — for a movement they typed — what they
-                                // have done on it.
-                                catalogue?.subtitle ??
-                                    (top == null
-                                        ? 'Your own movement'
-                                        : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                              if (previous != null) ...<Widget>[
-                                const SizedBox(height: 2),
+                  child: _holdable(
+                    _Opens(
+                      onTap: onOpenStats,
+                      label: exercise.name,
+                      child: Row(
+                        children: <Widget>[
+                          ExerciseThumb(asset: catalogue?.startImage),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
                                 Text(
-                                  _previousLabel(previous!, massUnit),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  maxLines: 1,
+                                  exercise.name,
+                                  style: theme.textTheme.titleMedium,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  // The best line available: what it trains,
+                                  // or — for a movement they typed — what they
+                                  // have done on it.
+                                  catalogue?.subtitle ??
+                                      (top == null
+                                          ? 'Your own movement'
+                                          : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                                if (previous != null) ...<Widget>[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _previousLabel(previous!, massUnit),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -238,7 +318,9 @@ class ExerciseCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (exercise.sets.isNotEmpty) ...<Widget>[
+            // Everything below the header goes while the card is carried
+            // ([isHeld]), and comes back where it lands.
+            if (!isHeld && exercise.sets.isNotEmpty) ...<Widget>[
               const SizedBox(height: AppSpacing.md),
               _ColumnHeaders(massUnit: massUnit),
               const SizedBox(height: AppSpacing.xs),
@@ -265,25 +347,27 @@ class ExerciseCard extends StatelessWidget {
                   ),
                 ),
             ],
-            const SizedBox(height: AppSpacing.xs),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTextButton(
-                // Disabled at the limit rather than refusing the tap: a button
-                // that springs and then does nothing is worse than one that
-                // plainly cannot be pressed — and the line under it says why.
-                onPressed: exercise.canAddSet ? onAddSet : null,
-                icon: Icons.add,
-                label: exercise.sets.isEmpty ? 'Add first set' : 'Add set',
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
+            if (!isHeld) const SizedBox(height: AppSpacing.xs),
+            if (!isHeld)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: AppTextButton(
+                  // Disabled at the limit rather than refusing the tap: a
+                  // button that springs and then does nothing is worse than
+                  // one that plainly cannot be pressed — and the line under
+                  // it says why.
+                  onPressed: exercise.canAddSet ? onAddSet : null,
+                  icon: Icons.add,
+                  label: exercise.sets.isEmpty ? 'Add first set' : 'Add set',
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (!exercise.canAddSet)
+            if (!isHeld && !exercise.canAddSet)
               Padding(
                 padding: const EdgeInsets.only(left: AppSpacing.sm),
                 child: Text(
@@ -334,49 +418,60 @@ class _CollapsedCard extends StatelessWidget {
     required this.exercise,
     required this.massUnit,
     required this.onTap,
+    required this.holdable,
   });
 
   final SessionExercise exercise;
   final MassUnit massUnit;
   final VoidCallback? onTap;
 
+  /// The card's own [ExerciseCard._holdable]. A folded card is held anywhere:
+  /// it is one line with one tap on it, which a hold cannot be mistaken for.
+  final Widget Function(Widget child) holdable;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
-        onTap: onTap,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(
-          children: <Widget>[
-            const Icon(Icons.check_circle, size: 18, color: AppColors.success),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                exercise.name,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      padding: EdgeInsets.only(bottom: ExerciseCard.gapBelow(collapsed: true)),
+      child: holdable(
+        AppCard(
+          onTap: onTap,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            children: <Widget>[
+              const Icon(
+                Icons.check_circle,
+                size: 18,
+                color: AppColors.success,
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              exerciseSummary(exercise, massUnit),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  exercise.name,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(
-              Icons.expand_more,
-              size: 20,
-              color: AppColors.textTertiary,
-            ),
-          ],
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                exerciseSummary(exercise, massUnit),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              const Icon(
+                Icons.expand_more,
+                size: 20,
+                color: AppColors.textTertiary,
+              ),
+            ],
+          ),
         ),
       ),
     );

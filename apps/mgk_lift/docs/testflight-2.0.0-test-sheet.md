@@ -155,6 +155,13 @@ it has to be right.
 | C23 | Discard a session | Nothing is written | ☐ |
 | C24 | A session past one hour | The clock reads `1:02:14` without clipping | ☐ |
 
+**C13 is 2.0.0's, and changes in 2.0.1**
+([ADR-0005](decisions/0005-a-movement-is-moved-by-holding-it.md)). The button
+and its sheet are gone: a movement is held by its picture and name, or a
+finished one anywhere on its line, and dragged where it sits, folded to its
+name until it lands. The 2.0.1 sheet writes this row again from the ADR rather
+than from here.
+
 ## D. Your workouts (W2, W3, W17, W24)
 
 | # | Step | Expected | ✓ |

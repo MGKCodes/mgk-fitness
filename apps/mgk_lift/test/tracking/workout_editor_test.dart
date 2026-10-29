@@ -200,6 +200,37 @@ void main() {
     ]);
   });
 
+  testWidgets('holding a name lifts the row too, as it does in a session', (
+    tester,
+  ) async {
+    final saved = await push();
+    await open(tester, workout: saved);
+
+    // Held past the long-press delay, then dragged up a row's height in small
+    // steps — the gesture that moves a card in the running session, which
+    // has no handle.
+    final up =
+        tester.getTopLeft(find.text('Barbell Bench Press')).dy -
+        tester.getTopLeft(find.text('Cable Fly')).dy;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Cable Fly')),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    for (var i = 0; i < 12; i++) {
+      await gesture.moveBy(Offset(0, up / 12));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect((await library.byId(saved.id))!.movements, const <TemplateMovement>[
+      TemplateMovement('Cable Fly'),
+      TemplateMovement('Barbell Bench Press', sets: 4, repTarget: 6),
+    ]);
+  });
+
   group('leaving with changes', () {
     testWidgets('asks first, and Keep editing stays', (tester) async {
       await open(tester, workout: await push());
