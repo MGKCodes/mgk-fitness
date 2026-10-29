@@ -57,6 +57,7 @@ class SettingsScreen extends StatefulWidget {
     this.onSignIn,
     this.coachMemory,
     this.useCoach,
+    this.coachConsented,
     this.onUseCoachChanged,
     this.auth,
     this.deleter,
@@ -134,6 +135,12 @@ class SettingsScreen extends StatefulWidget {
   /// row on this screen.
   final bool? useCoach;
 
+  /// Whether the account holds a yes to the coach sending (issue #10), so the
+  /// switch can say what is happening now: on with no yes yet sends nothing
+  /// until the coach has asked. Null when it is not known, which reads as on.
+  final bool? coachConsented;
+
+  /// Off also takes the account's yes back; the shell does both.
   final ValueChanged<bool>? onUseCoachChanged;
 
   /// Passed through to the legal hub, which is where deletion lives. Held
@@ -665,20 +672,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => _explain(
                 'What the coach is sent',
                 'Your messages, a summary of your recent training, and your '
-                    'injury notes if you gave any. Off means none of it '
-                    'leaves the app, and the coach mark goes away with it — '
-                    'logging, plans you already have, photos and syncing all '
-                    'keep working.',
+                    'injury notes if you gave any, and only once you have '
+                    'agreed. Off takes that back: none of it leaves the app, '
+                    'and the coach mark goes away with it — logging, plans '
+                    'you already have, photos and syncing all keep working.',
               ),
             ),
           ],
         ),
-        subtitle: Text(
-          on
-              ? 'On. What you write is sent to OpenRouter.'
-              : 'Off. Nothing is sent to OpenRouter.',
-          style: quiet,
-        ),
+        subtitle: Text(switch ((on, widget.coachConsented)) {
+          (false, _) => 'Off. Nothing is sent to OpenRouter.',
+          (true, false) => 'On. Your coach asks before anything is sent.',
+          (true, _) => 'On. What you write is sent to OpenRouter.',
+        }, style: quiet),
       ),
     if (widget.useCoach != null)
       SettingsRow(

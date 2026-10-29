@@ -8,12 +8,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
+import '../../coaching/domain/ai_consent.dart';
 import '../../coaching/domain/coach.dart';
+import '../../coaching/domain/consent_gate.dart';
 import '../../entitlement/domain/entitlement.dart';
 import '../../purchases/domain/manage_subscription.dart';
 import '../../purchases/domain/purchases.dart';
 import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
+import '../../coaching/presentation/ai_consent_sheet.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
@@ -86,6 +89,7 @@ class LiftShell extends StatefulWidget {
     this.transcript,
     this.coachMemory,
     this.coachPreference,
+    this.aiConsent,
     this.disclaimers,
     this.deleter,
     this.planner,
@@ -161,9 +165,19 @@ class LiftShell extends StatefulWidget {
   /// Whether the lifter wants the coach at all, and where that is kept.
   ///
   /// Null hides the switch and leaves the coach on, which is what a build
-  /// with no store wired up should do: the toggle is a consent control, and
-  /// one that cannot persist an answer is worse than none.
+  /// with no store wired up should do: a switch that cannot persist an answer
+  /// is worse than none. The consent itself is [aiConsent].
   final CoachPreferenceStore? coachPreference;
+
+  /// Whether the signed-in lifter has agreed to their training going to the
+  /// AI provider, kept on the account (issue #10). Asked before the coach,
+  /// the planner or a swap sends anything; see [ConsentGatedCoach].
+  ///
+  /// Null asks nothing, which is what the widget tests and the preview want:
+  /// they are not about consent, and their coaches are fakes that send
+  /// nothing. The app always passes one, and the same one its coach clients
+  /// check before every request.
+  final AiConsentStore? aiConsent;
 
   /// Whether this phone has accepted the medical disclaimer, which is asked
   /// once before the coach answers anything or builds a plan (5 October 2026,
@@ -397,6 +411,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// behind a tap that cannot happen that fast.
   bool _useCoach = true;
 
+  /// Whether the account holds a yes to the coach sending, for Settings to say
+  /// what is happening now. Null until read, and with no store to read.
+  bool? _coachConsented;
+
   /// What the paid surfaces are rendered against. Starts at whatever was passed
   /// and is corrected by the first resolve, on the same reasoning [_useCoach]
   /// gives for starting optimistic: the window is a frame or two, and nothing
@@ -413,6 +431,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     super.initState();
     unawaited(_loadUnits());
     unawaited(_loadCoachPreference());
+    unawaited(_readCoachConsent());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     _librarySub = widget.library?.changes.listen((_) {
@@ -458,6 +477,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           }
         });
         unawaited(_identifyCustomer(account));
+        // The answer is the account's, so a different account has its own.
+        unawaited(_readCoachConsent());
         // Signing in is the moment there is somewhere to put the backlog, and
         // signing out the moment backup has to say it has stopped. **Not
         // before the phone's training is known to be this account's**, which
@@ -812,12 +833,74 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     setState(() => _useCoach = enabled);
   }
 
+  /// Turning the coach off also takes the account's yes back.
+  ///
+  /// **Off is a withdrawal, on is not a yes.** The switch has always promised
+  /// that off means nothing leaves the app, and since 2.0.1 the promise is
+  /// kept where the server can check it too. On only brings the mark back:
+  /// agreeing is a decision made in front of what is sent, which is the sheet
+  /// the coach shows before its first request, not a switch flicked in a list.
   Future<void> _setUseCoach(bool enabled) async {
     // Applied immediately, not after the write — the same call the units
     // control makes, and more clearly right here: somebody turning the
     // coach off wants the mark gone now, not once a plugin has answered.
     setState(() => _useCoach = enabled);
     await widget.coachPreference?.save(enabled: enabled);
+    final consent = widget.aiConsent;
+    if (!enabled && consent != null) {
+      try {
+        await consent.withdraw();
+      } on Object {
+        // Read back below: what Settings says is what the store says.
+      }
+      await _readCoachConsent();
+    }
+  }
+
+  Future<void> _readCoachConsent() async {
+    final consent = widget.aiConsent;
+    if (consent == null) return;
+    final granted = await consentGiven(consent);
+    if (mounted) setState(() => _coachConsented = granted);
+  }
+
+  /// The coach's permission, asked when there is none: true to carry on.
+  ///
+  /// **Only with an account.** The answer is kept on one, and with nobody
+  /// signed in nothing can be sent anyway: the coach mark opens the sales
+  /// screen, which signs them in, and the next request asks. Answering true
+  /// there is not a yes; it leaves the refusal to the clients, which refuse
+  /// a signed-out request on their own.
+  Future<bool> _askedFirst() async {
+    final consent = widget.aiConsent;
+    if (consent == null || _account == null) return true;
+    if (!mounted) return false;
+    final granted = await ensureCoachConsent(context, consent: consent);
+    if (granted && _coachConsented != true) await _readCoachConsent();
+    return granted;
+  }
+
+  /// The coach as the shell hands it out: asking first, wherever a message
+  /// comes from. See [ConsentGatedCoach].
+  CoachService? get _gatedCoach {
+    final coach = widget.coach;
+    if (coach == null) return null;
+    return widget.aiConsent == null
+        ? coach
+        : ConsentGatedCoach(coach, askFirst: _askedFirst);
+  }
+
+  /// The planner as the shell hands it out, asking first. **Null with the
+  /// coach switched off**, so a session's swap falls back to choosing by hand:
+  /// it used to be handed the planner either way, and a swap sent the session
+  /// to OpenRouter with the switch that promised nothing would be sent turned
+  /// off.
+  CoachPlanner? get _gatedPlanner {
+    final planner = widget.planner;
+    if (planner == null || !_useCoach) return null;
+    return widget.aiConsent == null
+        ? planner
+        : ConsentGatedPlanner(planner, askFirst: _askedFirst);
   }
 
   @override
@@ -1015,6 +1098,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           onRestorePurchases: _flow == null ? null : _restorePurchases,
           restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,
+          coachConsented: _coachConsented,
           onUseCoachChanged: widget.coachPreference == null
               ? null
               : _setUseCoach,
@@ -1105,10 +1189,14 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// to the thing that would fix it. The server still enforces both - this only
   /// stops a round trip that cannot succeed.
   Future<void> _openCoach() async {
-    final coach = widget.coach;
+    final coach = _gatedCoach;
     if (coach == null || !_useCoach) return;
-    // The disclaimer first, and only then a price, as Run's coach asks it:
-    // what somebody is about to be able to ask is the reason it is said.
+    // Permission, then the disclaimer, and only then a price, as Run's coach
+    // asks them: nobody pays for a coach and then declines to let it see their
+    // training. Signed out, there is no account to keep the answer on yet;
+    // the sales screen signs them in, and the coach asks before it first sends.
+    if (!await _askedFirst() || !mounted) return;
+    // What somebody is about to be able to ask is the reason it is said.
     if (!await _acceptedDisclaimer() || !mounted) return;
     // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
     // included, the mark opens the sales screen, wherever it is tapped. It
@@ -1201,9 +1289,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// Intake, generation, review, accept. Four steps, and the lifter can stop
   /// after any of them.
   Future<void> _buildPlan() async {
-    final planner = widget.planner;
+    final planner = _gatedPlanner;
     final plans = widget.plans;
     if (planner == null || plans == null) return;
+    // Asked here as well as by the planner itself, so the question comes
+    // before the conversation rather than after the first answer is typed.
+    if (!await _askedFirst() || !mounted) return;
     // A plan is the coach's too, and asks about injuries on the way.
     if (!await _acceptedDisclaimer() || !mounted) return;
 
@@ -1302,6 +1393,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           PlanFailure.limitReached =>
             "You have used today's coaching, so this is a standard week for "
                 "your days. Change the split tomorrow for the coach's own.",
+          PlanFailure.consentRequired =>
+            'Your coach needs your permission to write your plan, so this is a '
+                'standard week for your days. Change the split to be asked '
+                'again.',
           _ =>
             'Your coach could not write this one, so it is a standard week '
                 'for your days. Change the split to try again.',
@@ -1345,7 +1440,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       day,
       SessionPrescription.forDay(slots),
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       // The summary the session ends on offers the conversation; the shell
       // still owns what opening the coach means, including both gates.
@@ -1381,7 +1476,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     ).openSession(
       context,
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
@@ -1411,7 +1506,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       context,
       workout,
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
@@ -1549,7 +1644,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           session: current,
           editing: true,
           massUnit: _units.mass,
-          planner: widget.planner,
+          planner: _gatedPlanner,
           log: _log,
           onFinished: () {
             unawaited(_refreshLog());

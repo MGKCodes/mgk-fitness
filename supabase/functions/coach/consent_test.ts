@@ -65,9 +65,30 @@ Deno.test("anything unreadable is a no", () => {
 });
 
 Deno.test("agreeing to one app's coach is not agreeing to the other's", () => {
-  // Lift has no key on the account yet, so a Run yes cannot open Lift, and
-  // the server does not check Lift at all until it has one.
+  // Each app asks its own question and keeps its own key, so a yes to Run's
+  // coach opens nothing in Lift's, and the reverse.
   assertEquals(hasAiConsent("lift", user({ run_ai_consent: yes })), false);
+  assertEquals(hasAiConsent("run", user({ lift_ai_consent: yes })), false);
+  assert(
+    hasAiConsent("lift", user({ run_ai_consent: yes, lift_ai_consent: yes })),
+  );
+});
+
+Deno.test("both apps are checked", () => {
   assert(consentChecked("run"));
-  assertEquals(consentChecked("lift"), false);
+  // From Lift 2.0.1 (issue #10). Before it, Lift wrote no answer to read.
+  assert(consentChecked("lift"));
+});
+
+Deno.test("Lift reads its answer by the same rule as Run", () => {
+  assert(hasAiConsent("lift", user({ lift_ai_consent: yes })));
+  assertEquals(hasAiConsent("lift", user({})), false);
+  assertEquals(
+    hasAiConsent("lift", user({ lift_ai_consent: { ...yes, version: 0 } })),
+    false,
+  );
+  assertEquals(
+    hasAiConsent("lift", user({ lift_ai_consent: { version: 1 } })),
+    false,
+  );
 });

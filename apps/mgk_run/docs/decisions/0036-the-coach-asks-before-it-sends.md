@@ -102,3 +102,9 @@ answer was already on the account.
   Lift 2.0.0 user. Lift's next release asks the same question, keeps the answer
   on the account as `lift_ai_consent`, and adds `lift` to `CONSENT_KEYS` in
   the same change.
+  **Built for Lift 2.0.1 (issue #10).** Lift asks with its own sheet before
+  the coach, the planner or a swap sends, keeps the answer as
+  `lift_ai_consent` in the shape above, and both its clients refuse without
+  it. `lift` is in `CONSENT_KEYS`, to be deployed once 2.0.1 is live on both
+  stores. Lift's coach switch stays, for whether the coach is shown; turning
+  it off withdraws.

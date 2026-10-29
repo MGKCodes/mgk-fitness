@@ -10,11 +10,12 @@
 // returned for the signed-in check, so it costs no extra round trip and has no
 // failure of its own to map. Anything it cannot read is a no.
 //
-// SCOPE: Run only. Lift keeps its coach switch on the phone (`coach.enabled`,
-// on by default), so the server has nothing to read for a Lift caller, and
-// refusing Lift here would lock out every Lift 2.0.0 user. Lift's explicit,
-// per-account answer comes with its next release; add `"lift"` to
-// CONSENT_KEYS then, in the same change as the app that writes it.
+// SCOPE: both apps, each with its own key. Run's from 27 October 2026; Lift's
+// from its 2.0.1, which is the first Lift that asks and keeps the answer on the
+// account. Lift 2.0.0 kept a coach switch on the phone, on by default, and
+// wrote nothing here, so from the deploy that adds `lift` its users are refused
+// until they update: they never said yes. Deploy it only once 2.0.1 is live on
+// both stores (issue #10).
 //
 // LIMIT: `user_metadata` is writable by the user it belongs to. This stops a
 // client that never asked; it does not stop somebody writing their own yes,
@@ -25,9 +26,9 @@
 import type { App } from "./surfaces.ts";
 
 /**
- * The question's current version. Mirrors `kAiConsentVersion` in
- * `apps/mgk_run/lib/src/features/coaching/domain/ai_consent.dart`: raise both
- * together, or the server refuses answers the app accepts (or the reverse).
+ * The question's current version. Mirrors `kAiConsentVersion` in both apps'
+ * `lib/src/features/coaching/domain/ai_consent.dart`: raise them together, or
+ * the server refuses answers an app accepts (or the reverse).
  */
 export const AI_CONSENT_VERSION = 1;
 
@@ -37,6 +38,7 @@ export const AI_CONSENT_VERSION = 1;
  */
 export const CONSENT_KEYS: Partial<Record<App, string>> = {
   run: "run_ai_consent",
+  lift: "lift_ai_consent",
 };
 
 /** Whether requests for `app`'s surfaces must carry a yes on the account. */

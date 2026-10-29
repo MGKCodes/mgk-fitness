@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 // `Session` is also a gotrue type. Hidden rather than aliased so every use
 // below still reads as the app's own session.
+import '../../coaching/data/ai_consent_factory.dart';
+import '../../coaching/domain/ai_consent.dart';
 import '../../tracking/domain/session.dart';
 import '../domain/intake_flow.dart';
 import '../domain/plan_intake.dart';
@@ -21,9 +23,14 @@ import '../domain/plan_proposal.dart';
 /// record yet: the device owns it until it is finished, so there is nothing on
 /// the server to read.
 class SupabaseCoachPlanner implements CoachPlanner {
-  SupabaseCoachPlanner(this._client);
+  SupabaseCoachPlanner(this._client, {AiConsentStore? consent})
+    : _consent = consent ?? createAiConsentStore(client: _client);
 
   final SupabaseClient _client;
+
+  /// Asked before every request, as [SupabaseCoach] asks it: an intake answer
+  /// can carry injury notes, and a swap sends the session in progress.
+  final AiConsentStore _consent;
 
   @override
   Future<IntakeTurn> intake({
@@ -127,6 +134,9 @@ class SupabaseCoachPlanner implements CoachPlanner {
     if (_client.auth.currentUser == null) {
       throw const PlanException(PlanFailure.signedOut);
     }
+    if (!await consentGiven(_consent)) {
+      throw const PlanException(PlanFailure.consentRequired);
+    }
     try {
       final res = await _client.functions
           .invoke('coach', body: body)
@@ -137,7 +147,11 @@ class SupabaseCoachPlanner implements CoachPlanner {
       // It answered, with something unusable: the server's fault.
       throw const PlanException(PlanFailure.serverError);
     } on FunctionException catch (e) {
-      throw PlanException(_map(e));
+      final failure = _map(e);
+      if (failure == PlanFailure.consentRequired) {
+        await _consent.refusedByAccount();
+      }
+      throw PlanException(failure);
     } on PlanException {
       rethrow;
     } on Object {
@@ -155,6 +169,7 @@ class SupabaseCoachPlanner implements CoachPlanner {
   static PlanFailure _map(FunctionException e) => switch (e.status) {
     401 => PlanFailure.signedOut,
     402 => PlanFailure.notEntitled,
+    403 when refusedForConsent(e.details) => PlanFailure.consentRequired,
     429 => PlanFailure.limitReached,
     _ => PlanFailure.serverError,
   };

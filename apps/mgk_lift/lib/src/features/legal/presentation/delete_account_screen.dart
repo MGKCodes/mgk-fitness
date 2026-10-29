@@ -133,6 +133,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     final erasePhone = _erasePhone;
     try {
       final result = await widget.deleter.deleteAccount(scope: _scope);
+      // A login kept for Run still carries Lift's own keys, the coach's yes
+      // among them, and clearing them needs the session, which [_finish]
+      // ends. Best-effort: the data is already gone, which is what was asked.
+      if (!result.accountDeleted) {
+        try {
+          await widget.auth.clearLiftMetadata();
+        } on Object {
+          // Deliberate: see above.
+        }
+      }
       var phoneCopy = _PhoneCopy.notMentioned;
       if (erase != null) {
         if (!erasePhone) {

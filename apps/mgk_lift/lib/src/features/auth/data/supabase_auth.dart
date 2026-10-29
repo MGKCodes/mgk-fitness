@@ -100,6 +100,22 @@ class SupabaseAuth implements AuthService {
     }
   }
 
+  /// `lift_ai_consent` is the only one: the answer about the coach (issue
+  /// #10). Named here rather than imported from the coaching feature, because
+  /// what deletion clears is an auth fact, and the key is pinned by its tests.
+  static const List<String> _liftKeys = <String>['lift_ai_consent'];
+
+  @override
+  Future<void> clearLiftMetadata() async {
+    await _client.auth
+        .updateUser(
+          sb.UserAttributes(
+            data: <String, dynamic>{for (final key in _liftKeys) key: null},
+          ),
+        )
+        .timeout(const Duration(seconds: 20));
+  }
+
   Account? _toAccount(sb.User? user) => user == null
       ? null
       : Account(id: user.id, email: user.email, name: displayNameOf(user));
