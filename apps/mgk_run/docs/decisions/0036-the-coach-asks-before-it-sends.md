@@ -84,8 +84,14 @@ answer was already on the account.
 
 - **A yes made offline is refused until the phone writes it** to the account.
   Run 1.0.1 shows that refusal as a coach error, or falls back to the
-  deterministic plan. The next Run build should map `consent_required` to
-  `CoachConsentRequiredException`, so the sheet asks again instead.
+  deterministic plan. **Run 1.0.2 maps `consent_required` to
+  `CoachConsentRequiredException`** on both request paths, so every caller
+  treats it as it treats the phone's own refusal, and first calls
+  `AiConsentStore.refusedByAccount`: a yes still waiting on the phone is
+  dropped rather than sent again, and the account is read again, which also
+  catches a withdrawal made on another phone. The next door into the coach
+  then asks. (Not the request that was refused: the runner sees *Your coach
+  needs your permission*, and the sheet comes up on their next send.)
 - **`user_metadata` is writable by its owner.** This stops a client that never
   asked; it does not stop somebody writing their own yes, which is their own
   consent to give.

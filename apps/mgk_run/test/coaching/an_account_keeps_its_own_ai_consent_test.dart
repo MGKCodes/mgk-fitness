@@ -17,8 +17,26 @@ class _Accounts implements AiConsentAccount {
 
   int writes = 0;
 
+  /// What the server holds when it differs from this session's copy, as it
+  /// does after another phone withdrew. [reload] brings it in.
+  Map<String, Object?>? server;
+
+  int reloads = 0;
+
   @override
   Object? get stored => userId == null ? null : metadata[userId];
+
+  @override
+  Future<void> reload() async {
+    reloads++;
+    final error = failure;
+    if (error != null) throw error;
+    final fresh = server;
+    if (fresh == null) return;
+    metadata
+      ..clear()
+      ..addAll(fresh);
+  }
 
   @override
   Future<void> store(Map<String, Object?>? value) async {
@@ -189,6 +207,73 @@ void main() {
       expect(accounts.writes, 0);
     },
   );
+
+  group('when the server refuses what this phone thought was a yes', () {
+    test('a yes the account never received is asked again', () async {
+      accounts.failure = const SocketException('offline');
+      await store.grant();
+      expect(await store.isGranted(), isTrue);
+      accounts.failure = null;
+
+      await store.refusedByAccount();
+
+      expect(await store.isGranted(), isFalse);
+      expect(
+        await cache.read('runner-a'),
+        isNull,
+        reason: 'dropped, not delivered: the runner is asked, not assumed',
+      );
+      expect(accounts.metadata, isEmpty);
+    });
+
+    test('a withdrawal made on another phone is read now, not at the next '
+        'refresh', () async {
+      await store.grant();
+      accounts.server = <String, Object?>{};
+      expect(await store.isGranted(), isTrue);
+
+      await store.refusedByAccount();
+
+      expect(accounts.reloads, 1);
+      expect(await store.isGranted(), isFalse);
+    });
+
+    test('a withdrawal still waiting to reach the account is kept', () async {
+      await store.grant();
+      accounts.failure = const SocketException('offline');
+      await store.withdraw();
+
+      await store.refusedByAccount();
+
+      expect(
+        AiConsent.fromJson(await cache.read('runner-a'))?.isWithdrawal,
+        isTrue,
+      );
+      expect(await store.isGranted(), isFalse);
+    });
+
+    test(
+      'with no signal to read the account again it does not throw',
+      () async {
+        await store.grant();
+        accounts.failure = const SocketException('offline');
+
+        await expectLater(store.refusedByAccount(), completes);
+      },
+    );
+
+    test('agreeing again counts', () async {
+      accounts.failure = const SocketException('offline');
+      await store.grant();
+      accounts.failure = null;
+      await store.refusedByAccount();
+
+      await store.grant();
+
+      expect(await store.isGranted(), isTrue);
+      expect(accounts.metadata['runner-a'], isNotNull);
+    });
+  });
 
   test('an answer that lands nowhere says so', () async {
     accounts.failure = const SocketException('offline');
