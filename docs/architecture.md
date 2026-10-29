@@ -28,7 +28,7 @@ of those at once.
     │  Edge Functions:      │          The only place a provider key exists.
     │  coach                │
     │  delete-account       │
-    │  daily-ai-summary     │
+    │  revenuecat           │
     └───────────────────────┘
 ```
 

@@ -88,7 +88,6 @@ have drifted. Fix the repo, not the database.
 |---|---|
 | `coach` | The AI coach. Holds the provider key, enforces the rate limit and spend cap. |
 | `delete-account` | App-aware account deletion. Calls `core.delete_account`. |
-| `daily-ai-summary` | Lift's daily summary. Writes `lift.ai_summary_requests`. |
 
 ```sh
 supabase functions serve                    # run locally

@@ -67,6 +67,7 @@ import {
   shouldRegenerate,
   type StoredTurn,
 } from "./coach_memory.ts";
+import { consentChecked, hasAiConsent } from "./consent.ts";
 import { Knowledge } from "./knowledge.ts";
 import { conversationRequired, errorCode, parseBody } from "./request.ts";
 
@@ -334,7 +335,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     headers: { Authorization: authHeader, apikey: anonKey },
   });
   if (!userRes.ok) return json({ error: "unauthorized" }, 401);
-  const userId = (await userRes.json().catch(() => null))?.id;
+  // Kept whole: the consent check below reads its metadata, fresh from auth.
+  const user: unknown = await userRes.json().catch(() => null);
+  const userId = (user as { id?: unknown } | null)?.id;
   if (typeof userId !== "string" || !userId) {
     return json({ error: "unauthorized" }, 401);
   }
@@ -364,6 +367,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // it spends no tokens and blocking that traffic is the platform's job.
   if (surface.validRequest && !surface.validRequest(body)) {
     return json({ error: "bad_request" }, 400);
+  }
+
+  // The caller agreed to their training going to the provider (ADR-0036). The
+  // app asks first and refuses without a yes; this is the same rule at the
+  // server, before anything is read or spent, so a client that skipped the
+  // question gets nowhere. Run only until Lift keeps its answer on the
+  // account: see `consent.ts`.
+  if (consentChecked(surface.app) && !hasAiConsent(surface.app, user)) {
+    return json({ error: "consent_required" }, 403);
   }
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
