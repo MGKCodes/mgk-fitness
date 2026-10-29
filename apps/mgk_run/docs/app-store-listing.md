@@ -322,7 +322,7 @@ MEDICAL
 Not a medical device. A medical disclaimer is shown before the first plan or conversation, and the description and terms say the same.
 
 SIGNING IN
-Sign in with Apple, Sign in with Google, or an email and password. The three are offered together, at equal size; "Continue with email" opens the email form. The demo accounts above use email and password. A new account made with an email address has to confirm it from an email before it can sign in; the demo accounts are already confirmed.
+Sign in with Apple, Sign in with Google, or an email and password. The three are offered together, at equal size. "Continue with email" asks for the address first, then for the password if the address has one: the demo accounts above do. A new address is asked for a password and then a 6-digit code sent to it, typed into the app; the demo accounts are already confirmed. Nothing asks for a name or an email after Sign in with Apple.
 
 ACCOUNT DELETION
 Profile tab > Settings (gear, top right) > Privacy & legal > Delete account. It is also on the account screen: tap the card at the top of Settings, then Delete account. Typing DELETE confirms, and the server data is deleted at once. For an account made with Apple, the app asks Apple to confirm, and the server revokes the app's Apple tokens when the login is deleted.

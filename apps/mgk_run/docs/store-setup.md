@@ -640,7 +640,7 @@ Backup consent makes several of these conditional, and the form cannot say
 | Data type | Linked to the user | Purposes | What it is |
 |---|---|---|---|
 | Email Address | Yes | App Functionality | The account: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
-| Name | Yes | App Functionality | The name the coach uses, if given; kept in auth metadata and never sent to the model |
+| Name | Yes | App Functionality | The name the runner chooses to give the account, if given (asked by the coach, with Google's first name offered as a suggestion; never after Apple). Kept as the account's `display_name`, shared with Lift, and never sent to the model. Wording **from 1.0.2** (ADR-0047) |
 | Health | Yes | App Functionality | HealthKit **step count** over a recorded run, stored with the run and sent to us only with backup on; injury notes and symptoms typed to the coach |
 | Fitness | Yes | App Functionality | Runs, pace, splits, plans and effort ratings, sent to the coach and, with backup on, stored |
 | Precise Location | Yes | App Functionality | Route traces, stored with backup on |

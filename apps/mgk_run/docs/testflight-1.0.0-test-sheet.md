@@ -352,6 +352,14 @@ The five from approximate location on Android to the adjust button are in
 Never on a phone in Run before this build. The console settings behind it are
 in [store-setup.md](store-setup.md) §11.
 
+**S2, S9, S10 and S11 are build 29's email form, and 1.0.2 replaces it**
+([ADR-0047](decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md),
+20 October 2026). The address comes first and the app says which step it leads
+to, so it no longer keeps secret whether an address has an account: a wrong
+password is called one, and *Forgot your password?* names the address the link
+went to instead of *"If that address has an account"*. A new address gets a
+6-digit code. Test 1.0.2 against its own sheet, not these four rows.
+
 | # | Step | Expected | ✓ |
 |---|---|---|---|
 | S1 | **Welcome ▸ I already have an account**, on each phone | **NEW in 27.** *Continue with Apple*, *Continue with Google* and *Continue with email*, the same width, with *Choosing Hide My Email with Apple starts a separate account.* under them. **Nothing to scroll for**, and no email field yet | ☐ |

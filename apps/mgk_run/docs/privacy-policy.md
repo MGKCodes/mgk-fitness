@@ -49,7 +49,7 @@
 >    and an OS version for itself. Check their privacy manifest before filing
 >    the App Store's privacy labels.
 
-**Last updated:** 16 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
+**Last updated:** 29 October 2026 · **Controller:** MGKCodes Ltd · **Contact:**
 run@mgkfitness.mgkcodes.com
 
 ## Summary
@@ -66,16 +66,19 @@ provider. We do not sell your data. You can delete everything at any time.
 ## What we collect
 
 - **Account data** — your email address, the account identifier it is keyed to,
-  **the name you give the coach**, if you give one, and the date you gave the
-  coach permission to send your training to the AI provider, if you did. Only
-  if you create an account; the app works without one. If you sign in with
-  Apple or Google, they pass us an email address and an identifier, and nothing
-  else: we do not ask either for your name or photograph. With Apple's Hide My
-  Email, the address is one Apple forwards to yours, and we never see the real
-  one.
+  the name you choose to give, if you give one, and the date you gave the coach
+  permission to send your training to the AI provider, if you did. Only if you
+  create an account; the app works without one. If you sign in with Apple or
+  Google, we ask them for an email address and an identifier. Google may send
+  your name and a link to your profile picture anyway; they are kept with your
+  login, and when the coach first asks what to call you, your first name from
+  Google is offered as a suggestion you can keep, change or clear. Nothing asks
+  for a name after Sign in with Apple. With Apple's Hide My Email, the address
+  is one Apple forwards to yours, and we never see the real one.
 
   The name is optional and you can change or remove it at any time — clear the
-  field and the coach stops using one. It is stored with your login rather than
+  field and the coach stops using one. It is your MGKFitness account's name, so
+  Lift shows the same one. It is stored with your login rather than
   with your training, so it is what the app calls you and nothing more. It is
   **never sent to the AI provider**; see the sub-processors below.
 - **A profile photo, if you choose one** — and it is the one thing here that
@@ -178,24 +181,26 @@ On Android the app requests no health permissions at all.
   cache on your phone, so the map can still draw without a signal; we never
   receive them. Configured per build; a build with no tile provider draws
   routes with no basemap and contacts no one.
-- **SMTP2GO** — sends the emails your account needs: the link to confirm your
-  address when you sign up, the link to reset your password, and a note when
-  your password changes. It receives your email address and the email itself,
-  through its servers in the EU, and nothing about your training. Its open and
-  click tracking are turned off.
+- **SMTP2GO** — sends the emails your account needs: a code and a link to
+  confirm your address when you sign up, the link to reset your password, and a
+  note when your password changes. It receives your email address and the email
+  itself, through its servers in the EU, and nothing about your training. Its
+  open and click tracking are turned off.
 
 We do not sell personal data, and we do not use it for third-party advertising.
 The app contains **no analytics, no advertising SDK and no crash reporter**, and
 reads no advertising identifier.
 
 **Apple and Google are not sub-processors.** They are two of the three ways you
-can sign in, beside an email address and a password, and they hold your Apple
-ID or Google account on their own terms. They pass us an email address and an
+can sign in, beside an email address and a password, and they hold your Apple ID
+or Google account on their own terms. They pass us an email address and an
 identifier; we tell them nothing about your training. Choosing Hide My Email
 with Apple starts a separate account, because the address Apple gives us is not
 one any other account uses. On an iPhone, deleting an account made with Apple
 asks Apple to confirm first, so that when the login goes we can also end the
-app's access to your Apple ID.
+app's access to your Apple ID. With an email, the app asks for the address first
+and checks it against our accounts, to show the right next step: your password,
+the way that address already signs in, or a new account.
 
 ## Where data is stored
 

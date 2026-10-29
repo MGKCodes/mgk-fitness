@@ -448,3 +448,8 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+# Asked by somebody not signed in (*Continue with email*, ADR-0047), so there
+# is no token to check.
+[functions.account-lookup]
+verify_jwt = false

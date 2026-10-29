@@ -1,0 +1,36 @@
+{
+  "_": "Read by the mobile-store-release skill (github.com/MattKay02/skills). Paths, not secrets: the keys live outside the repository. Store pictures are not in git; .store-release.md says how they are rendered.",
+  "keys": {
+    "app_store_connect": "~/.mgk-fitness/asc.json",
+    "google_play": "~/.mgk-fitness/play-service-account.json"
+  },
+  "apps": {
+    "run": {
+      "name": "MGKFitness: Run",
+      "ios": { "bundle_id": "com.mgkcodes.fitness.run" },
+      "android": { "package": "com.mgkcodes.fitness.run", "draft_until_published": false },
+      "screenshots": {
+        "ios": "apps/mgk_run/screenshots/store/listing/ios-still",
+        "android": "apps/mgk_run/screenshots/store/listing/play-still"
+      },
+      "play_feature_graphic": "apps/mgk_run/screenshots/store/play-feature-graphic.png",
+      "play_icon": "apps/mgk_run/design/store/play-listing-icon-512.png",
+      "creative": "store-assets/derived/creative",
+      "release_notes": "apps/mgk_run/store/play-release-notes.txt"
+    },
+    "lift": {
+      "name": "MGKFitness: Lift",
+      "ios": { "bundle_id": "com.mgkcodes.liftio" },
+      "android": { "package": "com.mgkcodes.liftio", "draft_until_published": false },
+      "listing": "apps/mgk_lift/store/listing.json",
+      "screenshots": {
+        "ios": "apps/mgk_lift/screenshots/store/listing/ios-still",
+        "android": "apps/mgk_lift/screenshots/store/listing/play-still"
+      },
+      "play_feature_graphic": "apps/mgk_lift/screenshots/store/play-feature-graphic.png",
+      "play_icon": "apps/mgk_lift/design/store/play-listing-icon-512.png",
+      "creative": "apps/mgk_lift/screenshots/store/creative",
+      "release_notes": "apps/mgk_lift/store/play-release-notes.txt"
+    }
+  }
+}

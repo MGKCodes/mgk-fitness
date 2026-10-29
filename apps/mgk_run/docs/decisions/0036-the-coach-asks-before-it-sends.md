@@ -71,3 +71,40 @@ a third-party AI, and get explicit permission before it is.
   look-ahead weeks stay deterministic until they next open the coach and agree.
 - The Edge Function does not check the answer. The client is the only
   enforcement; a server-side check is the natural next step.
+
+## Amendment, 2026-10-27 — the Edge Function checks the answer, for Run
+
+The last consequence above is closed for Run. `coach` reads `run_ai_consent`
+from the user record that `/auth/v1/user` already returns for the signed-in
+check, applies the same rule as `AiConsent.fromJson` and `isCurrent`, and
+refuses a Run surface without a current yes: **`403 consent_required`**, before
+the entitlement read and before anything is spent
+(`supabase/functions/coach/consent.ts`). No migration and no app release: the
+answer was already on the account.
+
+- **A yes made offline is refused until the phone writes it** to the account.
+  Run 1.0.1 shows that refusal as a coach error, or falls back to the
+  deterministic plan. **Run 1.0.2 maps `consent_required` to
+  `CoachConsentRequiredException`** on both request paths, so every caller
+  treats it as it treats the phone's own refusal, and first calls
+  `AiConsentStore.refusedByAccount`: a yes still waiting on the phone is
+  dropped rather than sent again, and the account is read again, which also
+  catches a withdrawal made on another phone. The next door into the coach
+  then asks. (Not the request that was refused: the runner sees *Your coach
+  needs your permission*, and the sheet comes up on their next send.)
+- **`user_metadata` is writable by its owner.** This stops a client that never
+  asked; it does not stop somebody writing their own yes, which is their own
+  consent to give.
+- **Lift is not checked, and Lift falls short of this record.** Its coach
+  switch lives on the phone (`coach.enabled`, `local_coach_preference.dart`)
+  and is on until somebody turns it off: no explicit yes, and nothing on the
+  account for the server to read. Refusing Lift here would lock out every
+  Lift 2.0.0 user. Lift's next release asks the same question, keeps the answer
+  on the account as `lift_ai_consent`, and adds `lift` to `CONSENT_KEYS` in
+  the same change.
+  **Built for Lift 2.0.1 (issue #10).** Lift asks with its own sheet before
+  the coach, the planner or a swap sends, keeps the answer as
+  `lift_ai_consent` in the shape above, and both its clients refuse without
+  it. `lift` is in `CONSENT_KEYS`, to be deployed once 2.0.1 is live on both
+  stores. Lift's coach switch stays, for whether the coach is shown; turning
+  it off withdraws.

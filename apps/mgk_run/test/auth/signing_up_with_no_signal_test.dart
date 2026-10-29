@@ -3,11 +3,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
+import 'package:mgk_run/src/core/config/app_config.dart';
 import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
 import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'email_path.dart';
 
 /// Row E5 of the build 12 field test: an account made in aeroplane mode.
 ///
@@ -20,44 +24,90 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// The third, the missing deadline, is not directly observable from here: it
 /// lives on a gotrue call this suite has no client for. What it *produces* is,
 /// so [TimeoutException] is driven through the screen like any other failure.
+///
+/// **The email path's words are the suite's since 1.0.2** (ADR-0047):
+/// `EmailSignInFlow` names each failure, and `mgk_auth`'s tests hold what each
+/// server answer is sorted into. What stays here is what this screen does with
+/// them, and the words it still writes itself, for Apple, Google and the debug
+/// sign-in.
 void main() {
   const offline =
       'We could not reach the server. Check your connection and try again.';
+  const noSignal = 'No connection. Try again when you have a signal.';
   const generic = 'Something went wrong. Try again.';
 
-  /// The form, filled in and submitted. Fixed pumps rather than `pumpAndSettle`
-  /// — a submitting `PrimaryButton` draws an indeterminate spinner, and settle
-  /// never returns on a screen showing one.
-  Future<void> submit(WidgetTester tester, {required String label}) async {
-    // The form is the second step since build 27. A test that submits twice
-    // is already on it the second time.
-    final Finder email = find.text('Continue with email');
-    if (email.evaluate().isNotEmpty) {
-      await tester.ensureVisible(email);
-      await tester.pump();
-      await tester.tap(email);
-      await tester.pump();
-    }
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'sam@example.com',
+  const dev = DevAccount(
+    label: 'Dev',
+    email: 'dev@mgkfitness.mgkcodes.com',
+    password: 'password',
+  );
+
+  Future<int Function()> pumpScreen(
+    WidgetTester tester,
+    AuthRepository auth, {
+    List<DevAccount> devAccounts = const <DevAccount>[],
+  }) async {
+    var authenticated = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SignInScreen(
+          auth: auth,
+          devAccounts: devAccounts,
+          onAuthenticated: () => authenticated++,
+        ),
+      ),
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'hunter2222',
-    );
-    // Scrolled to first: in sign-up mode the "what you get" block pushes the
-    // button off an 800x600 test surface, and a tap that misses is a test that
-    // passes for the wrong reason.
-    final button = find.widgetWithText(PrimaryButton, label);
-    await tester.ensureVisible(button);
-    await tester.pump();
-    await tester.tap(button);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    return () => authenticated;
   }
 
   group('a phone that cannot reach the server says so', () {
+    testWidgets('on every step of the email path, and stays usable', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository();
+      final authenticated = await pumpScreen(tester, auth);
+      await openEmail(tester);
+      await submitAddress(tester, FakeAuthRepository.passwordAddress);
+
+      auth.emailFailure = EmailFailure.unavailable;
+      await submitPassword(tester, FakeAuthRepository.rightPassword);
+
+      expect(find.text(noSignal), findsOneWidget);
+      expect(find.text(generic), findsNothing);
+      expect(authenticated(), 0, reason: 'no session, so nothing to dismiss');
+      // The whole complaint was a spinner with nothing behind it. Retrying has
+      // to be possible the moment the runner turns the radio back on.
+      expect(
+        tester
+            .widget<PrimaryButton>(
+              find.widgetWithText(PrimaryButton, 'Sign in'),
+            )
+            .busy,
+        isFalse,
+      );
+
+      auth.emailFailure = null;
+      await submitPassword(tester, FakeAuthRepository.rightPassword);
+      expect(auth.isSignedIn, isTrue);
+      expect(authenticated(), 1);
+    });
+
+    testWidgets('making an account offline is not made, and says why', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository();
+      await pumpScreen(tester, auth);
+      await openEmail(tester);
+      await submitAddress(tester, newAddress);
+
+      auth.emailFailure = EmailFailure.unavailable;
+      await submitPassword(tester, goodNewPassword, label: 'Create account');
+
+      expect(find.text(noSignal), findsOneWidget);
+      expect(find.byKey(EmailSignInSteps.codeFieldKey), findsNothing);
+      expect(find.text('Create your account'), findsOneWidget);
+    });
+
     testWidgets('when gotrue wraps a dead socket in a retryable failure', (
       tester,
     ) async {
@@ -65,24 +115,21 @@ void main() {
       // error out raw, it wraps it in an AuthException whose message is the
       // underlying error's toString(). Printing that message — which the screen
       // used to do for anything wearing the AuthException type — put this at
-      // somebody trying to sign in.
+      // somebody trying to sign in. The debug sign-in is the call left on this
+      // screen that can still meet it.
       final auth = FakeAuthRepository()
         ..failure = AuthRetryableFetchException(
           message:
               'ClientException with SocketException: Failed host lookup, '
               'uri=https://db.example.supabase.co',
         );
-      var authenticated = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            onAuthenticated: () => authenticated++,
-          ),
-        ),
+      final authenticated = await pumpScreen(
+        tester,
+        auth,
+        devAccounts: const <DevAccount>[dev],
       );
 
-      await submit(tester, label: 'Sign in');
+      await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Dev'));
 
       expect(find.text(offline), findsOneWidget);
       expect(
@@ -91,43 +138,30 @@ void main() {
         reason: 'the wrapped error is a stack trace in a sentence, not copy',
       );
       expect(find.text(generic), findsNothing);
-      expect(
-        authenticated,
-        0,
-        reason: 'no session was created, so nothing should be dismissed',
-      );
+      expect(authenticated(), 0);
     });
 
     testWidgets('when the call blows the deadline instead of answering', (
       tester,
     ) async {
       final auth = FakeAuthRepository()
-        ..failure = TimeoutException('signUp', const Duration(seconds: 20));
-      await tester.pumpWidget(
-        MaterialApp(home: SignInScreen(auth: auth, initialSignUp: true)),
-      );
+        ..failure = TimeoutException('signIn', const Duration(seconds: 20));
+      await pumpScreen(tester, auth, devAccounts: const <DevAccount>[dev]);
 
-      await submit(tester, label: 'Sign up');
+      await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Dev'));
 
       expect(find.text(offline), findsOneWidget);
       expect(find.text(generic), findsNothing);
     });
 
-    testWidgets('and the form is usable again rather than stuck busy', (
-      tester,
-    ) async {
+    testWidgets('and so does Google, in the same words', (tester) async {
       final auth = FakeAuthRepository()
-        ..failure = TimeoutException('signIn', const Duration(seconds: 20));
-      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
+        ..failure = const ProviderSignInException(ProviderFailure.unavailable);
+      await pumpScreen(tester, auth);
 
-      await submit(tester, label: 'Sign in');
+      await tapVisible(tester, find.text('Continue with Google'));
 
-      // The whole complaint was a spinner with nothing behind it. Retrying has
-      // to be possible the moment the runner turns the radio back on.
-      final button = tester.widget<PrimaryButton>(
-        find.widgetWithText(PrimaryButton, 'Sign in'),
-      );
-      expect(button.busy, isFalse);
+      expect(find.text(offline), findsOneWidget);
     });
   });
 
@@ -138,9 +172,9 @@ void main() {
   ) async {
     final auth = FakeAuthRepository()
       ..failure = const AuthException('Invalid login credentials');
-    await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
+    await pumpScreen(tester, auth, devAccounts: const <DevAccount>[dev]);
 
-    await submit(tester, label: 'Sign in');
+    await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Dev'));
 
     expect(find.text('Invalid login credentials'), findsOneWidget);
     expect(
@@ -154,34 +188,24 @@ void main() {
 
   /// The correctness trap, and the expensive one: the account was made.
   group('an account that exists is not a failure', () {
-    testWidgets('signing up survives a profile write that does not land', (
+    testWidgets('making one survives a profile write that does not land', (
       tester,
     ) async {
       final auth = FakeAuthRepository()
         ..profileFailure = const SocketException('Network is unreachable');
-      var authenticated = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            initialSignUp: true,
-            onAuthenticated: () => authenticated++,
-          ),
-        ),
-      );
+      final authenticated = await pumpScreen(tester, auth);
 
-      await submit(tester, label: 'Sign up');
+      await createAccountByEmail(tester);
 
       expect(
-        authenticated,
+        authenticated(),
         1,
         reason:
             'the gate this was raised from has to dismiss, or the runner is '
-            'left on a finished form and retries into "User already '
-            'registered"',
+            'left on a finished form and tries to make the account again',
       );
       expect(find.text(generic), findsNothing);
-      expect(find.text(offline), findsNothing);
+      expect(find.text(noSignal), findsNothing);
       expect(auth.isSignedIn, isTrue);
       expect(
         auth.profileWrites,
@@ -193,21 +217,14 @@ void main() {
     testWidgets('and so does signing back in', (tester) async {
       final auth = FakeAuthRepository()
         ..profileFailure = const SocketException('Network is unreachable');
-      var authenticated = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            onAuthenticated: () => authenticated++,
-          ),
-        ),
-      );
+      final authenticated = await pumpScreen(tester, auth);
 
-      await submit(tester, label: 'Sign in');
+      await signInByEmail(tester);
 
-      expect(authenticated, 1);
+      expect(authenticated(), 1);
       expect(find.text(generic), findsNothing);
       expect(auth.isSignedIn, isTrue);
+      expect(auth.profileWrites, 1);
     });
   });
 

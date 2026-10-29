@@ -27,9 +27,14 @@ changes.
   confirmation URL would arrive with a code only the phone that asked can
   exchange. The page (`web/app/reset-password`) verifies the hash when the form
   is sent, so a mail scanner that opens the link does not spend it.
-- **Confirm sign up** uses `{{ .ConfirmationURL }}`: Supabase confirms the
-  address when the link is opened and then redirects to the Site URL. A scanner
-  opening it first confirms the address early, which is harmless.
+- **Confirm sign up** carries the 6-digit code (`{{ .Token }}`) first, and
+  `{{ .ConfirmationURL }}` under it (Run's ADR-0047). Lift 2.0.1 and Run 1.0.2
+  onwards ask for the code in the app, which signs the account in; every
+  earlier version knows only the link. Supabase confirms the address when the
+  link is opened and then redirects to the Site URL. A scanner opening it
+  first confirms the address early, which is harmless. **Paste this version
+  before either of those builds reaches a tester**: an app waiting for a code
+  the email does not carry has no way forward but the link.
 
 `{{ .SiteURL }}` is `https://mgkfitness.mgkcodes.com` in production, so check
 Authentication › URL Configuration if a link ever lands somewhere odd.

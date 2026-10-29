@@ -15,14 +15,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This is 1.0.2
+This is 1.0.3
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
 
-## [1.0.1] — submitted 2026-10-16, build 31
+## [1.0.2] — submitted 2026-10-29, build 32
+
+Submitted to both stores on 29 October 2026 from the commit tagged
+`run/build-32`, promoted to `main` alone, with Lift 2.0.1 still on `develop`.
+
+### Changed
+
+- **Signing in with email asks for the address first**
+  ([ADR-0047](docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md)).
+  *Continue with email* takes the address alone, then shows the one step it
+  needs: *Welcome back* and the password, *This address signs in with Apple*
+  (or Google) with that button, or *Create your account*. A new account's
+  password needs 8 characters, a number and a symbol, ticked off as it is
+  typed, and the account is confirmed with a 6-digit code from the email,
+  typed into the app. There is no sign-in or sign-up switch to choose first.
+  A wrong password is called a wrong password, *Forgot your password?* says
+  which address the link went to, a likely typo gets *Did you mean …?*, and
+  no connection keeps what was typed. The address is on every step, with
+  *Change*.
+- **The name is the account's.** The email form no longer asks for one: a new
+  account meets the coach, who asks what to call you, with your first name
+  from Google already typed in for a Google account and nothing asked after
+  Sign in with Apple. It is kept as the account's `display_name`, which Google
+  cannot overwrite, and the name Run kept before is copied across once.
+
+### Fixed
+
+- **When the coach's server finds no permission on your account, Run asks
+  again** rather than showing *The coach hit a problem*, or quietly building
+  a plan without the coach
+  ([ADR-0036](docs/decisions/0036-the-coach-asks-before-it-sends.md),
+  amended 27 October). It happens when you agreed with no signal and the
+  answer had not reached your account yet, or took it back on another phone.
+
+## [1.0.1] — released 2026-10-19, build 31
+
+Submitted to both stores on 16 October 2026 from `1acf955` (tag
+`run/build-31`). Google Play published it the same day. App Review approved
+it on 19 October, with the *Run Coach* group and both subscriptions in the
+same submission, and it released itself at 19:45 UTC.
 
 1.0.0 (build 29) was rejected by App Review on 16 October 2026 (guideline 4,
-Sign in with Apple), and never released on the App Store; it is live on
-Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
+Sign in with Apple), and never released on the App Store; it was live on
+Google Play from 5 October. 1.0.1 is the first version on the App Store and
+the second on Play.
 
 ### Added
 
@@ -115,8 +155,9 @@ Google Play. 1.0.1 replaces it on the App Store and updates it on Play.
 ## [1.0.0] — submitted 2026-10-02, build 29
 
 Submitted to the App Store and Google Play on 2 October 2026, both from
-`9204036` (tag `run/build-29`). Not yet approved by either as this is written;
-the date here is the submission's.
+`9204036` (tag `run/build-29`); the date here is the submission's. Google Play
+had it live by 5 October. App Review rejected it on 16 October (guideline 4),
+so it never went on sale on the App Store: 1.0.1 replaced it there.
 
 It is the first version, so everything the app does is listed under it.
 

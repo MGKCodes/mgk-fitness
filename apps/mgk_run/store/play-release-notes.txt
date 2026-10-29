@@ -1,3 +1,1 @@
-Race mode. Choose Run or Race before you set off: a race counts down to the finish and says what time you are on for. Afterwards it gets a finish of its own: your official time, whether it is your first or fastest at the distance, and how you ran it, 5K by 5K. Races count as their own time in your records.
-
-Also: splits fold into a chart with your fastest and slowest, kilometre markers keep clear of each other, and the coach and sign-in share Lift's design.
+Signing in with an email now asks for the address first, then shows just the step you need, and a new account is confirmed with a 6-digit code. Your name belongs to your account, so Google can no longer change it, and Lift shows the same one. If your coach needs your permission again, it asks instead of showing an error.

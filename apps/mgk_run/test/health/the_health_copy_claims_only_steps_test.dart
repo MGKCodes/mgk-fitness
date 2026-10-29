@@ -127,9 +127,7 @@ void main() {
 
   testWidgets('signing up does not list the coach as free', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: SignInScreen(auth: FakeAuthRepository(), initialSignUp: true),
-      ),
+      MaterialApp(home: SignInScreen(auth: FakeAuthRepository())),
     );
     await tester.pumpAndSettle();
 

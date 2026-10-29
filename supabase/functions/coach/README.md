@@ -33,18 +33,24 @@ see [database.md](../../../docs/database.md#the-bug-this-replaced).
 ## What it does
 
 1. Verifies the caller is a signed-in Supabase user (rejects otherwise).
-2. Reads `core.entitlements` for the surface's app and resolves a **tier**, or
+2. Refuses with `403` unless the account has agreed to its training going to
+   the AI provider, for the app the surface belongs to: `run_ai_consent` or
+   `lift_ai_consent`
+   ([ADR-0036](../../../apps/mgk_run/docs/decisions/0036-the-coach-asks-before-it-sends.md)).
+   Lift is checked from its 2.0.1 (issue #10), the first Lift that asks; deploy
+   that only once 2.0.1 is live on both stores, since 2.0.0 never asked.
+3. Reads `core.entitlements` for the surface's app and resolves a **tier**, or
    refuses with `402` where that app sells coaching.
-3. **Enforces a per-user rate limit and spend cap before spending any tokens.**
-4. Loads whatever the prompt needs that the client is not trusted to supply —
+4. **Enforces a per-user rate limit and spend cap before spending any tokens.**
+5. Loads whatever the prompt needs that the client is not trusted to supply —
    for `lift_chat`, the training log, the transcript and the memory, all read as
    the caller so RLS scopes them.
-5. Builds the prompt for the requested `surface` and calls OpenRouter with a
+6. Builds the prompt for the requested `surface` and calls OpenRouter with a
    JSON-schema-constrained response (`response_format`).
-6. Validates the response **shape** and returns it. The app re-validates the
+7. Validates the response **shape** and returns it. The app re-validates the
    **values** before using them.
-7. Records what the call cost, so step 3 has something to work from.
-8. Stores the exchange, and rewrites the memory if it has fallen behind.
+8. Records what the call cost, so step 4 has something to work from.
+9. Stores the exchange, and rewrites the memory if it has fallen behind.
 
 Surfaces wired up: `intake`, `skeleton`, `week`, `adapt`, `chat`, `summarise`,
 `log_run`, `edit_run`, `set_goal` (Run) and `lift_chat`, `lift_summarise`
@@ -58,6 +64,7 @@ and slots into the same `SURFACES` table.
 | `index.ts`        | The HTTP handler. Auth, entitlement, limits, the provider call, and nothing else.       |
 | `surfaces.ts`     | **Pure** prompts, schemas, personas, and the shape checks. Every prompt is unit-tested. |
 | `limits.ts`       | **Pure** limit decisions: thresholds, windows, usage accounting. Also unit-tested.      |
+| `consent.ts`      | **Pure** consent check: has the account agreed to its training going to the provider.   |
 | `entitlements.ts` | The tier policy (pure) and the `core.entitlements` read, behind an injectable `fetch`.  |
 | `lift_log.ts`     | Lift's training log: the read (as the caller) and its rendering (pure).                 |
 | `coach_memory.ts` | The rolling memory and the transcript: read, appended and replaced as the caller.       |
@@ -378,7 +385,8 @@ Everything is `{ "error": "<code>", ... }` with a matching status.
 | 429    | `spend_cap_reached`                                  | The rolling 24 h credit cap bound. `scope` is `daily_spend`; same `retry_after_seconds` / `Retry-After`.                                                                                                        |
 | 503    | `coach_not_configured`                               | A secret is missing. With `"reason": "limiter_unavailable"` it means the SQL below has not been applied (or the service key is wrong) — **the coach refuses rather than spending money it cannot account for**. |
 | 503    | `coach_unavailable`                                  | The counter store had a transient failure, so the limit could not be checked. Same fail-closed reasoning.                                                                                                       |
-| 402    | `not_entitled`                                       | The caller has not bought coaching on the app this surface belongs to. Lift only — Run's bottom tier is free, so it never returns this.                                                                         |
+| 403    | `consent_required`                                   | The account has no current yes to its training going to the AI provider: `run_ai_consent` for a Run surface, `lift_ai_consent` for a Lift one (ADR-0036, issue #10). Checked before the entitlement read. |
+| 402    | `not_entitled`                                       | The caller has not bought coaching on the app this surface belongs to. Either app, since ADR-0030.                                                                                                              |
 | 401    | `unauthorized`                                       | No or bad JWT.                                                                                                                                                                                                  |
 | 400    | `bad_request` / `unsupported_surface`                | Malformed body, a request a surface cannot answer (a `chat` with no `message`, a `summarise` with no `transcript`), or a `surface` this function does not serve.                                                |
 | 422    | `refused`                                            | The model's content filter tripped.                                                                                                                                                                             |

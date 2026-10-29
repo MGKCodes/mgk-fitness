@@ -4,9 +4,23 @@ import { useSearchParams } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase";
 
-// Lift asks for eight at sign-up and Run for six. It is one account, so the
-// stricter of the two.
+// The rule both apps check when a password is made or set (Run's ADR-0047,
+// "The password rule", and `PasswordCheck` in packages/mgk_auth): at least
+// eight characters, a number and a symbol. A symbol is anything that is not a
+// letter or a number, so the hyphenated passwords iOS suggests pass as they
+// are. Length is counted as a person sees it, in code points, as the apps do.
 const MIN_LENGTH = 8;
+
+function missing(password: string): string[] {
+  const chars = Array.from(password);
+  const gaps: string[] = [];
+  if (chars.length < MIN_LENGTH) gaps.push(`at least ${MIN_LENGTH} characters`);
+  if (!chars.some((c) => /\p{N}/u.test(c))) gaps.push("a number");
+  if (!chars.some((c) => !/[\p{L}\p{M}\p{N}]/u.test(c))) gaps.push("a symbol");
+  return gaps;
+}
+
+const RULE = `At least ${MIN_LENGTH} characters, with a number and a symbol.`;
 
 const ASK_AGAIN =
   "Open Lift or Run, choose Sign in, then Forgot your password? to get a new link.";
@@ -109,8 +123,9 @@ export function ResetPasswordForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (password.length < MIN_LENGTH) {
-      setError(`Use at least ${MIN_LENGTH} characters.`);
+    const gaps = missing(password);
+    if (gaps.length > 0) {
+      setError(`Your new password needs ${gaps.join(" and ")}.`);
       return;
     }
     setStage("saving");
@@ -169,7 +184,7 @@ export function ResetPasswordForm() {
         disabled={saving}
       />
       <p id="password-hint" className="hint">
-        At least {MIN_LENGTH} characters.
+        {RULE}
       </p>
       <label className="check">
         <input
@@ -205,7 +220,7 @@ function explain(e: unknown, verified: boolean): string | "spent" {
   if (e.code === "weak_password") {
     // Supabase's own words, because they name the rule the server holds,
     // which may be stricter than the length checked above.
-    return e.message || `Use at least ${MIN_LENGTH} characters.`;
+    return e.message || RULE;
   }
   // Refused before verifying: the token is expired, used or unknown. Refused
   // after: the session it bought has lapsed, which only happens once the link

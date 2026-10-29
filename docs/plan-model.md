@@ -62,6 +62,12 @@ create table lift.plan_slots (
 );
 ```
 
+> Amended 2026-10-29 (#4): the last three columns were never filled. The write
+> that was meant to fill them, `recordResult`, was never called, so no planned
+> session ever had a weight. A slot's history is now read off the log on the
+> phone instead (`SlotHistory` in `apps/mgk_lift`), which needs no signal and
+> gives a new plan numbers on day one. The columns stay, unread and unwritten.
+
 `weeks`, `week_number`, `phase` and `scheduled_date` all go. Anything derived
 from a start date is derived from the weekday instead, which is what makes a
 missed fortnight cost nothing: Thursday is still Upper.

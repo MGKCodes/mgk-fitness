@@ -2,31 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/src/core/config/app_config.dart';
+import 'package:mgk_run/src/features/auth/data/auth_repository.dart';
 import 'package:mgk_run/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_auth/mgk_auth.dart';
 import 'package:mgk_ui/mgk_ui.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../plates/plate.dart' show loadInter;
-
-/// The email form is the second step: Apple, Google and email are offered
-/// first, and the fields are behind "Continue with email".
-Future<void> openEmail(WidgetTester tester) async {
-  final Finder email = find.text('Continue with email');
-  await tester.ensureVisible(email);
-  await tester.pumpAndSettle();
-  await tester.tap(email);
-  await tester.pumpAndSettle();
-}
-
-/// Scrolls [target] into view and taps it. The default test surface is
-/// shorter than a phone, and since the head shows the app's icon the lower
-/// buttons can sit below it, where a plain tap lands on nothing.
-Future<void> tapVisible(WidgetTester tester, Finder target) async {
-  await tester.ensureVisible(target);
-  await tester.pumpAndSettle();
-  await tester.tap(target);
-}
+import 'email_path.dart';
 
 void main() {
   const devAccounts = <DevAccount>[
@@ -41,6 +23,28 @@ void main() {
       password: 'secret6',
     ),
   ];
+
+  /// The screen as a pushed gate raises it, counting the times it is told
+  /// there is a session.
+  Future<int Function()> pumpScreen(
+    WidgetTester tester,
+    AuthRepository auth, {
+    DateTime Function()? clock,
+  }) async {
+    var authenticated = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: SignInScreen(
+          auth: auth,
+          clock: clock,
+          onAuthenticated: () => authenticated++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return () => authenticated;
+  }
 
   testWidgets('shows developer quick sign-in buttons when accounts are given', (
     tester,
@@ -126,117 +130,46 @@ void main() {
       final email = tester.getTopLeft(find.text('Continue with email')).dy;
       expect(apple, lessThan(email));
       expect(
-        find.byType(TextFormField),
+        find.byType(TextField),
         findsNothing,
-        reason: 'the form is a step, not a second half of this one',
+        reason: 'the email path is a step, not a second half of this one',
       );
 
       await openEmail(tester);
-      expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+      // The address, alone: no password until the address says there is one.
+      expect(find.byKey(EmailSignInSteps.emailFieldKey), findsOneWidget);
+      expect(find.byKey(EmailSignInSteps.passwordFieldKey), findsNothing);
       expect(find.text('Continue with Apple'), findsNothing);
 
       await tapVisible(tester, find.text('Other ways to sign in'));
       await tester.pumpAndSettle();
       expect(find.text('Continue with Apple'), findsOneWidget);
-      expect(find.byType(TextFormField), findsNothing);
-    });
-
-    testWidgets('and nothing an account needs is below a 393pt screen', (
-      tester,
-    ) async {
-      // Board C14 and K2, 1 October 2026: with the choices and the form on one
-      // screen, Password and Sign up were below the bottom of the phone. 818 is
-      // the screen less the home indicator. Real Inter, because the test font
-      // is wider and taller and would measure a layout no phone draws.
-      await loadInter();
-      await tester.binding.setSurfaceSize(const Size(393, 852));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(393, 852),
-              padding: EdgeInsets.only(top: 59, bottom: 34),
-            ),
-            child: SignInScreen(
-              auth: FakeAuthRepository(),
-              initialSignUp: true,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester.getRect(find.textContaining('By continuing you agree')).bottom,
-        lessThanOrEqualTo(818),
-      );
-
-      await tester.tap(find.text('Continue with email'));
-      await tester.pumpAndSettle();
-      expect(
-        find.widgetWithText(TextFormField, 'First name (optional)'),
-        findsOneWidget,
-        reason: 'the tallest form: no name from the intro',
-      );
-      expect(
-        tester.getRect(find.widgetWithText(PrimaryButton, 'Sign up')).bottom,
-        lessThanOrEqualTo(818),
-      );
-      expect(
-        tester.getRect(find.text('Other ways to sign in')).bottom,
-        lessThanOrEqualTo(818),
-      );
+      expect(find.byType(TextField), findsNothing);
     });
 
     testWidgets('a pushed gate is told when Google signs in', (tester) async {
       final auth = FakeAuthRepository();
-      var authenticated = 0;
-      bool? intent;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            initialSignUp: true,
-            onAuthenticated: () => authenticated++,
-            onSignUpIntent: (value) => intent = value,
-          ),
-        ),
-      );
+      final authenticated = await pumpScreen(tester, auth);
 
       await tapVisible(tester, find.text('Continue with Google'));
       await tester.pumpAndSettle();
 
       expect(auth.lastProvider, 'google');
       expect(auth.isSignedIn, isTrue);
-      expect(authenticated, 1);
-      // Raised from the half of the screen the runner chose: the sign-up half
-      // here, so the shell starts the coach's introduction.
-      expect(intent, isTrue);
+      expect(authenticated(), 1);
     });
 
-    testWidgets("closing Apple's sheet takes the sign-up claim back", (
-      tester,
-    ) async {
+    testWidgets("closing Apple's sheet is not a failure", (tester) async {
       final auth = FakeAuthRepository()
         ..providerOutcome = ProviderOutcome.cancelled;
-      bool? intent;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            initialSignUp: true,
-            onSignUpIntent: (value) => intent = value,
-          ),
-        ),
-      );
+      final authenticated = await pumpScreen(tester, auth);
 
       await tester.tap(find.text('Continue with Apple'));
       await tester.pumpAndSettle();
 
       expect(auth.isSignedIn, isFalse);
-      expect(intent, isFalse);
+      expect(authenticated(), 0);
+      expect(find.textContaining('did not go through'), findsNothing);
     });
 
     testWidgets('a refused sign-in says so in words, not an exception', (
@@ -257,213 +190,529 @@ void main() {
       );
     });
 
-    testWidgets('giving up on Apple and signing in by email is a sign-in', (
+    testWidgets("Apple's browser on Android finishes the sign-in later", (
       tester,
     ) async {
-      // Apple on Android carries on in the browser, so the sign-up claim is
-      // left standing for the session to arrive under. Somebody who abandons
-      // that and signs in with an email they already have must not then be
-      // greeted as a new runner.
       final auth = FakeAuthRepository()
         ..providerOutcome = ProviderOutcome.continuing;
-      bool? intent;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SignInScreen(
-            auth: auth,
-            initialSignUp: true,
-            onSignUpIntent: (value) => intent = value,
-          ),
-        ),
-      );
+      final authenticated = await pumpScreen(tester, auth);
 
       await tester.tap(find.text('Continue with Apple'));
       await tester.pumpAndSettle();
-      expect(intent, isTrue);
-
-      // The switch is on the email form since 1.0.1, as on Lift.
-      await openEmail(tester);
-      final toggle = find.text('Have an account? Sign in');
-      await tester.ensureVisible(toggle);
-      await tester.pumpAndSettle();
-      await tester.tap(toggle);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
-        'sam@example.com',
+      expect(
+        find.text('Finish signing in with Apple in your browser.'),
+        findsOneWidget,
       );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
-        'hunter2222',
-      );
-      final submit = find.widgetWithText(PrimaryButton, 'Sign in');
-      await tester.ensureVisible(submit);
-      await tester.pump();
-      await tester.tap(submit);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      expect(authenticated(), 0);
 
-      expect(auth.isSignedIn, isTrue);
-      expect(intent, isFalse);
+      // The session arrives on the auth stream once the browser hands back.
+      auth.emit(AuthChange.signedIn);
+      await tester.pumpAndSettle();
+      expect(authenticated(), 1);
     });
   });
 
-  group('the password', () {
-    Future<void> submit(
-      WidgetTester tester, {
-      required String password,
-      required String label,
-    }) async {
-      await openEmail(tester);
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
-        'sam@example.com',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
-        password,
-      );
-      final button = find.widgetWithText(PrimaryButton, label);
-      await tester.ensureVisible(button);
-      await tester.pump();
-      await tester.tap(button);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-
-    testWidgets('is eight characters for a new account, as in Lift', (
+  group('the email path', () {
+    testWidgets('each answer the lookup gives leads to its own step', (
       tester,
     ) async {
-      // One account across the suite, and the reset page already asks for
-      // eight. Run asked for six until build 27.
       final auth = FakeAuthRepository();
-      await tester.pumpWidget(
-        MaterialApp(home: SignInScreen(auth: auth, initialSignUp: true)),
-      );
-
-      await submit(tester, password: 'seven77', label: 'Sign up');
-
-      expect(find.text('Use at least 8 characters.'), findsOneWidget);
-      expect(auth.lastEmail, isNull, reason: 'nothing was sent');
-    });
-
-    testWidgets('but a shorter one still signs in', (tester) async {
-      // Somebody who made a six-character password while Run allowed it must
-      // not be locked out by a rule that arrived afterwards.
-      final auth = FakeAuthRepository();
-      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
-
-      await submit(tester, password: 'six666', label: 'Sign in');
-
-      expect(find.text('Use at least 8 characters.'), findsNothing);
-      expect(auth.lastPassword, 'six666');
-    });
-  });
-
-  testWidgets('signing in before confirming is the next step, not an error', (
-    tester,
-  ) async {
-    // Confirmation is on since 30 September, so this is what a new runner
-    // does first: signs up, then signs in without opening the email. The
-    // server says "Email not confirmed", which in the error colour read as
-    // the account not having been made. Lift's words, in the quiet colour.
-    final auth = FakeAuthRepository()
-      ..failure = const AuthException('Email not confirmed', statusCode: '400');
-    await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
-    await openEmail(tester);
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'sam@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'hunter2222',
-    );
-    final submit = find.widgetWithText(PrimaryButton, 'Sign in');
-    await tester.ensureVisible(submit);
-    await tester.pump();
-    await tester.tap(submit);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(find.text('Email not confirmed'), findsNothing);
-    final notice = tester.widget<Text>(
-      find.text('Check your email and follow the link, then sign in.'),
-    );
-    final error = Theme.of(
-      tester.element(find.byType(SignInScreen)),
-    ).colorScheme.error;
-    expect(notice.style?.color, isNot(error));
-  });
-
-  group('Forgot your password?', () {
-    // On the email form, which is where a password is.
-    Future<void> tapForgot(WidgetTester tester) async {
-      final forgot = find.text('Forgot your password?');
-      await tester.ensureVisible(forgot);
-      await tester.pumpAndSettle();
-      await tester.tap(forgot);
-      await tester.pumpAndSettle();
-    }
-
-    testWidgets('is offered when signing in, not when signing up', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(home: SignInScreen(auth: FakeAuthRepository())),
-      );
-      expect(find.text('Forgot your password?'), findsNothing);
+      await pumpScreen(tester, auth);
       await openEmail(tester);
+      expect(find.text('Sign in or create your account'), findsOneWidget);
+
+      // A password: Welcome back.
+      await submitAddress(tester, FakeAuthRepository.passwordAddress);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.byKey(EmailSignInSteps.passwordFieldKey), findsOneWidget);
+      expect(find.widgetWithText(PrimaryButton, 'Sign in'), findsOneWidget);
       expect(find.text('Forgot your password?'), findsOneWidget);
+      // The address stays, with Change, on every later step.
+      expect(find.text(FakeAuthRepository.passwordAddress), findsOneWidget);
 
+      // Apple and Google: that provider, and a way to set a password instead.
+      for (final (address, provider) in <(String, String)>[
+        (FakeAuthRepository.appleAddress, 'Apple'),
+        (FakeAuthRepository.googleAddress, 'Google'),
+      ]) {
+        await tapVisible(tester, find.text('Change'));
+        await submitAddress(tester, address);
+        expect(find.text('Welcome back'), findsOneWidget);
+        expect(
+          find.text('This address signs in with $provider.'),
+          findsOneWidget,
+        );
+        expect(find.text('Continue with $provider'), findsOneWidget);
+        expect(find.text('Set a password instead'), findsOneWidget);
+        expect(find.byKey(EmailSignInSteps.passwordFieldKey), findsNothing);
+      }
+
+      // New, and unconfirmed, which reads exactly the same.
+      for (final address in <String>[
+        newAddress,
+        FakeAuthRepository.unconfirmedAddress,
+      ]) {
+        await tapVisible(tester, find.text('Change'));
+        await submitAddress(tester, address);
+        expect(find.text('Create your account'), findsOneWidget);
+        expect(find.text('Choose a password'), findsOneWidget);
+        expect(
+          find.widgetWithText(PrimaryButton, 'Create account'),
+          findsOneWidget,
+        );
+        expect(find.text('Forgot your password?'), findsNothing);
+      }
+      expect(auth.lookups, 5);
+    });
+
+    testWidgets('Change goes back to the address, still typed', (tester) async {
+      await pumpScreen(tester, FakeAuthRepository());
+      await openEmail(tester);
+      await submitAddress(tester, FakeAuthRepository.passwordAddress);
+
+      await tapVisible(tester, find.text('Change'));
+
+      final field = tester.widget<TextField>(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+      );
+      expect(field.controller?.text, FakeAuthRepository.passwordAddress);
+      expect(find.byKey(EmailSignInSteps.passwordFieldKey), findsNothing);
+    });
+
+    testWidgets('a likely typo is offered a fix, and only offered', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository();
+      await pumpScreen(tester, auth);
+      await openEmail(tester);
+
+      await tester.enterText(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+        'sam@gmial.com',
+      );
+      await tester.pump();
+      expect(find.text('Did you mean sam@gmail.com?'), findsOneWidget);
+      expect(auth.lookups, 0, reason: 'nothing is sent while typing');
+
+      await tapVisible(tester, find.text('Did you mean sam@gmail.com?'));
+      final field = tester.widget<TextField>(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+      );
+      expect(field.controller?.text, 'sam@gmail.com');
+      expect(find.textContaining('Did you mean'), findsNothing);
+    });
+
+    testWidgets('something that is not an address is not looked up', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository();
+      await pumpScreen(tester, auth);
+      await openEmail(tester);
+
+      await submitAddress(tester, 'sam at example');
+
+      expect(
+        find.text('That does not look like an email address.'),
+        findsOneWidget,
+      );
+      expect(auth.lookups, 0);
+    });
+
+    testWidgets('no connection at the lookup keeps what was typed', (
+      tester,
+    ) async {
+      // Never a guess at new or returning (the ADR's edge cases): the step
+      // after the address is only ever the one the server named.
+      final auth = FakeAuthRepository()
+        ..emailFailure = EmailFailure.unavailable;
+      await pumpScreen(tester, auth);
+      await openEmail(tester);
+
+      await submitAddress(tester, FakeAuthRepository.passwordAddress);
+
+      expect(
+        find.text('No connection. Try again when you have a signal.'),
+        findsOneWidget,
+      );
+      final field = tester.widget<TextField>(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+      );
+      expect(field.controller?.text, FakeAuthRepository.passwordAddress);
+      expect(find.byKey(EmailSignInSteps.passwordFieldKey), findsNothing);
+      expect(find.text('Create your account'), findsNothing);
+      expect(
+        tester.widget<PrimaryButton>(find.byType(PrimaryButton)).busy,
+        isFalse,
+        reason: 'ready to try again the moment the signal is back',
+      );
+
+      // The signal comes back, and the same Continue goes through.
+      auth.emailFailure = null;
+      await tapVisible(tester, find.widgetWithText(PrimaryButton, 'Continue'));
+      expect(find.text('Welcome back'), findsOneWidget);
+    });
+
+    group('welcome back', () {
+      testWidgets('the right password signs in, once', (tester) async {
+        final auth = FakeAuthRepository();
+        final authenticated = await pumpScreen(tester, auth);
+
+        await signInByEmail(tester);
+
+        expect(auth.isSignedIn, isTrue);
+        expect(auth.accountIsNew, isFalse);
+        expect(authenticated(), 1);
+        expect(auth.profileWrites, 1, reason: 'the profile row, as ever');
+      });
+
+      testWidgets('a wrong password says so and keeps the address', (
+        tester,
+      ) async {
+        final auth = FakeAuthRepository();
+        final authenticated = await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, FakeAuthRepository.passwordAddress);
+
+        await submitPassword(tester, 'not-it-1');
+
+        final error = tester.widget<Text>(
+          find.text('Wrong password. Try again, or set a new one.'),
+        );
+        expect(error.style?.color, AppColors.danger);
+        expect(find.text('Welcome back'), findsOneWidget);
+        expect(find.text(FakeAuthRepository.passwordAddress), findsOneWidget);
+        expect(auth.isSignedIn, isFalse);
+        expect(authenticated(), 0);
+
+        // And the right one still goes through from where they are.
+        await submitPassword(tester, FakeAuthRepository.rightPassword);
+        expect(auth.isSignedIn, isTrue);
+      });
+
+      testWidgets('signing in never checks the rule for a new password', (
+        tester,
+      ) async {
+        // An account keeps whatever password it was made with. Somebody who
+        // chose six characters while Run allowed it must not be locked out.
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, FakeAuthRepository.passwordAddress);
+
+        await submitPassword(tester, 'six666');
+
+        expect(auth.lastPassword, 'six666', reason: 'it was sent');
+        expect(find.textContaining('at least 8'), findsNothing);
+        expect(find.text('8 characters'), findsNothing);
+      });
+
+      testWidgets('Forgot your password? sends to the address and says where', (
+        tester,
+      ) async {
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, ' ${FakeAuthRepository.passwordAddress} ');
+
+        await tapVisible(tester, find.text('Forgot your password?'));
+
+        expect(auth.passwordEmails, <String>[
+          FakeAuthRepository.passwordAddress,
+        ]);
+        // The lookup has already said the address has an account, so there
+        // is nothing left to hide, and "if that address has an account" would
+        // only add doubt.
+        final notice = tester.widget<Text>(
+          find.text(
+            'A link to set a new password is on its way to '
+            '${FakeAuthRepository.passwordAddress}.',
+          ),
+        );
+        expect(notice.style?.color, isNot(AppColors.danger));
+        expect(find.textContaining('If that address'), findsNothing);
+      });
+    });
+
+    group('an address that signs in with Apple or Google', () {
+      testWidgets('is offered Apple, and Apple signs it in', (tester) async {
+        final auth = FakeAuthRepository();
+        final authenticated = await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, FakeAuthRepository.appleAddress);
+
+        await tapVisible(tester, find.text('Continue with Apple'));
+        await tester.pumpAndSettle();
+
+        expect(auth.lastProvider, 'apple');
+        expect(auth.isSignedIn, isTrue);
+        expect(authenticated(), 1);
+      });
+
+      testWidgets('or Google, for one made with Google', (tester) async {
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, FakeAuthRepository.googleAddress);
+
+        await tapVisible(tester, find.text('Continue with Google'));
+        await tester.pumpAndSettle();
+
+        expect(auth.lastProvider, 'google');
+      });
+
+      testWidgets('and can set a password instead', (tester) async {
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, FakeAuthRepository.appleAddress);
+
+        await tapVisible(tester, find.text('Set a password instead'));
+
+        expect(auth.passwordEmails, <String>[FakeAuthRepository.appleAddress]);
+        expect(find.textContaining('A link to set a password'), findsOneWidget);
+        expect(auth.lastProvider, isNull, reason: 'Apple was not asked');
+      });
+    });
+
+    group('a new address', () {
+      testWidgets('shows the rule as it is typed, part by part', (
+        tester,
+      ) async {
+        await pumpScreen(tester, FakeAuthRepository());
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+
+        for (final label in <String>['8 characters', 'a number', 'a symbol']) {
+          expect(find.text(label), findsOneWidget);
+        }
+        bool met(String label) =>
+            tester.widget<Text>(find.text(label)).style?.color ==
+            AppColors.textPrimary;
+
+        await tester.enterText(
+          find.byKey(EmailSignInSteps.passwordFieldKey),
+          'hunter22',
+        );
+        await tester.pump();
+        expect(met('8 characters'), isTrue);
+        expect(met('a number'), isTrue);
+        expect(met('a symbol'), isFalse);
+      });
+
+      testWidgets('is refused a password that misses the rule, before '
+          'anything is sent', (tester) async {
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+
+        await submitPassword(tester, 'hunter22', label: 'Create account');
+
+        expect(
+          find.text('Use at least 8 characters, with a number and a symbol.'),
+          findsOneWidget,
+        );
+        expect(auth.codesSent, isEmpty);
+        expect(find.byKey(EmailSignInSteps.codeFieldKey), findsNothing);
+      });
+
+      testWidgets('is made, sent a code, and signed in by the code', (
+        tester,
+      ) async {
+        final auth = FakeAuthRepository();
+        final authenticated = await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+        await submitPassword(tester, goodNewPassword, label: 'Create account');
+
+        expect(auth.codesSent, <String>[newAddress]);
+        expect(find.text('Enter the 6-digit code we sent to'), findsOneWidget);
+        expect(find.text(newAddress), findsOneWidget);
+        expect(find.text('Create your account'), findsOneWidget);
+        expect(auth.isSignedIn, isFalse, reason: 'not until the code');
+        expect(authenticated(), 0);
+
+        await enterCode(tester, FakeAuthRepository.rightCode);
+
+        expect(auth.isSignedIn, isTrue);
+        expect(auth.accountIsNew, isTrue);
+        expect(authenticated(), 1);
+        expect(auth.profileWrites, 1);
+        expect(
+          auth.lastReplacement,
+          isNull,
+          reason: 'a new address has only the one password',
+        );
+      });
+
+      testWidgets('signs straight in where the project confirms nothing', (
+        tester,
+      ) async {
+        final auth = FakeAuthRepository()..confirmationOff = true;
+        final authenticated = await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+
+        await submitPassword(tester, goodNewPassword, label: 'Create account');
+
+        expect(auth.isSignedIn, isTrue);
+        expect(authenticated(), 1);
+        expect(auth.codesSent, isEmpty);
+      });
+
+      testWidgets('an unconfirmed one replaces its first password with this '
+          'one, once the code proves the inbox', (tester) async {
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth);
+
+        await createAccountByEmail(
+          tester,
+          address: FakeAuthRepository.unconfirmedAddress,
+        );
+
+        expect(auth.isSignedIn, isTrue);
+        expect(auth.lastReplacement, goodNewPassword);
+      });
+
+      testWidgets('and is signed in by the code even when that password '
+          'cannot be written', (tester) async {
+        // The code proved the inbox and the session is there, so it is a
+        // sign-in: only the first password still works, and Forgot your
+        // password? is the way to a new one.
+        final auth = FakeAuthRepository()..replacementFails = true;
+        final authenticated = await pumpScreen(tester, auth);
+
+        await createAccountByEmail(
+          tester,
+          address: FakeAuthRepository.unconfirmedAddress,
+        );
+
+        expect(auth.isSignedIn, isTrue);
+        expect(authenticated(), 1);
+        expect(find.textContaining('did not go through'), findsNothing);
+      });
+
+      testWidgets('a wrong code says so, and the code can be typed again', (
+        tester,
+      ) async {
+        final auth = FakeAuthRepository();
+        final authenticated = await pumpScreen(tester, auth);
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+        await submitPassword(tester, goodNewPassword, label: 'Create account');
+
+        await enterCode(tester, '000000');
+
+        expect(
+          find.text(
+            'That code is wrong or has expired. Check it, or send a new one.',
+          ),
+          findsOneWidget,
+        );
+        expect(auth.isSignedIn, isFalse);
+        expect(authenticated(), 0);
+        expect(find.byKey(EmailSignInSteps.codeFieldKey), findsOneWidget);
+
+        await enterCode(tester, FakeAuthRepository.rightCode);
+        expect(auth.isSignedIn, isTrue);
+      });
+
+      testWidgets('another code waits out its minute, then goes', (
+        tester,
+      ) async {
+        var now = DateTime(2026, 10, 20, 9);
+        final auth = FakeAuthRepository();
+        await pumpScreen(tester, auth, clock: () => now);
+        await openEmail(tester);
+        await submitAddress(tester, newAddress);
+        await submitPassword(tester, goodNewPassword, label: 'Create account');
+
+        expect(find.text('Send a new code in 1:00'), findsOneWidget);
+        await tester.tap(find.text('Send a new code in 1:00'));
+        await tester.pump();
+        expect(auth.codesSent, hasLength(1), reason: 'not yet');
+
+        now = now.add(const Duration(seconds: 42));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('Send a new code in 0:18'), findsOneWidget);
+
+        now = now.add(const Duration(seconds: 18));
+        await tester.pump(const Duration(seconds: 1));
+        await tapVisible(tester, find.text('Send a new code'));
+
+        expect(auth.codesSent, <String>[newAddress, newAddress]);
+        expect(
+          find.text('A new code is on its way to $newAddress.'),
+          findsOneWidget,
+        );
+        expect(find.text('Send a new code in 1:00'), findsOneWidget);
+      });
+    });
+
+    testWidgets('and nothing a step needs is below a 393pt screen', (
+      tester,
+    ) async {
+      // Board C14 and K2, 1 October 2026: with the choices and the form on one
+      // screen, Password and Sign up were below the bottom of the phone. 818 is
+      // the screen less the home indicator. Real Inter, because the test font
+      // is wider and taller and would measure a layout no phone draws. The
+      // tallest steps are making an account, with its checklist and its note
+      // about the code, and the code itself.
+      await loadInter();
+      await tester.binding.setSurfaceSize(const Size(393, 852));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         MaterialApp(
-          home: SignInScreen(
-            key: UniqueKey(),
-            auth: FakeAuthRepository(),
-            initialSignUp: true,
+          theme: AppTheme.dark,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(393, 852),
+              padding: EdgeInsets.only(top: 59, bottom: 34),
+            ),
+            child: SignInScreen(auth: FakeAuthRepository()),
           ),
         ),
       );
-      await openEmail(tester);
-      expect(find.text('Forgot your password?'), findsNothing);
-    });
+      await tester.pumpAndSettle();
+      double bottomOf(Finder f) => tester.getRect(f).bottom;
+      expect(
+        bottomOf(find.textContaining('By continuing you agree')),
+        lessThanOrEqualTo(818),
+      );
 
-    testWidgets('asks for the email first', (tester) async {
-      final auth = FakeAuthRepository();
-      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
-      await openEmail(tester);
-
-      await tapForgot(tester);
-
-      expect(find.text('Enter your email first.'), findsOneWidget);
-      expect(auth.lastReset, isNull);
-    });
-
-    testWidgets('sends the reset and says the same thing for any address', (
-      tester,
-    ) async {
-      final auth = FakeAuthRepository();
-      await tester.pumpWidget(MaterialApp(home: SignInScreen(auth: auth)));
-      await openEmail(tester);
+      await tester.tap(find.text('Continue with email'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(EmailSignInSteps.emailFieldKey),
+        newAddress,
+      );
+      await tester.tap(find.widgetWithText(PrimaryButton, 'Continue'));
+      await tester.pumpAndSettle();
+      expect(find.text('a symbol'), findsOneWidget);
+      expect(
+        bottomOf(find.widgetWithText(PrimaryButton, 'Create account')),
+        lessThanOrEqualTo(818),
+      );
+      expect(
+        bottomOf(find.textContaining('By continuing you agree')),
+        lessThanOrEqualTo(818),
+      );
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
-        ' runner@example.com ',
+        find.byKey(EmailSignInSteps.passwordFieldKey),
+        goodNewPassword,
       );
-      await tapForgot(tester);
-
-      expect(auth.lastReset, 'runner@example.com');
-      final notice = tester.widget<Text>(
-        find.text(
-          'If that address has an account, a reset link is on its way.',
-        ),
+      await tester.tap(find.widgetWithText(PrimaryButton, 'Create account'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        bottomOf(find.textContaining('Send a new code')),
+        lessThanOrEqualTo(818),
       );
-      // A next step, not a failure, so not in the error colour.
-      final error = Theme.of(
-        tester.element(find.byType(SignInScreen)),
-      ).colorScheme.error;
-      expect(notice.style?.color, isNot(error));
+      expect(
+        bottomOf(find.textContaining('By continuing you agree')),
+        lessThanOrEqualTo(818),
+      );
     });
   });
 }

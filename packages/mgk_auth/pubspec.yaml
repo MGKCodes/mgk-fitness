@@ -1,5 +1,5 @@
 name: mgk_auth
-description: "Signing in for the MGKCodes fitness suite: Apple and Google through Supabase, and whose training is on a phone."
+description: "Signing in for the MGKCodes fitness suite: Apple, Google and email through Supabase, and whose training is on a phone."
 publish_to: none
 version: 0.1.0
 

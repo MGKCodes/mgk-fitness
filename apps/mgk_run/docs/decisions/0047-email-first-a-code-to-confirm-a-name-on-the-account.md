@@ -8,6 +8,11 @@ it matches, follows once 1.0.0 is through. Replaces
 where the name is concerned, and ends the rule that signing in never says
 whether an address has an account.
 
+**Started 2026-10-19** on `feat/email-first-sign-in`. Its gate is met: Lift
+2.0.0 and Run 1.0.1 have both been submitted and approved. **Amended the same
+day:** after Sign in with Apple there is no name step at all (see *The name
+belongs to the account*). Where the build stands is under *Build*, at the end.
+
 ## Context
 
 Both apps' sign-in screens offer Apple, Google and *Continue with email*. The
@@ -101,19 +106,24 @@ not explain. There is no list of common passwords, and no leaked-password check
 - **One optional step after any new account**, by any route, asking what to
   call them. It is the MGKFitness account's name: both apps show it on the
   profile, and Run's coach uses it.
-- **With Apple or Google it starts filled in** with the first name the provider
-  passed, and can be changed or cleared. Nobody has to use the name their
-  provider holds. Apple is asked for the name (`fullName`), gives it only the
-  first time an Apple ID signs in to the app, and gives it to the app rather
-  than to Supabase. Google's arrives in its token, and the prefill takes its
-  first word.
+- **With Google it starts filled in** with the first name Google passed, and
+  can be changed or cleared. Nobody has to use the name their provider holds.
+  Google's arrives in its token, and the prefill takes its first word.
+  *Amended 2026-10-19:* this said Apple too, with Apple asked for `fullName`.
+  Apple is not asked, and an Apple account gets no step (below).
 - **Run skips the step** when its intro already has a name.
 - **Stored in the user's metadata as `display_name`**, not `name`, which Google
   rewrites. Run's existing `name` values are copied across once.
 - **Never sent to the AI model**, as now.
-- **Optional, because App Review rejects apps that require a name after Sign in
-  with Apple.** If a reviewer objects anyway, the step is skipped for Apple
-  accounts that shared a name. The name can still be changed on the profile.
+- **No step after Sign in with Apple** (*amended 2026-10-19*). This said the
+  step was optional because App Review rejects apps that require a name after
+  Sign in with Apple, and that it would be skipped for Apple accounts if a
+  reviewer objected anyway. One did: App Review rejected Run 1.0.0 on
+  16 October 2026 under guideline 4 for asking "What should I call you?" after
+  Sign in with Apple, although the question could be skipped. So an Apple
+  account never gets the step, and the name can be added on the profile, where
+  nothing prompts for it. It is the suite's rule: nothing asks for a name or an
+  email after Sign in with Apple. Run 1.0.1 already follows it.
 - **Both privacy policies** stop saying that Apple and Google pass "an email
   address and an identifier, and nothing else". Lift declares a name in its App
   Privacy and Play data safety answers; Run already does. Run's policy changes
@@ -180,3 +190,78 @@ held. It changes no build.
   (`webcredentials`, `assetlinks.json`), so the phone suggests a strong password
   and both apps fill it in.
 - Whether Lift's coach uses the name too.
+
+## Build
+
+On `feat/email-first-sign-in`. Ticked as it lands; deleted once both apps
+have shipped it.
+
+**Done, 19 October 2026:**
+
+- [x] `core.account_facts(email)`, the facts about one address for the service
+      role only (`supabase/migrations/20261020000311_core_account_facts.sql`),
+      with its database test (`supabase/tests/account_facts.sql`). *The test is
+      written and has not run: there was no local database that day.*
+- [x] The `account-lookup` Edge Function, which turns those facts into `new`,
+      `unconfirmed`, `password`, `apple` or `google`
+      (`supabase/functions/account-lookup`, 13 tests under `deno test`).
+- [x] `EmailSignIn` and `PasswordCheck` in `packages/mgk_auth`, shared by both
+      apps: the lookup, signing in, making an account, the code, resending it,
+      and the email that sets a password; and the rule for a new password
+      (22 tests). Both apps analyse clean against them.
+
+**Done, 20 October 2026, and on `develop`** (not in any store build yet):
+
+- [x] Both sign-in screens, email first: `EmailSignInFlow` (the steps and
+      their words, shared) drawn by `mgk_ui`'s `EmailSignInSteps`. The
+      two-mode form and Run's `onSignUpIntent` are gone.
+- [x] **Whether an account is new is read from the account** (`accountIsNew`).
+      Run treats only a sign-in its gate watched happen as new: a session
+      restored at launch is not a sign-in, and reading the account alone would
+      have skipped the restore on every launch for days after signing up.
+- [x] The name, stored as `display_name` (`displayNameData`; a cleared name is
+      written empty, so it stays cleared). **Lift** asks it in a step after a
+      new email or Google account, prefilled with Google's first name, never
+      after Apple, and shows and edits it on Settings and the account screen.
+      **Run's step is its coach's question**, which already met a new account
+      and already skipped Apple: it now starts filled in with Google's first
+      name (`suggestedName`), which can be kept, changed or cleared. Run's
+      legacy `name` is copied across once, only to an account that has never
+      had a `display_name`.
+- [x] The edge cases, each with a test: "Did you mean …?", *Resend* after 60
+      seconds, offline at the lookup, a refused code, a password that the
+      replacement could not write (still signed in).
+- [x] The confirmation email carries the code (`supabase/templates`).
+- [x] Run's board: nine new plates, B14 to B22; B13 and K3 retired. Lift's
+      board waits for its move to plate tests, the way Run's is drawn (the
+      owner, 20 October); its S3 and S4 describe the old form until then.
+- [x] The comments, documents and test-sheet rows that promised an address is
+      never revealed, in both apps.
+
+**Left:**
+
+- [ ] Check on an iPhone that the password step offers to save the new
+      password: the steps have no username field beside it.
+
+**Held for the owner, because each changes production:**
+
+- [x] The migration, applied to production on 20 October 2026 and stamped
+      `20261020000311` (the file renamed to match). Read back from the
+      catalog: security definer, `search_path` pinned, execute granted to
+      `service_role` alone.
+- [x] `account-lookup` deployed on 20 October 2026
+      (`npx supabase functions deploy account-lookup --use-api --no-verify-jwt`)
+      and checked from outside with a made-up address: `new`, 200; not an
+      address, 400; a GET, 405; the CORS preflight, 200. No real account was
+      looked up.
+- [x] The new confirmation email, with the code above the link, pasted into
+      Authentication › Emails › Confirm sign up by the owner on 20 October
+      2026. Not yet seen in an inbox: the first sign-up from a build of
+      `develop` is that check (the code above the button, the link still
+      working, and the code in the notification's preview).
+- [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
+      password goes to 8, the reset page checks the rule, and both privacy
+      policies change (an optional name the person chooses, Google's first
+      name offered as a suggestion, a code as well as a link, and an address
+      looked up to choose the next step). Both store forms' Name rows with
+      them.

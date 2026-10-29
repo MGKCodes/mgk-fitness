@@ -16,12 +16,15 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen at build 29, and 1.0.1 so far",
-    "eyebrow": "apps/mgk_run · build 29 (1.0.0+29) as submitted, with the 1.0.1 plates retaken on 3 and 5 Oct",
-    "build": "29 · 1.0.0+29, submitted 2 Oct; 1.0.1 in progress",
-    "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. Use it for the last UI pass before the store screenshots: read the 'done right' line under a plate and check the plate against it.",
+    "title": "MGKFitness: Run, every screen of 1.0.1, and 1.0.2 so far",
+    "eyebrow": "apps/mgk_run · 1.0.1 (build 31) on both stores since 19 Oct, with what develop holds for 1.0.2: the email path, address first",
+    "build": "31 · 1.0.1+31 on both stores; develop is 1.0.2+32, not submitted",
+    "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. It is the reference for what is live: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "20 Oct, a Tuesday: the plates a Monday could not draw are drawn. Home's last run with and without a coach (H4, H5), the week a plan is built (H6), subscribing and restoring signed out (Y8, Y9) and the race plates (E1, E2, E4, E6) show 1.0.1 at last, with the treadmill row on the week tile. E1's taper is a Friday race seen on a Tuesday, so today's run is the first of race week; E2 is race day before the run, so 'Add your result' is not yet there.",
+      "1.0.2 so far, 20 Oct, on develop and not on the stores yet: signing in with email asks for the address first (ADR-0047). Nine new plates, B14 to B22: the address, Did you mean, no signal at the lookup, Welcome back, a wrong password, an address made with Apple, Create your account with the password rule ticked as it is typed, the 6-digit code with its wait for another, and a refused code. The two-mode email form is retired from both ways into it (B13, K3). B8, C14 and K2 were redrawn at e5ee058, and again at 08dd210 after the shared fixes, and came out identical: the choices do not change, only what is behind the third button. A new account by any way in now meets the coach, whose question is the name step (B3), with Google's first name typed in for a Google account; nothing is asked after Apple.",
+      "1.0.1 as released, redrawn 19 Oct at 4a03dc8, the day Run went on sale on the App Store. Every plate was redrawn and 112 came out identical. Settings gains Report a problem (an email to support with the app and version written in) and Source code (AGPL-3.0, the public repository) under About, and shows 1.0.1 at its foot (T1, T3). Home's three states now show 'Add a treadmill run' as a row on the This week tile, as build 29 made it; the board still had their pictures from before (H1, H2, H3). Not redrawable on a Monday, so still their earlier pictures: H4, H5, Y8 and Y9 (no planned run), H6 (a plan built that day starts that day) and the race plates E1, E2, E4, E6 and E7, whose fixture assumes a plan ending this Sunday. E1 still shows the treadmill button under Start, and E2 lacks 1.0.1's 'Add your result' under 'Start the race'. Also in 1.0.1 and on no plate: after Sign in with Apple the coach's first conversation no longer asks what to call you (App Review, guideline 4, 16 Oct), and signing in after meeting the coach no longer plays the conversation again.",
       "1.0.1, 13 Oct, later: a race can be chosen on the start screen (R31, new), and the live screen counts down to the finish and projects it (R32, R33, new). A race counts as its own time in Profile's figures. Kilometre pins no longer stack where a route passes the same spot (F9 and the other race plates).",
       "1.0.1, 13 Oct: a race has its own finish (F9 to F12, new). A run near a race distance asks whether it was one; a race leads with its official time, says where it stands among the runner's races, shows how it was run half by half and 5K by 5K, and shows the plan behind it when there was one. Every summary's splits fold to one line, and the records card puts each record beside its own time (F1 to F3); a run recovered after the app closed loses its column of dashes (F7). Only these were retaken.",
       "1.0.1, retaken on 5 Oct. The coach is the suite's sheet, Lift's design: glass over the night road where it was a solid panel, Run's icon and Coach in a frosted bar, Lift's bubbles, and three questions to tap on an empty conversation (C3, C4, C10 to C12). The paywall is the suite's: one screen that fits without scrolling, Run's icon and name above the headline, three short lines with their detail on tap, the tiers side by side with Coach labelled Recommended, the coach's C beside the app's name, the night road behind, and one Subscribe button naming the price (Y1 to Y7). Y8 and Y9 are still the 1 Oct pictures: their way in needs a planned run that Monday's fixtures do not have. Delete account asks how much, as Lift's does: this app's data or the whole MGKFitness account (L1 to L7, and L8, new). Only these were retaken; every other plate is as it was.",
@@ -115,7 +118,9 @@
       "E5"
     ],
     "retired": {
-      "T2": "Settings below the fold. Settings fits one screen since 11 Sep; the account, sign-out and deletion moved to T4, T11 and L1."
+      "T2": "Settings below the fold. Settings fits one screen since 11 Sep; the account, sign-out and deletion moved to T4, T11 and L1.",
+      "B13": "Signing back in with email: the two-mode form's sign-in half. Since 1.0.2 the email path asks for the address first (B14), and Welcome back is B16.",
+      "K3": "The email form behind backup's sign-up: since 1.0.2 the same address-first steps as everywhere else, drawn once in act 01 (B14 to B22)."
     },
     "caveats": [
       [
@@ -188,9 +193,32 @@
         {
           "title": "Signing in",
           "plates": [
-            "B8",
-            "B13",
-            "K3"
+            "B8"
+          ]
+        },
+        {
+          "title": "With an email address: the address first",
+          "plates": [
+            "B14",
+            "B15",
+            "B22"
+          ]
+        },
+        {
+          "title": "An address that has an account",
+          "plates": [
+            "B16",
+            "B17",
+            "B18"
+          ]
+        },
+        {
+          "title": "A new address",
+          "sequence": true,
+          "plates": [
+            "B19",
+            "B20",
+            "B21"
           ]
         }
       ]
@@ -669,7 +697,7 @@
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
       ],
-      "note": "Drawn on a Thursday. This runner has missed only Tuesday's recovery run, and one easy run that got away is not raised, so the missed-session card is not in this picture. The 30 Sep board, drawn on a Wednesday, showed it.",
+      "note": "Drawn on a Tuesday morning: Monday's run is done and today's recovery run is next, so This week reads 1 of 7 and nothing is missed. The 30 Sep board, drawn on a Wednesday, showed the missed-session card.",
       "changed": "Build 29: 'Add a treadmill run' was a lone button under Start, on the left with nothing beside it. It is a row on the week tile. Build 28: 'Adjust this week' stood there before it, and moved to the Plan tab (A2)."
     },
     "A2": {
@@ -735,7 +763,8 @@
         "lib/src/features/onboarding/presentation/intro_screen.dart",
         "lib/src/features/onboarding/domain/intro_script.dart",
         "lib/src/features/onboarding/domain/intro_permission.dart"
-      ]
+      ],
+      "changed": "1.0.2 (ADR-0047): the same question is Run's name step for a new account, which now meets the coach by every way in. For a Google account the field starts with Google's first name and is still asked about; after Sign in with Apple it is not asked at all. Drawn here signed out, so empty."
     },
     "B4": {
       "file": "arrive-permission",
@@ -800,24 +829,137 @@
       "how": "driven",
       "reach": "B1 › I already have an account",
       "job": "Signing back into an existing account.",
-      "done": "Run's icon and name first, then MGKFitness Account and 'Sign in or create your account': which app this is, and that the login is the suite's. Continue with Apple, Continue with Google and Continue with email, at equal width; under them the Hide My Email line and the terms and privacy line, and nothing else, as on Lift. Email, password and 'Forgot your password?' are behind the third button (B13). Someone who has been here before is not walked through the intro again.",
+      "done": "Run's icon and name first, then MGKFitness Account and 'Sign in or create your account': which app this is, and that the login is the suite's. Continue with Apple, Continue with Google and Continue with email, at equal width; under them the Hide My Email line and the terms and privacy line, and nothing else, as on Lift. The email path is behind the third button and starts with the address alone (B14). Someone who has been here before is not walked through the intro again; an account made here meets it.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
+      "changed": "1.0.2 (ADR-0047): Continue with email asks for the address first and the address decides the step after it (B14 to B22); the screen no longer says whether it is making an account, and the account itself does. Pixel-identical to 1.0.1. 1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. Build 27: Apple and Google lead, the email form is a second step, and 'Forgot your password?' is new."
     },
-    "B13": {
-      "file": "arrive-sign-in-email",
-      "name": "Signing back in with email",
+    "B14": {
+      "file": "arrive-email",
+      "name": "The address first",
       "how": "driven",
       "reach": "B8 › Continue with email",
-      "job": "Signing back in with an email address, for a runner whose account was made with one.",
-      "done": "Under Run's icon and MGKFitness Account and 'Welcome back', email, password, Sign in and 'Forgot your password?', then 'New here? Create an account' and 'Other ways to sign in', with the terms and privacy line at the foot: Lift's S3, line for line. A wrong password never says which half was wrong.",
-      "isnew": "New in 1.0.1, beside K3, so the three sign-in screens sit in a row as Lift's do.",
+      "job": "The email path begins with the address alone, so nobody has to know whether they are signing in or making an account before they type anything.",
+      "done": "Under Run's icon, MGKFitness Account and 'Sign in or create your account', one Email field, Continue, 'Other ways to sign in' and the terms and privacy line, all above the bottom of the phone. No password field and no sign-in/sign-up switch: either one here means the old form is back.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart",
-        "packages/mgk_ui/lib/src/widgets/profile_identity.dart"
-      ]
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B15": {
+      "file": "arrive-email-typo",
+      "name": "Did you mean",
+      "how": "driven",
+      "reach": "B14 › type sam@gmial.com",
+      "job": "A likely typo of a common address is offered its fix before anything is sent, and only offered.",
+      "done": "'Did you mean sam@gmail.com?' under the field, in the quiet colour, while the field still holds what was typed. Nothing is looked up until Continue. If the field has changed by itself, the app has applied a guess to somebody's address.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B22": {
+      "file": "arrive-email-offline",
+      "name": "No signal at the lookup",
+      "how": "driven",
+      "reach": "B14 › an address › Continue, with no signal",
+      "job": "What the address step says when the lookup cannot be reached.",
+      "done": "'No connection. Try again when you have a signal.' in red under Continue, the address still in the field, and Continue ready to press again. Never a guess at new or returning: Welcome back or Create your account here would be the app making up an answer.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B16": {
+      "file": "arrive-email-password",
+      "name": "Welcome back",
+      "how": "driven",
+      "reach": "B14 › an address with a password › Continue",
+      "job": "Signing back in, for an address the lookup says has a password.",
+      "done": "'Welcome back' under the head; the address in a row with Change; Password with its eye; Sign in; 'Forgot your password?', which sends the link to that address and says so. The address is not typed twice.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B17": {
+      "file": "arrive-email-wrong-password",
+      "name": "A wrong password",
+      "how": "driven",
+      "reach": "B16 › a wrong password › Sign in",
+      "job": "A wrong password, called one.",
+      "done": "'Wrong password. Try again, or set a new one.' in red under Sign in, with the address still in its row and the password still in its field. Back at the address step, or a message that will not say which half was wrong, is the old screen.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B18": {
+      "file": "arrive-email-apple",
+      "name": "An address made with Apple",
+      "how": "driven",
+      "reach": "B14 › an address made with Apple › Continue",
+      "job": "An address whose account was made with Apple is sent back to Apple, rather than asked for a password it never had.",
+      "done": "'Welcome back', the address with Change, 'This address signs in with Apple.', the Continue with Apple button as on B8, and 'Set a password instead'. No password field. Google's address reads the same with the Google button.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B19": {
+      "file": "arrive-email-create",
+      "name": "Create your account",
+      "how": "driven",
+      "reach": "B14 › a new address › Continue › type a password",
+      "job": "Making an account for a new address, with the password rule shown as it is met.",
+      "done": "'Create your account', the address with Change, 'Choose a password', and under it '8 characters', 'a number' and 'a symbol', ticked in full as each is met and faint until then (here the first two of three). Create account, and 'We will email a 6-digit code to check the address is yours.' No name field: the coach asks that.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B20": {
+      "file": "arrive-email-code",
+      "name": "The code from the email",
+      "how": "built",
+      "reach": "B19 › a password that meets the rule › Create account (opened on its own, with a clock 18 seconds on)",
+      "job": "Confirming a new address with the 6-digit code from the email, typed into the app.",
+      "done": "'Enter the 6-digit code we sent to' above the address and Change, one wide field for six digits, Confirm, and 'Send a new code in 0:42' counting down, not pressable until it reaches zero. The sixth digit sends the code without Confirm.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
+    },
+    "B21": {
+      "file": "arrive-email-code-refused",
+      "name": "A code that is wrong or old",
+      "how": "built",
+      "reach": "B20 › a code that is wrong or has expired",
+      "job": "A refused code, said as both things it can be, with the way to another.",
+      "done": "'That code is wrong or has expired. Check it, or send a new one.' in red under Confirm, the code still in the field to check, and the countdown to another code still running. Nothing is signed in.",
+      "files": [
+        "lib/src/features/auth/presentation/sign_in_screen.dart",
+        "packages/mgk_ui/lib/src/widgets/email_sign_in_steps.dart",
+        "packages/mgk_auth/lib/src/email_sign_in_flow.dart"
+      ],
+      "isnew": "New in 1.0.2 (ADR-0047), on develop; not on the stores yet."
     },
     "H2": {
       "file": "home-no-plan",
@@ -1622,7 +1764,7 @@
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
       "isnew": "Order settled in build 26.",
-      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. The photograph behind it is drawn too; the 1 Oct picture had been taken before it loaded. Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
+      "changed": "1.0.2 (ADR-0047): its email path is the address-first steps of B14 to B22. Pixel-identical to 1.0.1. 1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. The photograph behind it is drawn too; the 1 Oct picture had been taken before it loaded. Build 27: Apple and Google lead and the email form moved behind 'Continue with email'. With all of it on one screen, Password and Sign up were below the bottom of the phone."
     },
     "C7": {
       "file": "coach-consent",
@@ -1850,8 +1992,7 @@
       "files": [
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
-      ],
-      "note": "Still the 1 October picture, of the paywall before 1.0.1. The way here needs the Home card's 'See what a coach adds', which shows only when the last run answers a planned session, and the fixtures dated on Monday 5 October have none. Redraw on another weekday."
+      ]
     },
     "Y9": {
       "file": "paywall-restore-sign-in-first",
@@ -1864,8 +2005,7 @@
         "lib/src/features/coaching/presentation/purchase_screen.dart",
         "lib/src/features/coaching/domain/plan_gate_copy.dart"
       ],
-      "isnew": "New in build 26.",
-      "note": "Still the 1 October picture, of the paywall before 1.0.1. The way here needs the Home card's 'See what a coach adds', which shows only when the last run answers a planned session, and the fixtures dated on Monday 5 October have none. Redraw on another weekday."
+      "isnew": "New in build 26."
     },
     "S1": {
       "file": "profile-with-log",
@@ -1976,12 +2116,14 @@
       "how": "built",
       "reach": "Profile › ⚙",
       "job": "An index of what everything is set to, with the runner's profile at the top.",
-      "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
+      "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. About holds Support, Report a problem (an email to support with the app and its version already written in), Source code (AGPL-3.0, opening the public repository) and Privacy & legal. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
       "files": [
         "lib/src/features/settings/presentation/settings_screen.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
-      "isnew": "Rebuilt as an index on 11 Sep."
+      "isnew": "Rebuilt as an index on 11 Sep.",
+      "changed": "1.0.1: Report a problem and Source code joined About, the same two rows as Lift.",
+      "note": "The DEVELOPER block's switch falls below the foot in this picture; it is debug-only."
     },
     "T3": {
       "file": "settings-no-account",
@@ -1993,7 +2135,8 @@
       "files": [
         "lib/src/features/settings/presentation/settings_screen.dart",
         "lib/src/features/settings/presentation/avatar.dart"
-      ]
+      ],
+      "changed": "1.0.1: Report a problem and Source code joined About, as on T1."
     },
     "T16": {
       "file": "settings-backup",
@@ -2225,11 +2368,11 @@
       "how": "driven",
       "reach": "K1 › Back them up",
       "job": "The account asked for at the moment it buys something.",
-      "done": "The same choices as B8, reached from the backup prompt: Run's icon and MGKFitness Account, then Apple, Google and Continue with email, the Hide My Email line and the terms and privacy line, on the screen of a 393-point phone. Its email form starts on making an account (K3). Backing out leaves nothing written.",
+      "done": "The same choices as B8, reached from the backup prompt: Run's icon and MGKFitness Account, then Apple, Google and Continue with email, the Hide My Email line and the terms and privacy line, on the screen of a 393-point phone. Its email path is the address-first steps of B14 to B22 and asks for no name: the one the coach was told goes onto the new account. Backing out leaves nothing written.",
       "files": [
         "lib/src/features/auth/presentation/sign_in_screen.dart"
       ],
-      "changed": "1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. At 64 points the icon pushed 'Have an account? Sign in' under the bottom of the phone, so it is drawn at 48. Build 27: Apple and Google lead, and the email form is the next step (K3)."
+      "changed": "1.0.2 (ADR-0047): the email form behind it, which opened on making an account (K3, retired), is the address-first path; pixel-identical to 1.0.1. 1.0.1: the sign-in/sign-up switch is on the email form only, as on Lift, and the icon and name are drawn larger. 1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon. At 64 points the icon pushed 'Have an account? Sign in' under the bottom of the phone, so it is drawn at 48. Build 27: Apple and Google lead, and the email form is the next step (K3)."
     },
     "L1": {
       "file": "delete-account",
@@ -2346,7 +2489,8 @@
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
-      ]
+      ],
+      "note": "Drawn on a Tuesday, three days before a Friday race: race week began on Monday, so today's run is its first easy one, 8 km, and each run after it is shorter. Drawn on a Thursday the race is a Sunday and today is the taper's 3 km."
     },
     "E2": {
       "file": "shell-race-day",
@@ -2362,7 +2506,8 @@
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
         "lib/src/features/home/presentation/training_charts.dart"
-      ]
+      ],
+      "note": "Before today's run: 'Add your result' joins 'Start the race' only once a run is recorded on race day (1.0.1), which this fixture has not."
     },
     "E3": {
       "file": "shell-race-result-sheet",
@@ -2402,19 +2547,6 @@
         "lib/src/features/coaching/presentation/plan_finish_screen.dart"
       ],
       "changed": "1.0.1, 13 Oct: when the phone recorded the race, confirming the time now opens the race's own summary (as F10, with the training section and the line about the Plan tab) instead of this screen. This one is for a race the phone sat out."
-    },
-    "K3": {
-      "file": "account-gate-email",
-      "name": "The email form",
-      "how": "driven",
-      "reach": "K2 › Continue with email",
-      "job": "Making the account with an email address, for a runner who has neither Apple nor Google on the phone or would rather not use them.",
-      "done": "Under Run's icon and MGKFitness Account, email, password and Sign up are all on the screen. The name from the intro is already known, so the form does not ask for it. 'Other ways to sign in' goes back to the three choices. If the button that finishes the form is below the bottom of the phone, it has failed.",
-      "files": [
-        "lib/src/features/auth/presentation/sign_in_screen.dart"
-      ],
-      "isnew": "New in build 27.",
-      "changed": "1.0.1: laid out as Lift's sign-in, the night-road photograph at full strength above and the choices at the foot, with the terms and privacy line under them; the list of what an account gives is gone. 1.0.1: Run's icon and name above MGKFitness Account, where it said MGKFitness Profile; Lift's sign-in draws the same head with its own icon."
     },
     "B10": {
       "file": "launch-mark",

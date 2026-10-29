@@ -52,15 +52,20 @@ const LegalDocument privacyPolicy = LegalDocument(
       heading: 'What we collect',
       bullets: <String>[
         'Account data — your email address, the account identifier it is '
-            'keyed to, the name you give the coach, if you give one, and the '
+            'keyed to, the name you choose to give, if you give one, and the '
             'date you gave the coach permission to send your training to the '
             'AI provider, if you did. Only if you create an account; the app '
-            'works without one. If you sign in with Apple or Google, they pass '
-            'us an email address and an identifier, and nothing else: we do '
-            'not ask either for your name or photograph. With Apple’s Hide My '
-            'Email, the address is one Apple forwards to yours, and we never '
-            'see the real one. The name is optional, you can change or remove '
-            'it at any time, and it is never sent to the AI provider.',
+            'works without one. If you sign in with Apple or Google, we ask '
+            'them for an email address and an identifier. Google may send '
+            'your name and a link to your profile picture anyway; they are '
+            'kept with your login, and when the coach first asks what to call '
+            'you, your first name from Google is offered as a suggestion you '
+            'can keep, change or clear. Nothing asks for a name after Sign in '
+            'with Apple. With Apple’s Hide My Email, the address is one Apple '
+            'forwards to yours, and we never see the real one. The name is '
+            'your MGKFitness account’s, so Lift shows the same one: it is '
+            'optional, you can change or remove it at any time, and it is '
+            'never sent to the AI provider.',
         'A profile photo, if you choose one — and it is the one thing here '
             'we never receive. It is copied into the app’s own storage, and it '
             'is never uploaded to us or sent to your coach. Your phone’s own '
@@ -163,8 +168,9 @@ const LegalDocument privacyPolicy = LegalDocument(
             'request, your IP address. This happens whether or not you have an '
             'account. The tiles are kept in the app’s cache on your phone, so '
             'the map can still draw without a signal; we never receive them.',
-        'SMTP2GO — sends the emails your account needs: the link to confirm '
-            'your address when you sign up, the link to reset your password, '
+        'SMTP2GO — sends the emails your account needs: a code and a link to '
+            'confirm your address when you sign up, the link to reset your '
+            'password, '
             'and a note when your password changes. It receives your email '
             'address and the email itself, through its servers in the EU, and '
             'nothing about your training. Its open and click tracking are '
@@ -182,7 +188,10 @@ const LegalDocument privacyPolicy = LegalDocument(
             'separate account, because the address Apple gives us is not one '
             'any other account uses. On an iPhone, deleting an account made '
             'with Apple asks Apple to confirm first, so that when the login '
-            'goes we can also end the app’s access to your Apple ID.',
+            'goes we can also end the app’s access to your Apple ID. With an '
+            'email, the app asks for the address first and checks it against '
+            'our accounts, to show the right next step: your password, the way '
+            'that address already signs in, or a new account.',
       ],
     ),
     LegalSection(

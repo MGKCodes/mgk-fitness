@@ -32,12 +32,12 @@ Either app works on its own. You never have to install the second one.
 
 ## Status
 
-As of 7 October 2026.
+As of 19 October 2026.
 
 | App | Package | Where it is |
 |---|---|---|
-| **Run** | `apps/mgk_run` | 1.0.0 on [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run). In review on the App Store. Tracking, plans and the AI coach. |
-| **Lift** | `apps/mgk_lift` | 2.0.0 on [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.liftio). In review on the App Store, where it replaces Liftio 1.4.0. Logging, a rest timer, plans and the AI coach. |
+| **Run** | `apps/mgk_run` | 1.0.1 on the [App Store](https://apps.apple.com/app/id6800052303) and [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.fitness.run). Tracking, plans and the AI coach. |
+| **Lift** | `apps/mgk_lift` | 2.0.0 on the [App Store](https://apps.apple.com/app/id6759969740), where it replaced Liftio 1.4.0, and [Google Play](https://play.google.com/store/apps/details?id=com.mgkcodes.liftio). Logging, a rest timer, plans and the AI coach. |
 | **Eat** | — | An idea, deliberately not built. The structure makes adding a third app cheap; that is the claim. |
 
 The suite is called MGKFitness and the apps Run and Lift
@@ -63,7 +63,7 @@ mgk-fitness/
 │  └─ mgk_units/           metric storage, km/mi at display
 ├─ supabase/
 │  ├─ migrations/          the schema; this repository is the source of truth
-│  ├─ functions/           Edge Functions: coach, delete-account, revenuecat, daily-ai-summary
+│  ├─ functions/           Edge Functions: coach, delete-account, revenuecat, account-lookup
 │  └─ tests/               pgTAP assertions against the real catalog
 ├─ scripts/store/          submits and releases both apps on both stores
 ├─ web/                    mgkfitness.mgkcodes.com (NOT AGPL, see NOTICE.md)
