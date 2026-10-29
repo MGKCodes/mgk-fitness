@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../../core/brand.dart';
+import '../../onboarding/domain/walkthrough_spot.dart';
 import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
 import '../../sync/presentation/backup_messages.dart';
@@ -468,44 +469,63 @@ class _TodayCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          switch (state.kind) {
-            _TodayKind.open => _StartButton(
-              label: 'Resume session',
-              onTap: onResume,
+          // What the walkthrough lights first (ADR-0006), and, when this
+          // button is the way to *Your workouts*, second: TR3 put the saved
+          // workouts behind it. Resuming and starting the plan open no
+          // workouts, so neither is lit for them.
+          WalkthroughTarget(
+            id: WalkthroughSpot.start,
+            child: WalkthroughTarget(
+              id: _opensWorkouts ? WalkthroughSpot.workouts : null,
+              child: _primary(planned),
             ),
-            _TodayKind.planned => _StartButton(
-              // The day's name, not "today's session": the card has already
-              // said it is today.
-              label: 'Start ${planned!.toLowerCase()}',
-              onTap: onStartPlanned == null
-                  ? null
-                  : () => onStartPlanned!(planned),
-            ),
-            _TodayKind.done => _StartButton(
-              label: 'Start another session',
-              onTap: onPick,
-            ),
-            // A rest day is an answer, so nothing here pushes a session. One
-            // is still a tap away, offered rather than encouraged.
-            _TodayKind.rest => _SecondaryAction(
-              label: 'Start a session anyway',
-              onPressed: onPick,
-            ),
-            _TodayKind.free || _TodayKind.first => _StartButton(
-              label: 'Start a session',
-              onTap: onPick,
-            ),
-          },
+          ),
           // On a planned day the button starts the plan, so starting
           // something else is under it, quietly: offered, not pushed.
           if (state.kind == _TodayKind.planned && onPick != null) ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
-            _SecondaryAction(label: 'Start something else', onPressed: onPick),
+            WalkthroughTarget(
+              id: hasLibrary ? WalkthroughSpot.workouts : null,
+              child: _SecondaryAction(
+                label: 'Start something else',
+                onPressed: onPick,
+              ),
+            ),
           ],
         ],
       ),
     );
   }
+
+  /// Whether the card's own button opens *Your workouts*: it picks, rather
+  /// than resuming or starting the plan, in a build with a library.
+  bool get _opensWorkouts =>
+      hasLibrary &&
+      state.kind != _TodayKind.open &&
+      state.kind != _TodayKind.planned;
+
+  /// The card's button, for what today is.
+  Widget _primary(String? planned) => switch (state.kind) {
+    _TodayKind.open => _StartButton(label: 'Resume session', onTap: onResume),
+    _TodayKind.planned => _StartButton(
+      // The day's name, not "today's session": the card has already
+      // said it is today.
+      label: 'Start ${planned!.toLowerCase()}',
+      onTap: onStartPlanned == null ? null : () => onStartPlanned!(planned),
+    ),
+    _TodayKind.done => _StartButton(
+      label: 'Start another session',
+      onTap: onPick,
+    ),
+    // A rest day is an answer, so nothing here pushes a session. One
+    // is still a tap away, offered rather than encouraged.
+    _TodayKind.rest => _SecondaryAction(
+      label: 'Start a session anyway',
+      onPressed: onPick,
+    ),
+    _TodayKind.free ||
+    _TodayKind.first => _StartButton(label: 'Start a session', onTap: onPick),
+  };
 
   /// The headline and the line under it.
   (String, String) _words(BuildContext context) {
@@ -565,9 +585,9 @@ class _TodayCard extends StatelessWidget {
         // **The backup half only for somebody with an account.** This said
         // "and backs up when you are back" to everybody, which on a new
         // install, signed out, promised something that does not happen: the
-        // session stays on the phone until they sign in. The coach's last line
-        // in the intro says so, and the first card after it must not
-        // contradict it.
+        // session stays on the phone until they sign in. The walkthrough says
+        // so where it lights Settings, and this card, under the walkthrough's
+        // first step, must not contradict it.
         return (
           'Ready when you are',
           isSignedIn

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../onboarding/domain/walkthrough_spot.dart';
 import '../domain/exercise.dart';
 import '../domain/previous_performance.dart';
 import '../domain/session.dart';
@@ -238,54 +239,59 @@ class ExerciseCard extends StatelessWidget {
                 // The picture and the name, and not the icons beside them:
                 // each icon shows its name when held, and a hold that did two
                 // things would do whichever won the race.
+                // Lit by the walkthrough as where a movement is held to move.
                 Expanded(
-                  child: _holdable(
-                    _Opens(
-                      onTap: onOpenStats,
-                      label: exercise.name,
-                      child: Row(
-                        children: <Widget>[
-                          ExerciseThumb(asset: catalogue?.startImage),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Text(
-                                  exercise.name,
-                                  style: theme.textTheme.titleMedium,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  // The best line available: what it trains,
-                                  // or — for a movement they typed — what they
-                                  // have done on it.
-                                  catalogue?.subtitle ??
-                                      (top == null
-                                          ? 'Your own movement'
-                                          : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textTertiary,
-                                  ),
-                                ),
-                                if (previous != null) ...<Widget>[
-                                  const SizedBox(height: 2),
+                  child: WalkthroughTarget(
+                    id: WalkthroughSpot.movement,
+                    child: _holdable(
+                      _Opens(
+                        onTap: onOpenStats,
+                        label: exercise.name,
+                        child: Row(
+                          children: <Widget>[
+                            ExerciseThumb(asset: catalogue?.startImage),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
                                   Text(
-                                    _previousLabel(previous!, massUnit),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    maxLines: 1,
+                                    exercise.name,
+                                    style: theme.textTheme.titleMedium,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    // The best line available: what it trains,
+                                    // or — for a movement they typed — what they
+                                    // have done on it.
+                                    catalogue?.subtitle ??
+                                        (top == null
+                                            ? 'Your own movement'
+                                            : 'Best today · ${Mass.kilograms(top.weightKg).label(massUnit)} × ${top.reps}'),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                  if (previous != null) ...<Widget>[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _previousLabel(previous!, massUnit),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -300,13 +306,16 @@ class ExerciseCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                   ),
                 if (onSwap != null)
-                  AppIconButton(
-                    onPressed: onSwap,
-                    icon: Icons.swap_horiz,
-                    size: 18,
-                    color: AppColors.textTertiary,
-                    tooltip: 'Swap this out',
-                    visualDensity: VisualDensity.compact,
+                  WalkthroughTarget(
+                    id: WalkthroughSpot.swap,
+                    child: AppIconButton(
+                      onPressed: onSwap,
+                      icon: Icons.swap_horiz,
+                      size: 18,
+                      color: AppColors.textTertiary,
+                      tooltip: 'Swap this out',
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 AppIconButton(
                   onPressed: onRemove,
@@ -719,28 +728,34 @@ class SetRow extends StatelessWidget {
                 onCommit: (text) => onCommit(repsFromText(text), null),
               ),
             ),
-            SizedBox(
-              width: 44,
-              // The check springs in — the one moment in a set worth a
-              // flourish — and the circle it replaces shrinks away.
-              child: AnimatedSwitcher(
-                duration: AppMotion.base,
-                switchInCurve: AppMotion.snappy,
-                switchOutCurve: AppMotion.exit,
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: AppIconButton(
-                  key: ValueKey<bool>(done),
-                  onPressed: onToggle,
-                  icon: done ? Icons.check_circle : Icons.circle_outlined,
-                  size: 24,
-                  color: done
-                      ? AppColors.success
-                      : (isNext
-                            ? AppColors.textSecondary
-                            : AppColors.textTertiary),
-                  tooltip: done ? 'Mark not done' : 'Mark done',
-                  visualDensity: VisualDensity.compact,
+            // The next set's tick is the one the walkthrough's practice set
+            // asks for. Always wrapped, with the id only on the next set, so
+            // a set becoming next keeps its tick's animation.
+            WalkthroughTarget(
+              id: isNext ? WalkthroughSpot.setTick : null,
+              child: SizedBox(
+                width: 44,
+                // The check springs in — the one moment in a set worth a
+                // flourish — and the circle it replaces shrinks away.
+                child: AnimatedSwitcher(
+                  duration: AppMotion.base,
+                  switchInCurve: AppMotion.snappy,
+                  switchOutCurve: AppMotion.exit,
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: AppIconButton(
+                    key: ValueKey<bool>(done),
+                    onPressed: onToggle,
+                    icon: done ? Icons.check_circle : Icons.circle_outlined,
+                    size: 24,
+                    color: done
+                        ? AppColors.success
+                        : (isNext
+                              ? AppColors.textSecondary
+                              : AppColors.textTertiary),
+                    tooltip: done ? 'Mark not done' : 'Mark done',
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
             ),

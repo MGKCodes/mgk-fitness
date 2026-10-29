@@ -32,7 +32,7 @@ import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/legal/presentation/medical_disclaimer_screen.dart';
-import '../src/features/onboarding/presentation/intro_screen.dart';
+import '../src/features/onboarding/domain/walkthrough_script.dart';
 import '../src/features/onboarding/presentation/welcome_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
@@ -116,18 +116,27 @@ class PreviewApp extends StatelessWidget {
       'launch-drive': (_) => _launchAt(0.70),
       'launch-rest': (_) => _launchAt(1.50),
 
-      // The first open, once per install (ADR-0006): the welcome, and the
-      // coach's lines with every one of them said. Still, as the launch above
-      // is: the lines arrive a beat apart, and a capture that lands between
-      // two beats would photograph half a conversation as the design.
+      // The first open, once per install (ADR-0006): the welcome, and two
+      // steps of the walkthrough it leads to, over a new lifter's shell. Each
+      // starts at its step, as the plates do, since a capture cannot press
+      // Next; and with motion off, so the hole and the card are photographed
+      // where they come to rest rather than on their way there.
       'welcome': (_) =>
           WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
       // `(_)` and a Builder, not `(context)`: the capture scripts find the
       // screens by that shape.
-      'intro': (_) => Builder(
+      'walkthrough-track': (_) => Builder(
         builder: (context) => MediaQuery(
           data: MediaQuery.of(context).copyWith(disableAnimations: true),
-          child: IntroScreen(onFinished: () {}, onBack: () {}),
+          child: _newLifter(WalkthroughStep.track),
+        ),
+      ),
+      // In the practice session: the tick, which is the one step that waits
+      // for the lifter's own tap.
+      'walkthrough-tick': (_) => Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: _newLifter(WalkthroughStep.logASet),
         ),
       ),
 
@@ -1149,6 +1158,19 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
+
+/// A new lifter's shell, with the walkthrough over it from [from]: nothing
+/// logged, nothing saved, nobody signed in, and the coach on, as a new
+/// install opens after *Get started*.
+Widget _newLifter(WalkthroughStep from) => LiftShell(
+  recorder: FakeSessionRecorder(),
+  history: FakeHistory(const <Session>[]),
+  coach: FakeCoach(),
+  library: InMemoryWorkoutLibrary(const <SavedWorkout>[]),
+  today: previewNow,
+  walkthroughOnOpen: true,
+  walkthroughFrom: from,
+);
 
 /// The launch curtain as it is [seconds] in, with nothing under it.
 Widget _launchAt(double seconds) => ColoredBox(

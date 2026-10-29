@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../../core/brand.dart';
-import '../domain/intro_script.dart';
+import '../domain/walkthrough_script.dart';
 
 /// The first screen a new install shows: the name, one promise, and the way
 /// in.
@@ -23,10 +23,11 @@ class WelcomeScreen extends StatelessWidget {
     this.onHaveAccount,
   });
 
-  /// To the coach's lines.
+  /// Into the app, with the walkthrough over it.
   final VoidCallback onGetStarted;
 
-  /// To Lift's sign-in, and from there to the coach's lines. **Null hides it**:
+  /// To Lift's sign-in, and from there into the app, with no walkthrough: an
+  /// account has its reason to be here already. **Null hides it**:
   /// a build with no server has no account to sign in to, and a button that
   /// cannot work is worse than none.
   final VoidCallback? onHaveAccount;

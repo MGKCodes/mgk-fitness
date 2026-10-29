@@ -7,6 +7,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../onboarding/domain/walkthrough_script.dart' show kShowMeAround;
 import '../../../core/brand.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
@@ -70,6 +71,7 @@ class SettingsScreen extends StatefulWidget {
     this.now,
     this.planLabel,
     this.openUrl,
+    this.onShowAround,
   });
 
   /// Opens the support page in the browser. Null is the real browser; a test
@@ -171,6 +173,11 @@ class SettingsScreen extends StatefulWidget {
   final Future<void> Function()? onRestorePurchases;
 
   final String version;
+
+  /// *Show me around*: Settings closes and the walkthrough plays again from
+  /// the top over the shell (ADR-0006). **Null hides the row**, for a
+  /// Settings with no shell under it to walk through.
+  final VoidCallback? onShowAround;
 
   /// What "last checked" is measured against, for the account card. Null is the
   /// wall clock, which is what the app passes and what a preview must not.
@@ -590,6 +597,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: SettingsGroup(
                       label: 'About',
                       children: <Widget>[
+                        // First under About: the app explaining itself, for
+                        // anybody who skipped it or wants it again.
+                        if (widget.onShowAround case final showAround?)
+                          SettingsRow(title: kShowMeAround, onTap: showAround),
                         SettingsRow(title: 'Support', onTap: _openSupport),
                         SettingsRow(
                           title: 'Report a problem',

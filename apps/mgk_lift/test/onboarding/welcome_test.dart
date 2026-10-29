@@ -1,48 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mgk_lift/src/features/onboarding/data/local_intro_store.dart';
-import 'package:mgk_lift/src/features/onboarding/domain/intro_script.dart';
-import 'package:mgk_lift/src/features/onboarding/presentation/intro_screen.dart';
+import 'package:mgk_lift/src/features/onboarding/domain/walkthrough_script.dart';
 import 'package:mgk_lift/src/features/onboarding/presentation/welcome_screen.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The words of Lift's first open, the screens that say them, and where the
-/// answer is kept (ADR-0006).
+/// The words of Lift's first open, the welcome that says the first of them,
+/// and where the answer is kept (ADR-0006). The walkthrough itself is
+/// `walkthrough_test.dart`.
 void main() {
   group('what the coach says', () {
-    test('the six lines, in the order the tabs sit on the bar', () {
-      expect(kIntroLines, <String>[
-        "Hey. I'm your coach.",
-        'Track is where you log a session, set by set. It works with no '
-            'signal.',
-        "Plan is a week I build around your days, your kit and anything "
-            "you're working around.",
-        'Profile keeps your history, your bests and your progress photos.',
-        'Tap the C at the bottom to ask me anything about your training. '
-            'Coaching and plans are a subscription. Logging never is.',
-        'Your sessions stay on this phone. Sign in whenever you want them '
-            'backed up.',
+    test('a step for each place, in the order the walkthrough goes', () {
+      expect(WalkthroughStep.values, <WalkthroughStep>[
+        WalkthroughStep.track,
+        WalkthroughStep.workouts,
+        WalkthroughStep.plan,
+        WalkthroughStep.profile,
+        WalkthroughStep.settings,
+        WalkthroughStep.coach,
+        WalkthroughStep.tryASet,
+        WalkthroughStep.logASet,
+        WalkthroughStep.rest,
+        WalkthroughStep.swap,
+        WalkthroughStep.reorder,
+        WalkthroughStep.done,
       ]);
+      // The owner's words, as given, where nothing on screen contradicts
+      // them.
+      expect(
+        WalkthroughStep.track.line,
+        'Track is where you log. Start a session here and log it set by set. '
+        'It works with no signal.',
+      );
+      expect(
+        WalkthroughStep.coach.line,
+        'And this is me. Tap the C any time to ask about your training. '
+        'Coaching is a subscription. Logging never is.',
+      );
+      expect(WalkthroughStep.tryASet.line, "Let's try a set.");
+      expect(
+        WalkthroughStep.done.line,
+        "That's it. Your real sessions start from Track.",
+      );
+    });
+
+    test('only the tick waits for the lifter', () {
+      expect(
+        <WalkthroughStep>[
+          for (final step in WalkthroughStep.values)
+            if (step.interactive) step,
+        ],
+        <WalkthroughStep>[WalkthroughStep.logASet],
+      );
+    });
+
+    test('what is said is true for the lifter it is said to', () {
+      // Signed in, the sessions do not stay on the phone.
+      expect(
+        WalkthroughStep.settings.lineFor(signedIn: false, coached: false),
+        contains('stay on this phone'),
+      );
+      expect(
+        WalkthroughStep.settings.lineFor(signedIn: true, coached: false),
+        kSettingsLineSignedIn,
+      );
+      // Unsubscribed, nobody suggests the swap: they choose it.
+      expect(
+        WalkthroughStep.swap.lineFor(signedIn: false, coached: false),
+        kSwapLineByHand,
+      );
+      expect(
+        WalkthroughStep.swap.lineFor(signedIn: true, coached: true),
+        contains("I'll suggest"),
+      );
     });
 
     test('no em dashes, in the coach or on the welcome', () {
       // The coach's server tells the model never to use one; a scripted line
       // that does is a seam in the voice.
       for (final words in <String>[
-        ...kIntroLines,
+        for (final step in WalkthroughStep.values) step.line,
+        kSettingsLineSignedIn,
+        kSwapLineByHand,
         kWelcomeHeadline,
         kWelcomeLine,
         kWelcomeStart,
         kWelcomeHaveAccount,
-        kIntroStart,
+        kWalkthroughStart,
+        kShowMeAround,
       ]) {
         expect(words, isNot(contains('—')), reason: words);
       }
     });
 
     test('no price: the store says what it costs, in every currency', () {
-      for (final line in kIntroLines) {
+      for (final line in <String>[
+        for (final step in WalkthroughStep.values) step.line,
+        kSettingsLineSignedIn,
+        kSwapLineByHand,
+      ]) {
         expect(line, isNot(matches(RegExp(r'[£$€]|\d'))), reason: line);
       }
     });
@@ -87,64 +144,6 @@ void main() {
       await pump(tester);
       await tester.pumpAndSettle();
       expect(find.text('I already have an account'), findsNothing);
-    });
-  });
-
-  group('the coach, before the app', () {
-    testWidgets('the button waits for the last line', (tester) async {
-      // Painted under the first line, it invites a tap that skips the five
-      // after it.
-      var finished = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: IntroScreen(onFinished: () => finished++),
-        ),
-      );
-      await tester.pump();
-      expect(find.text(kIntroStart), findsNothing);
-      expect(find.text(kIntroLines.last), findsNothing);
-
-      await tester.pumpAndSettle();
-      expect(find.text(kIntroLines.last), findsOneWidget);
-      expect(find.text(kIntroStart), findsOneWidget);
-
-      await tester.tap(find.text(kIntroStart));
-      await tester.tap(find.text(kIntroStart));
-      expect(finished, 1, reason: 'a second tap does not finish twice');
-    });
-
-    testWidgets('with Reduce Motion on, everything is there at once', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Builder(
-            builder: (context) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(disableAnimations: true),
-              child: IntroScreen(onFinished: () {}),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      for (final line in kIntroLines) {
-        expect(find.text(line), findsOneWidget, reason: line);
-      }
-      expect(find.text(kIntroStart), findsOneWidget);
-    });
-
-    testWidgets('each line is the coach speaking, with its C', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: IntroScreen(onFinished: () {}),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(ScriptedLine), findsNWidgets(kIntroLines.length));
-      expect(find.byType(CoachAvatar), findsNWidgets(kIntroLines.length));
     });
   });
 

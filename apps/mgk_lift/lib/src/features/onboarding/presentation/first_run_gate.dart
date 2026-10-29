@@ -5,33 +5,50 @@ import 'package:flutter/material.dart';
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
 import '../domain/intro_store.dart';
-import 'intro_screen.dart';
 import 'welcome_screen.dart';
 
-/// Where a cold start goes: the app, or, once per install, the welcome and the
-/// coach's first lines in front of it (ADR-0006).
+/// Builds the app: with the walkthrough playing over it when [walkthrough]
+/// is true, and [onWalkthroughEnded] called when that ends.
+typedef FirstRunApp =
+    Widget Function({
+      required bool walkthrough,
+      required VoidCallback onWalkthroughEnded,
+    });
+
+/// Where a cold start goes: the app, or, once per install, the welcome in
+/// front of it and the walkthrough over it (ADR-0006).
 ///
-/// **In front of the shell, not inside it.** The shell starts work the moment
-/// it is mounted (a backup checkpoint, the plan, the store), all of it for
-/// somebody who is using the app, so it is not built until the intro is over.
-/// The launch curtain is above the navigator and plays over whichever of the
-/// two this opens on, so neither path changes how the app starts.
+/// **The welcome in front of the shell, not inside it.** The shell starts
+/// work the moment it is mounted (a backup checkpoint, the plan, the store),
+/// all of it for somebody who is using the app, so it is not built until the
+/// welcome has been answered. The launch curtain is above the navigator and
+/// plays over whichever of the two this opens on, so neither path changes how
+/// the app starts.
 ///
-/// **Only a new install sees it.** Lift 2.0.0 had no intro, so on the first
+/// **The walkthrough over the shell, not in front of it.** It points at the
+/// app's own controls, so the app is built for it: *Get started* opens the
+/// shell with the walkthrough playing ([FirstRunApp]), and the shell says
+/// when it is over. Seen is recorded then, by *Start training*, *Skip* or
+/// back alike, not when it begins: a phone that dies half way through meets
+/// the welcome again, which costs a lifter a few steps, and nothing about the
+/// walkthrough is kept that the next launch would need.
+///
+/// **Only a new install sees it.** Lift 2.0.0 had none, so on the first
 /// launch after the update every existing lifter would read as new. Anybody
-/// this phone already knows is let through and the intro is marked seen
-/// without a word: a session restored at launch, or any training already on
-/// the phone. The welcome is shown only on positive evidence of a new install
-/// (nothing recorded, nothing logged, nobody signed in), so a check that
-/// fails or takes too long opens the app rather than the welcome. A gate in
-/// front of the app that guesses wrong in that direction costs six lines
-/// somebody never read; guessing wrong in the other would stand a welcome
-/// screen in front of somebody's training.
+/// this phone already knows is let through and marked seen without a word: a
+/// session restored at launch, or any training already on the phone. The
+/// welcome is shown only on positive evidence of a new install (nothing
+/// recorded, nothing logged, nobody signed in), so a check that fails or
+/// takes too long opens the app rather than the welcome. A gate in front of
+/// the app that guesses wrong in that direction costs a walkthrough somebody
+/// can still play from Settings; guessing wrong in the other would stand a
+/// welcome screen in front of somebody's training.
 ///
-/// The welcome's two ways in both end on the intro. *Get started* goes
-/// straight to it; *I already have an account* goes through Lift's sign-in
-/// first, because a lifter arriving with an account made in Run has still
-/// never opened Lift. Backing out of sign-in returns to the welcome.
+/// **An account skips the walkthrough.** *I already have an account* goes
+/// through Lift's sign-in and then straight into the app, marked seen: the
+/// owner's ruling (29 October 2026), since somebody arriving with an account
+/// has their reason for being here already. Backing out of sign-in returns
+/// to the welcome.
 class FirstRunGate extends StatefulWidget {
   const FirstRunGate({
     super.key,
@@ -42,12 +59,14 @@ class FirstRunGate extends StatefulWidget {
     this.readBudget = const Duration(seconds: 3),
   });
 
-  /// Whether this install has met the intro.
+  /// Whether this install has met the walkthrough. Its key and its name are
+  /// the first open's (`intro.seen`, [IntroStore]): the fact is the same one,
+  /// and a phone that met 2.0.1's first open in testing has met this one.
   final IntroStore store;
 
-  /// The app itself: what opens for everybody who has met the intro, and
-  /// what *Start training* opens for everybody who has just met it.
-  final Widget app;
+  /// The app itself: as it opens for everybody, and with the walkthrough
+  /// over it for somebody who has just pressed *Get started*.
+  final FirstRunApp app;
 
   /// Signing in, from the welcome. **Null hides** *I already have an account*:
   /// a build with no server has no account to sign in to. Also read at launch,
@@ -55,8 +74,8 @@ class FirstRunGate extends StatefulWidget {
   final AuthService? auth;
 
   /// Whether this phone already holds training. Null is a build with no
-  /// database, which holds none. Asked only when the store says the intro
-  /// has not been seen, which after the first launch is never.
+  /// database, which holds none. Asked only when the store says the
+  /// walkthrough has not been seen, which after the first launch is never.
   final Future<bool> Function()? hasTraining;
 
   /// How long a launch waits on either answer before opening the app.
@@ -80,20 +99,14 @@ enum _Arrival {
   /// Sign-in is pushed over the welcome, which stays drawn underneath it so
   /// backing out returns to it.
   signingIn,
-  intro,
   app,
 }
 
 class _FirstRunGateState extends State<FirstRunGate> {
   _Arrival _at = _Arrival.reading;
 
-  /// Somebody opened sign-in from the welcome. An account arriving after that
-  /// is theirs, not a restored session: see [_onAccount].
-  bool _triedSignIn = false;
-
-  /// The intro was reached by signing in, so it offers no way back: the
-  /// welcome behind it would offer to sign in somebody who already has.
-  bool _signedInHere = false;
+  /// The app opens with the walkthrough over it: *Get started* was pressed.
+  bool _walkthrough = false;
 
   StreamSubscription<Account?>? _arrivals;
 
@@ -126,7 +139,7 @@ class _FirstRunGateState extends State<FirstRunGate> {
   /// The store's answer, or "seen" when it has none to give.
   Future<bool> _seen() => _ask(widget.store.hasSeen, otherwise: true);
 
-  /// Whether this phone was in use before the intro existed: an account
+  /// Whether this phone was in use before the first open existed: an account
   /// signed in, or training on it. Either answers for an upgrader; a phone
   /// that cannot say answers yes, for the reason on [FirstRunGate].
   Future<bool> _usedBefore() async {
@@ -165,24 +178,16 @@ class _FirstRunGateState extends State<FirstRunGate> {
     }
   }
 
-  /// An account arrived without the gate asking for it.
+  /// An account arrived on the welcome without the gate asking for it.
   ///
-  /// **On the welcome, it is a session Supabase restored a moment late**, and
-  /// so somebody who used 2.0.0 signed in: through to the app, as at launch.
-  /// Unless they had opened sign-in already, in which case it is the account
-  /// they were making (Apple's sign-in on Android finishes in the browser and
-  /// can land after they have backed out), and they meet the intro.
+  /// **Either way, into the app with no walkthrough.** Usually a session
+  /// Supabase restored a moment late, and so somebody who used 2.0.0 signed
+  /// in: through, as at launch. Or the account somebody was making after
+  /// they had backed out of sign-in (Apple's sign-in on Android finishes in
+  /// the browser and can land late), who has an account and so skips it.
   void _onAccount(Account? account) {
     if (account == null || !mounted || _at != _Arrival.welcome) return;
-    if (_triedSignIn) {
-      setState(() {
-        _signedInHere = true;
-        _at = _Arrival.intro;
-      });
-      return;
-    }
-    unawaited(_markSeen());
-    setState(() => _at = _Arrival.app);
+    _intoTheApp();
   }
 
   /// Lift's own sign-in, pushed over the welcome, as the shell pushes it.
@@ -193,30 +198,36 @@ class _FirstRunGateState extends State<FirstRunGate> {
   Future<void> _signIn() async {
     final auth = widget.auth;
     if (auth == null) return;
-    setState(() {
-      _triedSignIn = true;
-      _at = _Arrival.signingIn;
-    });
+    setState(() => _at = _Arrival.signingIn);
     final signedIn = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(builder: (_) => SignInScreen(auth: auth)),
     );
     if (!mounted || _at != _Arrival.signingIn) return;
-    final arrived = signedIn == true || auth.current != null;
-    setState(() {
-      _signedInHere = arrived;
-      _at = arrived ? _Arrival.intro : _Arrival.welcome;
-    });
+    if (signedIn == true || auth.current != null) {
+      _intoTheApp();
+    } else {
+      setState(() => _at = _Arrival.welcome);
+    }
   }
 
-  void _toWelcome() => setState(() => _at = _Arrival.welcome);
-
-  /// *Start training*: the app, now, and the store told afterwards. The write
-  /// is not waited on, so a slow plugin cannot hold somebody on a screen they
-  /// have finished with.
-  void _finish() {
-    setState(() => _at = _Arrival.app);
+  /// The app, with no walkthrough, and the phone told it has been met.
+  void _intoTheApp() {
+    setState(() {
+      _walkthrough = false;
+      _at = _Arrival.app;
+    });
     unawaited(_markSeen());
   }
+
+  /// *Get started*: the app, with the walkthrough over it.
+  void _getStarted() => setState(() {
+    _walkthrough = true;
+    _at = _Arrival.app;
+  });
+
+  /// The walkthrough is over, however it ended. Not waited on, so a slow
+  /// plugin cannot hold anything up; the shell is already where it lands.
+  void _walkthroughEnded() => unawaited(_markSeen());
 
   @override
   Widget build(BuildContext context) => switch (_at) {
@@ -226,22 +237,12 @@ class _FirstRunGateState extends State<FirstRunGate> {
     // has seen it.
     _Arrival.reading => const Scaffold(body: SizedBox.shrink()),
     _Arrival.welcome || _Arrival.signingIn => WelcomeScreen(
-      onGetStarted: () => setState(() => _at = _Arrival.intro),
+      onGetStarted: _getStarted,
       onHaveAccount: widget.auth == null ? null : () => unawaited(_signIn()),
     ),
-    // The intro is a state of this widget, not a route, so the system back
-    // gesture would find nothing to pop and leave the app from somebody's
-    // second screen. Run's flow guards the same way.
-    _Arrival.intro => PopScope<void>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_signedInHere) _toWelcome();
-      },
-      child: IntroScreen(
-        onFinished: _finish,
-        onBack: _signedInHere ? null : _toWelcome,
-      ),
+    _Arrival.app => widget.app(
+      walkthrough: _walkthrough,
+      onWalkthroughEnded: _walkthroughEnded,
     ),
-    _Arrival.app => widget.app,
   };
 }

@@ -98,7 +98,7 @@ Future<void> main() async {
           ? null
           : RevenueCatPurchases(apiKey: config.storeKey),
       // Device-local, like the coach switch: whether this phone has met the
-      // coach's first lines (ADR-0006).
+      // welcome and the walkthrough (ADR-0006).
       introStore: LocalIntroStore(),
     ),
   );
@@ -123,10 +123,10 @@ class MgkLiftApp extends StatelessWidget {
   /// because it remembers the answer it gave for each account.
   final LocalDataGuard? localData;
 
-  /// Whether this install has met the welcome and the coach's first lines
-  /// (ADR-0006). **Null opens straight on the app**, as every build did before
-  /// 2.0.1: what the widget tests and the preview want, since they are not
-  /// about the first open. `main` always passes one.
+  /// Whether this install has met the welcome and the walkthrough over the
+  /// app (ADR-0006). **Null opens straight on the app**, as every build did
+  /// before 2.0.1: what the widget tests and the preview want, since they are
+  /// not about the first open. `main` always passes one.
   final IntroStore? introStore;
 
   /// The store. Built once in `main` rather than here, because it holds what
@@ -159,7 +159,14 @@ class MgkLiftApp extends StatelessWidget {
     // signs in is the one the shell opens with.
     final auth = supabase == null ? null : SupabaseAuth(supabase);
 
-    final shell = LiftShell(
+    // A function, since the gate opens the shell two ways: as it is, and with
+    // the walkthrough playing over it after *Get started*.
+    LiftShell shell({
+      bool walkthrough = false,
+      VoidCallback? onWalkthroughEnded,
+    }) => LiftShell(
+      walkthroughOnOpen: walkthrough,
+      onWalkthroughEnded: onWalkthroughEnded,
       recorder: db == null ? null : DriftSessionRecorder(db),
       // Fixing a past session reuses the session screen, with a recorder
       // aimed at that session instead of the open one.
@@ -271,7 +278,7 @@ class MgkLiftApp extends StatelessWidget {
         child: child ?? const SizedBox.shrink(),
       ),
       home: switch (introStore) {
-        null => shell,
+        null => shell(),
         final IntroStore store => FirstRunGate(
           store: store,
           auth: auth,
@@ -281,7 +288,10 @@ class MgkLiftApp extends StatelessWidget {
           hasTraining: db == null
               ? null
               : () async => !(await PhoneTrainingData(db).isEmpty()),
-          app: shell,
+          app: ({required walkthrough, required onWalkthroughEnded}) => shell(
+            walkthrough: walkthrough,
+            onWalkthroughEnded: onWalkthroughEnded,
+          ),
         ),
       },
     );
