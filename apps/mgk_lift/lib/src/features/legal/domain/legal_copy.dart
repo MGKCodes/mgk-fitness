@@ -19,14 +19,20 @@ const LegalDocument privacyPolicy = LegalDocument(
     LegalSection(
       heading: 'What we collect',
       bullets: <String>[
-        'Account data — your email address and an account identifier. If you '
-            'sign in with Apple or Google, that is what we ask them for: an '
-            'email address and an identifier. We do not ask either for your '
-            'name or photograph, though Google may send your name and a link '
-            'to your profile picture anyway; if it does, they are kept with '
-            "your login and the app does not use them. With Apple's Hide My "
-            'Email, the address is one Apple forwards to yours, and we never '
-            'see the real one.',
+        'Account data — your email address, an account identifier, the '
+            'name you choose to give, if you give one, and the date you gave '
+            'the coach permission to send your training to the AI provider, '
+            'if you did. If you sign in with Apple or Google, we ask them for '
+            'an email address and an identifier. Google may send your name '
+            'and a link to your profile picture anyway; they are kept with '
+            'your login, and when a new account is asked what to call you, '
+            'your first name from Google is offered as a suggestion you can '
+            'keep, change or clear. Nothing asks for a name after Sign in '
+            "with Apple. With Apple's Hide My Email, the address is one Apple "
+            'forwards to yours, and we never see the real one. The name is '
+            "your MGKFitness account's, so Run shows the same one: it is "
+            'optional, you can change or remove it in Settings at any time, '
+            'and it is never sent to the AI provider.',
         'Training data — the sessions you log: exercise names, sets, reps, '
             'weight, set type, and for cardio work its duration and distance. '
             'Session and exercise notes are free text you wrote, so they hold '
@@ -96,8 +102,9 @@ const LegalDocument privacyPolicy = LegalDocument(
             'it also collects technical information of its own about the '
             'install, such as a device-scoped identifier, your store country '
             'and your app version.',
-        'SMTP2GO — sends the emails your account needs: the link to confirm '
-            'your address when you sign up, the link to reset your password, '
+        'SMTP2GO — sends the emails your account needs: a code and a link to '
+            'confirm your address when you sign up, the link to reset your '
+            'password, '
             'and a note when your password changes. It receives your email '
             'address and the email itself, through its servers in the EU, and '
             'nothing about your training. Its open and click tracking are '
@@ -157,10 +164,13 @@ const LegalDocument privacyPolicy = LegalDocument(
             'sessions on our servers under your $kPlatformName account, which '
             'is the same account $kPlatformName: Run uses. There is no '
             'separate switch — signing in is the switch.',
-        'You can sign in with Apple, with Google, or with an email address '
-            'and a password. Choosing Hide My Email with Apple starts a '
-            'separate account, because the address Apple gives us is not one '
-            'any other account uses.',
+        'You can sign in with Apple, with Google, or with an email '
+            'address and a password. With an email, the app asks for the '
+            'address first and checks it against our accounts, to show the '
+            'right next step: your password, the way that address already '
+            'signs in, or a new account. Choosing Hide My Email with Apple '
+            'starts a separate account, because the address Apple gives us is '
+            'not one any other account uses.',
       ],
     ),
     LegalSection(
