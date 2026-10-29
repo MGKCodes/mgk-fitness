@@ -9,18 +9,19 @@ import 'package:mgk_lift/src/features/auth/data/fake_auth.dart';
 import 'package:mgk_lift/src/features/auth/domain/account.dart';
 import 'package:mgk_lift/src/features/auth/presentation/sign_in_screen.dart';
 import 'package:mgk_lift/src/features/home/presentation/lift_shell.dart';
-import 'package:mgk_lift/src/features/onboarding/domain/intro_script.dart';
 import 'package:mgk_lift/src/features/onboarding/domain/intro_store.dart';
+import 'package:mgk_lift/src/features/onboarding/domain/walkthrough_script.dart';
 import 'package:mgk_lift/src/features/onboarding/presentation/first_run_gate.dart';
-import 'package:mgk_lift/src/features/onboarding/presentation/intro_screen.dart';
 import 'package:mgk_lift/src/features/onboarding/presentation/welcome_screen.dart';
+import 'package:mgk_ui/mgk_ui.dart';
 
-/// Lift's first open (ADR-0006): Run's pattern, in Lift's words. A welcome,
-/// the coach's lines, then the app, once per install, and never for somebody
-/// who used Lift before it had one.
+/// Lift's first open (ADR-0006): a welcome, then the walkthrough over the
+/// app, once per install, never for somebody who used Lift before it had one,
+/// and never for somebody who arrives with an account. The walkthrough's own
+/// steps are `walkthrough_test.dart`.
 void main() {
-  /// A phone tall enough that the welcome, the six lines and sign-in's
-  /// choices are all on screen at once.
+  /// A phone tall enough that the welcome and sign-in's choices are all on
+  /// screen at once.
   void tall(WidgetTester tester) {
     tester.view.physicalSize = const Size(1080, 4200);
     tester.view.devicePixelRatio = 2.625;
@@ -33,16 +34,19 @@ void main() {
       'you are back.';
 
   Finder welcome() => find.byType(WelcomeScreen);
-  Finder intro() => find.byType(IntroScreen);
+  Finder walkthrough() => find.byType(WalkthroughOverlay);
+  Finder onCard(String text) =>
+      find.descendant(of: walkthrough(), matching: find.text(text));
 
-  /// The gate on its own, over a stand-in for the app, for the tests about
-  /// where it goes rather than what the app does when it gets there.
+  /// The gate on its own, over a stand-in for the app that says how it was
+  /// opened, for the tests about where it goes rather than what the app does
+  /// when it gets there.
   Future<void> gate(
     WidgetTester tester,
     IntroStore store, {
     AuthService? auth,
     Future<bool> Function()? hasTraining,
-    Widget? app,
+    FirstRunApp? app,
     Duration readBudget = const Duration(seconds: 3),
   }) async {
     tall(tester);
@@ -53,7 +57,11 @@ void main() {
           auth: auth,
           hasTraining: hasTraining,
           readBudget: readBudget,
-          app: app ?? const Scaffold(body: Text('the app')),
+          app:
+              app ??
+              ({required walkthrough, required onWalkthroughEnded}) => Scaffold(
+                body: Text(walkthrough ? 'the app, walked through' : 'the app'),
+              ),
         ),
       ),
     );
@@ -61,7 +69,7 @@ void main() {
   }
 
   group('a new install', () {
-    testWidgets('meets the welcome, then the coach, then Track', (
+    testWidgets('meets the welcome, then the walkthrough over Track', (
       tester,
     ) async {
       tall(tester);
@@ -84,18 +92,20 @@ void main() {
       await tester.tap(find.text(kWelcomeStart));
       await tester.pumpAndSettle();
 
-      expect(intro(), findsOneWidget);
-      for (final line in kIntroLines) {
-        expect(find.text(line), findsOneWidget, reason: line);
-      }
+      // Straight into the app, with the walkthrough over it: Track, its
+      // button lit and the coach's first line beside it.
+      expect(welcome(), findsNothing);
+      expect(find.byType(LiftShell), findsOneWidget);
+      expect(find.text('Ready when you are'), findsOneWidget);
+      expect(onCard(WalkthroughStep.track.line), findsOneWidget);
       // It asks nothing: no name, no permission.
       expect(find.byType(TextField), findsNothing);
-      expect(store.seen, isFalse, reason: 'not until it is finished');
+      expect(store.seen, isFalse, reason: 'not until it is over');
 
-      await tester.tap(find.text(kIntroStart));
+      await tester.tap(onCard(kWalkthroughSkip));
       await tester.pumpAndSettle();
 
-      expect(find.byType(LiftShell), findsOneWidget);
+      expect(walkthrough(), findsNothing);
       expect(find.text('Ready when you are'), findsOneWidget);
       // Signed out, so nothing backs up, and Track does not say it will.
       expect(find.text(signedOutLine), findsOneWidget);
@@ -110,7 +120,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(kWelcomeStart));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(kIntroStart));
+      await tester.tap(onCard(kWalkthroughSkip));
       await tester.pumpAndSettle();
 
       // A relaunch: the app built from nothing, over the same phone.
@@ -120,26 +130,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(welcome(), findsNothing);
-      expect(intro(), findsNothing);
+      expect(walkthrough(), findsNothing);
       expect(find.text('Ready when you are'), findsOneWidget);
       expect(store.marks, 1, reason: 'recorded once, not on every launch');
     });
 
-    testWidgets('back from the coach returns to the welcome', (tester) async {
+    testWidgets('a phone that dies half way through meets it again', (
+      tester,
+    ) async {
+      // Seen is recorded when it ends, not when it starts.
+      tall(tester);
       final store = InMemoryIntroStore();
-      await gate(tester, store);
+      await tester.pumpWidget(MgkLiftApp(introStore: store));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(kWelcomeStart));
       await tester.pumpAndSettle();
+      expect(walkthrough(), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-      expect(welcome(), findsOneWidget);
-
-      // And the system's back, which would otherwise find nothing to pop and
-      // leave the app from somebody's second screen.
-      await tester.tap(find.text(kWelcomeStart));
-      await tester.pumpAndSettle();
-      await tester.binding.handlePopRoute();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(MgkLiftApp(introStore: store));
       await tester.pumpAndSettle();
       expect(welcome(), findsOneWidget);
       expect(store.seen, isFalse);
@@ -147,7 +156,7 @@ void main() {
   });
 
   group('I already have an account', () {
-    testWidgets('goes through sign-in, then the coach, then the app', (
+    testWidgets('goes through sign-in, then into the app with no walkthrough', (
       tester,
     ) async {
       // A lifter arriving from Run: an account, but Lift is new to them.
@@ -158,7 +167,11 @@ void main() {
         tester,
         store,
         auth: auth,
-        app: LiftShell(auth: auth),
+        app: ({required walkthrough, required onWalkthroughEnded}) => LiftShell(
+          auth: auth,
+          walkthroughOnOpen: walkthrough,
+          onWalkthroughEnded: onWalkthroughEnded,
+        ),
       );
 
       await tester.tap(find.text(kWelcomeHaveAccount));
@@ -169,18 +182,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SignInScreen), findsNothing);
-      expect(intro(), findsOneWidget);
-      // Signed in now, so there is no welcome to go back to: it would offer
-      // to sign them in.
-      expect(find.byTooltip('Back'), findsNothing);
-      expect(store.seen, isFalse);
-
-      await tester.tap(find.text(kIntroStart));
-      await tester.pumpAndSettle();
-
       expect(find.byType(LiftShell), findsOneWidget);
+      expect(walkthrough(), findsNothing);
       // Signed in, so Track can say the session backs up.
       expect(find.text(signedInLine), findsOneWidget);
+      // Marked, so the next launch does not offer it either; Settings does.
       expect(store.seen, isTrue);
     });
 
@@ -199,14 +205,16 @@ void main() {
 
       expect(find.byType(SignInScreen), findsNothing);
       expect(welcome(), findsOneWidget);
-      expect(intro(), findsNothing);
+      expect(find.textContaining('the app'), findsNothing);
       expect(store.seen, isFalse);
     });
 
-    testWidgets('an account that lands after backing out still meets the '
-        'coach', (tester) async {
+    testWidgets('an account that lands after backing out opens the app', (
+      tester,
+    ) async {
       // Apple on Android finishes in the browser and comes back through a
-      // link, which can be after the lifter has given up on the screen.
+      // link, which can be after the lifter has given up on the screen. They
+      // have an account, so no walkthrough.
       final auth = FakeAuth(providerOutcome: ProviderOutcome.continuing);
       addTearDown(auth.dispose);
       final store = InMemoryIntroStore();
@@ -223,8 +231,34 @@ void main() {
       auth.arrive('you@privaterelay.appleid.com');
       await tester.pumpAndSettle();
 
-      expect(intro(), findsOneWidget);
-      expect(find.text('the app'), findsNothing);
+      expect(find.text('the app'), findsOneWidget);
+      expect(find.text('the app, walked through'), findsNothing);
+      expect(store.seen, isTrue);
+    });
+  });
+
+  group('the gate hands the app the walkthrough', () {
+    testWidgets('Get started opens the app walked through, and its end is '
+        'recorded', (tester) async {
+      final store = InMemoryIntroStore();
+      VoidCallback? ended;
+      await gate(
+        tester,
+        store,
+        app: ({required walkthrough, required onWalkthroughEnded}) {
+          ended = onWalkthroughEnded;
+          return Text(walkthrough ? 'the app, walked through' : 'the app');
+        },
+      );
+      await tester.tap(find.text(kWelcomeStart));
+      await tester.pumpAndSettle();
+      expect(find.text('the app, walked through'), findsOneWidget);
+      expect(store.seen, isFalse);
+
+      ended!();
+      await tester.pump();
+      expect(store.seen, isTrue);
+      expect(store.marks, 1);
     });
   });
 
@@ -250,7 +284,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(welcome(), findsNothing);
-      expect(intro(), findsNothing);
+      expect(walkthrough(), findsNothing);
       expect(find.byType(LiftShell), findsOneWidget);
       // Marked without a word, so the check is not made again.
       expect(store.seen, isTrue);
@@ -284,7 +318,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(welcome(), findsNothing);
-      expect(intro(), findsNothing);
+      expect(walkthrough(), findsNothing);
       expect(find.text('the app'), findsOneWidget);
       expect(store.seen, isTrue);
     });
@@ -321,7 +355,8 @@ void main() {
           home: FirstRunGate(
             store: _SilentStore(),
             readBudget: const Duration(seconds: 2),
-            app: const Text('the app'),
+            app: ({required walkthrough, required onWalkthroughEnded}) =>
+                const Text('the app'),
           ),
         ),
       );

@@ -2,7 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/intro_store.dart';
 
-/// Whether this phone has met the coach's first lines, kept on the phone.
+/// Whether this phone has met Lift's first open, kept on the phone.
 ///
 /// Same shape as `LocalCoachPreference`: the plugin is resolved per call, so
 /// building this does not need the binding to be ready and a test can pass an

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../onboarding/domain/walkthrough_spot.dart';
 import '../data/exercise_lookup.dart';
 import '../domain/previous_performance.dart';
 import '../domain/rest_alerts.dart';
@@ -1976,15 +1977,19 @@ class _Dock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassSurface.dock(
-      padding: EdgeInsets.zero,
-      child: ValueListenableBuilder<DateTime>(
-        valueListenable: clock,
-        builder: (context, now, _) => _RestRow(
-          timer: rest,
-          now: now,
-          onAdjust: onAdjust,
-          onDismiss: onDismiss,
+    // Lit by the walkthrough's practice set, the moment a rest starts.
+    return WalkthroughTarget(
+      id: WalkthroughSpot.rest,
+      child: GlassSurface.dock(
+        padding: EdgeInsets.zero,
+        child: ValueListenableBuilder<DateTime>(
+          valueListenable: clock,
+          builder: (context, now, _) => _RestRow(
+            timer: rest,
+            now: now,
+            onAdjust: onAdjust,
+            onDismiss: onDismiss,
+          ),
         ),
       ),
     );

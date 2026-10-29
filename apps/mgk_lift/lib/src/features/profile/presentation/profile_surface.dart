@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 
+import '../../onboarding/domain/walkthrough_spot.dart';
 import '../../stats/domain/activity_window.dart';
 import '../../stats/domain/training_stats.dart';
 import '../../tracking/domain/session.dart';
@@ -139,10 +140,14 @@ class _ProfileSurfaceState extends State<ProfileSurface> {
               title: const Text('Profile'),
               actions: <Widget>[
                 if (widget.onOpenSettings != null)
-                  AppIconButton(
-                    icon: Icons.settings_outlined,
-                    tooltip: 'Settings',
-                    onPressed: widget.onOpenSettings,
+                  // Where the walkthrough says sessions are backed up from.
+                  WalkthroughTarget(
+                    id: WalkthroughSpot.settings,
+                    child: AppIconButton(
+                      icon: Icons.settings_outlined,
+                      tooltip: 'Settings',
+                      onPressed: widget.onOpenSettings,
+                    ),
                   ),
               ],
             ),

@@ -173,6 +173,33 @@ class CoachLetter extends StatelessWidget {
   );
 }
 
+/// The coach's small round C, beside a line it said.
+///
+/// The same letter as the floating mark ([CoachButton]) and set the same way
+/// ([CoachLetter]), so the coach has one mark at every size: the coach is
+/// called Coach, and the C is its name rather than a picture of a chatbot.
+///
+/// **Here, beside the mark it is a small copy of.** It arrived on 29 October
+/// 2026 with `ScriptedLine`, the coach's lines on Lift's first open, which
+/// were replaced the same day by the walkthrough over the real app; the
+/// walkthrough's card ([WalkthroughOverlay]) is what carries it now, and the
+/// file it was born in went with the lines.
+class CoachAvatar extends StatelessWidget {
+  const CoachAvatar({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 22,
+    height: 22,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: AppColors.primary.withValues(alpha: 0.16),
+      shape: BoxShape.circle,
+    ),
+    child: const CoachLetter(size: 12),
+  );
+}
+
 /// The C, at one size, so nothing changes when the reveal closes into the mark.
 class CoachMarkGlyph extends StatelessWidget {
   const CoachMarkGlyph({super.key});

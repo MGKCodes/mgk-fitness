@@ -87,13 +87,19 @@ change a lifter would notice is recorded.
   and opens again where it lands. *Reorder movements* at the foot of the list
   and the sheet it opened are gone. In the workout editor, holding a name
   lifts it too, beside the handle.
-- **A first open** ([ADR-0006](decisions/0006-lift-opens-as-run-does.md)).
-  A new install opens on a welcome, then the coach's lines, one after another:
-  what Track, Plan and Profile are for, what the C at the bottom does, that
-  coaching and plans are a subscription and logging is not, and that sessions
-  stay on the phone until somebody signs in. *I already have an account* goes
-  through sign-in first. Shown once, and never to anybody upgrading from 2.0.0.
-  Track's first card no longer promises a backup to somebody signed out.
+- **A first open** ([ADR-0006](decisions/0006-lift-opens-with-a-walkthrough.md)).
+  A new install opens on a welcome, and *Get started* plays a walkthrough over
+  the real app: one control lit at a time under a dimmed screen, with the
+  coach's line beside it, through Track, Plan, Profile, Settings and the C,
+  the tabs changing as it goes. Then a practice set in a real session screen:
+  the lifter ticks a set, sees the rest timer start, the swap and the hold
+  that moves a movement, and *Start training* lands on Track with nothing of
+  the practice kept anywhere. Coaching and plans are said to be a subscription
+  and logging not; sessions are said to stay on the phone until somebody signs
+  in. *I already have an account* goes through sign-in and straight into the
+  app. Shown once, never to anybody upgrading from 2.0.0, and played again
+  from Settings › *Show me around*. Track's first card no longer promises a
+  backup to somebody signed out.
 
 **On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
 changes production or a published document (the ADR's *Build*, held for the

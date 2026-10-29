@@ -22,6 +22,9 @@ import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/disclaimer_store.dart';
 import '../../legal/presentation/medical_disclaimer_screen.dart';
+import '../../onboarding/domain/walkthrough_script.dart';
+import '../../onboarding/domain/walkthrough_spot.dart';
+import '../../onboarding/presentation/walkthrough.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/moved_day.dart';
@@ -110,7 +113,24 @@ class LiftShell extends StatefulWidget {
     this.restLengths,
     this.initialTab = 0,
     this.today,
+    this.walkthroughOnOpen = false,
+    this.onWalkthroughEnded,
+    this.walkthroughFrom = WalkthroughStep.track,
   });
+
+  /// Opens with the walkthrough playing over the shell (ADR-0006): what
+  /// *Get started* on the welcome leads to. Read once, when the shell is
+  /// built; afterwards Settings' *Show me around* plays it again.
+  final bool walkthroughOnOpen;
+
+  /// Told when a walkthrough ends, by *Start training*, *Skip* or back,
+  /// whichever started it. The gate records that this phone has met it.
+  final VoidCallback? onWalkthroughEnded;
+
+  /// The step [walkthroughOnOpen] starts at. The top in the app; a later one
+  /// for the preview harness and the plates, which show one step each.
+  @visibleForTesting
+  final WalkthroughStep walkthroughFrom;
 
   /// What the three surfaces should treat as today. Null is the wall clock,
   /// which is what the app wants and what every caller but one passes.
@@ -302,6 +322,18 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   static const int _trackTab = 0;
   static const int _planTab = 1;
 
+  /// Navigated to in code since the walkthrough, which shows Profile's tab and
+  /// its Settings button.
+  static const int _profileTab = 2;
+
+  /// The controls the walkthrough can light, by name. Handed down from the
+  /// shell, so the tabs, the bar and the C register here; and to the
+  /// practice session the walkthrough pushes, which is not below the shell.
+  final WalkthroughTargets _walkthroughTargets = WalkthroughTargets();
+
+  /// The walkthrough, while it is running over the shell.
+  LiftWalkthrough? _walkthrough;
+
   /// Vertical room the floating mark occupies, handed to the surfaces through
   /// MediaQuery so their SafeArea absorbs it. Only applied when there is a mark.
   ///
@@ -482,6 +514,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_loadMovedDay());
     unawaited(_refreshEntitlement());
     unawaited(_loadOffers());
+    if (widget.walkthroughOnOpen) {
+      // After the first frame, when the tabs it points at have been laid out.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _startWalkthrough(from: widget.walkthroughFrom),
+      );
+    }
 
     final auth = widget.auth;
     if (auth != null) {
@@ -536,6 +574,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _walkthrough?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_authSub?.cancel());
     unawaited(_librarySub?.cancel());
@@ -946,6 +985,26 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         onSignOut: _signOut,
       );
     }
+    // Back, while the walkthrough is over the shell, is its Skip: the shell is
+    // the first route, so back would otherwise leave the app from the middle
+    // of it.
+    return PopScope<Object?>(
+      canPop: _walkthrough == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _walkthrough?.skip();
+      },
+      child: WalkthroughScope(
+        targets: _walkthroughTargets,
+        child: _scaffold(context, coach: coach, account: account),
+      ),
+    );
+  }
+
+  Widget _scaffold(
+    BuildContext context, {
+    required CoachService? coach,
+    required Account? account,
+  }) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -1056,11 +1115,13 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   icon: Icons.calendar_month_outlined,
                   selectedIcon: Icons.calendar_month,
                   label: 'Plan',
+                  walkthroughId: WalkthroughSpot.planTab,
                 ),
                 NavPillDestination(
                   icon: Icons.person_outline,
                   selectedIcon: Icons.person,
                   label: 'Profile',
+                  walkthroughId: WalkthroughSpot.profileTab,
                 ),
               ],
             ),
@@ -1083,9 +1144,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   MediaQuery.paddingOf(context).bottom +
                   kNavPillHeight +
                   AppSpacing.md,
-              child: CoachButton(
-                hasUnread: widget.hasCoachNote,
-                onTap: _openCoach,
+              child: WalkthroughTarget(
+                id: WalkthroughSpot.coach,
+                child: CoachButton(
+                  hasUnread: widget.hasCoachNote,
+                  onTap: _openCoach,
+                ),
               ),
             ),
         ],
@@ -1096,6 +1160,48 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   void _go(int index) {
     if (index == _index) return;
     setState(() => _index = index);
+  }
+
+  /// Plays the walkthrough over the shell, from [from].
+  ///
+  /// Not over the question about another account's training, which stands
+  /// in the shell's place: none of what the walkthrough points at is there.
+  void _startWalkthrough({WalkthroughStep from = WalkthroughStep.track}) {
+    if (!mounted || _walkthrough != null) return;
+    if (_account != null && _mayUse == false) return;
+    final walkthrough = LiftWalkthrough(
+      navigator: Navigator.of(context),
+      overlay: Overlay.of(context, rootOverlay: true),
+      targets: _walkthroughTargets,
+      goTo: (place) => _go(switch (place) {
+        WalkthroughPlace.plan => _planTab,
+        WalkthroughPlace.profile => _profileTab,
+        WalkthroughPlace.track || WalkthroughPlace.practice => _trackTab,
+      }),
+      massUnit: () => _units.mass,
+      isSignedIn: () => _account != null,
+      // Whether a swap mid-session asks the coach, which is what the step
+      // about swapping promises: subscribed, with the coach on.
+      isCoached: () => _entitled && _gatedPlanner != null,
+      onEnded: _walkthroughEnded,
+      from: from,
+    );
+    setState(() => _walkthrough = walkthrough);
+    walkthrough.start();
+  }
+
+  void _walkthroughEnded() {
+    if (mounted) setState(() => _walkthrough = null);
+    widget.onWalkthroughEnded?.call();
+  }
+
+  /// Settings' *Show me around*: Settings closes, and the walkthrough plays
+  /// from the top over the shell. Back to the shell's own route rather than
+  /// the first, since the preview harness pushes the shell over an index.
+  void _showAround() {
+    final shell = ModalRoute.of(context);
+    Navigator.of(context).popUntil((route) => route == shell || route.isFirst);
+    _startWalkthrough();
   }
 
   /// Opens Settings, applying unit changes as they happen rather than on close.
@@ -1133,6 +1239,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           onUseCoachChanged: widget.coachPreference == null
               ? null
               : _setUseCoach,
+          onShowAround: _showAround,
         ),
       ),
     );

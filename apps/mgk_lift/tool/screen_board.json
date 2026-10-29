@@ -30,10 +30,10 @@
       "letter": "O",
       "title": "Opening the app",
       "sub": "Two seconds, once per cold start, with the app loading underneath",
-      "lede": "The app used to drop straight into Track while it was still reading the log. It opens now on its own mark: the icon's two chevrons dip, drive up, and lift the name into place under them, with the studio's name beneath, and then the curtain fades and Track is there. The same launch as Run's turned through a right angle, with Run's timing, so the two apps open alike. It costs no time, because the app is built under it from the first frame; it takes every touch while it is up; it does not play on coming back from the background, so a lifter reopening the app between sets goes straight to the session; and it is not shown at all with Reduce Motion on. These four plates are the animation stopped: it has to be watched on a phone. Then, on a new install only, the welcome and the coach's first lines, which are Run's arrival in Lift's words (ADR 0006): anybody the phone already knows, everybody upgrading from 2.0.0 included, goes straight to Track.",
+      "lede": "The app used to drop straight into Track while it was still reading the log. It opens now on its own mark: the icon's two chevrons dip, drive up, and lift the name into place under them, with the studio's name beneath, and then the curtain fades and Track is there. The same launch as Run's turned through a right angle, with Run's timing, so the two apps open alike. It costs no time, because the app is built under it from the first frame; it takes every touch while it is up; it does not play on coming back from the background, so a lifter reopening the app between sets goes straight to the session; and it is not shown at all with Reduce Motion on. These four plates are the animation stopped: it has to be watched on a phone. Then, on a new install only, the welcome, and Get started leads into a walkthrough over the real app (ADR 0006): one control lit at a time under a dimmed screen with the coach's line beside it, the tabs changing as it goes, then a practice set in a real session that nothing keeps. Anybody the phone already knows, everybody upgrading from 2.0.0 included, goes straight to Track, and so does anybody who signs in from the welcome; Settings plays it again.",
       "racks": [
         { "title": "The launch, stopped", "screens": ["launch-mark", "launch-dip", "launch-drive", "launch-rest"] },
-        { "title": "The first open, once per install", "screens": ["welcome", "intro"] }
+        { "title": "The first open, once per install", "screens": ["welcome", "walkthrough-track", "walkthrough-tick"] }
       ]
     },
     {
@@ -190,20 +190,31 @@
       "host": "pushed",
       "in": "The first launch of a new install, under {{launch-rest}}",
       "out": "None: it is the first screen. Back leaves the app",
-      "next": "Get started to {{intro}}, or I already have an account to {{sign-in}} and then {{intro}}",
+      "next": "Get started to {{walkthrough-track}}, or I already have an account to {{sign-in}} and then {{track}}, with no walkthrough",
       "note": "LIFT, Every session, logged., and the two ways in, on the empty gym.",
       "doc": "Run's welcome in Lift's words, so the two apps arrive the same way: the wordmark, one promise, the line under it, and the action last, each arriving a beat after the one above. The line says the three things Lift is in the order they matter in a gym: set by set, with no signal, and a coach when you want one, offered rather than pushed. Shown once per install and never to anybody the phone already knows: a session restored at launch or any training on the phone lets them straight through, so nobody upgrading from 2.0.0 meets it. Done right: a stranger knows what the app is before they tap, and nobody who has used Lift ever sees this.",
       "tags": ["free", "new", "first"]
     },
-    "intro": {
+    "walkthrough-track": {
       "code": "O6",
-      "title": "The coach's first lines",
+      "title": "Walkthrough — Track",
+      "host": "shell",
+      "in": "{{welcome}} › Get started; or Settings › Show me around",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, through Plan, Profile, Settings and the C, to the practice set in {{walkthrough-tick}}",
+      "note": "Track's Start a session lit through the veil, the coach's line under it, Next and Skip.",
+      "doc": "The first of the walkthrough's steps over the real shell: the app is running underneath on its own tabs, and one control at a time is lit through a dimmed screen with the coach's small C and a line beside it. In order: Start a session (where you log, with no signal), the same button again as the way to your workouts, the Plan tab (a week built around you, with the subscription), the Profile tab, Profile's Settings (the sessions stay on this phone until you sign in), and the C (coaching is a subscription, logging never is), the tabs changing as it goes. Each step names its control, so the hole follows the layout at any phone width or text size, and a step whose control is not drawn is passed over: no C with the coach off, no workouts behind a button that resumes an open session. Nothing under the veil takes a tap, and back is Skip. Done right: a lifter who has never seen the app is shown where each thing is on the screen they will use, not told about it on another.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-tick": {
+      "code": "O7",
+      "title": "Walkthrough — the practice set",
       "host": "pushed",
-      "in": "{{welcome}} › Get started; or {{sign-in}}, once signed in",
-      "out": "Back to {{welcome}}, only when it came from Get started",
-      "next": "Start training, to {{track}}",
-      "note": "Six lines in the coach's voice, one per tab and then the C, the price and the phone; the button last.",
-      "doc": "Run's intro without its questions: Lift needs no permission and the name is the account's, so this asks nothing. The coach says what Track, Plan and Profile are for, in the bar's order, then what the C at the bottom is, that coaching and plans are a subscription and logging never is, and that the sessions stay on the phone until they sign in. The lines arrive a beat apart and the button waits for the last one, so nobody taps past what the screen is for; drawn here with every line said. Done right: a lifter knows where to log, what costs money and what does not, and where their sessions are, before their first set, and the first card on Track does not contradict the last line.",
+      "in": "{{walkthrough-track}} › Let's try a set",
+      "out": "Start training, Skip or back, to {{track}}, with the practice thrown away",
+      "next": "Tick the set (or Next), then the rest timer, the swap, holding a movement to move it, and Start training",
+      "note": "A real session screen over a practice Barbell Bench Press, three sets of eight, the first set's tick lit.",
+      "doc": "The one step that waits for the lifter: the hole lets a tap through to the first set's tick, and ticking it moves on to the rest timer it started, then the swap and the hold that moves a movement, and That's it, with Start training. It is the real session screen over a recorder held in memory: nothing is written to the phone, backed up, counted in history, bests or a plan's weights, or offered back as a session to resume, and no rest alert is scheduled or asked for. Start training, Skip and back all end it the same way: the practice is thrown away and the lifter lands on Track. Done right: the first set anybody logs in Lift is one they logged themselves, and none of it is in their training afterwards.",
       "tags": ["free", "new", "first"]
     },
     "settings-coach": {
@@ -1225,7 +1236,7 @@
       "host": "pushed",
       "in": "{{profile}} › the gear",
       "out": "App bar back",
-      "next": "Change units, or sign in",
+      "next": "Change units, sign in, or Show me around to {{walkthrough-track}}",
       "next_note": "units apply as they change, not on close",
       "note": "The suite's profile card first, then Run's groups with Lift's rows.",
       "doc": "The same index as Run's, because half of it is the same thing. The card at the top is the one both apps draw; the groups carry Run's names and order, with Lift's rows inside them; the foot names the product and its maker as Run's does. Signed out, the card is the way in, and its note is the one fact worth stating unprompted: what is on this phone only. Each row shows what it is set to (19), and opens a sheet that carries its explanation. Done right: somebody with both apps does not learn Settings twice, and nobody is argued into an account.",
@@ -1531,9 +1542,11 @@
   },
 
   "edges": [
-    { "from": "welcome", "to": "intro", "label": "Get started" },
+    { "from": "welcome", "to": "walkthrough-track", "label": "Get started" },
+    { "from": "walkthrough-track", "to": "walkthrough-tick", "label": "Let's try a set" },
+    { "from": "walkthrough-tick", "to": "track", "label": "Start training" },
     { "from": "welcome", "to": "sign-in", "label": "I already have an account" },
-    { "from": "sign-in", "to": "intro", "label": "signed in, from the welcome" },
+    { "from": "sign-in", "to": "track", "label": "signed in, from the welcome" },
     { "from": "session", "to": "exercise-picker-replace", "label": "swap, without the coach" },
     { "from": "session-resting", "to": "session-rest-over", "label": "rest runs out" },
     { "from": "profile", "to": "history", "label": "See all" },
