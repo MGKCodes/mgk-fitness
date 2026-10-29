@@ -7,7 +7,7 @@ import '../domain/intro_script.dart';
 
 /// The coach's first lines, before the app.
 ///
-/// **Run's intro, in Lift's words** (ADR-0005): the coach's lines arrive one at
+/// **Run's intro, in Lift's words** (ADR-0006): the coach's lines arrive one at
 /// a time, a beat apart with the coach composing in between, over the same
 /// photograph as the welcome, and the button comes last. It looks like the
 /// coach because it is the coach, in the voice the coach keeps afterwards; it

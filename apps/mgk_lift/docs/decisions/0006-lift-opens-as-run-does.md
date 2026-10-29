@@ -1,4 +1,4 @@
-# 0005 — Lift opens as Run does: a welcome, then the coach's lines, once
+# 0006 — Lift opens as Run does: a welcome, then the coach's lines, once
 
 **Status:** Accepted (2026-10-29), for 2.0.1
 

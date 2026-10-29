@@ -117,7 +117,7 @@ class PreviewApp extends StatelessWidget {
       'launch-drive': (_) => _launchAt(0.70),
       'launch-rest': (_) => _launchAt(1.50),
 
-      // The first open, once per install (ADR-0005): the welcome, and the
+      // The first open, once per install (ADR-0006): the welcome, and the
       // coach's lines with every one of them said. Still, as the launch above
       // is: the lines arrive a beat apart, and a capture that lands between
       // two beats would photograph half a conversation as the design.

@@ -98,7 +98,7 @@ Future<void> main() async {
           ? null
           : RevenueCatPurchases(apiKey: config.storeKey),
       // Device-local, like the coach switch: whether this phone has met the
-      // coach's first lines (ADR-0005).
+      // coach's first lines (ADR-0006).
       introStore: LocalIntroStore(),
     ),
   );
@@ -124,7 +124,7 @@ class MgkLiftApp extends StatelessWidget {
   final LocalDataGuard? localData;
 
   /// Whether this install has met the welcome and the coach's first lines
-  /// (ADR-0005). **Null opens straight on the app**, as every build did before
+  /// (ADR-0006). **Null opens straight on the app**, as every build did before
   /// 2.0.1: what the widget tests and the preview want, since they are not
   /// about the first open. `main` always passes one.
   final IntroStore? introStore;

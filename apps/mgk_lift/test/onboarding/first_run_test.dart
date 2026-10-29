@@ -15,7 +15,7 @@ import 'package:mgk_lift/src/features/onboarding/presentation/first_run_gate.dar
 import 'package:mgk_lift/src/features/onboarding/presentation/intro_screen.dart';
 import 'package:mgk_lift/src/features/onboarding/presentation/welcome_screen.dart';
 
-/// Lift's first open (ADR-0005): Run's pattern, in Lift's words. A welcome,
+/// Lift's first open (ADR-0006): Run's pattern, in Lift's words. A welcome,
 /// the coach's lines, then the app, once per install, and never for somebody
 /// who used Lift before it had one.
 void main() {

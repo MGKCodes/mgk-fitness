@@ -3,7 +3,7 @@
 ///
 /// ## Run's pattern, in Lift's words
 ///
-/// Chosen by the owner on 29 October 2026 (ADR-0005) over three swipe pages
+/// Chosen by the owner on 29 October 2026 (ADR-0006) over three swipe pages
 /// and over hints laid on the screens themselves. Run opens the same way
 /// (Run's ADR-0018 and ADR-0019): a welcome, then the coach saying a few lines
 /// one after another, then a button. The two apps are one product, so they

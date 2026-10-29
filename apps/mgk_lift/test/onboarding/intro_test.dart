@@ -8,7 +8,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The words of Lift's first open, the screens that say them, and where the
-/// answer is kept (ADR-0005).
+/// answer is kept (ADR-0006).
 void main() {
   group('what the coach says', () {
     test('the six lines, in the order the tabs sit on the bar', () {

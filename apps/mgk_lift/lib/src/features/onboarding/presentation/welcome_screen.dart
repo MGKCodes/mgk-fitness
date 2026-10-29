@@ -7,7 +7,7 @@ import '../domain/intro_script.dart';
 /// The first screen a new install shows: the name, one promise, and the way
 /// in.
 ///
-/// **Run's welcome, in Lift's words** (ADR-0005). The same photograph-and-scrim
+/// **Run's welcome, in Lift's words** (ADR-0006). The same photograph-and-scrim
 /// treatment, the same order down the screen and the same staggered arrival,
 /// so the two apps open alike: wordmark, then the headline, then the line under
 /// it, then the action once the promise has been read. Lift's own photograph,

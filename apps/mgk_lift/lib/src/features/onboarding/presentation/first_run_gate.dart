@@ -9,7 +9,7 @@ import 'intro_screen.dart';
 import 'welcome_screen.dart';
 
 /// Where a cold start goes: the app, or, once per install, the welcome and the
-/// coach's first lines in front of it (ADR-0005).
+/// coach's first lines in front of it (ADR-0006).
 ///
 /// **In front of the shell, not inside it.** The shell starts work the moment
 /// it is mounted (a backup checkpoint, the plan, the store), all of it for

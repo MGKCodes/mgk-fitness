@@ -3,7 +3,7 @@
 /// Lives here because both apps open on one now. Run's intro has drawn its
 /// lines this way since August, as `Said` in `mgk_run`'s
 /// `scripted_conversation.dart`, and Lift's first open (29 October 2026,
-/// Lift's ADR-0005) is Run's pattern in Lift's words: the two apps are meant to
+/// Lift's ADR-0006) is Run's pattern in Lift's words: the two apps are meant to
 /// arrive the same way, so the look was lifted here rather than copied into a
 /// second app, where it would drift.
 ///

@@ -80,7 +80,7 @@ change a lifter would notice is recorded.
   on the phone, so it works with no signal, and a new plan has weights from
   the first session for anything done before. In 2.0.0 every planned session
   opened blank.
-- **A first open** ([ADR-0005](decisions/0005-lift-opens-as-run-does.md)).
+- **A first open** ([ADR-0006](decisions/0006-lift-opens-as-run-does.md)).
   A new install opens on a welcome, then the coach's lines, one after another:
   what Track, Plan and Profile are for, what the C at the bottom does, that
   coaching and plans are a subscription and logging is not, and that sessions
