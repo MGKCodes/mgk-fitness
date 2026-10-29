@@ -17,6 +17,7 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0003](0003-exercise-illustrations-are-cc-by-sa.md) | The exercise illustrations are CC BY-SA 4.0, not first-party | Accepted |
 | [0004](0004-a-best-is-a-weight-lifted.md) | A personal best is a weight lifted, not an estimate | Accepted |
 | [0005](0005-a-movement-is-moved-by-holding-it.md) | A movement is moved by holding it, where it sits | Accepted |
+| [0006](0006-lift-opens-as-run-does.md) | Lift opens as Run does: a welcome, then the coach's lines, once | Accepted |
 
 ## Decisions that bind Lift but live in Run's set
 

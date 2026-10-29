@@ -32,6 +32,8 @@ import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/legal/presentation/medical_disclaimer_screen.dart';
+import '../src/features/onboarding/presentation/intro_screen.dart';
+import '../src/features/onboarding/presentation/welcome_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
@@ -113,6 +115,21 @@ class PreviewApp extends StatelessWidget {
       'launch-dip': (_) => _launchAt(0.54),
       'launch-drive': (_) => _launchAt(0.70),
       'launch-rest': (_) => _launchAt(1.50),
+
+      // The first open, once per install (ADR-0006): the welcome, and the
+      // coach's lines with every one of them said. Still, as the launch above
+      // is: the lines arrive a beat apart, and a capture that lands between
+      // two beats would photograph half a conversation as the design.
+      'welcome': (_) =>
+          WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
+      // `(_)` and a Builder, not `(context)`: the capture scripts find the
+      // screens by that shape.
+      'intro': (_) => Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: IntroScreen(onFinished: () {}, onBack: () {}),
+        ),
+      ),
 
       // **Every shell entry carries a coach**, because production does: main.dart
       // passes one whenever Supabase is configured, and the shell draws the mark

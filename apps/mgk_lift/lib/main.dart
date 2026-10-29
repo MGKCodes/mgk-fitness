@@ -20,6 +20,9 @@ import 'src/features/planning/data/supabase_coach_planner.dart';
 import 'src/features/planning/data/supabase_standing_plan_store.dart';
 import 'src/features/legal/data/account_deletion_service.dart';
 import 'src/features/home/presentation/lift_shell.dart';
+import 'src/features/onboarding/data/local_intro_store.dart';
+import 'src/features/onboarding/domain/intro_store.dart';
+import 'src/features/onboarding/presentation/first_run_gate.dart';
 import 'src/features/photos/data/camera_photo_source.dart';
 import 'src/features/photos/data/drift_photo_library.dart';
 import 'src/features/photos/data/supabase_photo_sync.dart';
@@ -94,6 +97,9 @@ Future<void> main() async {
       purchases: (client == null || !config.canSell)
           ? null
           : RevenueCatPurchases(apiKey: config.storeKey),
+      // Device-local, like the coach switch: whether this phone has met the
+      // coach's first lines (ADR-0006).
+      introStore: LocalIntroStore(),
     ),
   );
 }
@@ -105,6 +111,7 @@ class MgkLiftApp extends StatelessWidget {
     this.client,
     this.purchases,
     this.localData,
+    this.introStore,
     this.playLaunch = false,
   });
 
@@ -115,6 +122,12 @@ class MgkLiftApp extends StatelessWidget {
   /// Whose training is on this phone. Built once in `main`, like [purchases],
   /// because it remembers the answer it gave for each account.
   final LocalDataGuard? localData;
+
+  /// Whether this install has met the welcome and the coach's first lines
+  /// (ADR-0006). **Null opens straight on the app**, as every build did before
+  /// 2.0.1: what the widget tests and the preview want, since they are not
+  /// about the first open. `main` always passes one.
+  final IntroStore? introStore;
 
   /// The store. Built once in `main` rather than here, because it holds what
   /// it has been told — who is signed in, what it last offered — and a
@@ -142,6 +155,111 @@ class MgkLiftApp extends StatelessWidget {
         ? null
         : createAiConsentStore(client: supabase);
 
+    // One sign-in for the gate and the shell, so the account the welcome
+    // signs in is the one the shell opens with.
+    final auth = supabase == null ? null : SupabaseAuth(supabase);
+
+    final shell = LiftShell(
+      recorder: db == null ? null : DriftSessionRecorder(db),
+      // Fixing a past session reuses the session screen, with a recorder
+      // aimed at that session instead of the open one.
+      editorFor: db == null
+          ? null
+          : (id) => DriftSessionRecorder.editing(db, id),
+      library: db == null ? null : DriftWorkoutLibrary(db),
+      history: db == null ? null : DriftSessionHistory(db),
+      // Device first, account when it can answer. The account half is what
+      // makes units agree with Run; the device half is what makes them
+      // survive a launch at all, because tracking needs no sign-in and a
+      // free lifter would otherwise get the default every time.
+      units: UnitPreferencesRepository(
+        local: LocalUnitPreferences(),
+        remote: supabase == null
+            ? null
+            : SupabaseUnitPreferences(client: supabase),
+      ),
+      // Photos live on the same on-device database, so they come and go with
+      // it: no database means no camera entry point, rather than a screen
+      // that cannot save what it takes.
+      photos: db == null ? null : DriftPhotoLibrary(db),
+      photoSource: db == null ? null : CameraPhotoSource(),
+      // Needs both halves: the rows live in the local database and
+      // the JPEGs go to a bucket, so one without the other is a sync
+      // that can only ever do half a job.
+      photoBackup: (db == null || supabase == null)
+          ? null
+          : SupabasePhotoSync(db, supabase),
+      auth: auth,
+      localData: localData,
+      // **The wire that was missing until 2026-09-02.** `isEntitled` defaulted
+      // to false and nothing ever passed it, so the paid half was invisible to
+      // everybody — including the account that actually holds one. The server
+      // knew and the screen did not.
+      //
+      // The cache is what stops a bad connection reading as "has not paid".
+      // It grants nothing: the coach function re-reads `core.entitlements`
+      // under `service_role` before spending, so the worst a stale `true` buys
+      // is a nicer-looking app and a refusal.
+      entitlements: supabase == null
+          ? null
+          : EntitlementGate(
+              source: SupabaseEntitlements(client: supabase),
+              cache: LocalEntitlementCache(),
+            ),
+      purchases: purchases,
+      sync: (db == null || supabase == null)
+          ? null
+          : WorkoutBackup(db, SupabaseBackupRemote(supabase)),
+      // The mark stays absent rather than inert when there is no server.
+      coach: supabase == null
+          ? null
+          : SupabaseCoach(supabase, consent: aiConsent),
+      // Reading back what was already said. Paired with `coach` rather than
+      // gated separately: there is no build that can hold a conversation but
+      // must not be shown it.
+      transcript: supabase == null ? null : SupabaseCoachTranscript(supabase),
+      // Not gated on the entitlement the way the coach is: somebody who has
+      // stopped paying must still be able to read what was stored about them
+      // and delete it.
+      coachMemory: supabase == null ? null : SupabaseCoachMemory(supabase),
+      // Device-local and unconditional: whether the coach is shown at all,
+      // which works with no account and no server — and a build with no
+      // Supabase has no coach to switch off, which the shell reads from
+      // `coach` being null rather than from this.
+      coachPreference: LocalCoachPreference(),
+      // The yes itself, on the account (issue #10). Turning the switch above
+      // off takes it back.
+      aiConsent: aiConsent,
+      // Device-local too: the medical disclaimer is accepted once on this
+      // phone, before the coach or a plan is first used.
+      disclaimers: LocalDisclaimerStore(),
+      // Device-local, like the coach switch above: a buzz and a habit, with
+      // no account or server involved in either.
+      restAlerts: LocalRestAlerts(),
+      restLengths: LocalRestLengths(),
+      // Paired with `auth` rather than gated separately: deletion is
+      // meaningless without an account and impossible without a server,
+      // and both of those are the same `supabase` being non-null.
+      deleter: supabase == null
+          ? null
+          : AccountDeletionService(client: supabase),
+      planner: supabase == null
+          ? null
+          : SupabaseCoachPlanner(supabase, consent: aiConsent),
+      // With a copy on the phone, so today's planned session is on Track
+      // with no signal at the gym — and shown before the server is asked.
+      plans: supabase == null
+          ? null
+          : CachedStandingPlanStore(
+              remote: SupabaseStandingPlanStore(supabase),
+              cache: FilePlanCache(),
+              account: () => supabase.auth.currentUser?.id,
+            ),
+      // Device-local: bringing a day forward is a choice on this phone for
+      // one day, not a plan edit.
+      movedDays: LocalMovedDay(),
+    );
+
     return MaterialApp(
       title: kProductName,
       debugShowCheckedModeBanner: false,
@@ -152,106 +270,20 @@ class MgkLiftApp extends StatelessWidget {
         enabled: playLaunch,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: LiftShell(
-        recorder: db == null ? null : DriftSessionRecorder(db),
-        // Fixing a past session reuses the session screen, with a recorder
-        // aimed at that session instead of the open one.
-        editorFor: db == null
-            ? null
-            : (id) => DriftSessionRecorder.editing(db, id),
-        library: db == null ? null : DriftWorkoutLibrary(db),
-        history: db == null ? null : DriftSessionHistory(db),
-        // Device first, account when it can answer. The account half is what
-        // makes units agree with Run; the device half is what makes them
-        // survive a launch at all, because tracking needs no sign-in and a
-        // free lifter would otherwise get the default every time.
-        units: UnitPreferencesRepository(
-          local: LocalUnitPreferences(),
-          remote: supabase == null
+      home: switch (introStore) {
+        null => shell,
+        final IntroStore store => FirstRunGate(
+          store: store,
+          auth: auth,
+          // Any training on the phone, the same check that decides whether a
+          // phone has an owner to ask about. It counts a phone it cannot read
+          // as holding something, which is the direction this gate wants too.
+          hasTraining: db == null
               ? null
-              : SupabaseUnitPreferences(client: supabase),
+              : () async => !(await PhoneTrainingData(db).isEmpty()),
+          app: shell,
         ),
-        // Photos live on the same on-device database, so they come and go with
-        // it: no database means no camera entry point, rather than a screen
-        // that cannot save what it takes.
-        photos: db == null ? null : DriftPhotoLibrary(db),
-        photoSource: db == null ? null : CameraPhotoSource(),
-        // Needs both halves: the rows live in the local database and
-        // the JPEGs go to a bucket, so one without the other is a sync
-        // that can only ever do half a job.
-        photoBackup: (db == null || supabase == null)
-            ? null
-            : SupabasePhotoSync(db, supabase),
-        auth: supabase == null ? null : SupabaseAuth(supabase),
-        localData: localData,
-        // **The wire that was missing until 2026-09-02.** `isEntitled` defaulted
-        // to false and nothing ever passed it, so the paid half was invisible to
-        // everybody — including the account that actually holds one. The server
-        // knew and the screen did not.
-        //
-        // The cache is what stops a bad connection reading as "has not paid".
-        // It grants nothing: the coach function re-reads `core.entitlements`
-        // under `service_role` before spending, so the worst a stale `true` buys
-        // is a nicer-looking app and a refusal.
-        entitlements: supabase == null
-            ? null
-            : EntitlementGate(
-                source: SupabaseEntitlements(client: supabase),
-                cache: LocalEntitlementCache(),
-              ),
-        purchases: purchases,
-        sync: (db == null || supabase == null)
-            ? null
-            : WorkoutBackup(db, SupabaseBackupRemote(supabase)),
-        // The mark stays absent rather than inert when there is no server.
-        coach: supabase == null
-            ? null
-            : SupabaseCoach(supabase, consent: aiConsent),
-        // Reading back what was already said. Paired with `coach` rather than
-        // gated separately: there is no build that can hold a conversation but
-        // must not be shown it.
-        transcript: supabase == null ? null : SupabaseCoachTranscript(supabase),
-        // Not gated on the entitlement the way the coach is: somebody who has
-        // stopped paying must still be able to read what was stored about them
-        // and delete it.
-        coachMemory: supabase == null ? null : SupabaseCoachMemory(supabase),
-        // Device-local and unconditional: whether the coach is shown at all,
-        // which works with no account and no server — and a build with no
-        // Supabase has no coach to switch off, which the shell reads from
-        // `coach` being null rather than from this.
-        coachPreference: LocalCoachPreference(),
-        // The yes itself, on the account (issue #10). Turning the switch above
-        // off takes it back.
-        aiConsent: aiConsent,
-        // Device-local too: the medical disclaimer is accepted once on this
-        // phone, before the coach or a plan is first used.
-        disclaimers: LocalDisclaimerStore(),
-        // Device-local, like the coach switch above: a buzz and a habit, with
-        // no account or server involved in either.
-        restAlerts: LocalRestAlerts(),
-        restLengths: LocalRestLengths(),
-        // Paired with `auth` rather than gated separately: deletion is
-        // meaningless without an account and impossible without a server,
-        // and both of those are the same `supabase` being non-null.
-        deleter: supabase == null
-            ? null
-            : AccountDeletionService(client: supabase),
-        planner: supabase == null
-            ? null
-            : SupabaseCoachPlanner(supabase, consent: aiConsent),
-        // With a copy on the phone, so today's planned session is on Track
-        // with no signal at the gym — and shown before the server is asked.
-        plans: supabase == null
-            ? null
-            : CachedStandingPlanStore(
-                remote: SupabaseStandingPlanStore(supabase),
-                cache: FilePlanCache(),
-                account: () => supabase.auth.currentUser?.id,
-              ),
-        // Device-local: bringing a day forward is a choice on this phone for
-        // one day, not a plan edit.
-        movedDays: LocalMovedDay(),
-      ),
+      },
     );
   }
 }

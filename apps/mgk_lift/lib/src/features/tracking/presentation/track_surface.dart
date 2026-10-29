@@ -44,6 +44,7 @@ class TrackSurface extends StatelessWidget {
     this.onOpenPlan,
     this.backup,
     this.onBackupAction,
+    this.isSignedIn = false,
   });
 
   /// Where backup stands. A notice appears **only when something needs the
@@ -52,6 +53,11 @@ class TrackSurface extends StatelessWidget {
 
   /// What the notice's action does — retry, sign in, or review in Settings.
   final ValueChanged<BackupAction>? onBackupAction;
+
+  /// Whether an account is signed in, so the first session's line promises a
+  /// backup only to somebody who has one. A new lifter is signed out, and a
+  /// session logged then stays on the phone until they sign in.
+  final bool isSignedIn;
 
   /// Resumes the open session, and starts a blank one in a build with no
   /// library to choose from. Null while the recorder is not wired up, which
@@ -172,6 +178,7 @@ class TrackSurface extends StatelessWidget {
                 onPick: onOpenLibrary ?? onStartSession,
                 hasLibrary: onOpenLibrary != null,
                 onStartPlanned: onStartPlanned,
+                isSignedIn: isSignedIn,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -402,10 +409,14 @@ class _TodayCard extends StatelessWidget {
     required this.onPick,
     required this.hasLibrary,
     required this.onStartPlanned,
+    required this.isSignedIn,
   });
 
   final DateTime now;
   final _TodayState state;
+
+  /// Whether a session logged now backs up. See [TrackSurface.isSignedIn].
+  final bool isSignedIn;
 
   /// Whether [onPick] opens *Your workouts*, or has only a blank session to
   /// offer.
@@ -551,10 +562,18 @@ class _TodayCard extends StatelessWidget {
               : 'Add movements as you go.',
         );
       case _TodayKind.first:
+        // **The backup half only for somebody with an account.** This said
+        // "and backs up when you are back" to everybody, which on a new
+        // install, signed out, promised something that does not happen: the
+        // session stays on the phone until they sign in. The coach's last line
+        // in the intro says so, and the first card after it must not
+        // contradict it.
         return (
           'Ready when you are',
-          'Log a session set by set. It works with no signal and backs up '
-              'when you are back.',
+          isSignedIn
+              ? 'Log a session set by set. It works with no signal and backs '
+                    'up when you are back.'
+              : 'Log a session set by set. It works with no signal.',
         );
     }
   }
