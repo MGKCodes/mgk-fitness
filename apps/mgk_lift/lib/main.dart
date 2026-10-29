@@ -75,6 +75,9 @@ Future<void> main() async {
     }
   }
 
+  // Asked before anything opens the database, which makes the file: missing
+  // now means this is Lift's first launch on this phone (ADR-0006).
+  final newInstall = !await liftDatabaseExists();
   final database = AppDatabase.open();
   runApp(
     MgkLiftApp(
@@ -100,6 +103,7 @@ Future<void> main() async {
       // Device-local, like the coach switch: whether this phone has met the
       // welcome and the walkthrough (ADR-0006).
       introStore: LocalIntroStore(),
+      newInstall: newInstall,
     ),
   );
 }
@@ -112,6 +116,7 @@ class MgkLiftApp extends StatelessWidget {
     this.purchases,
     this.localData,
     this.introStore,
+    this.newInstall = false,
     this.playLaunch = false,
   });
 
@@ -128,6 +133,13 @@ class MgkLiftApp extends StatelessWidget {
   /// before 2.0.1: what the widget tests and the preview want, since they are
   /// not about the first open. `main` always passes one.
   final IntroStore? introStore;
+
+  /// Whether Lift had never run on this phone before this launch: its
+  /// database did not exist yet. A new install goes to the welcome without
+  /// the reads that tell an upgrader from a new lifter, which on a slow first
+  /// launch can run out of time and read as an upgrader (found on the
+  /// emulator, 29 October 2026). False in tests and the preview.
+  final bool newInstall;
 
   /// The store. Built once in `main` rather than here, because it holds what
   /// it has been told — who is signed in, what it last offered — and a
@@ -282,6 +294,7 @@ class MgkLiftApp extends StatelessWidget {
         final IntroStore store => FirstRunGate(
           store: store,
           auth: auth,
+          newInstall: newInstall,
           // Any training on the phone, the same check that decides whether a
           // phone has an owner to ask about. It counts a phone it cannot read
           // as holding something, which is the direction this gate wants too.
