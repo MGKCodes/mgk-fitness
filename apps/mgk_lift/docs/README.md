@@ -80,6 +80,13 @@ change a lifter would notice is recorded.
   on the phone, so it works with no signal, and a new plan has weights from
   the first session for anything done before. In 2.0.0 every planned session
   opened blank.
+- **A first open** ([ADR-0005](decisions/0005-lift-opens-as-run-does.md)).
+  A new install opens on a welcome, then the coach's lines, one after another:
+  what Track, Plan and Profile are for, what the C at the bottom does, that
+  coaching and plans are a subscription and logging is not, and that sessions
+  stay on the phone until somebody signs in. *I already have an account* goes
+  through sign-in first. Shown once, and never to anybody upgrading from 2.0.0.
+  Track's first card no longer promises a backup to somebody signed out.
 
 **On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
 changes production or a published document (the ADR's *Build*, held for the
