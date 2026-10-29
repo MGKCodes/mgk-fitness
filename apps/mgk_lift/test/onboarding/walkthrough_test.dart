@@ -157,6 +157,36 @@ void main() {
     expect(await db.select(db.exerciseSets).get(), isEmpty);
   });
 
+  testWidgets('at a larger text size, every step still lands, with nothing '
+      'overflowing', (tester) async {
+    // The steps name controls rather than places, so a layout pushed about
+    // by large text moves the hole with it. 1.3x, the larger of the two
+    // sizes the app's own screens are held to here; at 2x the bar's labels
+    // and the session's top bar overflow without any walkthrough over them,
+    // and the card on its own is held at 2x in mgk_ui.
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await shell(tester, coach: FakeCoach());
+    final seen = <WalkthroughStep>[];
+    for (
+      var i = 0;
+      i < 20 && onCard(kWalkthroughStart).evaluate().isEmpty;
+      i++
+    ) {
+      for (final step in WalkthroughStep.values) {
+        if (said(step).evaluate().isNotEmpty) seen.add(step);
+      }
+      await next(tester);
+    }
+    expect(seen, contains(WalkthroughStep.coach));
+    expect(seen, contains(WalkthroughStep.logASet));
+    expect(seen, contains(WalkthroughStep.reorder));
+    expect(said(WalkthroughStep.done), findsOneWidget);
+    await tester.tap(onCard(kWalkthroughStart));
+    await tester.pumpAndSettle();
+    expect(overlay(), findsNothing);
+  });
+
   testWidgets('Skip from the middle ends it the same way', (tester) async {
     phone(tester);
     final db = AppDatabase.memory();

@@ -254,6 +254,30 @@ void main() {
       expect(nexts, 2);
     });
 
+    testWidgets('at twice the text size on a small phone, the card holds', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pump(
+        tester,
+        const WalkthroughFrame(
+          line:
+              'And this is me. Tap the C any time to ask about your training. '
+              'Coaching is a subscription. Logging never is.',
+          target: 'bottom',
+        ),
+      );
+      tester.view.physicalSize = const Size(960, 1704);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // Both buttons still there to be pressed.
+      await tester.tap(find.text('Next'));
+      await tester.tap(find.text('Skip'));
+      expect(nexts, 1);
+      expect(skips, 1);
+    });
+
     testWidgets('between two steps: no card, and still no tap through', (
       tester,
     ) async {
