@@ -334,7 +334,7 @@ void main() {
     /// sentence around it does not.
     const categories = <String, String>{
       'the email address': 'email address',
-      'the name given to the coach': 'name you give the coach',
+      'the name on the account': 'the name you choose to give',
       'the profile photo': 'profile photo',
       'the running profile': 'running profile',
       'the runs themselves': 'route points',

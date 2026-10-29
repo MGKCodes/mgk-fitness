@@ -346,7 +346,7 @@ Then per type. **Every type: Shared = No, Processed ephemerally = No.**
 |---|---|---|---|---|
 | Location | Approximate location | Optional | App functionality | Esri's tile requests for the map on screen, and for the tiles around the phone's last known position when the app opens |
 | Location | Precise location | Optional | App functionality | Route traces, sent only with backup on |
-| Personal info | Name | Optional | App functionality, Account management | The name the coach uses, if given |
+| Personal info | Name | Optional | App functionality, Account management | The name the runner chooses to give the account, if given; Google's first name offered as a suggestion. Shared with Lift. Wording **from 1.0.2** (ADR-0047) |
 | Personal info | Email address | Optional | Account management | The account, typed in or passed on by Google or Apple at sign-in; the app works signed out |
 | Personal info | User IDs | Optional | Account management, App functionality | The Supabase user id, also RevenueCat's app user id; and Google's or Apple's identifier for the runner, when they sign in with one |
 | Financial info | Purchase history | Optional | App functionality, Analytics | The subscription, via RevenueCat |
