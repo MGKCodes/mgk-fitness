@@ -15,7 +15,7 @@ publish_to: none
 # + is not what ships. Both Lift workflows in codemagic.yaml pass Codemagic's
 # own counter (--build-number=$PROJECT_BUILD_NUMBER), which only rises, so the
 # stores never see a re-used build number.
-version: 2.0.1+1
+version: 2.0.2+1
 
 environment:
   sdk: ^3.11.5
