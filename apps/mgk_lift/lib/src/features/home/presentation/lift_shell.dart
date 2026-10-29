@@ -986,6 +986,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                         : _openPlannedSession,
                     onOpenSession: _openPastSession,
                     onOpenPlan: () => _go(_planTab),
+                    // So the first session's line promises a backup only to
+                    // somebody who has an account to back up to.
+                    isSignedIn: account != null,
                   ),
                 ),
                 PlanSurface(

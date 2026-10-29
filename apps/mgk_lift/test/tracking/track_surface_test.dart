@@ -106,6 +106,7 @@ void main() {
     ValueChanged<String>? onStartPlanned,
     ValueChanged<Session>? onOpenSession,
     VoidCallback? onOpenPlan,
+    bool isSignedIn = false,
   }) async {
     // A phone, so every card is on screen and tappable.
     tester.view.physicalSize = const Size(430 * 3, 1400 * 3);
@@ -125,6 +126,7 @@ void main() {
             onStartPlanned: onStartPlanned,
             onOpenSession: onOpenSession,
             onOpenPlan: onOpenPlan,
+            isSignedIn: isSignedIn,
           ),
         ),
       ),
@@ -155,6 +157,29 @@ void main() {
       await pump(tester, onOpenLibrary: () {});
       expect(find.text('Ready when you are'), findsOneWidget);
       expect(find.text('Start a session'), findsOneWidget);
+    });
+
+    testWidgets('signed out, it promises no backup', (tester) async {
+      // A new install is signed out, and its sessions stay on the phone until
+      // somebody signs in. This used to say "and backs up when you are back"
+      // to everybody, a line after the coach had just said the opposite.
+      await pump(tester, onOpenLibrary: () {});
+      expect(
+        find.text('Log a session set by set. It works with no signal.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('backs up'), findsNothing);
+    });
+
+    testWidgets('signed in, it says the session backs up', (tester) async {
+      await pump(tester, onOpenLibrary: () {}, isSignedIn: true);
+      expect(
+        find.text(
+          'Log a session set by set. It works with no signal and backs up '
+          'when you are back.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Start a session opens the workouts, not a blank session', (
