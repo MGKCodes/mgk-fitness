@@ -101,6 +101,9 @@ class FakeAuth implements AuthService {
   /// `password email`, and the password a confirmed code replaced, if any.
   final List<String> emailCalls = <String>[];
 
+  /// How many times Lift's own keys were cleared from the account, for tests.
+  int liftMetadataCleared = 0;
+
   /// How the current account signs in, and whether this sign-in made it.
   String _via = 'email';
   bool _isNew = false;
@@ -176,6 +179,12 @@ class FakeAuth implements AuthService {
     // As Supabase reports `userUpdated`: the same account, with its new name.
     _account = Account(id: account.id, email: account.email, name: written);
     _controller.add(_account);
+  }
+
+  @override
+  Future<void> clearLiftMetadata() async {
+    if (_account == null) throw const AuthException(AuthFailure.unavailable);
+    liftMetadataCleared++;
   }
 
   @override

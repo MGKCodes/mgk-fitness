@@ -10,6 +10,7 @@ import 'src/core/database/app_database.dart';
 import 'src/core/launch/launch_curtain.dart';
 import 'src/features/auth/data/phone_training_data.dart';
 import 'src/features/auth/data/supabase_auth.dart';
+import 'src/features/coaching/data/ai_consent_factory.dart';
 import 'src/features/coaching/data/supabase_coach.dart';
 import 'src/features/coaching/data/supabase_coach_memory.dart';
 import 'src/features/planning/data/cached_standing_plan_store.dart';
@@ -133,6 +134,13 @@ class MgkLiftApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = database;
     final supabase = client;
+    // One answer, read by everything that may send: the shell asks it at the
+    // doors and the two clients check it before every request. It holds
+    // nothing in memory that matters (the account and a file do), so a
+    // rebuild making a new one loses nothing.
+    final aiConsent = supabase == null
+        ? null
+        : createAiConsentStore(client: supabase);
 
     return MaterialApp(
       title: kProductName,
@@ -196,7 +204,9 @@ class MgkLiftApp extends StatelessWidget {
             ? null
             : WorkoutBackup(db, SupabaseBackupRemote(supabase)),
         // The mark stays absent rather than inert when there is no server.
-        coach: supabase == null ? null : SupabaseCoach(supabase),
+        coach: supabase == null
+            ? null
+            : SupabaseCoach(supabase, consent: aiConsent),
         // Reading back what was already said. Paired with `coach` rather than
         // gated separately: there is no build that can hold a conversation but
         // must not be shown it.
@@ -205,11 +215,14 @@ class MgkLiftApp extends StatelessWidget {
         // stopped paying must still be able to read what was stored about them
         // and delete it.
         coachMemory: supabase == null ? null : SupabaseCoachMemory(supabase),
-        // Device-local and unconditional: the switch is consent, so it
-        // works with no account and no server — and a build with no
+        // Device-local and unconditional: whether the coach is shown at all,
+        // which works with no account and no server — and a build with no
         // Supabase has no coach to switch off, which the shell reads from
         // `coach` being null rather than from this.
         coachPreference: LocalCoachPreference(),
+        // The yes itself, on the account (issue #10). Turning the switch above
+        // off takes it back.
+        aiConsent: aiConsent,
         // Device-local too: the medical disclaimer is accepted once on this
         // phone, before the coach or a plan is first used.
         disclaimers: LocalDisclaimerStore(),
@@ -223,7 +236,9 @@ class MgkLiftApp extends StatelessWidget {
         deleter: supabase == null
             ? null
             : AccountDeletionService(client: supabase),
-        planner: supabase == null ? null : SupabaseCoachPlanner(supabase),
+        planner: supabase == null
+            ? null
+            : SupabaseCoachPlanner(supabase, consent: aiConsent),
         // With a copy on the phone, so today's planned session is on Track
         // with no signal at the gym — and shown before the server is asked.
         plans: supabase == null

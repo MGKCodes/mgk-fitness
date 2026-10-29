@@ -1,20 +1,27 @@
-/// Whether the lifter wants the AI coach at all.
+/// Whether the lifter wants the AI coach shown at all.
+///
+/// **Not the consent any more.** Until 2.0.1 this switch was the only answer
+/// Lift kept about the coach, on the phone and on by default, and it was
+/// called consent. It was not one: nobody had said yes, and the coach's server
+/// had nothing to check. The yes is now asked for and kept on the account
+/// (`AiConsentStore`, issue #10). This is what is left: whether the coach mark
+/// is there, and whether Plan offers to build anything.
+///
+/// The two still meet at one point. Turning this off takes the account's yes
+/// back, because the switch has always promised that off means nothing leaves
+/// the app. Turning it on does not give one; the coach asks before it first
+/// sends.
 ///
 /// **Device-local on purpose, unlike units.** Units live in `core.user_settings`
-/// because they are a display choice shared with Run and one person wants one
-/// answer. This is not a display choice: it is consent to send what you write
-/// to a third party, and consent belongs to the person on the device in front
-/// of them, not to an account row that a restore could quietly flip back on.
+/// because they are a display choice shared with Run. Whether this phone shows
+/// a coach is this phone's.
 ///
 /// Defaulting to on is deliberate. The coach is the paid half of the product,
-/// and Guideline 5.1.2(i) asks for the disclosure to be *visible before the
-/// data goes*, not for the feature to be off until found — which is why the
-/// coach screen carries the disclosure at the point of use and this switch sits
-/// next to it. See `docs/ai-disclosure.md`.
+/// and showing it sends nothing: the first request asks first.
 ///
-/// Neither method throws. A consent switch that cannot be read must fail
-/// **safe for the product and honest for the person**: [load] answers the
-/// default rather than an error, and the disclosure is on screen either way.
+/// Neither method throws. A switch that cannot be read answers the default
+/// rather than an error, and the consent is checked before every request
+/// regardless of what this says.
 abstract interface class CoachPreferenceStore {
   /// Whether the coach is enabled. True when this device has never been asked.
   Future<bool> load();

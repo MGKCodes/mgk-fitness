@@ -113,10 +113,12 @@ void main() {
       ]);
     });
 
-    test('says the coach can be turned off, and what that stops', () {
+    test('says the coach asks first, can be turned off, and what that stops', () {
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
         'The coach is the only part of the app that sends anything to an AI '
-            'provider.',
+            'provider, and it asks before it first does.',
+        'Your answer is kept on your account, where our server checks it',
+        'stops that entirely and takes your answer back',
         'no message, no training summary and no plan answer leaves the app for '
             'OpenRouter',
       ]);
@@ -283,7 +285,9 @@ void main() {
 
     test('tells the reader how to stop it', () {
       bothCarry(app, doc, 'docs/ai-disclosure.md', <String>[
-        'Use the AI coach in Settings turns this off completely.',
+        'Use the AI coach in Settings turns this off completely and takes your answer back.',
+        'Your coach asks before it sends anything, and nothing in this document happens until you agree.',
+        'our server checks it before any request goes to OpenRouter.',
         'Turning it off does not un-send what you have already said.',
       ]);
     });

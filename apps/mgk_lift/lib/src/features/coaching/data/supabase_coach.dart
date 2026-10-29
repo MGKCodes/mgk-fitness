@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../domain/ai_consent.dart';
 import '../domain/coach.dart';
+import 'ai_consent_factory.dart';
 
 /// The coach, via the `coach` Edge Function.
 ///
@@ -19,9 +21,14 @@ import '../domain/coach.dart';
 /// session that did not happen or a sentence nobody said. That is why the
 /// request is one line long.
 class SupabaseCoach implements CoachService {
-  SupabaseCoach(this._client);
+  SupabaseCoach(this._client, {AiConsentStore? consent})
+    : _consent = consent ?? createAiConsentStore(client: _client);
 
   final SupabaseClient _client;
+
+  /// Whether this lifter has agreed to their training going to the AI
+  /// provider. Asked before every request (issue #10).
+  final AiConsentStore _consent;
 
   static const _surface = 'lift_chat';
 
@@ -34,6 +41,12 @@ class SupabaseCoach implements CoachService {
   Future<String> ask(String message, {required String conversationId}) async {
     if (_client.auth.currentUser == null) {
       throw const CoachException(CoachFailure.signedOut);
+    }
+    // **Here, at the one place every message passes, as well as at the doors.**
+    // The shell asks before the coach opens; this is what makes asking the
+    // rule rather than a habit, the way Run's `CoachService` holds it.
+    if (!await consentGiven(_consent)) {
+      throw const CoachException(CoachFailure.consentRequired);
     }
 
     try {
@@ -64,7 +77,11 @@ class SupabaseCoach implements CoachService {
       }
       throw const CoachException(CoachFailure.serverError);
     } on FunctionException catch (e) {
-      throw CoachException(_map(e));
+      final failure = _map(e);
+      if (failure == CoachFailure.consentRequired) {
+        await _consent.refusedByAccount();
+      }
+      throw CoachException(failure);
     } on CoachException {
       rethrow;
     } on Object {
@@ -86,9 +103,14 @@ class SupabaseCoach implements CoachService {
   ///
   /// Any other status means the function answered, so it is the server's
   /// fault, not the signal's. Only no answer at all is [CoachFailure.unavailable].
+  ///
+  /// 403 is read by its body, the one place the code is: the account has no
+  /// current yes (`consent.ts`). A 403 that says anything else stays the
+  /// server's.
   static CoachFailure _map(FunctionException e) => switch (e.status) {
     401 => CoachFailure.signedOut,
     402 => CoachFailure.notEntitled,
+    403 when refusedForConsent(e.details) => CoachFailure.consentRequired,
     429 => CoachFailure.limitReached,
     _ => CoachFailure.serverError,
   };

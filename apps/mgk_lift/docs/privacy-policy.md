@@ -120,8 +120,10 @@ We do not sell personal data, and we do not use it for third-party advertising.
 
 ## The coach is optional and can be turned off
 
-The coach is the only part of the app that sends anything to an AI provider.
-Turning off **Use the AI coach** in Settings stops that entirely: no message, no
+The coach is the only part of the app that sends anything to an AI provider,
+and it asks before it first does. Your answer is kept on your account, where our
+server checks it before any request goes. Turning off **Use the AI coach** in
+Settings stops that entirely and takes your answer back: no message, no
 training summary and no plan answer leaves the app for OpenRouter. Logging,
 plans you already have, photos and syncing all keep working. Nothing you have
 already said is un-sent by turning it off, but you can erase what the coach

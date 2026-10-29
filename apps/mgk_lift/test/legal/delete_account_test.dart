@@ -164,6 +164,47 @@ void main() {
 
       expect(deleter.asked, <DeletionScope>[DeletionScope.everything]);
     });
+
+    testWidgets('a login kept for Run loses Lift\'s own keys with the data', (
+      WidgetTester tester,
+    ) async {
+      // The server's sweep erases the lift schema and leaves auth metadata
+      // alone, so the coach's yes would otherwise outlive the data it was
+      // given about (issue #10).
+      final auth = FakeAuth(account: _signedIn);
+      await pumpScreen(
+        tester,
+        auth: auth,
+        deleter: FakeAccountDeleter(
+          result: const AccountDeletionResult(
+            accountDeleted: false,
+            retainedReason: 'other_app_data',
+            remainingApps: <String>['run'],
+          ),
+        ),
+      );
+      await arm(tester);
+
+      await tester.tap(find.byType(DestructiveButton));
+      await tester.pumpAndSettle();
+
+      expect(auth.liftMetadataCleared, 1);
+    });
+
+    testWidgets('a deleted login has no keys left to clear', (
+      WidgetTester tester,
+    ) async {
+      final auth = FakeAuth(account: _signedIn);
+      await pumpScreen(tester, auth: auth, deleter: FakeAccountDeleter());
+      await tester.tap(scopeCard(DeletionScope.everything));
+      await tester.pumpAndSettle();
+      await arm(tester);
+
+      await tester.tap(find.byType(DestructiveButton));
+      await tester.pumpAndSettle();
+
+      expect(auth.liftMetadataCleared, 0);
+    });
   });
 
   group('what the screen says happened', () {

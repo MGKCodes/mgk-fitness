@@ -54,6 +54,10 @@ enum PlanFailure {
   notEntitled,
   limitReached,
 
+  /// No yes on the account to the coach sending this lifter's training, so
+  /// nothing was sent. See `CoachFailure.consentRequired`.
+  consentRequired,
+
   /// The coach could not produce a week this lifter could actually do, twice.
   couldNotAgree,
 
@@ -74,6 +78,9 @@ enum PlanFailure {
     signedOut => 'Sign in to build a plan.',
     notEntitled => 'Planning is part of the paid plan.',
     limitReached => 'That is all the planning for now. Try again later.',
+    consentRequired =>
+      'Your coach needs your permission before anything is sent. Nothing '
+          'was sent.',
     couldNotAgree =>
       'Your coach could not put a week together that fits. Try again, or '
           'tell it more about what you can do.',

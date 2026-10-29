@@ -9,7 +9,8 @@ import '../domain/coach_preference.dart';
 /// does not require the binding to be ready and a test can pass an instance in.
 ///
 /// It does **not** have a remote half, and that is the design rather than an
-/// omission: see [CoachPreferenceStore] for why consent stays on the device.
+/// omission: see [CoachPreferenceStore] for why. The consent is the account's,
+/// in `AiConsentStore`.
 class LocalCoachPreference implements CoachPreferenceStore {
   LocalCoachPreference({SharedPreferences? prefs}) : _explicit = prefs;
 
@@ -30,7 +31,7 @@ class LocalCoachPreference implements CoachPreferenceStore {
   ///
   /// An unreachable plugin answers the default rather than throwing, for the
   /// reason on [CoachPreferenceStore]: a launch is not worth failing over a
-  /// switch, and the disclosure is on the coach screen regardless of what this
+  /// switch, and the coach asks before it sends regardless of what this
   /// returns.
   @override
   Future<bool> load() async {

@@ -112,9 +112,11 @@ const LegalDocument privacyPolicy = LegalDocument(
       heading: 'The coach is optional and can be turned off',
       paragraphs: <String>[
         'The coach is the only part of the app that sends anything to an AI '
-            'provider. Turning off Use the AI coach in Settings stops that '
-            'entirely: no message, no training summary and no plan answer '
-            'leaves the app for OpenRouter. Logging, plans you already have, '
+            'provider, and it asks before it first does. Your answer is kept '
+            'on your account, where our server checks it before any request '
+            'goes. Turning off Use the AI coach in Settings stops that '
+            'entirely and takes your answer back: no message, no training '
+            'summary and no plan answer leaves the app for OpenRouter. Logging, plans you already have, '
             'photos and syncing all keep working. Nothing you have already '
             'said is un-sent by turning it off, but you can erase what the '
             'coach remembers from the same screen.',
@@ -439,6 +441,8 @@ const LegalDocument aiDisclosure = LegalDocument(
         'When you ask for a plan: your goal, how many weeks and days a week '
             'you can train, which days those are, the equipment you have, and '
             'your injury notes if you gave any.',
+        'When you ask to swap a movement during a session: what you asked, '
+            'and the movements in that session.',
       ],
     ),
     LegalSection(
@@ -461,13 +465,23 @@ const LegalDocument aiDisclosure = LegalDocument(
       ],
     ),
     LegalSection(
+      heading: 'Asking first',
+      paragraphs: <String>[
+        'Your coach asks before it sends anything, and nothing in this '
+            'document happens until you agree. Your answer is kept on your '
+            'account, so another phone signed in to it does not ask again, '
+            'and our server checks it before any request goes to OpenRouter.',
+      ],
+    ),
+    LegalSection(
       heading: 'Turning it off',
       paragraphs: <String>[
-        'Use the AI coach in Settings turns this off completely. With it off, '
-            'nothing in this document happens — no message, no training '
-            'summary and no plan answer leaves the app for OpenRouter. '
-            'Logging, plans you already have, your photos and syncing all '
-            'keep working.',
+        'Use the AI coach in Settings turns this off completely and takes '
+            'your answer back. With it off, nothing in this document happens '
+            '— no message, no training summary and no plan answer leaves the '
+            'app for OpenRouter. Logging, plans you already have, your photos '
+            'and syncing all keep working. Turned back on, your coach asks '
+            'again before it next sends anything.',
         'Turning it off does not un-send what you have already said. You can '
             'erase what the coach remembers under Settings, Coach, and Delete '
             'account removes your conversations along with everything else.',

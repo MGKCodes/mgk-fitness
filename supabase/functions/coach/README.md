@@ -33,10 +33,12 @@ see [database.md](../../../docs/database.md#the-bug-this-replaced).
 ## What it does
 
 1. Verifies the caller is a signed-in Supabase user (rejects otherwise).
-2. For a Run surface, refuses with `403` unless the account has agreed to its
-   training going to the AI provider (`run_ai_consent`,
-   [ADR-0036](../../../apps/mgk_run/docs/decisions/0036-the-coach-asks-before-it-sends.md)).
-   Lift is not checked yet: its answer is still kept on the phone.
+2. Refuses with `403` unless the account has agreed to its training going to
+   the AI provider, for the app the surface belongs to: `run_ai_consent` or
+   `lift_ai_consent`
+   ([ADR-0036](../../../apps/mgk_run/docs/decisions/0036-the-coach-asks-before-it-sends.md)).
+   Lift is checked from its 2.0.1 (issue #10), the first Lift that asks; deploy
+   that only once 2.0.1 is live on both stores, since 2.0.0 never asked.
 3. Reads `core.entitlements` for the surface's app and resolves a **tier**, or
    refuses with `402` where that app sells coaching.
 4. **Enforces a per-user rate limit and spend cap before spending any tokens.**
@@ -383,7 +385,7 @@ Everything is `{ "error": "<code>", ... }` with a matching status.
 | 429    | `spend_cap_reached`                                  | The rolling 24 h credit cap bound. `scope` is `daily_spend`; same `retry_after_seconds` / `Retry-After`.                                                                                                        |
 | 503    | `coach_not_configured`                               | A secret is missing. With `"reason": "limiter_unavailable"` it means the SQL below has not been applied (or the service key is wrong) — **the coach refuses rather than spending money it cannot account for**. |
 | 503    | `coach_unavailable`                                  | The counter store had a transient failure, so the limit could not be checked. Same fail-closed reasoning.                                                                                                       |
-| 403    | `consent_required`                                   | A Run surface, and the account has no current yes to its training going to the AI provider (`run_ai_consent`, ADR-0036). Checked before the entitlement read. Lift is not checked yet.                         |
+| 403    | `consent_required`                                   | The account has no current yes to its training going to the AI provider: `run_ai_consent` for a Run surface, `lift_ai_consent` for a Lift one (ADR-0036, issue #10). Checked before the entitlement read. |
 | 402    | `not_entitled`                                       | The caller has not bought coaching on the app this surface belongs to. Either app, since ADR-0030.                                                                                                              |
 | 401    | `unauthorized`                                       | No or bad JWT.                                                                                                                                                                                                  |
 | 400    | `bad_request` / `unsupported_surface`                | Malformed body, a request a surface cannot answer (a `chat` with no `message`, a `summarise` with no `transcript`), or a `surface` this function does not serve.                                                |

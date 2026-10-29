@@ -156,9 +156,12 @@ Connect; the notes below go from `listing.json`. Notes:
 > that deleting does not cancel it.
 >
 > The AI coach sends the lifter's messages and a summary of their training to
-> OpenRouter, from our server. It is disclosed at the point of use (the info
-> mark in the coach sheet), in Settings > Use the AI coach (a switch that turns
-> it off entirely), and in Privacy & legal.
+> OpenRouter, from our server. It asks first: before the coach's first request
+> a sheet says what is sent and where, and nothing is sent until the lifter
+> taps Agree; the answer is kept on the account and checked by the server. It
+> is also disclosed at the point of use (the info mark in the coach sheet), in
+> Settings > Use the AI coach (a switch that turns it off entirely and takes
+> the answer back), and in Privacy & legal.
 >
 > Signing in: Sign in with Apple, Sign in with Google, or an email and
 > password, all on the one sign-in screen.

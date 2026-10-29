@@ -62,6 +62,16 @@ change a lifter would notice is recorded.
   never after Apple. Shown on Settings and the account screen, and given,
   changed or cleared there. It is the suite's one name, so Run shows the same.
   Lift's coach does not use it (the ADR's open question).
+- **The coach asks before it sends anything** (issue #10, Run's
+  [ADR-0036](../../mgk_run/docs/decisions/0036-the-coach-asks-before-it-sends.md)).
+  A sheet before the coach's first request, from the coach mark, *Build a
+  plan* or a swap mid-session, says what is sent and where, and nothing goes
+  until *Agree*. The answer is kept on the account as `lift_ai_consent`, and
+  the coach's server checks it. 2.0.0's switch was on by default, which is not
+  a yes, so everybody is asked once. *Use the AI coach* still hides the coach;
+  turning it off now also takes the answer back, and a swap with the coach off
+  is chosen by hand rather than sent. Deleting Lift's data and keeping the
+  login clears the answer.
 
 **On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
 changes production or a published document (the ADR's *Build*, held for the
@@ -79,6 +89,14 @@ the same day, not before, since 2.0.0 is live with them:
 - [store-listing.md](store-listing.md): the Name rows in App Privacy and Data
   safety become the name somebody gives, optional, for the app's function,
   rather than only what Google may send.
+- [ai-disclosure.md](ai-disclosure.md) and the privacy policy's coach section
+  say the coach asks first and keeps the answer on the account (issue #10).
+  Already changed here and in the app; the site's copies are regenerated from
+  them that day.
+
+**After 2.0.1 is live on both stores**, not before: deploy `coach` with
+`lift` in `CONSENT_KEYS` (`supabase/functions/coach/consent.ts`). From then on
+a Lift 2.0.0 install is refused until it updates, because it never asked.
 - [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md) is 2.0.0's;
   its rows B5 to B8 say what changes.
 

@@ -119,4 +119,18 @@ abstract interface class AuthService {
   /// [AuthFailure.unavailable] when it did not reach the server, and nothing
   /// is changed then.
   Future<void> updateName(String? name);
+
+  /// Removes Lift's own keys from the account, when Lift's data has been
+  /// deleted and the login kept for Run.
+  ///
+  /// **The server's sweep does not reach auth metadata.** It erases the
+  /// `lift` schema and leaves the login alone, so without this a lifter who
+  /// deleted their Lift data and came back through the same login would find
+  /// their yes to the coach still on file, as though nothing had gone. Run
+  /// clears its own keys the same way. The name is not here: it is the
+  /// account's, and Run shows it.
+  ///
+  /// Needs the session, so it runs before signing out. Throws when it did not
+  /// reach the server.
+  Future<void> clearLiftMetadata();
 }
