@@ -213,7 +213,10 @@ void main() {
       double top(String label) => tester.getTopLeft(find.text(label)).dy;
       expect(top('PREFERENCES'), lessThan(top('YOUR DATA')));
       expect(top('YOUR DATA'), lessThan(top('ABOUT')));
-      expect(find.text('MGKFitness: Lift 2.0.1 · MGKCodes'), findsOneWidget);
+      expect(
+        find.text('MGKFitness: Lift $kAppVersion · MGKCodes'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Support'));
       await tester.pumpAndSettle();
@@ -250,7 +253,7 @@ void main() {
       expect(opened.last.path, 'lift@mgkfitness.mgkcodes.com');
       expect(
         opened.last.queryParameters['subject'],
-        'A problem with MGKFitness: Lift 2.0.1',
+        'A problem with MGKFitness: Lift $kAppVersion',
       );
 
       await tester.tap(find.text('Source code'));

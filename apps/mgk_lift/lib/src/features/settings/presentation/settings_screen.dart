@@ -29,7 +29,7 @@ import 'credits_screen.dart';
 /// `legal_screen_test.dart` holds it to. Dart cannot read the pubspec at
 /// runtime without a plugin, and a wrong version in a bug report is worse than
 /// none: *Report a problem* writes it into every report.
-const String kAppVersion = '2.0.1';
+const String kAppVersion = '2.0.2';
 
 /// Everything about the app rather than about the training: who is signed in,
 /// how weights read, where backup stands, what the app says about itself.
