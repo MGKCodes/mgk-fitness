@@ -61,7 +61,7 @@
         { "title": "Starting one", "screens": ["session-empty", "workout-library-empty", "workout-library"] },
         { "title": "Your workouts", "screens": ["workout-library-open", "workout-editor"] },
         { "title": "In the session", "screens": ["session", "exercise-picker", "swap-sheet", "session-long", "session-resting"] },
-        { "title": "Rest, and changing course", "screens": ["session-rest-over", "exercise-picker-replace", "reorder-sheet"] },
+        { "title": "Rest, and changing course", "screens": ["session-rest-over", "exercise-picker-replace"] },
         { "title": "Finishing it", "screens": ["finish-sheet-save", "finish-sheet-blank", "session-summary", "session-summary-pb", "session-summary-short"] },
         { "title": "Whether it is backed up", "screens": ["session-summary-offline", "session-summary-backed-up"] }
       ]
@@ -562,7 +562,7 @@
       "out": "Back arrow, Finish, Discard",
       "next": "Tick a set",
       "note": "Three finished and folded to a line each, under the glass heading.",
-      "doc": "The case the collapse exists for: expanded throughout, this session is around 2,000px and the movement you are actually on is off screen. A finished movement folds to one line and reopens on a tap.",
+      "doc": "The case the collapse exists for: expanded throughout, this session is around 2,000px and the movement you are actually on is off screen. A finished movement folds to one line and reopens on a tap. Since 29 October the order changes here too: hold a movement's picture and name, or a folded line anywhere, and drag it to its new place; an open one folds to its name while it is carried and opens again where it lands (ADR 0005). It replaced a button at the foot of the list and the sheet it opened, which was W20.",
       "tags": ["free"]
     },
     "session-resting": {
@@ -1415,17 +1415,6 @@
       "doc": "The same picker as {{exercise-picker}}, in replace mode: titled for the movement being swapped, and one tap chooses and closes. The replacement takes the sets still to do, their target reps and the new movement's weight from last time. Logged sets stay where they are, under the old name, because they were lifted. A coached lifter gets {{swap-sheet}} instead.",
       "tags": ["free", "new"]
     },
-    "reorder-sheet": {
-      "code": "W20",
-      "title": "Reorder movements",
-      "host": "sheet",
-      "in": "{{session}} › Reorder movements, at the foot of the list",
-      "out": "Done, drag or scrim",
-      "next": "Drag by the handle, then Done",
-      "note": "The bench is taken, so incline goes first.",
-      "doc": "The recorder could always reorder; nothing on screen reached it until 2026-09-29. A sheet of one-line rows rather than drag handles on the cards, because the cards are tall and full of fields, the wrong surface to start a long-press drag on. Shown only once a session has two movements.",
-      "tags": ["free"]
-    },
     "session-summary-offline": {
       "code": "W22",
       "title": "Summary — saved on this phone",
@@ -1518,7 +1507,6 @@
 
   "edges": [
     { "from": "session", "to": "exercise-picker-replace", "label": "swap, without the coach" },
-    { "from": "session", "to": "reorder-sheet", "label": "Reorder movements" },
     { "from": "session-resting", "to": "session-rest-over", "label": "rest runs out" },
     { "from": "profile", "to": "history", "label": "See all" },
     { "from": "history", "to": "session-past", "label": "a session" },

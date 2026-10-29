@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
 import 'package:flutter/material.dart';
@@ -23,7 +24,8 @@ import '../../stats/presentation/exercise_stats_screen.dart';
 import 'exercise_card.dart';
 import 'exercise_picker_sheet.dart';
 import 'finish_sheet.dart';
-import 'reorder_sheet.dart';
+import 'hold_to_move.dart';
+import 'lifted_while_dragged.dart';
 import 'session_summary_screen.dart';
 import 'workout_library_screen.dart';
 
@@ -240,6 +242,39 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   /// not stack a message per repeat.
   DateTime? _lastRefusal;
 
+  /// The movement held to be moved, folded to its header while it is carried
+  /// — see [_hold]. Null when nothing is.
+  String? _held;
+
+  /// Opens the held movement once a drop has landed — see [_landing].
+  Timer? _settle;
+
+  /// Gives back the room held at the foot of the list, once the card that
+  /// needed it has opened again — see [_putDown].
+  Timer? _giveBack;
+
+  /// How many times each movement has been folded to be carried, by id: the
+  /// key of the [AnimatedSize] around its card, so each fold gets a fresh one
+  /// (see [_hold]).
+  final Map<String, int> _folds = <String, int>{};
+
+  /// Each card's own key, by movement id, so the card — and whatever under it
+  /// a finger is pressing — survives its [AnimatedSize] being replaced.
+  final Map<String, GlobalKey> _cards = <String, GlobalKey>{};
+
+  /// Room at the foot of the list while a movement is carried: as tall as
+  /// what folding it took away, so the list is never shorter than it was.
+  ///
+  /// Scrolled to the end, a list that gets shorter scrolls back by what it
+  /// lost, and the folded card went with it — 242 pixels down from under the
+  /// thumb holding it, in the test that found it. Given back only once the
+  /// card has opened again, when the list is its full length without it.
+  double _slack = 0;
+
+  /// Counts carries, to key the room above afresh each time, as [_folds]
+  /// does a card: it has to appear in the same frame as the fold, not grow.
+  int _carries = 0;
+
   bool _isCollapsed(SessionExercise e) => !(_expanded[e.id] ?? !e.isComplete);
 
   void _toggleCollapsed(SessionExercise e) =>
@@ -300,6 +335,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     _ticker?.cancel();
     _clock.dispose();
     _scroll.dispose();
+    _settle?.cancel();
+    _giveBack?.cancel();
     for (final node in _focus.values) {
       node.dispose();
     }
@@ -895,24 +932,109 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     widget.onSwapped?.call(exercise.name, choice);
   }
 
-  /// Opens the reorder sheet and applies the new order, one move at a time,
-  /// through the same queue as every other write.
-  Future<void> _reorder() async {
-    final order = await ReorderSheet.show(
-      context,
-      exercises: _session.exercises,
+  /// A hold on [exercise] has lasted: fold it to its header, to be carried.
+  /// The lift comes on the next frame, once the fold is laid out — see
+  /// [HoldToMove].
+  ///
+  /// **The fold is a cut, and has to be.** The list measures the card on that
+  /// next frame, and a card halfway through animating shut is measured
+  /// halfway. So the card's [AnimatedSize] is replaced by a fresh one
+  /// ([_folds]), which lays its first child out at that child's own size with
+  /// nothing to animate from; the card itself keeps its [GlobalKey], so
+  /// nothing under the finger is rebuilt. Opening again is animated as usual,
+  /// by that same fresh one.
+  ///
+  /// The tick is [AppHaptics.tap], the suite's acknowledgement of a finger:
+  /// the card saying it felt the hold, before anything has moved. Nothing on
+  /// the drop: the card settling into its place says that, and the order
+  /// changing is not the end of anything.
+  void _hold(SessionExercise exercise) {
+    _settle?.cancel();
+    _settle = null;
+    _giveBack?.cancel();
+    _giveBack = null;
+    final open = _cards[exercise.id]?.currentContext?.size?.height ?? 0;
+    setState(() {
+      _held = exercise.id;
+      _folds[exercise.id] = (_folds[exercise.id] ?? 0) + 1;
+      // The whole card's height until the fold can be measured: more room
+      // than it gives up, which is the safe side to be wrong on.
+      _carries++;
+      _slack = open;
+    });
+    // Measured on the frame that lays the fold out, before the lift — which
+    // waits for the same frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _held != exercise.id) return;
+      final folded = _cards[exercise.id]?.currentContext?.size?.height;
+      if (folded == null) return;
+      setState(() => _slack = math.max(0, open - folded));
+    });
+    unawaited(AppHaptics.tap());
+  }
+
+  /// The finger that held [exercise] has gone. Opened again at once, unless
+  /// it was dropped: then [_landing] opens it, after the landing.
+  void _letGo(SessionExercise exercise) {
+    if (_settle != null || _held != exercise.id) return;
+    _putDown();
+  }
+
+  /// A carried movement let go: it opens again once it has landed.
+  ///
+  /// The list flies it into its place, and what it flies is this card, so the
+  /// card waits for the landing ([_landingTime]). Opened sooner, it would grow
+  /// in mid-air over its neighbours, and the room held for it at the foot of
+  /// the list would go while it was still in the air — the list scrolled
+  /// back by it, in the test that found it, as the card landed.
+  void _landing(int index) {
+    _settle?.cancel();
+    _settle = Timer(_landingTime, () {
+      _settle = null;
+      _putDown();
+    });
+  }
+
+  /// Opens the carried card where it is, and gives back the room held for
+  /// it once it has opened ([_slack]): by then the list is its full length
+  /// again without it.
+  void _putDown() {
+    if (!mounted) return;
+    setState(() => _held = null);
+    _giveBack?.cancel();
+    _giveBack = Timer(AppMotion.base, () {
+      _giveBack = null;
+      if (mounted) setState(() => _slack = 0);
+    });
+  }
+
+  /// A little past the 250 ms Flutter's reorderable list takes to fly a
+  /// dropped item back into the list (`_DragInfo.startDrag`), so the landing
+  /// has been drawn before the card opens. The framework's number, not a
+  /// design choice, so not a motion token.
+  static const Duration _landingTime = Duration(milliseconds: 300);
+
+  /// Puts a dropped movement where it was dropped — on screen at once, and
+  /// through the same queue as every other write, so it is on disk before the
+  /// next change, survives the app being killed, and is backed up with the
+  /// session at Finish like any other edit.
+  ///
+  /// Also what a screen reader's Move up, Move down, Move to the start and
+  /// Move to the end call, which the list gives every card.
+  ///
+  /// [to] is the list's answer, which counts the slot **before** the movement
+  /// left it: moving down, it is one past where the movement lands. The
+  /// recorder wants where it lands.
+  void _moved(int from, int to) {
+    final exercises = _session.exercises;
+    if (from < 0 || from >= exercises.length) return;
+    final target = to > from ? to - 1 : to;
+    if (target == from) return;
+    final id = exercises[from].id;
+    _change(
+      (s) => s.withExerciseMoved(id, target),
+      () => widget.recorder.moveExercise(id, target),
     );
-    if (!mounted || order == null) return;
-    final current = <String>[for (final e in _session.exercises) e.id];
-    for (var i = 0; i < order.length && i < current.length; i++) {
-      if (current[i] == order[i]) continue;
-      final id = order[i];
-      current
-        ..remove(id)
-        ..insert(i, id);
-      final to = i;
-      await _enqueue(() => widget.recorder.moveExercise(id, to));
-    }
   }
 
   /// Swaps a movement for one the lifter picks, with no coach involved.
@@ -1307,13 +1429,31 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
   double get _scrollOffset => _scroll.hasClients ? _scroll.offset : 0;
 
+  /// The heading, the movements, and the foot — with the movements in a list
+  /// that reorders in place.
+  ///
+  /// **A card is held and dragged where it sits** (29 October 2026). The order
+  /// used to be changed from a button at the foot of this list, in a sheet of
+  /// one-line rows, on the reasoning that the cards are tall and full of
+  /// fields: the wrong surface for a long press. Matthew found the separate
+  /// screen clumsy in use. What answers the old reasoning now is
+  /// *where* a card is held — its picture and name, never its sets (see
+  /// [ExerciseCard]) — and the platform's delayed start, so a drag that is
+  /// already moving still scrolls. And the card is carried folded to its
+  /// header, not at its full height ([HoldToMove] says why).
+  ///
+  /// The heading and the foot ride along as the list's header and footer, so
+  /// the screen scrolls as one piece exactly as before; only the cards move.
   Widget _list(
     BuildContext context, {
     required bool full,
     required double top,
   }) {
-    return ListView(
-      controller: _scroll,
+    final exercises = _session.exercises;
+    // One movement has nowhere to go, so nothing on it can be held.
+    final movable = exercises.length > 1;
+    return ReorderableListView.builder(
+      scrollController: _scroll,
       // Dragging the list puts the keyboard away — the second of three ways
       // out, with a tap elsewhere and Done.
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1323,85 +1463,124 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         AppSpacing.lg,
         _dockRoom + MediaQuery.paddingOf(context).bottom,
       ),
-      children: <Widget>[
-        _LargeTitle(
-          editing: widget.editing,
-          name: _session.name,
-          startedAt: _session.startedAt,
-          clock: _clock,
-          volumeKg: _session.volumeKg,
-          massUnit: widget.massUnit,
-          completedSets: _session.completedSets,
-          movements: _session.exercises.length,
+      // Each card says where it is held. On a phone the default makes the
+      // whole card the handle, set rows and all — exactly what the card's
+      // own rule is there to prevent.
+      buildDefaultDragHandles: false,
+      onReorderEnd: _landing,
+      onReorder: _moved,
+      proxyDecorator: (child, index, animation) => liftedWhileDragged(
+        child,
+        animation,
+        gapBelow: ExerciseCard.gapBelow(
+          collapsed: index < exercises.length && _isCollapsed(exercises[index]),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        for (final exercise in _session.exercises)
-          // Animated, because ticking the last set collapses the card under
-          // the lifter's finger. A jump cut there reads as the card having
-          // been deleted.
-          AnimatedSize(
-            key: ValueKey<String>(exercise.id),
+      ),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _LargeTitle(
+            editing: widget.editing,
+            name: _session.name,
+            startedAt: _session.startedAt,
+            clock: _clock,
+            volumeKg: _session.volumeKg,
+            massUnit: widget.massUnit,
+            completedSets: _session.completedSets,
+            movements: exercises.length,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
+      itemCount: exercises.length,
+      itemBuilder: (context, i) {
+        final exercise = exercises[i];
+        // Animated, because ticking the last set collapses the card under
+        // the lifter's finger. A jump cut there reads as the card having been
+        // deleted. Not when it folds to be carried, which is why it is keyed
+        // by fold — see [_hold].
+        return KeyedSubtree(
+          key: ValueKey<String>(exercise.id),
+          child: AnimatedSize(
+            key: ValueKey<int>(_folds[exercise.id] ?? 0),
             duration: AppMotion.base,
             curve: AppMotion.snappy,
             alignment: Alignment.topCenter,
-            child: ExerciseCard(
-              exercise: exercise,
-              catalogue: _lookup.find(exercise.name),
-              massUnit: widget.massUnit,
-              previous: _previousFor(exercise.name),
-              isCollapsed: _isCollapsed(exercise),
-              onToggleCollapsed: () => _toggleCollapsed(exercise),
-              onOpenStats: () => _openStats(exercise.name),
-              onSwap: () => _swap(exercise),
-              onAddSet: () => _addSet(exercise),
-              onRemove: () => _removeExercise(exercise),
-              onToggle: _toggle,
-              onCommit: _commit,
-              focusFor: _node,
-              onCycleSetType: _cycleType,
-              onSetMenu: (set) => _setMenu(exercise, set),
-              onRemoveSet: (set) => _removeSet(exercise, set),
-              onRejected: _refused,
-            ),
+            child: _card(exercise, i, movable: movable),
           ),
-        if (full)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.xs),
-            child: Text(
-              '${SessionLimits.movements} movements is the most one session '
-              'holds.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+        );
+      },
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (full)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                '${SessionLimits.movements} movements is the most one session '
+                'holds.',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+              ),
             ),
-          ),
-        const SizedBox(height: AppSpacing.xl),
-        // With the other decisions about the session's shape, at the foot of
-        // the list, and only once there is an order to change.
-        if (_session.exercises.length > 1)
-          Center(
-            child: AppTextButton(
-              label: 'Reorder movements',
-              icon: Icons.swap_vert,
-              onPressed: _reorder,
+          const SizedBox(height: AppSpacing.xl),
+          // Destructive, so it sits at the bottom of the list rather than in
+          // the chrome. Not while editing: a session that happened is deleted
+          // from its page, softly, with Undo.
+          if (!widget.editing)
+            Center(
+              child: AppTextButton(
+                label: 'Discard session',
+                onPressed: _confirmDiscard,
+                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+              ),
             ),
+          // The room held while a movement is carried ([_slack]). Fresh for
+          // each carry, so it is there in full on the frame the card folds;
+          // eased away once the card has opened again.
+          AnimatedSize(
+            key: ValueKey<int>(_carries),
+            duration: AppMotion.base,
+            curve: AppMotion.snappy,
+            alignment: Alignment.topCenter,
+            child: SizedBox(height: _slack),
           ),
-        const SizedBox(height: AppSpacing.sm),
-        // Destructive, so it sits at the bottom of the list rather than in
-        // the chrome. Not while editing: a session that happened is deleted
-        // from its page, softly, with Undo.
-        if (!widget.editing)
-          Center(
-            child: AppTextButton(
-              label: 'Discard session',
-              onPressed: _confirmDiscard,
-              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
+
+  /// One movement's card, at [index] in the list.
+  Widget _card(SessionExercise exercise, int index, {required bool movable}) =>
+      ExerciseCard(
+        key: _cards.putIfAbsent(
+          exercise.id,
+          () => GlobalKey(debugLabel: 'card ${exercise.id}'),
+        ),
+        exercise: exercise,
+        catalogue: _lookup.find(exercise.name),
+        massUnit: widget.massUnit,
+        previous: _previousFor(exercise.name),
+        isCollapsed: _isCollapsed(exercise),
+        onToggleCollapsed: () => _toggleCollapsed(exercise),
+        onOpenStats: () => _openStats(exercise.name),
+        onSwap: () => _swap(exercise),
+        onAddSet: () => _addSet(exercise),
+        onRemove: () => _removeExercise(exercise),
+        onToggle: _toggle,
+        onCommit: _commit,
+        focusFor: _node,
+        onCycleSetType: _cycleType,
+        onSetMenu: (set) => _setMenu(exercise, set),
+        onRemoveSet: (set) => _removeSet(exercise, set),
+        onRejected: _refused,
+        reorderIndex: movable ? index : null,
+        isHeld: _held == exercise.id,
+        onHeld: () => _hold(exercise),
+        onLetGo: () => _letGo(exercise),
+      );
 }
 
 /// Previous, next, *Log set*, Done — above the keyboard, while a number is

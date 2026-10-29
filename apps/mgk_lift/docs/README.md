@@ -62,6 +62,13 @@ change a lifter would notice is recorded.
   never after Apple. Shown on Settings and the account screen, and given,
   changed or cleared there. It is the suite's one name, so Run shows the same.
   Lift's coach does not use it (the ADR's open question).
+- **A movement is moved by holding it, where it sits**
+  ([ADR-0005](decisions/0005-a-movement-is-moved-by-holding-it.md)). Hold a
+  movement's picture and name, or a finished one's line anywhere, and drag it
+  to its new place in the session. It folds to its name while it is carried
+  and opens again where it lands. *Reorder movements* at the foot of the list
+  and the sheet it opened are gone. In the workout editor, holding a name
+  lifts it too, beside the handle.
 
 **On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
 changes production or a published document (the ADR's *Build*, held for the
