@@ -2,7 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 // `Session` is also a gotrue type. Hidden rather than aliased so every use
 // below still reads as the app's own session.
+import '../../coaching/data/ai_consent_factory.dart';
+import '../../coaching/domain/ai_consent.dart';
 import '../../tracking/domain/session.dart';
+import '../domain/intake_flow.dart';
 import '../domain/plan_intake.dart';
 import '../domain/plan_builder.dart';
 import '../domain/coach_planner.dart';
@@ -20,19 +23,30 @@ import '../domain/plan_proposal.dart';
 /// record yet: the device owns it until it is finished, so there is nothing on
 /// the server to read.
 class SupabaseCoachPlanner implements CoachPlanner {
-  SupabaseCoachPlanner(this._client);
+  SupabaseCoachPlanner(this._client, {AiConsentStore? consent})
+    : _consent = consent ?? createAiConsentStore(client: _client);
 
   final SupabaseClient _client;
 
+  /// Asked before every request, as [SupabaseCoach] asks it: an intake answer
+  /// can carry injury notes, and a swap sends the session in progress.
+  final AiConsentStore _consent;
+
   @override
   Future<IntakeTurn> intake({
-    required PlanIntake known,
+    required IntakeProgress progress,
     required List<PlannerTurn> history,
   }) async {
     final data = await _invoke(<String, Object?>{
       'surface': 'lift_intake',
-      'slots': known.toJson(),
-      'missing': known.missing,
+      'slots': progress.plan.toJson(),
+      // By IntakeField name. What is still open is not sent: the coach works
+      // it out from `slots` after reading the lifter's latest message, in the
+      // order its own instructions give, which is IntakeField's order (pinned
+      // by `LIFT_INTAKE_FIELDS` in surfaces.ts). The `missing` list sent here
+      // until 2026-10-07 was in a different order, and following it is what
+      // made the coach ask one thing above options for another.
+      'declined': <String>[for (final f in progress.declined) f.name],
       'history': <Map<String, Object?>>[
         for (final turn in history)
           <String, Object?>{
@@ -45,6 +59,7 @@ class SupabaseCoachPlanner implements CoachPlanner {
     final extracted = data['extracted'];
     return IntakeTurn(
       reply: (data['reply'] as String? ?? '').trim(),
+      asking: data['asking'] as String?,
       // Every turn returns every field, and null means "not learned this turn"
       // rather than "forget it" — which is why the caller merges rather than
       // replaces.
@@ -119,6 +134,9 @@ class SupabaseCoachPlanner implements CoachPlanner {
     if (_client.auth.currentUser == null) {
       throw const PlanException(PlanFailure.signedOut);
     }
+    if (!await consentGiven(_consent)) {
+      throw const PlanException(PlanFailure.consentRequired);
+    }
     try {
       final res = await _client.functions
           .invoke('coach', body: body)
@@ -126,9 +144,14 @@ class SupabaseCoachPlanner implements CoachPlanner {
       final data = res.data;
       if (data is Map<String, Object?>) return data;
       if (data is Map) return data.cast<String, Object?>();
-      throw const PlanException(PlanFailure.unavailable);
+      // It answered, with something unusable: the server's fault.
+      throw const PlanException(PlanFailure.serverError);
     } on FunctionException catch (e) {
-      throw PlanException(_map(e));
+      final failure = _map(e);
+      if (failure == PlanFailure.consentRequired) {
+        await _consent.refusedByAccount();
+      }
+      throw PlanException(failure);
     } on PlanException {
       rethrow;
     } on Object {
@@ -138,10 +161,16 @@ class SupabaseCoachPlanner implements CoachPlanner {
 
   /// The codes are the contract, not the bodies — the function never forwards
   /// an upstream error message, because those can carry our billing details.
+  ///
+  /// **Any other status is the server's fault, not the signal's.** A 502 means
+  /// the function ran and the model's answer was unusable; calling that "could
+  /// not reach your coach" sends somebody to check a connection that worked.
+  /// Only no answer at all -- the catch-all in [_invoke] -- is [unavailable].
   static PlanFailure _map(FunctionException e) => switch (e.status) {
     401 => PlanFailure.signedOut,
     402 => PlanFailure.notEntitled,
+    403 when refusedForConsent(e.details) => PlanFailure.consentRequired,
     429 => PlanFailure.limitReached,
-    _ => PlanFailure.unavailable,
+    _ => PlanFailure.serverError,
   };
 }

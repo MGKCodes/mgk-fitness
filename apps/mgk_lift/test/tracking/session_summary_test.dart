@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mgk_lift/src/features/stats/domain/training_stats.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session.dart';
 import 'package:mgk_lift/src/features/tracking/domain/session_summary.dart';
+import 'package:mgk_units/mgk_units.dart';
 
 /// A finished session. Finished matters: `TrainingStats` reads finished
 /// sessions only, so an open fixture would report no bests however good it was.
@@ -97,83 +99,106 @@ void main() {
   });
 
   group('personal bests', () {
-    List<Session> log({double bench = 90, int reps = 5}) => <Session>[
+    /// Last week's bench: 80 × 8, then 90 × 5. Its top set is 90 × 5.
+    List<Session> log() => <Session>[
       finished(
         'old',
         day.subtract(const Duration(days: 7)),
         exercises: <SessionExercise>[
           movement(
             'Barbell Bench Press',
-            sets: <SessionSet>[working(80, 8), working(bench, reps)],
+            sets: <SessionSet>[working(80, 8), working(90, 5)],
           ),
         ],
       ),
     ];
 
-    test('a movement that goes past its previous best is one', () {
-      // 90 × 5 estimates at 105 kg; 100 × 5 at 116.67.
-      final summary = SessionSummary.of(
-        finished(
-          'today',
-          day,
-          exercises: <SessionExercise>[
-            movement(
-              'Barbell Bench Press',
-              sets: <SessionSet>[working(100, 5)],
-            ),
-          ],
-        ),
-        log: log(),
-      );
+    SessionSummary bench(List<SessionSet> sets, {List<Session>? before}) =>
+        SessionSummary.of(
+          finished(
+            'today',
+            day,
+            exercises: <SessionExercise>[
+              movement('Barbell Bench Press', sets: sets),
+            ],
+          ),
+          log: before ?? log(),
+        );
+
+    test('a heavier weight than ever before is one', () {
+      final summary = bench(<SessionSet>[working(92.5, 3)]);
 
       expect(summary.personalBests, hasLength(1));
       final best = summary.personalBests.single;
       expect(best.movement, 'Barbell Bench Press');
-      expect(best.weight.kilograms, 100);
-      expect(best.reps, 5);
-      expect(best.estimate.kilograms, closeTo(116.667, 0.001));
-      expect(best.previous.kilograms, closeTo(105, 0.001));
-      expect(best.previousOn, day.subtract(const Duration(days: 7)));
+      expect(best.set.weight.kilograms, 92.5);
+      expect(best.set.reps, 3);
+      expect(best.isHeavier, isTrue);
+      expect(best.beat.weight.kilograms, 90);
+      expect(best.beat.reps, 5);
+      expect(best.beat.on, day.subtract(const Duration(days: 7)));
+    });
+
+    test('as heavy for more reps is one', () {
+      final best = bench(<SessionSet>[working(90, 6)]).personalBests.single;
+      expect(best.isHeavier, isFalse);
+      expect(best.set.reps, 6);
+      expect(best.beat.reps, 5);
+    });
+
+    test('a bigger estimate at a lighter weight is not one (#3)', () {
+      // 85 × 10 estimates at 113 kg against 90 × 5's 105, and 2.0.0 called it
+      // a best. Nothing heavier went on the bar, so it is not.
+      expect(bench(<SessionSet>[working(85, 10)]).personalBests, isEmpty);
+    });
+
+    test('the heaviest set of the day is the one compared', () {
+      // A back-off set for more reps does not hide the top set ahead of it.
+      final best = bench(<SessionSet>[
+        working(95, 2),
+        working(85, 10),
+      ]).personalBests.single;
+      expect(best.set.weight.kilograms, 95);
     });
 
     test('matching a previous best is not setting one', () {
       // A session that repeats last week's top set to the kilogram has not
       // moved, and telling somebody it has is the app flattering them.
-      final summary = SessionSummary.of(
-        finished(
-          'today',
-          day,
-          exercises: <SessionExercise>[
-            movement('Barbell Bench Press', sets: <SessionSet>[working(90, 5)]),
-          ],
-        ),
-        log: log(),
-      );
+      expect(bench(<SessionSet>[working(90, 5)]).personalBests, isEmpty);
+    });
 
-      expect(summary.personalBests, isEmpty);
-      // ...and the screen can still tell the difference between "nothing beat
-      // it" and "nothing could be measured".
-      expect(summary.hasEstimate, isTrue);
+    test('the same weight typed in pounds twice is the same weight', () {
+      // 225 lb is stored as its exact kilograms, and arrives by a different
+      // sum each time. One more rep at it is more reps at the same weight —
+      // not a heavier weight by a rounding error.
+      final best = bench(
+        <SessionSet>[working(Mass.pounds(225).kilograms, 6)],
+        before: <Session>[
+          finished(
+            'old',
+            day.subtract(const Duration(days: 7)),
+            exercises: <SessionExercise>[
+              movement(
+                'Barbell Bench Press',
+                // The same 225 lb by another sum, a hair apart.
+                sets: <SessionSet>[working(225 / 2.20462262185, 5)],
+              ),
+            ],
+          ),
+        ],
+      ).personalBests.single;
+      expect(best.isHeavier, isFalse);
     });
 
     test('a movement with no history is not a personal best', () {
       // Otherwise a first session is nothing but bests — every movement in it,
       // by definition — and the word stops meaning anything.
-      final summary = SessionSummary.of(
-        finished(
-          'today',
-          day,
-          exercises: <SessionExercise>[
-            movement(
-              'Barbell Bench Press',
-              sets: <SessionSet>[working(100, 5)],
-            ),
-          ],
-        ),
+      expect(
+        bench(<SessionSet>[
+          working(100, 5),
+        ], before: const <Session>[]).personalBests,
+        isEmpty,
       );
-
-      expect(summary.personalBests, isEmpty);
-      expect(summary.hasEstimate, isTrue);
     });
 
     test('the session is not compared against itself', () {
@@ -197,21 +222,10 @@ void main() {
       // Warm-ups are out of every total, and a best is a total. A single at
       // 120 marked as a warm-up is somebody correcting their log, not a
       // record.
-      final summary = SessionSummary.of(
-        finished(
-          'today',
-          day,
-          exercises: <SessionExercise>[
-            movement(
-              'Barbell Bench Press',
-              sets: <SessionSet>[warmup(120, 5), working(80, 5)],
-            ),
-          ],
-        ),
-        log: log(),
+      expect(
+        bench(<SessionSet>[warmup(120, 5), working(80, 5)]).personalBests,
+        isEmpty,
       );
-
-      expect(summary.personalBests, isEmpty);
     });
 
     test('a movement done twice in a session is reported once', () {
@@ -240,7 +254,7 @@ void main() {
 
       expect(summary.personalBests, hasLength(1));
       // The best of the two visits, not the first of them.
-      expect(summary.personalBests.single.weight.kilograms, 102.5);
+      expect(summary.personalBests.single.set.weight.kilograms, 102.5);
     });
 
     test('the bests are in the order they were trained', () {
@@ -280,14 +294,10 @@ void main() {
         'Barbell Back Squat',
       ]);
     });
-  });
 
-  group('no estimate is a real state', () {
-    test('a set above twelve reps produces neither an estimate nor a best', () {
-      // Epley is a straight line fitted to low-rep work; above twelve it is an
-      // invention. `estimateOneRepMax` returns null there, and this session is
-      // nothing but such sets — so there is no comparison to report, and the
-      // screen must not read it as having gone backwards.
+    test('high reps count: a best is a weight, not an estimate', () {
+      // 2.0.0 could not see a best above twelve reps, because Epley stops
+      // there. A heavier dumbbell is heavier at fifteen.
       final summary = SessionSummary.of(
         finished(
           'today',
@@ -306,85 +316,76 @@ void main() {
             exercises: <SessionExercise>[
               movement(
                 'Dumbbell Bicep Curl',
-                sets: <SessionSet>[working(10, 12)],
+                sets: <SessionSet>[working(12, 15)],
               ),
             ],
           ),
         ],
       );
 
-      expect(summary.hasEstimate, isFalse);
-      expect(summary.personalBests, isEmpty);
-      // The work still counts. Only the estimate is unavailable.
+      expect(summary.personalBests.single.set.weight.kilograms, 14);
       expect(summary.volume.kilograms, 420);
-      expect(summary.workingSets, 2);
     });
 
-    test('a huge weight above the cap still sets nothing', () {
-      // The dangerous shape of the same bug: 200 kg for thirteen would estimate
-      // at 286 and beat everything, if the cap were not enforced.
+    test('bodyweight work has no weight to have beaten', () {
       final summary = SessionSummary.of(
         finished(
           'today',
           day,
           exercises: <SessionExercise>[
-            movement(
-              'Barbell Bench Press',
-              sets: <SessionSet>[working(200, 13)],
-            ),
+            movement('Pull Up', sets: <SessionSet>[working(0, 12)]),
           ],
         ),
         log: <Session>[
           finished(
             'old',
-            day.subtract(const Duration(days: 7)),
+            day.subtract(const Duration(days: 4)),
             exercises: <SessionExercise>[
-              movement(
-                'Barbell Bench Press',
-                sets: <SessionSet>[working(90, 5)],
-              ),
+              movement('Pull Up', sets: <SessionSet>[working(0, 8)]),
             ],
           ),
         ],
       );
 
-      expect(summary.hasEstimate, isFalse);
       expect(summary.personalBests, isEmpty);
     });
+  });
 
-    test('one estimable set among many is enough to have looked', () {
-      final summary = SessionSummary.of(
-        finished(
-          'today',
-          day,
-          exercises: <SessionExercise>[
-            movement(
-              'Dumbbell Bicep Curl',
-              sets: <SessionSet>[working(14, 15)],
-            ),
-            movement(
-              'Barbell Bench Press',
-              order: 1,
-              sets: <SessionSet>[working(80, 5)],
-            ),
-          ],
+  group('what a best says', () {
+    TopSet top(Mass weight, int reps) =>
+        TopSet(weight: weight, reps: reps, on: day);
+
+    test('heavier says the weight it went past', () {
+      expect(
+        bestDetail(
+          top(const Mass.kilograms(92.5), 3),
+          top(const Mass.kilograms(90), 5),
+          MassUnit.kilograms,
         ),
-        log: <Session>[
-          finished(
-            'old',
-            day.subtract(const Duration(days: 7)),
-            exercises: <SessionExercise>[
-              movement(
-                'Barbell Bench Press',
-                sets: <SessionSet>[working(90, 5)],
-              ),
-            ],
-          ),
-        ],
+        '92.5 kg × 3. Your heaviest yet, past 90 kg.',
       );
+    });
 
-      expect(summary.hasEstimate, isTrue);
-      expect(summary.personalBests, isEmpty);
+    test('more reps says the count it went past', () {
+      expect(
+        bestDetail(
+          top(const Mass.kilograms(90), 6),
+          top(const Mass.kilograms(90), 5),
+          MassUnit.kilograms,
+        ),
+        '90 kg × 6. Your most reps at that weight, up from 5.',
+      );
+    });
+
+    test('in the unit the lifter works in', () {
+      expect(
+        bestDetail(
+          top(Mass.pounds(225), 3),
+          top(Mass.pounds(220), 5),
+          MassUnit.pounds,
+        ),
+        '225 lb × 3. Your heaviest yet, past 220 lb.',
+      );
     });
   });
 }

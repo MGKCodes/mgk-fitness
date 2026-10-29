@@ -226,10 +226,13 @@ void main() {
       // Mid-sentence: typed out, and held long enough to read.
       await tester.pump(const Duration(milliseconds: 1500));
       expect(find.text('New best: Barbell Bench Press'), findsOneWidget);
-      // The set that happened first, then the estimate — hedged, because
-      // Epley is a fitted line rather than a measurement.
-      expect(find.textContaining('100 kg × 5, about'), findsOneWidget);
-      expect(find.textContaining('Past 105 kg'), findsOneWidget);
+      // The set that happened, then what it went past. No estimated max: a
+      // best is a weight lifted, not one predicted (#3).
+      expect(
+        find.textContaining('100 kg × 5. Your heaviest yet, past 90 kg.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('for one'), findsNothing);
 
       await tester.pumpAndSettle();
       expect(find.text('New best: Barbell Bench Press'), findsNothing);
@@ -414,8 +417,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ExerciseStatsScreen), findsOneWidget);
-      // 120 × (1 + 6/30): the session just finished is in it.
-      expect(find.text('144 kg'), findsWidgets);
+      // Its heaviest is the session just finished: it is in the log.
+      expect(find.text('120 kg'), findsOneWidget);
     });
 
     testWidgets('goes where the caller says, when it says', (tester) async {

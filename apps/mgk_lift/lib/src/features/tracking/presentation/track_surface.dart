@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mgk_ui/mgk_ui.dart';
 
 import '../../../core/brand.dart';
+import '../../onboarding/domain/walkthrough_spot.dart';
 import '../../planning/domain/standing_plan.dart';
 import '../../stats/domain/training_stats.dart';
 import '../../sync/presentation/backup_messages.dart';
@@ -44,6 +45,7 @@ class TrackSurface extends StatelessWidget {
     this.onOpenPlan,
     this.backup,
     this.onBackupAction,
+    this.isSignedIn = false,
   });
 
   /// Where backup stands. A notice appears **only when something needs the
@@ -52,6 +54,11 @@ class TrackSurface extends StatelessWidget {
 
   /// What the notice's action does — retry, sign in, or review in Settings.
   final ValueChanged<BackupAction>? onBackupAction;
+
+  /// Whether an account is signed in, so the first session's line promises a
+  /// backup only to somebody who has one. A new lifter is signed out, and a
+  /// session logged then stays on the phone until they sign in.
+  final bool isSignedIn;
 
   /// Resumes the open session, and starts a blank one in a build with no
   /// library to choose from. Null while the recorder is not wired up, which
@@ -172,6 +179,7 @@ class TrackSurface extends StatelessWidget {
                 onPick: onOpenLibrary ?? onStartSession,
                 hasLibrary: onOpenLibrary != null,
                 onStartPlanned: onStartPlanned,
+                isSignedIn: isSignedIn,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -402,10 +410,14 @@ class _TodayCard extends StatelessWidget {
     required this.onPick,
     required this.hasLibrary,
     required this.onStartPlanned,
+    required this.isSignedIn,
   });
 
   final DateTime now;
   final _TodayState state;
+
+  /// Whether a session logged now backs up. See [TrackSurface.isSignedIn].
+  final bool isSignedIn;
 
   /// Whether [onPick] opens *Your workouts*, or has only a blank session to
   /// offer.
@@ -457,44 +469,63 @@ class _TodayCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          switch (state.kind) {
-            _TodayKind.open => _StartButton(
-              label: 'Resume session',
-              onTap: onResume,
+          // What the walkthrough lights first (ADR-0006), and, when this
+          // button is the way to *Your workouts*, second: TR3 put the saved
+          // workouts behind it. Resuming and starting the plan open no
+          // workouts, so neither is lit for them.
+          WalkthroughTarget(
+            id: WalkthroughSpot.start,
+            child: WalkthroughTarget(
+              id: _opensWorkouts ? WalkthroughSpot.workouts : null,
+              child: _primary(planned),
             ),
-            _TodayKind.planned => _StartButton(
-              // The day's name, not "today's session": the card has already
-              // said it is today.
-              label: 'Start ${planned!.toLowerCase()}',
-              onTap: onStartPlanned == null
-                  ? null
-                  : () => onStartPlanned!(planned),
-            ),
-            _TodayKind.done => _StartButton(
-              label: 'Start another session',
-              onTap: onPick,
-            ),
-            // A rest day is an answer, so nothing here pushes a session. One
-            // is still a tap away, offered rather than encouraged.
-            _TodayKind.rest => _SecondaryAction(
-              label: 'Start a session anyway',
-              onPressed: onPick,
-            ),
-            _TodayKind.free || _TodayKind.first => _StartButton(
-              label: 'Start a session',
-              onTap: onPick,
-            ),
-          },
+          ),
           // On a planned day the button starts the plan, so starting
           // something else is under it, quietly: offered, not pushed.
           if (state.kind == _TodayKind.planned && onPick != null) ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
-            _SecondaryAction(label: 'Start something else', onPressed: onPick),
+            WalkthroughTarget(
+              id: hasLibrary ? WalkthroughSpot.workouts : null,
+              child: _SecondaryAction(
+                label: 'Start something else',
+                onPressed: onPick,
+              ),
+            ),
           ],
         ],
       ),
     );
   }
+
+  /// Whether the card's own button opens *Your workouts*: it picks, rather
+  /// than resuming or starting the plan, in a build with a library.
+  bool get _opensWorkouts =>
+      hasLibrary &&
+      state.kind != _TodayKind.open &&
+      state.kind != _TodayKind.planned;
+
+  /// The card's button, for what today is.
+  Widget _primary(String? planned) => switch (state.kind) {
+    _TodayKind.open => _StartButton(label: 'Resume session', onTap: onResume),
+    _TodayKind.planned => _StartButton(
+      // The day's name, not "today's session": the card has already
+      // said it is today.
+      label: 'Start ${planned!.toLowerCase()}',
+      onTap: onStartPlanned == null ? null : () => onStartPlanned!(planned),
+    ),
+    _TodayKind.done => _StartButton(
+      label: 'Start another session',
+      onTap: onPick,
+    ),
+    // A rest day is an answer, so nothing here pushes a session. One
+    // is still a tap away, offered rather than encouraged.
+    _TodayKind.rest => _SecondaryAction(
+      label: 'Start a session anyway',
+      onPressed: onPick,
+    ),
+    _TodayKind.free ||
+    _TodayKind.first => _StartButton(label: 'Start a session', onTap: onPick),
+  };
 
   /// The headline and the line under it.
   (String, String) _words(BuildContext context) {
@@ -551,10 +582,18 @@ class _TodayCard extends StatelessWidget {
               : 'Add movements as you go.',
         );
       case _TodayKind.first:
+        // **The backup half only for somebody with an account.** This said
+        // "and backs up when you are back" to everybody, which on a new
+        // install, signed out, promised something that does not happen: the
+        // session stays on the phone until they sign in. The walkthrough says
+        // so where it lights Settings, and this card, under the walkthrough's
+        // first step, must not contradict it.
         return (
           'Ready when you are',
-          'Log a session set by set. It works with no signal and backs up '
-              'when you are back.',
+          isSignedIn
+              ? 'Log a session set by set. It works with no signal and backs '
+                    'up when you are back.'
+              : 'Log a session set by set. It works with no signal.',
         );
     }
   }

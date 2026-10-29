@@ -156,9 +156,12 @@ Connect; the notes below go from `listing.json`. Notes:
 > that deleting does not cancel it.
 >
 > The AI coach sends the lifter's messages and a summary of their training to
-> OpenRouter, from our server. It is disclosed at the point of use (the info
-> mark in the coach sheet), in Settings > Use the AI coach (a switch that turns
-> it off entirely), and in Privacy & legal.
+> OpenRouter, from our server. It asks first: before the coach's first request
+> a sheet says what is sent and where, and nothing is sent until the lifter
+> taps Agree; the answer is kept on the account and checked by the server. It
+> is also disclosed at the point of use (the info mark in the coach sheet), in
+> Settings > Use the AI coach (a switch that turns it off entirely and takes
+> the answer back), and in Privacy & legal.
 >
 > Signing in: Sign in with Apple, Sign in with Google, or an email and
 > password, all on the one sign-in screen.
@@ -181,7 +184,7 @@ account), **not used for tracking**, purpose **App Functionality** only.
 | Apple data type | Collected | What it is in Lift |
 |---|---|---|
 | Contact Info › Email Address | Yes | The account login: typed in, or passed on by Apple or Google at sign-in (with Hide My Email, Apple's relay address) |
-| Contact Info › Name | Yes | Only with Google sign-in, which may send a name that Supabase keeps with the login. Not asked for and not used, but kept, so declared (privacy policy, 5 October) |
+| Contact Info › Name | Yes | The name a lifter chooses to give the account, optional, asked once after a new email or Google account and shown on Settings; Google's first name is offered as a suggestion, and Google may send a name that Supabase keeps with the login. Never sent to the AI provider. **From 2.0.1** (Run's ADR-0047, privacy policy 29 October); 2.0.0's row said not asked and not used |
 | Identifiers › User ID | Yes | The Supabase user id, also passed to RevenueCat; and Apple's or Google's identifier for the lifter, when they sign in with one |
 | Health & Fitness › Fitness | Yes | Logged workouts: movements, sets, reps, weights |
 | Health & Fitness › Health | Yes | Injury notes typed into plan intake, and whatever a lifter tells the coach about their body |
@@ -247,7 +250,7 @@ Collected, all for **App functionality**, none for advertising or analytics:
 | Play category › type | Required or optional | Notes |
 |---|---|---|
 | Personal info › Email address | Optional | Only with an account |
-| Personal info › Name | Optional | Only with Google sign-in, which may send one; kept with the login, not used |
+| Personal info › Name | Optional | The name a lifter chooses to give the account, for the app's function; Google's first name offered as a suggestion. **From 2.0.1**; 2.0.0's row said not used |
 | Personal info › User IDs | Optional | Only with an account |
 | Health and fitness › Fitness info | Optional | Synced only when signed in |
 | Health and fitness › Health info | Optional | Injury notes, coach messages |

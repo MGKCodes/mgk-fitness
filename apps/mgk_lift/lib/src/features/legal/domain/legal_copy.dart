@@ -19,14 +19,20 @@ const LegalDocument privacyPolicy = LegalDocument(
     LegalSection(
       heading: 'What we collect',
       bullets: <String>[
-        'Account data — your email address and an account identifier. If you '
-            'sign in with Apple or Google, that is what we ask them for: an '
-            'email address and an identifier. We do not ask either for your '
-            'name or photograph, though Google may send your name and a link '
-            'to your profile picture anyway; if it does, they are kept with '
-            "your login and the app does not use them. With Apple's Hide My "
-            'Email, the address is one Apple forwards to yours, and we never '
-            'see the real one.',
+        'Account data — your email address, an account identifier, the '
+            'name you choose to give, if you give one, and the date you gave '
+            'the coach permission to send your training to the AI provider, '
+            'if you did. If you sign in with Apple or Google, we ask them for '
+            'an email address and an identifier. Google may send your name '
+            'and a link to your profile picture anyway; they are kept with '
+            'your login, and when a new account is asked what to call you, '
+            'your first name from Google is offered as a suggestion you can '
+            'keep, change or clear. Nothing asks for a name after Sign in '
+            "with Apple. With Apple's Hide My Email, the address is one Apple "
+            'forwards to yours, and we never see the real one. The name is '
+            "your MGKFitness account's, so Run shows the same one: it is "
+            'optional, you can change or remove it in Settings at any time, '
+            'and it is never sent to the AI provider.',
         'Training data — the sessions you log: exercise names, sets, reps, '
             'weight, set type, and for cardio work its duration and distance. '
             'Session and exercise notes are free text you wrote, so they hold '
@@ -96,8 +102,9 @@ const LegalDocument privacyPolicy = LegalDocument(
             'it also collects technical information of its own about the '
             'install, such as a device-scoped identifier, your store country '
             'and your app version.',
-        'SMTP2GO — sends the emails your account needs: the link to confirm '
-            'your address when you sign up, the link to reset your password, '
+        'SMTP2GO — sends the emails your account needs: a code and a link to '
+            'confirm your address when you sign up, the link to reset your '
+            'password, '
             'and a note when your password changes. It receives your email '
             'address and the email itself, through its servers in the EU, and '
             'nothing about your training. Its open and click tracking are '
@@ -112,9 +119,11 @@ const LegalDocument privacyPolicy = LegalDocument(
       heading: 'The coach is optional and can be turned off',
       paragraphs: <String>[
         'The coach is the only part of the app that sends anything to an AI '
-            'provider. Turning off Use the AI coach in Settings stops that '
-            'entirely: no message, no training summary and no plan answer '
-            'leaves the app for OpenRouter. Logging, plans you already have, '
+            'provider, and it asks before it first does. Your answer is kept '
+            'on your account, where our server checks it before any request '
+            'goes. Turning off Use the AI coach in Settings stops that '
+            'entirely and takes your answer back: no message, no training '
+            'summary and no plan answer leaves the app for OpenRouter. Logging, plans you already have, '
             'photos and syncing all keep working. Nothing you have already '
             'said is un-sent by turning it off, but you can erase what the '
             'coach remembers from the same screen.',
@@ -155,10 +164,13 @@ const LegalDocument privacyPolicy = LegalDocument(
             'sessions on our servers under your $kPlatformName account, which '
             'is the same account $kPlatformName: Run uses. There is no '
             'separate switch — signing in is the switch.',
-        'You can sign in with Apple, with Google, or with an email address '
-            'and a password. Choosing Hide My Email with Apple starts a '
-            'separate account, because the address Apple gives us is not one '
-            'any other account uses.',
+        'You can sign in with Apple, with Google, or with an email '
+            'address and a password. With an email, the app asks for the '
+            'address first and checks it against our accounts, to show the '
+            'right next step: your password, the way that address already '
+            'signs in, or a new account. Choosing Hide My Email with Apple '
+            'starts a separate account, because the address Apple gives us is '
+            'not one any other account uses.',
       ],
     ),
     LegalSection(
@@ -439,6 +451,8 @@ const LegalDocument aiDisclosure = LegalDocument(
         'When you ask for a plan: your goal, how many weeks and days a week '
             'you can train, which days those are, the equipment you have, and '
             'your injury notes if you gave any.',
+        'When you ask to swap a movement during a session: what you asked, '
+            'and the movements in that session.',
       ],
     ),
     LegalSection(
@@ -461,13 +475,23 @@ const LegalDocument aiDisclosure = LegalDocument(
       ],
     ),
     LegalSection(
+      heading: 'Asking first',
+      paragraphs: <String>[
+        'Your coach asks before it sends anything, and nothing in this '
+            'document happens until you agree. Your answer is kept on your '
+            'account, so another phone signed in to it does not ask again, '
+            'and our server checks it before any request goes to OpenRouter.',
+      ],
+    ),
+    LegalSection(
       heading: 'Turning it off',
       paragraphs: <String>[
-        'Use the AI coach in Settings turns this off completely. With it off, '
-            'nothing in this document happens — no message, no training '
-            'summary and no plan answer leaves the app for OpenRouter. '
-            'Logging, plans you already have, your photos and syncing all '
-            'keep working.',
+        'Use the AI coach in Settings turns this off completely and takes '
+            'your answer back. With it off, nothing in this document happens '
+            '— no message, no training summary and no plan answer leaves the '
+            'app for OpenRouter. Logging, plans you already have, your photos '
+            'and syncing all keep working. Turned back on, your coach asks '
+            'again before it next sends anything.',
         'Turning it off does not un-send what you have already said. You can '
             'erase what the coach remembers under Settings, Coach, and Delete '
             'account removes your conversations along with everything else.',

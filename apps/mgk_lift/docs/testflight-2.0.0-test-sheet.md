@@ -109,6 +109,17 @@ Do the whole section on an iPhone and on an Android phone.
 | B11 | *(Only if Run is on the phone)* Sign into Run with the same account | One person in both apps | ☐ |
 | B12 | Kill the app while signed in, reopen | Still signed in | ☐ |
 
+**B5 to B8 are 2.0.0's, and change in 2.0.1** (Run's
+[ADR-0047](../../mgk_run/docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md)).
+*Continue with email* asks for the address first, and the lookup decides the
+next step. A new address gets *Create your account*, a password with a number
+and a symbol, and a 6-digit code typed into the app, then *What should we call
+you?*, which is never asked after Apple. A wrong password is called a wrong
+password, because the lookup has already said the address has an account: the
+rule that signing in never says so ended with 2.0.1. *Forgot your password?*
+names the address it sent to. The 2.0.1 sheet writes these rows again from the
+ADR rather than from here.
+
 ## C. Logging a workout: the free half (T1 to T9, W1 to W26)
 
 Signed out is fine for all of this. It is what Liftio's users already had, so
@@ -143,6 +154,13 @@ it has to be right.
 | C22 | Finish with no signal | A pill at the top says it is saved on this phone. Back online, it goes | ☐ |
 | C23 | Discard a session | Nothing is written | ☐ |
 | C24 | A session past one hour | The clock reads `1:02:14` without clipping | ☐ |
+
+**C13 is 2.0.0's, and changes in 2.0.1**
+([ADR-0005](decisions/0005-a-movement-is-moved-by-holding-it.md)). The button
+and its sheet are gone: a movement is held by its picture and name, or a
+finished one anywhere on its line, and dragged where it sits, folded to its
+name until it lands. The 2.0.1 sheet writes this row again from the ADR rather
+than from here.
 
 ## D. Your workouts (W2, W3, W17, W24)
 

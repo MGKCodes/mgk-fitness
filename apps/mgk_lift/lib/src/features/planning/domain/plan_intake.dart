@@ -19,31 +19,53 @@ class PlanIntake {
   final String? equipment;
   final String? injuryNotes;
 
-  /// Everything still unanswered, by name, **for the coach** — sent with every
-  /// intake turn so the model is told what to gather rather than working it
-  /// out from the transcript again.
+  // What is still to ask, and in which order, is [IntakeProgress] in
+  // intake_flow.dart -- the one notion of "enough", living with the questions.
+  // A `missing` list used to live here as well, in a different order (goal
+  // first) and with a field the flow never asks (`which weekdays`). It was what
+  // the coach was told to gather, so the coach asked one question while the
+  // options under it answered another.
+
+  /// The weekdays the plan runs on: the ones they named, or [daysPerWeek]
+  /// spread across the week when they named none.
   ///
-  /// This is not the screen's gate, and the difference matters. `missing` is
-  /// what the coach should still try to extract, including `which weekdays`,
-  /// which has no question of its own because it falls out of prose — "Mon,
-  /// Wed, Fri" answers it and "3 days" does not. What the lifter is *asked*,
-  /// and when the app decides it has enough, is [IntakeProgress] in
-  /// intake_flow.dart.
+  /// **Named days are the exception, not the rule.** The options under the
+  /// days question are counts — "3 days" — so most lifters never name a day,
+  /// and this used to fall back to a fixed four-day week whatever the count
+  /// was: three days asked for, four built. A day can still be moved to today
+  /// from the plan, so a sensible spread costs nobody their Tuesday.
   ///
-  /// There used to be an `isComplete` here as well, reading `missing.isEmpty`,
-  /// and it was the screen's gate. It disagreed with the flow in both
-  /// directions: it demanded a goal the flow calls skippable, and it demanded
-  /// weekdays that the one caller of this whole model — `LiftShell._buildPlan`
-  /// — already defaults when they are absent. So a lifter could answer every
-  /// question the coach asked, watch the bar fill, and never see the button.
-  /// One notion of "enough", and it lives with the questions.
-  List<String> get missing => <String>[
-    if (goal == null || goal!.trim().isEmpty) 'goal',
-    if (daysPerWeek == null) 'days per week',
-    if (availableWeekdays == null || availableWeekdays!.isEmpty)
-      'which weekdays',
-    if (equipment == null || equipment!.trim().isEmpty) 'equipment',
-  ];
+  /// Named days are cleaned on the way through — deduplicated, kept to 1–7,
+  /// in week order — because they come from a model's reading of prose, and
+  /// `lift.plans` refuses a plan of no days or more than seven.
+  ///
+  /// **The count wins when the two disagree.** Named days only last as long as
+  /// nobody changes their mind: somebody who said "Mon, Wed, Fri" and then
+  /// "actually four" has a count of four and, since a merge never clears a
+  /// field, the three days still on file. Four is the later answer.
+  List<int> get weekdaysOrDefault {
+    final named = <int>{
+      for (final d in availableWeekdays ?? const <int>[])
+        if (d >= 1 && d <= 7) d,
+    }.toList()..sort();
+    final count = daysPerWeek;
+    if (named.isNotEmpty && (count == null || count == named.length)) {
+      return named;
+    }
+    return spreadWeekdays(count ?? 4);
+  }
+
+  /// [days] training days laid out with rest between them where the week
+  /// allows it, Monday first. 1 is Monday, 7 is Sunday.
+  static List<int> spreadWeekdays(int days) => switch (days.clamp(1, 7)) {
+    1 => const <int>[1],
+    2 => const <int>[1, 4],
+    3 => const <int>[1, 3, 5],
+    4 => const <int>[1, 2, 4, 5],
+    5 => const <int>[1, 2, 3, 4, 5],
+    6 => const <int>[1, 2, 3, 4, 5, 6],
+    _ => const <int>[1, 2, 3, 4, 5, 6, 7],
+  };
 
   /// The default block length. Eight weeks is long enough to build and deload
   /// twice and short enough that somebody will actually finish one.
@@ -88,10 +110,20 @@ class PlanIntake {
 /// One turn of the intake conversation.
 @immutable
 class IntakeTurn {
-  const IntakeTurn({required this.reply, required this.extracted});
+  const IntakeTurn({required this.reply, required this.extracted, this.asking});
 
   final String reply;
   final PlanIntake extracted;
+
+  /// Which question [reply] asks, by [IntakeField] name — `days`, `equipment`,
+  /// `injuries`, `goal` — or null when it asks none of them.
+  ///
+  /// **Said by the coach, because only the coach knows what it just asked.**
+  /// The options under a question used to be chosen by the app from its own
+  /// list while the coach chose its question from a different one, so the
+  /// coach could ask about equipment above a row of goals. A string rather
+  /// than the enum so this file does not import the flow that imports it.
+  final String? asking;
 }
 
 int? _int(Object? value) {

@@ -43,6 +43,91 @@ number:
   front page, *Your workouts* reworked, and the launch. It replaces the
   redesign's Track (R1, R12 and the workouts row).
 
+## In 2.0.1
+
+What the next release changes for somebody using the app, written as it is
+built. Lift has no `CHANGELOG.md`, so until it has one this list is where a
+change a lifter would notice is recorded.
+
+- **Signing in with an email asks for the address first** (Run's
+  [ADR-0047](../../mgk_run/docs/decisions/0047-email-first-a-code-to-confirm-a-name-on-the-account.md)).
+  A lookup leads to *Welcome back*, *This address signs in with Apple* (or
+  Google), or *Create your account*: a password of at least 8 characters with
+  a number and a symbol, then a 6-digit code typed into the app. A wrong
+  password is called a wrong password, and *Forgot your password?* names the
+  address. The two-mode form and its switch are gone, and so is the rule that
+  signing in never says whether an address has an account.
+- **A name on the account.** Asked once after a new account made with an
+  address or with Google, which starts it filled in with Google's first name;
+  never after Apple. Shown on Settings and the account screen, and given,
+  changed or cleared there. It is the suite's one name, so Run shows the same.
+  Lift's coach does not use it (the ADR's open question).
+- **The coach asks before it sends anything** (issue #10, Run's
+  [ADR-0036](../../mgk_run/docs/decisions/0036-the-coach-asks-before-it-sends.md)).
+  A sheet before the coach's first request, from the coach mark, *Build a
+  plan* or a swap mid-session, says what is sent and where, and nothing goes
+  until *Agree*. The answer is kept on the account as `lift_ai_consent`, and
+  the coach's server checks it. 2.0.0's switch was on by default, which is not
+  a yes, so everybody is asked once. *Use the AI coach* still hides the coach;
+  turning it off now also takes the answer back, and a swap with the coach off
+  is chosen by hand rather than sent. Deleting Lift's data and keeping the
+  login clears the answer.
+- **A planned session fills in the weight** (#4). Each movement opens on what
+  was lifted last time, one step heavier if that beat the time before (2.5 kg
+  for a main lift, 1 kg otherwise) and the same weight if it did not. Plan
+  says *last time 90 kg × 5* under each movement, and an accessory that has
+  not moved in six sessions shows as gone stale. Read off the logged sessions
+  on the phone, so it works with no signal, and a new plan has weights from
+  the first session for anything done before. In 2.0.0 every planned session
+  opened blank.
+- **A movement is moved by holding it, where it sits**
+  ([ADR-0005](decisions/0005-a-movement-is-moved-by-holding-it.md)). Hold a
+  movement's picture and name, or a finished one's line anywhere, and drag it
+  to its new place in the session. It folds to its name while it is carried
+  and opens again where it lands. *Reorder movements* at the foot of the list
+  and the sheet it opened are gone. In the workout editor, holding a name
+  lifts it too, beside the handle.
+- **A first open** ([ADR-0006](decisions/0006-lift-opens-with-a-walkthrough.md)).
+  A new install opens on a welcome, and *Get started* plays a walkthrough over
+  the real app: one control lit at a time under a dimmed screen, with the
+  coach's line beside it, through Track, Plan, Profile, Settings and the C,
+  the tabs changing as it goes. Then a practice set in a real session screen:
+  the lifter ticks a set, sees the rest timer start, the swap and the hold
+  that moves a movement, and *Start training* lands on Track with nothing of
+  the practice kept anywhere. Coaching and plans are said to be a subscription
+  and logging not; sessions are said to stay on the phone until somebody signs
+  in. *I already have an account* goes through sign-in and straight into the
+  app. Shown once, never to anybody upgrading from 2.0.0, and played again
+  from Settings › *Show me around*. Track's first card no longer promises a
+  backup to somebody signed out.
+
+**On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
+changes production or a published document (the ADR's *Build*, held for the
+owner): the confirmation email carries the code beside its link, the server's
+minimum password goes to 8, the reset page checks the rule, and
+`account-lookup` is deployed if it is not already. Lift's own documents change
+the same day, not before, since 2.0.0 is live with them:
+
+- [privacy-policy.md](privacy-policy.md), and its copy in the app
+  (`legal_copy.dart`, held to it by `legal_copy_test.dart`) and on the site:
+  *Account data* gains the first name a person chooses to give, and says
+  Google's first name is offered as a suggestion rather than "not used";
+  SMTP2GO sends a code as well as a link to confirm an address; and *Your
+  account* says an address is looked up to show the right next step.
+- [store-listing.md](store-listing.md): the Name rows in App Privacy and Data
+  safety become the name somebody gives, optional, for the app's function,
+  rather than only what Google may send.
+- [ai-disclosure.md](ai-disclosure.md) and the privacy policy's coach section
+  say the coach asks first and keeps the answer on the account (issue #10).
+  Already changed here and in the app; the site's copies are regenerated from
+  them that day.
+
+**After 2.0.1 is live on both stores**, not before: deploy `coach` with
+`lift` in `CONSENT_KEYS` (`supabase/functions/coach/consent.ts`). From then on
+a Lift 2.0.0 install is refused until it updates, because it never asked.
+- [testflight-2.0.0-test-sheet.md](testflight-2.0.0-test-sheet.md) is 2.0.0's;
+  its rows B5 to B8 say what changes.
+
 ## History
 
 - **[history/](history/)** — frozen on 1 October 2026, when they described a

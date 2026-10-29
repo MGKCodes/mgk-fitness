@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:mgk_ui/mgk_ui.dart';
 import 'package:mgk_units/mgk_units.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../onboarding/domain/walkthrough_script.dart' show kShowMeAround;
 import '../../../core/brand.dart';
 import '../../coaching/domain/coach_memory.dart';
 import '../../coaching/presentation/coach_memory_screen.dart';
@@ -23,10 +25,11 @@ import 'credits_screen.dart';
 
 /// The shipped version, shown at the foot of Settings.
 ///
-/// **Keep it in step with `version:` in pubspec.yaml.** Dart cannot read the
-/// pubspec at runtime without a plugin, and a wrong version in a bug report is
-/// worse than none.
-const String kAppVersion = '2.0.0';
+/// **Keep it in step with `version:` in pubspec.yaml**, which
+/// `legal_screen_test.dart` holds it to. Dart cannot read the pubspec at
+/// runtime without a plugin, and a wrong version in a bug report is worse than
+/// none: *Report a problem* writes it into every report.
+const String kAppVersion = '2.0.1';
 
 /// Everything about the app rather than about the training: who is signed in,
 /// how weights read, where backup stands, what the app says about itself.
@@ -49,11 +52,13 @@ class SettingsScreen extends StatefulWidget {
     this.backup,
     this.isSignedIn = false,
     this.email,
+    this.name,
     this.onSignOut,
     this.onSyncNow,
     this.onSignIn,
     this.coachMemory,
     this.useCoach,
+    this.coachConsented,
     this.onUseCoachChanged,
     this.auth,
     this.deleter,
@@ -66,6 +71,7 @@ class SettingsScreen extends StatefulWidget {
     this.now,
     this.planLabel,
     this.openUrl,
+    this.onShowAround,
   });
 
   /// Opens the support page in the browser. Null is the real browser; a test
@@ -108,6 +114,11 @@ class SettingsScreen extends StatefulWidget {
   /// Shown in the account row. Null when signed out.
   final String? email;
 
+  /// The account's name, the suite's one (Run's ADR-0047), or null for none.
+  /// The card leads with it where there is one, and the address goes under
+  /// it.
+  final String? name;
+
   final VoidCallback? onSignOut;
   final VoidCallback? onSyncNow;
   final VoidCallback? onSignIn;
@@ -126,6 +137,12 @@ class SettingsScreen extends StatefulWidget {
   /// row on this screen.
   final bool? useCoach;
 
+  /// Whether the account holds a yes to the coach sending (issue #10), so the
+  /// switch can say what is happening now: on with no yes yet sends nothing
+  /// until the coach has asked. Null when it is not known, which reads as on.
+  final bool? coachConsented;
+
+  /// Off also takes the account's yes back; the shell does both.
   final ValueChanged<bool>? onUseCoachChanged;
 
   /// Passed through to the legal hub, which is where deletion lives. Held
@@ -157,6 +174,11 @@ class SettingsScreen extends StatefulWidget {
 
   final String version;
 
+  /// *Show me around*: Settings closes and the walkthrough plays again from
+  /// the top over the shell (ADR-0006). **Null hides the row**, for a
+  /// Settings with no shell under it to walk through.
+  final VoidCallback? onShowAround;
+
   /// What "last checked" is measured against, for the account card. Null is the
   /// wall clock, which is what the app passes and what a preview must not.
   final DateTime? now;
@@ -167,6 +189,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late UnitPreferences _prefs = widget.initial;
+
+  /// The name on the card. Read again from the account when the account
+  /// screen, where it is changed, closes.
+  late String? _name = widget.name;
 
   /// Whether rest alerts are allowed. Null until the first answer.
   bool? _alertsAllowed;
@@ -223,9 +249,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = false);
   }
 
-  /// Who this is, as Run's Settings shows it: a face, the address, and what
-  /// they pay for. Lift keeps no photograph of anybody (O1) and asks no name,
-  /// so the circle holds the address's first letter.
+  /// Who this is, as Run's Settings shows it: a face, a name, and what they
+  /// pay for. Lift keeps no photograph of anybody (O1), so the circle holds
+  /// the name's initials, or the address's first letter for an account with
+  /// no name, which then stands where the name would.
   ///
   /// Signed out, the card is the way in, and its note is the one fact worth
   /// stating unprompted: what exists on this phone only. It states that and
@@ -240,12 +267,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     final email = widget.email;
+    final name = _name;
     return ProfileCard(
-      avatar: InitialsAvatar(initials: _initial(email), size: 64),
-      // The address, when there is one. Naming the account is also how
-      // somebody signed in as the wrong address finds out before they wonder
-      // where their training went.
-      title: email ?? 'Signed in',
+      avatar: InitialsAvatar(
+        initials: name != null ? initialsFor(name) : _initial(email),
+        size: 64,
+      ),
+      // The name, or the address when there is none. The address stays under
+      // a name, because naming the account is also how somebody signed in as
+      // the wrong address finds out before they wonder where their training
+      // went.
+      title: name ?? email ?? 'Signed in',
+      email: name == null ? null : email,
       plan: widget.planLabel,
       onTap: _openAccount,
     );
@@ -256,26 +289,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return e.isEmpty ? null : e.characters.first.toUpperCase();
   }
 
-  /// Backup, sign out, restore and delete: one tap behind the card (19).
-  Future<void> _openAccount() => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => AccountScreen(
-        email: widget.email,
-        backup: widget.backup,
-        planLabel: widget.planLabel,
-        onSyncNow: widget.onSyncNow,
-        onSignIn: widget.onSignIn,
-        onRestorePurchases: widget.onRestorePurchases,
-        onSignOut: widget.onSignOut,
-        auth: widget.auth,
-        deleter: widget.deleter,
-        onAccountGone: widget.onAccountGone,
-        eraseThisPhone: widget.eraseThisPhone,
-        onManageSubscription: widget.onManageSubscription,
-        now: widget.now,
+  /// Backup, the name, sign out, restore and delete: one tap behind the card
+  /// (19). The card takes the name back from the account when it closes, in
+  /// case it was changed there.
+  Future<void> _openAccount() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AccountScreen(
+          email: widget.email,
+          name: _name,
+          backup: widget.backup,
+          planLabel: widget.planLabel,
+          onSyncNow: widget.onSyncNow,
+          onSignIn: widget.onSignIn,
+          onRestorePurchases: widget.onRestorePurchases,
+          onSignOut: widget.onSignOut,
+          auth: widget.auth,
+          deleter: widget.deleter,
+          onAccountGone: widget.onAccountGone,
+          eraseThisPhone: widget.eraseThisPhone,
+          onManageSubscription: widget.onManageSubscription,
+          now: widget.now,
+        ),
       ),
-    ),
-  );
+    );
+    final account = widget.auth?.current;
+    if (!mounted || account == null) return;
+    setState(() => _name = account.name);
+  }
 
   /// The support page, which both store listings point at.
   Future<void> _openSupport() async {
@@ -289,6 +330,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // worse than a long one.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Could not open support. It is at $uri')),
+    );
+  }
+
+  /// An email to support with the app and the version already in it, for the
+  /// lifter who has found something wrong and will never open GitHub.
+  Future<void> _reportProblem() async {
+    final Uri uri = problemReportUri(
+      to: kSupportEmail,
+      product: kProductName,
+      version: widget.version,
+      system: '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+    );
+    final open = widget.openUrl ?? (Uri url) => launchUrl(url);
+    if (await open(uri)) return;
+    if (!mounted) return;
+    // No mail app on the phone. The address is the whole of what they need.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No email app opened. Write to $kSupportEmail'),
+      ),
+    );
+  }
+
+  /// The app's code, in the public repository.
+  Future<void> _openSource() async {
+    final Uri uri = sourceCodeUri('mgk_lift');
+    final open =
+        widget.openUrl ??
+        (Uri url) => launchUrl(url, mode: LaunchMode.externalApplication);
+    if (await open(uri)) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open the code. It is at $uri')),
     );
   }
 
@@ -523,7 +597,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: SettingsGroup(
                       label: 'About',
                       children: <Widget>[
+                        // First under About: the app explaining itself, for
+                        // anybody who skipped it or wants it again.
+                        if (widget.onShowAround case final showAround?)
+                          SettingsRow(title: kShowMeAround, onTap: showAround),
                         SettingsRow(title: 'Support', onTap: _openSupport),
+                        SettingsRow(
+                          title: 'Report a problem',
+                          onTap: _reportProblem,
+                        ),
+                        // Open source: the row says the licence, and opens the
+                        // app's code for anybody who wants to read it.
+                        SettingsRow(
+                          title: 'Source code',
+                          value: kSourceLicence,
+                          onTap: _openSource,
+                        ),
                         SettingsRow(
                           title: 'Privacy & legal',
                           onTap: () => Navigator.of(context).push(
@@ -594,20 +683,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => _explain(
                 'What the coach is sent',
                 'Your messages, a summary of your recent training, and your '
-                    'injury notes if you gave any. Off means none of it '
-                    'leaves the app, and the coach mark goes away with it — '
-                    'logging, plans you already have, photos and syncing all '
-                    'keep working.',
+                    'injury notes if you gave any, and only once you have '
+                    'agreed. Off takes that back: none of it leaves the app, '
+                    'and the coach mark goes away with it — logging, plans '
+                    'you already have, photos and syncing all keep working.',
               ),
             ),
           ],
         ),
-        subtitle: Text(
-          on
-              ? 'On. What you write is sent to OpenRouter.'
-              : 'Off. Nothing is sent to OpenRouter.',
-          style: quiet,
-        ),
+        subtitle: Text(switch ((on, widget.coachConsented)) {
+          (false, _) => 'Off. Nothing is sent to OpenRouter.',
+          (true, false) => 'On. Your coach asks before anything is sent.',
+          (true, _) => 'On. What you write is sent to OpenRouter.',
+        }, style: quiet),
       ),
     if (widget.useCoach != null)
       SettingsRow(

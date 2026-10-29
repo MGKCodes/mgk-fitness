@@ -38,6 +38,8 @@ your IP address, your device, your name, your email or your account identifier.
 - When you ask for a plan: your goal, how many weeks and days a week you can
   train, which days those are, the equipment you have, and **your injury notes if
   you gave any.**
+- When you ask to swap a movement during a session: what you asked, and the
+  movements in that session.
 
 ## What we never send
 
@@ -53,12 +55,20 @@ your weight or how you are feeling, that text is sent to a third-party AI
 provider. We do not send anything that names you, but we will not pretend the
 rest is anonymous: taken together it is health information about one person.
 
+## Asking first
+
+Your coach asks before it sends anything, and nothing in this document happens
+until you agree. Your answer is kept on your account, so another phone signed in
+to it does not ask again, and our server checks it before any request goes to
+OpenRouter.
+
 ## Turning it off
 
-**Use the AI coach** in Settings turns this off completely. With it off, nothing
-in this document happens — no message, no training summary and no plan answer
-leaves the app for OpenRouter. Logging, plans you already have, your photos and
-syncing all keep working.
+**Use the AI coach** in Settings turns this off completely and takes your answer
+back. With it off, nothing in this document happens — no message, no training
+summary and no plan answer leaves the app for OpenRouter. Logging, plans you
+already have, your photos and syncing all keep working. Turned back on, your
+coach asks again before it next sends anything.
 
 Turning it off does not un-send what you have already said. You can erase what
 the coach remembers under Settings › Coach, and Delete account removes your

@@ -16,44 +16,14 @@ StandingPlan plan() => StandingPlan(
         isMain: true,
         sets: 4,
         reps: 6,
-        lastTopKg: 85,
-        lastTopReps: 6,
-        sessionsAtSameTop: 2,
       ),
     ],
   },
 );
 
 void main() {
-  group('recording what a session did', () {
-    test('an improvement resets the stall counter', () async {
-      final store = InMemoryStandingPlanStore(plan());
-      await store.recordResult('u1', topKg: 87.5, reps: 6, improved: true);
-
-      final slot = (await store.active())!.slots['Upper']!.single;
-      expect(slot.lastTopKg, 87.5);
-      expect(slot.sessionsAtSameTop, 0);
-    });
-
-    test('holding increments it', () async {
-      // That counter is the whole rotation trigger, so getting it backwards
-      // would either rotate everything or nothing.
-      final store = InMemoryStandingPlanStore(plan());
-      await store.recordResult('u1', topKg: 85, reps: 6, improved: false);
-
-      final slot = (await store.active())!.slots['Upper']!.single;
-      expect(slot.sessionsAtSameTop, 3);
-    });
-
-    test('a result for an unknown slot changes nothing', () async {
-      final store = InMemoryStandingPlanStore(plan());
-      await store.recordResult('nope', topKg: 100, reps: 1, improved: true);
-
-      final slot = (await store.active())!.slots['Upper']!.single;
-      expect(slot.lastTopKg, 85);
-      expect(slot.sessionsAtSameTop, 2);
-    });
-  });
+  // What a session did to a slot is not recorded here any more: it is read off
+  // the log (slot_history_test.dart, #4).
 
   test('replacing swaps what is live', () async {
     final store = InMemoryStandingPlanStore();

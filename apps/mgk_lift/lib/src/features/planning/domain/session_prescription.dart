@@ -39,6 +39,10 @@ abstract final class SessionPrescription {
   static double incrementKg({required bool isMain}) => isMain ? 2.5 : 1;
 
   /// What to put on the bar, or null when there is nothing to base it on.
+  ///
+  /// Read from the slot's history, which `planWithHistory` fills in from the
+  /// log. Until #4 nothing filled it in, so this was null for every slot and no
+  /// planned session ever opened with a weight.
   static Mass? target(MovementSlot slot) {
     if (!slot.hasHistory) return null;
     final moved = slot.sessionsAtSameTop == 0;

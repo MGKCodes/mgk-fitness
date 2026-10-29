@@ -67,14 +67,30 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
   bool _waiting = false;
   PlanFailure? _failure;
 
-  /// The field the options under the newest bubble are answering: the first
-  /// still unknown, and only while the coach has the floor.
+  /// What the coach's latest turn said it was asking ([IntakeTurn.asking]).
+  /// Null for the opener, which is the flow's own first question.
+  IntakeField? _coachAsked;
+
+  /// The field the options under the newest bubble are answering, and only
+  /// while the coach has the floor.
+  ///
+  /// **The one the coach asked, when it is still open.** The coach chooses its
+  /// question after reading the lifter's latest message, and the app chooses
+  /// options after merging what the coach extracted from it — two readings of
+  /// the same sentence, which could disagree. When they did, the coach asked
+  /// about one thing above options for another. Now the options follow the
+  /// question, and fall back to the first open field only when the coach did
+  /// not say, or named something already settled.
   ///
   /// **Null after the lifter speaks**, so options never hang under somebody's
   /// own message waiting for a reply that has not arrived. Null when there is
   /// nothing left to ask, which is the same moment "Build my plan" appears.
-  IntakeField? get _asking =>
-      _turns.isNotEmpty && _turns.last.fromCoach ? _known.next : null;
+  IntakeField? get _asking {
+    if (_turns.isEmpty || !_turns.last.fromCoach) return null;
+    final asked = _coachAsked;
+    if (asked != null && !_known.has(asked)) return asked;
+    return _known.next;
+  }
 
   @override
   void initState() {
@@ -119,13 +135,14 @@ class _PlanIntakeScreenState extends State<PlanIntakeScreen> {
 
     try {
       final turn = await widget.planner.intake(
-        known: _known.plan,
+        progress: _known,
         history: List<PlannerTurn>.unmodifiable(_turns),
       );
       if (!mounted) return;
       setState(() {
         // Merged, not replaced.
         _known = _known.merge(turn.extracted);
+        _coachAsked = IntakeField.named(turn.asking);
         if (turn.reply.isNotEmpty) {
           _turns.add(PlannerTurn(text: turn.reply, fromCoach: true));
         }

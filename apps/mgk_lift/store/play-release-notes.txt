@@ -1,1 +1,1 @@
-First release on Google Play: log every set, with an optional AI coach.
+Planned sessions now open on last time's weight, and add a step when you beat it. Hold a movement and drag it to reorder your session. Your coach asks before it first sends anything, and keeps your answer on your account. New installs get a walkthrough of the app, with a practice set. Signing in with an email asks for the address first, and your plan opens with no signal.

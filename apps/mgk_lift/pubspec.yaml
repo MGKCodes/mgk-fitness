@@ -10,9 +10,12 @@ publish_to: none
 # It sat at 0.1.0 until it could make that claim. See
 # [docs/decisions/0001-liftio-is-replaced-not-relaunched.md].
 #
-# Build numbers must strictly increase within the 2.0.0 train; App Store Connect
-# rejects a re-used one.
-version: 2.0.0+1
+# 2.0.0 went to both stores on 5 October 2026 (builds 45 and 46) and is never
+# submitted again (Run's ADR-0046): what follows is 2.0.1. The number after the
+# + is not what ships. Both Lift workflows in codemagic.yaml pass Codemagic's
+# own counter (--build-number=$PROJECT_BUILD_NUMBER), which only rises, so the
+# stores never see a re-used build number.
+version: 2.0.1+1
 
 environment:
   sdk: ^3.11.5

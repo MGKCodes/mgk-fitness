@@ -87,14 +87,19 @@ void main() {
       // that makes them lawful here: an address and an identifier (O1), and
       // the revocation Apple requires when an account made with it goes.
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
-        'If you sign in with Apple or Google, that is what we ask them for: '
-            'an email address and an identifier.',
+        'If you sign in with Apple or Google, we ask them for an email '
+            'address and an identifier.',
         // Since 5 October 2026. "Nothing else" was what we asked for, not
         // what Google sends: Supabase can keep Google's name and picture link
-        // with the login whether or not the app asks.
+        // with the login whether or not the app asks. Since 2.0.1 the first
+        // name is offered as a suggestion (Run's ADR-0047), and says so.
         'Google may send your name and a link to your profile picture anyway; '
-            'if it does, they are kept with your login and the app does not '
-            'use them.',
+            'they are kept with your login',
+        'your first name from Google is offered as a suggestion you can keep, '
+            'change or clear.',
+        'Nothing asks for a name after Sign in with Apple.',
+        // The address looked up before the next step (ADR-0047).
+        'checks it against our accounts, to show the right next step',
         'Apple and Google — only if you sign in with them.',
         "end the app's access to your Apple ID",
         'You can sign in with Apple, with Google, or with an email address '
@@ -113,10 +118,12 @@ void main() {
       ]);
     });
 
-    test('says the coach can be turned off, and what that stops', () {
+    test('says the coach asks first, can be turned off, and what that stops', () {
       bothCarry(app, doc, 'docs/privacy-policy.md', <String>[
         'The coach is the only part of the app that sends anything to an AI '
-            'provider.',
+            'provider, and it asks before it first does.',
+        'Your answer is kept on your account, where our server checks it',
+        'stops that entirely and takes your answer back',
         'no message, no training summary and no plan answer leaves the app for '
             'OpenRouter',
       ]);
@@ -283,7 +290,9 @@ void main() {
 
     test('tells the reader how to stop it', () {
       bothCarry(app, doc, 'docs/ai-disclosure.md', <String>[
-        'Use the AI coach in Settings turns this off completely.',
+        'Use the AI coach in Settings turns this off completely and takes your answer back.',
+        'Your coach asks before it sends anything, and nothing in this document happens until you agree.',
+        'our server checks it before any request goes to OpenRouter.',
         'Turning it off does not un-send what you have already said.',
       ]);
     });

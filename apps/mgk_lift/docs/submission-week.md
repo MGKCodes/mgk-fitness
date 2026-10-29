@@ -301,15 +301,16 @@ release:
       publishing is off** (Publishing overview, 5 October), so it goes live
       the moment Google approves it. A first production review can take
       several days.
-- [ ] When Lift goes for review, promote `develop` to `main`: `main` is what
+- [x] When Lift goes for review, promote `develop` to `main`: `main` is what
       was submitted ([CONTRIBUTING.md](../../../CONTRIBUTING.md), Branching).
       Promoting all of `develop` deploys `web/`, so check what `web/` holds
       first. Then `develop` moves to 2.0.1 (CONTRIBUTING.md, Versions).
-      *5 October:* `web/` checked: the one served change is Lift's privacy
-      policy gaining the Google sentence, as build 45 has it; Run's policy is
-      untouched. Claude's `git push origin develop:main` was refused by the
-      auto-mode safety check (it deploys the site), so *Matthew* runs it; the
-      bump to 2.0.1 follows it, never before.
+      *Done 5 October:* `web/` checked first (the served changes were Lift's
+      privacy policy gaining the Google sentence, as build 45 has it, and
+      Run's Google Play button; Run's policy untouched). Matthew pushed
+      `develop` to `main` at `71b5a40`, since the auto-mode check refuses that
+      push for Claude; read back live the same evening. `develop` then moved
+      to 2.0.1. Lift has no changelog to cut.
 
 ---
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mgk_ui/mgk_ui.dart';
@@ -7,6 +9,7 @@ import '../domain/previous_performance.dart';
 import '../domain/session.dart';
 import '../domain/workout_library.dart';
 import 'exercise_picker_sheet.dart';
+import 'lifted_while_dragged.dart';
 
 /// Edits a saved workout — its name, its movements in order, and each
 /// movement's sets and rep target.
@@ -242,22 +245,16 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
                           buildDefaultDragHandles: false,
                           itemCount: _rows.length,
                           // A dragged row lifts a little and settles back — the
-                          // row is the thing moving, not a copy of it.
+                          // row is the thing moving, not a copy of it. The same
+                          // lift, and the same tick on pick-up, as a card moved
+                          // in the session, so the two read as one gesture.
                           proxyDecorator: (child, _, animation) =>
-                              AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, child) => Transform.scale(
-                                  scale: 1 + 0.03 * animation.value,
-                                  child: child,
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  elevation: 8 * animation.value,
-                                  shadowColor: Colors.black,
-                                  borderRadius: AppRadius.cardAll,
-                                  child: child,
-                                ),
+                              liftedWhileDragged(
+                                child,
+                                animation,
+                                gapBelow: _MovementEditor.gapBelow,
                               ),
+                          onReorderStart: (_) => unawaited(AppHaptics.tap()),
                           onReorder: (from, to) => setState(() {
                             final target = to > from ? to - 1 : to;
                             _rows.insert(target, _rows.removeAt(from));
@@ -328,6 +325,13 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
 /// One movement in the editor: its name and handle on top, its sets and rep
 /// target beneath — two lines, because one could not hold a name, a stepper,
 /// a field and two controls at 375pt without cutting the name to a word.
+///
+/// **Two ways to pick it up.** The handle drags at a touch, as it always has.
+/// Holding the name lifts it too, because that is how a movement is moved in
+/// the running session, where there is no handle (see `ExerciseCard`): a
+/// lifter who learnt it there finds it works here. The second line is left
+/// alone — it is a stepper and a field, which have their own uses for a
+/// finger.
 class _MovementEditor extends StatelessWidget {
   const _MovementEditor({
     super.key,
@@ -336,6 +340,9 @@ class _MovementEditor extends StatelessWidget {
     required this.onChanged,
     required this.onRemove,
   });
+
+  /// The space under a row, inside it — where a lifted row's shadow stops.
+  static const double gapBelow = AppSpacing.sm;
 
   final int index;
   final TemplateMovement movement;
@@ -346,7 +353,7 @@ class _MovementEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.only(bottom: gapBelow),
       child: AppCard(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.sm,
@@ -371,11 +378,19 @@ class _MovementEditor extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: Text(
-                    movement.name,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: ReorderableDelayedDragStartListener(
+                    index: index,
+                    // Held anywhere across the name's width, not only on the
+                    // letters of a short one.
+                    child: ColoredBox(
+                      color: Colors.transparent,
+                      child: Text(
+                        movement.name,
+                        style: theme.textTheme.titleSmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
                 ),
                 AppIconButton(

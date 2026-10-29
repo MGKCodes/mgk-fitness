@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import 'coach_planner.dart';
 import 'plan_intake.dart';
 import 'plan_shape.dart';
 import 'plan_template.dart';
@@ -139,13 +140,17 @@ class PlanBuilder {
           catalogue: catalogue,
           violations: violations,
         );
-      } on Object {
+      } on Object catch (e) {
         // The coach being unreachable is not a reason to leave somebody without
-        // a plan. Straight to the floor.
+        // a plan. Straight to the floor -- carrying why, because "try again"
+        // is good advice after a dropped signal and bad advice at a limit.
         return BuiltPlan(
           plan: _fallback(id, weekdays, equipment, avoidRoles),
           fromCoach: false,
           violations: const <String>['coach unavailable'],
+          coachFailure: e is PlanException
+              ? e.failure
+              : PlanFailure.unavailable,
         );
       }
 
@@ -205,6 +210,12 @@ class PlanBuilder {
     Set<String> avoidRoles,
   ) {
     final split = TrainingSplit.forDays(weekdays.length);
+    final template = PlanTemplate.slotsFor(
+      split: split,
+      days: weekdays.length,
+      equipment: equipment,
+      avoid: avoidRoles,
+    );
     return StandingPlan(
       id: id,
       name: split.name,
@@ -212,12 +223,26 @@ class PlanBuilder {
       rationale: split.why,
       weekdays: weekdays,
       startedAt: now ?? DateTime.now(),
-      slots: PlanTemplate.slotsFor(
-        split: split,
-        days: weekdays.length,
-        equipment: equipment,
-        avoid: avoidRoles,
-      ),
+      // **Prefixed with the plan.** The template names a slot by its day and
+      // role -- `upper-horizontal-press` -- which is unique within one plan and
+      // nowhere else, while `lift.plan_slots` keys on the id alone, across
+      // every plan and every lifter. So the second template plan saved
+      // anywhere collided with the first and its whole week was refused. The
+      // coach's slots were always `$id-$i-$j` (see [_hydrate]).
+      slots: <String, List<MovementSlot>>{
+        for (final day in template.entries)
+          day.key: <MovementSlot>[
+            for (final s in day.value)
+              MovementSlot(
+                id: '$id-${s.id}',
+                role: s.role,
+                movement: s.movement,
+                isMain: s.isMain,
+                sets: s.sets,
+                reps: s.reps,
+              ),
+          ],
+      },
     );
   }
 }
@@ -235,10 +260,15 @@ class BuiltPlan {
     required this.plan,
     required this.fromCoach,
     this.violations = const <String>[],
+    this.coachFailure,
   });
 
   final StandingPlan plan;
   final bool fromCoach;
+
+  /// Why the coach could not be asked at all, when that is why this is the
+  /// fallback. Null when the coach answered (and was rejected, or accepted).
+  final PlanFailure? coachFailure;
 
   /// Why the coach's attempts were rejected, when they were. Empty on success.
   /// Kept for the log rather than the lifter — "your plan was rejected for

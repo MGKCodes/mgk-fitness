@@ -32,6 +32,8 @@ import '../src/features/legal/presentation/delete_account_screen.dart';
 import '../src/features/legal/presentation/legal_document_screen.dart';
 import '../src/features/legal/presentation/legal_screen.dart';
 import '../src/features/legal/presentation/medical_disclaimer_screen.dart';
+import '../src/features/onboarding/domain/walkthrough_script.dart';
+import '../src/features/onboarding/presentation/welcome_screen.dart';
 import '../src/features/tracking/domain/workout_library.dart';
 import '../src/features/tracking/presentation/workout_library_screen.dart';
 import '../src/features/tracking/presentation/exercise_picker_sheet.dart';
@@ -55,7 +57,6 @@ import '../src/features/purchases/domain/purchases.dart';
 import '../src/features/purchases/presentation/sales_screen.dart';
 import '../src/features/tracking/domain/rest_alerts.dart';
 import '../src/features/tracking/domain/session.dart';
-import '../src/features/tracking/presentation/reorder_sheet.dart';
 import '../src/features/stats/presentation/exercise_stats_screen.dart';
 import '../src/features/stats/presentation/history_screen.dart';
 import '../src/features/tracking/presentation/active_session_screen.dart';
@@ -114,6 +115,30 @@ class PreviewApp extends StatelessWidget {
       'launch-dip': (_) => _launchAt(0.54),
       'launch-drive': (_) => _launchAt(0.70),
       'launch-rest': (_) => _launchAt(1.50),
+
+      // The first open, once per install (ADR-0006): the welcome, and two
+      // steps of the walkthrough it leads to, over a new lifter's shell. Each
+      // starts at its step, as the plates do, since a capture cannot press
+      // Next; and with motion off, so the hole and the card are photographed
+      // where they come to rest rather than on their way there.
+      'welcome': (_) =>
+          WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
+      // `(_)` and a Builder, not `(context)`: the capture scripts find the
+      // screens by that shape.
+      'walkthrough-track': (_) => Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: _newLifter(WalkthroughStep.track),
+        ),
+      ),
+      // In the practice session: the tick, which is the one step that waits
+      // for the lifter's own tap.
+      'walkthrough-tick': (_) => Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: _newLifter(WalkthroughStep.logASet),
+        ),
+      ),
 
       // **Every shell entry carries a coach**, because production does: main.dart
       // passes one whenever Supabase is configured, and the shell draws the mark
@@ -362,11 +387,6 @@ class PreviewApp extends StatelessWidget {
           lookup: ExerciseLookup(),
           replacing: 'Cable Fly',
         ),
-      ),
-      'reorder-sheet': (_) => _SheetHost(
-        behind: _runningSessionScreen(),
-        open: (context) =>
-            ReorderSheet.show(context, exercises: _longSession().exercises),
       ),
       // The editor, reached from a row's "…" → Edit.
       'workout-editor': (_) => WorkoutEditorScreen(
@@ -835,12 +855,28 @@ class PreviewApp extends StatelessWidget {
       // states worth having are days, not layouts.
       'plan-standing': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
+        history: FakeHistory(_planLog(previewNow)),
         coach: FakeCoach(),
         // A Monday: Upper.
         today: DateTime(2026, 8, 17),
         isEntitled: true,
-        plans: InMemoryStandingPlanStore(_standingPlan()),
+        plans: FakePlanStore(_standingPlan(), checkedAt: DateTime(2026, 8, 17)),
+        planner: FakePlanner(),
+        initialTab: 1,
+      ),
+      // The gym with no signal (#2): the same week, from the copy saved on the
+      // phone, and saying so under the name.
+      'plan-standing-offline': (_) => LiftShell(
+        recorder: FakeSessionRecorder(),
+        history: FakeHistory(_planLog(previewNow)),
+        coach: FakeCoach(),
+        today: DateTime(2026, 8, 17),
+        isEntitled: true,
+        plans: FakePlanStore(
+          _standingPlan(),
+          checkedAt: DateTime(2026, 8, 16, 22),
+          offline: true,
+        ),
         planner: FakePlanner(),
         initialTab: 1,
       ),
@@ -849,7 +885,7 @@ class PreviewApp extends StatelessWidget {
       // scheduling it.
       'plan-standing-rest': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
+        history: FakeHistory(_planLog(previewNow)),
         coach: FakeCoach(),
         today: DateTime(2026, 8, 19),
         isEntitled: true,
@@ -961,18 +997,18 @@ class PreviewApp extends StatelessWidget {
       ),
       // Apple, Google and email, on the photograph (R1, R10).
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
-      // One tap in: the email form, as it always was, under the same headline
-      // space.
+      // One tap in: the email path's first step, the address alone (Run's
+      // ADR-0047, from 2.0.1).
       'sign-in-email': (_) =>
           SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
-      // The same form as the sales screen opens it, for somebody subscribing:
-      // starting on making an account.
-      'sign-in-create': (_) => SignInScreen(
-        auth: FakeAuth(),
-        pendingWorkouts: 9,
-        emailFirst: true,
-        initialSignUp: true,
-      ),
+      // **The same screen as `sign-in-email` since 2.0.1, kept only so the
+      // web board's words and this harness still name the same screens.**
+      // It drew the two-mode form started on making an account, as the sales
+      // screen opened it; that form is gone, and the address comes first for
+      // everybody. The email path's later steps are drawn by plate tests when
+      // Lift's board moves to them, and this entry goes with that move.
+      'sign-in-create': (_) =>
+          SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
       'credits': (_) => const CreditsScreen(),
 
       // ---- Privacy, legal and leaving --------------------------------------
@@ -1123,6 +1159,19 @@ class _HarnessState extends State<_Harness> {
   Widget build(BuildContext context) => _Index(screens: widget.screens);
 }
 
+/// A new lifter's shell, with the walkthrough over it from [from]: nothing
+/// logged, nothing saved, nobody signed in, and the coach on, as a new
+/// install opens after *Get started*.
+Widget _newLifter(WalkthroughStep from) => LiftShell(
+  recorder: FakeSessionRecorder(),
+  history: FakeHistory(const <Session>[]),
+  coach: FakeCoach(),
+  library: InMemoryWorkoutLibrary(const <SavedWorkout>[]),
+  today: previewNow,
+  walkthroughOnOpen: true,
+  walkthroughFrom: from,
+);
+
 /// The launch curtain as it is [seconds] in, with nothing under it.
 Widget _launchAt(double seconds) => ColoredBox(
   color: AppColors.bg,
@@ -1150,20 +1199,6 @@ StandingPlan _standingPlan() {
     days: 4,
     equipment: Equipment.fullGym,
   );
-  // A history, so the plan screen has numbers on it. Keyed by role rather than
-  // by movement, which is the whole point of the slot.
-  const history = <String, (double, int, int)>{
-    'horizontal press': (85, 6, 6),
-    'vertical pull': (70, 10, 1),
-    'vertical press': (45, 8, 0),
-    'horizontal row': (75, 8, 2),
-    'lateral raise': (12, 12, 6),
-    'triceps': (32, 12, 0),
-    'squat': (110, 5, 3),
-    'hinge': (140, 5, 1),
-    'quad accessory': (160, 10, 0),
-    'hamstring accessory': (45, 12, 2),
-  };
   return StandingPlan(
     id: 'preview',
     // Named by the coach, not chosen from a list of three. See PlanShape for
@@ -1187,13 +1222,69 @@ StandingPlan _standingPlan() {
               isMain: s.isMain,
               sets: s.sets,
               reps: s.reps,
-              lastTopKg: history[s.role]?.$1,
-              lastTopReps: history[s.role]?.$2,
-              sessionsAtSameTop: history[s.role]?.$3 ?? 0,
             ),
         ],
     },
   );
+}
+
+/// [sampleLog] with the sessions behind [_standingPlan]'s numbers, so the plan
+/// screen has some.
+///
+/// **A log, not numbers on the slots.** A slot's history is read off the log
+/// (#4), so a fixture that wrote it onto the slots would be replaced before it
+/// was drawn. Keyed by role, as it was on the slots: each gets its top set once,
+/// and once more for every session it has held, all of it older than
+/// [sampleLog], so a movement in both is "last time" by sampleLog's numbers.
+List<Session> _planLog(DateTime now) {
+  // Top set, and how many sessions it has held.
+  const history = <String, (double, int, int)>{
+    'horizontal press': (85, 6, 6),
+    'vertical pull': (70, 10, 1),
+    'vertical press': (45, 8, 0),
+    'horizontal row': (75, 8, 2),
+    'lateral raise': (12, 12, 6),
+    'triceps': (32, 12, 0),
+    'squat': (110, 5, 3),
+    'hinge': (140, 5, 1),
+    'quad accessory': (160, 10, 0),
+    'hamstring accessory': (45, 12, 2),
+  };
+  final done = <String, (double, int, int)>{
+    for (final s in _standingPlan().slots.values.expand((d) => d))
+      s.movement: ?history[s.role],
+  };
+  return <Session>[
+    ...sampleLog(now),
+    for (var i = 0; i <= 6; i++)
+      Session(
+        id: 'plan-$i',
+        name: 'Earlier',
+        startedAt: now.subtract(Duration(days: 60 - i * 3)),
+        endedAt: now
+            .subtract(Duration(days: 60 - i * 3))
+            .add(const Duration(hours: 1)),
+        exercises: <SessionExercise>[
+          for (final (n, MapEntry(key: movement, value: h))
+              in done.entries.indexed)
+            if (i <= h.$3)
+              SessionExercise(
+                id: 'plan-$i-$n',
+                name: movement,
+                orderIndex: n,
+                sets: <SessionSet>[
+                  SessionSet(
+                    id: 'plan-$i-$n-1',
+                    setNumber: 1,
+                    weightKg: h.$1,
+                    reps: h.$2,
+                    isCompleted: true,
+                  ),
+                ],
+              ),
+        ],
+      ),
+  ];
 }
 
 /// The intake at the point where [step] of its questions are settled.
@@ -1983,9 +2074,9 @@ class _SheetHostState extends State<_SheetHost> {
 }
 
 /// The session screen a sheet opens over: a session in progress, which is
-/// what the exercise picker, the reorder sheet and the swap sheet are reached
-/// from. Named here rather than written out at each call site, so the ground
-/// under every sheet screenshot is identical.
+/// what the exercise picker and the swap sheet are reached from. Named here
+/// rather than written out at each call site, so the ground under every sheet
+/// screenshot is identical.
 Widget _runningSessionScreen() {
   final session = _openSession();
   return ActiveSessionScreen(

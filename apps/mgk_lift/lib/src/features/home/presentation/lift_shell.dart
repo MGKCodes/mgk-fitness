@@ -8,17 +8,23 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/domain/account.dart';
 import '../../auth/presentation/sign_in_screen.dart';
+import '../../coaching/domain/ai_consent.dart';
 import '../../coaching/domain/coach.dart';
+import '../../coaching/domain/consent_gate.dart';
 import '../../entitlement/domain/entitlement.dart';
 import '../../purchases/domain/manage_subscription.dart';
 import '../../purchases/domain/purchases.dart';
 import '../../purchases/presentation/sales_screen.dart';
 import '../../coaching/domain/coach_memory.dart';
+import '../../coaching/presentation/ai_consent_sheet.dart';
 import '../../coaching/presentation/coach_sheet.dart';
 import '../../coaching/presentation/plan_surface.dart';
 import '../../legal/domain/account_deleter.dart';
 import '../../legal/domain/disclaimer_store.dart';
 import '../../legal/presentation/medical_disclaimer_screen.dart';
+import '../../onboarding/domain/walkthrough_script.dart';
+import '../../onboarding/domain/walkthrough_spot.dart';
+import '../../onboarding/presentation/walkthrough.dart';
 import '../../settings/domain/coach_preference.dart';
 import '../../planning/domain/intake_flow.dart';
 import '../../planning/domain/moved_day.dart';
@@ -27,6 +33,7 @@ import '../../planning/domain/plan_builder.dart';
 import '../../planning/domain/session_prescription.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/plan_template.dart';
+import '../../planning/domain/slot_history.dart';
 import '../../planning/domain/standing_plan.dart';
 import '../../planning/domain/standing_plan_store.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
@@ -86,6 +93,7 @@ class LiftShell extends StatefulWidget {
     this.transcript,
     this.coachMemory,
     this.coachPreference,
+    this.aiConsent,
     this.disclaimers,
     this.deleter,
     this.planner,
@@ -105,7 +113,24 @@ class LiftShell extends StatefulWidget {
     this.restLengths,
     this.initialTab = 0,
     this.today,
+    this.walkthroughOnOpen = false,
+    this.onWalkthroughEnded,
+    this.walkthroughFrom = WalkthroughStep.track,
   });
+
+  /// Opens with the walkthrough playing over the shell (ADR-0006): what
+  /// *Get started* on the welcome leads to. Read once, when the shell is
+  /// built; afterwards Settings' *Show me around* plays it again.
+  final bool walkthroughOnOpen;
+
+  /// Told when a walkthrough ends, by *Start training*, *Skip* or back,
+  /// whichever started it. The gate records that this phone has met it.
+  final VoidCallback? onWalkthroughEnded;
+
+  /// The step [walkthroughOnOpen] starts at. The top in the app; a later one
+  /// for the preview harness and the plates, which show one step each.
+  @visibleForTesting
+  final WalkthroughStep walkthroughFrom;
 
   /// What the three surfaces should treat as today. Null is the wall clock,
   /// which is what the app wants and what every caller but one passes.
@@ -161,9 +186,19 @@ class LiftShell extends StatefulWidget {
   /// Whether the lifter wants the coach at all, and where that is kept.
   ///
   /// Null hides the switch and leaves the coach on, which is what a build
-  /// with no store wired up should do: the toggle is a consent control, and
-  /// one that cannot persist an answer is worse than none.
+  /// with no store wired up should do: a switch that cannot persist an answer
+  /// is worse than none. The consent itself is [aiConsent].
   final CoachPreferenceStore? coachPreference;
+
+  /// Whether the signed-in lifter has agreed to their training going to the
+  /// AI provider, kept on the account (issue #10). Asked before the coach,
+  /// the planner or a swap sends anything; see [ConsentGatedCoach].
+  ///
+  /// Null asks nothing, which is what the widget tests and the preview want:
+  /// they are not about consent, and their coaches are fakes that send
+  /// nothing. The app always passes one, and the same one its coach clients
+  /// check before every request.
+  final AiConsentStore? aiConsent;
 
   /// Whether this phone has accepted the medical disclaimer, which is asked
   /// once before the coach answers anything or builds a plan (5 October 2026,
@@ -287,6 +322,18 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   static const int _trackTab = 0;
   static const int _planTab = 1;
 
+  /// Navigated to in code since the walkthrough, which shows Profile's tab and
+  /// its Settings button.
+  static const int _profileTab = 2;
+
+  /// The controls the walkthrough can light, by name. Handed down from the
+  /// shell, so the tabs, the bar and the C register here; and to the
+  /// practice session the walkthrough pushes, which is not below the shell.
+  final WalkthroughTargets _walkthroughTargets = WalkthroughTargets();
+
+  /// The walkthrough, while it is running over the shell.
+  LiftWalkthrough? _walkthrough;
+
   /// Vertical room the floating mark occupies, handed to the surfaces through
   /// MediaQuery so their SafeArea absorbs it. Only applied when there is a mark.
   ///
@@ -360,13 +407,58 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
+  ///
+  /// As the store gave it, with no history on its slots. Everything that shows
+  /// it reads [_planAsLifted] instead.
   StandingPlan? _plan;
+
+  /// [_plan] with each slot's history read off [_log] (#4): what Track and Plan
+  /// show, and what a planned session is prescribed from. One call for all
+  /// three, so "last time 90 kg × 5" on Plan and the 92.5 the session opens
+  /// with cannot disagree.
+  ///
+  /// Kept until either changes rather than worked out on every build, because
+  /// it reads the whole log once per slot. Finishing a session refreshes the
+  /// log, which is what moves the next one on.
+  StandingPlan? get _planAsLifted {
+    final plan = _plan;
+    if (plan == null) return null;
+    final kept = _lifted;
+    if (kept != null &&
+        identical(kept.from, plan) &&
+        identical(kept.log, _log)) {
+      return kept.plan;
+    }
+    final lifted = planWithHistory(plan, _log);
+    _lifted = (from: plan, log: _log, plan: lifted);
+    return lifted;
+  }
+
+  ({StandingPlan from, List<Session> log, StandingPlan plan})? _lifted;
+
+  /// When the server last gave [_plan], and whether the latest attempt to ask
+  /// it failed. Plan says both, so a lifter with no signal knows the week on
+  /// screen is the one saved on the phone.
+  DateTime? _planCheckedAt;
+  bool _planOffline = false;
+
+  /// Which [_refreshPlan] is current. See there.
+  int _planReads = 0;
 
   /// Another day's session, brought forward to today from Plan. Held here for
   /// the same reason as [_plan]: Track shows it and Plan marks it.
   String? _movedDay;
   late final MovedDayStore _movedDays = widget.movedDays ?? InMemoryMovedDay();
   bool _buildingPlan = false;
+
+  /// What the lifter answered for a plan that then failed to build or save.
+  ///
+  /// **Kept so the next attempt does not start from nothing.** A failure used
+  /// to throw every answer away, so trying again meant the whole conversation
+  /// again — which, while every save was failing, was every attempt. Held for
+  /// this run of the app only; a plan that does save keeps its answers in
+  /// `lift.plans`.
+  PlanIntake? _unbuiltIntake;
 
   /// Whether the coach is switched on. Held here rather than in Settings
   /// because it governs the mark floating over every surface and whether
@@ -378,6 +470,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// being briefly present sends nothing, and every path that would send is
   /// behind a tap that cannot happen that fast.
   bool _useCoach = true;
+
+  /// Whether the account holds a yes to the coach sending, for Settings to say
+  /// what is happening now. Null until read, and with no store to read.
+  bool? _coachConsented;
 
   /// What the paid surfaces are rendered against. Starts at whatever was passed
   /// and is corrected by the first resolve, on the same reasoning [_useCoach]
@@ -395,6 +491,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     super.initState();
     unawaited(_loadUnits());
     unawaited(_loadCoachPreference());
+    unawaited(_readCoachConsent());
     unawaited(_refreshSession());
     unawaited(_refreshLog());
     _librarySub = widget.library?.changes.listen((_) {
@@ -417,6 +514,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     unawaited(_loadMovedDay());
     unawaited(_refreshEntitlement());
     unawaited(_loadOffers());
+    if (widget.walkthroughOnOpen) {
+      // After the first frame, when the tabs it points at have been laid out.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _startWalkthrough(from: widget.walkthroughFrom),
+      );
+    }
 
     final auth = widget.auth;
     if (auth != null) {
@@ -430,6 +533,9 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       _authSub = auth.changes.listen((account) {
         if (!mounted) return;
         setState(() {
+          // Answers kept from a failed build belong to whoever gave them: a
+          // goal and an injury are not to be offered to the next account.
+          if (account?.id != _account?.id) _unbuiltIntake = null;
           _account = account;
           if (account == null) {
             _mayUse = null;
@@ -437,6 +543,8 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           }
         });
         unawaited(_identifyCustomer(account));
+        // The answer is the account's, so a different account has its own.
+        unawaited(_readCoachConsent());
         // Signing in is the moment there is somewhere to put the backlog, and
         // signing out the moment backup has to say it has stopped. **Not
         // before the phone's training is known to be this account's**, which
@@ -452,6 +560,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         // signing in. Runs on sign-out too: the device value is then the only
         // answer, and it should be the one on screen.
         unawaited(_loadUnits());
+        // The plan is the account's too. It used to load at launch only, so
+        // signing in showed no plan until the next launch, and signing out
+        // left the last account's week on Track.
+        unawaited(_refreshPlan());
         // Entitlements are per account, so both directions matter. Signing in
         // is when the paid half can appear; signing out is when it must stop,
         // and must stop for the *device* rather than only for this frame.
@@ -462,6 +574,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _walkthrough?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_authSub?.cancel());
     unawaited(_librarySub?.cancel());
@@ -472,9 +585,13 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   /// Back in the foreground is a checkpoint — and, with no connectivity
   /// listener in the app, one of the two ways a returned connection is found.
+  /// The plan is asked for again for the same reason: launched at home and
+  /// opened again at the gym, it is the same app run.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _backup?.checkpoint();
+    if (state != AppLifecycleState.resumed) return;
+    _backup?.checkpoint();
+    unawaited(_refreshPlan());
   }
 
   /// Works out whether [account] may use the training on this phone, then lets
@@ -783,12 +900,74 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     setState(() => _useCoach = enabled);
   }
 
+  /// Turning the coach off also takes the account's yes back.
+  ///
+  /// **Off is a withdrawal, on is not a yes.** The switch has always promised
+  /// that off means nothing leaves the app, and since 2.0.1 the promise is
+  /// kept where the server can check it too. On only brings the mark back:
+  /// agreeing is a decision made in front of what is sent, which is the sheet
+  /// the coach shows before its first request, not a switch flicked in a list.
   Future<void> _setUseCoach(bool enabled) async {
     // Applied immediately, not after the write — the same call the units
     // control makes, and more clearly right here: somebody turning the
     // coach off wants the mark gone now, not once a plugin has answered.
     setState(() => _useCoach = enabled);
     await widget.coachPreference?.save(enabled: enabled);
+    final consent = widget.aiConsent;
+    if (!enabled && consent != null) {
+      try {
+        await consent.withdraw();
+      } on Object {
+        // Read back below: what Settings says is what the store says.
+      }
+      await _readCoachConsent();
+    }
+  }
+
+  Future<void> _readCoachConsent() async {
+    final consent = widget.aiConsent;
+    if (consent == null) return;
+    final granted = await consentGiven(consent);
+    if (mounted) setState(() => _coachConsented = granted);
+  }
+
+  /// The coach's permission, asked when there is none: true to carry on.
+  ///
+  /// **Only with an account.** The answer is kept on one, and with nobody
+  /// signed in nothing can be sent anyway: the coach mark opens the sales
+  /// screen, which signs them in, and the next request asks. Answering true
+  /// there is not a yes; it leaves the refusal to the clients, which refuse
+  /// a signed-out request on their own.
+  Future<bool> _askedFirst() async {
+    final consent = widget.aiConsent;
+    if (consent == null || _account == null) return true;
+    if (!mounted) return false;
+    final granted = await ensureCoachConsent(context, consent: consent);
+    if (granted && _coachConsented != true) await _readCoachConsent();
+    return granted;
+  }
+
+  /// The coach as the shell hands it out: asking first, wherever a message
+  /// comes from. See [ConsentGatedCoach].
+  CoachService? get _gatedCoach {
+    final coach = widget.coach;
+    if (coach == null) return null;
+    return widget.aiConsent == null
+        ? coach
+        : ConsentGatedCoach(coach, askFirst: _askedFirst);
+  }
+
+  /// The planner as the shell hands it out, asking first. **Null with the
+  /// coach switched off**, so a session's swap falls back to choosing by hand:
+  /// it used to be handed the planner either way, and a swap sent the session
+  /// to OpenRouter with the switch that promised nothing would be sent turned
+  /// off.
+  CoachPlanner? get _gatedPlanner {
+    final planner = widget.planner;
+    if (planner == null || !_useCoach) return null;
+    return widget.aiConsent == null
+        ? planner
+        : ConsentGatedPlanner(planner, askFirst: _askedFirst);
   }
 
   @override
@@ -806,6 +985,26 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
         onSignOut: _signOut,
       );
     }
+    // Back, while the walkthrough is over the shell, is its Skip: the shell is
+    // the first route, so back would otherwise leave the app from the middle
+    // of it.
+    return PopScope<Object?>(
+      canPop: _walkthrough == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _walkthrough?.skip();
+      },
+      child: WalkthroughScope(
+        targets: _walkthroughTargets,
+        child: _scaffold(context, coach: coach, account: account),
+      ),
+    );
+  }
+
+  Widget _scaffold(
+    BuildContext context, {
+    required CoachService? coach,
+    required Account? account,
+  }) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -838,7 +1037,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                     // or a blank session is one more tap. With no library
                     // there is nothing to choose, and it starts blank.
                     onOpenLibrary: widget.library == null ? null : _openLibrary,
-                    plan: _plan,
+                    plan: _planAsLifted,
                     movedDay: _movedDay,
                     today: widget.today,
                     onStartPlanned: widget.recorder == null
@@ -846,16 +1045,22 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                         : _openPlannedSession,
                     onOpenSession: _openPastSession,
                     onOpenPlan: () => _go(_planTab),
+                    // So the first session's line promises a backup only to
+                    // somebody who has an account to back up to.
+                    isSignedIn: account != null,
                   ),
                 ),
                 PlanSurface(
                   isEntitled: _entitled,
                   onSubscribe: _flow == null ? null : _startPurchase,
                   onRestore: _flow == null ? null : _restorePurchases,
-                  plan: _plan,
+                  plan: _planAsLifted,
+                  planCheckedAt: _planCheckedAt,
+                  planOffline: _planOffline,
                   today: widget.today,
                   unit: _units.mass,
-                  onBuildPlan: _canPlan ? _buildPlan : null,
+                  onBuildPlan: _canPlan && !_buildingPlan ? _buildPlan : null,
+                  isBuilding: _buildingPlan,
                   // So the note under a disabled button names the real
                   // reason. Only when a planner exists: with no server
                   // the connection line is the true one.
@@ -910,11 +1115,13 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   icon: Icons.calendar_month_outlined,
                   selectedIcon: Icons.calendar_month,
                   label: 'Plan',
+                  walkthroughId: WalkthroughSpot.planTab,
                 ),
                 NavPillDestination(
                   icon: Icons.person_outline,
                   selectedIcon: Icons.person,
                   label: 'Profile',
+                  walkthroughId: WalkthroughSpot.profileTab,
                 ),
               ],
             ),
@@ -937,9 +1144,12 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   MediaQuery.paddingOf(context).bottom +
                   kNavPillHeight +
                   AppSpacing.md,
-              child: CoachButton(
-                hasUnread: widget.hasCoachNote,
-                onTap: _openCoach,
+              child: WalkthroughTarget(
+                id: WalkthroughSpot.coach,
+                child: CoachButton(
+                  hasUnread: widget.hasCoachNote,
+                  onTap: _openCoach,
+                ),
               ),
             ),
         ],
@@ -950,6 +1160,48 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   void _go(int index) {
     if (index == _index) return;
     setState(() => _index = index);
+  }
+
+  /// Plays the walkthrough over the shell, from [from].
+  ///
+  /// Not over the question about another account's training, which stands
+  /// in the shell's place: none of what the walkthrough points at is there.
+  void _startWalkthrough({WalkthroughStep from = WalkthroughStep.track}) {
+    if (!mounted || _walkthrough != null) return;
+    if (_account != null && _mayUse == false) return;
+    final walkthrough = LiftWalkthrough(
+      navigator: Navigator.of(context),
+      overlay: Overlay.of(context, rootOverlay: true),
+      targets: _walkthroughTargets,
+      goTo: (place) => _go(switch (place) {
+        WalkthroughPlace.plan => _planTab,
+        WalkthroughPlace.profile => _profileTab,
+        WalkthroughPlace.track || WalkthroughPlace.practice => _trackTab,
+      }),
+      massUnit: () => _units.mass,
+      isSignedIn: () => _account != null,
+      // Whether a swap mid-session asks the coach, which is what the step
+      // about swapping promises: subscribed, with the coach on.
+      isCoached: () => _entitled && _gatedPlanner != null,
+      onEnded: _walkthroughEnded,
+      from: from,
+    );
+    setState(() => _walkthrough = walkthrough);
+    walkthrough.start();
+  }
+
+  void _walkthroughEnded() {
+    if (mounted) setState(() => _walkthrough = null);
+    widget.onWalkthroughEnded?.call();
+  }
+
+  /// Settings' *Show me around*: Settings closes, and the walkthrough plays
+  /// from the top over the shell. Back to the shell's own route rather than
+  /// the first, since the preview harness pushes the shell over an index.
+  void _showAround() {
+    final shell = ModalRoute.of(context);
+    Navigator.of(context).popUntil((route) => route == shell || route.isFirst);
+    _startWalkthrough();
   }
 
   /// Opens Settings, applying unit changes as they happen rather than on close.
@@ -967,6 +1219,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           backup: _backup?.status,
           isSignedIn: _account != null,
           email: _account?.email,
+          name: _account?.name,
           // On the profile card. Only in a build that can sell: with no
           // store there is no plan to have or not have.
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
@@ -982,9 +1235,11 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           onRestorePurchases: _flow == null ? null : _restorePurchases,
           restAlerts: widget.restAlerts,
           useCoach: widget.coachPreference == null ? null : _useCoach,
+          coachConsented: _coachConsented,
           onUseCoachChanged: widget.coachPreference == null
               ? null
               : _setUseCoach,
+          onShowAround: _showAround,
         ),
       ),
     );
@@ -1002,6 +1257,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       MaterialPageRoute<void>(
         builder: (_) => AccountScreen(
           email: account.email,
+          name: account.name,
           backup: _backup?.status,
           planLabel: _flow == null ? null : (_entitled ? 'Subscribed' : 'Free'),
           onSyncNow: _backup == null ? null : _syncNow,
@@ -1071,10 +1327,14 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// to the thing that would fix it. The server still enforces both - this only
   /// stops a round trip that cannot succeed.
   Future<void> _openCoach() async {
-    final coach = widget.coach;
+    final coach = _gatedCoach;
     if (coach == null || !_useCoach) return;
-    // The disclaimer first, and only then a price, as Run's coach asks it:
-    // what somebody is about to be able to ask is the reason it is said.
+    // Permission, then the disclaimer, and only then a price, as Run's coach
+    // asks them: nobody pays for a coach and then declines to let it see their
+    // training. Signed out, there is no account to keep the answer on yet;
+    // the sales screen signs them in, and the coach asks before it first sends.
+    if (!await _askedFirst() || !mounted) return;
+    // What somebody is about to be able to ask is the reason it is said.
     if (!await _acceptedDisclaimer() || !mounted) return;
     // Nothing on the coach is free (R6): for anybody unsubscribed, signed out
     // included, the mark opens the sales screen, wherever it is tapped. It
@@ -1126,19 +1386,37 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// it too. Without this the coach could be off and Plan would still send
   /// the intake answers — including the injury notes — to OpenRouter, which
   /// is exactly what the switch promises it does not do.
+  ///
+  /// **Not false while a plan is building.** It was, and Plan reads a missing
+  /// build action as "no connection", so the minute a plan took to build was
+  /// spent telling the lifter their signal had failed. Building is its own
+  /// state now ([PlanSurface.isBuilding]); the button is withheld where it is
+  /// passed.
   bool get _canPlan =>
-      _useCoach &&
-      widget.planner != null &&
-      widget.plans != null &&
-      !_buildingPlan;
+      _useCoach && widget.planner != null && widget.plans != null;
 
+  /// The saved copy at once, then the server's answer (#2).
+  ///
+  /// Runs at launch, back in the foreground, and when the account changes.
+  /// Only the newest run is listened to: one started on the way out of a
+  /// basement must not land after the one started on the way back in.
   Future<void> _refreshPlan() async {
     final plans = widget.plans;
     if (plans == null) return;
+    final run = ++_planReads;
     try {
-      final plan = await plans.active();
-      if (!mounted) return;
-      setState(() => _plan = plan);
+      await for (final read in plans.watch()) {
+        if (!mounted || run != _planReads) return;
+        setState(() {
+          _plan = read.plan;
+          _planCheckedAt = read.checkedAt;
+          // The copy shown while the server is asked says nothing new about
+          // the connection, so the last verdict stands until there is one.
+          if (read.freshness != PlanFreshness.saved) {
+            _planOffline = read.freshness == PlanFreshness.unreachable;
+          }
+        });
+      }
     } on PlanException {
       // A plan that will not load is not worth an error on the home screen.
       // Track and Plan both read a null plan as "no block", which is a state
@@ -1149,11 +1427,26 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
   /// Intake, generation, review, accept. Four steps, and the lifter can stop
   /// after any of them.
   Future<void> _buildPlan() async {
-    final planner = widget.planner;
+    final planner = _gatedPlanner;
     final plans = widget.plans;
     if (planner == null || plans == null) return;
+    // Asked here as well as by the planner itself, so the question comes
+    // before the conversation rather than after the first answer is typed.
+    if (!await _askedFirst() || !mounted) return;
     // A plan is the coach's too, and asks about injuries on the way.
     if (!await _acceptedDisclaimer() || !mounted) return;
+
+    // A previous attempt's answers, when it failed after the intake: the
+    // conversation opens complete, with "Build my plan" showing, rather than
+    // asking it all again. Anything still unanswered in it was declined --
+    // the intake does not finish otherwise -- and is kept declined.
+    final previous = _unbuiltIntake;
+    final seeded = previous == null
+        ? const IntakeProgress()
+        : IntakeProgress(
+            plan: previous,
+            declined: IntakeProgress(plan: previous).unsettled.toSet(),
+          );
 
     final intake = await Navigator.of(context).push<PlanIntake>(
       MaterialPageRoute<PlanIntake>(
@@ -1164,13 +1457,20 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           // at once and led with the goal — which is the field with the least
           // leverage over the block, and the flow orders by leverage on
           // purpose. See planning/domain/intake_flow.dart.
-          opener: IntakeField.days.question,
+          opener: previous == null
+              ? IntakeField.days.question
+              : 'I still have your answers from last time. Tap Build my plan '
+                    'to try again, or tell me what has changed.',
+          initialKnown: seeded,
         ),
       ),
     );
     if (intake == null || !mounted) return;
 
-    setState(() => _buildingPlan = true);
+    setState(() {
+      _buildingPlan = true;
+      _unbuiltIntake = intake;
+    });
     try {
       final equipment = Equipment.fromAnswer(intake.equipment ?? '');
       final built =
@@ -1190,15 +1490,15 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           ).build(
             id: 'plan-${DateTime.now().millisecondsSinceEpoch}',
             intake: intake,
-            // What they said, or a sensible week if they declined. Days is the one
-            // question the intake will not let somebody skip, so this is a
-            // belt-and-braces default rather than a real case.
-            weekdays: intake.availableWeekdays ?? const <int>[1, 2, 4, 5],
+            // What they named, or their day count spread across the week. This
+            // was a fixed four-day week whenever no weekday was named, which
+            // is every time somebody taps "3 days".
+            weekdays: intake.weekdaysOrDefault,
             catalogue: catalogueFor(equipment),
             equipment: equipment,
           );
 
-      await plans.replace(built.plan);
+      await plans.replace(built.plan, intake: intake);
       if (!mounted) return;
 
       // **No separate review screen.** Reviewing a block made sense when four
@@ -1209,8 +1509,37 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       // for.
       setState(() {
         _plan = built.plan;
+        // The server has just taken it, which is as synced as it gets. And a
+        // refresh still waiting on a slow server was asked before this plan
+        // existed, so its answer is the old week: it is retired, not awaited.
+        _planCheckedAt = DateTime.now();
+        _planOffline = false;
+        _planReads++;
         _index = _planTab;
+        // Kept after a template, so "Change the split" retries with the same
+        // answers rather than asking them all again.
+        _unbuiltIntake = built.fromCoach ? null : intake;
       });
+
+      // The fallback is a good week and a worse product: it knows nothing
+      // about this person's history. It used to arrive in silence, so
+      // somebody given a template had no reason to think another go might
+      // give them the coach's plan instead -- and "another go" is only the
+      // advice when another go could work.
+      if (!built.fromCoach) {
+        AppToast.show(context, switch (built.coachFailure) {
+          PlanFailure.limitReached =>
+            "You have used today's coaching, so this is a standard week for "
+                "your days. Change the split tomorrow for the coach's own.",
+          PlanFailure.consentRequired =>
+            'Your coach needs your permission to write your plan, so this is a '
+                'standard week for your days. Change the split to be asked '
+                'again.',
+          _ =>
+            'Your coach could not write this one, so it is a standard week '
+                'for your days. Change the split to try again.',
+        });
+      }
     } on PlanException catch (e) {
       if (!mounted) return;
       AppToast.show(context, e.failure.message);
@@ -1219,20 +1548,18 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     }
   }
 
-  /// Starts a planned session, and records which workout it became.
-  ///
-  /// The link is written when the session FINISHES, not when it starts: a
-  /// session opened and abandoned is not a session they did, and marking the
-  /// plan complete on open would claim otherwise.
   /// Starts today's session from the plan.
   ///
   /// **Derived on the spot rather than looked up.** A standing plan has no
   /// session rows to open — [SessionPrescription] turns today's slots into
   /// movements, with the weight worked out from what this lifter has actually
   /// lifted and left blank where there is nothing to work it out from.
+  ///
+  /// From [_planAsLifted], the same plan Plan is showing, so the weight in the
+  /// session is the one the plan screen led them to expect.
   Future<void> _openPlannedSession(String day) async {
     final recorder = widget.recorder;
-    final plan = _plan;
+    final plan = _planAsLifted;
     if (recorder == null || plan == null) return;
 
     final slots = plan.slots[day] ?? const <MovementSlot>[];
@@ -1249,16 +1576,16 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       day,
       SessionPrescription.forDay(slots),
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       // The summary the session ends on offers the conversation; the shell
       // still owns what opening the coach means, including both gates.
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
-        // Recording what the session did to each slot -- the top set and
-        // whether it moved -- is the post-session review, and is the next
-        // thing to build. Until then the plan does not learn from a workout,
-        // which is a gap rather than a decision.
+        // Nothing is written back to the plan. Each slot's top set and
+        // whether it moved are read off the log (SlotHistory, #4), so the
+        // refreshed log below is what moves the next session's weights on,
+        // signal or none.
         unawaited(_refreshSession());
         unawaited(_refreshLog());
         _afterSession();
@@ -1285,7 +1612,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     ).openSession(
       context,
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
@@ -1315,7 +1642,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       context,
       workout,
       massUnit: _units.mass,
-      planner: widget.planner,
+      planner: _gatedPlanner,
       log: _log,
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
@@ -1453,7 +1780,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
           session: current,
           editing: true,
           massUnit: _units.mass,
-          planner: widget.planner,
+          planner: _gatedPlanner,
           log: _log,
           onFinished: () {
             unawaited(_refreshLog());
