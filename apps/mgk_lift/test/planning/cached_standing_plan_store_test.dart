@@ -64,14 +64,6 @@ class _Remote implements StandingPlanStore {
   @override
   Future<StandingPlan> replace(StandingPlan p, {PlanIntake? intake}) async =>
       live = p;
-
-  @override
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  }) async {}
 }
 
 void main() {
@@ -85,10 +77,31 @@ void main() {
     final bench = back.slots['Push']!.single;
     expect(bench.movement, 'Barbell Bench Press');
     expect(bench.isMain, isTrue);
-    expect(bench.lastTopKg, 92.5);
-    expect(bench.sessionsAtSameTop, 2);
+    expect(bench.sets, 4);
+    expect(bench.reps, 6);
     expect(back.slots['Legs'], isEmpty);
     expect(back.dayFor(DateTime(2026, 8, 19)), 'Pull'); // a Wednesday
+  });
+
+  test('a slot\'s history is not saved with it', () {
+    // It is read off the log (#4). A copy here could only disagree with it.
+    final bench = planFromJson(planToJson(plan)).slots['Push']!.single;
+    expect(bench.hasHistory, isFalse);
+    expect(bench.sessionsAtSameTop, 0);
+  });
+
+  test('a copy saved with history still reads', () {
+    // Copies saved before #4 carry it. Ignored, rather than the plan lost.
+    final json = planToJson(plan);
+    final push = (json['slots']! as Map<String, Object?>)['Push']! as List;
+    (push.single as Map<String, Object?>).addAll(<String, Object?>{
+      'sessionsAtSameTop': 2,
+      'lastTopKg': 92.5,
+      'lastTopReps': 6,
+    });
+    final bench = planFromJson(json).slots['Push']!.single;
+    expect(bench.movement, 'Barbell Bench Press');
+    expect(bench.hasHistory, isFalse);
   });
 
   test(
@@ -105,7 +118,7 @@ void main() {
       // The gym, the basement: today's session is still on Track.
       final offline = await store.active();
       expect(offline?.name, 'Push / Pull / Legs');
-      expect(offline?.slots['Push']!.single.lastTopKg, 92.5);
+      expect(offline?.slots['Push']!.single.movement, 'Barbell Bench Press');
     },
   );
 
@@ -197,7 +210,10 @@ void main() {
         PlanFreshness.saved,
         PlanFreshness.unreachable,
       ]);
-      expect(reads.last.plan?.slots['Push']!.single.lastTopKg, 92.5);
+      expect(
+        reads.last.plan?.slots['Push']!.single.movement,
+        'Barbell Bench Press',
+      );
     });
 
     test('with nothing saved, a slow server is waited for', () async {

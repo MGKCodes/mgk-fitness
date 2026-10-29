@@ -30,6 +30,7 @@ import '../../planning/domain/plan_builder.dart';
 import '../../planning/domain/session_prescription.dart';
 import '../../planning/domain/coach_planner.dart';
 import '../../planning/domain/plan_template.dart';
+import '../../planning/domain/slot_history.dart';
 import '../../planning/domain/standing_plan.dart';
 import '../../planning/domain/standing_plan_store.dart';
 import '../../planning/presentation/plan_intake_screen.dart';
@@ -374,7 +375,34 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
 
   /// The live block, held at the shell because Track shows today's session and
   /// Plan shows the week — one load, so the two cannot disagree.
+  ///
+  /// As the store gave it, with no history on its slots. Everything that shows
+  /// it reads [_planAsLifted] instead.
   StandingPlan? _plan;
+
+  /// [_plan] with each slot's history read off [_log] (#4): what Track and Plan
+  /// show, and what a planned session is prescribed from. One call for all
+  /// three, so "last time 90 kg × 5" on Plan and the 92.5 the session opens
+  /// with cannot disagree.
+  ///
+  /// Kept until either changes rather than worked out on every build, because
+  /// it reads the whole log once per slot. Finishing a session refreshes the
+  /// log, which is what moves the next one on.
+  StandingPlan? get _planAsLifted {
+    final plan = _plan;
+    if (plan == null) return null;
+    final kept = _lifted;
+    if (kept != null &&
+        identical(kept.from, plan) &&
+        identical(kept.log, _log)) {
+      return kept.plan;
+    }
+    final lifted = planWithHistory(plan, _log);
+    _lifted = (from: plan, log: _log, plan: lifted);
+    return lifted;
+  }
+
+  ({StandingPlan from, List<Session> log, StandingPlan plan})? _lifted;
 
   /// When the server last gave [_plan], and whether the latest attempt to ask
   /// it failed. Plan says both, so a lifter with no signal knows the week on
@@ -950,7 +978,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                     // or a blank session is one more tap. With no library
                     // there is nothing to choose, and it starts blank.
                     onOpenLibrary: widget.library == null ? null : _openLibrary,
-                    plan: _plan,
+                    plan: _planAsLifted,
                     movedDay: _movedDay,
                     today: widget.today,
                     onStartPlanned: widget.recorder == null
@@ -964,7 +992,7 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
                   isEntitled: _entitled,
                   onSubscribe: _flow == null ? null : _startPurchase,
                   onRestore: _flow == null ? null : _restorePurchases,
-                  plan: _plan,
+                  plan: _planAsLifted,
                   planCheckedAt: _planCheckedAt,
                   planOffline: _planOffline,
                   today: widget.today,
@@ -1410,20 +1438,18 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
     }
   }
 
-  /// Starts a planned session, and records which workout it became.
-  ///
-  /// The link is written when the session FINISHES, not when it starts: a
-  /// session opened and abandoned is not a session they did, and marking the
-  /// plan complete on open would claim otherwise.
   /// Starts today's session from the plan.
   ///
   /// **Derived on the spot rather than looked up.** A standing plan has no
   /// session rows to open — [SessionPrescription] turns today's slots into
   /// movements, with the weight worked out from what this lifter has actually
   /// lifted and left blank where there is nothing to work it out from.
+  ///
+  /// From [_planAsLifted], the same plan Plan is showing, so the weight in the
+  /// session is the one the plan screen led them to expect.
   Future<void> _openPlannedSession(String day) async {
     final recorder = widget.recorder;
-    final plan = _plan;
+    final plan = _planAsLifted;
     if (recorder == null || plan == null) return;
 
     final slots = plan.slots[day] ?? const <MovementSlot>[];
@@ -1446,10 +1472,10 @@ class _LiftShellState extends State<LiftShell> with WidgetsBindingObserver {
       // still owns what opening the coach means, including both gates.
       onOpenCoach: widget.coach == null ? null : _openCoach,
       onDone: () {
-        // Recording what the session did to each slot -- the top set and
-        // whether it moved -- is the post-session review, and is the next
-        // thing to build. Until then the plan does not learn from a workout,
-        // which is a gap rather than a decision.
+        // Nothing is written back to the plan. Each slot's top set and
+        // whether it moved are read off the log (SlotHistory, #4), so the
+        // refreshed log below is what moves the next session's weights on,
+        // signal or none.
         unawaited(_refreshSession());
         unawaited(_refreshLog());
         _afterSession();

@@ -52,3 +52,8 @@ is never shown as a best, and no longer shown as a figure of its own.
   the line can go up with no best. They answer different questions.
 - Bests already shown in 2.0.0 are not recomputed or withdrawn; nothing stored
   them. The rule applies from the next session.
+- A plan's progression uses the same rule (#4, 2026-10-29). A slot's top set
+  *moved* when it beats the last session's by `TopSet.beats`, which earns the
+  next session one increment; anything else, a lighter session included, is a
+  hold and counts toward going stale. `SlotHistory` reads it off the log, so a
+  plan and a best cannot disagree about whether a lift moved.

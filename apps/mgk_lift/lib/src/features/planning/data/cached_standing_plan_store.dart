@@ -185,21 +185,14 @@ class CachedStandingPlanStore implements StandingPlanStore {
     await _cache.write(_encode(saved, _clock()));
     return saved;
   }
-
-  @override
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  }) => _remote.recordResult(
-    slotId,
-    topKg: topKg,
-    reps: reps,
-    improved: improved,
-  );
 }
 
+/// A plan as the copy on the phone holds it.
+///
+/// **Without each slot's history.** That is read off the log (`SlotHistory`,
+/// #4), and a copy of it here could only disagree with the log. A copy saved
+/// before then still carries `sessionsAtSameTop`, `lastTopKg` and
+/// `lastTopReps`; they are ignored rather than read, so it stays a format 2.
 Map<String, Object?> planToJson(StandingPlan p) => <String, Object?>{
   'id': p.id,
   'name': p.name,
@@ -218,9 +211,6 @@ Map<String, Object?> planToJson(StandingPlan p) => <String, Object?>{
             'isMain': s.isMain,
             'sets': s.sets,
             'reps': s.reps,
-            'sessionsAtSameTop': s.sessionsAtSameTop,
-            'lastTopKg': s.lastTopKg,
-            'lastTopReps': s.lastTopReps,
           },
       ],
   },
@@ -250,9 +240,6 @@ StandingPlan planFromJson(Map<String, Object?> j) => StandingPlan(
               isMain: s['isMain']! as bool,
               sets: s['sets']! as int,
               reps: s['reps']! as int,
-              sessionsAtSameTop: s['sessionsAtSameTop']! as int,
-              lastTopKg: (s['lastTopKg'] as num?)?.toDouble(),
-              lastTopReps: s['lastTopReps'] as int?,
             ),
           },
       ],

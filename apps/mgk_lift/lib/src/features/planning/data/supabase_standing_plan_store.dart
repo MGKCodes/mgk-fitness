@@ -37,10 +37,10 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
       final plan = rows.first;
       final slots = await _lift
           .from('plan_slots')
-          .select(
-            'id, day, sort_order, role, movement, is_main, sets, reps, '
-            'sessions_at_same_top, last_top_kg, last_top_reps',
-          )
+          // Not `sessions_at_same_top`, `last_top_kg` or `last_top_reps`: a
+          // slot's history is read off the log on the phone (`SlotHistory`,
+          // #4), and those columns are left unread and unwritten.
+          .select('id, day, sort_order, role, movement, is_main, sets, reps')
           .eq('plan_id', plan['id'] as String)
           // The unique index is (plan_id, day, sort_order), so this is the
           // order the plan was written in rather than whatever the planner
@@ -98,9 +98,8 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
             'is_main': s.isMain,
             'sets': s.sets,
             'reps': s.reps,
-            'sessions_at_same_top': s.sessionsAtSameTop,
-            'last_top_kg': s.lastTopKg,
-            'last_top_reps': s.lastTopReps,
+            // No history: the function writes its defaults, 0 and null, and
+            // nothing reads them back (#4).
           },
     ];
 
@@ -151,53 +150,6 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
     _ => PlanFailure.unavailable,
   };
 
-  @override
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  }) async {
-    try {
-      if (improved) {
-        await _lift
-            .from('plan_slots')
-            .update(<String, Object?>{
-              'last_top_kg': topKg,
-              'last_top_reps': reps,
-              'sessions_at_same_top': 0,
-            })
-            .eq('id', slotId);
-        return;
-      }
-
-      // Incrementing needs the current value, and reading it back first is a
-      // race between two devices finishing the same session. It is a benign
-      // one -- the worst outcome is a rotation prompt arriving a session late
-      // -- and the alternative is an RPC for a counter, which is more machinery
-      // than the failure justifies.
-      final rows = await _lift
-          .from('plan_slots')
-          .select('sessions_at_same_top')
-          .eq('id', slotId)
-          .limit(1);
-      final held = rows.isEmpty
-          ? 0
-          : (rows.first['sessions_at_same_top'] as num?)?.toInt() ?? 0;
-
-      await _lift
-          .from('plan_slots')
-          .update(<String, Object?>{
-            'last_top_kg': topKg,
-            'last_top_reps': reps,
-            'sessions_at_same_top': held + 1,
-          })
-          .eq('id', slotId);
-    } on Object {
-      throw const PlanException(PlanFailure.unavailable);
-    }
-  }
-
   StandingPlan _hydrate(
     Map<String, Object?> plan,
     List<Map<String, Object?>> slots,
@@ -217,9 +169,6 @@ class SupabaseStandingPlanStore implements StandingPlanStore {
           // corrects it.
           sets: (r['sets'] as num?)?.toInt() ?? 3,
           reps: (r['reps'] as num?)?.toInt() ?? 10,
-          sessionsAtSameTop: (r['sessions_at_same_top'] as num?)?.toInt() ?? 0,
-          lastTopKg: (r['last_top_kg'] as num?)?.toDouble(),
-          lastTopReps: (r['last_top_reps'] as num?)?.toInt(),
         ),
       );
     }
