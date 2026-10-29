@@ -12,11 +12,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class _Functions implements FunctionsClient {
   final List<Map<String, dynamic>> bodies = <Map<String, dynamic>>[];
 
+  /// Answer as the deployed function does for an account with no current
+  /// yes: `403 {"error":"consent_required"}`, which the client throws.
+  bool refuseConsent = false;
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.memberName == #invoke) {
       final body = invocation.namedArguments[#body] as Map<String, dynamic>;
       bodies.add(Map<String, dynamic>.of(body));
+      if (refuseConsent) {
+        return Future<FunctionResponse>.error(
+          const FunctionException(
+            status: 403,
+            details: <String, dynamic>{'error': 'consent_required'},
+          ),
+        );
+      }
       return Future<FunctionResponse>.value(
         FunctionResponse(
           status: 200,
@@ -50,6 +62,9 @@ class _Unanswerable implements AiConsentStore {
 
   @override
   Future<void> withdraw() async {}
+
+  @override
+  Future<void> refusedByAccount() async {}
 }
 
 /// **Asking at the door is a habit; this is the rule.**
@@ -174,6 +189,66 @@ void main() {
       refusal,
     );
     expect(functions.bodies, isEmpty);
+  });
+
+  /// The server checks the account as well (ADR-0036, amended 2026-10-27).
+  /// When it says no and the phone thought yes, the runner meets the same
+  /// question as when the phone says no, not "The coach hit a problem".
+  group('when the server refuses, the coach asks again', () {
+    test('in the conversation', () async {
+      final consent = InMemoryAiConsentStore.granted();
+      final coach = serviceWith(consent);
+      functions.refuseConsent = true;
+
+      await expectLater(
+        coach.chat(brief: '', history: const <ChatMessage>[], message: 'Hi'),
+        refusal,
+      );
+      expect(
+        await consent.isGranted(),
+        isFalse,
+        reason:
+            'the next door into the coach has to ask, or every request '
+            'meets the same refusal',
+      );
+    });
+
+    test('in the intake', () async {
+      final coach = serviceWith(InMemoryAiConsentStore.granted());
+      functions.refuseConsent = true;
+
+      await expectLater(
+        coach.intake(slots: const IntakeSlots(), history: const []),
+        refusal,
+      );
+    });
+
+    test('in the plan it generates, rather than a quiet fallback', () async {
+      final consent = InMemoryAiConsentStore.granted();
+      final coach = serviceWith(consent);
+      functions.refuseConsent = true;
+
+      await expectLater(coach.proposeSkeleton(profile: profile), refusal);
+      expect(await consent.isGranted(), isFalse);
+    });
+
+    test(
+      'and once asked, nothing more is sent until the runner answers',
+      () async {
+        final coach = serviceWith(InMemoryAiConsentStore.granted());
+        functions.refuseConsent = true;
+        await expectLater(
+          coach.chat(brief: '', history: const <ChatMessage>[], message: 'Hi'),
+          refusal,
+        );
+
+        await expectLater(
+          coach.chat(brief: '', history: const <ChatMessage>[], message: 'Hi'),
+          refusal,
+        );
+        expect(functions.bodies, hasLength(1));
+      },
+    );
   });
 
   test('a store that cannot answer is a no', () async {

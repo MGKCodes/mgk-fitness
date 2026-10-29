@@ -38,6 +38,15 @@ This is 1.0.2
   Sign in with Apple. It is kept as the account's `display_name`, which Google
   cannot overwrite, and the name Run kept before is copied across once.
 
+### Fixed
+
+- **When the coach's server finds no permission on your account, Run asks
+  again** rather than showing *The coach hit a problem*, or quietly building
+  a plan without the coach
+  ([ADR-0036](docs/decisions/0036-the-coach-asks-before-it-sends.md),
+  amended 27 October). It happens when you agreed with no signal and the
+  answer had not reached your account yet, or took it back on another phone.
+
 ## [1.0.1] — released 2026-10-19, build 31
 
 Submitted to both stores on 16 October 2026 from `1acf955` (tag

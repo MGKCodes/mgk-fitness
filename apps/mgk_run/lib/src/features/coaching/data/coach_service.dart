@@ -256,6 +256,7 @@ class CoachService
       );
     } on FunctionException catch (e) {
       // Non-2xx from the function; its body (with `error`) rides on `details`.
+      await _throwIfConsentRefused(e.details);
       final limit = _limitFrom(e.details);
       if (limit != null) throw limit;
       throw CoachException(_messageForError(_codeFrom(e.details)));
@@ -265,6 +266,7 @@ class CoachService
       throw const CoachException('The coach returned an unexpected response.');
     }
     if (data['error'] != null) {
+      await _throwIfConsentRefused(data);
       final limit = _limitFrom(data);
       if (limit != null) throw limit;
       throw CoachException(_messageForError(data['error']));
@@ -385,6 +387,7 @@ class CoachService
           .timeout(requestTimeout);
       final data = res.data;
       if (data is Map<String, dynamic> && data['error'] == null) return data;
+      await _throwIfConsentRefused(data);
       _throwIfNotEntitled(data);
       final limit = _limitFrom(data);
       if (limit != null) throw limit;
@@ -394,6 +397,7 @@ class CoachService
       // path", and a hung provider is exactly that case.
       return null;
     } on FunctionException catch (e) {
+      await _throwIfConsentRefused(e.details);
       _throwIfNotEntitled(e.details);
       final limit = _limitFrom(e.details);
       if (limit != null) throw limit;
@@ -419,6 +423,24 @@ class CoachService
       granted = false;
     }
     if (!granted) throw const CoachConsentRequiredException();
+  }
+
+  /// The server's half of [_requireConsent]: its `403 consent_required`, thrown
+  /// as the same exception, so every caller treats it the way it already
+  /// treats the phone's own refusal.
+  ///
+  /// It used to fall through to "The coach hit a problem", or on a generation
+  /// surface to a quiet deterministic week, neither of which tells the runner
+  /// that the answer is a question. The store is told first, so the next
+  /// door into the coach asks it.
+  Future<void> _throwIfConsentRefused(Object? details) async {
+    if (_codeFrom(details) != 'consent_required') return;
+    try {
+      await _consent.refusedByAccount();
+    } catch (_) {
+      // Its contract is not to throw; the refusal is what matters here.
+    }
+    throw const CoachConsentRequiredException();
   }
 
   /// Turns the function's 402 into something the UI can render as a door.
@@ -467,6 +489,9 @@ class CoachService
         // any caller reaches here, and a wrong message on a paywall is worse
         // than a wrong message on a fault.
         return const CoachNotEntitledException().message;
+      case 'consent_required':
+        // Belt and braces, as above, for `_throwIfConsentRefused`.
+        return const CoachConsentRequiredException().message;
       default:
         return 'The coach hit a problem. Please try again.';
     }

@@ -19,6 +19,11 @@ abstract interface class AiConsentAccount {
   /// Writes [value] to the signed-in account; null removes the key. Throws
   /// when it did not land.
   Future<void> store(Map<String, Object?>? value);
+
+  /// Asks the server for the account again, so [stored] is what the account
+  /// says now rather than what it said when the session was last refreshed.
+  /// Throws when it could not.
+  Future<void> reload();
 }
 
 /// This phone's answers that the account has not received yet, by user id.
@@ -109,6 +114,16 @@ class SupabaseAiConsentAccount implements AiConsentAccount {
         )
         .timeout(timeout);
   }
+
+  /// A session refresh, which brings the user back with its metadata: the
+  /// same thing that carries a withdrawal made on another phone to this one,
+  /// asked for now rather than waited for.
+  @override
+  Future<void> reload() async {
+    final client = _client;
+    if (client == null) throw StateError('Supabase is not initialised');
+    await client.auth.refreshSession().timeout(timeout);
+  }
 }
 
 /// The real [AiConsentStore]: the account holds the answer, and the phone
@@ -165,6 +180,38 @@ class AccountAiConsent implements AiConsentStore {
 
   @override
   Future<void> withdraw() => _decide(AiConsent.withdrawn(_now()));
+
+  /// Puts this phone back in step with the account the server just read.
+  ///
+  /// **A yes waiting here is dropped, not sent again.** The server has
+  /// refused on the account's answer, and the amendment's rule is that the
+  /// runner is asked again rather than the phone quietly delivering a yes
+  /// they gave earlier: a lot can have changed since, including a withdrawal
+  /// on another phone. A waiting withdrawal is kept, because it already says
+  /// no and still has to reach the account.
+  ///
+  /// Then the account is read again, which is what catches a withdrawal made
+  /// elsewhere that this phone's session had not heard about. If that read
+  /// fails, the phone may still think yes and the next request is refused the
+  /// same way; the server's check holds either way.
+  @override
+  Future<void> refusedByAccount() async {
+    final id = _account.userId;
+    if (id == null) return;
+    final pending = AiConsent.fromJson(await _readCache(id));
+    if (pending != null && !pending.isWithdrawal) {
+      try {
+        await _cache.write(id, null);
+      } catch (_) {
+        // Read again next time, and refused again by the server.
+      }
+    }
+    try {
+      await _account.reload();
+    } catch (_) {
+      // See above: the server still refuses.
+    }
+  }
 
   /// Writes [answer] to the phone, then the account.
   ///

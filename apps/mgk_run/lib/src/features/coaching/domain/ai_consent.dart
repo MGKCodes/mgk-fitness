@@ -110,6 +110,19 @@ abstract interface class AiConsentStore {
 
   /// Takes the agreement back. The coach asks again before its next request.
   Future<void> withdraw();
+
+  /// The coach's server read the account and found no yes, though this phone
+  /// had one (`403 consent_required`, ADR-0036's 2026-10-27 amendment).
+  ///
+  /// Two ways to get here: a yes given with no signal that has not reached the
+  /// account yet, or a withdrawal made on another phone that has not reached
+  /// this one. Either way the phone's answer was the wrong one to act on, so
+  /// after this [isGranted] says no and the coach asks again, rather than
+  /// every request meeting the same refusal as a coach error.
+  ///
+  /// Must not throw: it is called on the way to reporting a refusal, and
+  /// failing here would replace that with something less true.
+  Future<void> refusedByAccount();
 }
 
 /// An [AiConsentStore] in memory, for tests and the preview harness.
@@ -164,6 +177,13 @@ class InMemoryAiConsentStore implements AiConsentStore {
     final id = _userId();
     if (id == null) return;
     withdrawals++;
+    _answers.remove(id);
+  }
+
+  @override
+  Future<void> refusedByAccount() async {
+    final id = _userId();
+    if (id == null) return;
     _answers.remove(id);
   }
 }
