@@ -980,23 +980,14 @@ workflows:
         # the order in which to change it.
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
-        # **true here, where Run's is false, and the difference is the app's
-        # state on Play rather than a preference.** Play calls Lift a draft
-        # app until it is first published, and refuses anything but a draft
-        # release for one ("Only releases with status draft may be created on
-        # draft app"), so `false` fails the upload after a green build.
-        #
-        # An internal rollout does not end that. Build 46 (2.0.0) was rolled
-        # out on internal testing by hand on 5 October, this was set to
-        # `false`, and the same day Play still refused a production release
-        # for being on a draft app. Change it to `false` once Lift is live
-        # on Google Play.
-        #
-        # What `true` costs is what it cost Run on build 24: the bundle
-        # uploads, the build is green, and **testers see nothing until the
-        # draft is rolled out by hand** in Play Console ▸ Testing ▸ Internal
-        # testing.
-        submit_as_draft: true
+        # **false since Lift went live on Google Play**, as Run's is. It was
+        # true while Play called Lift a draft app, which takes nothing but a
+        # draft release ("Only releases with status draft may be created on
+        # draft app"); an internal rollout did not end that (build 46, 5
+        # October). Lift 2.0.0 went live on Play, so the draft guarded nothing
+        # and only meant testers saw nothing until it was rolled out by hand.
+        # Lift 2.0.1's build was the last to go up as a draft (29 October).
+        submit_as_draft: false
 
   run-android-release:
     name: Run — Android
@@ -1212,8 +1203,8 @@ workflows:
     # or the build fails on a group it cannot resolve.
     #
     # Lift's equivalent, a few hundred lines up, has been live since 2026-10-01
-    # and reads the same group. It publishes as a draft, because Lift's app has
-    # no rolled-out release yet; see the note on its own flag.
+    # and reads the same group. It published as a draft until Lift was live on
+    # Play; see the note on its own flag.
     publishing:
       google_play:
         # **This name is deprecated and has to change, but not on its own.**
