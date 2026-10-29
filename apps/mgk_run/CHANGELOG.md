@@ -15,8 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This is 1.0.2
+This is 1.0.3
 ([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+## [1.0.2] — submitted 2026-10-29, build 32
+
+Submitted to both stores on 29 October 2026 from the commit tagged
+`run/build-32`, promoted to `main` alone, with Lift 2.0.1 still on `develop`.
 
 ### Changed
 
