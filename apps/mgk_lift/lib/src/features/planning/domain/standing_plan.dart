@@ -189,9 +189,14 @@ class MovementSlot {
   final int reps;
 
   /// How many sessions the top set has failed to improve.
+  ///
+  /// This and the two below are **read off the log, never stored**:
+  /// `planWithHistory` fills them in from `SlotHistory` each time the plan is
+  /// shown or a session is started from it (#4). A slot straight from a store
+  /// has none, which reads as a movement never done.
   final int sessionsAtSameTop;
 
-  /// The best set last time this slot came round.
+  /// The best set last time this movement was done.
   ///
   /// **The plan screen was numbers-free without these**, on a screen in an app
   /// whose whole design language is numerals — it could name the movements and

@@ -62,6 +62,14 @@ change a lifter would notice is recorded.
   never after Apple. Shown on Settings and the account screen, and given,
   changed or cleared there. It is the suite's one name, so Run shows the same.
   Lift's coach does not use it (the ADR's open question).
+- **A planned session fills in the weight** (#4). Each movement opens on what
+  was lifted last time, one step heavier if that beat the time before (2.5 kg
+  for a main lift, 1 kg otherwise) and the same weight if it did not. Plan
+  says *last time 90 kg × 5* under each movement, and an accessory that has
+  not moved in six sessions shows as gone stale. Read off the logged sessions
+  on the phone, so it works with no signal, and a new plan has weights from
+  the first session for anything done before. In 2.0.0 every planned session
+  opened blank.
 
 **On the day 2.0.1 is submitted**, with Run 1.0.2, and Matthew's, because each
 changes production or a published document (the ADR's *Build*, held for the

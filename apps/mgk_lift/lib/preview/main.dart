@@ -835,7 +835,7 @@ class PreviewApp extends StatelessWidget {
       // states worth having are days, not layouts.
       'plan-standing': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
+        history: FakeHistory(_planLog(previewNow)),
         coach: FakeCoach(),
         // A Monday: Upper.
         today: DateTime(2026, 8, 17),
@@ -848,7 +848,7 @@ class PreviewApp extends StatelessWidget {
       // phone, and saying so under the name.
       'plan-standing-offline': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
+        history: FakeHistory(_planLog(previewNow)),
         coach: FakeCoach(),
         today: DateTime(2026, 8, 17),
         isEntitled: true,
@@ -865,7 +865,7 @@ class PreviewApp extends StatelessWidget {
       // scheduling it.
       'plan-standing-rest': (_) => LiftShell(
         recorder: FakeSessionRecorder(),
-        history: FakeHistory(sampleLog(previewNow)),
+        history: FakeHistory(_planLog(previewNow)),
         coach: FakeCoach(),
         today: DateTime(2026, 8, 19),
         isEntitled: true,
@@ -1166,20 +1166,6 @@ StandingPlan _standingPlan() {
     days: 4,
     equipment: Equipment.fullGym,
   );
-  // A history, so the plan screen has numbers on it. Keyed by role rather than
-  // by movement, which is the whole point of the slot.
-  const history = <String, (double, int, int)>{
-    'horizontal press': (85, 6, 6),
-    'vertical pull': (70, 10, 1),
-    'vertical press': (45, 8, 0),
-    'horizontal row': (75, 8, 2),
-    'lateral raise': (12, 12, 6),
-    'triceps': (32, 12, 0),
-    'squat': (110, 5, 3),
-    'hinge': (140, 5, 1),
-    'quad accessory': (160, 10, 0),
-    'hamstring accessory': (45, 12, 2),
-  };
   return StandingPlan(
     id: 'preview',
     // Named by the coach, not chosen from a list of three. See PlanShape for
@@ -1203,13 +1189,69 @@ StandingPlan _standingPlan() {
               isMain: s.isMain,
               sets: s.sets,
               reps: s.reps,
-              lastTopKg: history[s.role]?.$1,
-              lastTopReps: history[s.role]?.$2,
-              sessionsAtSameTop: history[s.role]?.$3 ?? 0,
             ),
         ],
     },
   );
+}
+
+/// [sampleLog] with the sessions behind [_standingPlan]'s numbers, so the plan
+/// screen has some.
+///
+/// **A log, not numbers on the slots.** A slot's history is read off the log
+/// (#4), so a fixture that wrote it onto the slots would be replaced before it
+/// was drawn. Keyed by role, as it was on the slots: each gets its top set once,
+/// and once more for every session it has held, all of it older than
+/// [sampleLog], so a movement in both is "last time" by sampleLog's numbers.
+List<Session> _planLog(DateTime now) {
+  // Top set, and how many sessions it has held.
+  const history = <String, (double, int, int)>{
+    'horizontal press': (85, 6, 6),
+    'vertical pull': (70, 10, 1),
+    'vertical press': (45, 8, 0),
+    'horizontal row': (75, 8, 2),
+    'lateral raise': (12, 12, 6),
+    'triceps': (32, 12, 0),
+    'squat': (110, 5, 3),
+    'hinge': (140, 5, 1),
+    'quad accessory': (160, 10, 0),
+    'hamstring accessory': (45, 12, 2),
+  };
+  final done = <String, (double, int, int)>{
+    for (final s in _standingPlan().slots.values.expand((d) => d))
+      s.movement: ?history[s.role],
+  };
+  return <Session>[
+    ...sampleLog(now),
+    for (var i = 0; i <= 6; i++)
+      Session(
+        id: 'plan-$i',
+        name: 'Earlier',
+        startedAt: now.subtract(Duration(days: 60 - i * 3)),
+        endedAt: now
+            .subtract(Duration(days: 60 - i * 3))
+            .add(const Duration(hours: 1)),
+        exercises: <SessionExercise>[
+          for (final (n, MapEntry(key: movement, value: h))
+              in done.entries.indexed)
+            if (i <= h.$3)
+              SessionExercise(
+                id: 'plan-$i-$n',
+                name: movement,
+                orderIndex: n,
+                sets: <SessionSet>[
+                  SessionSet(
+                    id: 'plan-$i-$n-1',
+                    setNumber: 1,
+                    weightKg: h.$1,
+                    reps: h.$2,
+                    isCompleted: true,
+                  ),
+                ],
+              ),
+        ],
+      ),
+  ];
 }
 
 /// The intake at the point where [step] of its questions are settled.

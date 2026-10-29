@@ -13,11 +13,13 @@ import 'standing_plan.dart';
 /// row when its workout finished, `replaceMovements` rewrote one after a swap,
 /// and `accept` promoted a whole generated block from draft to active.
 ///
-/// A standing plan has no session rows to stamp. A finished workout updates the
-/// SLOT it came from — the top set and how long it has been stuck — which is
-/// one write against a couple of dozen rows that outlive every session, rather
-/// than a rewrite of a schedule. So the store is: read the live one, replace
-/// it, and record what a session did to a slot.
+/// A standing plan has no session rows to stamp, and since #4 a finished
+/// workout writes nothing back to it either. It was going to: `recordResult`
+/// updated the slot a session came from with its top set and how long it had
+/// been stuck. Nothing ever called it, and a slot's history is now read off
+/// the log on the phone (`SlotHistory`), which works offline and cannot
+/// disagree with what was lifted. So the store is: read the live one, and
+/// replace it.
 abstract interface class StandingPlanStore {
   /// The live plan, or null if there is not one.
   Future<StandingPlan?> active();
@@ -52,19 +54,6 @@ abstract interface class StandingPlanStore {
   /// Plan tab with a name and no sessions. Either the new plan is live with
   /// every slot, or the old one still is.
   Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake});
-
-  /// What a finished session did to one slot.
-  ///
-  /// Called once per movement when a workout is finished. [topKg] and [reps]
-  /// are the best set; passing a lighter one than last time deliberately does
-  /// NOT count as movement, because a lighter session is a lighter session
-  /// rather than a regression to program around.
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  });
 }
 
 /// A store that keeps everything in memory, for tests and the preview harness.
@@ -95,49 +84,6 @@ class InMemoryStandingPlanStore implements StandingPlanStore {
     calls.add('replace:${plan.id}');
     this.intake = intake;
     return _plan = plan;
-  }
-
-  @override
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  }) async {
-    calls.add('result:$slotId:$topKg×$reps:${improved ? 'up' : 'held'}');
-    final plan = _plan;
-    if (plan == null) return;
-    _plan = StandingPlan(
-      id: plan.id,
-      name: plan.name,
-      dayOrder: plan.dayOrder,
-      weekdays: plan.weekdays,
-      rationale: plan.rationale,
-      startedAt: plan.startedAt,
-      slots: <String, List<MovementSlot>>{
-        for (final day in plan.slots.entries)
-          day.key: <MovementSlot>[
-            for (final s in day.value)
-              if (s.id != slotId)
-                s
-              else
-                MovementSlot(
-                  id: s.id,
-                  role: s.role,
-                  movement: s.movement,
-                  isMain: s.isMain,
-                  sets: s.sets,
-                  reps: s.reps,
-                  lastTopKg: topKg,
-                  lastTopReps: reps,
-                  // Improved resets the count; held increments it. That counter
-                  // is the whole rotation trigger, so getting it backwards
-                  // would either rotate everything or nothing.
-                  sessionsAtSameTop: improved ? 0 : s.sessionsAtSameTop + 1,
-                ),
-          ],
-      },
-    );
   }
 }
 

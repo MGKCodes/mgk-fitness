@@ -453,14 +453,6 @@ class FakePlanStore implements StandingPlanStore {
   @override
   Future<StandingPlan> replace(StandingPlan plan, {PlanIntake? intake}) async =>
       _plan = plan;
-
-  @override
-  Future<void> recordResult(
-    String slotId, {
-    required double topKg,
-    required int reps,
-    required bool improved,
-  }) async {}
 }
 
 /// A planner with canned answers, so the coach-backed sheets and the intake
