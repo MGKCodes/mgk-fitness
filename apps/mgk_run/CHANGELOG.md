@@ -18,7 +18,11 @@ change.
 
 ## [Unreleased]
 
-This is 1.1.0: a new feature moves the minor number
+## [1.1.0] — submitted 2026-10-30, build 33
+
+Submitted to both stores on 30 October 2026 from the commit tagged
+`run/build-33`, promoted to `main` alone. The first version numbered by the
+rule that a new feature moves the minor number
 ([CONTRIBUTING.md](../../CONTRIBUTING.md) › Versions,
 [ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
 
