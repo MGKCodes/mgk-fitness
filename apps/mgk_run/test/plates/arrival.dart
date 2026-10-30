@@ -16,7 +16,8 @@
 /// **It no longer ends in an account.** The intro used to ask for an address
 /// and a password as two more turns; the app now opens on a working tracker and
 /// asks for an account only where one buys something. So this act ends on Home,
-/// signed out, with everything living on the phone.
+/// signed out, with everything living on the phone: since 1.1.0 by way of the
+/// tour over it (ADR-0050), one plate per step.
 ///
 /// The two acts are two moments, and deliberately not one (ADR-0019): this one
 /// ends with a working run tracker and nothing signed in. A plan is somewhere a
@@ -49,9 +50,10 @@ import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/legal/domain/disclaimer_store.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_permission.dart';
 import 'package:mgk_run/src/features/onboarding/domain/intro_store.dart';
+import 'package:mgk_run/src/features/onboarding/domain/walkthrough_script.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
 import 'package:mgk_run/src/features/settings/domain/backup_consent.dart';
-import 'package:mgk_ui/mgk_ui.dart' show EmailSignInSteps;
+import 'package:mgk_ui/mgk_ui.dart' show EmailSignInSteps, WalkthroughOverlay;
 
 import 'fixture.dart';
 import 'plate.dart';
@@ -246,6 +248,55 @@ void main() {
     );
   });
 
+  // --- The tour, after the intro (ADR-0050) ----------------------------------
+
+  /// The tour's card button, [label], and nothing behind the veil that happens
+  /// to say the same.
+  Finder onCard(String label) => find.descendant(
+    of: find.byType(WalkthroughOverlay),
+    matching: find.text(label),
+  );
+
+  /// Welcome to the end of the intro, which is where the tour starts, then
+  /// [steps] taps on *Next*. Settled while the tour is up: the coach mark's
+  /// reveal is held at rest under it, so nothing animates on a timer.
+  Future<void> toTourStep(WidgetTester tester, int steps) async {
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Get started');
+    await tapText(tester, 'Sounds good');
+    await say(tester, 'Sam', 'Continue');
+    await throughPermissions(tester);
+    await tester.pumpAndSettle();
+    for (var i = 0; i < steps; i++) {
+      await tester.tap(onCard(kTourNext));
+      await tester.pumpAndSettle();
+    }
+  }
+
+  // One plate per step, walked from the welcome: the tabs change under the
+  // veil as the runner would see them, and every step's hole is cut where its
+  // control is drawn on this phone. The coach is in this build, so its step is.
+  const tour = <String>[
+    'tour-today',
+    'tour-week',
+    'tour-plan',
+    'tour-profile',
+    'tour-settings',
+    'tour-coach',
+    'tour-start',
+  ];
+  for (var i = 0; i < tour.length; i++) {
+    testWidgets('the tour, step ${i + 1}: ${tour[i]}', (tester) async {
+      await plate(
+        tester,
+        tour[i],
+        cold(),
+        pixelRatio: 2,
+        drive: (tester) => toTourStep(tester, i),
+      );
+    });
+  }
+
   testWidgets('and it ends on a working app, with no account at all', (
     tester,
   ) async {
@@ -255,13 +306,13 @@ void main() {
       cold(),
       pixelRatio: 2,
       drive: (tester) async {
-        await tester.pumpAndSettle();
-        await tapText(tester, 'Get started');
-        await tapText(tester, 'Sounds good');
-        await say(tester, 'Sam', 'Continue');
-        await throughPermissions(tester);
-        // Fixed pumps from here: the shell it lands on plays the coach mark's
-        // reveal on a timer, and `pumpAndSettle` would never come back.
+        // Through the tour to its last step, then Done: the app it lets go
+        // of is the one the intro used to end on.
+        await toTourStep(tester, tour.length - 1);
+        await tester.tap(onCard(kTourDone));
+        // Fixed pumps from here: the shell plays the coach mark's reveal on a
+        // timer once the tour has gone, and `pumpAndSettle` would never come
+        // back.
         await settle(tester);
       },
     );
