@@ -16,12 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen of 1.0.2",
-    "eyebrow": "apps/mgk_run · 1.0.1 (build 31) on both stores since 19 Oct; 1.0.2 (build 32) submitted to both on 29 Oct: the email path, address first, and the coach asking again when its server finds no permission",
-    "build": "32 · 1.0.2+32 submitted 29 Oct; develop is 1.0.3+33, so Settings says 1.0.3 at its foot",
+    "title": "MGKFitness: Run, every screen of 1.1.0",
+    "eyebrow": "apps/mgk_run · 1.0.1 on the App Store; 1.0.2 (build 32) live on Google Play since 29 Oct and waiting for Apple; 1.1.0 (build 33) on develop and going to the stores: a tour of the app after the coach's intro",
+    "build": "33 · 1.1.0+33 on develop, drawn 30 Oct at 9bcb426",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. It is the reference for what is live: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "1.1.0, drawn 30 Oct at 9bcb426: the tour after the coach's intro (ADR-0050), one plate per step, walked from the welcome: Today, the week, Plan, Profile, Settings, the coach's C and the start button (B23 to B29, new). The intro lets go through the tour now, so Where it lets go is reached by its Done (B7). Settings gains Show me around as the first row under About, and its foot reads 1.1.0 (T1, T3); played again signed in, the Settings step says the backup is chosen there instead of that the runs are on this phone (T20, new). The same screens drawn the same day from the code before the tour came out identical apart from these, so the tour changes no other screen; plates that moved only by the day keep their earlier pictures.",
       "1.0.2 as submitted, redrawn 30 Oct at b7d5d49. When the coach's server finds no permission on the account, the conversation says so and that nothing was sent, where 1.0.1 said 'The coach hit a problem'; the yes the phone held is dropped, so the next tap on the mark asks again (C15, new, and C7). The privacy policy says what email-first sign-in collects: the address is looked up to show the right next step, a code confirms it, and Google may pass a name and picture link, offered only as a suggestion (T19). Settings' foot reads 1.0.3, the number develop moved to after the submission (T1, T3). Every other plate came out identical or moved only by the day.",
       "20 Oct, a Tuesday: the plates a Monday could not draw are drawn. Home's last run with and without a coach (H4, H5), the week a plan is built (H6), subscribing and restoring signed out (Y8, Y9) and the race plates (E1, E2, E4, E6) show 1.0.1 at last, with the treadmill row on the week tile. E1's taper is a Friday race seen on a Tuesday, so today's run is the first of race week; E2 is race day before the run, so 'Add your result' is not yet there.",
       "1.0.2 so far, 20 Oct, on develop and not on the stores yet: signing in with email asks for the address first (ADR-0047). Nine new plates, B14 to B22: the address, Did you mean, no signal at the lookup, Welcome back, a wrong password, an address made with Apple, Create your account with the password rule ticked as it is typed, the 6-digit code with its wait for another, and a refused code. The two-mode email form is retired from both ways into it (B13, K3). B8, C14 and K2 were redrawn at e5ee058, and again at 08dd210 after the shared fixes, and came out identical: the choices do not change, only what is behind the third button. A new account by any way in now meets the coach, whose question is the name step (B3), with Google's first name typed in for a Google account; nothing is asked after Apple.",
@@ -167,7 +168,7 @@
       "n": "01",
       "title": "Arriving",
       "sub": "The first launch, walked tap by tap",
-      "lede": "The app opens on a working tracker and never asks who you are to get there. Every plate here was reached by tapping what a runner taps, so the sequence is proven to join up.",
+      "lede": "The app opens on a working tracker and never asks who you are to get there; since 1.1.0 it gets there through a tour over the app itself. Every plate here was reached by tapping what a runner taps, so the sequence is proven to join up.",
       "bands": [
         {
           "title": "The launch",
@@ -187,7 +188,20 @@
             "B3",
             "B4",
             "B5",
-            "B9",
+            "B9"
+          ]
+        },
+        {
+          "title": "The tour, after the intro",
+          "sequence": true,
+          "plates": [
+            "B23",
+            "B24",
+            "B25",
+            "B26",
+            "B27",
+            "B28",
+            "B29",
             "B7"
           ]
         },
@@ -566,6 +580,12 @@
           ]
         },
         {
+          "title": "Show me around, played again",
+          "plates": [
+            "T20"
+          ]
+        },
+        {
           "title": "Behind the rows",
           "plates": [
             "T16",
@@ -818,8 +838,8 @@
       "file": "arrive-home",
       "name": "Where it lets go",
       "how": "driven",
-      "reach": "B9 › Continue",
-      "job": "The end of the intro: a working run tracker with nothing signed in.",
+      "reach": "B29 › Done",
+      "job": "Where the intro and the tour let go: a working run tracker with nothing signed in.",
       "done": "Dashes rather than zeros, a way to record straight away, the coach mark present, and no account or plan demanded. If this lands on a sign-in form, the free app has a wall again.",
       "files": [
         "lib/src/features/home/presentation/home_shell.dart",
@@ -827,8 +847,12 @@
         "lib/src/features/home/presentation/home_today_tile.dart",
         "lib/src/features/home/presentation/home_week_tile.dart",
         "lib/src/features/home/presentation/home_last_run.dart",
-        "lib/src/features/home/presentation/training_charts.dart"
-      ]
+        "lib/src/features/home/presentation/training_charts.dart",
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart"
+      ],
+      "changed": "1.1.0 (ADR-0050): reached through the tour now, by Done on its last step (B23 to B29). The coach mark is held still under the tour and says its line once the tour has gone, so a free runner is told \"Coaching is a subscription\" straight after the C step has said the same."
     },
     "B8": {
       "file": "arrive-sign-in",
@@ -2124,14 +2148,14 @@
       "how": "built",
       "reach": "Profile › ⚙",
       "job": "An index of what everything is set to, with the runner's profile at the top.",
-      "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. About holds Support, Report a problem (an email to support with the app and its version already written in), Source code (AGPL-3.0, opening the public repository) and Privacy & legal. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
+      "done": "Profile card (face, name, address, plan), then Preferences, Your data and About, with each row's current value on the right and the version at the foot. About holds Show me around (the tour again, T20), Support, Report a problem (an email to support with the app and its version already written in), Source code (AGPL-3.0, opening the public repository) and Privacy & legal. Backup should be easy to find. The DEVELOPER block exists only in test and debug builds; the store build ends at Privacy & legal.",
       "files": [
         "lib/src/features/settings/presentation/settings_screen.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
       "isnew": "Rebuilt as an index on 11 Sep.",
-      "changed": "1.0.1: Report a problem and Source code joined About, the same two rows as Lift.",
-      "note": "The DEVELOPER block's switch falls below the foot in this picture; it is debug-only."
+      "changed": "1.1.0: Show me around is the first row under About and plays the tour again (ADR-0050, T20); the foot reads 1.1.0. 1.0.1: Report a problem and Source code joined About, the same two rows as Lift.",
+      "note": "The DEVELOPER block is debug-only, and is below the foot in this picture."
     },
     "T3": {
       "file": "settings-no-account",
@@ -2144,7 +2168,7 @@
         "lib/src/features/settings/presentation/settings_screen.dart",
         "lib/src/features/settings/presentation/avatar.dart"
       ],
-      "changed": "1.0.1: Report a problem and Source code joined About, as on T1."
+      "changed": "1.1.0: Show me around is the first row under About, as on T1, and the foot reads 1.1.0. 1.0.1: Report a problem and Source code joined About, as on T1."
     },
     "T16": {
       "file": "settings-backup",
@@ -2786,6 +2810,138 @@
       ],
       "isnew": "New in 1.0.2. The coach function has refused a Run question without a current yes on the account since 27 Oct; 1.0.1 showed that as 'The coach hit a problem'.",
       "note": "Opened directly over Home with a coach that refuses, the seam C11 uses: the refusal itself comes from the server. Drawing it turned up that the line is set like any other fault in the conversation, small and muted, and offers no way to the question from where it stands: the runner closes the sheet and taps the mark again."
+    },
+    "B23": {
+      "file": "tour-today",
+      "name": "The tour starts on Today",
+      "how": "driven",
+      "reach": "B9 › Continue, the last answer of the intro (Get started only)",
+      "job": "The first step of the tour over the real app: Home's Today card lit under a dimmed screen, with the coach saying what Home is for.",
+      "done": "One control lit and one line beside it, with Skip and Next; the rest of Home and the tab bar dimmed but still there behind. Nothing under the veil takes a tap. If the card covers the control it is talking about, or lights nothing, the step has failed.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "B24": {
+      "file": "tour-week",
+      "name": "Your week",
+      "how": "driven",
+      "reach": "B23 › Next",
+      "job": "Lights the week card under Today: the week run by run, and how it is going.",
+      "done": "The hole moves down to the week card and the coach's card moves above it, so neither hides the other.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart",
+        "lib/src/features/home/presentation/home_week_tile.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "B25": {
+      "file": "tour-plan",
+      "name": "Plan, on its own tab",
+      "how": "driven",
+      "reach": "B24 › Next",
+      "job": "Opens the Plan tab behind the veil and lights it on the bar: what a plan is, and that plans come with the subscription.",
+      "done": "The Plan tab is open behind, so the runner sees where they have been taken; the price is called a subscription with no figure in it. A step that lights the tab while Home still shows behind has lost the runner.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "B26": {
+      "file": "tour-profile",
+      "name": "Profile",
+      "how": "driven",
+      "reach": "B25 › Next",
+      "job": "Opens Profile and lights its tab: where every run, the totals and the records are kept.",
+      "done": "Profile open behind in the state a new runner has it, with dashes and no runs yet; the line says what will collect there rather than what is there.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/profile/presentation/profile_screen.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "B27": {
+      "file": "tour-settings",
+      "name": "Settings, signed out",
+      "how": "driven",
+      "reach": "B26 › Next",
+      "job": "Lights Profile's gear, the way into Settings, and says the runs stay on this phone until the runner signs in for a backup.",
+      "done": "Said to somebody with no account: the runs are on the phone, and signing in is offered as what it buys, a backup. Nothing is demanded and nothing is lost by saying no.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/profile/presentation/profile_screen.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050).",
+      "note": "The lit outline around Profile's gear runs off the right edge of the screen: the hole is cut with padding round the gear, and the gear sits at the edge."
+    },
+    "B28": {
+      "file": "tour-coach",
+      "name": "The coach's C",
+      "how": "driven",
+      "reach": "B27 › Next (a build with a coach)",
+      "job": "Lights the floating C: the coach is there to ask at any time, coaching is a subscription, and recording never is.",
+      "done": "The C lit where it floats, over whichever tab is open. In a build with no coach the step is not shown at all, rather than pointing at nothing.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "B29": {
+      "file": "tour-start",
+      "name": "The way out: start",
+      "how": "driven",
+      "reach": "B28 › Next",
+      "job": "The last step: back on Home with the start button lit, and what pressing it does when the runner heads out.",
+      "done": "One button, Done, and no Skip, since Done is the way out. The lit button cannot be pressed through the veil: the tour starts no run, no GPS and nothing on the lock screen. If anything starts recording here, the step has failed.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/home/presentation/home_shell.dart",
+        "lib/src/features/home/presentation/home_tab.dart",
+        "lib/src/features/home/presentation/home_today_tile.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050)."
+    },
+    "T20": {
+      "file": "tour-replay-settings",
+      "name": "The tour again, signed in",
+      "how": "driven",
+      "reach": "Profile › ⚙ › Show me around › Next four times",
+      "job": "Settings' Show me around plays the tour from the top over the runner's own app. This is the one step whose line differs for somebody signed in.",
+      "done": "Settings has closed and the tour runs over the real shell, with the runner's own records behind the veil. The line does not say the runs are on this phone, which is not true of an account: it says the backup is chosen in Settings.",
+      "files": [
+        "lib/src/features/onboarding/domain/walkthrough_script.dart",
+        "lib/src/features/onboarding/presentation/walkthrough.dart",
+        "packages/mgk_ui/lib/src/widgets/walkthrough.dart",
+        "lib/src/features/profile/presentation/profile_screen.dart",
+        "lib/src/features/settings/presentation/settings_screen.dart",
+        "lib/src/features/home/presentation/home_shell.dart"
+      ],
+      "isnew": "1.1.0 (ADR-0050).",
+      "note": "The lit outline around Profile's gear runs off the right edge of the screen: the hole is cut with padding round the gear, and the gear sits at the edge."
     }
   }
 }

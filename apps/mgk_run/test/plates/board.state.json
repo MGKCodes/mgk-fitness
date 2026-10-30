@@ -52,6 +52,7 @@
     "1.0.2 so far, 20 Oct, after the merge (2df7b7c): settings and settings-no-account retaken for the foot, which says 1.0.2 now that kAppVersion follows the pubspec; arrive-email-code retaken for the code field, which lost its 000000 hint. Every other plate account.dart, flows.dart and arrival.dart drew came out identical or moved only by the day, and keeps its picture and stamp. The 49 plates those three files drew identically are re-stamped at 2df7b7c, the commit they were drawn at.",
     "Tuesday 20 Oct, at 8f3b970 on develop: every plate redrawn, so the ones a Monday could not draw are drawn. Taken new: H1 to H6, Y8, Y9, E1, E2, E4, E6, and G4, G5, G6, K1, B7 (dates only, but --stale listed them). 126 came out identical and are re-stamped, E7 among them. Kept on their earlier pictures because only the day moved: add-run, coach-gate, coach-gate-after-consent, coach-report-sent, paywall-store, plan-calendar, run-delete, run-edit, run-list, run-recovered, settings-backup, shell-plan, shell-plan-not-started, shell-profile, shell-race-result-sheet.",
     "Friday 30 Oct, at b7d5d49 on develop (Run 1.0.2 submitted on 29 Oct as build 32; develop is 1.0.3): every plate redrawn. Taken new: settings and settings-no-account (the foot says 1.0.3, as develop's pubspec does), legal-privacy (the policy says what email-first sign-in and Google's profile pass on) and coach-consent-refused (C15, new: the coach's server finding no permission). 123 came out identical and are re-stamped. Restored to their earlier pictures and stamps, because only the day or the hour moved: add-run, arrive-home, coach-gate, coach-gate-after-consent, coach-report-sent, home-first-launch, home-no-plan, home-plan-not-started, home-with-plan, keep-runs-safe, last-run-free, last-run-subscribed, paywall-store, plan-calendar, plan-confirm, plan-near-race-confirm, plan-race-week, plan-reveal, run-count, run-delete, run-edit, run-list, run-recovered, run-start, settings-backup, shell-plan, shell-plan-not-started, shell-race-after, shell-race-day, shell-race-result-sheet, shell-race-run-up.",
+    "Friday 30 Oct, at 9bcb426 on develop (Run 1.1.0+33; the tour after the coach's intro, ADR-0050): arrival, shell, account, flows and screens redrawn. New: tour-today, tour-week, tour-plan, tour-profile, tour-settings, tour-coach and tour-start (B23 to B29, walked from the welcome) and tour-replay-settings (T20, Settings' Show me around played signed in). Taken new: arrive-home (reached by the tour's Done now), settings and settings-no-account (Show me around under About; the foot says 1.1.0). 75 came out identical and are re-stamped. The same five files were also drawn the same day from the code before the tour (092b817's lib): every plate but those three matched, so the tour's wrappers change no other screen. Kept on their earlier pictures and stamps, because only the day or the hour moved: add-run, coach-gate, home-first-launch, home-no-plan, home-plan-not-started, home-with-plan, keep-runs-safe, last-run-free, last-run-subscribed, paywall-store, plan-calendar, plan-confirm, plan-near-race-confirm, plan-race-week, plan-reveal, run-delete, run-edit, run-list, settings-backup, shell-plan-not-started, shell-plan, shell-race-after, shell-race-day, shell-race-result-sheet, shell-race-run-up.",
     "The board this feeds (republish to the same link, never a new one):",
     "https://claude.ai/code/artifact/9ddfd186-11ad-4260-bde9-ef8b7a5d9190"
   ],
@@ -198,42 +199,42 @@
     },
     "account": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-ended": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-free": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-gate": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-google-play": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-payment-failed": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-premium": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "account-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "add-run": {
@@ -243,52 +244,52 @@
     },
     "another-account": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-greeting": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-health": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-home": {
       "source": "test/plates/arrival.dart",
-      "sha": "8f3b9706fe0f47db1faf8cf3a42ff7235e199b42",
-      "captured": "2026-10-20"
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
     },
     "arrive-name": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-permission": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-permission-allowed": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-sign-in": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-welcome": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-answering": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-consent": {
@@ -303,7 +304,7 @@
     },
     "coach-conversation": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-disclaimer": {
@@ -323,7 +324,7 @@
     },
     "coach-locked": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-report": {
@@ -343,7 +344,7 @@
     },
     "coach-resting": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-signed-out": {
@@ -353,47 +354,47 @@
     },
     "coach-speaking": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-account": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-account-armed": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-account-everything": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-account-keep-phone": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-done": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-done-lift": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-done-login-stuck": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "delete-signed-out": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "hero_weights": {
@@ -438,32 +439,32 @@
     },
     "legal": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "legal-disclaimer": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "legal-privacy": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "legal-withdraw": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "legal-withdrawn": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "paywall": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "paywall-already-owned": {
@@ -513,7 +514,7 @@
     },
     "plan-block": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "plan-calendar": {
@@ -528,17 +529,17 @@
     },
     "plan-disclaimer": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "plan-intake": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "plan-near-race": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "plan-near-race-confirm": {
@@ -553,52 +554,52 @@
     },
     "plan-shape": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "plan-week": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "profile-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "profile-records-by-hand": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "profile-with-log": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "route-draw-100": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "route-draw-30": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "route-draw-65": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "run-complete": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "run-complete-record": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "run-count": {
@@ -608,7 +609,7 @@
     },
     "run-from-log": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "run-list": {
@@ -633,7 +634,7 @@
     },
     "settings": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "settings-backup": {
@@ -643,12 +644,12 @@
     },
     "settings-no-account": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "settings-permissions": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "shell-plan": {
@@ -658,12 +659,12 @@
     },
     "shell-plan-empty": {
       "source": "test/plates/shell.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "shell-plan-finish": {
       "source": "test/plates/shell.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "shell-plan-not-started": {
@@ -673,12 +674,12 @@
     },
     "shell-profile": {
       "source": "test/plates/shell.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "shell-profile-empty": {
       "source": "test/plates/shell.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "shell-race-after": {
@@ -703,27 +704,27 @@
     },
     "sign-out": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "sign-out-erase": {
       "source": "test/plates/account.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "week-detail": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "year-grid": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "year-grid-empty": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "launch-mark": {
@@ -743,7 +744,7 @@
     },
     "week-race-week": {
       "source": "test/plates/flows.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "run-edit": {
@@ -763,22 +764,22 @@
     },
     "race-summary": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "race-plan-day": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "race-offer": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "race-sheet": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "21-racing": {
@@ -793,52 +794,52 @@
     },
     "run-start-race": {
       "source": "test/plates/screens.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-typo": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-offline": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-password": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-wrong-password": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-apple": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-create": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-code": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "arrive-email-code-refused": {
       "source": "test/plates/arrival.dart",
-      "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     },
     "coach-consent-refused": {
@@ -849,6 +850,46 @@
     "launch-sheet": {
       "source": "test/plates/coach.dart",
       "sha": "b7d5d4971d0412f8e370d62cedb7751c62a943ba",
+      "captured": "2026-10-30"
+    },
+    "tour-today": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-week": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-plan": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-profile": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-settings": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-coach": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-start": {
+      "source": "test/plates/arrival.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
+      "captured": "2026-10-30"
+    },
+    "tour-replay-settings": {
+      "source": "test/plates/shell.dart",
+      "sha": "9bcb42647099a67cc15b1328945c1646baa32e56",
       "captured": "2026-10-30"
     }
   }
