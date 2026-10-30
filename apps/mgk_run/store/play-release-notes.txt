@@ -1,1 +1,1 @@
-Signing in with an email now asks for the address first, then shows just the step you need, and a new account is confirmed with a 6-digit code. Your name belongs to your account, so Google can no longer change it, and Lift shows the same one. If your coach needs your permission again, it asks instead of showing an error.
+New: a tour of the app. Go to Settings › Show me around and your coach walks you through Home, your week, Plan, Profile and Settings, one at a time, ending on the button that starts a run. Anyone new to Run sees it once the coach has said hello.
