@@ -10,6 +10,7 @@ import '../../coaching/domain/week_progress.dart';
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/presentation/session_labels.dart';
 import '../../profile/domain/runner_stats.dart';
+import '../../onboarding/domain/walkthrough_script.dart' show TourSpot;
 import '../../recording/domain/run_summary.dart';
 import 'home_today_tile.dart';
 import 'home_week_tile.dart';
@@ -236,17 +237,20 @@ class HomeTab extends StatelessWidget {
               // underneath to ignore it.
               Entrance(
                 index: 1,
-                child: HomeTodayTile(
-                  now: at,
-                  unit: unit,
-                  today: today,
-                  lastRun: lastRun,
-                  outcomes: outcomes,
-                  onFreeRun: onRecord,
-                  onStartSession: onStartSession ?? onRecord,
-                  onOpenPlan: onOpenPlan,
-                  onOpenCoach: onOpenCoach,
-                  onCloseRace: onCloseRace,
+                child: WalkthroughTarget(
+                  id: TourSpot.today,
+                  child: HomeTodayTile(
+                    now: at,
+                    unit: unit,
+                    today: today,
+                    lastRun: lastRun,
+                    outcomes: outcomes,
+                    onFreeRun: onRecord,
+                    onStartSession: onStartSession ?? onRecord,
+                    onOpenPlan: onOpenPlan,
+                    onOpenCoach: onOpenCoach,
+                    onCloseRace: onCloseRace,
+                  ),
                 ),
               ),
 
@@ -265,15 +269,18 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               Entrance(
                 index: 3,
-                child: HomeWeekTile(
-                  now: at,
-                  unit: unit,
-                  week: thisWeek,
-                  outcomes: outcomes,
-                  standing: standing,
-                  runDays: thisWeeksDays,
-                  onOpenPlan: onOpenPlan,
-                  onAddTreadmillRun: onAddTreadmillRun,
+                child: WalkthroughTarget(
+                  id: TourSpot.week,
+                  child: HomeWeekTile(
+                    now: at,
+                    unit: unit,
+                    week: thisWeek,
+                    outcomes: outcomes,
+                    standing: standing,
+                    runDays: thisWeeksDays,
+                    onOpenPlan: onOpenPlan,
+                    onAddTreadmillRun: onAddTreadmillRun,
+                  ),
                 ),
               ),
 

@@ -18,8 +18,20 @@ change.
 
 ## [Unreleased]
 
-This is 1.0.3
-([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+This is 1.1.0: a new feature moves the minor number
+([CONTRIBUTING.md](../../CONTRIBUTING.md) › Versions,
+[ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+### Added
+
+- **A tour of the app after the coach's intro**
+  ([ADR-0050](docs/decisions/0050-run-tours-the-app-after-the-intro.md)).
+  On *Get started*, once the coach has met you, it lights Home's Today card,
+  your week, Plan, Profile, Settings and the coach's C one at a time, with a
+  line from the coach beside each, and ends on the button that starts a run.
+  It starts nothing. *Skip* ends it anywhere. *I already have an account*
+  goes past it, and an update from 1.0.x does not play it.
+  *Settings › Show me around* plays it again.
 
 ## [1.0.2] — submitted 2026-10-29, build 32
 

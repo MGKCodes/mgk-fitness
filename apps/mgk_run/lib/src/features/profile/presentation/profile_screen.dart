@@ -20,6 +20,7 @@ import '../../recording/domain/best_effort.dart';
 import '../../recording/domain/run_point.dart';
 import '../../recording/domain/run_summary.dart';
 import '../domain/runner_stats.dart';
+import '../../onboarding/domain/walkthrough_script.dart' show TourSpot;
 
 /// What the runner has done: their lifetime totals, what their coach makes of
 /// them, their bests, the goal they are training for, and every run recorded.
@@ -209,10 +210,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: const Text('Profile'),
               actions: <Widget>[
                 if (widget.onOpenSettings != null)
-                  AppIconButton(
-                    icon: Icons.settings_outlined,
-                    tooltip: 'Settings',
-                    onPressed: widget.onOpenSettings,
+                  // What the tour lights for Settings (ADR-0050).
+                  WalkthroughTarget(
+                    id: TourSpot.settings,
+                    child: AppIconButton(
+                      icon: Icons.settings_outlined,
+                      tooltip: 'Settings',
+                      onPressed: widget.onOpenSettings,
+                    ),
                   ),
               ],
             ),

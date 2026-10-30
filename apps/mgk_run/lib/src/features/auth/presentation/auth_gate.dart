@@ -149,6 +149,18 @@ class _AuthGateState extends State<AuthGate> {
   /// without waiting on the round trip that records it.
   bool _metCoachThisSession = false;
 
+  /// Whether the next shell opens with the tour over it (ADR-0050).
+  ///
+  /// **Only the intro on the *Get started* path sets it.** "I already have
+  /// an account" leads to the sign-in and, for an account that has never met
+  /// this coach, to the same intro signed in: that runner skips the tour, as
+  /// in Lift. An install updating from 1.0.x has had its intro, so nothing
+  /// sets this for it. Not kept anywhere: a tour cut short by the app being
+  /// closed is not played again, and Settings has it for anybody who wants
+  /// it. Cleared when the tour ends, so a shell built again later (after an
+  /// erase) does not replay it.
+  bool _tourNext = false;
+
   late final IntroStore _intro = widget.introStore ?? createIntroStore();
 
   /// Held rather than made in `build`, because the SDK wrapper carries state a
@@ -371,7 +383,11 @@ class _AuthGateState extends State<AuthGate> {
               auth: auth,
               devAccounts: accounts,
               requestPermission: widget.requestPermission,
-              onIntroFinished: (name) => unawaited(_introFinished(auth, name)),
+              onIntroFinished: (name) {
+                // The *Get started* intro, and the only one the tour follows.
+                _tourNext = true;
+                unawaited(_introFinished(auth, name));
+              },
             );
           }
           // Introduced, and not signed in. The tracker, on this phone only.
@@ -509,6 +525,8 @@ class _AuthGateState extends State<AuthGate> {
     // is the one that answers that, and the Edge Function is the one that
     // enforces it.
     purchases: _purchases,
+    walkthroughOnOpen: _tourNext,
+    onWalkthroughEnded: () => _tourNext = false,
   );
 }
 
