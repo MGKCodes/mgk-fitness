@@ -59,6 +59,19 @@ and Lift's when it submits:
 - **The commit after a promotion moves `develop` to the next version**: the
   next patch number and the next build number in the app's `pubspec.yaml`
   (`1.0.0+29` becomes `1.0.1+30`). Everything from then on belongs to it.
+- **Which number moves depends on what the version holds** (Matthew,
+  30 October 2026):
+  - the **patch**, `1.0.x`, for fixes, and changes to what the app already
+    does;
+  - the **minor**, `1.x.0`, for any new screen or feature;
+  - the **major**, `x.0.0`, for a substantial change: a redesign, or a new way
+    of paying (Lift 2.0.0 was both).
+
+  The promotion always moves `develop` to the next patch. The first commit that
+  needs a bigger number moves it, in the same change: the version in
+  `pubspec.yaml` (`1.0.3+33` becomes `1.1.0+33`; the build number is not
+  touched), `kAppVersion` in the app's settings screen, and Run's changelog
+  `[Unreleased]` line. Later features in the same version don't move it again.
 - **A rejection that needs a new binary is answered by that next version**,
   built from `develop`. Never a second build of the version that was rejected,
   and never a fix made on `main`.

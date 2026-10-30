@@ -3,7 +3,10 @@
 All notable changes to MGKFitness: Run are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
+read for an app as [CONTRIBUTING.md](../../CONTRIBUTING.md) › Versions says: a
+patch for fixes, a minor for a new screen or feature, a major for a substantial
+change.
 
 > **A note on the gap.** This file was written at the scaffold and then not kept
 > for roughly 120 commits, because the repo's definition of done did not ask for
