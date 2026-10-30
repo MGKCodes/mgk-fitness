@@ -72,6 +72,8 @@ import 'package:mgk_auth/mgk_auth.dart';
 import '../../profile/domain/backup_state.dart';
 import '../../settings/presentation/backup_consent_prompt.dart';
 import '../../onboarding/domain/intro_store.dart';
+import '../../onboarding/domain/walkthrough_script.dart';
+import '../../onboarding/presentation/walkthrough.dart';
 import '../../history/presentation/run_form_screen.dart';
 import '../../history/presentation/run_tile.dart' show shortRunDate;
 import '../../settings/data/backup_eraser.dart';
@@ -126,6 +128,9 @@ class HomeShell extends StatefulWidget {
     this.localData,
     this.aiConsent,
     this.disclaimer,
+    this.walkthroughOnOpen = false,
+    this.onWalkthroughEnded,
+    this.walkthroughFrom = TourStep.today,
   });
 
   final AuthRepository auth;
@@ -294,12 +299,39 @@ class HomeShell extends StatefulWidget {
   /// in. It used to be what the sign-in screen said the runner meant to do.
   final bool justSignedUp;
 
+  /// Opens with the tour playing over the shell (ADR-0050): what the intro
+  /// leads to on the *Get started* path, and nowhere else. Read once, when
+  /// the shell is built; afterwards Settings' *Show me around* plays it again.
+  final bool walkthroughOnOpen;
+
+  /// Told when a tour ends, by *Done*, *Skip* or back.
+  final VoidCallback? onWalkthroughEnded;
+
+  /// The step [walkthroughOnOpen] starts at. The top in the app; a later one
+  /// for the plates, which show one step each.
+  @visibleForTesting
+  final TourStep walkthroughFrom;
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late int _index = widget.initialTab;
+
+  /// The controls the tour can light, by name, registered by the tabs below
+  /// the shell's [WalkthroughScope].
+  final WalkthroughTargets _tourTargets = WalkthroughTargets();
+
+  /// The tour, while it is running over the shell.
+  RunTour? _tour;
+
+  /// Set from [HomeShell.walkthroughOnOpen] until the tour has started, which
+  /// is a frame later: the coach's mark is drawn at rest for the tour from
+  /// the first frame, rather than starting its line and being cut off.
+  late bool _tourPending = widget.walkthroughOnOpen;
+
+  bool get _touring => _tour != null || _tourPending;
 
   /// What the coach calls this runner, live.
   ///
@@ -459,6 +491,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     unawaited(_loadUnit());
     if (_index == _profileTab) unawaited(_loadBackupState());
     unawaited(_restoreThenLoad());
+    if (widget.walkthroughOnOpen) {
+      // After the first frame, when the tabs it points at have been laid out.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _startTour(from: widget.walkthroughFrom),
+      );
+    }
 
     unawaited(_resolveAccess());
     unawaited(_identifyForPurchases());
@@ -588,7 +626,54 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_authWatch?.cancel());
+    _tour?.dispose();
     super.dispose();
+  }
+
+  /// Plays the tour over the shell, from [from] (ADR-0050).
+  void _startTour({TourStep from = TourStep.today}) {
+    if (!mounted || _tour != null) return;
+    final tour = RunTour(
+      overlay: Overlay.of(context, rootOverlay: true),
+      targets: _tourTargets,
+      goTo: (place) {
+        if (!mounted) return;
+        setState(
+          () => _index = switch (place) {
+            TourPlace.home => 0,
+            TourPlace.plan => _planTab,
+            TourPlace.profile => _profileTab,
+          },
+        );
+      },
+      isSignedIn: () => widget.auth.isSignedIn,
+      onEnded: _tourEnded,
+      from: from,
+    );
+    setState(() {
+      _tour = tour;
+      _tourPending = false;
+    });
+    tour.start();
+  }
+
+  void _tourEnded() {
+    if (mounted) {
+      setState(() {
+        _tour = null;
+        _tourPending = false;
+      });
+    }
+    widget.onWalkthroughEnded?.call();
+  }
+
+  /// Settings' *Show me around*: Settings closes, and the tour plays from the
+  /// top over the shell. Back to the shell's own route rather than the first,
+  /// since a test or the preview may push the shell over something.
+  void _showAround() {
+    final shell = ModalRoute.of(context);
+    Navigator.of(context).popUntil((route) => route == shell || route.isFirst);
+    _startTour();
   }
 
   /// The edit-run seam, when the injected coach can do it.
@@ -2280,6 +2365,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           unit: _unit,
           settings: _unitSettings,
           auth: widget.auth,
+          // *Show me around*: the tour again, over this shell (ADR-0050).
+          onShowAround: _showAround,
           // The first run on record: what "since" on the account means here.
           memberSince: RunnerStats.from(_allRuns).firstRunAt,
           // The name row edits both homes through this, so it works for a
@@ -2324,6 +2411,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // is how they end up disagreeing.
     final stats = RunnerStats.from(_allRuns);
 
+    // Back, while the tour is over the shell, is its Skip: the shell is the
+    // first route, so back would otherwise leave the app from the middle of
+    // it.
+    return PopScope<Object?>(
+      canPop: _tour == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _tour?.skip();
+      },
+      child: WalkthroughScope(
+        targets: _tourTargets,
+        child: _scaffold(context, stats),
+      ),
+    );
+  }
+
+  Widget _scaffold(BuildContext context, RunnerStats stats) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -2506,11 +2609,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   icon: Icons.calendar_month_outlined,
                   selectedIcon: Icons.calendar_month,
                   label: 'Plan',
+                  walkthroughId: TourSpot.planTab,
                 ),
                 NavPillDestination(
                   icon: Icons.person_outline,
                   selectedIcon: Icons.person,
                   label: 'Profile',
+                  walkthroughId: TourSpot.profileTab,
                 ),
               ],
             ),
@@ -2529,41 +2634,61 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   MediaQuery.paddingOf(context).bottom +
                   kNavPillHeight +
                   AppSpacing.md,
-              child: CoachReveal(
-                // Only an observation the runner has not been shown. Once it
-                // has played the mark rests, and it does not play again until
-                // the coach notices something new.
-                //
-                // **And only for somebody who has bought it.** `_note` is
-                // derived on the device from the run log, so it cost nothing to
-                // compute and was shown to everybody -- which handed a free
-                // runner the coach's reading of them, the thing
-                // `coach_access.dart` says the subscription is. The mark itself
-                // stays: it is the door to the gate sheet, and a door is not
-                // the room.
-                note: _access.isSubscribed && !_noteDelivered ? _note : null,
-                // The locked line, once, for a runner who has not bought the
-                // coach. The mark alone was silent furniture: it is the door to
-                // the gate sheet and nothing on screen said so, so the only way
-                // to find out what it cost was to press an unlabelled C.
-                //
-                // Gated on `_noteDelivered` alongside the paid line, and on the
-                // same flag deliberately — the two share one "has this bar
-                // already played" budget, so a runner who pays mid-session does
-                // not get the locked sign and then the observation.
-                locked: !_access.isSubscribed && !_noteDelivered,
-                hasUnread: _access.isSubscribed && _note != null && !_coachSeen,
-                // Not while the launch animation is over the screen: a line
-                // said behind it was a line nobody read.
-                ready: LaunchCurtain.settledOf(context),
-                // Two sentences, on a screen the runner has only just been
-                // shown. The default is sized for a remark in passing.
-                duration: kCoachLineDuration,
-                onTap: _openCoach,
-                onFinished: () {
-                  if (mounted) setState(() => _noteDelivered = true);
-                },
-              ),
+              // **At rest while the tour is over the shell**, so the tour's
+              // coach step has a C to light and nothing plays under the veil.
+              // The line the reveal would have said is said when it ends.
+              child: _touring
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: WalkthroughTarget(
+                        id: TourSpot.coach,
+                        child: CoachButton(
+                          hasUnread:
+                              _access.isSubscribed &&
+                              _note != null &&
+                              !_coachSeen,
+                          onTap: _openCoach,
+                        ),
+                      ),
+                    )
+                  : CoachReveal(
+                      // Only an observation the runner has not been shown. Once it
+                      // has played the mark rests, and it does not play again until
+                      // the coach notices something new.
+                      //
+                      // **And only for somebody who has bought it.** `_note` is
+                      // derived on the device from the run log, so it cost nothing to
+                      // compute and was shown to everybody -- which handed a free
+                      // runner the coach's reading of them, the thing
+                      // `coach_access.dart` says the subscription is. The mark itself
+                      // stays: it is the door to the gate sheet, and a door is not
+                      // the room.
+                      note: _access.isSubscribed && !_noteDelivered
+                          ? _note
+                          : null,
+                      // The locked line, once, for a runner who has not bought the
+                      // coach. The mark alone was silent furniture: it is the door to
+                      // the gate sheet and nothing on screen said so, so the only way
+                      // to find out what it cost was to press an unlabelled C.
+                      //
+                      // Gated on `_noteDelivered` alongside the paid line, and on the
+                      // same flag deliberately — the two share one "has this bar
+                      // already played" budget, so a runner who pays mid-session does
+                      // not get the locked sign and then the observation.
+                      locked: !_access.isSubscribed && !_noteDelivered,
+                      hasUnread:
+                          _access.isSubscribed && _note != null && !_coachSeen,
+                      // Not while the launch animation is over the screen: a line
+                      // said behind it was a line nobody read.
+                      ready: LaunchCurtain.settledOf(context),
+                      // Two sentences, on a screen the runner has only just been
+                      // shown. The default is sized for a remark in passing.
+                      duration: kCoachLineDuration,
+                      onTap: _openCoach,
+                      onFinished: () {
+                        if (mounted) setState(() => _noteDelivered = true);
+                      },
+                    ),
             ),
         ],
       ),

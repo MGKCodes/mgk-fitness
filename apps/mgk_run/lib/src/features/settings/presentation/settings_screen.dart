@@ -21,6 +21,7 @@ import '../../health/domain/workout_source.dart';
 import '../../coaching/domain/coach_subscription.dart';
 import '../../coaching/data/entitlement_repository.dart';
 import '../../onboarding/domain/intro_store.dart';
+import '../../onboarding/domain/walkthrough_script.dart' show kShowMeAround;
 import 'permissions_screen.dart';
 import 'account_screen.dart';
 import 'backup_screen.dart';
@@ -41,7 +42,7 @@ import '../domain/unit_settings.dart';
 /// dependency it does not need, and the preview harness has no bundle to read.
 /// **Keep it in step with `version:` in pubspec.yaml**, which
 /// `app_version_test.dart` holds it to.
-const String kAppVersion = '1.0.3';
+const String kAppVersion = '1.1.0';
 
 /// Settings: **everything about the app rather than about the running.**
 ///
@@ -119,7 +120,13 @@ class SettingsScreen extends StatefulWidget {
     this.ensureAccount,
     this.entitlements = const SupabaseEntitlements(),
     this.photoStore = const FileProfilePhoto(),
+    this.onShowAround,
   });
+
+  /// *Show me around*: Settings closes and the tour plays again from the top
+  /// over the shell (ADR-0050). **Null hides the row**, for a Settings with no
+  /// shell under it to walk through.
+  final VoidCallback? onShowAround;
 
   /// Where workouts recorded elsewhere come from.
   ///
@@ -900,6 +907,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: SettingsGroup(
                       label: 'About',
                       children: <Widget>[
+                        // First under About: the app explaining itself, for
+                        // anybody who skipped it or wants it again.
+                        if (widget.onShowAround case final showAround?)
+                          SettingsRow(title: kShowMeAround, onTap: showAround),
                         SettingsRow(title: 'Support', onTap: _openSupport),
                         SettingsRow(
                           title: 'Report a problem',

@@ -10,6 +10,7 @@ import '../../coaching/domain/stored_plan.dart' show addDays;
 import '../../coaching/domain/training_plan.dart';
 import '../../coaching/domain/week_progress.dart';
 import '../../coaching/presentation/session_labels.dart';
+import '../../onboarding/domain/walkthrough_script.dart' show TourSpot;
 import '../../recording/domain/run_summary.dart';
 
 /// What today is, in one sentence, over the button that starts it.
@@ -845,38 +846,42 @@ class StartRunButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: AppColors.primary,
-      borderRadius: AppRadius.cardAll,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Icon(
-                Icons.play_arrow_rounded,
-                color: AppColors.onPrimary,
-                size: 24,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Flexible(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.onPrimary,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+    // What the tour's last step lights (ADR-0050). Outside a tour, nothing.
+    return WalkthroughTarget(
+      id: TourSpot.start,
+      child: Material(
+        color: AppColors.primary,
+        borderRadius: AppRadius.cardAll,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Icon(
+                  Icons.play_arrow_rounded,
+                  color: AppColors.onPrimary,
+                  size: 24,
                 ),
-              ),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.onPrimary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
