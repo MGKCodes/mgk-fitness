@@ -13,12 +13,16 @@ import '../src/features/coaching/data/supabase_coach.dart';
 import '../src/features/coaching/data/supabase_coach_memory.dart';
 import '../src/features/coaching/domain/coach.dart';
 import '../src/features/coaching/domain/coach_memory.dart';
+import '../src/features/coaching/presentation/ai_consent_sheet.dart';
 import '../src/features/coaching/presentation/coach_history_sheet.dart';
 import '../src/features/coaching/presentation/coach_memory_screen.dart';
 import '../src/features/coaching/presentation/coach_sheet.dart';
 import '../src/features/planning/domain/coach_planner.dart';
 import '../src/features/planning/domain/intake_flow.dart';
 import '../src/features/planning/domain/plan_intake.dart';
+import '../src/features/planning/domain/session_from_plan.dart';
+import '../src/features/planning/domain/session_prescription.dart';
+import '../src/features/planning/domain/slot_history.dart';
 import '../src/features/planning/domain/standing_plan_store.dart';
 import '../src/features/planning/domain/plan_template.dart';
 import '../src/features/planning/domain/standing_plan.dart';
@@ -116,29 +120,30 @@ class PreviewApp extends StatelessWidget {
       'launch-drive': (_) => _launchAt(0.70),
       'launch-rest': (_) => _launchAt(1.50),
 
-      // The first open, once per install (ADR-0006): the welcome, and two
-      // steps of the walkthrough it leads to, over a new lifter's shell. Each
-      // starts at its step, as the plates do, since a capture cannot press
-      // Next; and with motion off, so the hole and the card are photographed
-      // where they come to rest rather than on their way there.
+      // The first open, once per install (ADR-0006): the welcome, and every
+      // step of the walkthrough it leads to but the rest, over a new lifter's
+      // shell. Each starts at its step, since a capture cannot press Next.
       'welcome': (_) =>
           WelcomeScreen(onGetStarted: () {}, onHaveAccount: () {}),
-      // `(_)` and a Builder, not `(context)`: the capture scripts find the
-      // screens by that shape.
-      'walkthrough-track': (_) => Builder(
-        builder: (context) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(disableAnimations: true),
-          child: _newLifter(WalkthroughStep.track),
-        ),
-      ),
+      'walkthrough-track': (_) => _walkthroughAt(WalkthroughStep.track),
+      'walkthrough-workouts': (_) => _walkthroughAt(WalkthroughStep.workouts),
+      'walkthrough-plan': (_) => _walkthroughAt(WalkthroughStep.plan),
+      'walkthrough-profile': (_) => _walkthroughAt(WalkthroughStep.profile),
+      'walkthrough-settings': (_) => _walkthroughAt(WalkthroughStep.settings),
+      // These two stay on whatever tab the step before left: Profile, in the
+      // walkthrough. Started cold they would sit over Track.
+      'walkthrough-coach': (_) =>
+          _walkthroughAt(WalkthroughStep.coach, tab: 2),
+      'walkthrough-try': (_) =>
+          _walkthroughAt(WalkthroughStep.tryASet, tab: 2),
       // In the practice session: the tick, which is the one step that waits
-      // for the lifter's own tap.
-      'walkthrough-tick': (_) => Builder(
-        builder: (context) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(disableAnimations: true),
-          child: _newLifter(WalkthroughStep.logASet),
-        ),
-      ),
+      // for the lifter's own tap. The rest after it is not here: it is shown
+      // only once the practice set has been ticked, and started cold there is
+      // no rest running, so the step is passed over to the swap.
+      'walkthrough-tick': (_) => _walkthroughAt(WalkthroughStep.logASet),
+      'walkthrough-swap': (_) => _walkthroughAt(WalkthroughStep.swap),
+      'walkthrough-hold': (_) => _walkthroughAt(WalkthroughStep.reorder),
+      'walkthrough-done': (_) => _walkthroughAt(WalkthroughStep.done),
 
       // **Every shell entry carries a coach**, because production does: main.dart
       // passes one whenever Supabase is configured, and the shell draws the mark
@@ -476,6 +481,9 @@ class PreviewApp extends StatelessWidget {
           onOpenCoach: () {},
         );
       },
+      // Monday's Upper started from the plan, as Track's button starts it:
+      // each movement on last time's top set, moved on where it held (#4).
+      'session-planned': (_) => const _PlannedSessionPreview(),
       // A six-movement template, three of them finished. The case the collapse
       // exists for: expanded throughout, this is ~2,000px and the movement you
       // are on is off screen.
@@ -620,11 +628,14 @@ class PreviewApp extends StatelessWidget {
       ),
       // Signed out as the app has it, with somewhere to sign in: without
       // onSignIn the profile card is a build with no server, and reads "Not
-      // signed in" with no way in.
+      // signed in" with no way in. Every Settings entry passes onShowAround,
+      // because the shell always does: without it About has no Show me
+      // around, which every board before 30 October drew.
       'settings': (_) => SettingsScreen(
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        onShowAround: () {},
         restAlerts: FakeRestAlerts(isAllowed: false),
         onSignIn: () {},
       ),
@@ -634,6 +645,7 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        onShowAround: () {},
         isSignedIn: true,
         email: 'matt@example.com',
         planLabel: 'Subscribed',
@@ -662,6 +674,7 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        onShowAround: () {},
         backup: _backup(
           pending: const SyncPending(
             workouts: 9,
@@ -725,6 +738,7 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        onShowAround: () {},
         isSignedIn: true,
         email: 'matt@example.com',
         backup: _backup(),
@@ -745,6 +759,7 @@ class PreviewApp extends StatelessWidget {
         initial: const UnitPreferences(),
         store: InMemoryUnitPreferences(),
         now: previewNow,
+        onShowAround: () {},
         isSignedIn: true,
         email: 'matt@example.com',
         backup: _backup(),
@@ -755,6 +770,38 @@ class PreviewApp extends StatelessWidget {
         onUseCoachChanged: (_) {},
         auth: _signedInAuth(),
         deleter: FakeAccountDeleter(),
+      ),
+      // On, with no yes on the account yet (issue #10): the subtitle says the
+      // coach will ask, because nothing has been sent.
+      'settings-coach-asks': (_) => SettingsScreen(
+        initial: const UnitPreferences(),
+        store: InMemoryUnitPreferences(),
+        now: previewNow,
+        onShowAround: () {},
+        isSignedIn: true,
+        email: 'matt@example.com',
+        backup: _backup(),
+        onSignOut: () {},
+        onSyncNow: () {},
+        coachMemory: FakeCoachMemory(),
+        useCoach: true,
+        coachConsented: false,
+        onUseCoachChanged: (_) {},
+        auth: _signedInAuth(),
+        deleter: FakeAccountDeleter(),
+      ),
+      // Asked before anything is sent (issue #10): the first time the C is
+      // tapped, a plan is built or a swap asks, on an account with no yes.
+      // Over Track, where the C is most often tapped.
+      'coach-consent': (_) => _SheetHost(
+        behind: LiftShell(
+          recorder: FakeSessionRecorder(),
+          history: FakeHistory(sampleLog(previewNow)),
+          coach: FakeCoach(),
+          library: InMemoryWorkoutLibrary(_savedWorkouts()),
+          today: previewNow,
+        ),
+        open: (context) => AiConsentSheet.show(context),
       ),
       'coach': (_) => _sheet(
         null,
@@ -998,16 +1045,11 @@ class PreviewApp extends StatelessWidget {
       // Apple, Google and email, on the photograph (R1, R10).
       'sign-in': (_) => SignInScreen(auth: FakeAuth(), pendingWorkouts: 9),
       // One tap in: the email path's first step, the address alone (Run's
-      // ADR-0047, from 2.0.1).
+      // ADR-0047, from 2.0.1). The steps after it need an address typed and
+      // looked up, which a capture cannot do; they are mgk_ui's, drawn on
+      // Run's board. `sign-in-create` went on 30 October: since 2.0.1 it drew
+      // this same screen, the two-mode form it photographed being gone.
       'sign-in-email': (_) =>
-          SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
-      // **The same screen as `sign-in-email` since 2.0.1, kept only so the
-      // web board's words and this harness still name the same screens.**
-      // It drew the two-mode form started on making an account, as the sales
-      // screen opened it; that form is gone, and the address comes first for
-      // everybody. The email path's later steps are drawn by plate tests when
-      // Lift's board moves to them, and this entry goes with that move.
-      'sign-in-create': (_) =>
           SignInScreen(auth: FakeAuth(), pendingWorkouts: 9, emailFirst: true),
       'credits': (_) => const CreditsScreen(),
 
@@ -1162,14 +1204,26 @@ class _HarnessState extends State<_Harness> {
 /// A new lifter's shell, with the walkthrough over it from [from]: nothing
 /// logged, nothing saved, nobody signed in, and the coach on, as a new
 /// install opens after *Get started*.
-Widget _newLifter(WalkthroughStep from) => LiftShell(
+Widget _newLifter(WalkthroughStep from, {int tab = 0}) => LiftShell(
   recorder: FakeSessionRecorder(),
   history: FakeHistory(const <Session>[]),
   coach: FakeCoach(),
   library: InMemoryWorkoutLibrary(const <SavedWorkout>[]),
   today: previewNow,
+  initialTab: tab,
   walkthroughOnOpen: true,
   walkthroughFrom: from,
+);
+
+/// A walkthrough step at rest: [_newLifter] with motion off, so the hole and
+/// the card are photographed where they come to rest rather than on their way
+/// there. A Builder, not `(context)`, because the capture scripts find the
+/// screens by the `(_)` shape.
+Widget _walkthroughAt(WalkthroughStep step, {int tab = 0}) => Builder(
+  builder: (context) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(disableAnimations: true),
+    child: _newLifter(step, tab: tab),
+  ),
 );
 
 /// The launch curtain as it is [seconds] in, with nothing under it.
@@ -2071,6 +2125,52 @@ class _SheetHostState extends State<_SheetHost> {
   Widget build(BuildContext context) =>
       widget.behind ??
       const Scaffold(backgroundColor: AppColors.bg, body: SizedBox.expand());
+}
+
+/// Today's Upper, started from the plan the way the shell starts it: the plan
+/// read against the log ([planWithHistory], #4), today's slots turned into
+/// movements, and [SessionFromPlan] filling them in, ticked off.
+class _PlannedSessionPreview extends StatefulWidget {
+  const _PlannedSessionPreview();
+
+  @override
+  State<_PlannedSessionPreview> createState() => _PlannedSessionPreviewState();
+}
+
+class _PlannedSessionPreviewState extends State<_PlannedSessionPreview> {
+  final FakeSessionRecorder _recorder = FakeSessionRecorder();
+  final List<Session> _log = _planLog(previewNow);
+  Session? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    final plan = planWithHistory(_standingPlan(), _log);
+    SessionFromPlan(_recorder)
+        .start(
+          'Upper',
+          SessionPrescription.forDay(plan.slots['Upper']!),
+          at: previewNow,
+        )
+        .then((session) {
+          if (mounted) setState(() => _session = session);
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = _session;
+    if (session == null) {
+      return const Scaffold(backgroundColor: AppColors.bg);
+    }
+    return ActiveSessionScreen(
+      recorder: _recorder,
+      session: session,
+      now: previewNow,
+      log: _log,
+      onOpenCoach: () {},
+    );
+  }
 }
 
 /// The session screen a sheet opens over: a session in progress, which is
