@@ -61,3 +61,4 @@ Each record uses: **Status · Context · Decision · Consequences.**
 | [0047](0047-email-first-a-code-to-confirm-a-name-on-the-account.md) | Email first, a code to confirm, and a name on the account | Accepted |
 | [0048](0048-contributions-come-in-under-an-app-store-permission.md) | Contributions come in under an app store permission | Accepted |
 | [0049](0049-a-race-is-a-run.md) | A race is a run, with or without a plan | Accepted |
+| [0050](0050-run-tours-the-app-after-the-intro.md) | Run tours the app after the intro | Accepted |

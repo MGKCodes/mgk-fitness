@@ -16,12 +16,13 @@
     "names it. No test checks this prose; that command is the only thing that will."
   ],
   "board": {
-    "title": "MGKFitness: Run, every screen of 1.0.1, and 1.0.2 so far",
-    "eyebrow": "apps/mgk_run · 1.0.1 (build 31) on both stores since 19 Oct, with what develop holds for 1.0.2: the email path, address first",
-    "build": "31 · 1.0.1+31 on both stores; develop is 1.0.2+32, not submitted",
+    "title": "MGKFitness: Run, every screen of 1.0.2",
+    "eyebrow": "apps/mgk_run · 1.0.1 (build 31) on both stores since 19 Oct; 1.0.2 (build 32) submitted to both on 29 Oct: the email path, address first, and the coach asking again when its server finds no permission",
+    "build": "32 · 1.0.2+32 submitted 29 Oct; develop is 1.0.3+33, so Settings says 1.0.3 at its foot",
     "lede": "Every screen in the running app, rendered from the real widget tree, each with what it is for and what a good version looks like. It is the reference for what is live: read the 'done right' line under a plate and check the plate against it.",
     "surface": "393×852 iPhone unless marked, with the iPhone's safe areas",
     "changed": [
+      "1.0.2 as submitted, redrawn 30 Oct at b7d5d49. When the coach's server finds no permission on the account, the conversation says so and that nothing was sent, where 1.0.1 said 'The coach hit a problem'; the yes the phone held is dropped, so the next tap on the mark asks again (C15, new, and C7). The privacy policy says what email-first sign-in collects: the address is looked up to show the right next step, a code confirms it, and Google may pass a name and picture link, offered only as a suggestion (T19). Settings' foot reads 1.0.3, the number develop moved to after the submission (T1, T3). Every other plate came out identical or moved only by the day.",
       "20 Oct, a Tuesday: the plates a Monday could not draw are drawn. Home's last run with and without a coach (H4, H5), the week a plan is built (H6), subscribing and restoring signed out (Y8, Y9) and the race plates (E1, E2, E4, E6) show 1.0.1 at last, with the treadmill row on the week tile. E1's taper is a Friday race seen on a Tuesday, so today's run is the first of race week; E2 is race day before the run, so 'Add your result' is not yet there.",
       "1.0.2 so far, 20 Oct, on develop and not on the stores yet: signing in with email asks for the address first (ADR-0047). Nine new plates, B14 to B22: the address, Did you mean, no signal at the lookup, Welcome back, a wrong password, an address made with Apple, Create your account with the password rule ticked as it is typed, the 6-digit code with its wait for another, and a refused code. The two-mode email form is retired from both ways into it (B13, K3). B8, C14 and K2 were redrawn at e5ee058, and again at 08dd210 after the shared fixes, and came out identical: the choices do not change, only what is behind the third button. A new account by any way in now meets the coach, whose question is the name step (B3), with Google's first name typed in for a Google account; nothing is asked after Apple.",
       "1.0.1 as released, redrawn 19 Oct at 4a03dc8, the day Run went on sale on the App Store. Every plate was redrawn and 112 came out identical. Settings gains Report a problem (an email to support with the app and version written in) and Source code (AGPL-3.0, the public repository) under About, and shows 1.0.1 at its foot (T1, T3). Home's three states now show 'Add a treadmill run' as a row on the This week tile, as build 29 made it; the board still had their pictures from before (H1, H2, H3). Not redrawable on a Monday, so still their earlier pictures: H4, H5, Y8 and Y9 (no planned run), H6 (a plan built that day starts that day) and the race plates E1, E2, E4, E6 and E7, whose fixture assumes a plan ending this Sunday. E1 still shows the treadmill button under Start, and E2 lacks 1.0.1's 'Add your result' under 'Start the race'. Also in 1.0.1 and on no plate: after Sign in with Apple the coach's first conversation no longer asks what to call you (App Review, guideline 4, 16 Oct), and signing in after meeting the coach no longer plays the conversation again.",
@@ -455,6 +456,12 @@
           "title": "The permission on a small phone",
           "plates": [
             "C8"
+          ]
+        },
+        {
+          "title": "When the server finds no permission",
+          "plates": [
+            "C15"
           ]
         },
         {
@@ -1776,7 +1783,8 @@
       "files": [
         "lib/src/features/coaching/presentation/ai_consent_sheet.dart"
       ],
-      "isnew": "New in build 26."
+      "isnew": "New in build 26.",
+      "changed": "1.0.2: also comes back when the coach's server finds no permission on the account (C15)."
     },
     "C8": {
       "file": "coach-consent-small",
@@ -2342,13 +2350,13 @@
       "how": "built",
       "reach": "T13 › Privacy policy",
       "job": "The privacy policy inside the app.",
-      "done": "Matches the published policy. It covers the name the app collects, the profile photo that never leaves the phone, what Apple and Google pass on when a runner signs in with either (an email address and an identifier, nothing else), Esri as the map provider, and that map tiles are kept on the phone and nowhere else.",
+      "done": "Matches the published policy. It covers the name the app collects (the one you choose, the MGKFitness account's, so Lift shows it too), the profile photo that never leaves the phone, what signing in with Apple or Google passes on (an email address and an identifier asked for; Google may send a name and a picture link anyway, and its first name is only offered as a suggestion; nothing asks for a name after Apple), the email path's lookup of the address and its code, Esri as the map provider, and that map tiles are kept on the phone and nowhere else.",
       "files": [
         "lib/src/features/legal/presentation/privacy_policy_screen.dart",
         "lib/src/features/legal/domain/legal_copy.dart"
       ],
       "isnew": "Caught up with the published policy in build 26.",
-      "changed": "Build 27: signing in with Apple or Google, the service that sends account email, Esri in place of MapTiler, and the map tiles the phone keeps."
+      "changed": "1.0.2: the email path, address first, and the code SMTP2GO sends; what Google may pass on and how its first name is used. Build 27: signing in with Apple or Google, the service that sends account email, Esri in place of MapTiler, and the map tiles the phone keeps."
     },
     "K1": {
       "file": "keep-runs-safe",
@@ -2761,6 +2769,23 @@
       ],
       "isnew": "New in 1.0.1 (ADR-0049).",
       "size": "320×568"
+    },
+    "C15": {
+      "file": "coach-consent-refused",
+      "name": "The server asks first too",
+      "how": "built",
+      "reach": "a question to the coach, when the account holds no current yes (taken back on another phone, or never reached the account)",
+      "job": "Tells a runner whose question the coach's server refused for want of permission that the answer is a question, and that nothing went.",
+      "done": "One plain line: the coach needs permission, and nothing was sent. Not 'The coach hit a problem', no retry, no price. The next tap on the mark shows the question (C7), because the phone has dropped the yes it held. It fails if it reads as a fault, or if the next tap opens the conversation and is refused again.",
+      "files": [
+        "lib/src/features/coaching/data/coach_service.dart",
+        "lib/src/features/coaching/data/coach_errors.dart",
+        "lib/src/features/coaching/data/account_ai_consent.dart",
+        "lib/src/features/coaching/presentation/chat_controller.dart",
+        "lib/src/features/coaching/presentation/coach_conversation.dart"
+      ],
+      "isnew": "New in 1.0.2. The coach function has refused a Run question without a current yes on the account since 27 Oct; 1.0.1 showed that as 'The coach hit a problem'.",
+      "note": "Opened directly over Home with a coach that refuses, the seam C11 uses: the refusal itself comes from the server. Drawing it turned up that the line is set like any other fault in the conversation, small and muted, and offers no way to the question from where it stands: the runner closes the sheet and taps the mark again."
     }
   }
 }

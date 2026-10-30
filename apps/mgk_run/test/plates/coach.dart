@@ -27,6 +27,8 @@ import 'package:mgk_run/preview/fake_auth_repository.dart';
 import 'package:mgk_run/preview/fake_coach_service.dart';
 import 'package:mgk_run/preview/fake_purchases.dart';
 import 'package:mgk_run/src/core/database/app_database.dart';
+import 'package:mgk_run/src/features/coaching/data/coach_client.dart';
+import 'package:mgk_run/src/features/coaching/data/coach_errors.dart';
 import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_offer.dart';
 import 'package:mgk_run/src/features/coaching/domain/ai_consent.dart';
@@ -266,6 +268,45 @@ void main() {
     );
   });
 
+  // --- The server's own refusal ----------------------------------------------
+
+  testWidgets('the server finds no permission on the account', (tester) async {
+    // The same seam as `coach-report-sent`. What turns the coach function's
+    // `403 consent_required` into this line is `CoachService`, which needs a
+    // server, so the conversation is opened directly with a client that
+    // answers the way the service does. The service has also dropped the yes
+    // the phone held, so the next tap on the mark asks again (C7).
+    final store = await seeded();
+    await plate(
+      tester,
+      'coach-consent-refused',
+      plateApp(db, store, plateLog()),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await rest(tester);
+        final chat = ChatController(
+          client: _RefusesConsent(),
+          brief: (_) async => '',
+        );
+        final context = tester.element(find.byType(Scaffold).first);
+        unawaited(
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) =>
+                CoachConversationSheet(controller: chat, reporter: _Accepts()),
+          ),
+        );
+        await settle(tester);
+        unawaited(chat.ask('What could I run a half marathon in?'));
+        await settle(tester);
+        await settle(tester);
+      },
+    );
+  });
+
   // --- Paying ----------------------------------------------------------------
 
   /// A runner who has agreed and not paid, at the paywall, with the store set
@@ -444,4 +485,15 @@ void main() {
 class _Accepts implements CoachReporter {
   @override
   Future<void> report(CoachReport report) async {}
+}
+
+/// Answers every turn as `CoachService` does when the coach function refuses
+/// for want of a current yes on the account.
+class _RefusesConsent implements CoachChatClient {
+  @override
+  Future<ChatTurn> chat({
+    required String brief,
+    required List<ChatMessage> history,
+    required String message,
+  }) async => throw const CoachConsentRequiredException();
 }

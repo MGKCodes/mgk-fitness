@@ -27,7 +27,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 import asc  # noqa: E402
 import play  # noqa: E402
 import stores  # noqa: E402
-from _common import es256_jwt, rs256_jwt  # noqa: E402
+from _common import _summarise, es256_jwt, rs256_jwt  # noqa: E402
 
 
 def _unb64(part: str) -> bytes:
@@ -681,6 +681,25 @@ class AppleAssets(unittest.TestCase):
                             and k['body']['data']['attributes'] == {'previewFrameTimeCode': '00:00:05:00'}
                             for u, k in patches), patches)
         self.assertFalse(any(u.endswith('/v1/appAssetLibraryVideos') for m, u, k in self.writes(sent)))
+
+
+class StoreErrorsSayWhy(unittest.TestCase):
+    def test_apples_associated_reasons_are_kept(self):
+        # Lift 2.0.1, 29 October 2026: the reason was only in associatedErrors.
+        body = {'errors': [{
+            'detail': 'This resource cannot be reviewed, please check associated errors to see why.',
+            'meta': {'associatedErrors': {'/v1/appStoreVersions/v1': [{
+                'code': 'ENTITY_ERROR.ATTRIBUTE.REQUIRED',
+                'detail': "You must provide a value for the attribute 'socialMedia' with this request",
+            }]}},
+        }]}
+        said = _summarise(json.dumps(body))
+        self.assertIn('cannot be reviewed', said)
+        self.assertIn("'socialMedia'", said)
+
+    def test_a_plain_error_reads_as_before(self):
+        self.assertEqual(_summarise(json.dumps({'errors': [{'title': 'Forbidden', 'detail': 'no'}]})),
+                         'Forbidden no')
 
 
 if __name__ == '__main__':

@@ -3,7 +3,10 @@
 All notable changes to MGKFitness: Run are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
+read for an app as [CONTRIBUTING.md](../../CONTRIBUTING.md) › Versions says: a
+patch for fixes, a minor for a new screen or feature, a major for a substantial
+change.
 
 > **A note on the gap.** This file was written at the scaffold and then not kept
 > for roughly 120 commits, because the repo's definition of done did not ask for
@@ -15,8 +18,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This is 1.0.3
-([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+## [1.1.0] — submitted 2026-10-30, build 33
+
+Submitted to both stores on 30 October 2026 from the commit tagged
+`run/build-33`, promoted to `main` alone. The first version numbered by the
+rule that a new feature moves the minor number
+([CONTRIBUTING.md](../../CONTRIBUTING.md) › Versions,
+[ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)).
+
+### Added
+
+- **A tour of the app after the coach's intro**
+  ([ADR-0050](docs/decisions/0050-run-tours-the-app-after-the-intro.md)).
+  On *Get started*, once the coach has met you, it lights Home's Today card,
+  your week, Plan, Profile, Settings and the coach's C one at a time, with a
+  line from the coach beside each, and ends on the button that starts a run.
+  It starts nothing. *Skip* ends it anywhere. *I already have an account*
+  goes past it, and an update from 1.0.x does not play it.
+  *Settings › Show me around* plays it again.
 
 ## [1.0.2] — submitted 2026-10-29, build 32
 

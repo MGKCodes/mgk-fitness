@@ -259,9 +259,17 @@ have shipped it.
       2026. Not yet seen in an inbox: the first sign-up from a build of
       `develop` is that check (the code above the button, the link still
       working, and the code in the notification's preview).
-- [ ] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
+- [x] On the day Lift 2.0.1 and Run 1.0.2 are submitted: the server's minimum
       password goes to 8, the reset page checks the rule, and both privacy
       policies change (an optional name the person chooses, Google's first
       name offered as a suggestion, a code as well as a link, and an address
       looked up to choose the next step). Both store forms' Name rows with
-      them.
+      them. **Done 29 October 2026, the day Run 1.0.2 was submitted:** the
+      minimum set to 8 in Authentication › Sign In / Providers › Email and
+      read back (the character rules left off, as above); the reset page
+      checks the whole rule; both policies changed in each app and in
+      `docs/`, Run's live at /run/privacy with the promotion and Lift's held
+      for Lift's own (2.0.0 is still what people have). The four store forms
+      already declared a name for App Functionality (read that day in App
+      Store Connect and on Play's public data-safety pages), so none needed
+      an edit; the docs' Name rows now say what it is.
