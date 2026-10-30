@@ -10,7 +10,9 @@ import 'package:mgk_run/src/features/coaching/data/drift_plan_store.dart';
 import 'package:mgk_run/src/features/coaching/domain/coach_access.dart';
 import 'package:mgk_run/src/features/history/data/run_editor.dart';
 import 'package:mgk_run/src/features/home/presentation/home_shell.dart';
+import 'package:mgk_run/src/features/onboarding/domain/walkthrough_script.dart';
 import 'package:mgk_run/src/features/recording/domain/run_summary.dart';
+import 'package:mgk_ui/mgk_ui.dart' show WalkthroughOverlay;
 
 import 'fixture.dart';
 import 'plate.dart';
@@ -91,6 +93,52 @@ void main() {
       ),
       pixelRatio: 2,
       drive: rest,
+    );
+  });
+
+  // Settings' *Show me around*, played by a signed-in runner a month in
+  // (ADR-0050): walked from Profile's gear, and stepped to the one line that
+  // differs for them, since their runs are not "on this phone".
+  testWidgets('the tour again, from Settings, signed in', (tester) async {
+    final store = DriftPlanStore(db);
+    await seedPlan(store);
+    final runs = plateLog();
+
+    Finder onCard(String label) => find.descendant(
+      of: find.byType(WalkthroughOverlay),
+      matching: find.text(label),
+    );
+
+    await plate(
+      tester,
+      'tour-replay-settings',
+      HomeShell(
+        runEditor: RunEditor(db: db),
+        auth: FakeAuthRepository(signedIn: true, email: 'runner@example.com'),
+        planStore: store,
+        historySource: () async => runs,
+        coach: FakeCoachService(),
+        initialTab: 2,
+        access: CoachAccess.subscribed,
+      ),
+      pixelRatio: 2,
+      drive: (tester) async {
+        await rest(tester);
+        await tester.tap(find.byTooltip('Settings'));
+        await settle(tester);
+        await tester.scrollUntilVisible(
+          find.text(kShowMeAround),
+          200,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.tap(find.text(kShowMeAround));
+        await tester.pumpAndSettle();
+        // Today, the week, Plan, Profile, then Settings.
+        for (var i = 0; i < TourStep.settings.index; i++) {
+          await tester.tap(onCard(kTourNext));
+          await tester.pumpAndSettle();
+        }
+      },
     );
   });
 

@@ -106,6 +106,9 @@ void main() {
       entitlements: FakeEntitlements.of(subscription),
       photoStore: const _NoPhoto(),
       health: _Health(),
+      // Present, as the shell always hands it: without it About has no
+      // *Show me around*, which every Settings in the app has (ADR-0050).
+      onShowAround: () {},
     ),
   );
 
