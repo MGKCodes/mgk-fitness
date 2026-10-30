@@ -172,6 +172,18 @@ for (const act of board.acts) {
   act.lede = resolve(act.lede, `act ${act.letter}.lede`);
 }
 
+// What a refresh turned up, and what the board leaves out and why: words like
+// the rest, so they live in the config and a refresh changes them there. The
+// six findings written into the page below are the first board's.
+const found = (board.found ?? []).map((f, i) => ({
+  lead: resolve(f.lead, `found[${i}].lead`),
+  text: resolve(f.text, `found[${i}].text`),
+}));
+const absent = (board.absent ?? []).map((a, i) => ({
+  what: resolve(a.what, `absent[${i}].what`),
+  why: resolve(a.why, `absent[${i}].why`),
+}));
+
 /* ---- what is behind a plate ------------------------------------------------
  *
  * Three kinds of fact, and only one of them is written by hand.
@@ -801,7 +813,8 @@ ${acts}
   <p class="eyebrow">Found by photographing every screen</p>
   <h2>What building this turned up</h2>
   <p class="sub">A narrower question than the last review asked, and put to the harness rather than the app:
-    <em>is what this photographs the screen the app renders?</em> Six times it was not.</p>
+    <em>is what this photographs the screen the app renders?</em> The first board found six times it was not;
+    later refreshes add what they found below them.</p>
   <ol class="findings">
     <li><span class="fn">01</span><p><b>Ten screens were photographed without their chrome.</b> They mounted a surface
       bare on a <code>Scaffold</code> instead of going through <code>LiftShell</code>, so the board showed no nav bar
@@ -827,8 +840,33 @@ ${acts}
       no <code>body_metrics</code>, no <code>height_cm</code>, no <code>year_of_birth</code> in any migration. They were
       three plates of a conversation the backend could not record, so they are cut rather than rendered and discarded.
       The wheel that asks them is built and shipping in the coach; what is missing is a table, not a control.</p></li>
+    ${found
+      .map(
+        (f, i) =>
+          `<li><span class="fn">${String(7 + i).padStart(2, '0')}</span><p><b>${esc(f.lead)}</b> ${esc(f.text)}</p></li>`,
+      )
+      .join('\n    ')}
   </ol>
 </section>
+
+${
+  absent.length
+    ? `<section class="panel">
+  <p class="eyebrow">Not on the board</p>
+  <h2>What is left out, and why</h2>
+  <p class="sub">States a capture cannot reach, each with where it can be seen instead. A board of only the
+    screens that were easy to draw would read as finished and not be.</p>
+  <ol class="findings">
+    ${absent
+      .map(
+        (a) =>
+          `<li><span class="fn">&ndash;</span><p><b>${esc(a.what)}.</b> ${esc(a.why)}</p></li>`,
+      )
+      .join('\n    ')}
+  </ol>
+</section>`
+    : ''
+}
 
 </div>
 

@@ -19,11 +19,30 @@
     "       pushed: a full screen over the shell, with a back affordance",
     "       sheet: a modal bottom sheet, dismissed by drag or scrim",
     "       dialog: an alert, dismissed by its own buttons",
-    "in/out/next follow docs/navigation.md, which is the audit these answer to."
+    "in/out/next follow docs/navigation.md, which is the audit these answer to.",
+    "",
+    "found — what a refresh turned up, listed after the first board's six.",
+    "absent — states a capture cannot reach, each with where it can be seen.",
+    "Both take {{key}} like the screens' prose."
   ],
 
-  "previous": "4 October 2026, from 252df02",
-  "since": "Plan shows the week saved on the phone first and says where it came from, Synced just now or Offline with the saved copy's age, with a plate for the gym with no signal (#2); a movement's screen leads with its heaviest and Working weights for 4–6, 7–11 and 12–16 reps instead of an estimated max, and a best is a weight lifted, so the bubble and the summary say the set and what it went past (#3, ADR 0004); building a plan says it is building and names what went wrong; and Settings › About offers the source code and a problem report",
+  "previous": "12 October 2026, from b95b90f",
+  "since": "2.0.1. A new install opens on a welcome, and Get started walks through the real app one control at a time and ends on a practice set nothing keeps (ADR 0006), every step but the rest drawn here; Settings › About › Show me around plays it again. The coach asks before anything is sent (issue #10), with a sheet saying what goes to OpenRouter and what never does, and Settings says when it will ask. A planned session opens on last time's weights and moves them on where they held (#4). A movement is held and dragged where it sits, and the reorder sheet (W20) is gone (ADR 0005). Email sign-in asks for the address first, so the second email plate (S4) is gone too",
+
+  "found": [
+    { "lead": "The board had fallen a release behind.", "text": "Drawn on 12 October, it met 2.0.1 with two of the walkthrough's twelve steps, no plate for the consent sheet or for Settings saying the coach will ask, no planned session, and S4 photographing the same screen as {{sign-in-email}} since the two-mode email form went. The words had been kept up as 2.0.1 was built; the pictures had not been taken again." },
+    { "lead": "Show me around was on no Settings plate.", "text": "The harness drew Settings without the callback the shell always passes, so the row that plays the walkthrough again was missing from all six Settings plates. Each passes it now, and {{settings}} shows it under About." },
+    { "lead": "Two walkthrough steps would have been drawn over the wrong tab.", "text": "The C and Let's try a set stay on whatever tab the step before left, which in the walkthrough is Profile; started cold, as a capture has to start them, they sat over Track. The harness opens those two on Profile." },
+    { "lead": "On a planned session, Last time is cut after its first set.", "text": "{{session-planned}}'s bench reads Last time · 5 Aug · 80 kg… over sets at 92.5: the line is ellipsised at a phone's width, so what a lifter reads beside the new weight is the lightest set, not the 90 × 5 it was worked out from. Not changed here; worth a look while #4 is fresh." },
+    { "lead": "The lit ring around Profile's gear runs into the edge of the screen.", "text": "On {{walkthrough-settings}} the gear sits against the right margin, and the hole drawn around it is clipped by the edge at 390 points. Not changed here." }
+  ],
+
+  "absent": [
+    { "what": "The rest, in the walkthrough", "why": "Shown only once the practice set is ticked. A capture cannot tap, and started at that step there is no rest running, so the walkthrough passes over it to {{walkthrough-swap}}, as it does for a lifter who presses Next instead of ticking. The rest bar itself is {{session-resting}}." },
+    { "what": "The email path after the address", "why": "Welcome back, the notice for an address that signs in with Apple or Google, the 6-digit code and the name step all need an address typed and looked up. They are the suite's own steps, drawn the same in both apps, and are on Run's board." },
+    { "what": "A movement being carried", "why": "A card lifts after a finger is held still on it for about half a second, which a capture cannot do. {{walkthrough-hold}} shows where it is held, and the lift itself, a slight scale and a shadow, is the one the workout editor already had." },
+    { "what": "The consent answer that did not save", "why": "Your answer didn't save, so nothing was sent. Try again. is a toast after Agree when the account cannot be written to, which needs a server that fails." }
+  ],
 
   "acts": [
     {
@@ -33,15 +52,17 @@
       "lede": "The app used to drop straight into Track while it was still reading the log. It opens now on its own mark: the icon's two chevrons dip, drive up, and lift the name into place under them, with the studio's name beneath, and then the curtain fades and Track is there. The same launch as Run's turned through a right angle, with Run's timing, so the two apps open alike. It costs no time, because the app is built under it from the first frame; it takes every touch while it is up; it does not play on coming back from the background, so a lifter reopening the app between sets goes straight to the session; and it is not shown at all with Reduce Motion on. These four plates are the animation stopped: it has to be watched on a phone. Then, on a new install only, the welcome, and Get started leads into a walkthrough over the real app (ADR 0006): one control lit at a time under a dimmed screen with the coach's line beside it, the tabs changing as it goes, then a practice set in a real session that nothing keeps. Anybody the phone already knows, everybody upgrading from 2.0.0 included, goes straight to Track, and so does anybody who signs in from the welcome; Settings plays it again.",
       "racks": [
         { "title": "The launch, stopped", "screens": ["launch-mark", "launch-dip", "launch-drive", "launch-rest"] },
-        { "title": "The first open, once per install", "screens": ["welcome", "walkthrough-track", "walkthrough-tick"] }
+        { "title": "The first open, once per install", "screens": ["welcome"] },
+        { "title": "The walkthrough, over the real app", "screens": ["walkthrough-track", "walkthrough-workouts", "walkthrough-plan", "walkthrough-profile", "walkthrough-settings", "walkthrough-coach", "walkthrough-try"] },
+        { "title": "The practice set, which nothing keeps", "screens": ["walkthrough-tick", "walkthrough-swap", "walkthrough-hold", "walkthrough-done"] }
       ]
     },
     {
       "letter": "S",
       "title": "Signing in",
       "sub": "Reached, never launched into",
-      "lede": "Tracking is never gated, so the app opens usable and an account is optional. These screens exist only because somebody asked for something that needs a server. Apple and Google come first, as one tap and no password; email is one tap behind them.",
-      "racks": [{ "title": "The account", "screens": ["sign-in", "sign-in-email", "sign-in-create"] }]
+      "lede": "Tracking is never gated, so the app opens usable and an account is optional. These screens exist only because somebody asked for something that needs a server. Apple and Google come first, as one tap and no password; email is one tap behind them, and since 2.0.1 it asks for the address alone and lets the lookup decide what comes next, as Run's does.",
+      "racks": [{ "title": "The account", "screens": ["sign-in", "sign-in-email"] }]
     },
     {
       "letter": "T",
@@ -63,7 +84,7 @@
       "racks": [
         { "title": "Starting one", "screens": ["session-empty", "workout-library-empty", "workout-library"] },
         { "title": "Your workouts", "screens": ["workout-library-open", "workout-editor"] },
-        { "title": "In the session", "screens": ["session", "exercise-picker", "swap-sheet", "session-long", "session-resting"] },
+        { "title": "In the session", "screens": ["session", "session-planned", "exercise-picker", "swap-sheet", "session-long", "session-resting"] },
         { "title": "Rest, and changing course", "screens": ["session-rest-over", "exercise-picker-replace"] },
         { "title": "Finishing it", "screens": ["finish-sheet-save", "finish-sheet-blank", "session-summary", "session-summary-pb", "session-summary-short"] },
         { "title": "Whether it is backed up", "screens": ["session-summary-offline", "session-summary-backed-up"] }
@@ -85,7 +106,7 @@
       "sub": "A sheet over where you were, never a fourth destination",
       "lede": "The mark floats over all three tabs (Run's ADR-0017): a dock lives inside one tab and would put the coach on a third of the app. Opening it checks the account and the entitlement <em>before</em> the message rather than after, so a refusal never arrives on a screen with no route to the thing that would fix it. What opens is a sheet over the surface you were on — you can still see where you were, which is the difference between asking about this and leaving to go and ask.",
       "racks": [
-        { "title": "The conversation", "screens": ["coach-disclaimer", "coach-empty", "coach", "coach-resumed", "coach-limit"] },
+        { "title": "The conversation", "screens": ["coach-consent", "coach-disclaimer", "coach-empty", "coach", "coach-resumed", "coach-limit"] },
         { "title": "Where a conversation goes when it ends", "screens": ["coach-history", "coach-history-empty", "coach-past"] },
         { "title": "Judged in a bubble, not in a table", "screens": ["coach-eval-jump", "coach-eval-joint-pain"] },
         { "title": "After a session", "screens": ["plan-review-after", "plan-review-answered"] }
@@ -121,7 +142,7 @@
       "lede": "Units are device-first and account-second: the device half is what makes them survive a launch at all, since tracking needs no sign-in, and the account half is what makes them agree with Run. The account reports rather than reassures — nothing here blocks logging, and signing out is \"stop syncing\", not \"erase my training\". The coach's memory is deliberately separate from the coach: somebody who has stopped paying should still be able to read what was stored about them and delete it.",
       "racks": [
         { "title": "Units and account", "screens": ["settings", "settings-signed-in", "settings-account", "account-signed-out", "account-synced", "account-problems"] },
-        { "title": "The coach switch", "screens": ["settings-coach", "settings-coach-off"] },
+        { "title": "The coach switch", "screens": ["settings-coach", "settings-coach-asks", "settings-coach-off"] },
         { "title": "What the coach remembers", "screens": ["coach-memory", "coach-memory-empty", "coach-memory-error"] },
         { "title": "About", "screens": ["credits"] }
       ]
@@ -201,7 +222,7 @@
       "host": "shell",
       "in": "{{welcome}} › Get started; or Settings › Show me around",
       "out": "Skip, or back, to {{track}}",
-      "next": "Next, through Plan, Profile, Settings and the C, to the practice set in {{walkthrough-tick}}",
+      "next": "Next, to {{walkthrough-workouts}}",
       "note": "Track's Start a session lit through the veil, the coach's line under it, Next and Skip.",
       "doc": "The first of the walkthrough's steps over the real shell: the app is running underneath on its own tabs, and one control at a time is lit through a dimmed screen with the coach's small C and a line beside it. In order: Start a session (where you log, with no signal), the same button again as the way to your workouts, the Plan tab (a week built around you, with the subscription), the Profile tab, Profile's Settings (the sessions stay on this phone until you sign in), and the C (coaching is a subscription, logging never is), the tabs changing as it goes. Each step names its control, so the hole follows the layout at any phone width or text size, and a step whose control is not drawn is passed over: no C with the coach off, no workouts behind a button that resumes an open session. Nothing under the veil takes a tap, and back is Skip. Done right: a lifter who has never seen the app is shown where each thing is on the screen they will use, not told about it on another.",
       "tags": ["free", "new", "first"]
@@ -210,11 +231,110 @@
       "code": "O7",
       "title": "Walkthrough — the practice set",
       "host": "pushed",
-      "in": "{{walkthrough-track}} › Let's try a set",
+      "in": "{{walkthrough-try}} › Next",
       "out": "Start training, Skip or back, to {{track}}, with the practice thrown away",
-      "next": "Tick the set (or Next), then the rest timer, the swap, holding a movement to move it, and Start training",
+      "next": "Tick the set, or Next: the rest it started, then {{walkthrough-swap}}",
       "note": "A real session screen over a practice Barbell Bench Press, three sets of eight, the first set's tick lit.",
       "doc": "The one step that waits for the lifter: the hole lets a tap through to the first set's tick, and ticking it moves on to the rest timer it started, then the swap and the hold that moves a movement, and That's it, with Start training. It is the real session screen over a recorder held in memory: nothing is written to the phone, backed up, counted in history, bests or a plan's weights, or offered back as a session to resume, and no rest alert is scheduled or asked for. Start training, Skip and back all end it the same way: the practice is thrown away and the lifter lands on Track. Done right: the first set anybody logs in Lift is one they logged themselves, and none of it is in their training afterwards.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-workouts": {
+      "code": "O8",
+      "title": "Walkthrough — your workouts",
+      "host": "shell",
+      "in": "{{walkthrough-track}} › Next",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, to {{walkthrough-plan}}",
+      "note": "Start a session lit a second time, as the way to the workouts.",
+      "doc": "The same button as the step before, lit again, because on a new install it is the same button: the saved workouts went behind Start a session when Track became a front page. So the line begins This opens your workouts. before saying what a saved workout is for, or one control would be lit twice with no reason given. On a phone with a session open the button resumes it instead, and this step is passed over. Done right: a lifter knows where their workouts will be before they have any.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-plan": {
+      "code": "O9",
+      "title": "Walkthrough — Plan",
+      "host": "shell",
+      "in": "{{walkthrough-workouts}} › Next",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, to {{walkthrough-profile}}",
+      "note": "The Plan tab lit on the bar, with the tab open behind the veil.",
+      "doc": "The tab is what is lit, not anything on it, because what Plan holds differs from lifter to lifter (the offer, a plan to build, the week) and the tab is the one thing every lifter has. The tab behind changes as the walkthrough goes, so each line is said over the screen it is about. That plans come with the subscription is said once, as a fact. Done right: nobody new thinks Plan is where logging happens, and nobody is sold to here.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-profile": {
+      "code": "O10",
+      "title": "Walkthrough — Profile",
+      "host": "shell",
+      "in": "{{walkthrough-plan}} › Next",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, to {{walkthrough-settings}}",
+      "note": "The Profile tab lit, with an empty Profile behind it.",
+      "doc": "Where everything lifted ends up: the history, the bests and the progress photos. On a new install it is empty behind the veil, which is the truth, so the line says what will be there rather than pointing at it. Done right: a lifter who wants last week's numbers knows which tab to open.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-settings": {
+      "code": "O11",
+      "title": "Walkthrough — Settings",
+      "host": "shell",
+      "in": "{{walkthrough-profile}} › Next",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, to {{walkthrough-coach}}",
+      "note": "Profile's gear lit, and where the sessions are kept.",
+      "doc": "The one thing worth saying about Settings to somebody signed out: their sessions stay on this phone, and signing in is what backs them up, said once as a fact and not argued for. Somebody signed in, replaying it from Settings, is told their sessions back up to their account instead, since an offer to sign in would be wrong twice. Done right: nobody new is pushed into an account, and nobody who wants a backup has to hunt for it.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-coach": {
+      "code": "O12",
+      "title": "Walkthrough — the C",
+      "host": "shell",
+      "in": "{{walkthrough-settings}} › Next",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next, to {{walkthrough-try}}",
+      "note": "The C lit, bottom right, over Profile.",
+      "doc": "The coach introducing itself, over the tab the step before left, since the C floats over every tab. It says what the C is for and the split the app is built on: coaching is a subscription, logging never is. With the coach switched off, or in a build with no coach, there is no C and the step is passed over. Done right: a lifter knows the C is somebody to ask, and that nothing they log depends on paying for it.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-try": {
+      "code": "O13",
+      "title": "Walkthrough — let's try a set",
+      "host": "shell",
+      "in": "{{walkthrough-coach}} › Next, or {{walkthrough-settings}} › Next with no C",
+      "out": "Skip, or back, to {{track}}",
+      "next": "Next opens the practice session, {{walkthrough-tick}}",
+      "note": "Nothing lit: Let's try a set.",
+      "doc": "The turn from being shown the app to using it. Nothing is lit, so the whole screen stays under the veil, and the next tap opens a real session screen over a practice movement. Done right: the change of pace is felt, and nobody takes the practice set that follows for a real session.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-swap": {
+      "code": "O14",
+      "title": "Walkthrough — the swap",
+      "host": "pushed",
+      "in": "{{walkthrough-tick}} › the tick, then the rest it started; or Next",
+      "out": "Skip, or back, to {{track}}, with the practice thrown away",
+      "next": "Next, to {{walkthrough-hold}}",
+      "note": "The practice movement's swap lit: swap it for something else.",
+      "doc": "Machine taken is the moment a swap is for. What the line promises depends on the lifter: subscribed with the coach on, the coach suggests something else; everybody else, a new install included, is told only that they can swap it, since a suggestion is the paid half and promising it to somebody who has not got it would be the walkthrough's one untrue line. Done right: nobody new is told the app will do something it will not do for them.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-hold": {
+      "code": "O15",
+      "title": "Walkthrough — hold to move",
+      "host": "pushed",
+      "in": "{{walkthrough-swap}} › Next",
+      "out": "Skip, or back, to {{track}}, with the practice thrown away",
+      "next": "Next, to {{walkthrough-done}}",
+      "note": "The movement's card lit: hold it and drag it to change the order.",
+      "doc": "The gesture that replaced the Reorder movements button and its sheet in 2.0.1 (ADR 0005), shown where it is used: on the card's picture and name, which is what is held. The practice session has one movement, and one movement has nothing to be moved past, so here it is said rather than tried. Done right: the first time a lifter wants a different order, they already know to hold the card.",
+      "tags": ["free", "new", "first"]
+    },
+    "walkthrough-done": {
+      "code": "O16",
+      "title": "Walkthrough — that's it",
+      "host": "pushed",
+      "in": "{{walkthrough-hold}} › Next",
+      "out": "Start training, to {{track}}, with the practice thrown away",
+      "next": "{{track}}, where real sessions start",
+      "note": "That's it, and Start training. No Skip: the button is the way out.",
+      "doc": "The last step lights nothing and has no Skip, because Start training is the way out, and it ends the walkthrough exactly as Skip and back do: the practice is thrown away, the phone is marked as having met it, and the lifter lands on Track, under the Start a session the first step lit. Done right: the first real session starts where the walkthrough said it would, and the practice set is nowhere in the history.",
       "tags": ["free", "new", "first"]
     },
     "settings-coach": {
@@ -225,8 +345,19 @@
       "out": "App bar back",
       "next": "Turn the coach off, or open the disclosure beside it",
       "note": "One line naming OpenRouter on the switch; the rest behind the info button.",
-      "doc": "useCoach and deleter are both null-hides-the-control, and not one of the four Settings plates passed either — so the Coach heading, the switch, the disclosure row beside it and the route to deletion rendered on no plate at all. The whole of the 2026-09-01 compliance work was invisible to the board that exists to prove it is there.",
+      "doc": "useCoach and deleter are both null-hides-the-control, and not one of the four Settings plates passed either — so the Coach heading, the switch, the disclosure row beside it and the route to deletion rendered on no plate at all. The whole of the 2026-09-01 compliance work was invisible to the board that exists to prove it is there. Since 2.0.1 this subtitle, naming OpenRouter in the present tense, is shown only once the account has said yes on {{coach-consent}}; before that it is {{settings-coach-asks}}'s.",
       "tags": ["free"]
+    },
+    "settings-coach-asks": {
+      "code": "A13",
+      "title": "Settings — the coach will ask",
+      "host": "pushed",
+      "in": "{{settings-signed-in}}, the coach on and no yes on the account",
+      "out": "App bar back",
+      "next": "Open the C, and the coach asks first on {{coach-consent}}",
+      "note": "On. Your coach asks before anything is sent.",
+      "doc": "The switch is on and the subtitle claims nothing is being sent, because nothing has been: the account has no yes yet, so the coach will ask first (issue #10). Once Agree is pressed it reads as {{settings-coach}}'s; turning the switch off takes the yes back as well as stopping the coach. Done right: the line under the switch is true before, during and after the yes.",
+      "tags": ["free", "new", "first"]
     },
     "settings-coach-off": {
       "code": "A10",
@@ -321,24 +452,12 @@
       "code": "S3",
       "title": "Sign in with email",
       "host": "pushed",
-      "in": "{{sign-in}} › Continue with email, from Settings",
+      "in": "{{sign-in}} › Continue with email, from Settings or the sales screen",
       "out": "Other ways to sign in, or back",
-      "next": "Sign in, or New here? Create an account",
-      "note": "Signing back in: the form starts on Welcome back.",
-      "doc": "From Settings the email form starts on signing in, because the people there are mostly Liftio's, signing back in after the update; one tap makes it {{sign-in-create}}. It sits under the same head, Lift's icon and MGKFitness Account, with Run's labels. Wrong credentials never say which half was wrong, and a password reset says the same thing whether or not the address has an account. Done right: the keyboard never hides the field being typed in or its button.",
+      "next": "Continue, and the lookup decides: Welcome back, the provider the address signs in with, or Create your account and a code",
+      "note": "The address alone, Continue, and Other ways to sign in under it.",
+      "doc": "Since 2.0.1 the email path asks for the address and nothing else, and looking it up decides the one step that follows (Run's ADR-0047): Welcome back and the password, This address signs in with Apple (or Google), or Create your account and a 6-digit code sent to the address. Nobody has to know before they type whether they are signing in or signing up, which is what the two-mode form and its switch asked of them until 2.0.0, and why this board had a second plate for it. A new account is then asked once what to call its owner, never after Apple. The steps are the suite's, worded as Run's are, under the same head. Wrong credentials never say which half was wrong. Done right: nobody makes a second account by mistake, and the keyboard never hides the field being typed in or its button.",
       "tags": ["free"]
-    },
-
-    "sign-in-create": {
-      "code": "S4",
-      "title": "Create an account with email",
-      "host": "pushed",
-      "in": "{{sign-in}} › Continue with email, after choosing a tier on {{sales-signed-out}}",
-      "out": "Other ways to sign in, or back",
-      "next": "Sign up, or Have an account? Sign in",
-      "note": "The same form, starting on making an account.",
-      "doc": "Opened from the sales screen by somebody subscribing with no account yet, who is more likely new than returning, so the form starts where Run's does when something needs an account: Create your account, Sign up, eight characters at least. The sessions on this phone are counted, because making the account is what backs them up. One tap turns it into {{sign-in-email}}. Done right: nobody new has to find the way to make an account, and nobody returning is stopped from signing in.",
-      "tags": ["free", "new"]
     },
 
     "track": {
@@ -601,6 +720,17 @@
       "doc": "The case the collapse exists for: expanded throughout, this session is around 2,000px and the movement you are actually on is off screen. A finished movement folds to one line and reopens on a tap. Since 29 October the order changes here too: hold a movement's picture and name, or a folded line anywhere, and drag it to its new place; an open one folds to its name while it is carried and opens again where it lands (ADR 0005). It replaced a button at the foot of the list and the sheet it opened, which was W20.",
       "tags": ["free"]
     },
+    "session-planned": {
+      "code": "W27",
+      "title": "Session — from the plan",
+      "host": "pushed",
+      "in": "{{track-planned}} › Start upper",
+      "out": "Back arrow, Finish, or Discard session",
+      "next": "Tick a set",
+      "note": "Today's Upper, each movement on last time's top set, a step up where it held.",
+      "doc": "Started from the plan, every movement arrives with its sets, its reps and a weight: the top set last lifted for it, read off the log on the phone, and one step heavier where that beat the session before (#4). Until 2.0.1 nothing ever recorded a slot's result, so every planned session opened blank and asked for a weight you could do comfortably, and progression never ran. A movement never lifted before is left blank rather than guessed, and the sets arrive unticked: the lifter still does the work and confirms each one. Plan shows the same numbers, because both are worked out from one plan and one log. Done right: the number on the bar is the one they would have chosen, without opening their history to check.",
+      "tags": ["paid", "new", "first"]
+    },
     "session-resting": {
       "code": "W10",
       "title": "Session — resting",
@@ -753,7 +883,7 @@
       "out": "Nav bar",
       "next": "Start today's workout, or Change the split",
       "note": "The calendar first; today links to Track; no Start anywhere.",
-      "doc": "A live plan leads with the week (17). Nothing starts here (R8): today's session starts from Track, like every session, and the day card says so with a link. Every other day offers Do it today, which puts that session on Track for today — a choice on this phone for one day, not a plan edit.",
+      "doc": "A live plan leads with the week (17). Nothing starts here (R8): today's session starts from Track, like every session, and the day card says so with a link. Every other day offers Do it today, which puts that session on Track for today — a choice on this phone for one day, not a plan edit. Since 2.0.1 each movement says what it was last time, and one that has not moved for a while says for how long, worked out from the log on the phone rather than stored (#4): the plan learns from a session with no signal, a new plan has numbers on day one for anything done before, and the session it starts opens on the same numbers ({{session-planned}}).",
       "tags": ["paid"],
       "arch": {
         "class": "StandingPlanSurface",
@@ -820,6 +950,18 @@
       "next": "Go to Track; the week is all here",
       "note": "The copy saved on the phone, said as such.",
       "doc": "The plan is shown from the copy on the phone first and the server is asked behind it (#2), giving up after five seconds when there is a copy to show. In 2.0.0 the server came first, and on one bar of signal Track had no session until the request failed. When the server does answer, the line reads Synced just now; when it does not, it says this is the saved plan and how old it is. Done right: today's session is on Track the moment the app opens, signal or not.",
+      "tags": ["paid", "new"]
+    },
+
+    "coach-consent": {
+      "code": "C13",
+      "title": "Before anything is sent",
+      "host": "sheet",
+      "in": "The C, Build a plan, or a swap that asks the coach, on an account that has not said yes",
+      "out": "Agree; or Not now, back, or the scrim, which are all a no",
+      "next": "Agree, then {{coach-disclaimer}} the first time on a phone, then the coach",
+      "note": "What goes to OpenRouter, what never does, and Agree or Not now.",
+      "doc": "Asked before the coach sends anything (issue #10), as Run's coach asks: the coach is an AI model reached through OpenRouter, and some of what it is sent is health information. The sheet lists what goes (the messages as written, a summary of recent training, a plan's answers with any injury notes, a swap's session) and what never does (name, email, account ID, progress photos), says what the server asks of OpenRouter as a control rather than a promise, and how to take it back. The yes is kept on the account, so it is asked once per account rather than per phone; Not now, back and the scrim write nothing and send nothing. Signed out there is no account to keep it on, so it is asked after signing in, before the first send. Done right: nothing about anybody's training reaches OpenRouter before they have read this and said yes.",
       "tags": ["paid", "new", "first"]
     },
 
@@ -827,11 +969,11 @@
       "code": "C12",
       "title": "Before the coach",
       "host": "pushed",
-      "in": "The C, or Build a plan, the first time on a phone",
+      "in": "{{coach-consent}} › Agree, or the C once the account has said yes, the first time on a phone",
       "out": "I understand, or Not now",
       "next": "The coach, the offer, or the plan's first question",
       "note": "Once on a phone, and before the price: the terms' own words.",
-      "doc": "The coach answers questions about sore shoulders and builds plans around injuries, and until 5 October the only place Lift said \"not medical advice\" was the terms. Now it is said where the asking happens, as Run's coach has always said it: once on a phone, before the coach answers anything or a plan is built, and before the offer for anybody not subscribed. Every sentence is the terms' own, so the two cannot disagree. Not now opens nothing and records nothing. It can be read again under Privacy & legal.",
+      "doc": "The coach answers questions about sore shoulders and builds plans around injuries, and until 5 October the only place Lift said \"not medical advice\" was the terms. Now it is said where the asking happens, as Run's coach has always said it: once on a phone, before the coach answers anything or a plan is built, and before the offer for anybody not subscribed. Every sentence is the terms' own, so the two cannot disagree. Not now opens nothing and records nothing. It can be read again under Privacy & legal. Since 2.0.1 it comes second: permission first, then this, then the price, as Run's coach asks them, so nobody pays for a coach and then declines to let it see their training.",
       "tags": ["free", "new"]
     },
     "coach-empty": {
@@ -854,25 +996,31 @@
             "depth": 0,
             "call": "LiftShell._openCoach()",
             "symbol": "LiftShell",
-            "note": "The shell owns what opening the coach means, so both gates live in one place rather than at every call site."
+            "note": "The shell owns what opening the coach means, so every gate lives in one place rather than at every call site."
           },
           {
             "depth": 1,
-            "call": "if (coach == null) return          // no mark at all",
+            "call": "if (coach == null || !_useCoach) return          // no mark at all",
             "symbol": "CoachService",
-            "note": "The mark stays absent rather than inert when there is no server. A mark that cannot open anything is worse than no mark."
+            "note": "The mark stays absent rather than inert when there is no server, and with the coach switched off. A mark that cannot open anything is worse than no mark."
           },
           {
             "depth": 1,
-            "call": "if (account == null) → _openSignIn()",
-            "symbol": "AuthService",
-            "note": "Checked before the message, not after. Sending a question and getting \"sign in\" back means the lifter typed something for nothing, and the refusal lands on a screen with no route to the fix."
+            "call": "if (!await _askedFirst()) return",
+            "symbol": "AiConsentSheet.show",
+            "note": "Permission first (issue #10): an account with no yes on it is shown the sheet that says what goes to OpenRouter, and anything but Agree ends here with nothing sent. Signed out there is no account to keep the answer on, so it is asked after signing in."
           },
           {
             "depth": 1,
-            "call": "if (!isEntitled) → _go(planTab)",
-            "symbol": "PlanSurface",
-            "note": "The free tier is sent to the offer rather than shown a refusal — the tab whose empty state IS the pitch."
+            "call": "if (!await _acceptedDisclaimer()) return",
+            "symbol": "MedicalDisclaimerScreen",
+            "note": "Once on a phone, before anything can be asked: not medical advice, in the terms' own words."
+          },
+          {
+            "depth": 1,
+            "call": "if (account == null || !entitled) → _startPurchase()",
+            "symbol": "SalesScreen",
+            "note": "Nothing on the coach is free (R6): anybody unsubscribed, signed out included, is shown the sales screen wherever the mark is tapped, after the two questions above and before any message is typed."
           },
           {
             "depth": 1,
@@ -1239,7 +1387,7 @@
       "next": "Change units, sign in, or Show me around to {{walkthrough-track}}",
       "next_note": "units apply as they change, not on close",
       "note": "The suite's profile card first, then Run's groups with Lift's rows.",
-      "doc": "The same index as Run's, because half of it is the same thing. The card at the top is the one both apps draw; the groups carry Run's names and order, with Lift's rows inside them; the foot names the product and its maker as Run's does. Signed out, the card is the way in, and its note is the one fact worth stating unprompted: what is on this phone only. Each row shows what it is set to (19), and opens a sheet that carries its explanation. Done right: somebody with both apps does not learn Settings twice, and nobody is argued into an account.",
+      "doc": "The same index as Run's, because half of it is the same thing. The card at the top is the one both apps draw; the groups carry Run's names and order, with Lift's rows inside them; the foot names the product and its maker as Run's does. Signed out, the card is the way in, and its note is the one fact worth stating unprompted: what is on this phone only. Each row shows what it is set to (19), and opens a sheet that carries its explanation. Since 2.0.1 About opens on Show me around, which closes Settings and plays the walkthrough again from the top, over the shell: there for the lifter who goes looking for it, never shown a second time unasked. Done right: somebody with both apps does not learn Settings twice, nobody is argued into an account, and somebody who skipped the walkthrough on day one can find it again.",
       "tags": ["free"]
     },
     "settings-signed-in": {
@@ -1543,8 +1691,22 @@
 
   "edges": [
     { "from": "welcome", "to": "walkthrough-track", "label": "Get started" },
-    { "from": "walkthrough-track", "to": "walkthrough-tick", "label": "Let's try a set" },
-    { "from": "walkthrough-tick", "to": "track", "label": "Start training" },
+    { "from": "walkthrough-track", "to": "walkthrough-workouts", "label": "Next" },
+    { "from": "walkthrough-workouts", "to": "walkthrough-plan", "label": "Next" },
+    { "from": "walkthrough-plan", "to": "walkthrough-profile", "label": "Next" },
+    { "from": "walkthrough-profile", "to": "walkthrough-settings", "label": "Next" },
+    { "from": "walkthrough-settings", "to": "walkthrough-coach", "label": "Next" },
+    { "from": "walkthrough-coach", "to": "walkthrough-try", "label": "Next" },
+    { "from": "walkthrough-try", "to": "walkthrough-tick", "label": "Next, into the practice session" },
+    { "from": "walkthrough-tick", "to": "walkthrough-swap", "label": "the tick, then the rest" },
+    { "from": "walkthrough-swap", "to": "walkthrough-hold", "label": "Next" },
+    { "from": "walkthrough-hold", "to": "walkthrough-done", "label": "Next" },
+    { "from": "walkthrough-done", "to": "track", "label": "Start training" },
+    { "from": "settings", "to": "walkthrough-track", "label": "Show me around" },
+    { "from": "track", "to": "coach-consent", "label": "the C, with no yes yet" },
+    { "from": "coach-consent", "to": "coach-disclaimer", "label": "Agree" },
+    { "from": "settings-signed-in", "to": "settings-coach-asks", "label": "the coach on, no yes yet" },
+    { "from": "settings-coach-asks", "to": "settings-coach", "label": "Agree, on the coach's sheet" },
     { "from": "welcome", "to": "sign-in", "label": "I already have an account" },
     { "from": "sign-in", "to": "track", "label": "signed in, from the welcome" },
     { "from": "session", "to": "exercise-picker-replace", "label": "swap, without the coach" },
@@ -1564,7 +1726,7 @@
     { "from": "workout-library", "to": "session-empty", "label": "Blank session" },
     { "from": "track-planned", "to": "track-rest", "label": "a rest day" },
     { "from": "track-open", "to": "session", "label": "Resume session" },
-    { "from": "track-planned", "to": "session", "label": "Start upper" },
+    { "from": "track-planned", "to": "session-planned", "label": "Start upper" },
     { "from": "track", "to": "coach-empty", "label": "the mark" },
     { "from": "track-coach", "to": "coach", "label": "the mark" },
     { "from": "track", "to": "plan", "label": "nav bar" },
@@ -1636,8 +1798,7 @@
     { "from": "legal", "to": "privacy", "label": "Privacy policy" },
     { "from": "legal", "to": "ai-disclosure", "label": "How your coach uses AI" },
     { "from": "legal", "to": "delete-account", "label": "Delete account" },
-    { "from": "sign-in", "to": "sign-in-email", "label": "Continue with email, from Settings" },
-    { "from": "sign-in", "to": "sign-in-create", "label": "Continue with email, to subscribe" },
+    { "from": "sign-in", "to": "sign-in-email", "label": "Continue with email" },
     { "from": "workout-library", "to": "workout-library-open", "label": "tap a row" },
     { "from": "workout-library", "to": "workout-editor", "label": "… › Edit" },
     { "from": "session", "to": "finish-sheet-save", "label": "Finish" },
