@@ -42,7 +42,7 @@ import '../domain/unit_settings.dart';
 /// dependency it does not need, and the preview harness has no bundle to read.
 /// **Keep it in step with `version:` in pubspec.yaml**, which
 /// `app_version_test.dart` holds it to.
-const String kAppVersion = '1.1.0';
+const String kAppVersion = '1.1.1';
 
 /// Settings: **everything about the app rather than about the running.**
 ///
