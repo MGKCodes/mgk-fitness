@@ -1,6 +1,7 @@
 # 0046 — A version is submitted once, and `main` is what was submitted
 
-**Status:** Accepted, 2026-10-02. Extends
+**Status:** Accepted, 2026-10-02; amended 2026-10-30 (which number moves).
+Extends
 [ADR-0039](0039-one-commit-two-stores-and-the-pubspec-owns-the-build-number.md),
 and changes when `develop` is promoted
 ([CONTRIBUTING.md](../../../../CONTRIBUTING.md), Branching).
@@ -63,3 +64,25 @@ that asks for a new build *of the same version* by name. Neither is known.
 Or a rejection loop long enough that the version number runs ahead of anything
 a runner has seen (`1.0.4` as the first release). At that point the number has
 stopped meaning anything to them and this is worth revisiting.
+
+## Amendment, 2026-10-30 — which number moves
+
+The decision above says the promotion moves `develop` to the next patch, and
+says nothing about the other two numbers. So every version counted up by a
+patch, whatever it held, while the changelog claimed Semantic Versioning: Lift
+2.0.1 brought the walkthrough, hold-to-move and the coach's consent question as
+a patch.
+
+Matthew's rule, from 30 October 2026, for both apps:
+
+- **Patch** (`1.0.x`): fixes, and changes to what the app already does.
+- **Minor** (`1.x.0`): any new screen or feature.
+- **Major** (`x.0.0`): a substantial change, such as a redesign or a new way of
+  paying.
+
+The promotion still moves `develop` to the next patch. The first commit that
+needs a bigger number moves it in the same change (`pubspec.yaml`,
+`kAppVersion`, the changelog's `[Unreleased]` line), and the build number is
+not touched. Lift 2.0.1 keeps its number: it was submitted, and a version is
+submitted once. [CONTRIBUTING.md](../../../../CONTRIBUTING.md) › Versions has
+the steps.
