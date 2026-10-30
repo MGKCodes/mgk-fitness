@@ -18,6 +18,11 @@ change.
 
 ## [Unreleased]
 
+This is 1.1.1
+([ADR-0046](docs/decisions/0046-a-version-is-submitted-once.md)). A new
+screen or feature makes it 1.2.0 ([CONTRIBUTING.md](../../CONTRIBUTING.md)
+› Versions).
+
 ## [1.1.0] — submitted 2026-10-30, build 33
 
 Submitted to both stores on 30 October 2026 from the commit tagged
